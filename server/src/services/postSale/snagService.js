@@ -137,27 +137,37 @@ async function clientVerifySnag({ tenantId, snagId, clientPortalUserId }) {
   return snag;
 }
 
-async function getSnags({ tenantId, projectId, status, page = 1, limit = 10 }) {
+async function getSnags({ tenantId, projectId, status, assigneeId, category, page = 1, limit = 10 }) {
   const offset = (page - 1) * limit;
   const params = [tenantId];
-  let query = \`
+  let query = `
     SELECT s.*, u.name as assignee_name
     FROM snags s
     LEFT JOIN users u ON s.assignee_id = u.id
     WHERE s.tenant_id = $1
-  \`;
+  `;
   
   if (projectId) {
     params.push(projectId);
-    query += \` AND s.project_id = $\${params.length}\`;
+    query += ` AND s.project_id = $${params.length}`;
   }
   
   if (status) {
     params.push(status);
-    query += \` AND s.status = $\${params.length}\`;
+    query += ` AND s.status = $${params.length}`;
+  }
+
+  if (assigneeId) {
+    params.push(assigneeId);
+    query += ` AND s.assignee_id = $${params.length}`;
+  }
+
+  if (category) {
+    params.push(category);
+    query += ` AND s.category = $${params.length}`;
   }
   
-  query += \` ORDER BY s.created_at DESC LIMIT $\${params.length + 1} OFFSET $\${params.length + 2}\`;
+  query += ` ORDER BY s.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
   
   const result = await pool.query(query, [...params, limit, offset]);
   return result.rows;

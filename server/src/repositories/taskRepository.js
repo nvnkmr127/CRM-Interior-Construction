@@ -65,7 +65,7 @@ class TaskRepository {
     return task;
   }
 
-  async findTasks(tenantId, { projectId, milestoneId, assigneeId, status, priority, page = 1, limit = 20 }) {
+  async findTasks(tenantId, { projectId, milestoneId, assigneeId, status, priority, dueWithin, page = 1, limit = 20 }) {
     const offset = (page - 1) * limit;
     const values = [tenantId];
     let whereClause = `t.tenant_id = $1 AND t.deleted_at IS NULL`;
@@ -95,6 +95,21 @@ class TaskRepository {
       whereClause += ` AND t.parent_task_id IS NULL`;
     }
 
+    if (dueWithin) {
+      if (dueWithin === 'overdue') {
+        whereClause += ` AND t.due_date < NOW() AND t.status != 'done'`;
+      } else if (dueWithin === 'today') {
+        whereClause += ` AND t.due_date::date = CURRENT_DATE`;
+      } else if (dueWithin === 'week') {
+        whereClause += ` AND t.due_date::date >= CURRENT_DATE AND t.due_date::date <= CURRENT_DATE + interval '7 days'`;
+      } else {
+        const days = parseInt(dueWithin, 10);
+        if (!isNaN(days)) {
+          whereClause += ` AND t.due_date::date <= CURRENT_DATE + interval '${days} days' AND t.due_date IS NOT NULL`;
+        }
+      }
+    }
+
     const countQuery = `SELECT count(*)::int FROM tasks t WHERE ${whereClause}`;
     const { rows: countRows } = await pool.query(countQuery, values);
     const total = countRows[0].count;
@@ -102,9 +117,11 @@ class TaskRepository {
     const query = `
       SELECT t.*,
         u.first_name || ' ' || u.last_name as assignee_name,
+        p.name as project_name,
         (SELECT count(id)::int FROM tasks sub WHERE sub.parent_task_id = t.id AND sub.deleted_at IS NULL) as subtask_count
       FROM tasks t
       LEFT JOIN users u ON t.assignee_id = u.id
+      LEFT JOIN projects p ON t.project_id = p.id
       WHERE ${whereClause}
       ORDER BY t.sort_order ASC, t.created_at DESC
       LIMIT $${idx++} OFFSET $${idx++}

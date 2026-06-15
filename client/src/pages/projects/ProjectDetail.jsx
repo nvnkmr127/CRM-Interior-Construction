@@ -1,12 +1,17 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getProject } from '../../api/projects';
+import Modal from '../../components/ui/Modal';
+import ProjectForm from '../../components/projects/ProjectForm';
 
 // Lazy loaded submodules
 const PhaseTimeline = React.lazy(() => import('../../components/projects/PhaseTimeline'));
 const TaskKanban = React.lazy(() => import('../../components/tasks/TaskKanban'));
 const TaskList = React.lazy(() => import('../../components/tasks/TaskList'));
 const DocumentPanel = React.lazy(() => import('../../components/projects/DocumentPanel'));
+const SnagsDashboard = React.lazy(() => import('./SnagsDashboard'));
+const PaymentsTab = React.lazy(() => import('./PaymentsTab'));
+const HandoverChecklist = React.lazy(() => import('./HandoverChecklist'));
 
 const FallbackLoader = () => (
   <div className="flex justify-center items-center py-20">
@@ -20,6 +25,7 @@ const ProjectDetail = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [taskView, setTaskView] = useState('kanban');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const fetchDetail = async () => {
     try {
@@ -101,8 +107,10 @@ const ProjectDetail = () => {
     { id: 'overview', label: 'Overview' },
     { id: 'phases', label: 'Phases & Milestones' },
     { id: 'tasks', label: 'Task Execution' },
+    { id: 'snags', label: 'Snags & Punch List' },
     { id: 'documents', label: 'Documents & Designs' },
-    { id: 'payments', label: 'Payment Triggers' }
+    { id: 'payments', label: 'Payment Triggers' },
+    { id: 'handover', label: 'Handover' }
   ];
 
   return (
@@ -126,7 +134,10 @@ const ProjectDetail = () => {
               {project.project_type || 'General Construct'}
             </p>
           </div>
-          <button className="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white px-5 py-2.5 rounded-lg font-bold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-sm">
+          <button 
+            onClick={() => setIsEditModalOpen(true)}
+            className="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white px-5 py-2.5 rounded-lg font-bold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-sm"
+          >
             Edit Configuration
           </button>
         </div>
@@ -202,16 +213,41 @@ const ProjectDetail = () => {
           </Suspense>
         )}
 
-        {activeTab === 'payments' && (
-          <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-12 text-center animate-in fade-in duration-300 shadow-inner">
-            <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4 border border-slate-700">
-              <span className="text-2xl">💰</span>
+        {activeTab === 'snags' && (
+          <Suspense fallback={<FallbackLoader />}>
+            <div className="animate-in fade-in duration-300">
+              <SnagsDashboard projectId={project.id} />
             </div>
-            <h3 className="text-lg font-bold text-white mb-2">Payment Milestones Module</h3>
-            <p className="text-slate-400 max-w-md mx-auto text-sm">Financial tracking and invoice triggering is currently under active development.</p>
-          </div>
+          </Suspense>
+        )}
+
+        {activeTab === 'payments' && (
+          <Suspense fallback={<FallbackLoader />}>
+            <div className="animate-in fade-in duration-300">
+              <PaymentsTab project={project} />
+            </div>
+          </Suspense>
+        )}
+
+        {activeTab === 'handover' && (
+          <Suspense fallback={<FallbackLoader />}>
+            <div className="animate-in fade-in duration-300">
+              <HandoverChecklist projectId={project.id} />
+            </div>
+          </Suspense>
         )}
       </div>
+
+      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Project Setup">
+        <ProjectForm 
+          project={project} 
+          onSave={(updatedProject) => {
+            setProject(updatedProject);
+            setIsEditModalOpen(false);
+          }} 
+          onClose={() => setIsEditModalOpen(false)} 
+        />
+      </Modal>
     </div>
   );
 };

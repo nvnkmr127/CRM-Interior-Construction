@@ -12,6 +12,7 @@ const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'));
 const LeadsPage = lazy(() => import('./pages/leads/LeadsPage'));
 const ProjectsPage = lazy(() => import('./pages/projects/ProjectsPage'));
 const ProjectDetail = lazy(() => import('./pages/projects/ProjectDetail'));
+const MyTasksPage = lazy(() => import('./pages/tasks/MyTasksPage'));
 const LeadAnalyticsPage = lazy(() => import('./pages/analytics/LeadAnalyticsPage'));
 const ConfigPage = lazy(() => import('./pages/config/ConfigPage'));
 const CustomFieldsManager = lazy(() => import('./pages/config/CustomFieldsManager'));
@@ -45,6 +46,7 @@ export default function App() {
         <Route path="leads" element={<LeadsPage />} />
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="projects/:id" element={<ProjectDetail />} />
+        <Route path="tasks" element={<MyTasksPage />} />
         <Route path="analytics/leads" element={<LeadAnalyticsPage />} />
         
         <Route path="config" element={<ConfigPage />}>

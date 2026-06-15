@@ -14,8 +14,39 @@ async function createChecklist({ tenantId, projectId, items = [] }) {
     );
     const checklist = checklistResult.rows[0];
 
+    // Auto-populate default items if none provided
+    let itemsToInsert = items;
+    if (itemsToInsert.length === 0) {
+      const projectRes = await client.query('SELECT project_type FROM projects WHERE id = $1', [projectId]);
+      const pType = projectRes.rows[0]?.project_type || 'full_home';
+      
+      switch (pType) {
+        case 'modular_kitchen':
+          itemsToInsert = [
+            { room: 'Kitchen', description: 'All cabinets and drawers open/close smoothly' },
+            { room: 'Kitchen', description: 'Countertop installed without scratches or chips' },
+            { room: 'Kitchen', description: 'Sink and faucet installed, no leaks' }
+          ];
+          break;
+        case 'full_home':
+          itemsToInsert = [
+            { room: 'Kitchen', description: 'All cabinets and drawers open/close smoothly' },
+            { room: 'Living Room', description: 'TV unit installed properly' },
+            { room: 'Master Bedroom', description: 'Wardrobe sliding mechanism works smoothly' },
+            { room: 'General', description: 'All switchboards aligned and working' },
+            { room: 'General', description: 'Paint finish uniform with no patches' }
+          ];
+          break;
+        default:
+          itemsToInsert = [
+            { room: 'General', description: 'Installation completed as per design' },
+            { room: 'General', description: 'Site cleaned and debris removed' }
+          ];
+      }
+    }
+
     const insertedItems = [];
-    for (const item of items) {
+    for (const item of itemsToInsert) {
       const itemResult = await client.query(
         `INSERT INTO handover_items (checklist_id, room, description)
          VALUES ($1, $2, $3)
@@ -76,19 +107,32 @@ async function addDefaultItems(checklistId, projectType) {
   return insertedItems;
 }
 
-async function checkItem({ checklistId, itemId, photoKey, userId }) {
+async function updateItem({ checklistId, itemId, isChecked, photoKey, userId }) {
   const result = await pool.query(
     `UPDATE handover_items
-     SET is_checked = true, photo_key = $1, checked_at = NOW(), checked_by = $2
-     WHERE id = $3 AND checklist_id = $4
+     SET is_checked = COALESCE($1, is_checked),
+         photo_key = COALESCE($2, photo_key),
+         checked_at = CASE WHEN $1 = true THEN NOW() ELSE checked_at END,
+         checked_by = CASE WHEN $1 = true THEN $3 ELSE checked_by END
+     WHERE id = $4 AND checklist_id = $5
      RETURNING *`,
-    [photoKey, userId, itemId, checklistId]
+    [isChecked, photoKey, userId, itemId, checklistId]
   );
 
   if (result.rows.length === 0) {
     throw new Error('Handover item not found or could not be updated');
   }
 
+  return result.rows[0];
+}
+
+async function addItem({ checklistId, room, description }) {
+  const result = await pool.query(
+    `INSERT INTO handover_items (checklist_id, room, description)
+     VALUES ($1, $2, $3)
+     RETURNING *`,
+    [checklistId, room, description]
+  );
   return result.rows[0];
 }
 
@@ -105,6 +149,24 @@ async function getChecklist(checklistId, tenantId) {
   const itemsResult = await pool.query(
     `SELECT * FROM handover_items WHERE checklist_id = $1 ORDER BY room, description`,
     [checklistId]
+  );
+
+  return { ...checklist, items: itemsResult.rows };
+}
+
+async function getChecklistByProjectId(projectId, tenantId) {
+  const checklistResult = await pool.query(
+    `SELECT * FROM handover_checklists WHERE project_id = $1 AND tenant_id = $2 ORDER BY created_at DESC LIMIT 1`,
+    [projectId, tenantId]
+  );
+  const checklist = checklistResult.rows[0];
+  if (!checklist) {
+    return null;
+  }
+
+  const itemsResult = await pool.query(
+    `SELECT * FROM handover_items WHERE checklist_id = $1 ORDER BY room, created_at ASC`,
+    [checklist.id]
   );
 
   return { ...checklist, items: itemsResult.rows };
@@ -170,7 +232,9 @@ async function clientSignOff({ checklistId, tenantId, clientPortalUserId }) {
 module.exports = {
   createChecklist,
   addDefaultItems,
-  checkItem,
+  updateItem,
+  addItem,
   getChecklist,
+  getChecklistByProjectId,
   clientSignOff
 };

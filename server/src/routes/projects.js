@@ -6,6 +6,8 @@ const authorize = require('../middleware/authorize');
 const { applyTemplate } = require('../services/config/templateService');
 const { createProject } = require('../services/projects/createProject');
 const { updateProject } = require('../services/projects/updateProject');
+const { getPaymentMilestones } = require('../services/projects/paymentMilestoneService');
+const { getChecklistByProjectId, createChecklist, addItem } = require('../services/postSale/handoverService');
 const projectRepository = require('../repositories/projectRepository');
 const phasesRoutes = require('./phases');
 const tasksRoutes = require('./tasks');
@@ -120,6 +122,58 @@ router.patch('/:id', authorize('projects:update'), async (req, res, next) => {
     }
     console.error('[Projects Router] Update error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update project.', 500);
+  }
+});
+
+// GET /api/projects/:id/payment-milestones
+router.get('/:id/payment-milestones', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const paymentMilestones = await getPaymentMilestones({
+      tenantId: req.tenantId,
+      projectId: req.params.id
+    });
+    return success(res, paymentMilestones);
+  } catch (err) {
+    console.error('[Projects Router] Get Payment Milestones error:', err);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to retrieve payment milestones.', 500);
+  }
+});
+
+// GET /api/projects/:id/handover/checklists
+router.get('/:id/handover/checklists', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const checklist = await getChecklistByProjectId(req.params.id, req.tenantId);
+    if (!checklist) return fail(res, 'NOT_FOUND', 'Checklist not found', 404);
+    return success(res, checklist);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/projects/:id/handover/checklists
+router.post('/:id/handover/checklists', authorize('projects:manage'), async (req, res, next) => {
+  try {
+    const items = req.body.items || [];
+    const checklist = await createChecklist({
+      tenantId: req.tenantId,
+      projectId: req.params.id,
+      items
+    });
+    return success(res, checklist, 201);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/projects/:id/handover/items
+router.post('/:id/handover/items', authorize('projects:manage'), async (req, res, next) => {
+  try {
+    const { checklistId, room, description } = req.body;
+    if (!checklistId || !room || !description) return fail(res, 'BAD_REQUEST', 'Missing fields', 400);
+    const item = await addItem({ checklistId, room, description });
+    return success(res, item, 201);
+  } catch (err) {
+    next(err);
   }
 });
 

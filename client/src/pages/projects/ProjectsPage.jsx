@@ -47,15 +47,9 @@ const ProjectsPage = () => {
     return () => clearTimeout(delay);
   }, [search, statusFilter]);
 
-  const handleCreate = async (data) => {
-    try {
-      await createProject(data);
-      setIsModalOpen(false);
-      fetchProjects();
-    } catch (e) {
-      console.error(e);
-      alert('Failed to create project');
-    }
+  const handleSave = () => {
+    setIsModalOpen(false);
+    fetchProjects();
   };
 
   return (
@@ -182,7 +176,7 @@ const ProjectsPage = () => {
       )}
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="New Project Setup">
-        <ProjectForm onSubmit={handleCreate} onCancel={() => setIsModalOpen(false)} />
+        <ProjectForm onSave={handleSave} onClose={() => setIsModalOpen(false)} />
       </Modal>
     </div>
   );
