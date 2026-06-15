@@ -17,7 +17,7 @@ const ConfigPage = lazy(() => import('./pages/config/ConfigPage'));
 const CustomFieldsManager = lazy(() => import('./pages/config/CustomFieldsManager'));
 const TemplateBuilder = lazy(() => import('./pages/config/TemplateBuilder'));
 
-const PortalApp = () => <div>PortalApp</div>;
+const PortalApp = lazy(() => import('./portal/PortalApp'));
 const Stub = ({ name }) => <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-muted)' }}>{name} (Stub)</div>;
 
 export default function App() {

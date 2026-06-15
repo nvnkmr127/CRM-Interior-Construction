@@ -26,6 +26,11 @@ const analyticsRoutes = require('./routes/analytics');
 const logsRoutes = require('./routes/logs');
 const webhooksRoutes = require('./routes/webhooks');
 const webhooksInboundRoutes = require('./routes/webhooks/inbound');
+const portalAuthRoutes = require('./routes/portal/auth');
+const portalProjectRoutes = require('./routes/portal/project');
+const portalSnagsRoutes = require('./routes/portal/snags');
+const portalApprovalsRoutes = require('./routes/portal/approvals');
+const portalBrandingRoutes = require('./routes/portal/branding');
 const errorHandler = require('./middleware/errorHandler');
 
 app.get('/health', (req, res) => {
@@ -41,6 +46,11 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/logs', logsRoutes);
 app.use('/api/webhooks', webhooksRoutes);
 app.use('/api/webhooks/inbound', webhooksInboundRoutes);
+app.use('/api/portal/auth', portalAuthRoutes);
+app.use('/api/portal/project', portalProjectRoutes);
+app.use('/api/portal/snags', portalSnagsRoutes);
+app.use('/api/portal/approvals', portalApprovalsRoutes);
+app.use('/api/portal/branding', portalBrandingRoutes);
 
 // Error handler MUST be the last middleware
 app.use(errorHandler);
