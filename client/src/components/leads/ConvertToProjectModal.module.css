@@ -1,0 +1,31 @@
+.progressStrip { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: var(--space-6); font-size: var(--text-sm); font-weight: 500; }
+.stepDot { width: 12px; height: 12px; border-radius: 50%; background: var(--color-border); transition: 0.3s; }
+.stepDot.active { background: var(--color-accent); }
+.stepLine { width: 40px; height: 2px; background: var(--color-border); transition: 0.3s; }
+.stepLine.active { background: var(--color-accent); }
+.stepText { color: var(--color-text-secondary); transition: 0.3s; }
+.stepText.active { color: var(--color-text); }
+
+.summaryCard { background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-5); margin-bottom: var(--space-6); }
+.summaryGrid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-top: var(--space-4); }
+.summaryLabel { font-size: 11px; text-transform: uppercase; color: var(--color-text-secondary); letter-spacing: 0.5px; }
+.summaryValue { font-size: var(--text-base); font-weight: 500; color: var(--color-text); }
+
+.slideContainer { overflow: hidden; position: relative; }
+.slide { transition: transform 0.3s ease, opacity 0.3s ease; }
+.slideHiddenRight { transform: translateX(20px); opacity: 0; pointer-events: none; position: absolute; inset: 0; }
+.slideHiddenLeft { transform: translateX(-20px); opacity: 0; pointer-events: none; position: absolute; inset: 0; }
+.slideActive { transform: translateX(0); opacity: 1; position: relative; }
+
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4) var(--space-6); }
+.fullWidth { grid-column: 1 / -1; }
+.sectionTitle { font-size: var(--text-sm); font-weight: 600; color: var(--color-text-secondary); margin: 0 0 var(--space-3); }
+
+.typeSelector { display: flex; gap: var(--space-3); overflow-x: auto; padding-bottom: var(--space-2); scrollbar-width: none; }
+.typeSelector::-webkit-scrollbar { display: none; }
+.typeCard { flex: 0 0 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; height: 80px; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); cursor: pointer; transition: var(--transition-fast); user-select: none; }
+.typeCard:hover { border-color: var(--color-border-strong); }
+.typeCard.selected { border: 2px solid var(--color-accent); background: var(--color-surface); color: var(--color-accent); }
+.typeIcon { font-size: 24px; }
+.typeLabel { font-size: 11px; font-weight: 500; text-align: center; line-height: 1.2; }
+.errorMsg { color: var(--color-danger); font-size: 11px; margin-top: 4px; }

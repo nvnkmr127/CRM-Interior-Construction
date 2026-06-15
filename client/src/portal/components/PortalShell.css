@@ -10,7 +10,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 1rem 2rem;
-  background-color: #ffffff;
+  background-color: var(--color-surface);fff;
   border-bottom: 3px solid #ccc;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
@@ -35,7 +35,7 @@
   background: transparent;
   border: 1px solid #d1d5db;
   padding: 0.5rem 1rem;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 0.875rem;
 }
@@ -52,7 +52,7 @@
 
 .portal-bottom-nav {
   display: flex;
-  background-color: #ffffff;
+  background-color: var(--color-surface);fff;
   border-top: 1px solid #e5e7eb;
   position: fixed;
   bottom: 0;

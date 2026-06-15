@@ -1,5 +1,12 @@
 // Mock DB Pool
 class Pool {
+  async connect() {
+    return {
+      query: this.query.bind(this),
+      release: () => {}
+    };
+  }
+
   async query(sql, params) {
     console.log('MOCK DB QUERY:', sql, params);
     

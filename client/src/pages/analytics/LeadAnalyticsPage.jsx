@@ -1,250 +1,239 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Cell,
-  PieChart, Pie, Cell as PieCell, Legend,
-  LineChart, Line 
-} from 'recharts';
-import { format, subDays, startOfYear, parseISO } from 'date-fns';
-import api from '../../api/axios';
-import Skeleton from '../../components/ui/Skeleton';
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import styles from './LeadAnalyticsPage.module.css'
+import { Select, Avatar, Badge, DataTable } from '../../components/ui'
+import usePageTitle from '../../hooks/usePageTitle'
+import useBreadcrumbs from '../../hooks/useBreadcrumbs'
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#a4de6c'];
+const PIE_COLOURS = ['#E8935A','#2D6A4F','#1A3A5C','#8B2020','#4A2040','#D97706']
 
 export default function LeadAnalyticsPage() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [dateRange, setDateRange] = useState('30d');
-  const [customRange, setCustomRange] = useState({ from: '', to: '' });
+  usePageTitle('Lead Analytics')
+  useBreadcrumbs([{label:'Analytics'},{label:'Leads'}])
+  const navigate = useNavigate()
+
+  const [dateRange, setDateRange] = useState('30d')
+  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState(null)
 
   useEffect(() => {
-    fetchData();
-  }, [dateRange, customRange]);
+    setLoading(true)
+    // Mock Fetch
+    setTimeout(() => {
+      setData({
+        kpis: {
+          total: { val: 145, trend: 12 },
+          won: { val: 42, trend: 5 },
+          convRate: { val: '28.9%', trend: 2.1 },
+          avgScore: { val: 76, trend: -3 }
+        },
+        weeklyData: [
+          { week: 'Week 1', created: 30, won: 8 },
+          { week: 'Week 2', created: 35, won: 10 },
+          { week: 'Week 3', created: 40, won: 12 },
+          { week: 'Week 4', created: 40, won: 12 }
+        ],
+        funnelData: [
+          { stage: 'New', count: 145, color: '#3B82F6' },
+          { stage: 'Contacted', count: 110, color: '#8B5CF6' },
+          { stage: 'Site Visit', count: 85, color: '#D946EF' },
+          { stage: 'Quotation', count: 60, color: '#F59E0B' },
+          { stage: 'Negotiation', count: 50, color: '#E8935A' },
+          { stage: 'Won', count: 42, color: '#10B981' }
+        ],
+        sourceData: [
+          { name: 'Facebook Ads', count: 65 },
+          { name: 'Google Search', count: 45 },
+          { name: 'Referral', count: 20 },
+          { name: 'Walk-in', count: 10 },
+          { name: 'Other', count: 5 }
+        ],
+        teamData: [
+          { id: '1', user: { name: 'Priya Sharma' }, assigned: 60, won: 22, convRate: 36.6, avgScore: 82, lastActivity: '2 mins ago' },
+          { id: '2', user: { name: 'Rahul Desai' }, assigned: 55, won: 15, convRate: 27.2, avgScore: 71, lastActivity: '1 hr ago' },
+          { id: '3', user: { name: 'Amit Kumar' }, assigned: 30, won: 5, convRate: 16.6, avgScore: 65, lastActivity: '3 hrs ago' },
+        ]
+      })
+      setLoading(false)
+    }, 800)
+  }, [dateRange])
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      let from = '';
-      let to = new Date().toISOString();
+  const renderTrend = (val) => {
+    if (val > 0) return <span className={`${styles.kpiTrend} ${styles.trendUp}`}>↑ {val}% vs last period</span>
+    if (val < 0) return <span className={`${styles.kpiTrend} ${styles.trendDown}`}>↓ {Math.abs(val)}% vs last period</span>
+    return <span className={`${styles.kpiTrend} ${styles.trendNeutral}`}>— No change</span>
+  }
 
-      if (dateRange === '30d') {
-        from = subDays(new Date(), 30).toISOString();
-      } else if (dateRange === '90d') {
-        from = subDays(new Date(), 90).toISOString();
-      } else if (dateRange === 'year') {
-        from = startOfYear(new Date()).toISOString();
-      } else if (dateRange === 'custom') {
-        from = customRange.from ? new Date(customRange.from).toISOString() : '';
-        to = customRange.to ? new Date(customRange.to).toISOString() : '';
-      }
+  const renderConvRate = (val) => {
+    let color = 'var(--color-danger)'
+    if (val >= 30) color = 'var(--color-success)'
+    else if (val >= 15) color = 'var(--color-warning)'
+    return <span style={{color, fontWeight:600}}>{val}%</span>
+  }
 
-      const params = {};
-      if (from) params.from = from;
-      if (to && dateRange !== 'custom' || customRange.to) params.to = to;
+  if (loading) {
+    return (
+      <div className={styles.page}>
+        <div className={styles.headerRow}>
+          <div>
+            <h1 className={styles.title}>Lead Analytics</h1>
+            <div className={styles.desc}>Track pipeline health and conversion metrics.</div>
+          </div>
+        </div>
+        <div className={styles.kpiStrip}>
+          <div className={`${styles.skeleton} ${styles.skeletonKpi}`} />
+          <div className={`${styles.skeleton} ${styles.skeletonKpi}`} />
+          <div className={`${styles.skeleton} ${styles.skeletonKpi}`} />
+          <div className={`${styles.skeleton} ${styles.skeletonKpi}`} />
+        </div>
+        <div className={styles.grid}>
+          <div className={`${styles.skeleton} ${styles.skeletonChart} ${styles.fullWidth}`} />
+          <div className={`${styles.skeleton} ${styles.skeletonChart}`} />
+          <div className={`${styles.skeleton} ${styles.skeletonChart}`} />
+        </div>
+      </div>
+    )
+  }
 
-      const res = await api.get('/analytics/leads', { params });
-      if (res.data?.success) {
-        setData(res.data.data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch lead analytics', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (!data) return (
+    <div className={styles.page}>
+      <div className={styles.emptyState}>
+        <div style={{fontSize: 48, marginBottom: 16}}>📉</div>
+        <h2 style={{fontSize:'var(--text-xl)', color:'var(--color-text)', marginBottom:8}}>Not enough data for this period.</h2>
+        <p>Lead analytics appear after at least 7 days of activity.</p>
+      </div>
+    </div>
+  )
 
-  const getGradientColor = (index, total) => {
-    // gray to green gradient based on index/total ratio
-    const ratio = total > 1 ? index / (total - 1) : 1;
-    // Gray: rgb(156, 163, 175) -> Green: rgb(34, 197, 94)
-    const r = Math.round(156 + (34 - 156) * ratio);
-    const g = Math.round(163 + (197 - 163) * ratio);
-    const b = Math.round(175 + (94 - 175) * ratio);
-    return `rgb(${r}, ${g}, ${b})`;
-  };
-
-  const formatWeek = (isoString) => {
-    if (!isoString) return '';
-    return format(parseISO(isoString), 'MMM d');
-  };
+  const maxFunnelCount = Math.max(...data.funnelData.map(d => d.count))
+  const totalSourceCount = data.sourceData.reduce((acc, d) => acc + d.count, 0)
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className={styles.page}>
+      <div className={styles.headerRow}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Lead Analytics</h1>
-          <p className="text-sm text-gray-500">Monitor lead conversion, sources, and team performance.</p>
+          <h1 className={styles.title}>Lead Analytics</h1>
+          <div className={styles.desc}>Track pipeline health and conversion metrics.</div>
         </div>
-        
-        <div className="flex flex-col sm:flex-row gap-3">
-          <select 
-            value={dateRange} 
-            onChange={(e) => setDateRange(e.target.value)}
-            className="rounded-md border border-gray-300 p-2 text-sm bg-white"
-          >
-            <option value="30d">Last 30 Days</option>
-            <option value="90d">Last 90 Days</option>
-            <option value="year">This Year</option>
-            <option value="custom">Custom Range</option>
-          </select>
-          
-          {dateRange === 'custom' && (
-            <div className="flex items-center gap-2">
-              <input 
-                type="date" 
-                value={customRange.from} 
-                onChange={e => setCustomRange(p => ({ ...p, from: e.target.value }))}
-                className="rounded-md border border-gray-300 p-2 text-sm"
-              />
-              <span className="text-gray-500">to</span>
-              <input 
-                type="date" 
-                value={customRange.to} 
-                onChange={e => setCustomRange(p => ({ ...p, to: e.target.value }))}
-                className="rounded-md border border-gray-300 p-2 text-sm"
-              />
-            </div>
-          )}
+        <div>
+          <Select 
+            options={[
+              {value:'7d',label:'Last 7 days'}, 
+              {value:'30d',label:'Last 30 days'}, 
+              {value:'90d',label:'Last 90 days'}, 
+              {value:'year',label:'This Year'}, 
+              {value:'custom',label:'Custom'}
+            ]}
+            value={dateRange}
+            onChange={setDateRange}
+          />
         </div>
       </div>
 
-      {loading ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Skeleton className="h-80 w-full" />
-          <Skeleton className="h-80 w-full" />
-          <Skeleton className="h-80 w-full" />
-          <Skeleton className="h-80 w-full" />
+      <div className={styles.kpiStrip}>
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiLabel}>Total Leads</div>
+          <div className={styles.kpiValue}>{data.kpis.total.val}</div>
+          {renderTrend(data.kpis.total.trend)}
         </div>
-      ) : data ? (
-        <>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
-            {/* Chart 1: Funnel by Stage */}
-            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-              <h3 className="text-sm font-bold text-gray-800 mb-4 uppercase tracking-wider">Lead Funnel by Stage</h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.stageDistribution} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                    <XAxis type="number" />
-                    <YAxis dataKey="stageName" type="category" width={100} tick={{fontSize: 12}} />
-                    <Tooltip cursor={{fill: '#f3f4f6'}} />
-                    <Bar dataKey="count" radius={[0, 4, 4, 0]}>
-                      {data.stageDistribution.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={getGradientColor(index, data.stageDistribution.length)} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiLabel}>Won This Period</div>
+          <div className={styles.kpiValue}>{data.kpis.won.val}</div>
+          {renderTrend(data.kpis.won.trend)}
+        </div>
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiLabel}>Conversion Rate</div>
+          <div className={styles.kpiValue}>{data.kpis.convRate.val}</div>
+          {renderTrend(data.kpis.convRate.trend)}
+        </div>
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiLabel}>Avg Lead Score</div>
+          <div className={styles.kpiValue}>{data.kpis.avgScore.val}</div>
+          {renderTrend(data.kpis.avgScore.trend)}
+        </div>
+      </div>
 
-            {/* Chart 2: Source Pie Chart */}
-            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-              <h3 className="text-sm font-bold text-gray-800 mb-4 uppercase tracking-wider">Lead Sources</h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={data.sourceBreakdown}
-                      dataKey="count"
-                      nameKey="source"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={90}
-                      paddingAngle={2}
-                      label={({ source, percent }) => `${source} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {data.sourceBreakdown.map((entry, index) => (
-                        <PieCell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Chart 3: Leads Trend */}
-            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm lg:col-span-2">
-              <h3 className="text-sm font-bold text-gray-800 mb-4 uppercase tracking-wider">Leads Trend (Weekly)</h3>
-              <div className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={data.timeSeries} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis 
-                      dataKey="week" 
-                      tickFormatter={formatWeek}
-                      tick={{fontSize: 12}}
-                      minTickGap={20}
-                    />
-                    <YAxis tick={{fontSize: 12}} />
-                    <Tooltip 
-                      labelFormatter={formatWeek}
-                      contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
-                    />
-                    <Legend />
-                    <Line type="monotone" dataKey="count" name="Created" stroke="#8884d8" strokeWidth={3} activeDot={{ r: 8 }} />
-                    <Line type="monotone" dataKey="wonCount" name="Won" stroke="#22c55e" strokeWidth={3} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-            
+      <div className={styles.grid}>
+        <div className={`${styles.card} ${styles.fullWidth}`}>
+          <div className={styles.cardHeader}>Leads Over Time</div>
+          <div style={{width:'100%', height:240}}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data.weeklyData} margin={{top:10, right:30, left:0, bottom:0}}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                <XAxis dataKey="week" tick={{fontSize:12,fill:'var(--color-text-secondary)'}} axisLine={false} tickLine={false} />
+                <YAxis tick={{fontSize:12,fill:'var(--color-text-secondary)'}} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{background:'var(--color-surface)',border:'1px solid var(--color-border)',borderRadius:8,boxShadow:'var(--shadow-md)'}} />
+                <Legend iconType="circle" wrapperStyle={{fontSize:12, paddingTop:16}} />
+                <Area type="monotone" dataKey="created" stroke="#E8935A" fill="rgba(232,147,90,0.15)" strokeWidth={2} name="Leads Created" />
+                <Area type="monotone" dataKey="won" stroke="#059669" fill="rgba(5,150,105,0.15)" strokeWidth={2} name="Won" />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
+        </div>
 
-          {/* Chart 4: Team Performance Table */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mt-6">
-            <div className="p-5 border-b border-gray-200 bg-gray-50">
-              <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider">Team Performance</h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-white text-gray-500 font-medium border-b border-gray-200">
-                  <tr>
-                    <th className="py-3 px-5">Name</th>
-                    <th className="py-3 px-5 text-right">Leads Assigned</th>
-                    <th className="py-3 px-5 text-right">Won</th>
-                    <th className="py-3 px-5 text-right">Conversion %</th>
-                    <th className="py-3 px-5 text-right">Avg Score</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {data.teamPerformance.map((user) => {
-                    const conversionRate = user.totalLeads > 0 
-                      ? Math.round((user.wonLeads / user.totalLeads) * 100) 
-                      : 0;
-                    return (
-                      <tr key={user.userId} className="hover:bg-gray-50 transition-colors">
-                        <td className="py-3 px-5 font-medium text-gray-900">{user.name}</td>
-                        <td className="py-3 px-5 text-right">{user.totalLeads}</td>
-                        <td className="py-3 px-5 text-right text-green-600 font-medium">{user.wonLeads}</td>
-                        <td className="py-3 px-5 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <div className="w-16 bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                              <div className="bg-blue-500 h-full rounded-full" style={{width: `${conversionRate}%`}}></div>
-                            </div>
-                            <span className="w-8 text-right">{conversionRate}%</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-5 text-right text-gray-500">{user.avgScore}</td>
-                      </tr>
-                    );
-                  })}
-                  {data.teamPerformance.length === 0 && (
-                    <tr>
-                      <td colSpan="5" className="py-8 text-center text-gray-400">No performance data available</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+        <div className={styles.card}>
+          <div className={styles.cardHeader}>Pipeline Funnel</div>
+          <div className={styles.funnelList}>
+            {data.funnelData.map((d, i) => (
+              <div key={i} className={styles.funnelRow} onClick={() => navigate(`/leads?stage=${d.stage}`)}>
+                <div className={styles.funnelLabel}>{d.stage}</div>
+                <div className={styles.funnelBarBg}>
+                  <div className={styles.funnelBarFill} style={{width: `${(d.count / maxFunnelCount) * 100}%`, background: d.color}} />
+                </div>
+                <div className={styles.funnelCount}>{d.count}</div>
+              </div>
+            ))}
           </div>
-        </>
-      ) : (
-        <div className="text-center py-12 text-gray-500">No data found.</div>
-      )}
+        </div>
+
+        <div className={styles.card}>
+          <div className={styles.cardHeader}>Source Breakdown</div>
+          <div style={{display:'flex', alignItems:'center', justifyContent:'center'}}>
+            <PieChart width={200} height={200}>
+              <Pie data={data.sourceData} cx={100} cy={100} innerRadius={60} outerRadius={85} paddingAngle={2} dataKey="count" stroke="none">
+                {data.sourceData.map((entry, i) => <Cell key={i} fill={PIE_COLOURS[i % PIE_COLOURS.length]} />)}
+              </Pie>
+              <Tooltip contentStyle={{background:'var(--color-surface)',border:'1px solid var(--color-border)',borderRadius:8,boxShadow:'var(--shadow-md)'}} />
+            </PieChart>
+          </div>
+          <div className={styles.legend}>
+            {data.sourceData.map((d, i) => (
+              <div key={i} className={styles.legendRow}>
+                <div className={styles.legendLabel}>
+                  <div className={styles.legendDot} style={{background: PIE_COLOURS[i % PIE_COLOURS.length]}} />
+                  {d.name}
+                </div>
+                <div>
+                  <span className={styles.legendValue}>{d.count}</span>
+                  <span className={styles.legendPercent}>({((d.count / totalSourceCount) * 100).toFixed(1)}%)</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.tableCard}>
+        <div className={styles.tableHeader}>Team Performance</div>
+        <DataTable
+          columns={[
+            { id: 'user', label: 'Team Member', render: (row) => (
+              <div style={{display:'flex', alignItems:'center', gap:8}}>
+                <Avatar name={row.user.name} size="sm" />
+                <span style={{fontWeight:500, color:'var(--color-text)'}}>{row.user.name}</span>
+              </div>
+            )},
+            { id: 'assigned', label: 'Leads Assigned' },
+            { id: 'won', label: 'Won' },
+            { id: 'convRate', label: 'Conv. Rate', render: (row) => renderConvRate(row.convRate) },
+            { id: 'avgScore', label: 'Avg Score', render: (row) => <Badge variant={row.avgScore > 80 ? 'success' : row.avgScore > 50 ? 'warning' : 'danger'}>{row.avgScore}</Badge> },
+            { id: 'lastActivity', label: 'Last Activity' }
+          ]}
+          data={data.teamData.sort((a, b) => b.convRate - a.convRate)}
+          keyField="id"
+        />
+      </div>
     </div>
-  );
+  )
 }

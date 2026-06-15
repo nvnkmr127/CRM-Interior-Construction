@@ -1,0 +1,10 @@
+.configSection {
+  display: flex; flex-direction: column; gap: var(--space-6);
+}
+.sectionHeader {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+.sectionTitle { font-size: var(--text-xl); font-weight: 700; color: var(--color-text); }
+.sectionDesc { font-size: var(--text-sm); color: var(--color-text-secondary); margin-top: 4px; }

@@ -1,0 +1,44 @@
+.page { max-width: 800px; margin: 0 auto; padding: var(--space-6) 0; }
+.headerRow { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-6); }
+.statusCol { display: flex; flex-direction: column; gap: 8px; }
+.progressText { font-size: var(--text-sm); font-weight: 500; color: var(--color-text-secondary); }
+.progressBg { width: 300px; height: 8px; background: var(--color-surface-2); border-radius: 4px; overflow: hidden; }
+.progressFill { height: 100%; background: var(--color-accent); transition: width 0.3s ease; }
+
+.roomSection { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); margin-bottom: var(--space-4); overflow: hidden; }
+.roomHeader { display: flex; align-items: center; justify-content: space-between; padding: var(--space-4); background: var(--color-surface-2); cursor: pointer; user-select: none; }
+.roomTitle { font-size: var(--text-md); font-weight: 700; color: var(--color-text); display: flex; align-items: center; gap: 12px; }
+.chevron { transition: transform 0.2s; color: var(--color-text-muted); }
+.chevron.collapsed { transform: rotate(-90deg); }
+
+.itemsList { display: flex; flex-direction: column; }
+.itemRow { display: flex; gap: var(--space-4); padding: var(--space-4); border-top: 1px solid var(--color-border); transition: background 0.2s; }
+.itemRow:hover { background: var(--color-surface-2); }
+.itemRow.checked { background: rgba(5, 150, 105, 0.05); }
+
+.checkboxWrapper { padding-top: 2px; }
+.checkbox { width: 20px; height: 20px; accent-color: var(--color-success); cursor: pointer; }
+
+.itemContent { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.itemDesc { font-size: var(--text-base); color: var(--color-text); transition: 0.2s; }
+.itemDesc.checked { color: var(--color-text-muted); text-decoration: line-through; }
+.itemMeta { font-size: 11px; color: var(--color-text-secondary); }
+
+.photoSlot { width: 64px; height: 64px; flex-shrink: 0; position: relative; }
+.photoEmpty { width: 100%; height: 100%; border: 1px dashed var(--color-border-strong); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--color-text-muted); cursor: pointer; transition: 0.2s; background: var(--color-surface); }
+.photoEmpty:hover { background: var(--color-surface-2); color: var(--color-accent); border-color: var(--color-accent); }
+.photoThumb { width: 100%; height: 100%; border-radius: var(--radius-md); object-fit: cover; border: 1px solid var(--color-border); cursor: pointer; }
+.uploadProgress { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--color-surface-2); border-radius: var(--radius-md); font-size: 10px; color: var(--color-accent); border: 1px solid var(--color-border); }
+
+.addItemRow { padding: var(--space-3) var(--space-4); border-top: 1px solid var(--color-border); }
+.addItemInput { width: 100%; border: none; background: transparent; font-size: var(--text-sm); outline: none; color: var(--color-text); }
+.addItemInput::placeholder { color: var(--color-text-muted); }
+
+.addRoomInput { width: 100%; background: var(--color-surface); border: 1px dashed var(--color-border-strong); padding: var(--space-4); border-radius: var(--radius-lg); font-size: var(--text-md); outline: none; text-align: center; color: var(--color-text); transition: 0.2s; }
+.addRoomInput:focus { border-color: var(--color-accent); border-style: solid; }
+.addRoomInput::placeholder { color: var(--color-text-muted); }
+
+.readOnlyBanner { background: rgba(5, 150, 105, 0.1); color: var(--color-success); padding: var(--space-4); border-radius: var(--radius-lg); margin-bottom: var(--space-6); display: flex; align-items: center; gap: 8px; font-weight: 500; border: 1px solid rgba(5, 150, 105, 0.2); }
+
+.emptyState { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 24px; text-align: center; color: var(--color-text-secondary); background: var(--color-surface); border: 1px dashed var(--color-border); border-radius: var(--radius-lg); }
+.emptyIcon { font-size: 64px; margin-bottom: var(--space-4); color: var(--color-text-muted); }

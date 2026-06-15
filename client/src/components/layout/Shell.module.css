@@ -1,19 +1,29 @@
-.shellContainer {
+.shell {
   display: flex;
   height: 100vh;
   overflow: hidden;
-  background-color: var(--color-bg);
+  background: var(--color-bg);
+  transition: var(--transition-slow);
 }
-
-.mainContent {
+.main {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
 }
-
-.scrollableArea {
+.content {
   flex: 1;
   overflow-y: auto;
   padding: var(--space-6);
+  background: var(--color-bg);
+}
+.backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 40;
+  display: none;
+}
+@media (max-width: 768px) {
+  .backdrop { display: block; }
 }

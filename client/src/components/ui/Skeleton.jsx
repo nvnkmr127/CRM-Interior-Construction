@@ -1,28 +1,24 @@
 import React from 'react';
 import styles from './Skeleton.module.css';
 
-export default function Skeleton({ width, height, variant = 'text', lines = 1, className = '' }) {
-  const customStyle = {
-    width: width ? (typeof width === 'number' ? `${width}px` : width) : undefined,
-    height: height ? (typeof height === 'number' ? `${height}px` : height) : undefined
-  };
-
-  if (variant === 'text') {
-    return (
-      <div className={`${styles.textContainer} ${className}`} style={customStyle}>
-        {Array.from({ length: lines }).map((_, i) => (
-          <div key={i} className={`${styles.skeleton} ${styles.textLine}`} />
-        ))}
-      </div>
-    );
-  }
-
-  const variantClass = variant === 'circle' ? styles.circle : styles.rect;
+export default function Skeleton({
+  variant = 'text', // 'text', 'circle', 'rect'
+  width,
+  height,
+  className = '',
+  ...props
+}) {
+  const skeletonClassName = [
+    styles.skeleton,
+    styles[variant],
+    className
+  ].filter(Boolean).join(' ');
 
   return (
-    <div 
-      className={`${styles.skeleton} ${variantClass} ${className}`} 
-      style={customStyle} 
+    <div
+      className={skeletonClassName}
+      style={{ width, height }}
+      {...props}
     />
   );
 }

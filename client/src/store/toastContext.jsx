@@ -1,51 +1,39 @@
-import React, { createContext, useContext, useReducer, useCallback } from 'react';
-import ToastContainer from '../components/ui/Toast';
+import { createContext, useContext, useReducer, useCallback } from 'react'
+import { ToastContainer } from '../components/ui/Toast'
 
-const ToastContext = createContext(null);
+const ToastCtx = createContext(null)
 
-const toastReducer = (state, action) => {
-  switch (action.type) {
-    case 'ADD_TOAST':
-      const newToasts = [...state, action.payload];
-      // Keep max 5 toasts visible
-      if (newToasts.length > 5) newToasts.shift();
-      return newToasts;
-    case 'REMOVE_TOAST':
-      return state.filter(t => t.id !== action.payload);
-    default:
-      return state;
+function reducer(state, action) {
+  switch(action.type) {
+    case 'ADD':    return [...state, action.toast]
+    case 'REMOVE': return state.filter(t => t.id !== action.id)
+    default: return state
   }
-};
+}
 
-export const ToastProvider = ({ children }) => {
-  const [toasts, dispatch] = useReducer(toastReducer, []);
+export function ToastProvider({ children }) {
+  const [toasts, dispatch] = useReducer(reducer, [])
 
-  const removeToast = useCallback((id) => {
-    dispatch({ type: 'REMOVE_TOAST', payload: id });
-  }, []);
-
-  const addToast = useCallback((type, message, duration = 4000) => {
-    const id = Math.random().toString(36).substring(2, 9);
-    dispatch({ type: 'ADD_TOAST', payload: { id, type, message, duration } });
-  }, []);
+  const show = useCallback((type, message, duration) => {
+    const id = Date.now() + Math.random()
+    const d = duration ?? (type==='error' ? 6000 : type==='warning' ? 5000 : type==='info' ? 4000 : 3000)
+    dispatch({ type:'ADD', toast:{ id, type, message } })
+    setTimeout(() => dispatch({ type:'REMOVE', id }), d)
+  }, [])
 
   const toast = {
-    success: (msg, duration) => addToast('success', msg, duration),
-    error: (msg, duration) => addToast('error', msg, duration),
-    info: (msg, duration) => addToast('info', msg, duration),
-    warning: (msg, duration) => addToast('warning', msg, duration),
-  };
+    success: (msg, d) => show('success', msg, d),
+    error:   (msg, d) => show('error',   msg, d),
+    warning: (msg, d) => show('warning', msg, d),
+    info:    (msg, d) => show('info',    msg, d),
+  }
 
   return (
-    <ToastContext.Provider value={{ toast }}>
+    <ToastCtx.Provider value={toast}>
+      <ToastContainer toasts={toasts} dispatch={dispatch} />
       {children}
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
-    </ToastContext.Provider>
-  );
-};
+    </ToastCtx.Provider>
+  )
+}
 
-export const useToast = () => {
-  const context = useContext(ToastContext);
-  if (!context) throw new Error('useToast must be used within ToastProvider');
-  return context;
-};
+export const useToast = () => useContext(ToastCtx)

@@ -1,0 +1,19 @@
+.timeline { display: flex; flex-direction: column; gap: var(--space-6); padding: var(--space-4) 0; }
+.phaseBlock { display: flex; gap: var(--space-4); }
+.rail { display: flex; flex-direction: column; align-items: center; width: 24px; flex-shrink: 0; position: relative; }
+.dot { width: 14px; height: 14px; border-radius: var(--radius-full); z-index: 2; border: 2px solid white; box-shadow: 0 0 0 1px var(--color-border); }
+.dotPending { background: var(--color-surface-3); }
+.dotActive { background: var(--color-warning); box-shadow: 0 0 0 1px var(--color-warning); }
+.dotDone { background: var(--color-success); box-shadow: 0 0 0 1px var(--color-success); }
+.line { position: absolute; top: 14px; bottom: -24px; width: 2px; background: var(--color-border); z-index: 1; }
+.phaseContent { flex: 1; display: flex; flex-direction: column; gap: var(--space-3); padding-bottom: var(--space-4); }
+.phaseHeader { display: flex; align-items: center; justify-content: space-between; }
+.phaseTitle { font-size: var(--text-lg); font-weight: 600; color: var(--color-text); display: flex; align-items: center; gap: var(--space-3); }
+.phaseMeta { font-size: var(--text-sm); color: var(--color-text-secondary); }
+.milestoneList { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-2); }
+.milestoneRow { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.milestoneRowIncomplete { border-color: var(--color-danger); background: var(--color-danger-bg); }
+.milestoneName { flex: 1; font-size: var(--text-base); color: var(--color-text); }
+.paymentIcon { font-size: 12px; background: var(--color-success-bg); color: var(--color-success); padding: 2px 6px; border-radius: var(--radius-full); font-weight: bold; }
+.dueDate { font-size: var(--text-sm); color: var(--color-text-secondary); }
+.errorMsg { color: var(--color-danger); font-size: var(--text-sm); margin-top: var(--space-2); display: flex; align-items: center; gap: var(--space-1); }

@@ -1,0 +1,49 @@
+.cardList { display: flex; flex-direction: column; gap: var(--space-4); }
+.card {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg); padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+}
+.cardHeader { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-3); }
+.nameRow { display: flex; align-items: center; gap: var(--space-3); }
+.webhookName { font-size: var(--text-lg); font-weight: 600; color: var(--color-text); }
+.toggle { position: relative; width: 36px; height: 20px; border-radius: 10px; background: var(--color-border-strong); cursor: pointer; transition: 0.2s; }
+.toggle.active { background: var(--color-success); }
+.toggleHandle { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: white; transition: 0.2s; }
+.toggle.active .toggleHandle { transform: translateX(16px); }
+
+.urlBox {
+  font-family: var(--font-mono); font-size: var(--text-sm);
+  background: var(--color-surface-2); padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md); color: var(--color-text-secondary);
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+.urlText { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.copyIcon { cursor: pointer; opacity: 0.7; transition: 0.2s; }
+.copyIcon:hover { opacity: 1; }
+
+.metaRow { display: flex; align-items: center; gap: var(--space-4); font-size: var(--text-sm); color: var(--color-text-secondary); margin-bottom: var(--space-4); }
+.statusSuccess { color: var(--color-success); font-weight: 500; }
+.statusFail { color: var(--color-danger); font-weight: 500; }
+
+.cardFooter { display: flex; align-items: center; gap: var(--space-3); border-top: 1px solid var(--color-border); padding-top: var(--space-4); }
+
+.testResult {
+  margin-top: var(--space-3); padding: var(--space-3); border-radius: var(--radius-md); font-size: var(--text-sm); font-weight: 500;
+  animation: fadeIn 0.2s;
+}
+.testSuccess { background: rgba(5, 150, 105, 0.1); color: var(--color-success); border: 1px solid rgba(5, 150, 105, 0.2); }
+.testFail { background: rgba(220, 38, 38, 0.1); color: var(--color-danger); border: 1px solid rgba(220, 38, 38, 0.2); }
+
+.modalBody { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); }
+.col { display: flex; flex-direction: column; gap: var(--space-4); }
+.eventsGrid { display: flex; flex-direction: column; gap: var(--space-4); background: var(--color-surface-2); padding: var(--space-4); border-radius: var(--radius-lg); }
+.eventGroup { display: flex; flex-direction: column; gap: var(--space-2); }
+.eventTitle { font-size: var(--text-sm); font-weight: 600; color: var(--color-text); }
+.eventRow { display: flex; align-items: center; gap: 8px; font-size: var(--text-sm); cursor: pointer; }
+
+.headersList { display: flex; flex-direction: column; gap: var(--space-2); }
+.headerRow { display: flex; gap: var(--space-2); align-items: center; }
+
+@keyframes fadeIn { from{opacity:0; transform:translateY(-4px)} to{opacity:1; transform:translateY(0)} }

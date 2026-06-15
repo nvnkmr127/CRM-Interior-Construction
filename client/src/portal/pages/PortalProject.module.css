@@ -1,0 +1,51 @@
+.page { display: flex; flex-direction: column; gap: var(--space-6); padding-bottom: var(--space-6); font-family: 'Inter', sans-serif; }
+.card { background: white; border-radius: var(--radius-xl); padding: var(--space-6); box-shadow: var(--shadow-sm); }
+
+.welcomeTitle { font-size: var(--text-xl); font-weight: 600; color: var(--color-text); margin-bottom: 8px; }
+.welcomeText { font-size: var(--text-base); color: var(--color-text-secondary); margin-bottom: var(--space-4); line-height: 1.5; }
+.pmBox { display: flex; align-items: center; justify-content: space-between; background: var(--color-surface); padding: var(--space-4); border-radius: var(--radius-lg); border: 1px solid var(--color-border); }
+.pmInfo { font-size: var(--text-sm); color: var(--color-text); }
+.callBtn { background: var(--color-accent); color: white; padding: 8px 16px; border-radius: var(--radius-md); text-decoration: none; font-size: var(--text-sm); font-weight: 600; transition: 0.2s; display: inline-block; }
+.callBtn:hover { background: #d6824d; }
+
+.hero { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-4) 0; }
+.svgWrapper { position: relative; width: 160px; height: 160px; display: flex; align-items: center; justify-content: center; }
+@media (min-width: 640px) { .svgWrapper { width: 200px; height: 200px; } }
+.svgText { position: absolute; display: flex; flex-direction: column; align-items: center; }
+.pctVal { font-size: 36px; font-weight: 700; color: var(--color-text); line-height: 1; }
+.pctLabel { font-size: var(--text-sm); color: var(--color-text-secondary); margin-top: 4px; }
+.heroSub { margin-top: var(--space-4); font-size: var(--text-base); font-weight: 500; color: var(--color-text-secondary); }
+
+.phaseStrip { display: flex; align-items: flex-start; justify-content: space-between; margin-top: var(--space-6); position: relative; }
+.phaseLine { position: absolute; top: 12px; left: 10%; right: 10%; height: 2px; background: var(--color-border); z-index: 1; }
+.phaseLineFill { position: absolute; top: 12px; left: 10%; height: 2px; background: var(--color-accent); z-index: 1; transition: width 0.5s; }
+.phaseNode { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; }
+.phaseIcon { width: 24px; height: 24px; border-radius: 50%; background: var(--color-surface); border: 2px solid var(--color-border); display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--color-text-muted); transition: 0.3s; }
+.phaseNode.active .phaseIcon { border-color: var(--color-accent); color: var(--color-accent); animation: pulse 2s infinite; }
+.phaseNode.done .phaseIcon { background: var(--color-accent); border-color: var(--color-accent); color: white; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(232, 147, 90, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(232, 147, 90, 0); } 100% { box-shadow: 0 0 0 0 rgba(232, 147, 90, 0); } }
+.phaseName { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); text-align: center; }
+.phaseNode.active .phaseName { color: var(--color-text); font-weight: 600; }
+
+.sectionTitle { font-size: var(--text-lg); font-weight: 600; color: var(--color-text); margin-bottom: var(--space-4); }
+
+.nextStepsList { display: flex; flex-direction: column; gap: var(--space-3); }
+.stepItem { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
+.stepChip { font-size: 10px; font-weight: 600; text-transform: uppercase; background: var(--color-surface-2); padding: 4px 8px; border-radius: 12px; color: var(--color-text-secondary); }
+.stepName { flex: 1; font-size: var(--text-sm); font-weight: 500; color: var(--color-text); }
+.stepDate { font-size: 11px; color: var(--color-text-secondary); }
+
+.paymentTable { width: 100%; border-collapse: collapse; font-size: var(--text-sm); text-align: left; }
+.paymentTable th { padding: var(--space-3); border-bottom: 1px solid var(--color-border); color: var(--color-text-secondary); font-weight: 500; }
+.paymentTable td { padding: var(--space-3); border-bottom: 1px solid var(--color-border); color: var(--color-text); }
+.paymentTable tr.overdue { background: rgba(220, 38, 38, 0.05); }
+.paymentTable tr.overdue td { color: var(--color-danger); font-weight: 500; }
+.paymentTable tr:last-child td { border-bottom: none; }
+.paymentSummary { margin-top: var(--space-4); font-size: var(--text-md); font-weight: 600; color: var(--color-text); text-align: right; }
+.paymentNote { font-size: 11px; color: var(--color-text-secondary); margin-top: 8px; text-align: right; }
+
+@media (max-width: 640px) {
+  .pmBox { flex-direction: column; align-items: flex-start; gap: var(--space-3); }
+  .callBtn { width: 100%; text-align: center; }
+  .paymentTable th:nth-child(3), .paymentTable td:nth-child(3) { display: none; }
+}

@@ -1,257 +1,184 @@
-import React, { useState, useEffect } from 'react';
-import './PortalSnags.css';
+import { useState, useEffect } from 'react'
+import styles from './PortalSnags.module.css'
+import { useToast } from '../../store/toastContext'
+
+const CATEGORIES = ['Carpentry', 'Electrical', 'Plumbing', 'Paint', 'Flooring', 'Other']
 
 export default function PortalSnags() {
-  const [snags, setSnags] = useState([]);
-  const [loading, setLoading] = useState(true);
-  
-  // Form State
-  const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('Carpentry');
-  const [description, setDescription] = useState('');
-  const [photos, setPhotos] = useState([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [verifyingId, setVerifyingId] = useState(null);
-  
-  const categories = ['Carpentry', 'Electrical', 'Plumbing', 'Paint', 'Flooring', 'Other'];
+  const [issues, setIssues] = useState([])
+  const [loading, setLoading] = useState(true)
+  const toast = useToast()
 
-  const fetchSnags = async () => {
-    try {
-      const res = await fetch('/api/portal/snags');
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setSnags(data.data);
-      }
-    } catch (e) {
-      console.error('Failed to fetch snags', e);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Form State
+  const [title, setTitle] = useState('')
+  const [category, setCategory] = useState('')
+  const [desc, setDesc] = useState('')
+  const [photos, setPhotos] = useState([])
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    fetchSnags();
-  }, []);
+    setTimeout(() => {
+      setIssues([
+        { id: '1', title: 'Paint peeling near window', category: 'Paint', desc: 'The paint is starting to peel off near the master bedroom window sill.', status: 'resolved', resolutionNote: 'Scraped the area, applied primer and repainted with two coats. Wait 24h to dry fully.', reportedAt: new Date(Date.now()-86400000*3).toISOString(), photos: ['/placeholder.jpg'] },
+        { id: '2', title: 'Wardrobe door alignment', category: 'Carpentry', desc: 'Left door of master wardrobe scraping the bottom drawer.', status: 'in_progress', reportedAt: new Date(Date.now()-3600000*5).toISOString(), photos: [] },
+        { id: '3', title: 'Missing handle on kitchen cabinet', category: 'Carpentry', status: 'verified', resolutionNote: 'Attached missing D-handle.', reportedAt: new Date(Date.now()-86400000*5).toISOString(), photos: [] }
+      ])
+      setLoading(false)
+    }, 600)
+  }, [])
 
   const handlePhotoSelect = (e) => {
-    if (e.target.files) {
-      const newPhotos = Array.from(e.target.files).map(file => ({
-        file,
-        preview: URL.createObjectURL(file),
-        key: null,
-        status: 'pending' // pending, uploading, done, error
-      }));
-      setPhotos(prev => [...prev, ...newPhotos]);
-    }
-  };
+    const files = Array.from(e.target.files)
+    // Mock creating object URLs for preview
+    const newPhotos = files.map(f => ({ file: f, url: URL.createObjectURL(f) }))
+    setPhotos([...photos, ...newPhotos])
+  }
 
   const removePhoto = (index) => {
-    setPhotos(prev => {
-      const updated = [...prev];
-      URL.revokeObjectURL(updated[index].preview);
-      updated.splice(index, 1);
-      return updated;
-    });
-  };
-
-  // Mock S3 upload since no external storage configured for portal route in this stub
-  const uploadToS3 = async (file) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(`snags/${Date.now()}_${file.name}`);
-      }, 1000);
-    });
-  };
+    const newPhotos = [...photos]
+    URL.revokeObjectURL(newPhotos[index].url)
+    newPhotos.splice(index, 1)
+    setPhotos(newPhotos)
+  }
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!title) return;
+    e.preventDefault()
+    if (!title || !category) return toast.error('Please provide a title and category.')
+    setSubmitting(true)
     
-    setIsSubmitting(true);
-    try {
-      // 1. Upload all photos
-      const uploadedPhotos = [...photos];
-      for (let i = 0; i < uploadedPhotos.length; i++) {
-        if (uploadedPhotos[i].status === 'pending') {
-          uploadedPhotos[i].status = 'uploading';
-          setPhotos([...uploadedPhotos]);
-          
-          const key = await uploadToS3(uploadedPhotos[i].file);
-          uploadedPhotos[i].key = key;
-          uploadedPhotos[i].status = 'done';
-          setPhotos([...uploadedPhotos]);
-        }
-      }
-
-      const photoKeys = uploadedPhotos.map(p => p.key).filter(k => k);
-
-      // 2. Submit snag
-      const res = await fetch('/api/portal/snags', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, category, description, photoKeys })
-      });
-
-      if (res.ok) {
-        setTitle('');
-        setCategory('Carpentry');
-        setDescription('');
-        photos.forEach(p => URL.revokeObjectURL(p.preview));
-        setPhotos([]);
-        await fetchSnags();
-      } else {
-        alert('Failed to raise snag');
-      }
-    } catch (e) {
-      alert('Error raising snag');
-    } finally {
-      setIsSubmitting(false);
+    // Mock API call
+    await new Promise(r => setTimeout(r, 1200))
+    
+    const newIssue = {
+      id: Date.now().toString(),
+      title, category, desc, status: 'open',
+      reportedAt: new Date().toISOString(),
+      photos: photos.map(p => p.url)
     }
-  };
+    
+    setIssues([newIssue, ...issues])
+    setTitle('')
+    setCategory('')
+    setDesc('')
+    setPhotos([])
+    setSubmitting(false)
+    toast.success('✓ Issue reported successfully!')
+  }
 
-  const handleVerify = async (id) => {
-    setVerifyingId(id);
-    try {
-      const res = await fetch(`/api/portal/snags/${id}/verify`, { method: 'POST' });
-      if (res.ok) {
-        await fetchSnags();
-      } else {
-        alert('Failed to verify snag');
-      }
-    } catch (e) {
-      alert('Error verifying snag');
-    } finally {
-      setVerifyingId(null);
-    }
-  };
-
-  const getStatusBadge = (status, verifiedAt) => {
-    if (verifiedAt) return <span className="badge badge-gray">Verified by you</span>;
-    switch (status) {
-      case 'open': return <span className="badge badge-red">Open</span>;
-      case 'assigned': return <span className="badge badge-amber">Assigned</span>;
-      case 'in_progress': return <span className="badge badge-blue">In Progress</span>;
-      case 'resolved': return <span className="badge badge-green">Resolved</span>;
-      case 'client_verified': return <span className="badge badge-gray">Verified by you</span>;
-      default: return <span className="badge badge-gray">{status}</span>;
-    }
-  };
-
-  if (loading) return <div className="portal-loading">Loading your snags...</div>;
+  const handleVerify = (id) => {
+    setIssues(issues.map(iss => iss.id === id ? { ...iss, status: 'verified' } : iss))
+    toast.success('✓ Issue verified and closed!')
+  }
 
   return (
-    <div className="portal-snags-container">
-      <h2 className="portal-page-title">Snag Management</h2>
-      
-      {/* Raise New Snag Section */}
-      <section className="portal-card new-snag-card">
-        <h3 className="portal-section-title">Raise New Snag</h3>
-        <form onSubmit={handleSubmit} className="new-snag-form">
-          <div className="form-row">
-            <div className="form-group flex-2">
-              <label>Title *</label>
-              <input 
-                type="text" 
-                value={title} 
-                onChange={e => setTitle(e.target.value)} 
-                placeholder="Brief description of the issue"
-                required 
-                disabled={isSubmitting}
-              />
-            </div>
-            <div className="form-group flex-1">
-              <label>Category</label>
-              <select value={category} onChange={e => setCategory(e.target.value)} disabled={isSubmitting}>
-                {categories.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-          </div>
-          
-          <div className="form-group">
-            <label>Description</label>
-            <textarea 
-              value={description} 
-              onChange={e => setDescription(e.target.value)} 
-              placeholder="Additional details..."
-              rows={3}
-              disabled={isSubmitting}
+    <div className={styles.page}>
+      <div className={styles.header}>
+        <h1 className={styles.pageTitle}>Report an Issue</h1>
+        <div className={styles.pageSub}>Found something that needs attention? Let us know.</div>
+      </div>
+
+      <div className={styles.card}>
+        <form className={styles.form} onSubmit={handleSubmit}>
+          <div className={styles.inputGroup}>
+            <label className={styles.label}>Issue Title *</label>
+            <input 
+              type="text" 
+              className={styles.input} 
+              placeholder="e.g. Kitchen cabinet door not aligned"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
             />
           </div>
 
-          <div className="form-group">
-            <label>Photos</label>
-            <div className="photo-upload-wrapper">
-              <input 
-                type="file" 
-                multiple 
-                accept="image/*" 
-                onChange={handlePhotoSelect} 
-                disabled={isSubmitting}
-                id="photo-upload"
-                className="sr-only"
-              />
-              <label htmlFor="photo-upload" className="photo-upload-btn">
-                + Add Photos
+          <div className={styles.inputGroup}>
+            <label className={styles.label}>Category *</label>
+            <select className={styles.select} value={category} onChange={e => setCategory(e.target.value)}>
+              <option value="">Select a category</option>
+              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+
+          <div className={styles.inputGroup}>
+            <label className={styles.label}>Description</label>
+            <textarea 
+              className={styles.textarea} 
+              placeholder="Provide any additional details..."
+              value={desc}
+              onChange={e => setDesc(e.target.value)}
+            />
+          </div>
+
+          <div className={styles.photoUploader}>
+            <label className={styles.label}>Photos (Optional)</label>
+            <div className={styles.photoStrip}>
+              {photos.map((p, i) => (
+                <div key={i} className={styles.photoThumb}>
+                  <img src={p.url} alt="Preview" className={styles.thumbImg} />
+                  <button type="button" className={styles.removeBtn} onClick={() => removePhoto(i)}>✕</button>
+                </div>
+              ))}
+              <label className={styles.uploadArea}>
+                +
+                <input type="file" multiple accept="image/*" onChange={handlePhotoSelect} />
               </label>
-              <div className="photo-preview-grid">
-                {photos.map((photo, index) => (
-                  <div key={index} className="photo-preview-item">
-                    <img src={photo.preview} alt={`Preview ${index}`} />
-                    <button type="button" className="remove-photo-btn" onClick={() => removePhoto(index)} disabled={isSubmitting}>&times;</button>
-                    {photo.status === 'uploading' && <div className="photo-overlay">Uploading...</div>}
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
 
-          <button type="submit" className="btn btn-primary" disabled={!title || isSubmitting}>
-            {isSubmitting ? 'Submitting...' : 'Submit Snag'}
+          <button type="submit" className={styles.submitBtn} disabled={submitting || !title || !category}>
+            {submitting ? 'Submitting...' : 'Submit Issue'}
           </button>
         </form>
-      </section>
+      </div>
 
-      {/* My Snags List */}
-      <section className="portal-card snags-list-card">
-        <h3 className="portal-section-title">My Snags</h3>
-        {snags.length === 0 ? (
-          <p className="empty-text">You haven't raised any snags yet.</p>
-        ) : (
-          <div className="snags-list">
-            {snags.map(snag => {
-              const isResolved = snag.status === 'resolved';
-              const isVerified = snag.status === 'client_verified';
-              
-              return (
-                <div key={snag.id} className={`snag-item ${isVerified ? 'snag-verified' : ''}`}>
-                  <div className="snag-info">
-                    <div className="snag-header">
-                      <h4 className="snag-title">{snag.title}</h4>
-                      <div className="snag-badges">
-                        <span className="badge badge-category">{snag.category}</span>
-                        {getStatusBadge(snag.status, isVerified)}
+      {loading ? (
+        <div style={{padding: 24, textAlign: 'center', color: 'var(--color-text-muted)'}}>Loading your issues...</div>
+      ) : (
+        <div style={{marginTop: 16}}>
+          <h2 className={styles.sectionTitle}>
+            My Reported Issues
+            <span className={styles.countBadge}>{issues.length}</span>
+          </h2>
+
+          <div className={styles.issueList}>
+            {issues.length === 0 ? (
+              <div className={styles.emptyState}>✓ No issues reported yet.</div>
+            ) : (
+              issues.map(iss => (
+                <div key={iss.id} className={`${styles.issueCard} ${iss.status === 'verified' ? styles.verified : ''}`}>
+                  <div className={styles.issueHeader}>
+                    <div>
+                      <div className={styles.issueTitle}>{iss.title}</div>
+                      <div className={styles.issueMeta}>
+                        <span className={styles.catChip}>{iss.category}</span>
+                        <span>Reported {Math.ceil((Date.now() - new Date(iss.reportedAt).getTime()) / 86400000)} days ago</span>
                       </div>
                     </div>
-                    <div className="snag-date">Raised on: {new Date(snag.created_at).toLocaleDateString()}</div>
+                    <div className={`${styles.statusBadge} ${styles[iss.status]}`}>
+                      {iss.status === 'verified' ? 'Closed ✓' : iss.status.replace('_', ' ')}
+                    </div>
                   </div>
-                  
-                  {isResolved && !isVerified && (
-                    <div className="snag-action">
-                      <button 
-                        className="btn btn-green btn-sm"
-                        onClick={() => handleVerify(snag.id)}
-                        disabled={verifyingId === snag.id}
-                      >
-                        {verifyingId === snag.id ? 'Verifying...' : 'Mark Verified'}
-                      </button>
+
+                  {iss.photos && iss.photos.length > 0 && (
+                    <div className={styles.photoStrip} style={{marginTop: 8}}>
+                      {iss.photos.map((p, i) => (
+                        <div key={i} className={styles.photoThumb} style={{background: '#eee', color: '#aaa', fontSize: 10}}>IMG</div>
+                      ))}
+                    </div>
+                  )}
+
+                  {iss.status === 'resolved' && (
+                    <div className={styles.resolutionBox}>
+                      <div className={styles.resolutionTitle}>Resolution</div>
+                      <div className={styles.resolutionNote}>{iss.resolutionNote}</div>
+                      <button className={styles.verifyBtn} onClick={() => handleVerify(iss.id)}>✓ Mark as Verified</button>
                     </div>
                   )}
                 </div>
-              );
-            })}
+              ))
+            )}
           </div>
-        )}
-      </section>
+        </div>
+      )}
     </div>
-  );
+  )
 }

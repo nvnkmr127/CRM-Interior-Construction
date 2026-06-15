@@ -1,0 +1,16 @@
+.loader {
+  position:fixed; inset:0; background:var(--color-bg);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:var(--space-4); z-index:1000;
+}
+.logoMark {
+  width:48px; height:48px; background:var(--color-accent);
+  border-radius:var(--radius-lg); display:flex; align-items:center; justify-content:center;
+  font-size:24px; font-weight:800; color:white;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse { 
+  0%, 100% { opacity:1; transform:scale(1) } 
+  50% { opacity:0.7; transform:scale(0.96) } 
+}
+.text { font-size:var(--text-sm); color:var(--color-text-muted); font-weight: 500; font-family: 'Inter', sans-serif; }

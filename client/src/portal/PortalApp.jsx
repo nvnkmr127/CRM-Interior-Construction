@@ -1,34 +1,50 @@
-import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { PortalAuthProvider } from './store/portalAuthContext';
-import PortalProtectedRoute from './components/PortalProtectedRoute';
-import PortalShell from './components/PortalShell';
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { PortalAuthProvider, usePortalAuth } from './store/portalAuthContext'
+import PortalShell from './components/PortalShell'
+import PortalLogin from './pages/PortalLogin'
+import PortalProject from './pages/PortalProject'
+import PortalApprovals from './pages/PortalApprovals'
+import PortalSnags from './pages/PortalSnags'
+import PortalDocuments from './pages/PortalDocuments'
 
-import PortalLogin from './pages/PortalLogin';
-import PortalProject from './pages/PortalProject';
-import PortalApprovals from './pages/PortalApprovals';
-import PortalSnags from './pages/PortalSnags';
+function PortalProtectedRoute({ children }) {
+  const { portalUser, loading } = usePortalAuth()
+  if (loading) return <div style={{ height:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--color-bg)' }}>Loading...</div>
+  if (!portalUser) return <Navigate to="/portal/login" replace />
+  return children
+}
 
-const PortalDocuments = () => <div style={{ padding: '1rem' }}><h2>Documents Stub</h2></div>;
+function PortalAppContent() {
+  const { portalUser, loading } = usePortalAuth()
+
+  if (loading) return null
+
+  return (
+    <Routes>
+      <Route path="login" element={!portalUser ? <PortalLogin /> : <Navigate to="/portal/overview" />} />
+      
+      <Route path="/" element={<Navigate to="/portal/overview" />} />
+
+      <Route path="*" element={
+        <PortalProtectedRoute>
+          <PortalShell>
+            <Routes>
+              <Route path="overview" element={<PortalProject />} />
+              <Route path="approvals" element={<PortalApprovals />} />
+              <Route path="documents" element={<PortalDocuments />} />
+              <Route path="snags" element={<PortalSnags />} />
+            </Routes>
+          </PortalShell>
+        </PortalProtectedRoute>
+      } />
+    </Routes>
+  )
+}
 
 export default function PortalApp() {
   return (
     <PortalAuthProvider>
-      <Routes>
-        <Route path="login" element={<PortalLogin />} />
-        
-        <Route element={<PortalProtectedRoute />}>
-          <Route element={<PortalShell />}>
-            <Route index element={<Navigate to="project" replace />} />
-            <Route path="project" element={<PortalProject />} />
-            <Route path="approvals" element={<PortalApprovals />} />
-            <Route path="snags" element={<PortalSnags />} />
-            <Route path="documents" element={<PortalDocuments />} />
-          </Route>
-        </Route>
-        
-        <Route path="*" element={<Navigate to="project" replace />} />
-      </Routes>
+      <PortalAppContent />
     </PortalAuthProvider>
-  );
+  )
 }

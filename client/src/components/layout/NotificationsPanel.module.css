@@ -1,0 +1,35 @@
+.btn { position:relative; display:flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:var(--radius-md); border:none; background:transparent; cursor:pointer; font-size:18px; color:var(--color-text-secondary); transition:var(--transition-fast); }
+.btn:hover { background:var(--color-surface-2); color:var(--color-text); }
+.badge {
+  position:absolute; top:-2px; right:-2px;
+  background:var(--color-danger); color:white;
+  width:18px; height:18px; border-radius:var(--radius-full);
+  font-size:10px; font-weight:700;
+  display:flex; align-items:center; justify-content:center;
+  border:2px solid var(--color-surface);
+}
+.panel {
+  position:absolute; top:calc(100% + 4px); right:0;
+  width:360px; background:var(--color-surface);
+  border:1px solid var(--color-border); border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-xl); z-index:200; overflow:hidden;
+  display: flex; flex-direction: column; max-height: 480px;
+}
+.header { display:flex; justify-content:space-between; align-items:center; padding:var(--space-4) var(--space-5); border-bottom:1px solid var(--color-border); }
+.headerTitle { font-size:var(--text-lg); font-weight:700; color:var(--color-text); margin:0; }
+.markAllBtn { font-size:var(--text-sm); color:var(--color-accent); background:none; border:none; cursor:pointer; font-weight:500; }
+.markAllBtn:hover { text-decoration:underline; }
+.list { overflow-y:auto; flex:1; }
+.item { display:flex; align-items:flex-start; gap:var(--space-3); padding:12px var(--space-5); cursor:pointer; transition:var(--transition-fast); border-bottom:1px solid var(--color-border); }
+.item:last-child { border-bottom:none; }
+.item:hover { background:var(--color-surface-2); }
+.item.unread { background:var(--color-accent-light); }
+.dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:6px; }
+.dot.unread { background:var(--color-accent); }
+.dot.read { background:var(--color-border-strong); }
+.msg { font-size:var(--text-sm); color:var(--color-text); line-height:1.5; }
+.time { font-size:11px; color:var(--color-text-muted); margin-top:2px; }
+.empty { padding: 32px; text-align: center; color: var(--color-text-secondary); font-size: var(--text-sm); }
+.footer { padding:var(--space-3); text-align:center; border-top:1px solid var(--color-border); font-size:var(--text-sm); }
+.footer a { color:var(--color-accent); text-decoration:none; font-weight:500; }
+.footer a:hover { text-decoration:underline; }

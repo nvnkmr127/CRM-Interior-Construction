@@ -1,88 +1,18 @@
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
+.grid { display: grid; grid-template-columns: 1fr; gap: var(--space-4) var(--space-6); }
+@media (min-width: 768px) { .grid { grid-template-columns: 1fr 1fr; } }
+.fullWidth { grid-column: 1 / -1; }
 
-.typeSelector {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
+.sectionTitle { font-size: var(--text-sm); font-weight: 600; color: var(--color-text-secondary); margin: var(--space-4) 0 var(--space-3); }
 
-.typeLabel {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--text-secondary, #64748b);
-}
+.typeSelector { display: flex; gap: var(--space-3); overflow-x: auto; padding-bottom: var(--space-2); scrollbar-width: none; }
+.typeSelector::-webkit-scrollbar { display: none; }
 
-.typeCards {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
+.typeCard { flex: 0 0 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; height: 80px; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); cursor: pointer; transition: var(--transition-fast); user-select: none; }
+.typeCard:hover { border-color: var(--color-border-strong); }
+.typeCard.selected { border: 2px solid var(--color-accent); background: var(--color-surface); color: var(--color-accent); }
+.typeIcon { font-size: 24px; }
+.typeLabel { font-size: 11px; font-weight: 500; text-align: center; line-height: 1.2; }
 
-.typeCard {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--border-color, #e2e8f0);
-  border-radius: 8px;
-  background-color: var(--bg-surface, #ffffff);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  user-select: none;
-  font-weight: 500;
-  color: var(--text-primary, #0f172a);
-}
+.datesGrid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
 
-.typeCard:hover {
-  border-color: var(--primary-color, #3b82f6);
-  background-color: var(--bg-hover, #f8fafc);
-}
-
-.typeCard.active {
-  border-color: var(--primary-color, #3b82f6);
-  background-color: var(--primary-light, #eff6ff);
-  color: var(--primary-dark, #1e40af);
-}
-
-.typeIcon {
-  font-size: 1.25rem;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-}
-
-@media (min-width: 640px) {
-  .grid {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.fullWidth {
-  grid-column: 1 / -1;
-}
-
-.sectionTitle {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--text-primary, #0f172a);
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
-  border-bottom: 1px solid var(--border-color, #e2e8f0);
-  padding-bottom: 0.5rem;
-}
-
-.actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--border-color, #e2e8f0);
-}
+.errorMsg { color: var(--color-danger); font-size: 11px; margin-top: 4px; }

@@ -1,34 +1,86 @@
-:root {
-  --bp-mobile: 640px;
-  --bp-tablet: 1024px;
-}
+/* ── BREAKPOINTS ── */
+/* Mobile: < 640px | Tablet: 640-1024px | Desktop: > 1024px */
 
-/* Mobile: <= 640px */
+/* CONTENT PADDING */
 @media (max-width: 640px) {
-  .mobile-only {
-    display: block !important;
+  .content { padding: var(--space-4) !important; }
+  /* No horizontal scroll on any page */
+  .page-container { max-width: 100%; overflow-x: hidden; }
+}
+
+/* KANBAN BOARD */
+@media (max-width: 640px) {
+  .kanban-scroll { 
+    display: flex; 
+    overflow-x: auto; 
+    scroll-snap-type: x mandatory; 
+    padding-bottom: var(--space-4); 
   }
-  .tablet-up {
-    display: none !important;
+  .kanban-column { 
+    min-width: 85vw; 
+    scroll-snap-align: start; 
   }
 }
 
-/* Tablet: 641px - 1024px */
-@media (min-width: 641px) and (max-width: 1024px) {
-  .mobile-only {
-    display: none !important;
+/* TABS */
+@media (max-width: 768px) {
+  .tab-bar { 
+    overflow-x: auto; 
+    white-space: nowrap; 
+    border-bottom: 1px solid var(--color-border); 
   }
-  .desktop-up {
-    display: none !important;
+  .tab-bar::-webkit-scrollbar { display: none; }
+}
+
+/* DATA TABLES */
+@media (max-width: 768px) {
+  /* Stack tables as cards on mobile */
+  .data-table thead { display: none; }
+  .data-table tr { 
+    display: flex; 
+    flex-direction: column; 
+    padding: var(--space-4); 
+    border-bottom: 1px solid var(--color-border); 
+  }
+  .data-table td::before { 
+    content: attr(data-label); 
+    font-size: var(--text-xs); 
+    color: var(--color-text-secondary); 
+    font-weight: 600; 
+    display: block; 
+    margin-bottom: 2px; 
   }
 }
 
-/* Desktop: > 1024px */
-@media (min-width: 1025px) {
-  .mobile-only {
-    display: none !important;
+/* MODALS */
+@media (max-width: 640px) {
+  .modal { 
+    width: 100% !important; 
+    max-width: 100% !important; 
+    margin: 0 !important; 
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important; 
+    position: fixed !important; 
+    bottom: 0 !important; 
   }
-  .tablet-down {
-    display: none !important;
+}
+
+/* DRAWERS */
+@media (max-width: 768px) {
+  .drawer { width: 100% !important; }
+}
+
+/* KPI CARDS */
+@media (max-width: 640px) {
+  .kpi-grid { 
+    grid-template-columns: repeat(2, 1fr) !important; 
+    gap: var(--space-3) !important; 
   }
+}
+
+/* CARDS INSIDE GRIDS */
+@media (max-width: 1024px) {
+  .projects-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (max-width: 640px) {
+  .projects-grid { grid-template-columns: 1fr !important; }
 }

@@ -1,172 +1,156 @@
-import React, { useState, useEffect } from 'react';
-import './PortalApprovals.css';
+import { useState, useEffect } from 'react'
+import styles from './PortalApprovals.module.css'
+import { useToast } from '../../store/toastContext'
 
 export default function PortalApprovals() {
-  const [approvals, setApprovals] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [processingId, setProcessingId] = useState(null);
-  const [revisionId, setRevisionId] = useState(null);
-  const [revisionNote, setRevisionNote] = useState('');
-  const [toast, setToast] = useState(null);
-
-  const fetchApprovals = async () => {
-    try {
-      const res = await fetch('/api/portal/approvals');
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setApprovals(data.data);
-      }
-    } catch (e) {
-      console.error('Failed to fetch approvals', e);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [designs, setDesigns] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [downloadedIds, setDownloadedIds] = useState(new Set())
+  const [rejectingId, setRejectingId] = useState(null)
+  const [revisionNote, setRevisionNote] = useState('')
+  const [fadingId, setFadingId] = useState(null)
+  const [showApproved, setShowApproved] = useState(false)
+  const toast = useToast()
 
   useEffect(() => {
-    fetchApprovals();
-  }, []);
+    setTimeout(() => {
+      setDesigns([
+        { id: '1', name: 'Kitchen 3D Layout', version: 'v2', uploader: 'Priya Mehta', date: '2025-01-12', type: 'image', status: 'pending', url: '/mock-url' },
+        { id: '2', name: 'False Ceiling Plan', version: 'v1', uploader: 'Rahul Desai', date: '2025-01-14', type: 'pdf', status: 'pending', url: '/mock-url' },
+        { id: '3', name: 'Master Bedroom Wardrobe', version: 'v3', uploader: 'Priya Mehta', date: '2025-01-10', type: 'image', status: 'revision_requested', note: 'Can we make the left door slightly darker?', url: '/mock-url' },
+        { id: '4', name: 'Living Room Render', version: 'v1', uploader: 'Rahul Desai', date: '2025-01-05', type: 'image', status: 'approved', approvedAt: '2025-01-10' }
+      ])
+      setLoading(false)
+    }, 600)
+  }, [])
 
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
+  const handleDownload = (id, url) => {
+    // window.open(url, '_blank')
+    setDownloadedIds(new Set(downloadedIds).add(id))
+  }
 
-  const handleApprove = async (docId) => {
-    setProcessingId(docId);
-    try {
-      const res = await fetch(`/api/portal/approvals/${docId}/approve`, { method: 'POST' });
-      if (res.ok) {
-        showToast('Design approved!');
-        await fetchApprovals();
-      } else {
-        showToast('Failed to approve design', 'error');
-      }
-    } catch (e) {
-      showToast('Error approving design', 'error');
-    } finally {
-      setProcessingId(null);
-    }
-  };
+  const handleApprove = (id) => {
+    setFadingId(id)
+    setTimeout(() => {
+      setDesigns(designs.map(d => d.id === id ? { ...d, status: 'approved', approvedAt: new Date().toISOString() } : d))
+      setFadingId(null)
+      toast.success('✓ Design approved!')
+    }, 400)
+  }
 
-  const handleSubmitRevision = async (docId) => {
-    if (!revisionNote.trim()) return;
-    setProcessingId(docId);
-    try {
-      const res = await fetch(`/api/portal/approvals/${docId}/revision`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ note: revisionNote })
-      });
-      if (res.ok) {
-        showToast("Revision requested. We'll update you shortly.");
-        setRevisionId(null);
-        setRevisionNote('');
-        await fetchApprovals();
-      } else {
-        showToast('Failed to submit revision request', 'error');
-      }
-    } catch (e) {
-      showToast('Error submitting revision request', 'error');
-    } finally {
-      setProcessingId(null);
-    }
-  };
+  const handleRequestChanges = (id) => {
+    if (!revisionNote.trim()) return toast.error('Please describe what needs to change')
+    setDesigns(designs.map(d => d.id === id ? { ...d, status: 'revision_requested', note: revisionNote } : d))
+    setRejectingId(null)
+    setRevisionNote('')
+    toast.success('Revision requested successfully.')
+  }
 
-  if (loading) return <div className="portal-loading">Loading pending approvals...</div>;
+  if (loading) return <div style={{padding: 24, textAlign: 'center', color: 'var(--color-text-muted)'}}>Loading approvals...</div>
+
+  const pendingList = designs.filter(d => ['pending', 'revision_requested'].includes(d.status))
+  const approvedList = designs.filter(d => d.status === 'approved')
 
   return (
-    <div className="portal-approvals-container">
-      {toast && (
-        <div className={`portal-toast toast-${toast.type}`}>
-          {toast.message}
-        </div>
-      )}
+    <div className={styles.page}>
+      <div className={styles.header}>
+        <h1 className={styles.pageTitle}>Design Approvals</h1>
+        <div className={styles.pageSub}>Review designs shared by your project team</div>
+      </div>
 
-      <h2 className="portal-page-title">Pending Approvals</h2>
-
-      {approvals.length === 0 ? (
-        <div className="portal-empty-state">
-          <div className="empty-icon">✓</div>
-          <h3>All Caught Up!</h3>
-          <p>No designs awaiting your approval. Check back soon!</p>
-        </div>
-      ) : (
-        <div className="approvals-list">
-          {approvals.map(doc => (
-            <div key={doc.id} className="approval-card">
-              <div className="approval-header">
-                <div className="approval-title-group">
-                  <h3 className="doc-name">{doc.name}</h3>
-                  <div className="doc-badges">
-                    <span className="badge badge-type">{doc.doc_type || 'Document'}</span>
-                    <span className="badge badge-version">v{doc.version || 1}</span>
-                  </div>
+      <div className={styles.list}>
+        {pendingList.length === 0 ? (
+          <div className={styles.emptyState}>
+            <div className={styles.emptyIcon}>📋</div>
+            <div className={styles.emptyTitle}>No designs awaiting your approval.</div>
+            <div className={styles.emptyDesc}>We'll notify you when new designs are ready for review.</div>
+          </div>
+        ) : (
+          pendingList.map(doc => (
+            <div key={doc.id} className={`${styles.card} ${fadingId === doc.id ? styles.fadingOut : ''}`}>
+              <div className={styles.cardHeader}>
+                <div className={styles.fileIcon} style={{background: doc.type === 'pdf' ? '#EF4444' : '#3B82F6'}}>
+                  {doc.type === 'pdf' ? '📄' : '🖼'}
                 </div>
-                <div className="doc-date">
-                  Uploaded: {new Date(doc.created_at).toLocaleDateString()}
+                <div className={styles.fileInfo}>
+                  <div className={styles.docName}>
+                    {doc.name}
+                    <span className={styles.versionBadge}>{doc.version}</span>
+                  </div>
+                  <div className={styles.metaText}>Uploaded by {doc.uploader} on {new Date(doc.date).toLocaleDateString('en-GB', {day:'numeric', month:'short'})}</div>
                 </div>
               </div>
 
-              <div className="approval-actions">
-                <a 
-                  href={doc.downloadUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="btn btn-outline btn-block text-center"
-                >
-                  Download to Preview
-                </a>
-                
-                {revisionId === doc.id ? (
-                  <div className="revision-box">
-                    <textarea 
-                      placeholder="Please describe the changes needed..."
-                      value={revisionNote}
-                      onChange={e => setRevisionNote(e.target.value)}
-                      disabled={processingId === doc.id}
-                      rows={3}
-                    />
-                    <div className="revision-actions">
-                      <button 
-                        className="btn btn-ghost" 
-                        onClick={() => { setRevisionId(null); setRevisionNote(''); }}
-                        disabled={processingId === doc.id}
-                      >
-                        Cancel
-                      </button>
-                      <button 
-                        className="btn btn-amber" 
-                        onClick={() => handleSubmitRevision(doc.id)}
-                        disabled={!revisionNote.trim() || processingId === doc.id}
-                      >
-                        {processingId === doc.id ? 'Submitting...' : 'Submit Revision'}
-                      </button>
+              {doc.status === 'revision_requested' ? (
+                <>
+                  <div className={`${styles.statusBadge} ${styles.revision}`}>Revision Requested</div>
+                  <div className={styles.revisionNote}>"{doc.note}"</div>
+                </>
+              ) : (
+                <>
+                  <button className={styles.dlBtn} onClick={() => handleDownload(doc.id, doc.url)}>
+                    ⬇ Download & Review
+                  </button>
+
+                  {downloadedIds.has(doc.id) && (
+                    <div className={styles.actionArea}>
+                      <div className={styles.question}>Have you reviewed it?</div>
+                      <button className={styles.approveBtn} onClick={() => handleApprove(doc.id)}>✓ Approve Design</button>
+                      
+                      {rejectingId === doc.id ? (
+                        <div className={styles.revisionBox}>
+                          <textarea 
+                            className={styles.revisionTextarea}
+                            placeholder="Describe what needs to change..."
+                            value={revisionNote}
+                            onChange={e => setRevisionNote(e.target.value)}
+                            autoFocus
+                          />
+                          <div style={{display:'flex', gap:8}}>
+                            <button className={styles.revisionSubmitBtn} style={{background:'transparent', color:'var(--color-danger)', border:'1px solid currentColor'}} onClick={() => {setRejectingId(null); setRevisionNote('')}}>Cancel</button>
+                            <button className={styles.revisionSubmitBtn} onClick={() => handleRequestChanges(doc.id)}>Submit Revision</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button className={styles.rejectBtn} onClick={() => setRejectingId(doc.id)}>✗ Request Changes</button>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      {approvedList.length > 0 && (
+        <div style={{marginTop: 16}}>
+          <button className={styles.toggleBtn} onClick={() => setShowApproved(!showApproved)}>
+            <span>{showApproved ? '▾' : '▸'}</span> View Approved ({approvedList.length})
+          </button>
+          
+          {showApproved && (
+            <div className={styles.list} style={{marginTop: 16}}>
+              {approvedList.map(doc => (
+                <div key={doc.id} className={`${styles.card} ${styles.approved}`}>
+                  <div className={styles.cardHeader}>
+                    <div className={styles.fileIcon} style={{background: '#9CA3AF'}}>
+                      {doc.type === 'pdf' ? '📄' : '🖼'}
+                    </div>
+                    <div className={styles.fileInfo}>
+                      <div className={styles.docName}>{doc.name} <span className={styles.versionBadge} style={{background:'#F3F4F6', color:'#6B7280'}}>{doc.version}</span></div>
+                      <div className={styles.metaText}>Uploaded by {doc.uploader}</div>
                     </div>
                   </div>
-                ) : (
-                  <div className="action-row">
-                    <button 
-                      className="btn btn-green btn-block"
-                      onClick={() => handleApprove(doc.id)}
-                      disabled={processingId === doc.id}
-                    >
-                      {processingId === doc.id ? 'Approving...' : 'Approve'}
-                    </button>
-                    <button 
-                      className="btn btn-amber-outline btn-block"
-                      onClick={() => setRevisionId(doc.id)}
-                      disabled={processingId === doc.id}
-                    >
-                      Request Revision
-                    </button>
+                  <div className={`${styles.statusBadge} ${styles.approved}`}>
+                    ✓ Approved on {new Date(doc.approvedAt).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'})}
                   </div>
-                )}
-              </div>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>
-  );
+  )
 }

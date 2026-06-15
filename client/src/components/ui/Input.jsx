@@ -1,27 +1,33 @@
-import React, { forwardRef } from 'react';
-import FormField from './FormField';
+import React from 'react';
 import styles from './Input.module.css';
 
-const Input = forwardRef(({
-  id, label, placeholder, value, onChange, error, helperText,
-  leftIcon, rightIcon, type = 'text', disabled, required, size = 'md', className = '', ...props
-}, ref) => {
-
-  const wrapperClass = [
-    styles.inputWrapper,
-    leftIcon ? styles.withLeftIcon : '',
-    rightIcon ? styles.withRightIcon : '',
-    error ? styles.error : ''
-  ].filter(Boolean).join(' ');
-
-  const inputClass = `${styles.input} ${styles[size] || styles.md} ${className}`.trim();
-
+export default function Input({
+  id,
+  label,
+  placeholder,
+  value,
+  onChange,
+  error,
+  helperText,
+  leftIcon,
+  rightIcon,
+  type = 'text',
+  disabled = false,
+  required = false,
+  size,
+  ...props
+}) {
   return (
-    <FormField label={label} required={required} error={error} helperText={helperText}>
-      <div className={wrapperClass}>
-        {leftIcon && <span className={styles.leftIcon}>{leftIcon}</span>}
+    <div className={styles.field}>
+      {label && (
+        <label htmlFor={id} className={styles.label}>
+          {label}
+          {required && <span className={styles.required}>*</span>}
+        </label>
+      )}
+      <div className={`${styles.wrapper} ${error ? styles.hasError : ''}`}>
+        {leftIcon && <div className={styles.icon}>{leftIcon}</div>}
         <input
-          ref={ref}
           id={id}
           type={type}
           value={value}
@@ -29,14 +35,13 @@ const Input = forwardRef(({
           placeholder={placeholder}
           disabled={disabled}
           required={required}
-          className={inputClass}
+          className={styles.input}
           {...props}
         />
-        {rightIcon && <span className={styles.rightIcon}>{rightIcon}</span>}
+        {rightIcon && <div className={`${styles.icon} ${styles.rightIcon}`}>{rightIcon}</div>}
       </div>
-    </FormField>
+      {error && <div className={styles.error}>{error}</div>}
+      {!error && helperText && <div className={styles.helper}>{helperText}</div>}
+    </div>
   );
-});
-
-Input.displayName = 'Input';
-export default Input;
+}

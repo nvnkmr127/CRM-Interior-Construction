@@ -1,39 +1,28 @@
-import React from 'react';
-import styles from './Avatar.module.css';
+import styles from './Avatar.module.css'
 
-const COLORS = ['#C4956A', '#2D6A4F', '#1A3A5C', '#8B2020', '#4A2040'];
+const COLOURS = ['#E8935A','#2D6A4F','#1A3A5C','#8B2020','#4A2040','#5C3A00','#1A5C3A']
+const getColour = (name='?') => COLOURS[name.charCodeAt(0) % COLOURS.length]
 
-export default function Avatar({ name = '', imageUrl, size = 'md', className = '' }) {
-  const sizeClass = styles[size] || styles.md;
-  
+const getInitials = (name) => {
+  if (!name) return '?'
+  return name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase()
+}
+
+export default function Avatar({ name, imageUrl, size='md', className='' }) {
   if (imageUrl) {
     return (
-      <div className={`${styles.avatar} ${sizeClass} ${className}`}>
-        <img src={imageUrl} alt={name || 'Avatar'} className={styles.img} />
+      <div className={`${styles.avatar} ${styles[size]} ${className}`}>
+        <img className={styles.img} src={imageUrl} alt={name || 'Avatar'} />
       </div>
-    );
+    )
   }
-
-  // Fallback to initials mapping logic
-  const initials = name
-    .split(' ')
-    .filter(Boolean)
-    .map(n => n[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase() || '?';
-
-  // Seed the color purely based on the ascii character of the name for determinism
-  const charCode = name.length > 0 ? name.charCodeAt(0) : 0;
-  const bgColor = COLORS[charCode % COLORS.length];
-
+  
   return (
     <div 
-      className={`${styles.avatar} ${sizeClass} ${className}`} 
-      style={{ backgroundColor: bgColor }}
-      title={name}
+      className={`${styles.avatar} ${styles[size]} ${className}`}
+      style={{ background: getColour(name), color: 'white' }}
     >
-      {initials}
+      {getInitials(name)}
     </div>
-  );
+  )
 }

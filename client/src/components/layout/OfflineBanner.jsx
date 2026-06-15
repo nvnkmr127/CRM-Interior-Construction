@@ -1,56 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react'
+import styles from './OfflineBanner.module.css'
 
 export default function OfflineBanner() {
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
-  const [showBackOnline, setShowBackOnline] = useState(false);
+  const [status, setStatus] = useState(navigator.onLine ? 'online' : 'offline')
+  const [visible, setVisible] = useState(!navigator.onLine)
 
   useEffect(() => {
-    const handleOffline = () => {
-      setIsOffline(true);
-      setShowBackOnline(false);
-    };
+    const goOffline = () => { setStatus('offline'); setVisible(true) }
+    const goOnline  = () => {
+      setStatus('online'); setVisible(true)
+      setTimeout(() => setVisible(false), 3000)
+    }
+    
+    window.addEventListener('offline', goOffline)
+    window.addEventListener('online',  goOnline)
+    return () => { 
+      window.removeEventListener('offline', goOffline)
+      window.removeEventListener('online', goOnline)
+    }
+  }, [])
 
-    const handleOnline = () => {
-      setIsOffline(false);
-      setShowBackOnline(true);
-      setTimeout(() => setShowBackOnline(false), 3000);
-    };
-
-    const handleNetworkError = () => {
-      // Just in case the browser hasn't fired 'offline' yet, we can check.
-      // Or we can manually force it offline if an API request failed with network error
-      // But navigator.onLine is usually reliable enough. We'll just sync state.
-      if (!navigator.onLine) {
-        setIsOffline(true);
-      }
-    };
-
-    window.addEventListener('offline', handleOffline);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('app:network-error', handleNetworkError);
-
-    return () => {
-      window.removeEventListener('offline', handleOffline);
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('app:network-error', handleNetworkError);
-    };
-  }, []);
-
-  if (isOffline) {
-    return (
-      <div className="fixed top-0 left-0 w-full z-50 bg-amber-500 text-white text-center py-2 px-4 shadow-md font-medium text-sm">
-        <span className="mr-2">⚠️</span> No internet connection. Changes may not be saved.
-      </div>
-    );
-  }
-
-  if (showBackOnline) {
-    return (
-      <div className="fixed top-0 left-0 w-full z-50 bg-green-500 text-white text-center py-2 px-4 shadow-md font-medium text-sm animate-fade-in-down">
-        <span className="mr-2">✓</span> Back online
-      </div>
-    );
-  }
-
-  return null;
+  return (
+    <div className={`${styles.banner} ${styles[status]} ${!visible ? styles.hidden : ''}`}>
+      {status === 'offline' ? '⚠ No internet connection — changes may not be saved' : '✓ Back online'}
+    </div>
+  )
 }

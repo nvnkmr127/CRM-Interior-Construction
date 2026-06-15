@@ -1,339 +1,308 @@
-import React, { useState, useEffect } from 'react';
-import { getTask, updateTask, addTaskComment, createTask } from '../../api/tasks';
-import Drawer from '../ui/Drawer';
-import { Badge, Button, Spinner, Avatar } from '../ui';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
+import styles from './TaskDetail.module.css'
+import { Drawer, Button, Badge, Avatar, Select } from '../ui'
+import { useToast } from '../../store/toastContext'
 
-export default function TaskDetail({ projectId, taskId, isOpen, onClose, onTaskUpdated }) {
-  const [task, setTask] = useState(null);
-  const [loading, setLoading] = useState(true);
+const PRIORITIES = ['low', 'medium', 'high', 'urgent']
+const PRIORITY_COLORS = { low: 'info', medium: 'warning', high: 'danger', urgent: 'danger' }
 
-  // Edits
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [editTitle, setEditTitle] = useState('');
-  
-  const [isEditingDesc, setIsEditingDesc] = useState(false);
-  const [editDesc, setEditDesc] = useState('');
-
-  // Subtasks
-  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
-
-  // Comments
-  const [newComment, setNewComment] = useState('');
+export default function TaskDetail({ isOpen, onClose, taskId, projectId }) {
+  const [task, setTask] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [title, setTitle] = useState('')
+  const [desc, setDesc] = useState('')
+  const [saveStatus, setSaveStatus] = useState('')
+  const [newSubtask, setNewSubtask] = useState('')
+  const [newComment, setNewComment] = useState('')
+  const [statusError, setStatusError] = useState(null)
+  const toast = useToast()
+  const descTimer = useRef(null)
 
   useEffect(() => {
-    if (isOpen && taskId && projectId) {
-      fetchTask();
-    } else {
-      setTask(null);
+    if (isOpen && taskId) {
+      setLoading(true)
+      // Mock fetch /api/projects/:projectId/tasks/:taskId
+      setTimeout(() => {
+        setTask({
+          id: taskId,
+          title: 'Finalize Kitchen Renderings',
+          description: 'Need 3 angles. Make sure to include the new island design.',
+          status: 'in_progress',
+          priority: 'high',
+          dueDate: new Date(Date.now() - 86400000).toISOString(), // overdue
+          assignee: { id: '1', name: 'Rahul Desai' },
+          project: { id: projectId || '1', name: 'Sharma Residence' },
+          milestone: { id: 'm1', name: 'Design Phase' },
+          tags: ['design', 'client-review'],
+          subtasks: [
+            { id: 's1', title: 'Angle 1 (From living room)', done: true, assignee: { name: 'Rahul Desai' } },
+            { id: 's2', title: 'Angle 2 (From hallway)', done: false, assignee: { name: 'Rahul Desai' } },
+            { id: 's3', title: 'Angle 3 (Top down)', done: false, assignee: { name: 'Priya Sharma' } },
+          ],
+          comments: [
+            { id: 'c1', author: { name: 'Priya Sharma' }, text: 'Client requested darker cabinets', createdAt: new Date(Date.now() - 3600000).toISOString() }
+          ]
+        })
+        setTitle('Finalize Kitchen Renderings')
+        setDesc('Need 3 angles. Make sure to include the new island design.')
+        setLoading(false)
+      }, 400)
     }
-    // eslint-disable-next-line
-  }, [isOpen, taskId, projectId]);
-
-  const fetchTask = async () => {
-    setLoading(true);
-    try {
-      const res = await getTask(projectId, taskId);
-      const data = res.data?.data || res.data;
-      setTask(data);
-      setEditTitle(data.title);
-      setEditDesc(data.description || '');
-    } catch (e) {
-      console.error('Failed to fetch task details', e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUpdate = async (updates) => {
-    try {
-      setTask(prev => ({ ...prev, ...updates }));
-      await updateTask(projectId, taskId, updates);
-      if (onTaskUpdated) onTaskUpdated();
-    } catch (e) {
-      console.error('Failed to update task', e);
-      fetchTask(); // revert
-    }
-  };
+  }, [isOpen, taskId, projectId])
 
   const handleTitleBlur = () => {
-    setIsEditingTitle(false);
-    if (editTitle !== task.title && editTitle.trim() !== '') {
-      handleUpdate({ title: editTitle });
-    } else {
-      setEditTitle(task.title);
+    if (title !== task.title) {
+      setTask({ ...task, title })
+      toast.success('Task title updated')
     }
-  };
+  }
 
-  const handleDescBlur = () => {
-    setIsEditingDesc(false);
-    if (editDesc !== task.description) {
-      handleUpdate({ description: editDesc });
+  const handleDescChange = (e) => {
+    setDesc(e.target.value)
+    setSaveStatus('Saving...')
+    clearTimeout(descTimer.current)
+    descTimer.current = setTimeout(() => {
+      setTask(t => ({ ...t, description: e.target.value }))
+      setSaveStatus('Saved ✓')
+      setTimeout(() => setSaveStatus(''), 2000)
+    }, 1500)
+  }
+
+  const cyclePriority = () => {
+    const idx = PRIORITIES.indexOf(task.priority)
+    const next = PRIORITIES[(idx + 1) % PRIORITIES.length]
+    setTask({ ...task, priority: next })
+    toast.success('Priority updated')
+  }
+
+  const handleStatusChange = (newStatus) => {
+    if (newStatus === 'done' && task.subtasks.some(s => !s.done)) {
+      setStatusError(task.subtasks.filter(s => !s.done))
+      return
     }
-  };
+    setStatusError(null)
+    setTask({ ...task, status: newStatus })
+    toast.success('Task status updated')
+  }
 
-  const handleToggleSubtask = async (subtask) => {
-    const newStatus = subtask.status === 'done' ? 'todo' : 'done';
-    try {
-      const newSubtasks = task.subtasks.map(st => st.id === subtask.id ? { ...st, status: newStatus } : st);
-      setTask(prev => ({ ...prev, subtasks: newSubtasks }));
-      await updateTask(projectId, subtask.id, { status: newStatus });
-    } catch (e) {
-      console.error(e);
-      fetchTask();
+  const completeAllSubtasks = () => {
+    setTask({
+      ...task,
+      subtasks: task.subtasks.map(s => ({ ...s, done: true })),
+      status: 'done'
+    })
+    setStatusError(null)
+    toast.success('All subtasks completed and task marked done')
+  }
+
+  const toggleSubtask = (id) => {
+    setTask({
+      ...task,
+      subtasks: task.subtasks.map(s => s.id === id ? { ...s, done: !s.done } : s)
+    })
+  }
+
+  const addSubtask = (e) => {
+    if (e.key === 'Enter' && newSubtask.trim()) {
+      setTask({
+        ...task,
+        subtasks: [...task.subtasks, { id: Date.now().toString(), title: newSubtask.trim(), done: false }]
+      })
+      setNewSubtask('')
+    } else if (e.key === 'Escape') {
+      setNewSubtask('')
     }
-  };
+  }
 
-  const handleAddSubtask = async (e) => {
-    if (e.key === 'Enter' && newSubtaskTitle.trim()) {
-      try {
-        await createTask(projectId, { title: newSubtaskTitle, parentTaskId: taskId });
-        setNewSubtaskTitle('');
-        fetchTask();
-      } catch (err) {
-        console.error(err);
-      }
-    }
-  };
+  const addComment = () => {
+    if (!newComment.trim()) return
+    setTask({
+      ...task,
+      comments: [...task.comments, { id: Date.now().toString(), author: { name: 'You' }, text: newComment.trim(), createdAt: new Date().toISOString() }]
+    })
+    setNewComment('')
+  }
 
-  const handlePostComment = async () => {
-    if (!newComment.trim()) return;
-    try {
-      await addTaskComment(projectId, taskId, newComment);
-      setNewComment('');
-      fetchTask();
-    } catch (err) {
-      console.error('Failed to post comment', err);
-    }
-  };
-
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'high': return 'danger';
-      case 'medium': return 'warning';
-      case 'low': return 'success';
-      default: return 'neutral';
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'todo': return 'neutral';
-      case 'in_progress': return 'primary';
-      case 'in_review': return 'warning';
-      case 'done': return 'success';
-      default: return 'neutral';
-    }
-  };
-
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   return (
-    <Drawer isOpen={isOpen} onClose={onClose} width={520} title="">
+    <Drawer isOpen={isOpen} onClose={onClose} width={640}>
       {loading || !task ? (
-        <div className="flex justify-center items-center h-full">
-          <Spinner size="lg" />
-        </div>
+        <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading task details...</div>
       ) : (
-        <div className="flex flex-col h-full bg-slate-900 text-slate-200">
-          
-          {/* HEADER */}
-          <div className="p-6 border-b border-slate-700 bg-slate-800 shrink-0">
-            <div className="flex justify-between items-start mb-3">
-              <div className="flex gap-2">
-                <Badge variant={getPriorityColor(task.priority)} className="uppercase text-[10px]">{task.priority || 'No Priority'}</Badge>
-                <Badge variant={getStatusColor(task.status)} className="uppercase text-[10px]">{task.status.replace('_', ' ')}</Badge>
-              </div>
-              <div>
-                {task.status !== 'done' ? (
-                  <Button variant="success" size="sm" onClick={() => handleUpdate({ status: 'done' })}>Complete Task</Button>
-                ) : (
-                  <Button variant="outline" size="sm" onClick={() => handleUpdate({ status: 'todo' })}>Reopen Task</Button>
-                )}
-              </div>
-            </div>
-
-            {isEditingTitle ? (
-              <input
-                autoFocus
-                type="text"
-                className="w-full bg-slate-900 border border-blue-500 rounded px-2 py-1 text-xl font-bold text-white outline-none"
-                value={editTitle}
-                onChange={e => setEditTitle(e.target.value)}
-                onBlur={handleTitleBlur}
-                onKeyDown={e => e.key === 'Enter' && e.target.blur()}
-              />
-            ) : (
-              <h2 
-                className="text-2xl font-bold text-white cursor-text hover:bg-slate-700/50 rounded px-1 -mx-1 transition-colors"
-                onClick={() => setIsEditingTitle(true)}
-              >
-                {task.title}
-              </h2>
-            )}
+        <>
+          <div className={styles.headerRow}>
+            <Badge variant={PRIORITY_COLORS[task.priority]} style={{ textTransform: 'capitalize' }}>{task.priority}</Badge>
+            <Button variant="primary" size="sm" onClick={() => handleStatusChange('done')} disabled={task.status === 'done'}>
+              {task.status === 'done' ? '✓ Completed' : 'Mark Complete'}
+            </Button>
           </div>
+          <input 
+            className={styles.titleInput} 
+            value={title} 
+            onChange={e => setTitle(e.target.value)}
+            onBlur={handleTitleBlur}
+            onKeyDown={e => e.key === 'Escape' && setTitle(task.title)}
+          />
 
-          {/* BODY */}
-          <div className="flex-1 overflow-y-auto p-6 flex flex-col md:flex-row gap-8">
-            
-            {/* LEFT COLUMN: Details */}
-            <div className="flex-1 space-y-6">
-              
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Assignee</label>
-                <div className="flex items-center gap-3 bg-slate-800/50 p-2 rounded-lg border border-slate-700 hover:border-slate-500 cursor-pointer transition-colors">
-                  <Avatar name={task.assignee_name || 'Unassigned'} size="sm" />
-                  <span className="text-sm font-medium text-white">{task.assignee_name || 'Unassigned'}</span>
+          <div className={styles.grid} style={{ marginTop: 24 }}>
+            {/* Left Col: Details */}
+            <div>
+              <div className={styles.detailRow}>
+                <div className={styles.detailLabel}>Assignee</div>
+                <div className={styles.detailValue}>
+                  <Avatar name={task.assignee?.name} size="xs" />
+                  {task.assignee?.name || 'Unassigned'}
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Due Date</label>
-                <input 
-                  type="date"
-                  className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm outline-none hover:border-slate-500 transition-colors focus:border-blue-500 cursor-pointer"
-                  value={task.due_date ? task.due_date.split('T')[0] : ''}
-                  onChange={e => handleUpdate({ dueDate: e.target.value || null })}
-                />
+              <div className={styles.detailRow}>
+                <div className={styles.detailLabel}>Due Date</div>
+                <div className={`${styles.detailValue} ${new Date(task.dueDate) < new Date() && task.status !== 'done' ? styles.overdue : ''}`}>
+                  {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'Set date'}
+                </div>
               </div>
 
-              {task.milestone_name && (
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Milestone</label>
-                  <p className="text-sm font-medium text-slate-300">🎯 {task.milestone_name}</p>
+              <div className={styles.detailRow}>
+                <div className={styles.detailLabel}>Priority</div>
+                <div className={styles.detailValue} onClick={cyclePriority}>
+                  <Badge variant={PRIORITY_COLORS[task.priority]} style={{ textTransform: 'capitalize' }}>{task.priority}</Badge>
+                </div>
+              </div>
+
+              <div className={styles.detailRow}>
+                <div className={styles.detailLabel}>Project</div>
+                <div className={styles.detailValue}>
+                  <Link to={`/projects/${task.project.id}`} className={styles.link}>{task.project.name}</Link>
+                </div>
+              </div>
+
+              <div className={styles.detailRow}>
+                <div className={styles.detailLabel}>Status</div>
+                <div style={{ flex: 1, marginLeft: -8 }}>
+                  <Select 
+                    value={task.status} 
+                    options={[
+                      {value: 'todo', label: 'To Do'},
+                      {value: 'in_progress', label: 'In Progress'},
+                      {value: 'blocked', label: 'Blocked'},
+                      {value: 'done', label: 'Done'}
+                    ]}
+                    onChange={handleStatusChange}
+                  />
+                </div>
+              </div>
+
+              {statusError && (
+                <div className={styles.inlineError}>
+                  <div style={{fontWeight: 600}}>⚠ {statusError.length} subtask{statusError.length > 1 ? 's' : ''} must be completed first:</div>
+                  <ul style={{ margin: 0, paddingLeft: 20 }}>
+                    {statusError.map(s => <li key={s.id}>{s.title}</li>)}
+                  </ul>
+                  <Button variant="secondary" size="sm" onClick={completeAllSubtasks} style={{ marginTop: 8 }}>
+                    Complete all subtasks
+                  </Button>
                 </div>
               )}
 
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Project</label>
-                <Link to={`/projects/${task.project_id}`} className="text-sm font-medium text-blue-400 hover:underline">
-                  {task.project_name || `Project #${task.project_id.substring(0,8)}`}
-                </Link>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tags</label>
-                <div className="flex flex-wrap gap-2">
-                  {task.tags && task.tags.map(t => (
-                    <Badge key={t} variant="neutral">{t}</Badge>
-                  ))}
-                  <button className="text-xs font-medium text-slate-400 hover:text-white bg-slate-800 px-2 py-1 rounded border border-dashed border-slate-600 transition-colors">
-                    + Add
-                  </button>
+              <div className={styles.detailRow}>
+                <div className={styles.detailLabel}>Tags</div>
+                <div className={styles.detailValue} style={{ cursor: 'default' }}>
+                  <div className={styles.tagChips}>
+                    {task.tags.map(t => <Badge key={t} variant="neutral">{t}</Badge>)}
+                    <input className={styles.addTagInput} placeholder="+ Add tag" onKeyDown={e => {
+                      if (e.key === 'Enter' && e.target.value.trim()) {
+                        setTask({...task, tags: [...task.tags, e.target.value.trim()]})
+                        e.target.value = ''
+                      }
+                    }} />
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Description</label>
-                {isEditingDesc ? (
-                  <textarea
-                    autoFocus
-                    className="w-full bg-slate-900 border border-blue-500 rounded px-3 py-2 text-sm text-white outline-none min-h-[100px]"
-                    value={editDesc}
-                    onChange={e => setEditDesc(e.target.value)}
-                    onBlur={handleDescBlur}
+              <div style={{ marginTop: 24 }}>
+                <div className={styles.sectionTitle}>Description</div>
+                <div className={styles.descWrapper}>
+                  <textarea 
+                    className={styles.descTextarea}
+                    placeholder="Add a description..."
+                    value={desc}
+                    onChange={handleDescChange}
                   />
-                ) : (
-                  <div 
-                    className="text-sm text-slate-300 bg-slate-800/30 border border-transparent hover:border-slate-700 p-3 rounded-lg min-h-[100px] cursor-text whitespace-pre-wrap transition-colors"
-                    onClick={() => setIsEditingDesc(true)}
-                  >
-                    {task.description || <span className="text-slate-500 italic">Click to add description...</span>}
-                  </div>
-                )}
+                  {saveStatus && <span className={styles.saveIndicator}>{saveStatus}</span>}
+                </div>
               </div>
-
             </div>
 
-            {/* RIGHT COLUMN: Subtasks + Comments */}
-            <div className="flex-1 space-y-8 border-l border-slate-700/50 pl-6">
-              
-              {/* SUBTASKS */}
-              <section>
-                <div className="flex justify-between items-end mb-4">
-                  <h3 className="text-sm font-bold text-white">Subtasks</h3>
-                  {task.subtasks?.length > 0 && (
-                    <span className="text-xs text-slate-400">
-                      {task.subtasks.filter(st => st.status === 'done').length}/{task.subtasks.length} done
-                    </span>
-                  )}
+            {/* Right Col: Subtasks & Comments */}
+            <div>
+              <div className={styles.subtasks}>
+                <div className={styles.sectionTitle}>
+                  Subtasks
+                  <Badge variant="neutral">{task.subtasks.filter(s => s.done).length}/{task.subtasks.length}</Badge>
                 </div>
-                
-                <div className="space-y-2 mb-3">
-                  {task.subtasks?.map(st => (
-                    <div key={st.id} className="flex items-start gap-3 group">
-                      <button 
-                        onClick={() => handleToggleSubtask(st)}
-                        className={`mt-0.5 w-4 h-4 rounded-sm border flex items-center justify-center shrink-0 transition-colors ${st.status === 'done' ? 'bg-green-500 border-green-500 text-white' : 'bg-transparent border-slate-500 hover:border-blue-400'}`}
-                      >
-                        {st.status === 'done' && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
-                      </button>
-                      <span className={`text-sm ${st.status === 'done' ? 'text-slate-500 line-through' : 'text-slate-300 group-hover:text-white'} transition-colors`}>
-                        {st.title}
-                      </span>
+                <div className={styles.progressBg}>
+                  <div 
+                    className={styles.progressFill} 
+                    style={{ width: `${task.subtasks.length ? (task.subtasks.filter(s => s.done).length / task.subtasks.length) * 100 : 0}%` }}
+                  />
+                </div>
+                <div>
+                  {task.subtasks.map(s => (
+                    <div key={s.id} className={styles.subtaskRow}>
+                      <input type="checkbox" checked={s.done} onChange={() => toggleSubtask(s.id)} />
+                      <div className={`${styles.subtaskTitle} ${s.done ? styles.done : ''}`}>{s.title}</div>
+                      {s.assignee && <Avatar name={s.assignee.name} size="xs" />}
+                    </div>
+                  ))}
+                  <div className={styles.subtaskRow}>
+                    <input type="checkbox" disabled style={{ opacity: 0.5 }} />
+                    <input 
+                      className={styles.addSubtask} 
+                      placeholder="+ Add Subtask" 
+                      value={newSubtask}
+                      onChange={e => setNewSubtask(e.target.value)}
+                      onKeyDown={addSubtask}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div className={styles.sectionTitle}>Comments</div>
+                <div className={styles.commentsList}>
+                  {task.comments.map(c => (
+                    <div key={c.id} className={styles.comment}>
+                      <Avatar name={c.author.name} size="sm" />
+                      <div>
+                        <div className={styles.commentHeader}>
+                          <span className={styles.commentAuthor}>{c.author.name}</span>
+                          <span className={styles.commentTime}>{new Date(c.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        <div className={styles.commentText}>{c.text}</div>
+                      </div>
                     </div>
                   ))}
                 </div>
                 
-                <input 
-                  type="text"
-                  className="w-full bg-slate-800/50 border border-slate-700 rounded px-3 py-1.5 text-sm text-white outline-none focus:border-blue-500 transition-colors"
-                  placeholder="+ Add Subtask"
-                  value={newSubtaskTitle}
-                  onChange={e => setNewSubtaskTitle(e.target.value)}
-                  onKeyDown={handleAddSubtask}
-                />
-              </section>
-
-              {/* COMMENTS */}
-              <section className="flex flex-col h-full">
-                <h3 className="text-sm font-bold text-white mb-4">Comments</h3>
-                
-                <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2 custom-scrollbar">
-                  {task.comments?.length === 0 ? (
-                    <p className="text-xs text-slate-500 italic">No comments yet.</p>
-                  ) : (
-                    task.comments?.map(c => (
-                      <div key={c.id} className="flex gap-3">
-                        <Avatar name={c.user_name} size="sm" className="shrink-0" />
-                        <div className="flex-1 bg-slate-800 rounded-lg rounded-tl-none p-3 border border-slate-700 shadow-sm">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-xs font-bold text-white">{c.user_name}</span>
-                            <span className="text-[10px] text-slate-500">{new Date(c.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
-                          </div>
-                          <p className="text-sm text-slate-300 whitespace-pre-wrap">{c.content}</p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                <div className="mt-auto">
-                  <textarea 
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-white outline-none focus:border-blue-500 transition-colors resize-none mb-2"
-                    rows="2"
-                    placeholder="Write a comment..."
-                    value={newComment}
-                    onChange={e => setNewComment(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handlePostComment();
-                      }
-                    }}
-                  />
-                  <div className="flex justify-end">
-                    <Button variant="primary" size="sm" onClick={handlePostComment} disabled={!newComment.trim()}>
-                      Post Comment
-                    </Button>
+                <div className={styles.composeArea}>
+                  <Avatar name="You" size="sm" />
+                  <div className={styles.composeCol}>
+                    <textarea 
+                      className={styles.composeTextarea} 
+                      placeholder="Add a comment..."
+                      value={newComment}
+                      onChange={e => setNewComment(e.target.value)}
+                    />
+                    <Button variant="primary" size="sm" disabled={!newComment.trim()} onClick={addComment}>Post</Button>
                   </div>
                 </div>
-              </section>
-
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
     </Drawer>
-  );
+  )
 }

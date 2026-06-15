@@ -1,0 +1,45 @@
+.shell { min-height:100vh; background:var(--color-bg); display:flex; flex-direction:column; font-family: 'Inter', sans-serif; }
+.topnav {
+  height:56px; background:var(--color-sidebar-bg); /* obsidian */
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 0 var(--space-5); position:sticky; top:0; z-index:100;
+}
+.brand { display:flex; align-items:center; gap:var(--space-2); }
+.brandMark { width:28px; height:28px; background:var(--color-accent); border-radius:var(--radius-md); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:14px; }
+.brandName { color:white; font-weight:600; font-size:var(--text-md); }
+.projectName { color:rgba(255,255,255,0.6); font-size:var(--text-sm); }
+
+.nav { display:flex; gap:var(--space-1); }
+.navBtn {
+  padding: 6px 14px; border:none; border-radius:var(--radius-md);
+  background:transparent; color:rgba(255,255,255,0.7);
+  cursor:pointer; font-size:var(--text-sm); font-weight:500;
+  transition:var(--transition-fast); text-decoration:none; display:flex; align-items:center; justify-content:center;
+}
+.navBtn:hover { background:rgba(255,255,255,0.1); color:white; }
+.navBtn.active { background:rgba(232,147,90,0.2); color:var(--color-accent); }
+
+.main { flex:1; max-width:800px; margin:0 auto; width:100%; padding: var(--space-6); }
+
+.bottomNav {
+  display:none; position:fixed; bottom:0; left:0; right:0;
+  background:var(--color-sidebar-bg); height:64px;
+  align-items:center; justify-content:space-around;
+  border-top: 1px solid rgba(255,255,255,0.08); z-index:100;
+}
+
+@media (max-width:640px) {
+  .nav { display:none; }
+  .bottomNav { display:flex; }
+  .main { padding: var(--space-4); padding-bottom:80px; }
+  .projectName { display:none; }
+}
+
+.tabBtn { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; background:none; border:none; cursor:pointer; flex:1; height:100%; text-decoration:none; }
+.tabIcon { font-size:20px; color:rgba(255,255,255,0.5); transition:0.2s; }
+.tabLabel { font-size:10px; color:rgba(255,255,255,0.5); font-weight:500; transition:0.2s; }
+.tabBtn.active .tabIcon { color:var(--color-accent); }
+.tabBtn.active .tabLabel { color:var(--color-accent); }
+
+.logoutBtn { background:transparent; border:none; color:rgba(255,255,255,0.7); font-size:var(--text-sm); font-weight:500; cursor:pointer; transition:0.2s; margin-left:var(--space-4); }
+.logoutBtn:hover { color:white; }

@@ -1,0 +1,53 @@
+.page { display: flex; flex-direction: column; gap: var(--space-6); font-family: 'Inter', sans-serif; padding-bottom: var(--space-6); }
+.header { margin-bottom: var(--space-2); }
+.pageTitle { font-size: var(--text-xl); font-weight: 600; color: var(--color-text); margin: 0; }
+.pageSub { font-size: var(--text-base); color: var(--color-text-secondary); margin-top: 4px; }
+
+.sectionTitle { font-size: var(--text-lg); font-weight: 600; color: var(--color-text); margin-bottom: var(--space-4); display: flex; align-items: center; justify-content: space-between; }
+.countBadge { background: var(--color-surface-2); padding: 2px 8px; border-radius: 12px; font-size: 12px; }
+
+.card { background: white; border-radius: var(--radius-xl); padding: var(--space-5); box-shadow: var(--shadow-sm); }
+.form { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.inputGroup { display: flex; flex-direction: column; gap: 8px; }
+.label { font-size: var(--text-sm); font-weight: 500; color: var(--color-text-secondary); }
+.input, .select, .textarea { width: 100%; padding: 12px 16px; border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: var(--text-base); outline: none; background: var(--color-surface); transition: 0.2s; font-family: inherit; }
+.input:focus, .select:focus, .textarea:focus { border-color: var(--color-accent); background: white; box-shadow: 0 0 0 3px rgba(232, 147, 90, 0.1); }
+.textarea { min-height: 80px; resize: vertical; }
+
+.photoUploader { display: flex; flex-direction: column; gap: var(--space-3); }
+.photoStrip { display: flex; gap: var(--space-3); overflow-x: auto; padding-bottom: 4px; }
+.photoThumb { position: relative; width: 80px; height: 80px; flex-shrink: 0; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--color-border); background: var(--color-surface-2); display: flex; align-items: center; justify-content: center; }
+.thumbImg { width: 100%; height: 100%; object-fit: cover; }
+.removeBtn { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border-radius: 50%; background: rgba(0,0,0,0.6); color: white; display: flex; align-items: center; justify-content: center; font-size: 10px; cursor: pointer; border: none; }
+.uploadArea { width: 80px; height: 80px; border: 1px dashed var(--color-border-strong); border-radius: var(--radius-md); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; color: var(--color-text-muted); font-size: 24px; transition: 0.2s; background: var(--color-surface); flex-shrink: 0; }
+.uploadArea:hover { border-color: var(--color-accent); color: var(--color-accent); background: rgba(232, 147, 90, 0.05); }
+.uploadArea input { display: none; }
+
+.submitBtn { width: 100%; background: var(--color-accent); color: white; border: none; padding: 14px; border-radius: var(--radius-md); font-size: var(--text-base); font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: var(--space-2); }
+.submitBtn:hover { background: #d6824d; }
+.submitBtn:disabled { opacity: 0.7; cursor: not-allowed; }
+
+.issueList { display: flex; flex-direction: column; gap: var(--space-4); }
+.issueCard { background: white; border-radius: var(--radius-xl); padding: var(--space-5); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: var(--space-3); transition: 0.3s; }
+.issueCard.verified { opacity: 0.6; background: var(--color-surface); }
+.issueHeader { display: flex; justify-content: space-between; align-items: flex-start; }
+.issueTitle { font-size: var(--text-md); font-weight: 600; color: var(--color-text); margin-bottom: 4px; }
+.issueMeta { display: flex; align-items: center; gap: 8px; font-size: var(--text-sm); color: var(--color-text-secondary); }
+.catChip { background: var(--color-surface-2); padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; color: var(--color-text); }
+
+.statusBadge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+.statusBadge.open { background: rgba(220, 38, 38, 0.1); color: var(--color-danger); }
+.statusBadge.assigned { background: rgba(217, 119, 6, 0.1); color: var(--color-warning); }
+.statusBadge.in_progress { background: rgba(59, 130, 246, 0.1); color: #2563EB; }
+.statusBadge.resolved { background: rgba(5, 150, 105, 0.1); color: var(--color-success); }
+.statusBadge.verified { background: rgba(5, 150, 105, 0.05); color: var(--color-success); border: 1px solid rgba(5, 150, 105, 0.2); }
+
+.resolutionBox { background: rgba(5, 150, 105, 0.05); border: 1px solid rgba(5, 150, 105, 0.2); border-radius: var(--radius-lg); padding: var(--space-4); margin-top: var(--space-2); }
+.resolutionTitle { font-size: 11px; text-transform: uppercase; color: var(--color-success); font-weight: 600; margin-bottom: 4px; letter-spacing: 0.5px; }
+.resolutionNote { font-size: var(--text-sm); color: var(--color-text); line-height: 1.5; margin-bottom: var(--space-4); }
+
+.verifyBtn { width: 100%; background: var(--color-success); color: white; border: none; padding: 12px; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; transition: 0.2s; font-size: var(--text-sm); }
+.verifyBtn:hover { background: #047857; }
+
+.emptyState { text-align: center; color: var(--color-success); padding: 48px 24px; font-weight: 500; background: var(--color-surface); border-radius: var(--radius-xl); border: 1px dashed rgba(5, 150, 105, 0.2); }

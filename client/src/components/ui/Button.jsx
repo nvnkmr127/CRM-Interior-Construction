@@ -10,36 +10,27 @@ export default function Button({
   rightIcon,
   onClick,
   type = 'button',
-  className = '',
   children,
   ...props
 }) {
-  const baseClass = styles.button;
-  const variantClass = styles[variant] || styles.primary;
-  const sizeClass = styles[size] || styles.md;
-  
-  const combinedClassName = `${baseClass} ${variantClass} ${sizeClass} ${className}`.trim();
+  const className = [
+    styles.btn,
+    styles[variant],
+    styles[size]
+  ].filter(Boolean).join(' ');
 
   return (
     <button
-      type={type}
-      className={combinedClassName}
+      className={className}
       onClick={onClick}
+      type={type}
       disabled={disabled || loading}
       {...props}
     >
-      {loading ? (
-        <>
-          <div className={styles.spinner} />
-          <span>Loading...</span>
-        </>
-      ) : (
-        <>
-          {leftIcon && <span className={styles.icon}>{leftIcon}</span>}
-          {children}
-          {rightIcon && <span className={styles.icon}>{rightIcon}</span>}
-        </>
-      )}
+      {loading && <span className={styles.spinner} />}
+      {!loading && leftIcon}
+      {children}
+      {!loading && rightIcon}
     </button>
   );
 }

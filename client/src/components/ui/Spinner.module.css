@@ -1,16 +1,12 @@
 .spinner {
-  border: 2px solid currentColor;
-  border-right-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.75s linear infinite;
-  display: inline-block;
+  border-radius: var(--radius-full);
+  border-style: solid; border-color: transparent;
+  border-top-color: currentColor;
+  animation: spin 0.65s linear infinite;
   flex-shrink: 0;
 }
-
-.sm { width: 16px; height: 16px; border-width: 2px; }
-.md { width: 24px; height: 24px; border-width: 3px; }
-.lg { width: 40px; height: 40px; border-width: 4px; }
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+@keyframes spin { to { transform: rotate(360deg) } }
+.sm { width:16px; height:16px; border-width:2px; }
+.md { width:24px; height:24px; border-width:2px; }
+.lg { width:40px; height:40px; border-width:3px; }
+.xl { width:64px; height:64px; border-width:4px; }

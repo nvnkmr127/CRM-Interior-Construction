@@ -1,0 +1,49 @@
+.page { padding: var(--space-6); max-width: 1200px; margin: 0 auto; }
+.headerRow { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-6); }
+.title { font-size: var(--text-2xl); font-weight: 700; color: var(--color-text); margin: 0; }
+.desc { color: var(--color-text-secondary); margin-top: 4px; }
+
+.kpiStrip { display: grid; grid-template-columns: repeat(1, 1fr); gap: var(--space-4); margin-bottom: var(--space-6); }
+@media (min-width: 640px) { .kpiStrip { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1024px) { .kpiStrip { grid-template-columns: repeat(4, 1fr); } }
+
+.kpiCard { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-4); display: flex; flex-direction: column; gap: 8px; box-shadow: var(--shadow-sm); }
+.kpiLabel { font-size: var(--text-sm); font-weight: 600; color: var(--color-text-secondary); }
+.kpiValue { font-size: var(--text-2xl); font-weight: 700; color: var(--color-text); }
+.kpiTrend { font-size: 11px; font-weight: 500; display: flex; align-items: center; gap: 4px; }
+.trendUp { color: var(--color-success); }
+.trendDown { color: var(--color-danger); }
+.trendNeutral { color: var(--color-text-muted); }
+
+.grid { display: grid; grid-template-columns: 1fr; gap: var(--space-6); margin-bottom: var(--space-6); }
+@media (min-width: 992px) { .grid { grid-template-columns: 3fr 2fr; } }
+.fullWidth { grid-column: 1 / -1; }
+
+.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; }
+.cardHeader { font-size: var(--text-md); font-weight: 600; color: var(--color-text); margin-bottom: var(--space-4); display: flex; justify-content: space-between; align-items: center; }
+
+.funnelList { display: flex; flex-direction: column; gap: var(--space-3); }
+.funnelRow { display: flex; align-items: center; gap: var(--space-3); cursor: pointer; transition: opacity 0.2s; }
+.funnelRow:hover { opacity: 0.8; }
+.funnelLabel { width: 120px; font-size: var(--text-sm); font-weight: 500; color: var(--color-text-secondary); flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.funnelBarBg { flex: 1; height: 24px; background: var(--color-surface-2); border-radius: 12px; overflow: hidden; position: relative; }
+.funnelBarFill { height: 100%; transition: width 0.5s ease; border-radius: 12px; }
+.funnelCount { width: 40px; font-size: var(--text-sm); font-weight: 600; color: var(--color-text); text-align: right; flex-shrink: 0; }
+
+.legend { display: flex; flex-direction: column; gap: 8px; margin-top: var(--space-4); }
+.legendRow { display: flex; align-items: center; justify-content: space-between; font-size: var(--text-sm); }
+.legendLabel { display: flex; align-items: center; gap: 8px; color: var(--color-text-secondary); }
+.legendDot { width: 12px; height: 12px; border-radius: 50%; }
+.legendValue { font-weight: 600; color: var(--color-text); }
+.legendPercent { color: var(--color-text-muted); font-size: 11px; margin-left: 6px; }
+
+.tableCard { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: var(--shadow-sm); }
+.tableHeader { font-size: var(--text-md); font-weight: 600; color: var(--color-text); margin-bottom: var(--space-4); }
+
+.skeleton { animation: pulse 1.5s infinite; background: var(--color-surface-2); border-radius: var(--radius-md); }
+@keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+.skeletonKpi { height: 100px; }
+.skeletonChart { height: 200px; }
+.skeletonTable { height: 300px; }
+
+.emptyState { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 24px; text-align: center; color: var(--color-text-secondary); background: var(--color-surface); border: 1px dashed var(--color-border); border-radius: var(--radius-lg); margin-top: var(--space-6); }

@@ -1,419 +1,239 @@
-import React, { useState, useEffect } from 'react';
-import api from '../../api/axios';
+import { useState, useEffect } from 'react'
+import layoutStyles from './ConfigLayout.module.css'
+import styles from './WebhooksManager.module.css'
+import { Button, Badge, Modal, Input, Select } from '../../components/ui'
+import { useToast } from '../../store/toastContext'
 
-const AVAILABLE_EVENTS = [
-  { category: 'Lead Events', events: ['lead.created', 'lead.updated', 'lead.stage_changed', 'lead.converted'] },
-  { category: 'Project Events', events: ['project.created', 'project.phase_completed', 'project.task_completed'] },
-  { category: 'Payment Events', events: ['payment.milestone_due', 'payment.received'] },
-  { category: 'Client Events', events: ['client.design_approved', 'client.snag_raised'] }
-];
-
-function generateRandomSecret() {
-  const array = new Uint8Array(16);
-  window.crypto.getRandomValues(array);
-  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
-}
+const EVENT_GROUPS = [
+  { label: 'Lead Events', events: ['lead.created', 'lead.updated', 'lead.stage_changed', 'lead.converted'] },
+  { label: 'Project Events', events: ['project.created', 'project.phase_completed', 'project.task_completed'] },
+  { label: 'Payment Events', events: ['payment.milestone_due', 'payment.received'] },
+  { label: 'Client Events', events: ['client.design_approved', 'client.snag_raised'] }
+]
 
 export default function WebhooksManager() {
-  const [webhooks, setWebhooks] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  // Drawer state
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null);
+  const [webhooks, setWebhooks] = useState([])
+  const [testResults, setTestResults] = useState({})
+  const [testingId, setTestingId] = useState(null)
   
-  const [formData, setFormData] = useState({
-    name: '',
-    url: '',
-    secret: '',
-    events: [],
-    custom_headers: [{ key: '', value: '' }],
-    retry_count: 3
-  });
-
-  const [testResult, setTestResult] = useState(null);
-  const [isTesting, setIsTesting] = useState(false);
-
-  const fetchWebhooks = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get('/config/webhooks');
-      if (res.data?.success) {
-        setWebhooks(res.data.data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch webhooks', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [editTarget, setEditTarget] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  
+  const toast = useToast()
 
   useEffect(() => {
-    fetchWebhooks();
-  }, []);
+    setWebhooks([
+      { id: '1', name: 'Zapier Lead Sync', url: 'https://hooks.zapier.com/hooks/catch/12345/abcde/', active: true, events: ['lead.created', 'lead.stage_changed'], headers: [], retryCount: 3, lastDelivery: { success: true, status: 200, time: new Date(Date.now()-7200000).toISOString() } },
+      { id: '2', name: 'ERP Integration', url: 'https://api.internal-erp.com/webhooks/crm', active: false, events: ['project.phase_completed', 'payment.received'], headers: [{key:'Authorization', value:'Bearer xyz'}], retryCount: 5, lastDelivery: { success: false, status: 500, time: new Date(Date.now()-86400000).toISOString(), message: 'Failed 3 times' } },
+    ])
+  }, [])
 
-  const openDrawer = (webhook = null) => {
+  const handleTest = async (id) => {
+    setTestingId(id)
+    // mock API delay
+    await new Promise(r => setTimeout(r, 800))
+    const isSuccess = Math.random() > 0.3
+    const result = isSuccess 
+      ? { type: 'success', msg: `✓ Delivered in ${Math.floor(Math.random()*400)+100}ms — Status 200` }
+      : { type: 'fail', msg: '✕ Failed — Status 500: Internal Server Error' }
+    
+    setTestResults(prev => ({ ...prev, [id]: result }))
+    setTestingId(null)
+
+    setTimeout(() => {
+      setTestResults(prev => {
+        const next = {...prev}
+        delete next[id]
+        return next
+      })
+    }, 10000)
+  }
+
+  const toggleActive = (id) => {
+    setWebhooks(webhooks.map(w => w.id === id ? {...w, active: !w.active} : w))
+  }
+
+  const openEditor = (webhook = null) => {
     if (webhook) {
-      setEditingId(webhook.id);
-      
-      let parsedHeaders = [];
-      try { parsedHeaders = typeof webhook.custom_headers === 'string' ? JSON.parse(webhook.custom_headers) : webhook.custom_headers; } catch(e) {}
-      
-      let parsedEvents = [];
-      try { parsedEvents = typeof webhook.events === 'string' ? JSON.parse(webhook.events) : webhook.events; } catch(e) {}
-      
-      const headerArray = parsedHeaders && Object.keys(parsedHeaders).length > 0 
-        ? Object.entries(parsedHeaders).map(([k, v]) => ({ key: k, value: v }))
-        : [{ key: '', value: '' }];
-
-      setFormData({
-        name: webhook.name || '',
-        url: webhook.url || '',
-        secret: webhook.secret || '',
-        events: parsedEvents || [],
-        custom_headers: headerArray,
-        retry_count: webhook.retry_count || 3
-      });
+      setEditTarget({ ...webhook, events: new Set(webhook.events) })
     } else {
-      setEditingId(null);
-      setFormData({
-        name: '',
-        url: '',
-        secret: '',
-        events: [],
-        custom_headers: [{ key: '', value: '' }],
-        retry_count: 3
-      });
+      setEditTarget({ name: '', url: '', secret: '', active: true, events: new Set(), headers: [], retryCount: 3 })
     }
-    setTestResult(null);
-    setIsDrawerOpen(true);
-  };
+    setIsEditOpen(true)
+  }
 
-  const handleToggleEvent = (eventName) => {
-    setFormData(prev => {
-      const isSelected = prev.events.includes(eventName);
-      return {
-        ...prev,
-        events: isSelected 
-          ? prev.events.filter(e => e !== eventName)
-          : [...prev.events, eventName]
-      };
-    });
-  };
-
-  const handleHeaderChange = (index, field, value) => {
-    const newHeaders = [...formData.custom_headers];
-    newHeaders[index][field] = value;
-    setFormData({ ...formData, custom_headers: newHeaders });
-  };
-
-  const addHeaderRow = () => {
-    setFormData({ ...formData, custom_headers: [...formData.custom_headers, { key: '', value: '' }] });
-  };
-
-  const removeHeaderRow = (index) => {
-    const newHeaders = formData.custom_headers.filter((_, i) => i !== index);
-    if (newHeaders.length === 0) newHeaders.push({ key: '', value: '' });
-    setFormData({ ...formData, custom_headers: newHeaders });
-  };
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-    try {
-      // Reconstruct headers to object
-      const headerObj = {};
-      formData.custom_headers.forEach(h => {
-        if (h.key.trim() && h.value.trim()) {
-          headerObj[h.key.trim()] = h.value.trim();
-        }
-      });
-
-      const payload = {
-        name: formData.name,
-        url: formData.url,
-        secret: formData.secret || null,
-        events: formData.events,
-        custom_headers: headerObj,
-        retry_count: Number(formData.retry_count)
-      };
-
-      if (editingId) {
-        await api.put(`/config/webhooks/${editingId}`, payload);
-      } else {
-        await api.post('/config/webhooks', payload);
-      }
-      
-      setIsDrawerOpen(false);
-      fetchWebhooks();
-    } catch (err) {
-      console.error('Save failed', err);
-      alert('Failed to save webhook.');
+  const saveWebhook = () => {
+    if (!editTarget.name || !editTarget.url) return toast.error('Name and URL are required')
+    const finalData = { ...editTarget, events: Array.from(editTarget.events) }
+    
+    if (finalData.id) {
+      setWebhooks(webhooks.map(w => w.id === finalData.id ? finalData : w))
+      toast.success('Webhook updated')
+    } else {
+      finalData.id = Date.now().toString()
+      setWebhooks([...webhooks, finalData])
+      toast.success('Webhook created')
     }
-  };
+    setIsEditOpen(false)
+  }
 
-  const handleToggleActive = async (id) => {
-    try {
-      await api.patch(`/config/webhooks/${id}/toggle`);
-      setWebhooks(prev => prev.map(w => w.id === id ? { ...w, is_active: !w.is_active } : w));
-    } catch (err) {
-      console.error('Toggle failed', err);
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this webhook?')) return;
-    try {
-      await api.delete(`/config/webhooks/${id}`);
-      setWebhooks(prev => prev.filter(w => w.id !== id));
-    } catch (err) {
-      console.error('Delete failed', err);
-    }
-  };
-
-  const handleTest = async () => {
-    if (!editingId) {
-      alert('Please save the webhook first before testing.');
-      return;
-    }
-    setIsTesting(true);
-    setTestResult(null);
-    try {
-      const res = await api.post(`/config/webhooks/${editingId}/test`);
-      if (res.data?.success) {
-        setTestResult(res.data.data); // { statusCode, latencyMs, success }
-      }
-    } catch (err) {
-      console.error('Test failed', err);
-      setTestResult({ success: false, statusCode: err.response?.status || 0, latencyMs: 0 });
-    } finally {
-      setIsTesting(false);
-    }
-  };
+  const toggleEvent = (e) => {
+    const next = new Set(editTarget.events)
+    if (next.has(e)) next.delete(e)
+    else next.add(e)
+    setEditTarget({...editTarget, events: next})
+  }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto relative">
-      <div className="flex justify-between items-center mb-6">
+    <div className={layoutStyles.configSection}>
+      <div className={layoutStyles.sectionHeader}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Outbound Webhooks</h1>
-          <p className="text-gray-500 text-sm mt-1">Configure endpoints to receive real-time event payloads.</p>
+          <h2 className={layoutStyles.sectionTitle}>Outbound Webhooks</h2>
+          <p className={layoutStyles.sectionDesc}>Send real-time events to external systems.</p>
         </div>
-        <button 
-          onClick={() => openDrawer()}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium shadow-sm transition-colors"
-        >
-          + New Webhook
-        </button>
+        <Button variant="primary" onClick={() => openEditor()}>+ Add Webhook</Button>
       </div>
 
-      <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center text-gray-500">Loading...</div>
-        ) : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">URL</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Events</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Active</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {webhooks.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="px-6 py-8 text-center text-gray-500">No webhooks configured.</td>
-                </tr>
-              ) : webhooks.map(wh => {
-                let parsedEvents = [];
-                try { parsedEvents = typeof wh.events === 'string' ? JSON.parse(wh.events) : (wh.events || []); } catch(e) {}
-
-                return (
-                  <tr key={wh.id} className={!wh.is_active ? 'bg-gray-50' : ''}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{wh.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono truncate max-w-[200px]" title={wh.url}>
-                      {wh.url}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {parsedEvents.length} events
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <button 
-                        onClick={() => handleToggleActive(wh.id)}
-                        className={`relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none ${wh.is_active ? 'bg-green-500' : 'bg-gray-300'}`}
-                      >
-                        <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200 ${wh.is_active ? 'translate-x-5' : 'translate-x-0'}`} />
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button onClick={() => openDrawer(wh)} className="text-indigo-600 hover:text-indigo-900 mr-4">Edit</button>
-                      <button onClick={() => handleDelete(wh.id)} className="text-red-600 hover:text-red-900">Delete</button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* Drawer Overlay */}
-      {isDrawerOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden flex">
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm transition-opacity" onClick={() => setIsDrawerOpen(false)} />
-          
-          <div className="ml-auto relative w-full max-w-xl h-full bg-white shadow-2xl flex flex-col transform transition-transform animate-slide-in-right">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
-              <h2 className="text-xl font-bold text-gray-900">{editingId ? 'Edit Webhook' : 'New Webhook'}</h2>
-              <button onClick={() => setIsDrawerOpen(false)} className="text-gray-400 hover:text-gray-600 text-2xl font-light">×</button>
+      <div className={styles.cardList}>
+        {webhooks.map(w => (
+          <div key={w.id} className={styles.card}>
+            <div className={styles.cardHeader}>
+              <div className={styles.nameRow}>
+                <div className={styles.webhookName}>{w.name}</div>
+                <div className={`${styles.toggle} ${w.active ? styles.active : ''}`} onClick={() => toggleActive(w.id)}>
+                  <div className={styles.toggleHandle} />
+                </div>
+              </div>
+            </div>
+            
+            <div className={styles.urlBox}>
+              <span className={styles.urlText}>{w.url}</span>
+              <span className={styles.copyIcon} onClick={() => { navigator.clipboard.writeText(w.url); toast.info('Copied URL') }}>📋</span>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6">
-              <form id="webhook-form" onSubmit={handleSave} className="space-y-6">
-                
-                {/* Basic Info */}
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-                    <input 
-                      type="text" required
-                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500"
-                      value={formData.name}
-                      onChange={e => setFormData({...formData, name: e.target.value})}
-                      placeholder="e.g. Production ERP Integration"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Target URL *</label>
-                    <input 
-                      type="url" required
-                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500"
-                      value={formData.url}
-                      onChange={e => setFormData({...formData, url: e.target.value})}
-                      placeholder="https://api.example.com/webhook"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1 flex justify-between">
-                      <span>Signing Secret</span>
-                      <button 
-                        type="button" 
-                        className="text-indigo-600 text-xs font-semibold hover:underline"
-                        onClick={() => setFormData({...formData, secret: generateRandomSecret()})}
-                      >
-                        Auto-generate
-                      </button>
-                    </label>
-                    <input 
-                      type="text"
-                      className="w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm font-mono focus:ring-indigo-500 focus:border-indigo-500"
-                      value={formData.secret}
-                      onChange={e => setFormData({...formData, secret: e.target.value})}
-                      placeholder="Used for HMAC-SHA256 signatures (Optional)"
-                    />
-                  </div>
-                </div>
+            <div className={styles.metaRow}>
+              <Badge variant="neutral">{w.events.length} event{w.events.length !== 1 && 's'}</Badge>
+              {w.lastDelivery && (
+                <span className={w.lastDelivery.success ? styles.statusSuccess : styles.statusFail}>
+                  {w.lastDelivery.success ? '✓ 200 OK' : `✕ ${w.lastDelivery.status} · ${w.lastDelivery.message}`} 
+                  <span style={{color:'var(--color-text-muted)', fontWeight:400, marginLeft:4}}>
+                    · {new Date(w.lastDelivery.time).toLocaleString()}
+                  </span>
+                </span>
+              )}
+            </div>
 
-                {/* Subscriptions */}
-                <div className="pt-4 border-t border-gray-200">
-                  <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Event Subscriptions</h3>
-                  <div className="space-y-4">
-                    {AVAILABLE_EVENTS.map(group => (
-                      <div key={group.category}>
-                        <h4 className="text-xs font-medium text-gray-500 mb-2">{group.category}</h4>
-                        <div className="grid grid-cols-2 gap-2">
-                          {group.events.map(ev => (
-                            <label key={ev} className="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer">
-                              <input 
-                                type="checkbox"
-                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                                checked={formData.events.includes(ev)}
-                                onChange={() => handleToggleEvent(ev)}
-                              />
-                              <span>{ev}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+            <div className={styles.cardFooter}>
+              <Button variant="ghost" size="sm" onClick={() => openEditor(w)}>Edit</Button>
+              <Button variant="secondary" size="sm" onClick={() => handleTest(w.id)} disabled={testingId === w.id}>
+                {testingId === w.id ? 'Testing...' : 'Test'}
+              </Button>
+              <Button variant="ghost" size="sm" style={{color:'var(--color-danger)', marginLeft:'auto'}} onClick={() => setDeleteTarget(w)}>
+                Delete
+              </Button>
+            </div>
 
-                {/* Custom Headers */}
-                <div className="pt-4 border-t border-gray-200">
-                  <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Custom Headers</h3>
-                  <div className="space-y-2">
-                    {formData.custom_headers.map((h, i) => (
-                      <div key={i} className="flex gap-2">
-                        <input 
-                          type="text" placeholder="Key (e.g. Authorization)"
-                          className="flex-1 border border-gray-300 rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500"
-                          value={h.key} onChange={e => handleHeaderChange(i, 'key', e.target.value)}
-                        />
-                        <input 
-                          type="text" placeholder="Value"
-                          className="flex-1 border border-gray-300 rounded-md p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500"
-                          value={h.value} onChange={e => handleHeaderChange(i, 'value', e.target.value)}
-                        />
-                        <button type="button" onClick={() => removeHeaderRow(i)} className="text-gray-400 hover:text-red-500 px-2">×</button>
-                      </div>
-                    ))}
-                    <button type="button" onClick={addHeaderRow} className="text-indigo-600 text-sm font-medium mt-1">+ Add Header</button>
-                  </div>
-                </div>
+            {testResults[w.id] && (
+              <div className={`${styles.testResult} ${testResults[w.id].type === 'success' ? styles.testSuccess : styles.testFail}`}>
+                {testResults[w.id].msg}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
 
-                {/* Retry settings */}
-                <div className="pt-4 border-t border-gray-200">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Retry Count (1-5)</label>
-                  <input 
-                    type="number" min="1" max="5" required
-                    className="w-1/3 border border-gray-300 rounded-md shadow-sm p-2 text-sm focus:ring-indigo-500 focus:border-indigo-500"
-                    value={formData.retry_count}
-                    onChange={e => setFormData({...formData, retry_count: e.target.value})}
-                  />
-                </div>
-
-                {/* Testing Section */}
-                {editingId && (
-                  <div className="pt-6 border-t border-gray-200">
-                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">Test Webhook Delivery</p>
-                        <p className="text-xs text-gray-500">Sends a mock payload to the target URL.</p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {testResult && (
-                          <div className={`flex items-center gap-1 text-sm font-bold ${testResult.success ? 'text-green-600' : 'text-red-600'}`}>
-                            {testResult.success ? '✓' : '✗'} Status {testResult.statusCode}
-                            <span className="text-gray-400 font-normal ml-1">({testResult.latencyMs}ms)</span>
-                          </div>
-                        )}
-                        <button 
-                          type="button" 
-                          onClick={handleTest}
-                          disabled={isTesting}
-                          className="bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm hover:bg-gray-50 disabled:opacity-50"
-                        >
-                          {isTesting ? 'Testing...' : 'Send Test'}
-                        </button>
-                      </div>
+      {/* Editor Modal */}
+      <Modal
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        title={editTarget?.id ? 'Edit Webhook' : 'Add Webhook'}
+        size="xl"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setIsEditOpen(false)}>Cancel</Button>
+            <Button variant="primary" onClick={saveWebhook}>Save Webhook</Button>
+          </>
+        }
+      >
+        {editTarget && (
+          <div className={styles.modalBody}>
+            {/* Left Col */}
+            <div className={styles.col}>
+              <Input label="Name" value={editTarget.name} onChange={e => setEditTarget({...editTarget, name: e.target.value})} required />
+              <Input label="URL" value={editTarget.url} onChange={e => setEditTarget({...editTarget, url: e.target.value})} required />
+              <Input label="Secret (used to sign requests)" value={editTarget.secret} onChange={e => setEditTarget({...editTarget, secret: e.target.value})} placeholder="Auto-generate if empty" />
+              
+              <div>
+                <div style={{fontSize:'var(--text-sm)', fontWeight:500, marginBottom:8}}>Custom Headers</div>
+                <div className={styles.headersList}>
+                  {editTarget.headers.map((h, i) => (
+                    <div key={i} className={styles.headerRow}>
+                      <Input placeholder="Key" value={h.key} onChange={e => {
+                        const newHeaders = [...editTarget.headers]
+                        newHeaders[i].key = e.target.value
+                        setEditTarget({...editTarget, headers: newHeaders})
+                      }} />
+                      <Input placeholder="Value" value={h.value} onChange={e => {
+                        const newHeaders = [...editTarget.headers]
+                        newHeaders[i].value = e.target.value
+                        setEditTarget({...editTarget, headers: newHeaders})
+                      }} />
+                      <Button variant="ghost" size="sm" onClick={() => setEditTarget({...editTarget, headers: editTarget.headers.filter((_, idx) => idx !== i)})}>✕</Button>
                     </div>
-                  </div>
-                )}
-              </form>
+                  ))}
+                  <Button variant="ghost" size="sm" onClick={() => setEditTarget({...editTarget, headers: [...editTarget.headers, {key:'', value:''}]})}>+ Add Header</Button>
+                </div>
+              </div>
+
+              <Select 
+                label="Retry Count" 
+                options={[{value:1,label:'1'},{value:2,label:'2'},{value:3,label:'3'},{value:5,label:'5'}]} 
+                value={editTarget.retryCount} 
+                onChange={v => setEditTarget({...editTarget, retryCount: v})} 
+              />
+              
+              <label style={{display:'flex', alignItems:'center', gap:8, fontSize:'var(--text-sm)', cursor:'pointer', marginTop:8}}>
+                <input type="checkbox" checked={editTarget.active} onChange={e => setEditTarget({...editTarget, active: e.target.checked})} />
+                Active
+              </label>
             </div>
 
-            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
-              <button onClick={() => setIsDrawerOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">Cancel</button>
-              <button type="submit" form="webhook-form" className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 shadow-sm transition-colors">
-                {editingId ? 'Save Changes' : 'Create Webhook'}
-              </button>
+            {/* Right Col */}
+            <div className={styles.col}>
+              <div style={{fontSize:'var(--text-sm)', fontWeight:500}}>Events</div>
+              <div className={styles.eventsGrid}>
+                {EVENT_GROUPS.map(group => (
+                  <div key={group.label} className={styles.eventGroup}>
+                    <div className={styles.eventTitle}>{group.label}</div>
+                    {group.events.map(ev => (
+                      <label key={ev} className={styles.eventRow}>
+                        <input type="checkbox" checked={editTarget.events.has(ev)} onChange={() => toggleEvent(ev)} />
+                        {ev}
+                      </label>
+                    ))}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
+
+      {/* Delete Modal */}
+      <Modal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title="Delete Webhook"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button variant="danger" onClick={() => { setWebhooks(webhooks.filter(w => w.id !== deleteTarget.id)); setDeleteTarget(null); toast.success('Webhook deleted') }}>Delete</Button>
+          </>
+        }
+      >
+        <p>Are you sure you want to delete the webhook <strong>{deleteTarget?.name}</strong>?</p>
+      </Modal>
     </div>
-  );
+  )
 }

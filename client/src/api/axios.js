@@ -18,6 +18,11 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Helper for triggering global toasts from outside React
+const triggerToast = (type, message, duration = 4000) => {
+  window.dispatchEvent(new CustomEvent('app:toast', { detail: { type, message, duration } }));
+};
+
 // RESPONSE interceptor
 api.interceptors.response.use(
   (response) => response,
@@ -25,7 +30,22 @@ api.interceptors.response.use(
     // On network error: reject with { code: 'NETWORK_ERROR' }
     if (!error.response) {
       window.dispatchEvent(new CustomEvent('app:network-error'));
+      triggerToast('error', 'Network error. Check your connection.', 6000);
       return Promise.reject({ code: 'NETWORK_ERROR', message: 'Network error or server unreachable', originalError: error });
+    }
+
+    if (error.response.status === 422) {
+      // Stage gate error — let the component handle it specifically
+      return Promise.reject(error);
+    }
+    if (error.response.status === 403) {
+      // Permission error — show toast
+      triggerToast('error', 'You do not have permission to do that.', 6000);
+      return Promise.reject(error);
+    }
+    if (error.response.status === 429) {
+      triggerToast('error', 'Too many requests. Please wait a moment.', 6000);
+      return Promise.reject(error);
     }
 
     const originalRequest = error.config;

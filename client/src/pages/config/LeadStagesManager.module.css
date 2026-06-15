@@ -1,0 +1,39 @@
+.list { display:flex; flex-direction:column; gap:var(--space-2); }
+.stageCard {
+  display:flex; align-items:center; gap:var(--space-3);
+  padding:var(--space-3) var(--space-4);
+  background:var(--color-surface); border:1px solid var(--color-border);
+  border-radius:var(--radius-lg); transition:var(--transition-fast);
+}
+.stageCard:hover { border-color:var(--color-border-strong); box-shadow:var(--shadow-sm); }
+.dragHandle { color:var(--color-text-muted); cursor:grab; display:flex; padding:4px; opacity:0; transition:opacity 0.2s; }
+.stageCard:hover .dragHandle { opacity:1; }
+.dragHandle:active { cursor:grabbing; }
+
+.colourDotWrapper { position:relative; }
+.colourDot { width:16px; height:16px; border-radius:50%; cursor:pointer; flex-shrink:0; border:2px solid transparent; }
+.colourDot:hover { box-shadow:0 0 0 2px var(--color-surface-2), 0 0 0 4px var(--color-border); }
+
+.pickerBackdrop { position:fixed; inset:0; z-index:90; }
+.colourPicker {
+  position:absolute; top:calc(100% + 8px); left:0; z-index:100;
+  background:var(--color-surface); border:1px solid var(--color-border);
+  border-radius:var(--radius-md); box-shadow:var(--shadow-lg);
+  padding:var(--space-3); display:grid; grid-template-columns:repeat(4, 1fr); gap:var(--space-2);
+}
+.pickerDot { width:24px; height:24px; border-radius:50%; cursor:pointer; transition:transform 0.1s; }
+.pickerDot:hover { transform:scale(1.1); }
+
+.nameInput {
+  font-size:var(--text-base); font-weight:500; color:var(--color-text);
+  border:1px solid transparent; background:transparent; padding:4px 8px;
+  border-radius:var(--radius-sm); outline:none; transition:var(--transition-fast);
+  flex:1; max-width:300px;
+}
+.nameInput:hover { border-color:var(--color-border); background:var(--color-surface-2); }
+.nameInput:focus { border-color:var(--color-accent); background:var(--color-surface); }
+
+.chip { font-size:11px; padding:2px 8px; border-radius:var(--radius-full); background:var(--color-surface-2); color:var(--color-text-secondary); white-space:nowrap; }
+
+.actions { display:flex; align-items:center; gap:var(--space-2); margin-left:auto; opacity:0; transition:opacity 0.2s; }
+.stageCard:hover .actions { opacity:1; }

@@ -1,27 +1,29 @@
-import React from 'react';
-import ErrorFallback from './ui/ErrorFallback';
+import { Component } from 'react'
+import ErrorFallback from './ErrorFallback'
 
-export default class ErrorBoundary extends React.Component {
-  state = { hasError: false, error: null };
+class ErrorBoundary extends Component {
+  state = { hasError: false, error: null, errorInfo: null }
 
   static getDerivedStateFromError(error) {
-    return { hasError: true, error };
+    return { hasError: true, error }
   }
 
-  componentDidCatch(error, info) {
-    console.error('Boundary caught:', error, info);
+  componentDidCatch(error, errorInfo) {
+    console.error('ErrorBoundary caught:', error, errorInfo)
+    // In production: Sentry.captureException(error, { extra: errorInfo })
+    this.setState({ errorInfo })
+  }
+
+  handleReset = () => {
+    this.setState({ hasError: false, error: null, errorInfo: null })
   }
 
   render() {
     if (this.state.hasError) {
-      return (
-        <ErrorFallback 
-          error={this.state.error} 
-          onReset={() => this.setState({ hasError: false, error: null })} 
-        />
-      );
+      return <ErrorFallback error={this.state.error} onReset={this.handleReset} />
     }
-
-    return this.props.children;
+    return this.props.children
   }
 }
+
+export default ErrorBoundary

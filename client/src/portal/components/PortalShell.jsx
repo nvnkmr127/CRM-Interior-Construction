@@ -1,55 +1,56 @@
-import React, { useEffect, useState } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
-import { usePortalAuth } from '../store/portalAuthContext';
-import './PortalShell.css';
+import { NavLink } from 'react-router-dom'
+import styles from './PortalShell.module.css'
+import { usePortalAuth } from '../store/portalAuthContext'
 
-export default function PortalShell() {
-  const { logout, clientName } = usePortalAuth();
-  const location = useLocation();
-  const [branding, setBranding] = useState({ name: 'CRM Portal', accentColor: '#3b82f6' });
+const NAV_ITEMS = [
+  { path: '/portal/overview', label: 'Overview', icon: '🏠' },
+  { path: '/portal/approvals', label: 'Approvals', icon: '📋' },
+  { path: '/portal/documents', label: 'Documents', icon: '📁' },
+  { path: '/portal/snags', label: 'Snags', icon: '🔧' }
+]
 
-  useEffect(() => {
-    fetch('/api/portal/branding')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) setBranding(data.data);
-      })
-      .catch(console.error);
-  }, []);
-
-  const navItems = [
-    { path: '/portal/project', label: 'Overview' },
-    { path: '/portal/approvals', label: 'Approvals' },
-    { path: '/portal/snags', label: 'Snags' },
-    { path: '/portal/documents', label: 'Documents' }
-  ];
+export default function PortalShell({ children }) {
+  const { portalUser, logout } = usePortalAuth()
 
   return (
-    <div className="portal-shell">
-      <header className="portal-header" style={{ borderBottomColor: branding.accentColor }}>
-        <div className="portal-header-left">
-          <div className="portal-logo" style={{ color: branding.accentColor }}>{branding.name}</div>
-          <div className="portal-welcome">Welcome, {clientName}</div>
+    <div className={styles.shell}>
+      <header className={styles.topnav}>
+        <div className={styles.brand}>
+          <div className={styles.brandMark}>A</div>
+          <span className={styles.brandName}>Antigravity</span>
+          {portalUser && <span className={styles.projectName}>| {portalUser.name}'s Project</span>}
         </div>
-        <button className="portal-logout-btn" onClick={logout}>Logout</button>
+
+        <nav className={styles.nav}>
+          {NAV_ITEMS.map(item => (
+            <NavLink 
+              key={item.path} 
+              to={item.path}
+              className={({isActive}) => `${styles.navBtn} ${isActive ? styles.active : ''}`}
+            >
+              {item.label}
+            </NavLink>
+          ))}
+          <button className={styles.logoutBtn} onClick={logout}>Sign out</button>
+        </nav>
       </header>
 
-      <main className="portal-main">
-        <Outlet />
+      <main className={styles.main}>
+        {children}
       </main>
 
-      <nav className="portal-bottom-nav">
-        {navItems.map(item => (
-          <Link 
+      <nav className={styles.bottomNav}>
+        {NAV_ITEMS.map(item => (
+          <NavLink 
             key={item.path} 
             to={item.path}
-            className={`portal-nav-item ${location.pathname.startsWith(item.path) ? 'active' : ''}`}
-            style={{ color: location.pathname.startsWith(item.path) ? branding.accentColor : 'inherit' }}
+            className={({isActive}) => `${styles.tabBtn} ${isActive ? styles.active : ''}`}
           >
-            {item.label}
-          </Link>
+            <span className={styles.tabIcon}>{item.icon}</span>
+            <span className={styles.tabLabel}>{item.label}</span>
+          </NavLink>
         ))}
       </nav>
     </div>
-  );
+  )
 }

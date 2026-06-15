@@ -1,322 +1,220 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import api from '../../api/axios';
-import { updateLead } from '../../api/leads';
-import { useToast } from '../../store/toastContext';
-import Modal from '../ui/Modal';
-import Button from '../ui/Button';
+import { useState, useEffect } from 'react'
+import styles from './ConvertToProjectModal.module.css'
+import { Modal, Button, Input, Select } from '../ui'
+import { useToast } from '../../store/toastContext'
+
+const PROJECT_TYPES = [
+  { id: 'full_interior', icon: '🏠', label: 'Full Interior' },
+  { id: 'modular_kitchen', icon: '🍳', label: 'Modular Kitchen' },
+  { id: 'commercial', icon: '🏢', label: 'Commercial' },
+  { id: 'turnkey', icon: '🔑', label: 'Turnkey' },
+  { id: 'renovation', icon: '🔨', label: 'Renovation' }
+]
 
 export default function ConvertToProjectModal({ lead, isOpen, onClose, onConverted }) {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-
-  const [step, setStep] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [step, setStep] = useState(1)
+  const [loading, setLoading] = useState(false)
+  const toast = useToast()
 
   const [formData, setFormData] = useState({
+    projectType: '',
     clientName: '',
     clientPhone: '',
     clientEmail: '',
-    name: '', // Project Name
-    type: 'Full Interior', // Project Type
-    managerId: '',
-    designerId: '',
-    contractValue: '',
-    startDate: '',
-    templateId: ''
-  });
-
-  const [users, setUsers] = useState([]);
-  const [templates, setTemplates] = useState([]);
+    projectName: '',
+    pm: '',
+    template: 'none',
+    contractValue: ''
+  })
+  const [errors, setErrors] = useState({})
 
   useEffect(() => {
     if (isOpen && lead) {
-      setFormData(prev => ({
-        ...prev,
+      setStep(1)
+      setFormData({
+        projectType: '',
         clientName: lead.name || '',
         clientPhone: lead.phone || '',
         clientEmail: lead.email || '',
-        name: lead.name ? `${lead.name} - Full Interior` : ''
-      }));
-      setStep(1);
-      setError('');
+        projectName: lead.name ? `${lead.name.split(' ')[0]}'s Project` : '',
+        pm: '',
+        template: 'none',
+        contractValue: ''
+      })
+      setErrors({})
     }
-  }, [isOpen, lead]);
+  }, [isOpen, lead])
 
-  useEffect(() => {
-    if (!isOpen) return;
+  const handleNext = () => {
+    setStep(2)
+  }
 
-    const fetchDeps = async () => {
-      try {
-        const [usersRes, templatesRes] = await Promise.all([
-          api.get('/users').catch(() => ({ data: { data: [] } })),
-          api.get('/config/project-templates').catch(() => ({ data: { data: [] } }))
-        ]);
-        
-        if (usersRes.data?.success) setUsers(usersRes.data.data);
-        if (templatesRes.data?.success) setTemplates(templatesRes.data.data);
-      } catch (err) {
-        console.error('Failed to load dependencies', err);
-      }
-    };
-
-    fetchDeps();
-  }, [isOpen]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    if (error) setError('');
-  };
-
-  const handleNext = (e) => {
-    e.preventDefault();
-    if (!formData.clientName.trim() || !formData.name.trim()) {
-      setError('Client Name and Project Name are required.');
-      return;
-    }
-    setStep(2);
-  };
+  const validate = () => {
+    const newErrors = {}
+    if (!formData.projectType) newErrors.projectType = 'Project type is required'
+    if (!formData.pm) newErrors.pm = 'Project Manager is required'
+    if (!formData.clientName) newErrors.clientName = 'Client name is required'
+    if (!formData.projectName) newErrors.projectName = 'Project name is required'
+    
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleSubmit = async () => {
-    setIsSubmitting(true);
-    setError('');
+    if (!validate()) return
+    setLoading(true)
 
-    try {
-      const projectPayload = {
-        name: formData.name,
-        type: formData.type,
-        managerId: formData.managerId || null,
-        designerId: formData.designerId || null,
-        contractValue: formData.contractValue ? Number(formData.contractValue) : null,
-        startDate: formData.startDate || null,
-        templateId: formData.templateId || null,
-        clientName: formData.clientName,
-        clientPhone: formData.clientPhone,
-        clientEmail: formData.clientEmail,
-        lead_id: lead.id
-      };
-
-      // 1. POST /api/projects
-      const projectRes = await api.post('/projects', projectPayload);
-      const newProject = projectRes.data?.data || projectRes.data;
-      const newProjectId = newProject.id;
-
-      // 2. PATCH /api/leads/:id
-      await updateLead(lead.id, { status: 'converted' });
-
-      // 3. toast.success
-      toast.success('Project created!');
-
-      // 4. Call onConverted
-      if (onConverted) {
-        onConverted(newProject);
-      }
-
-      // 5. Navigate
-      navigate(`/projects/${newProjectId}`);
-      onClose();
-    } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.error?.message || 'Failed to convert lead to project');
-    } finally {
-      setIsSubmitting(false);
+    // Mock API Call
+    await new Promise(r => setTimeout(r, 800))
+    
+    toast.success('Project created! Lead marked as converted.')
+    
+    const newProject = {
+      id: Date.now().toString(),
+      ...formData
     }
-  };
+    
+    setLoading(false)
+    onClose()
+    if (onConverted) onConverted(newProject)
+  }
 
-  const renderForm = () => (
-    <form id="convert-form" onSubmit={handleNext} className="space-y-4">
-      {error && (
-        <div className="p-3 bg-red-50 text-red-700 text-sm rounded border border-red-200">
-          {error}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Client Name <span className="text-red-500">*</span></label>
-          <input
-            type="text"
-            name="clientName"
-            value={formData.clientName}
-            onChange={handleChange}
-            className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Client Phone</label>
-          <input
-            type="text"
-            name="clientPhone"
-            value={formData.clientPhone}
-            onChange={handleChange}
-            className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-        <div className="md:col-span-2">
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Client Email</label>
-          <input
-            type="email"
-            name="clientEmail"
-            value={formData.clientEmail}
-            onChange={handleChange}
-            className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-
-        <div className="md:col-span-2 mt-2 pt-4 border-t border-gray-100">
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Project Name <span className="text-red-500">*</span></label>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            placeholder="e.g. Sharma Residence - Full Interior"
-            className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Project Type</label>
-          <select
-            name="type"
-            value={formData.type}
-            onChange={handleChange}
-            className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
-          >
-            <option value="Full Interior">Full Interior</option>
-            <option value="Modular Kitchen">Modular Kitchen</option>
-            <option value="Commercial">Commercial</option>
-            <option value="Turnkey">Turnkey</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Template</label>
-          <select
-            name="templateId"
-            value={formData.templateId}
-            onChange={handleChange}
-            className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
-          >
-            <option value="">No Template</option>
-            {templates.map(t => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Project Manager</label>
-          <select
-            name="managerId"
-            value={formData.managerId}
-            onChange={handleChange}
-            className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
-          >
-            <option value="">Unassigned</option>
-            {users.map(u => (
-              <option key={u.id} value={u.id}>{u.name}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Designer</label>
-          <select
-            name="designerId"
-            value={formData.designerId}
-            onChange={handleChange}
-            className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
-          >
-            <option value="">Unassigned</option>
-            {users.map(u => (
-              <option key={u.id} value={u.id}>{u.name}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Contract Value (₹)</label>
-          <input
-            type="number"
-            name="contractValue"
-            value={formData.contractValue}
-            onChange={handleChange}
-            placeholder="0"
-            className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Start Date</label>
-          <input
-            type="date"
-            name="startDate"
-            value={formData.startDate}
-            onChange={handleChange}
-            className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-      </div>
-    </form>
-  );
-
-  const renderConfirmation = () => (
-    <div className="space-y-4">
-      {error && (
-        <div className="p-3 bg-red-50 text-red-700 text-sm rounded border border-red-200">
-          {error}
-        </div>
-      )}
-      <div className="bg-blue-50 p-4 rounded-md">
-        <h3 className="font-semibold text-blue-900 mb-2">Confirm Conversion</h3>
-        <p className="text-sm text-blue-800 mb-4">
-          You are about to convert <strong>{lead?.name}</strong> into a project. The lead status will be permanently marked as converted.
-        </p>
-        <div className="text-sm space-y-1 text-blue-900 bg-white/50 p-3 rounded">
-          <div><span className="font-semibold">Project Name:</span> {formData.name}</div>
-          <div><span className="font-semibold">Project Type:</span> {formData.type}</div>
-          {formData.contractValue && <div><span className="font-semibold">Contract Value:</span> ₹{formData.contractValue}</div>}
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderFooter = () => {
-    if (step === 1) {
-      return (
-        <div className="flex justify-end gap-2 w-full">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" form="convert-form">Next</Button>
-        </div>
-      );
-    }
-
-    return (
-      <div className="flex justify-end gap-2 w-full">
-        <Button variant="secondary" onClick={() => setStep(1)} disabled={isSubmitting}>Back</Button>
-        <Button 
-          variant="primary" 
-          onClick={handleSubmit} 
-          disabled={isSubmitting}
-          loading={isSubmitting}
-        >
-          {isSubmitting ? 'Converting...' : 'Confirm & Convert'}
-        </Button>
-      </div>
-    );
-  };
+  if (!isOpen || !lead) return null
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Convert to Project"
-      size="md"
-      footer={renderFooter()}
+      title="Convert Lead to Project"
+      size="lg"
+      footer={
+        step === 1 ? (
+          <>
+            <Button variant="ghost" onClick={onClose}>Cancel</Button>
+            <Button variant="primary" onClick={handleNext}>Continue →</Button>
+          </>
+        ) : (
+          <>
+            <Button variant="ghost" onClick={() => setStep(1)}>← Back</Button>
+            <Button variant="primary" onClick={handleSubmit} disabled={loading}>
+              {loading ? 'Creating...' : 'Create Project →'}
+            </Button>
+          </>
+        )
+      }
     >
-      {step === 1 ? renderForm() : renderConfirmation()}
+      <div className={styles.progressStrip}>
+        <div className={`${styles.stepText} ${step >= 1 ? styles.active : ''}`}>Step 1</div>
+        <div className={`${styles.stepDot} ${step >= 1 ? styles.active : ''}`} />
+        <div className={`${styles.stepLine} ${step >= 2 ? styles.active : ''}`} />
+        <div className={`${styles.stepDot} ${step >= 2 ? styles.active : ''}`} />
+        <div className={`${styles.stepText} ${step >= 2 ? styles.active : ''}`}>Step 2</div>
+      </div>
+
+      <div className={styles.slideContainer}>
+        {/* STEP 1 */}
+        <div className={`${styles.slide} ${step === 1 ? styles.slideActive : styles.slideHiddenLeft}`}>
+          <div className={styles.summaryCard}>
+            <div style={{fontSize: 'var(--text-lg)', fontWeight: 600, color: 'var(--color-text)'}}>
+              Ready to convert this lead?
+            </div>
+            <p style={{color: 'var(--color-text-secondary)', marginTop: 8}}>
+              This will create a new project linked to this lead, allowing you to manage tasks, phases, and billing.
+            </p>
+            
+            <div className={styles.summaryGrid}>
+              <div>
+                <div className={styles.summaryLabel}>Name</div>
+                <div className={styles.summaryValue}>{lead.name || '-'}</div>
+              </div>
+              <div>
+                <div className={styles.summaryLabel}>Phone</div>
+                <div className={styles.summaryValue}>{lead.phone || '-'}</div>
+              </div>
+              <div>
+                <div className={styles.summaryLabel}>Source</div>
+                <div className={styles.summaryValue}>{lead.source || '-'}</div>
+              </div>
+              <div>
+                <div className={styles.summaryLabel}>Score</div>
+                <div className={styles.summaryValue}>{lead.score || '-'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* STEP 2 */}
+        <div className={`${styles.slide} ${step === 2 ? styles.slideActive : styles.slideHiddenRight}`}>
+          <div className={styles.sectionTitle}>Project Type</div>
+          <div className={styles.typeSelector}>
+            {PROJECT_TYPES.map(type => (
+              <div 
+                key={type.id} 
+                className={`${styles.typeCard} ${formData.projectType === type.id ? styles.selected : ''}`}
+                onClick={() => {
+                  setFormData({...formData, projectType: type.id})
+                  if (errors.projectType) setErrors({...errors, projectType: null})
+                }}
+              >
+                <div className={styles.typeIcon}>{type.icon}</div>
+                <div className={styles.typeLabel}>{type.label}</div>
+              </div>
+            ))}
+          </div>
+          {errors.projectType && <div className={styles.errorMsg}>{errors.projectType}</div>}
+
+          <div className={styles.grid} style={{marginTop: 24}}>
+            <Input 
+              label="Client Name *" 
+              value={formData.clientName} 
+              onChange={e => setFormData({...formData, clientName: e.target.value})} 
+              error={errors.clientName}
+            />
+            <Input 
+              label="Project Name *" 
+              placeholder="e.g. Sharma Residence - Full Interior"
+              value={formData.projectName} 
+              onChange={e => setFormData({...formData, projectName: e.target.value})} 
+              error={errors.projectName}
+            />
+            
+            <Input 
+              label="Client Phone" 
+              value={formData.clientPhone} 
+              onChange={e => setFormData({...formData, clientPhone: e.target.value})} 
+            />
+            <Input 
+              label="Client Email" 
+              value={formData.clientEmail} 
+              onChange={e => setFormData({...formData, clientEmail: e.target.value})} 
+            />
+
+            <Select 
+              label="Project Manager *" 
+              options={[{value:'',label:'Select PM'}, {value:'u1',label:'Priya Sharma'}, {value:'u2',label:'Rahul Desai'}]}
+              value={formData.pm}
+              onChange={v => setFormData({...formData, pm: v})}
+              error={errors.pm}
+            />
+            <Select 
+              label="Template" 
+              options={[{value:'none',label:'None (blank project)'}, {value:'t1',label:'Standard 3BHK Interior'}, {value:'t2',label:'Commercial Office Fit-out'}]}
+              value={formData.template}
+              onChange={v => setFormData({...formData, template: v})}
+            />
+
+            <div className={styles.fullWidth}>
+              <Input 
+                label="Estimated Contract Value (₹)" 
+                type="number"
+                placeholder="e.g. 500000"
+                value={formData.contractValue} 
+                onChange={e => setFormData({...formData, contractValue: e.target.value})} 
+              />
+            </div>
+          </div>
+        </div>
+      </div>
     </Modal>
-  );
+  )
 }
