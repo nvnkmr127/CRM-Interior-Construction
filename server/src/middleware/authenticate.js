@@ -1,5 +1,5 @@
 const { verifyAccessToken, TokenExpiredError } = require('../services/auth/tokens');
-
+const authenticateApiKey = require('./authenticateApiKey');
 /**
  * Express middleware to authenticate API requests via JWT or API Key.
  */
@@ -9,9 +9,9 @@ async function authenticate(req, res, next) {
     const authHeader = req.headers.authorization;
     const apiKeyHeader = req.headers['x-api-key'];
 
-    // Stub for API Key support (real implementation in D2-35)
+    // Route to API Key authentication if present
     if (apiKeyHeader) {
-      return next(); // Just pass through for now
+      return authenticateApiKey(req, res, next);
     }
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
