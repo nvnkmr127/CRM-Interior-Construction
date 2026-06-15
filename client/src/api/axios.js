@@ -24,6 +24,7 @@ api.interceptors.response.use(
   async (error) => {
     // On network error: reject with { code: 'NETWORK_ERROR' }
     if (!error.response) {
+      window.dispatchEvent(new CustomEvent('app:network-error'));
       return Promise.reject({ code: 'NETWORK_ERROR', message: 'Network error or server unreachable', originalError: error });
     }
 

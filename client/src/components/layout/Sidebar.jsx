@@ -33,7 +33,22 @@ const SettingsIcon = () => (
   </svg>
 );
 
-export default function Sidebar() {
+const BarChartIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="20" x2="18" y2="10"></line>
+    <line x1="12" y1="20" x2="12" y2="4"></line>
+    <line x1="6" y1="20" x2="6" y2="14"></line>
+  </svg>
+);
+
+const CloseIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="18" y1="6" x2="6" y2="18"></line>
+    <line x1="6" y1="6" x2="18" y2="18"></line>
+  </svg>
+);
+
+export default function Sidebar({ isOpen, onClose }) {
   const { user } = useAuth();
   const isSuperAdmin = user?.role?.name === 'superadmin';
 
@@ -42,33 +57,52 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className={styles.sidebar}>
-      <div className={styles.brand}>CRM Interior</div>
-      <nav className={styles.nav}>
-        <NavLink to="/dashboard" className={getNavClass}>
-          <span className={styles.icon}><GridIcon /></span>
-          Dashboard
-        </NavLink>
-        <NavLink to="/leads" className={getNavClass}>
-          <span className={styles.icon}><UsersIcon /></span>
-          Leads
-        </NavLink>
-        <NavLink to="/projects" className={getNavClass}>
-          <span className={styles.icon}><BriefcaseIcon /></span>
-          Projects
-        </NavLink>
-        <NavLink to="/tasks" className={getNavClass}>
-          <span className={styles.icon}><CheckSquareIcon /></span>
-          Tasks
-        </NavLink>
-        
-        {isSuperAdmin && (
-          <NavLink to="/config" className={getNavClass}>
-            <span className={styles.icon}><SettingsIcon /></span>
-            Config
+    <>
+      {/* Mobile Overlay Backdrop */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 mobile-only" 
+          onClick={onClose}
+        />
+      )}
+      
+      <aside className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ''}`}>
+        <div className={styles.brand}>
+          <span className={styles.brandText}>CRM Interior</span>
+          <button className={`${styles.closeBtn} mobile-only`} onClick={onClose}>
+            <CloseIcon />
+          </button>
+        </div>
+        <nav className={styles.nav}>
+          <NavLink to="/dashboard" className={getNavClass} onClick={onClose} title="Dashboard">
+            <span className={styles.icon}><GridIcon /></span>
+            <span className={styles.navLabel}>Dashboard</span>
           </NavLink>
-        )}
-      </nav>
-    </aside>
+          <NavLink to="/leads" className={getNavClass} onClick={onClose} title="Leads">
+            <span className={styles.icon}><UsersIcon /></span>
+            <span className={styles.navLabel}>Leads</span>
+          </NavLink>
+          <NavLink to="/projects" className={getNavClass} onClick={onClose} title="Projects">
+            <span className={styles.icon}><BriefcaseIcon /></span>
+            <span className={styles.navLabel}>Projects</span>
+          </NavLink>
+          <NavLink to="/tasks" className={getNavClass} onClick={onClose} title="Tasks">
+            <span className={styles.icon}><CheckSquareIcon /></span>
+            <span className={styles.navLabel}>Tasks</span>
+          </NavLink>
+          <NavLink to="/analytics/leads" className={getNavClass} onClick={onClose} title="Analytics">
+            <span className={styles.icon}><BarChartIcon /></span>
+            <span className={styles.navLabel}>Analytics</span>
+          </NavLink>
+          
+          {isSuperAdmin && (
+            <NavLink to="/config" className={getNavClass} onClick={onClose} title="Config">
+              <span className={styles.icon}><SettingsIcon /></span>
+              <span className={styles.navLabel}>Config</span>
+            </NavLink>
+          )}
+        </nav>
+      </aside>
+    </>
   );
 }

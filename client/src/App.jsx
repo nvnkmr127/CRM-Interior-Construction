@@ -1,23 +1,32 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import Login from './pages/auth/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import Shell from './components/layout/Shell';
-import ConfigPage from './pages/config/ConfigPage';
-import CustomFieldsManager from './pages/config/CustomFieldsManager';
-import TemplateBuilder from './pages/config/TemplateBuilder';
+import PageLoader from './components/ui/PageLoader';
+import ErrorBoundary from './components/ErrorBoundary';
+import OfflineBanner from './components/layout/OfflineBanner';
 
-const Dashboard = () => <div>Dashboard</div>;
-const LeadsPage = () => <div>LeadsPage</div>;
-const ProjectsPage = () => <div>ProjectsPage</div>;
-const ProjectDetail = () => <div>ProjectDetail</div>;
+// Lazy loaded pages
+const Login = lazy(() => import('./pages/auth/Login'));
+const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'));
+const LeadsPage = lazy(() => import('./pages/leads/LeadsPage'));
+const ProjectsPage = lazy(() => import('./pages/projects/ProjectsPage'));
+const ProjectDetail = lazy(() => import('./pages/projects/ProjectDetail'));
+const LeadAnalyticsPage = lazy(() => import('./pages/analytics/LeadAnalyticsPage'));
+const ConfigPage = lazy(() => import('./pages/config/ConfigPage'));
+const CustomFieldsManager = lazy(() => import('./pages/config/CustomFieldsManager'));
+const TemplateBuilder = lazy(() => import('./pages/config/TemplateBuilder'));
+
 const PortalApp = () => <div>PortalApp</div>;
-
 const Stub = ({ name }) => <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-muted)' }}>{name} (Stub)</div>;
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <OfflineBanner />
+      <ErrorBoundary>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
       {/* Public Routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/portal/*" element={<PortalApp />} />
@@ -32,10 +41,11 @@ export default function App() {
         }
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="dashboard" element={<DashboardPage />} />
         <Route path="leads" element={<LeadsPage />} />
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="projects/:id" element={<ProjectDetail />} />
+        <Route path="analytics/leads" element={<LeadAnalyticsPage />} />
         
         <Route path="config" element={<ConfigPage />}>
           <Route index element={<Navigate to="general" replace />} />
@@ -51,8 +61,11 @@ export default function App() {
         </Route>
       </Route>
 
-      {/* Fallback Catch-all */}
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
-    </Routes>
+          {/* Fallback Catch-all */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </Suspense>
+      </ErrorBoundary>
+    </>
   );
 }

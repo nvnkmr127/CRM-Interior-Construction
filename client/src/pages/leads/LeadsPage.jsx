@@ -5,6 +5,7 @@ import KanbanBoard from '../../components/leads/KanbanBoard';
 import LeadDrawer from '../../components/leads/LeadDrawer';
 import LeadForm from '../../components/leads/LeadForm';
 import ScoreBadge from '../../components/leads/ScoreBadge';
+import ContentLoader from '../../components/ui/ContentLoader';
 import { format } from 'date-fns';
 
 export default function LeadsPage() {
@@ -144,12 +145,10 @@ export default function LeadsPage() {
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden relative">
         {loading && leads.length === 0 ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-50/80 z-10 backdrop-blur-sm">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="p-6">
+            <ContentLoader type={activeView === 'kanban' ? 'card' : 'table'} rows={activeView === 'kanban' ? 3 : 5} />
           </div>
-        ) : null}
-
-        {activeView === 'kanban' ? (
+        ) : activeView === 'kanban' ? (
           <KanbanBoard 
             stages={stages} 
             leads={leads} 

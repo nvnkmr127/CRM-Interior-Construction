@@ -110,7 +110,7 @@ export default function KanbanBoard({ stages, leads, onLeadClick, onStageChange 
   };
 
   return (
-    <div className="flex h-full w-full overflow-x-auto overflow-y-hidden gap-4 p-4">
+    <div className="flex h-full w-full overflow-x-auto overflow-y-hidden gap-4 p-4 snap-x snap-mandatory">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -121,12 +121,13 @@ export default function KanbanBoard({ stages, leads, onLeadClick, onStageChange 
         {stages.map((stage) => {
           const columnLeads = localLeads.filter((l) => l.stage_id === stage.id);
           return (
-            <StageColumn
-              key={stage.id}
-              stage={stage}
-              leads={columnLeads}
-              onLeadClick={onLeadClick}
-            />
+            <div key={stage.id} className="snap-center shrink-0 w-[85vw] sm:w-80 h-full">
+              <StageColumn
+                stage={stage}
+                leads={columnLeads}
+                onLeadClick={onLeadClick}
+              />
+            </div>
           );
         })}
 

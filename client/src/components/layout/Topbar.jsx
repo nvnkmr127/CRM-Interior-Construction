@@ -9,7 +9,15 @@ const BellIcon = () => (
   </svg>
 );
 
-export default function Topbar() {
+const MenuIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="3" y1="12" x2="21" y2="12"></line>
+    <line x1="3" y1="6" x2="21" y2="6"></line>
+    <line x1="3" y1="18" x2="21" y2="18"></line>
+  </svg>
+);
+
+export default function Topbar({ onMenuClick }) {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -35,7 +43,12 @@ export default function Topbar() {
 
   return (
     <header className={styles.topbar}>
-      <h2 className={styles.title}>{getPageTitle()}</h2>
+      <div className="flex items-center gap-4">
+        <button className="mobile-only text-gray-500 hover:text-gray-900" onClick={onMenuClick} aria-label="Menu">
+          <MenuIcon />
+        </button>
+        <h2 className={styles.title}>{getPageTitle()}</h2>
+      </div>
       
       <div className={styles.rightSection}>
         <button className={styles.notificationBtn} aria-label="Notifications">
