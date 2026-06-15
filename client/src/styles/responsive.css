@@ -1,0 +1,34 @@
+:root {
+  --bp-mobile: 640px;
+  --bp-tablet: 1024px;
+}
+
+/* Mobile: <= 640px */
+@media (max-width: 640px) {
+  .mobile-only {
+    display: block !important;
+  }
+  .tablet-up {
+    display: none !important;
+  }
+}
+
+/* Tablet: 641px - 1024px */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .mobile-only {
+    display: none !important;
+  }
+  .desktop-up {
+    display: none !important;
+  }
+}
+
+/* Desktop: > 1024px */
+@media (min-width: 1025px) {
+  .mobile-only {
+    display: none !important;
+  }
+  .tablet-down {
+    display: none !important;
+  }
+}

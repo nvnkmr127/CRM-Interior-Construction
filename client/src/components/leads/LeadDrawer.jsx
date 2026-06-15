@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { getLead, changeLeadStage } from '../../api/leads';
 import ActivityTimeline from './ActivityTimeline';
 import Avatar from '../ui/Avatar';
+import ConvertToProjectModal from './ConvertToProjectModal';
 
 export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated }) {
   const [lead, setLead] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen && leadId) {
@@ -110,7 +112,15 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated }) {
               {/* Quick Actions */}
               <div className="flex flex-wrap gap-2">
                 {['Call', 'Note', 'Email', 'Schedule Visit', 'Convert to Project'].map(action => (
-                  <button key={action} className="px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 rounded shadow-sm border border-gray-300 transition-colors">
+                  <button 
+                    key={action} 
+                    onClick={() => {
+                      if (action === 'Convert to Project') {
+                        setIsConvertModalOpen(true);
+                      }
+                    }}
+                    className="px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 rounded shadow-sm border border-gray-300 transition-colors"
+                  >
                     {action}
                   </button>
                 ))}
@@ -191,6 +201,18 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated }) {
           ) : null}
         </div>
       </div>
+      
+      {lead && (
+        <ConvertToProjectModal
+          lead={lead}
+          isOpen={isConvertModalOpen}
+          onClose={() => setIsConvertModalOpen(false)}
+          onConverted={(project) => {
+            setIsConvertModalOpen(false);
+            onClose(); // close the drawer
+          }}
+        />
+      )}
     </>
   );
 }
