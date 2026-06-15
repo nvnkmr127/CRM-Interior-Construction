@@ -14,6 +14,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 const authRouter = require('./routes/auth');
+const configRouter = require('./routes/config');
+const projectsRouter = require('./routes/projects');
 const errorHandler = require('./middleware/errorHandler');
 
 app.get('/health', (req, res) => {
@@ -21,6 +23,8 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/auth', authRouter);
+app.use('/api/config', configRouter);
+app.use('/api/projects', projectsRouter);
 
 // Error handler MUST be the last middleware
 app.use(errorHandler);

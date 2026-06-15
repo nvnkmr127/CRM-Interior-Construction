@@ -1,0 +1,19 @@
+.shellContainer {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--color-bg);
+}
+
+.mainContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.scrollableArea {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-6);
+}

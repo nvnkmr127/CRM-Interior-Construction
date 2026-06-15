@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../store/authContext';
+import { useToast } from '../../store/toastContext';
 import styles from './Login.module.css';
 
 export default function Login() {
   const { login, isAuthenticated, loading } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
@@ -45,6 +47,7 @@ export default function Login() {
     setIsSubmitting(false);
 
     if (result.success) {
+      toast.success('Welcome back!');
       navigate('/dashboard', { replace: true });
     } else {
       setError(result.message);
