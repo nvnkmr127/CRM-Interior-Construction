@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const pool = require('../../config/db');
+const pool = require('../../db/pool');
 
 /**
  * Generate a new API key for a tenant.
