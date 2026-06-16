@@ -69,7 +69,7 @@ async function bulkCreateTasks({ tenantId, userId, projectId, tasks }) {
     action: 'task.bulk_created',
     entity: 'project',
     entityId: projectId,
-    details: {
+    newValue: {
       count: createdTasks.length
     }
   });

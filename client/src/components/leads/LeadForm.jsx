@@ -4,10 +4,12 @@ import api from '../../api/axios';
 import { createLead, updateLead } from '../../api/leads';
 import { useForm } from '../../hooks/useForm';
 import { validators } from '../../utils/validators';
+import { useToast } from '../../store/toastContext';
 import styles from './LeadForm.module.css';
 
 export default function LeadForm({ lead, onSave, onClose }) {
   const isEdit = !!lead;
+  const toast = useToast();
   
   const { values, errors, touched, handleChange, handleBlur, validateAll, isValid, setValues } = useForm({
     name: lead?.name || '',
@@ -58,13 +60,13 @@ export default function LeadForm({ lead, onSave, onClose }) {
         
       if (res.success) {
         const assignedUserName = users.find(u => u.id === values.assigneeId)?.name || 'Unassigned';
-        window.dispatchEvent(new CustomEvent('app:toast', { detail: { type: 'success', message: isEdit ? 'Lead updated successfully' : `Lead created and assigned to ${assignedUserName}`, duration: 3000 } }));
+        toast.success(isEdit ? 'Lead updated successfully' : `Lead created and assigned to ${assignedUserName}`);
         onSave && onSave(res.data);
         onClose();
       }
     } catch (err) {
       const message = err.response?.data?.error?.message || 'Could not save lead. Phone number already exists.';
-      window.dispatchEvent(new CustomEvent('app:toast', { detail: { type: 'error', message, duration: 6000 } }));
+      toast.error(message);
     }
   };
 

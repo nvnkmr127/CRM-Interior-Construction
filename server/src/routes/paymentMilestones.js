@@ -31,7 +31,7 @@ router.post('/', authorize('projects:manage'), async (req, res, next) => {
       userId: req.user.userId,
       data: mappedData
     });
-    return success(res, milestone, 201);
+    return success(res, milestone, {}, 201);
   } catch (err) {
     if (err instanceof z.ZodError) {
       return fail(res, 'VALIDATION_ERROR', err.errors, 400);

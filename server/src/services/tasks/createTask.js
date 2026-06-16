@@ -65,9 +65,9 @@ async function createTask({ tenantId, userId, data }) {
     action: 'task.created',
     entity: 'task',
     entityId: task.id,
-    details: { 
-      title: task.title, 
-      project_id: task.project_id 
+    newValue: {
+      title: task.title,
+      project_id: task.project_id
     }
   });
 

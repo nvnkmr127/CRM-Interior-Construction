@@ -1,4 +1,5 @@
 import React, { useState, Suspense } from 'react';
+import { useParams } from 'react-router-dom';
 import { Button, Badge } from '../../components/ui';
 import styles from './ProjectDetail.module.css';
 
@@ -9,6 +10,7 @@ const DocumentPanel = React.lazy(() => import('../../components/projects/Documen
 const PaymentsTab = React.lazy(() => import('./PaymentsTab'));
 
 export default function ProjectDetail() {
+  const { id: projectId } = useParams();
   const [activeTab, setActiveTab] = useState('Phases');
 
   const tabs = ['Overview', 'Phases', 'Tasks', 'Documents', 'Payments', 'Snags', 'Handover'];
@@ -31,10 +33,10 @@ export default function ProjectDetail() {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'Phases': return <PhaseTimeline projectId={1} />;
-      case 'Tasks': return <TaskKanban projectId={1} />;
-      case 'Documents': return <DocumentPanel projectId={1} />;
-      case 'Payments': return <PaymentsTab projectId={1} />;
+      case 'Phases': return <PhaseTimeline projectId={projectId} />;
+      case 'Tasks': return <TaskKanban projectId={projectId} />;
+      case 'Documents': return <DocumentPanel projectId={projectId} />;
+      case 'Payments': return <PaymentsTab projectId={projectId} />;
       default: return <div>{activeTab} Content (Coming Soon)</div>;
     }
   };

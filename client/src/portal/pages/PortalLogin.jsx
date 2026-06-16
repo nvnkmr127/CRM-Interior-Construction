@@ -23,7 +23,7 @@ export default function PortalLogin() {
 
   const handleLogin = async (e) => {
     e.preventDefault()
-    if (otp.length < 4) return
+    if (otp.length < 6) return
     setLoading(true)
     await login(phone, otp)
     setLoading(false)
@@ -70,7 +70,7 @@ export default function PortalLogin() {
                 style={{textAlign: 'center', letterSpacing: '8px', fontSize: '24px'}}
               />
             </div>
-            <button type="submit" className={styles.submitBtn} disabled={loading || otp.length < 4}>
+            <button type="submit" className={styles.submitBtn} disabled={loading || otp.length < 6}>
               {loading ? 'Verifying...' : 'Sign In'}
             </button>
             <div className={styles.resend}>

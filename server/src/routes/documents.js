@@ -101,7 +101,7 @@ router.post('/register', authorize('projects:manage'), async (req, res, next) =>
       mimeType: data.mimeType,
       uploadedBy: req.user.userId
     });
-    return success(res, doc, 201);
+    return success(res, doc, {}, 201);
   } catch (err) {
     if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     console.error('[Documents Router] register error:', err);
@@ -162,7 +162,7 @@ router.post('/:did/version', authorize('projects:manage'), async (req, res, next
       fileSize: data.fileSize,
       mimeType: data.mimeType
     });
-    return success(res, doc, 201);
+    return success(res, doc, {}, 201);
   } catch (err) {
     if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     if (err.message === 'NOT_FOUND' || err.status === 404) return fail(res, 'NOT_FOUND', 'Original document not found.', 404);

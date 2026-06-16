@@ -35,7 +35,7 @@ router.get('/leads', async (req, res) => {
     const stageQuery = `
       SELECT s.id as "stageId", s.name as "stageName", COUNT(l.id) as count
       FROM lead_stages s
-      LEFT JOIN leads l ON l.stage_id = s.id AND l.tenant_id = $1 ${dateFilter.replace(/l\./g, 'l.')}
+      LEFT JOIN leads l ON l.stage_id = s.id AND l.tenant_id = $1 ${dateFilter}
       WHERE s.tenant_id = $1
       GROUP BY s.id, s.name, s.order_index
       ORDER BY s.order_index ASC

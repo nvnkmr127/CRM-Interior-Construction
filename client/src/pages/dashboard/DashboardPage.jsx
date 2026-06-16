@@ -77,7 +77,7 @@ export default function DashboardPage() {
   }, []);
 
   const handleTaskToggle = (id) => {
-    setTasks(tasks.map(t => t.id === id ? { ...t, done: !t.done } : t));
+    setTasks(prev => (prev || []).map(t => t.id === id ? { ...t, done: !t.done } : t));
   };
 
   const renderVerb = (action) => {

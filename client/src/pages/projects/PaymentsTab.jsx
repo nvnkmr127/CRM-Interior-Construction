@@ -4,10 +4,10 @@ import styles from './PaymentsTab.module.css';
 
 export default function PaymentsTab({ projectId }) {
   const [payments, setPayments] = useState([
-    { id: 1, milestone: 'Advance', phase: 'Kickoff', amount: '₹1,50,000', dueDate: '2026-08-01', status: 'paid' },
-    { id: 2, milestone: '3D Renders Approval', phase: 'Design Concept', amount: '₹1,70,000', dueDate: '2026-08-15', status: 'paid' },
-    { id: 3, milestone: 'Material Sourcing', phase: 'Execution', amount: '₹2,50,000', dueDate: '2026-05-10', status: 'invoice_raised' }, // Overdue!
-    { id: 4, milestone: 'Keys Handover', phase: 'Handover', amount: '₹2,80,000', dueDate: '2026-11-15', status: 'scheduled' }
+    { id: 1, milestone: 'Advance', phase: 'Kickoff', amount: '₹1,50,000', amountValue: 150000, dueDate: '2026-08-01', status: 'paid' },
+    { id: 2, milestone: '3D Renders Approval', phase: 'Design Concept', amount: '₹1,70,000', amountValue: 170000, dueDate: '2026-08-15', status: 'paid' },
+    { id: 3, milestone: 'Material Sourcing', phase: 'Execution', amount: '₹2,50,000', amountValue: 250000, dueDate: '2026-05-10', status: 'invoice_raised' },
+    { id: 4, milestone: 'Keys Handover', phase: 'Handover', amount: '₹2,80,000', amountValue: 280000, dueDate: '2026-11-15', status: 'scheduled' }
   ]);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -24,6 +24,14 @@ export default function PaymentsTab({ projectId }) {
   });
 
   const overdueCount = processedPayments.filter(p => p.isOverdue).length;
+
+  const totalValue = payments.reduce((sum, p) => sum + p.amountValue, 0);
+  const collectedValue = payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amountValue, 0);
+  const overdueValue = processedPayments.filter(p => p.isOverdue).reduce((sum, p) => sum + p.amountValue, 0);
+  const pendingValue = totalValue - collectedValue;
+  const progressPct = totalValue > 0 ? (collectedValue / totalValue) * 100 : 0;
+
+  const formatLakhs = (val) => `₹${(val / 100000).toFixed(1)}L`;
 
   const handleMarkPaidClick = (p) => {
     setSelectedPayment(p);
@@ -49,20 +57,20 @@ export default function PaymentsTab({ projectId }) {
         <div className={styles.summaryStats}>
           <div className={styles.stat}>
             <span className={styles.statLabel}>Collected</span>
-            <span className={styles.statValue}>₹3.2L</span>
+            <span className={styles.statValue}>{formatLakhs(collectedValue)}</span>
           </div>
           <div className={styles.stat}>
             <span className={styles.statLabel}>Pending</span>
-            <span className={styles.statValue}>₹5.3L</span>
+            <span className={styles.statValue}>{formatLakhs(pendingValue)}</span>
           </div>
           <div className={styles.stat}>
             <span className={styles.statLabel}>Overdue</span>
-            <span className={`${styles.statValue} ${overdueCount > 0 ? styles.statDanger : ''}`}>₹2.5L</span>
+            <span className={`${styles.statValue} ${overdueCount > 0 ? styles.statDanger : ''}`}>{formatLakhs(overdueValue)}</span>
           </div>
         </div>
         <div className={styles.progressWrap}>
           <div className={styles.progressTrack}>
-            <div className={styles.progressFill} style={{ width: '37.6%' }} />
+            <div className={styles.progressFill} style={{ width: `${progressPct.toFixed(1)}%` }} />
           </div>
         </div>
       </div>

@@ -79,7 +79,7 @@ router.post('/', authorize('projects:manage'), async (req, res, next) => {
     data.projectId = req.params.projectId;
 
     const task = await createTask({ tenantId: req.tenantId, userId: req.user.userId, data });
-    return success(res, task, 201);
+    return success(res, task, {}, 201);
   } catch (err) {
     if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     if (err.status === 400) return fail(res, 'BAD_REQUEST', err.details || err.message, 400);
@@ -98,7 +98,7 @@ router.post('/bulk', authorize('projects:manage'), async (req, res, next) => {
       projectId: req.params.projectId,
       tasks
     });
-    return success(res, { created: createdTasks, count: createdTasks.length }, 201);
+    return success(res, { created: createdTasks, count: createdTasks.length }, {}, 201);
   } catch (err) {
     if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     if (err.status === 400) return fail(res, 'BAD_REQUEST', err.details || err.message, 400);
@@ -207,7 +207,7 @@ router.post('/:tid/comments', authorize('projects:read'), async (req, res, next)
     const comment = rows[0];
     comment.user_name = req.user.name;
 
-    return success(res, comment, 201);
+    return success(res, comment, {}, 201);
   } catch (err) {
     if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     console.error('[Tasks Router] Create comment error:', err);
