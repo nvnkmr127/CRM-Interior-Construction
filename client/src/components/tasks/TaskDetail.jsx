@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import styles from './TaskDetail.module.css'
 import { Drawer, Button, Badge, Avatar, Select } from '../ui'
 import { useToast } from '../../store/toastContext'
+import { getTask, updateTask, addTaskComment } from '../../api/tasks'
 
 const PRIORITIES = ['low', 'medium', 'high', 'urgent']
 const PRIORITY_COLORS = { low: 'info', medium: 'warning', high: 'danger', urgent: 'danger' }
@@ -20,41 +21,52 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId }) {
   const descTimer = useRef(null)
 
   useEffect(() => {
-    if (isOpen && taskId) {
-      setLoading(true)
-      // Mock fetch /api/projects/:projectId/tasks/:taskId
-      setTimeout(() => {
-        setTask({
-          id: taskId,
-          title: 'Finalize Kitchen Renderings',
-          description: 'Need 3 angles. Make sure to include the new island design.',
-          status: 'in_progress',
-          priority: 'high',
-          dueDate: new Date(Date.now() - 86400000).toISOString(), // overdue
-          assignee: { id: '1', name: 'Rahul Desai' },
-          project: { id: projectId || '1', name: 'Sharma Residence' },
-          milestone: { id: 'm1', name: 'Design Phase' },
-          tags: ['design', 'client-review'],
-          subtasks: [
-            { id: 's1', title: 'Angle 1 (From living room)', done: true, assignee: { name: 'Rahul Desai' } },
-            { id: 's2', title: 'Angle 2 (From hallway)', done: false, assignee: { name: 'Rahul Desai' } },
-            { id: 's3', title: 'Angle 3 (Top down)', done: false, assignee: { name: 'Priya Sharma' } },
-          ],
-          comments: [
-            { id: 'c1', author: { name: 'Priya Sharma' }, text: 'Client requested darker cabinets', createdAt: new Date(Date.now() - 3600000).toISOString() }
-          ]
-        })
-        setTitle('Finalize Kitchen Renderings')
-        setDesc('Need 3 angles. Make sure to include the new island design.')
-        setLoading(false)
-      }, 400)
-    }
+    if (!isOpen || !taskId || !projectId) return;
+    setLoading(true)
+    setTask(null)
+    getTask(projectId, taskId)
+      .then(res => {
+        const t = res.data?.data || res.data
+        if (!t) return
+        const normalized = {
+          id: t.id,
+          title: t.title,
+          description: t.description || '',
+          status: t.status || 'todo',
+          priority: t.priority || 'medium',
+          dueDate: t.due_date || t.dueDate || null,
+          assignee: t.assignee_id ? { id: t.assignee_id, name: t.assignee_name || 'Unknown' } : null,
+          project: { id: t.project_id || projectId, name: t.project_name || '—' },
+          milestone: t.milestone_id ? { id: t.milestone_id, name: t.milestone_name || '—' } : null,
+          tags: t.tags || [],
+          subtasks: (t.subtasks || []).map(s => ({
+            id: s.id, title: s.title, done: s.status === 'done',
+            assignee: s.assignee_name ? { name: s.assignee_name } : null,
+          })),
+          comments: (t.comments || []).map(c => ({
+            id: c.id,
+            author: { name: c.author_name || c.author?.name || 'Unknown' },
+            text: c.content || c.text,
+            createdAt: c.created_at || c.createdAt,
+          })),
+        }
+        setTask(normalized)
+        setTitle(normalized.title)
+        setDesc(normalized.description)
+      })
+      .catch(() => toast.error('Failed to load task'))
+      .finally(() => setLoading(false))
   }, [isOpen, taskId, projectId])
 
-  const handleTitleBlur = () => {
-    if (title !== task.title) {
-      setTask({ ...task, title })
+  const handleTitleBlur = async () => {
+    if (!task || title === task.title) return
+    setTask(t => ({ ...t, title }))
+    try {
+      await updateTask(projectId, task.id, { title })
       toast.success('Task title updated')
+    } catch {
+      setTitle(task.title)
+      toast.error('Failed to update title')
     }
   }
 
@@ -62,66 +74,89 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId }) {
     setDesc(e.target.value)
     setSaveStatus('Saving...')
     clearTimeout(descTimer.current)
-    descTimer.current = setTimeout(() => {
-      setTask(t => ({ ...t, description: e.target.value }))
-      setSaveStatus('Saved ✓')
+    descTimer.current = setTimeout(async () => {
+      const newDesc = e.target.value
+      setTask(t => ({ ...t, description: newDesc }))
+      try {
+        await updateTask(projectId, task.id, { description: newDesc })
+        setSaveStatus('Saved ✓')
+      } catch {
+        setSaveStatus('Save failed')
+      }
       setTimeout(() => setSaveStatus(''), 2000)
-    }, 1500)
+    }, 1200)
   }
 
-  const cyclePriority = () => {
+  const cyclePriority = async () => {
     const idx = PRIORITIES.indexOf(task.priority)
     const next = PRIORITIES[(idx + 1) % PRIORITIES.length]
-    setTask({ ...task, priority: next })
-    toast.success('Priority updated')
+    setTask(t => ({ ...t, priority: next }))
+    try {
+      await updateTask(projectId, task.id, { priority: next })
+      toast.success('Priority updated')
+    } catch {
+      setTask(t => ({ ...t, priority: task.priority }))
+      toast.error('Failed to update priority')
+    }
   }
 
-  const handleStatusChange = (newStatus) => {
-    if (newStatus === 'done' && task.subtasks.some(s => !s.done)) {
+  const handleStatusChange = async (newStatus) => {
+    if (newStatus === 'done' && task.subtasks?.some(s => !s.done)) {
       setStatusError(task.subtasks.filter(s => !s.done))
       return
     }
     setStatusError(null)
-    setTask({ ...task, status: newStatus })
-    toast.success('Task status updated')
+    setTask(t => ({ ...t, status: newStatus }))
+    try {
+      await updateTask(projectId, task.id, { status: newStatus })
+      toast.success('Status updated')
+    } catch {
+      setTask(t => ({ ...t, status: task.status }))
+      toast.error('Failed to update status')
+    }
   }
 
   const completeAllSubtasks = () => {
-    setTask({
-      ...task,
-      subtasks: task.subtasks.map(s => ({ ...s, done: true })),
+    setTask(t => ({
+      ...t,
+      subtasks: t.subtasks.map(s => ({ ...s, done: true })),
       status: 'done'
-    })
+    }))
     setStatusError(null)
+    updateTask(projectId, task.id, { status: 'done' }).catch(() => {})
     toast.success('All subtasks completed and task marked done')
   }
 
   const toggleSubtask = (id) => {
-    setTask({
-      ...task,
-      subtasks: task.subtasks.map(s => s.id === id ? { ...s, done: !s.done } : s)
-    })
+    setTask(t => ({
+      ...t,
+      subtasks: t.subtasks.map(s => s.id === id ? { ...s, done: !s.done } : s)
+    }))
   }
 
   const addSubtask = (e) => {
     if (e.key === 'Enter' && newSubtask.trim()) {
-      setTask({
-        ...task,
-        subtasks: [...task.subtasks, { id: Date.now().toString(), title: newSubtask.trim(), done: false }]
-      })
+      setTask(t => ({
+        ...t,
+        subtasks: [...t.subtasks, { id: Date.now().toString(), title: newSubtask.trim(), done: false }]
+      }))
       setNewSubtask('')
     } else if (e.key === 'Escape') {
       setNewSubtask('')
     }
   }
 
-  const addComment = () => {
+  const addComment = async () => {
     if (!newComment.trim()) return
-    setTask({
-      ...task,
-      comments: [...task.comments, { id: Date.now().toString(), author: { name: 'You' }, text: newComment.trim(), createdAt: new Date().toISOString() }]
-    })
+    const optimistic = { id: Date.now().toString(), author: { name: 'You' }, text: newComment.trim(), createdAt: new Date().toISOString() }
+    setTask(t => ({ ...t, comments: [...(t.comments || []), optimistic] }))
     setNewComment('')
+    try {
+      await addTaskComment(projectId, task.id, newComment.trim())
+    } catch {
+      setTask(t => ({ ...t, comments: (t.comments || []).filter(c => c.id !== optimistic.id) }))
+      toast.error('Failed to post comment')
+    }
   }
 
   if (!isOpen) return null

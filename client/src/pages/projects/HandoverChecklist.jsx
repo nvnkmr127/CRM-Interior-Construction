@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import styles from './HandoverChecklist.module.css'
 import { Badge, Button, Modal } from '../../components/ui'
 import { useToast } from '../../store/toastContext'
+import { getHandoverChecklist, createHandoverChecklist, addHandoverItem, updateHandoverItem, signOffHandoverChecklist } from '../../api/handover'
 
 export default function HandoverChecklist({ projectId }) {
   const [checklist, setChecklist] = useState(null)
@@ -15,38 +16,51 @@ export default function HandoverChecklist({ projectId }) {
   const toast = useToast()
 
   useEffect(() => {
-    // Mock Fetch
-    setTimeout(() => {
-      // Simulate checklist exists
-      setChecklist({
-        id: '1',
-        status: 'in_progress', // or 'signed_off'
-        signedOffAt: null,
-        rooms: [
-          {
-            id: 'r1', name: 'Master Bedroom',
-            items: [
-              { id: 'i1', desc: 'Wardrobe sliding doors move smoothly', isChecked: true, checkedBy: 'Priya', checkedAt: new Date(Date.now()-3600000).toISOString(), photoKey: '/wardrobe.jpg' },
-              { id: 'i2', desc: 'All electrical points working', isChecked: false, checkedBy: null, checkedAt: null, photoKey: null },
-            ]
-          },
-          {
-            id: 'r2', name: 'Living Room',
-            items: [
-              { id: 'i3', desc: 'TV unit polished and scratch-free', isChecked: false, checkedBy: null, checkedAt: null, photoKey: null },
-            ]
-          }
-        ]
+    if (!projectId) return
+    setLoading(true)
+    getHandoverChecklist(projectId)
+      .then(res => {
+        const raw = res.data?.data || res.data
+        if (!raw) { setChecklist(null); return }
+        // Normalize server data to component's expected shape
+        const rooms = (raw.rooms || raw.items || [])
+        const normalized = {
+          id: raw.id,
+          status: raw.status || 'in_progress',
+          signedOffAt: raw.signed_off_at || raw.signedOffAt || null,
+          rooms: Array.isArray(rooms) ? rooms.map(r => ({
+            id: r.id,
+            name: r.room || r.name,
+            items: (r.items || []).map(i => ({
+              id: i.id,
+              desc: i.description || i.desc,
+              isChecked: i.is_checked || i.isChecked || false,
+              checkedBy: i.checked_by || i.checkedBy || null,
+              checkedAt: i.checked_at || i.checkedAt || null,
+              photoKey: i.photo_key || i.photoKey || null,
+            }))
+          })) : [],
+        }
+        setChecklist(normalized)
       })
-      setLoading(false)
-    }, 600)
-  }, [])
+      .catch(err => {
+        if (err?.response?.status === 404) setChecklist(null)
+        else setChecklist(null)
+      })
+      .finally(() => setLoading(false))
+  }, [projectId])
 
   const createChecklist = async () => {
     setLoading(true)
-    await new Promise(r => setTimeout(r, 600))
-    setChecklist({ id: '1', status: 'in_progress', signedOffAt: null, rooms: [] })
-    setLoading(false)
+    try {
+      const res = await createHandoverChecklist(projectId)
+      const raw = res.data?.data || res.data
+      setChecklist({ id: raw?.id || '1', status: 'in_progress', signedOffAt: null, rooms: [] })
+    } catch {
+      toast.error('Failed to create checklist')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const toggleRoom = (roomId) => {
@@ -123,12 +137,13 @@ export default function HandoverChecklist({ projectId }) {
 
   const handleSignOff = async () => {
     setIsSignOffModalOpen(false)
-    toast.success('Sent OTP to client portal for sign-off.')
-    // Mock successful sign off after a short delay
-    setTimeout(() => {
+    try {
+      await signOffHandoverChecklist(checklist.id)
       setChecklist({ ...checklist, status: 'signed_off', signedOffAt: new Date().toISOString() })
-      toast.success('Client has signed off the checklist!')
-    }, 2000)
+      toast.success('Checklist sent for client sign-off')
+    } catch {
+      toast.error('Failed to initiate sign-off')
+    }
   }
 
   if (loading) return <div style={{padding:'32px', color:'var(--color-text-muted)'}}>Loading checklist...</div>
