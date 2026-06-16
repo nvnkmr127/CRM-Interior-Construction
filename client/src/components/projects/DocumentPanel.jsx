@@ -1,46 +1,94 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Badge, Button } from '../ui';
 import styles from './DocumentPanel.module.css';
+import { getDocuments } from '../../api/projects';
+import { useToast } from '../../store/toastContext';
+
+const TYPE_META = {
+  Drawing:  { icon: '📐' },
+  BOQ:      { icon: '📋' },
+  Render:   { icon: '🖼' },
+  Contract: { icon: '📄' },
+  Photo:    { icon: '📸' },
+  Invoice:  { icon: '💵' },
+};
+
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
+function getStatusVariant(st) {
+  if (st === 'approved') return 'success';
+  if (st === 'revision_requested') return 'danger';
+  return 'warning';
+}
 
 export default function DocumentPanel({ projectId }) {
+  const toast = useToast();
+  const [docs, setDocs] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('All');
   const [uploading, setUploading] = useState(false);
 
-  const filters = [
-    { id: 'All', icon: '📁', count: 12 },
-    { id: 'Drawing', icon: '📐', count: 4 },
-    { id: 'BOQ', icon: '📋', count: 2 },
-    { id: 'Render', icon: '🖼', count: 3 },
-    { id: 'Contract', icon: '📄', count: 1 },
-    { id: 'Photo', icon: '📸', count: 2 },
-    { id: 'Invoice', icon: '💵', count: 0 }
-  ];
+  useEffect(() => {
+    if (!projectId) return;
+    setLoading(true);
+    getDocuments(projectId)
+      .then(res => {
+        const raw = res.data?.data || res.data || [];
+        setDocs(raw.map(d => ({
+          id: d.id,
+          name: d.file_name || d.name,
+          type: d.category || d.type || 'Other',
+          version: d.version ? `v${d.version}` : 'v1',
+          status: d.status || 'pending',
+          uploadedBy: d.uploaded_by_name || d.uploadedBy || '—',
+          timeAgo: timeAgo(d.created_at || d.uploadedAt),
+          revReq: d.revision_note || null,
+          url: d.url || null,
+        })));
+      })
+      .catch(() => setDocs([]))
+      .finally(() => setLoading(false));
+  }, [projectId]);
 
-  const documents = [
-    { id: 1, name: 'Living Room Layout Final.pdf', type: 'Drawing', version: 'v3', status: 'approved', uploadedBy: 'Priya D.', timeAgo: '2 days ago', revReq: null },
-    { id: 2, name: 'Kitchen 3D Render', type: 'Render', version: 'v1', status: 'revision', uploadedBy: 'Rahul S.', timeAgo: '1 day ago', revReq: 'Revision: needs new colour scheme' },
-    { id: 3, name: 'Project Contract signed.pdf', type: 'Contract', version: 'v1', status: 'approved', uploadedBy: 'Admin', timeAgo: '1 week ago', revReq: null },
-  ];
+  const typeFilters = useMemo(() => {
+    const counts = {};
+    docs.forEach(d => { counts[d.type] = (counts[d.type] || 0) + 1; });
+    return [
+      { id: 'All', icon: '📁', count: docs.length },
+      ...Object.entries(TYPE_META).map(([id, meta]) => ({
+        id,
+        icon: meta.icon,
+        count: counts[id] || 0,
+      })),
+    ];
+  }, [docs]);
 
-  const getStatusVariant = (st) => {
-    if (st === 'approved') return 'success';
-    if (st === 'revision') return 'danger';
-    return 'warning';
-  };
-
-  const filteredDocs = activeFilter === 'All' ? documents : documents.filter(d => d.type === activeFilter);
+  const filteredDocs = activeFilter === 'All' ? docs : docs.filter(d => d.type === activeFilter);
 
   const handleUpload = () => {
-    setUploading(true);
-    setTimeout(() => setUploading(false), 2000); // simulate upload
+    toast.info?.('Upload flow requires S3 presigned URL — contact admin.');
   };
+
+  if (loading) {
+    return <div style={{ padding: '32px', color: 'var(--color-text-muted)' }}>Loading documents…</div>;
+  }
 
   return (
     <div className={styles.panel}>
       <div className={styles.sidebar}>
-        {filters.map(f => (
-          <div 
-            key={f.id} 
+        {typeFilters.map(f => (
+          <div
+            key={f.id}
             className={`${styles.filterItem} ${activeFilter === f.id ? styles.filterActive : ''}`}
             onClick={() => setActiveFilter(f.id)}
           >
@@ -49,22 +97,35 @@ export default function DocumentPanel({ projectId }) {
           </div>
         ))}
       </div>
-      
+
       <div className={styles.grid}>
-        {filteredDocs.map(doc => (
+        {filteredDocs.length === 0 ? (
+          <div style={{ gridColumn: '1/-1', padding: '40px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+            No documents found.
+          </div>
+        ) : filteredDocs.map(doc => (
           <div key={doc.id} className={styles.docCard}>
             <div className={styles.cardTop}>
               <div className={styles.iconLg}>
-                {filters.find(f => f.id === doc.type)?.icon || '📄'}
+                {TYPE_META[doc.type]?.icon || '📄'}
               </div>
-              <div style={{display:'flex', gap:'4px', flexDirection:'column', alignItems:'flex-end'}}>
+              <div style={{ display: 'flex', gap: 4, flexDirection: 'column', alignItems: 'flex-end' }}>
                 <Badge variant="accent" size="sm">{doc.version}</Badge>
-                <Badge variant={getStatusVariant(doc.status)} size="sm" dot>{doc.status}</Badge>
+                <Badge variant={getStatusVariant(doc.status)} size="sm" dot>
+                  {doc.status.replace('_', ' ')}
+                </Badge>
               </div>
             </div>
-            <div className={styles.name} title={doc.name}>{doc.name}</div>
+            <div
+              className={styles.name}
+              title={doc.name}
+              style={{ cursor: doc.url ? 'pointer' : 'default' }}
+              onClick={() => doc.url && window.open(doc.url, '_blank')}
+            >
+              {doc.name}
+            </div>
             <div className={styles.meta}>
-              <div className={styles.avatar}>{doc.uploadedBy.charAt(0)}</div>
+              <div className={styles.avatar}>{(doc.uploadedBy || '?').charAt(0)}</div>
               {doc.uploadedBy} &middot; {doc.timeAgo}
             </div>
             {doc.revReq && (
@@ -76,7 +137,7 @@ export default function DocumentPanel({ projectId }) {
 
       <div className={styles.uploadBtn}>
         <Button variant="primary" onClick={handleUpload} loading={uploading}>
-          {uploading ? 'Uploading to S3...' : '+ Upload'}
+          + Upload
         </Button>
       </div>
     </div>
