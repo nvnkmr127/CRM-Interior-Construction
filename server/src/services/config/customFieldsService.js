@@ -111,7 +111,7 @@ async function renderSchema(tenantId, entity) {
   };
 
   for (const field of fields) {
-    let fieldSchema = {};
+    let fieldSchema;
 
     switch (field.field_type) {
       case 'text':

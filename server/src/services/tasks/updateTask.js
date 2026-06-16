@@ -49,10 +49,8 @@ async function updateTask({ tenantId, userId, taskId, data }) {
       action: 'task.updated',
       entity: 'task',
       entityId: taskId,
-      details: {
-        old_values: oldValues,
-        new_values: newValues
-      }
+      oldValue: oldValues,
+      newValue: newValues
     });
   }
 

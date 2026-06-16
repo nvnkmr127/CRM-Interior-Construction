@@ -51,7 +51,7 @@ router.post('/', authorize('projects:manage'), async (req, res, next) => {
     const projectId = rows[0].project_id;
     const milestone = await milestoneRepository.createMilestone(req.tenantId, req.params.phaseId, projectId, data);
     
-    return success(res, milestone, 201);
+    return success(res, milestone, {}, 201);
   } catch (err) {
     if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     console.error('[Milestones Router] Create error:', err);

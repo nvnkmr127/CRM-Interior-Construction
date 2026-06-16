@@ -31,10 +31,8 @@ async function updateProject({ tenantId, userId, projectId, data }) {
       action: 'project.updated',
       entity: 'project',
       entityId: projectId,
-      details: {
-        old_values: oldValues,
-        new_values: newValues
-      }
+      oldValue: oldValues,
+      newValue: newValues
     });
   }
 

@@ -1,5 +1,5 @@
 const express = require('express');
-const { authenticate } = require('../middleware/authenticate');
+const authenticate = require('../middleware/authenticate');
 const { success, fail } = require('../utils/response');
 const pool = require('../config/db');
 

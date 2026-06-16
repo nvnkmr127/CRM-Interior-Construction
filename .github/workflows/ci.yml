@@ -1,0 +1,77 @@
+name: CI / CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: crm_test
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run backend unit tests
+        working-directory: server
+        env:
+          DATABASE_URL: postgresql://postgres:testpassword@localhost:5432/crm_test
+          JWT_SECRET: test-secret-for-ci-at-least-32chars
+          JWT_REFRESH_SECRET: test-refresh-for-ci-at-least-32chars
+          NODE_ENV: test
+        run: npm test
+
+      - name: Run client unit tests
+        working-directory: client
+        run: npm run test -- --run
+
+      - name: Build client
+        working-directory: client
+        env:
+          VITE_API_URL: http://localhost:4000/api
+        run: npm run build
+
+  deploy:
+    name: Deploy to Production
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /opt/crm
+            git pull origin main
+            docker compose pull
+            docker compose up -d --build
+            docker compose exec server node server/src/db/migrate.js
+            echo 'Deployed at '$(date)
+
+# GitHub Actions Secrets to configure (Settings → Secrets):
+# SERVER_HOST, SERVER_USER, SERVER_SSH_KEY

@@ -3,7 +3,7 @@ const phaseRepository = require('../../repositories/phaseRepository');
 const milestoneRepository = require('../../repositories/milestoneRepository');
 const { dispatchEvent } = require('../webhooks/webhookDispatcher');
 const { logAction } = require('../auditLog');
-const { createNotification } = require('../notificationService');
+const { notifyUser } = require('../notificationService');
 
 async function completePhase({ tenantId, userId, phaseId }) {
   // 1. Fetch phase to validate
@@ -53,16 +53,13 @@ async function completePhase({ tenantId, userId, phaseId }) {
 
   // Notify PM: 'Phase X signed off on Project Y'
   if (project.pm_id) {
-    const userRes = await pool.query('SELECT name FROM users WHERE id=$1', [userId]);
-    const actorName = userRes.rows[0] ? userRes.rows[0].name : 'System';
-    createNotification({
+    notifyUser({
       tenantId,
       userId: project.pm_id,
-      type: 'phase_completed',
-      message: `Phase ${phase.name} signed off on Project ${project.name}`,
+      type: 'project.phase_completed',
+      message: `Phase '${phase.name}' signed off on '${project.name}'`,
       referenceUrl: `/projects/${project.id}`,
       actorId: userId,
-      actorName
     });
   }
 

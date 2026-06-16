@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import styles from './ProjectForm.module.css'
 import { Modal, Input, Select, Button } from '../ui'
 import { useToast } from '../../store/toastContext'
+import { createProject, updateProject } from '../../api/projects'
 
 const PROJECT_TYPES = [
   { id: 'full_interior', icon: '🏠', label: 'Full Interior' },
@@ -74,16 +75,33 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
   const handleSubmit = async () => {
     if (!validate()) return
 
-    // Mock API Call
-    await new Promise(r => setTimeout(r, 600))
-    
-    if (project) {
-      toast.success('Project updated')
-    } else {
-      toast.success(`Project created: ${formData.projectName}`)
+    const payload = {
+      name: formData.projectName,
+      type: formData.projectType,
+      client_name: formData.clientName,
+      client_phone: formData.clientPhone,
+      client_email: formData.clientEmail,
+      site_address: formData.siteAddress,
+      pm_id: formData.pm || null,
+      designer_id: formData.designer || null,
+      value: formData.contractValue ? Number(formData.contractValue) : null,
+      start_date: formData.startDate || null,
+      target_date: formData.targetDate || null,
+      template_id: formData.template !== 'none' ? formData.template : null,
     }
-    
-    onSave && onSave(formData)
+
+    try {
+      if (project) {
+        await updateProject(project.id, payload)
+        toast.success('Project updated')
+      } else {
+        await createProject(payload)
+        toast.success(`Project created: ${formData.projectName}`)
+      }
+      onSave && onSave()
+    } catch (err) {
+      toast.error(err?.response?.data?.error?.message || 'Failed to save project')
+    }
   }
 
   return (

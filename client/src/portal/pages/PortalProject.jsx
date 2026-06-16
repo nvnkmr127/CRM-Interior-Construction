@@ -99,7 +99,7 @@ export default function PortalProject() {
 
           <div className={styles.phaseStrip} style={{width: '100%'}}>
             <div className={styles.phaseLine} />
-            <div className={styles.phaseLineFill} style={{width: `${fillWidth * 0.8}%`}} /> {/* roughly */}
+            <div className={styles.phaseLineFill} style={{width: `${fillWidth}%`}} />
             
             {data.progress.phases.map((phase, i) => (
               <div key={i} className={`${styles.phaseNode} ${styles[phase.status]}`}>

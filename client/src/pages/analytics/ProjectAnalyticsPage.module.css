@@ -1,43 +1,490 @@
-.page { padding: var(--space-6); max-width: 1200px; margin: 0 auto; }
-.headerRow { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-6); }
-.title { font-size: var(--text-2xl); font-weight: 700; color: var(--color-text); margin: 0; }
-.desc { color: var(--color-text-secondary); margin-top: 4px; }
+/* ─── Page Shell ─────────────────────────────────────────────────────── */
+.page {
+  padding: var(--space-6);
+  max-width: 1280px;
+  margin: 0 auto;
+  background: var(--color-bg);
+  min-height: 100%;
+}
 
-.kpiStrip { display: grid; grid-template-columns: repeat(1, 1fr); gap: var(--space-4); margin-bottom: var(--space-6); }
-@media (min-width: 640px) { .kpiStrip { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 1024px) { .kpiStrip { grid-template-columns: repeat(4, 1fr); } }
+/* ─── Header ─────────────────────────────────────────────────────────── */
+.headerRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+  flex-wrap: wrap;
+}
 
-.kpiCard { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-4); display: flex; flex-direction: column; gap: 8px; box-shadow: var(--shadow-sm); }
-.kpiLabel { font-size: var(--text-sm); font-weight: 600; color: var(--color-text-secondary); }
-.kpiValue { font-size: var(--text-2xl); font-weight: 700; color: var(--color-text); }
+.title {
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  color: var(--color-text);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
 
-.grid { display: grid; grid-template-columns: 1fr; gap: var(--space-6); margin-bottom: var(--space-6); }
-@media (min-width: 992px) { .grid { grid-template-columns: 2fr 3fr; } }
-.fullWidth { grid-column: 1 / -1; }
+.desc {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  margin-top: 4px;
+}
 
-.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; }
-.cardHeader { font-size: var(--text-md); font-weight: 600; color: var(--color-text); margin-bottom: var(--space-4); }
+/* ─── Date Range Pills ───────────────────────────────────────────────── */
+.dateRangePills {
+  display: flex;
+  gap: 4px;
+  background: var(--color-surface-2);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  border: 1px solid var(--color-border);
+  align-self: flex-start;
+  flex-shrink: 0;
+}
 
-.donutContainer { position: relative; display: flex; align-items: center; justify-content: center; }
-.donutCenterText { position: absolute; text-align: center; pointer-events: none; }
-.donutCenterVal { font-size: var(--text-2xl); font-weight: 700; color: var(--color-text); line-height: 1; }
-.donutCenterLabel { font-size: 11px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+.rangePill {
+  padding: 6px 16px;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-family: var(--font-sans);
+  background: transparent;
+  color: var(--color-text-secondary);
+  transition: var(--transition-fast);
+}
 
-.legend { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-3); margin-top: var(--space-4); }
-.legendItem { display: flex; align-items: center; gap: 6px; font-size: var(--text-sm); color: var(--color-text-secondary); }
-.legendDot { width: 10px; height: 10px; border-radius: 50%; }
+.rangePill:hover {
+  color: var(--color-text);
+}
 
-.taskList { display: flex; flex-direction: column; gap: var(--space-4); }
-.taskRow { display: flex; align-items: center; gap: var(--space-3); }
-.taskName { width: 180px; font-size: var(--text-sm); font-weight: 500; color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
-.taskBarBg { flex: 1; height: 12px; background: var(--color-surface-2); border-radius: 6px; overflow: hidden; }
-.taskBarFill { height: 100%; transition: width 0.5s ease; border-radius: 6px; }
-.taskPct { width: 40px; font-size: var(--text-sm); font-weight: 600; color: var(--color-text); text-align: right; flex-shrink: 0; }
+.rangePillActive {
+  background: var(--color-surface);
+  color: #E8935A;
+  box-shadow: var(--shadow-sm);
+}
 
-.tableCard { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: var(--shadow-sm); }
-.tableHeader { font-size: var(--text-md); font-weight: 600; color: var(--color-text); margin-bottom: var(--space-4); }
+/* ─── KPI Strip ──────────────────────────────────────────────────────── */
+.kpiStrip {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
 
-.skeleton { animation: pulse 1.5s infinite; background: var(--color-surface-2); border-radius: var(--radius-md); }
-@keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
-.skeletonKpi { height: 100px; }
-.skeletonChart { height: 240px; }
+@media (min-width: 640px) {
+  .kpiStrip { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  .kpiStrip { grid-template-columns: repeat(4, 1fr); }
+}
+
+.kpiCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-base);
+}
+
+.kpiCard:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.kpiTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kpiLabel {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.kpiIcon {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.kpiValue {
+  font-size: var(--text-3xl);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.kpiSub {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+/* ─── Charts Row (Area + Donut side by side) ─────────────────────────── */
+.chartsRow {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+/* ─── Generic Card ───────────────────────────────────────────────────── */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: var(--space-4);
+}
+
+.cardSubLabel {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+/* ─── Donut chart section ────────────────────────────────────────────── */
+.donutWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  flex: 1;
+}
+
+.donutContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 200px;
+  height: 200px;
+}
+
+.donutCenter {
+  position: absolute;
+  text-align: center;
+  pointer-events: none;
+}
+
+.donutVal {
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  color: var(--color-text);
+  line-height: 1;
+}
+
+.donutLabel {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 4px;
+}
+
+/* ─── Pie Legend ─────────────────────────────────────────────────────── */
+.pieLegend {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.pieLegendItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.pieDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.pieLegendName {
+  flex: 1;
+  color: var(--color-text-secondary);
+}
+
+.pieLegendCount {
+  font-weight: 700;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Tooltip ────────────────────────────────────────────────────────── */
+.tooltip {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  min-width: 140px;
+}
+
+.tooltipLabel {
+  font-weight: 700;
+  margin-bottom: var(--space-2);
+  color: var(--color-text);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.tooltipRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: 4px;
+  color: var(--color-text-secondary);
+}
+
+.tooltipRow strong {
+  color: var(--color-text);
+}
+
+/* ─── Delayed Projects Table Card ────────────────────────────────────── */
+.tableCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.tableHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+  gap: var(--space-3);
+}
+
+.tableTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.tableTitleDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-danger);
+  animation: pulse 2s infinite;
+  flex-shrink: 0;
+}
+
+.tableCount {
+  font-size: var(--text-xs);
+  color: var(--color-danger);
+  font-weight: 600;
+  background: var(--color-danger-bg);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+}
+
+.noDelays {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-8);
+  color: var(--color-success);
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.th {
+  text-align: left;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 2px solid var(--color-border);
+  background: var(--color-surface-2);
+  white-space: nowrap;
+}
+
+.td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+  vertical-align: middle;
+  color: var(--color-text);
+}
+
+.tr {
+  transition: background var(--transition-fast);
+}
+
+.tr:last-child .td {
+  border-bottom: none;
+}
+
+.tr:hover .td {
+  background: var(--color-surface-2);
+}
+
+/* ─── Overdue Badge ──────────────────────────────────────────────────── */
+.overdueBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.overdueBadgeDanger {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.overdueBadgeWarn {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+/* ─── Phase Tag ──────────────────────────────────────────────────────── */
+.phaseTag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+/* ─── PM Avatar ──────────────────────────────────────────────────────── */
+.pmAvatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #E8935A, #c96f3a);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ─── Escalate Button ────────────────────────────────────────────────── */
+.escalateBtn {
+  border: 1.5px solid var(--color-danger);
+  background: transparent;
+  color: var(--color-danger);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  font-family: var(--font-sans);
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  white-space: nowrap;
+}
+
+.escalateBtn:hover {
+  background: var(--color-danger-bg);
+}
+
+/* ─── Skeletons ──────────────────────────────────────────────────────── */
+.skeleton {
+  background: var(--color-surface-2);
+  border-radius: var(--radius-md);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.skeletonKpi {
+  height: 110px;
+}
+
+.skeletonChart {
+  height: 300px;
+  flex: 1;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .chartsRow {
+    flex-direction: column;
+  }
+
+  .chartsRow > .card {
+    flex: none !important;
+    width: 100% !important;
+  }
+
+  .donutWrap {
+    flex-direction: row;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: var(--space-4);
+  }
+
+  .headerRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .kpiValue {
+    font-size: var(--text-2xl);
+  }
+}

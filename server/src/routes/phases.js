@@ -42,7 +42,7 @@ router.post('/', authorize('projects:manage'), async (req, res, next) => {
   try {
     const data = createPhaseSchema.parse(req.body);
     const phase = await phaseRepository.createPhase(req.tenantId, req.params.projectId, data);
-    return success(res, phase, 201);
+    return success(res, phase, {}, 201);
   } catch (err) {
     if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     console.error('[Phases Router] Create error:', err);

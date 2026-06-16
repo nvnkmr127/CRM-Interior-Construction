@@ -5,6 +5,7 @@ import TaskDetail from '../../components/tasks/TaskDetail'
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import { useToast } from '../../store/toastContext'
+import { getGlobalTasks, updateTask } from '../../api/tasks'
 
 const TABS = [
   { id: 'all', label: 'All' },
@@ -36,33 +37,37 @@ export default function MyTasksPage() {
 
   useEffect(() => {
     setLoading(true)
-    // Mock Fetch
-    setTimeout(() => {
-      const today = new Date()
-      const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-      const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
-      const nextWeek = new Date(today); nextWeek.setDate(today.getDate() + 4);
-
-      setTasks([
-        { id: 't1', title: 'Review kitchen layouts', status: 'todo', priority: 'high', dueDate: yesterday.toISOString(), project: { id: 'p1', name: 'Sharma Residence' }, milestone: 'Design Phase' },
-        { id: 't2', title: 'Send quotation to client', status: 'in_progress', priority: 'urgent', dueDate: today.toISOString(), project: { id: 'p1', name: 'Sharma Residence' } },
-        { id: 't3', title: 'Site visit for measurements', status: 'todo', priority: 'medium', dueDate: tomorrow.toISOString(), project: { id: 'p2', name: 'Rao Villa Renovation' }, milestone: 'Initial Survey' },
-        { id: 't4', title: 'Select tile samples', status: 'done', priority: 'low', dueDate: yesterday.toISOString(), project: { id: 'p2', name: 'Rao Villa Renovation' } },
-        { id: 't5', title: 'Finalize electrical plan', status: 'todo', priority: 'medium', dueDate: nextWeek.toISOString(), project: { id: 'p1', name: 'Sharma Residence' } },
-      ])
-      setLoading(false)
-    }, 800)
+    getGlobalTasks({ assigneeId: 'me', limit: 100 })
+      .then(res => {
+        const raw = res.data?.data || res.data || []
+        const normalized = raw.map(t => ({
+          id: t.id,
+          title: t.title,
+          status: t.status,
+          priority: t.priority || 'medium',
+          dueDate: t.due_date || t.dueDate || null,
+          project: { id: t.project_id, name: t.project_name || 'Unknown Project' },
+          milestone: t.milestone_name || null,
+        }))
+        setTasks(normalized)
+      })
+      .catch(() => setTasks([]))
+      .finally(() => setLoading(false))
   }, [])
 
   const toggleTaskStatus = async (task) => {
     setUpdatingTaskId(task.id)
     const newStatus = task.status === 'done' ? 'todo' : 'done'
-    
-    // Mock API patch
-    await new Promise(r => setTimeout(r, 400))
-    setTasks(tasks.map(t => t.id === task.id ? { ...t, status: newStatus } : t))
-    setUpdatingTaskId(null)
-    toast.success(newStatus === 'done' ? 'Task completed!' : 'Task reopened')
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t))
+    try {
+      await updateTask(task.project?.id, task.id, { status: newStatus })
+      toast.success(newStatus === 'done' ? 'Task completed!' : 'Task reopened')
+    } catch {
+      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: task.status } : t))
+      toast.error('Failed to update task')
+    } finally {
+      setUpdatingTaskId(null)
+    }
   }
 
   const toggleProjectGroup = (projectId) => {

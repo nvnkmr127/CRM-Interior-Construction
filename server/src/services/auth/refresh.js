@@ -13,7 +13,7 @@ async function refreshTokens(rawRefreshToken) {
     // 1. Verify the token
     decoded = verifyRefreshToken(rawRefreshToken);
   } catch (err) {
-    throw new Error('TOKEN_INVALID');
+    throw new Error('TOKEN_INVALID', { cause: err });
   }
 
   // 2. Hash the raw token and look up in sessions

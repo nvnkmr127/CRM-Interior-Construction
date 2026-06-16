@@ -98,9 +98,12 @@ router.post('/verify-otp', async (req, res, next) => {
 });
 
 // POST /api/portal/auth/logout
-router.post('/logout', (req, res) => {
+router.post('/logout', async (req, res) => {
   res.clearCookie('portalToken');
-  res.json({ success: true, message: 'Logged out' });
+  if (req.portalUser && req.portalUser.id) {
+    await pool.query('UPDATE client_portal_users SET portal_token_hash=NULL WHERE id=$1', [req.portalUser.id]);
+  }
+  return res.status(204).end();
 });
 
 module.exports = router;

@@ -5,3 +5,5 @@ export function usePageTitle(title) {
     document.title = title ? `${title} · Interior CRM` : 'Interior CRM' 
   }, [title])
 }
+
+export default usePageTitle

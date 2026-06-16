@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import layoutStyles from './ConfigLayout.module.css'
 import { Button, Badge, Modal, DataTable, Avatar, Input, Select } from '../../components/ui'
 import { useToast } from '../../store/toastContext'
+import api from '../../api/axios'
 
 const ROLE_OPTIONS = [
   { value: 'superadmin', label: 'Super Admin' },
@@ -19,45 +20,49 @@ export default function UsersManager() {
   const toast = useToast()
 
   useEffect(() => {
-    // Mock fetch
-    setUsers([
-      { id: '1', name: 'Priya Sharma', email: 'priya@example.com', role: 'pm', status: 'active', lastActive: new Date(Date.now() - 3600000).toISOString() },
-      { id: '2', name: 'Rahul Desai', email: 'rahul@example.com', role: 'designer', status: 'active', lastActive: new Date(Date.now() - 86400000).toISOString() },
-      { id: '3', name: 'Ananya Verma', email: 'ananya@example.com', role: 'sales', status: 'invited', lastActive: null },
-      { id: '4', name: 'Admin User', email: 'admin@example.com', role: 'superadmin', status: 'active', lastActive: new Date().toISOString() },
-    ])
+    api.get('/users')
+      .then(res => setUsers(res.data?.data || res.data || []))
+      .catch(() => setUsers([]))
   }, [])
 
   const handleInvite = async () => {
     if (!inviteData.name || !inviteData.email) return toast.error('Name and email are required')
-    
-    // Mock POST /api/users/invite
-    const newUser = {
-      id: Date.now().toString(),
-      name: inviteData.name,
-      email: inviteData.email,
-      role: inviteData.role,
-      status: 'invited',
-      lastActive: null
+    try {
+      const res = await api.post('/users/invite', inviteData)
+      const newUser = res.data?.data || { ...inviteData, id: Date.now().toString(), status: 'invited', lastActive: null }
+      setUsers(prev => [...prev, newUser])
+      setIsInviteOpen(false)
+      setInviteData({ name: '', email: '', role: 'designer' })
+      toast.success(`Invitation sent to ${inviteData.email}`)
+    } catch (err) {
+      toast.error(err?.response?.data?.error?.message || 'Failed to send invitation')
     }
-    setUsers([...users, newUser])
-    setIsInviteOpen(false)
-    setInviteData({ name: '', email: '', role: 'designer' })
-    toast.success(`Invitation sent to ${newUser.email}`)
   }
 
-  const confirmRoleChange = () => {
+  const confirmRoleChange = async () => {
     if (!roleChangeTarget) return
-    setUsers(users.map(u => u.id === roleChangeTarget.user.id ? { ...u, role: roleChangeTarget.newRole } : u))
-    toast.success(`${roleChangeTarget.user.name}'s role updated`)
+    setUsers(prev => prev.map(u => u.id === roleChangeTarget.user.id ? { ...u, role: roleChangeTarget.newRole } : u))
+    try {
+      await api.patch(`/users/${roleChangeTarget.user.id}`, { role: roleChangeTarget.newRole })
+      toast.success(`${roleChangeTarget.user.name}'s role updated`)
+    } catch {
+      setUsers(prev => prev.map(u => u.id === roleChangeTarget.user.id ? { ...u, role: roleChangeTarget.user.role } : u))
+      toast.error('Failed to update role')
+    }
     setRoleChangeTarget(null)
   }
 
-  const confirmStatusChange = () => {
+  const confirmStatusChange = async () => {
     if (!statusChangeTarget) return
     const newStatus = statusChangeTarget.user.status === 'active' ? 'inactive' : 'active'
-    setUsers(users.map(u => u.id === statusChangeTarget.user.id ? { ...u, status: newStatus } : u))
-    toast.success(`${statusChangeTarget.user.name} is now ${newStatus}`)
+    setUsers(prev => prev.map(u => u.id === statusChangeTarget.user.id ? { ...u, status: newStatus } : u))
+    try {
+      await api.patch(`/users/${statusChangeTarget.user.id}`, { status: newStatus })
+      toast.success(`${statusChangeTarget.user.name} is now ${newStatus}`)
+    } catch {
+      setUsers(prev => prev.map(u => u.id === statusChangeTarget.user.id ? { ...u, status: statusChangeTarget.user.status } : u))
+      toast.error('Failed to update status')
+    }
     setStatusChangeTarget(null)
   }
 

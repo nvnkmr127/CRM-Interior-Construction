@@ -51,7 +51,7 @@ router.post('/', authorize('projects:create'), async (req, res, next) => {
       userId: req.user.userId,
       data
     });
-    return success(res, project, 201);
+    return success(res, project, {}, 201);
   } catch (err) {
     if (err instanceof z.ZodError) {
       return fail(res, 'VALIDATION_ERROR', err.errors, 400);
@@ -112,7 +112,7 @@ router.patch('/:id', authorize('projects:update'), async (req, res, next) => {
       projectId: req.params.id,
       data
     });
-    return success(res, updatedProject, 200);
+    return success(res, updatedProject);
   } catch (err) {
     if (err instanceof z.ZodError) {
       return fail(res, 'VALIDATION_ERROR', err.errors, 400);
@@ -159,7 +159,7 @@ router.post('/:id/handover/checklists', authorize('projects:manage'), async (req
       projectId: req.params.id,
       items
     });
-    return success(res, checklist, 201);
+    return success(res, checklist, {}, 201);
   } catch (err) {
     next(err);
   }
@@ -171,7 +171,7 @@ router.post('/:id/handover/items', authorize('projects:manage'), async (req, res
     const { checklistId, room, description } = req.body;
     if (!checklistId || !room || !description) return fail(res, 'BAD_REQUEST', 'Missing fields', 400);
     const item = await addItem({ checklistId, room, description });
-    return success(res, item, 201);
+    return success(res, item, {}, 201);
   } catch (err) {
     next(err);
   }

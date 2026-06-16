@@ -9,3 +9,5 @@ export function useBreadcrumbs(crumbs) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(crumbs)])
 }
+
+export default useBreadcrumbs

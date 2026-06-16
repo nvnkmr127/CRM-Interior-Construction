@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import styles from './PortalSnags.module.css'
 import { useToast } from '../../store/toastContext'
 
@@ -15,6 +15,17 @@ export default function PortalSnags() {
   const [desc, setDesc] = useState('')
   const [photos, setPhotos] = useState([])
   const [submitting, setSubmitting] = useState(false)
+  const photosRef = useRef([])
+
+  useEffect(() => {
+    photosRef.current = photos
+  })
+
+  useEffect(() => {
+    return () => {
+      photosRef.current.forEach(p => URL.revokeObjectURL(p.url))
+    }
+  }, [])
 
   useEffect(() => {
     setTimeout(() => {

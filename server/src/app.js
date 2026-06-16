@@ -35,6 +35,8 @@ const portalProjectRoutes = require('./routes/portal/project');
 const portalSnagsRoutes = require('./routes/portal/snags');
 const portalApprovalsRoutes = require('./routes/portal/approvals');
 const portalBrandingRoutes = require('./routes/portal/branding');
+const usersRoutes = require('./routes/users');
+const dashboardRoutes = require('./routes/dashboard');
 const errorHandler = require('./middleware/errorHandler');
 
 const dashboardRouter = require('./routes/dashboard');
@@ -58,6 +60,8 @@ app.use('/api/projects/:id/handover', handoverRoutes);
 app.use('/api/phases/:phaseId/milestones', milestonesRoutes);
 app.use('/api/tasks', globalTasksRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/users', usersRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/logs', logsRoutes);
 app.use('/api/webhooks', webhooksRoutes);
 app.use('/api/webhooks/inbound', webhooksInboundRoutes);

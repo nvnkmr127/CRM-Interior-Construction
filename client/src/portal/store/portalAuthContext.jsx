@@ -1,46 +1,43 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import api from '../../api/axios'
 
-const PortalAuthContext = createContext()
+const PortalAuthCtx = createContext(null)
 
 export function PortalAuthProvider({ children }) {
-  const [portalUser, setPortalUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [portalUser, setPortalUser]   = useState(null)   // { clientName, projectId }
+  const [loading,    setLoading]      = useState(true)
+  const navigate = useNavigate()
 
+  // On mount: try to restore session via /api/portal/project
   useEffect(() => {
-    // Check for existing session/token here
-    const token = localStorage.getItem('portal_token')
-    if (token) {
-      // Mock validation
-      setTimeout(() => {
-        setPortalUser({ id: 'client1', name: 'Rajesh Sharma', phone: '9876543210', projectId: 'proj1' })
-        setLoading(false)
-      }, 500)
-    } else {
-      setLoading(false)
-    }
+    api.get('/portal/project')
+      .then(res => setPortalUser({
+        clientName: res.data.data?.client_name,
+        projectId:  res.data.data?.id,
+      }))
+      .catch(() => setPortalUser(null))
+      .finally(() => setLoading(false))
   }, [])
 
-  const login = async (phone, otp) => {
-    // Mock login
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        localStorage.setItem('portal_token', 'mock_token')
-        setPortalUser({ id: 'client1', name: 'Rajesh Sharma', phone, projectId: 'proj1' })
-        resolve(true)
-      }, 800)
-    })
-  }
+  const login = useCallback(async (phone, otp, tenantSlug) => {
+    const res = await api.post('/portal/auth/verify-otp', { phone, otp, tenantSlug })
+    const { projectId, clientName } = res.data.data
+    setPortalUser({ clientName, projectId })
+    return { projectId, clientName }
+  }, [])
 
-  const logout = () => {
-    localStorage.removeItem('portal_token')
+  const logout = useCallback(async () => {
+    try { await api.post('/portal/auth/logout') } catch {/* ignore */}
     setPortalUser(null)
-  }
+    navigate('/portal/login')
+  }, [navigate])
 
   return (
-    <PortalAuthContext.Provider value={{ portalUser, loading, login, logout }}>
+    <PortalAuthCtx.Provider value={{ portalUser, loading, login, logout, isAuthenticated: !!portalUser }}>
       {children}
-    </PortalAuthContext.Provider>
+    </PortalAuthCtx.Provider>
   )
 }
 
-export const usePortalAuth = () => useContext(PortalAuthContext)
+export const usePortalAuth = () => useContext(PortalAuthCtx)

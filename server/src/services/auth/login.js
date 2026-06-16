@@ -32,12 +32,26 @@ async function loginUser({ email, password, tenantId, ip, userAgent }) {
     throw new Error('INVALID_CREDENTIALS');
   }
 
-  // 4. Sign tokens
-  const payload = { 
-    userId: user.id, 
-    tenantId, 
-    role: user.role_id, 
-    email: user.email 
+  // 4. Fetch role name and permissions for the JWT payload
+  let roleName = null;
+  let rolePermissions = [];
+  if (user.role_id) {
+    const roleResult = await pool.query(
+      'SELECT name, permissions FROM roles WHERE id = $1',
+      [user.role_id]
+    );
+    if (roleResult.rows.length > 0) {
+      roleName = roleResult.rows[0].name;
+      rolePermissions = roleResult.rows[0].permissions || [];
+    }
+  }
+
+  const payload = {
+    userId: user.id,
+    tenantId,
+    role: roleName,
+    permissions: rolePermissions,
+    email: user.email
   };
   
   const accessToken = signAccessToken(payload);

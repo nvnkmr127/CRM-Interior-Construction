@@ -2,10 +2,11 @@ import { useState, useEffect, useMemo } from 'react'
 import styles from './SnagsDashboard.module.css'
 import { Badge, Button, Avatar, Modal } from '../../components/ui'
 import { useToast } from '../../store/toastContext'
+import { getSnags, updateSnag } from '../../api/snags'
 
 const FILTERS = ['All', 'Open', 'Assigned', 'In Progress', 'Resolved', 'Verified']
 
-export default function SnagsDashboard() {
+export default function SnagsDashboard({ projectId }) {
   const [activeFilter, setActiveFilter] = useState('All')
   const [snags, setSnags] = useState([])
   const [loading, setLoading] = useState(true)
@@ -14,17 +15,31 @@ export default function SnagsDashboard() {
   const toast = useToast()
 
   useEffect(() => {
-    // Mock Fetch
-    setTimeout(() => {
-      setSnags([
-        { id: '1', title: 'Paint peeling near window', desc: 'The paint is starting to peel off near the master bedroom window sill.', category: 'Paint', status: 'open', raisedBy: { type: 'client', name: 'Rajesh Sharma', date: new Date(Date.now()-86400000*3).toISOString() }, assignee: null, createdAt: new Date(Date.now()-86400000*3).toISOString(), slaHours: 48, photos: ['/placeholder.jpg'] },
-        { id: '2', title: 'Loose electrical socket', desc: 'Living room TV unit socket is loose.', category: 'Electrical', status: 'assigned', raisedBy: { type: 'staff', name: 'Priya Mehta', date: new Date(Date.now()-86400000).toISOString() }, assignee: { name: 'Ravi Electrician' }, createdAt: new Date(Date.now()-86400000).toISOString(), slaHours: 24, photos: [] },
-        { id: '3', title: 'Wardrobe door alignment', desc: 'Left door of master wardrobe scraping the bottom drawer.', category: 'Carpentry', status: 'in_progress', raisedBy: { type: 'client', name: 'Rajesh Sharma', date: new Date(Date.now()-3600000*5).toISOString() }, assignee: { name: 'Amit Carpenter' }, createdAt: new Date(Date.now()-3600000*5).toISOString(), slaHours: 72, photos: [] },
-        { id: '4', title: 'Missing handle on kitchen cabinet', desc: 'Top right cabinet missing D-handle.', category: 'Kitchen', status: 'resolved', raisedBy: { type: 'client', name: 'Rajesh Sharma', date: new Date(Date.now()-86400000*5).toISOString() }, assignee: { name: 'Amit Carpenter' }, createdAt: new Date(Date.now()-86400000*5).toISOString(), slaHours: 48, photos: [] },
-      ])
-      setLoading(false)
-    }, 600)
-  }, [])
+    if (!projectId) return
+    setLoading(true)
+    getSnags({ projectId })
+      .then(res => {
+        const raw = res.data?.data || res.data || []
+        setSnags(raw.map(s => ({
+          id: s.id,
+          title: s.title,
+          desc: s.description || s.desc || '',
+          category: s.category || 'General',
+          status: s.status || 'open',
+          raisedBy: {
+            type: s.raised_by_type || 'staff',
+            name: s.raised_by_name || '—',
+            date: s.created_at || s.raisedAt,
+          },
+          assignee: s.assignee_name ? { name: s.assignee_name } : null,
+          createdAt: s.created_at || s.createdAt,
+          slaHours: s.sla_hours || 48,
+          photos: s.photos || [],
+        })))
+      })
+      .catch(() => setSnags([]))
+      .finally(() => setLoading(false))
+  }, [projectId])
 
   const filteredSnags = useMemo(() => {
     if (activeFilter === 'All') return snags
@@ -59,15 +74,26 @@ export default function SnagsDashboard() {
     return <div className={`${styles.slaTimer} ${styles.slaGreen}`}>{(remainingHrs).toFixed(1)}h left</div>
   }
 
-  const handleStatusChange = (id, newStatus) => {
-    setSnags(snags.map(s => s.id === id ? { ...s, status: newStatus } : s))
-    toast.success(`Status updated to ${newStatus}`)
+  const handleStatusChange = async (id, newStatus) => {
+    setSnags(prev => prev.map(s => s.id === id ? { ...s, status: newStatus } : s))
+    try {
+      await updateSnag(id, { status: newStatus })
+      toast.success(`Status updated to ${newStatus.replace('_', ' ')}`)
+    } catch {
+      setSnags(prev => prev.map(s => s.id === id ? { ...s, status: snags.find(x => x.id === id)?.status || s.status } : s))
+      toast.error('Failed to update status')
+    }
   }
 
-  const confirmResolve = () => {
+  const confirmResolve = async () => {
     if (!resolutionNote.trim()) return toast.error('Resolution notes required')
-    setSnags(snags.map(s => s.id === resolveTarget.id ? { ...s, status: 'resolved', resolutionNote } : s))
-    toast.success('Snag marked as resolved. Client will be notified to verify.')
+    try {
+      await updateSnag(resolveTarget.id, { status: 'resolved', resolution_note: resolutionNote })
+      setSnags(prev => prev.map(s => s.id === resolveTarget.id ? { ...s, status: 'resolved', resolutionNote } : s))
+      toast.success('Snag marked as resolved. Client will be notified to verify.')
+    } catch {
+      toast.error('Failed to resolve snag')
+    }
     setResolveTarget(null)
     setResolutionNote('')
   }

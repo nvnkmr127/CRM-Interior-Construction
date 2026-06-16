@@ -12,7 +12,7 @@ const s3Client = new S3Client({
 });
 const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || 'crm-documents-bucket';
 
-async function getUploadUrl({ tenantId, projectId, phaseId, name, mimeType, docType }) {
+async function getUploadUrl({ tenantId, projectId, _phaseId, name, mimeType, _docType }) {
   // Sanitize file name explicitly to avoid special character injection routing issues
   const safeName = name.replace(/[^a-zA-Z0-9.-]/g, '_');
   const storageKey = `${tenantId}/projects/${projectId}/docs/${Date.now()}-${safeName}`;

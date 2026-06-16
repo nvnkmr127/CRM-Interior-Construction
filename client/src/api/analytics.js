@@ -1,6 +1,5 @@
-import api from './axios.js'
+import api from './axios';
 
-export const analyticsApi = {
-  getLeadAnalytics:    (from, to) => api.get('/analytics/leads',    { params:{from,to} }).then(r=>r.data.data),
-  getProjectAnalytics: (from, to) => api.get('/analytics/projects', { params:{from,to} }).then(r=>r.data.data),
-}
+export const getLeadAnalytics = (params) => api.get('/analytics/leads', { params }).then(r=>r.data.data);
+
+export const getProjectAnalytics = (params) => api.get('/analytics/projects', { params }).then(r=>r.data.data);

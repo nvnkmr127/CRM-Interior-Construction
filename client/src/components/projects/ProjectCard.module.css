@@ -1,19 +1,230 @@
-.card { background: var(--color-surface); border-radius: var(--radius-lg); border: 1px solid var(--color-border); box-shadow: var(--shadow-sm); padding: var(--space-4); transition: var(--transition-base); display: flex; flex-direction: column; gap: var(--space-4); cursor: pointer; }
-.card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); border-color: var(--color-border-strong); }
-.topRow { display: flex; align-items: center; justify-content: space-between; }
-.typeIcon { font-size: 20px; color: var(--color-text-secondary); }
-.titleBlock { display: flex; flex-direction: column; }
-.projName { font-size: var(--text-lg); font-weight: 700; color: var(--color-text); }
-.clientName { font-size: var(--text-sm); color: var(--color-text-secondary); }
-.pmRow { display: flex; align-items: center; gap: var(--space-2); }
-.pmAvatar { width: 24px; height: 24px; border-radius: var(--radius-full); background: var(--color-surface-3); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; }
-.pmName { font-size: var(--text-sm); color: var(--color-text); }
-.progressWrap { display: flex; flex-direction: column; gap: var(--space-1); }
-.progressLabel { font-size: 11px; color: var(--color-text-secondary); font-weight: 500; }
-.progressTrack { height: 6px; background: var(--color-surface-2); border-radius: var(--radius-full); overflow: hidden; }
-.progressFill { height: 100%; border-radius: var(--radius-full); transition: width 0.3s ease; }
-.phaseChip { display: inline-block; font-size: 11px; padding: 2px 8px; background: var(--color-surface-2); border-radius: var(--radius-sm); color: var(--color-text-secondary); font-weight: 500; align-self: flex-start; }
-.bottomRow { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--color-border); padding-top: var(--space-3); }
-.value { font-weight: 700; color: var(--color-text); }
-.date { font-size: var(--text-sm); color: var(--color-text-secondary); }
-.dateOverdue { color: var(--color-danger); font-weight: 600; }
+/* ─── Card Shell ─────────────────────────────────────────────────────── */
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  cursor: pointer;
+  transition: var(--transition-base);
+  outline: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #E8935A 0%, #f0b17a 100%);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  border-color: #E8935A;
+}
+
+.card:hover::before {
+  opacity: 1;
+}
+
+.card:focus-visible {
+  box-shadow: 0 0 0 3px rgba(232, 147, 90, 0.3);
+}
+
+/* ─── Top Row ─────────────────────────────────────────────────────────── */
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.typeIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  color: #E8935A;
+}
+
+/* ─── Status Badge ────────────────────────────────────────────────────── */
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ─── Title Block ─────────────────────────────────────────────────────── */
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.projName {
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.clientName {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+/* ─── PM Row ──────────────────────────────────────────────────────────── */
+.pmRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pmAvatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #E8935A 0%, #c96f3a 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.pmName {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pmLabel {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  background: var(--color-surface-2);
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+}
+
+/* ─── Progress ────────────────────────────────────────────────────────── */
+.progressWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.progressTrack {
+  height: 6px;
+  background: var(--color-surface-2);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.4s ease;
+}
+
+.progressMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.progressLabel {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.progressPct {
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+/* ─── Phase Chip ──────────────────────────────────────────────────────── */
+.phaseChip {
+  display: inline-block;
+  font-size: var(--text-xs);
+  padding: 3px 10px;
+  background: var(--color-surface-2);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  align-self: flex-start;
+  letter-spacing: 0.01em;
+  border: 1px solid var(--color-border);
+}
+
+/* ─── Bottom Row ──────────────────────────────────────────────────────── */
+.bottomRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-3);
+  margin-top: auto;
+  gap: var(--space-2);
+}
+
+.value {
+  font-weight: 800;
+  font-size: var(--text-md);
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+}
+
+.date {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  text-align: right;
+}
+
+.dateOverdue {
+  font-size: var(--text-xs);
+  color: var(--color-danger);
+  font-weight: 600;
+  text-align: right;
+}
+
+.overdueLabel {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
