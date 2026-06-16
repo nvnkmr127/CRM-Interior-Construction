@@ -13,7 +13,8 @@ export function useTasks(projectId, filters = {}) {
     setLoading(true); setError(null)
     try {
       const res = await getTasks(projectId, filters)
-      setTasks(res.data || [])
+      const rawData = res.data?.data || res.data?.results || res.data;
+      setTasks(Array.isArray(rawData) ? rawData : []);
     } catch(e) {
       setError('Failed to load tasks')
     } finally { setLoading(false) }

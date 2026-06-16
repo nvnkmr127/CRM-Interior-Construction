@@ -99,17 +99,27 @@ router.post('/login', async (req, res, next) => {
       userAgent
     });
 
-    // Set refreshToken as httpOnly cookie
+    // Set refreshToken and accessToken as httpOnly cookies
     const isProduction = process.env.NODE_ENV === 'production';
-    res.cookie('refreshToken', refreshToken, {
+    
+    const cookieOptions = {
       httpOnly: true,
       secure: isProduction,
       sameSite: 'strict',
+    };
+
+    res.cookie('refreshToken', refreshToken, {
+      ...cookieOptions,
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
-    // 4. Return 200
-    return success(res, { accessToken, refreshToken, user });
+    res.cookie('accessToken', accessToken, {
+      ...cookieOptions,
+      maxAge: 15 * 60 * 1000 // 15 minutes (or however long your token is valid)
+    });
+
+    // 4. Return 200 without exposing tokens in JS payload
+    return success(res, { user });
   } catch (error) {
     next(error);
   }
@@ -128,17 +138,26 @@ router.post('/refresh', async (req, res, next) => {
     // 3. Call refreshTokens
     const { accessToken, refreshToken } = await refreshTokens(rawRefreshToken);
 
-    // 5. Set new refreshToken cookie
+    // 5. Set new refreshToken and accessToken cookies
     const isProduction = process.env.NODE_ENV === 'production';
-    res.cookie('refreshToken', refreshToken, {
+    const cookieOptions = {
       httpOnly: true,
       secure: isProduction,
       sameSite: 'strict',
+    };
+
+    res.cookie('refreshToken', refreshToken, {
+      ...cookieOptions,
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
+    res.cookie('accessToken', accessToken, {
+      ...cookieOptions,
+      maxAge: 15 * 60 * 1000 // 15 minutes
+    });
+
     // 4. Return 200
-    return success(res, { accessToken, refreshToken });
+    return success(res, {});
   } catch (error) {
     // If the refresh service throws an error (e.g., TOKEN_INVALID), we can treat it as UNAUTHORIZED
     // Alternatively, let the global handler catch named errors. The global handler will throw 500
@@ -157,10 +176,12 @@ router.post('/logout', authenticate, async (req, res) => {
     }
 
     res.clearCookie('refreshToken');
+    res.clearCookie('accessToken');
     return res.status(204).send();
   } catch (error) {
     console.error('Logout Error:', error);
     res.clearCookie('refreshToken');
+    res.clearCookie('accessToken');
     return res.status(204).send();
   }
 });
@@ -244,7 +265,7 @@ router.patch('/me', authenticate, async (req, res, next) => {
       return res.status(404).json(fail('User not found'));
     }
 
-    const { password_hash, ...safeUser } = result.rows[0];
+    const { password_hash: _password_hash, ...safeUser } = result.rows[0];
     res.json(success(safeUser));
   } catch (error) {
     next(error);

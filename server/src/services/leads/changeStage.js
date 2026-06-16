@@ -4,7 +4,7 @@ const { updateLead } = require('./updateLead');
 const { logAction } = require('../auditLog');
 const { dispatchEvent } = require('../webhooks/webhookDispatcher');
 const { notifyUser } = require('../notificationService');
-const pool = require('../../config/db');
+// const pool = require('../../config/db');
 
 async function changeStage({ tenantId, userId, leadId, newStageId }) {
   // 1. Fetch current lead to get the old stage info

@@ -43,7 +43,7 @@ export default function DocumentPanel({ projectId }) {
     setLoading(true);
     getDocuments(projectId)
       .then(res => {
-        const raw = res.data?.data || res.data || [];
+        const _r = res.data?.data || res.data; const raw = Array.isArray(_r) ? _r : [];
         setDocs(raw.map(d => ({
           id: d.id,
           name: d.file_name || d.name,

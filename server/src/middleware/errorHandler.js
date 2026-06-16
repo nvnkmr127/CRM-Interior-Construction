@@ -19,7 +19,14 @@ function errorHandler(err, req, res, next) {
     return res.status(400).json(response);
   }
 
-  // 2. Named Errors Mapping
+  // 2. Custom AppError instances
+  if (err.isOperational) {
+    response.error = { code: err.code, message: err.message };
+    return res.status(err.statusCode).json(response);
+  }
+
+  // 3. Fallback for unhandled/native errors
+  // To keep compatibility with any legacy throw new Error('STRING') before full refactor:
   switch (err.message) {
     case 'EMAIL_EXISTS':
       response.error = { code: 'EMAIL_EXISTS', message: 'Email already registered' };
@@ -37,7 +44,6 @@ function errorHandler(err, req, res, next) {
       response.error = { code: 'ACCOUNT_INACTIVE', message: 'Account is inactive' };
       return res.status(403).json(response);
     default:
-      // 3. Default Fallback
       response.error = { code: 'INTERNAL_ERROR', message: 'Something went wrong' };
       
       // Include stack trace only in development

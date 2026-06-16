@@ -125,6 +125,20 @@ router.patch('/:id', authorize('projects:update'), async (req, res, next) => {
   }
 });
 
+// DELETE /api/projects/:id
+router.delete('/:id', authorize('projects:delete'), async (req, res, next) => {
+  try {
+    await projectRepository.softDeleteProject(req.tenantId, req.params.id);
+    return res.status(204).send();
+  } catch (err) {
+    if (err.message === 'NOT_FOUND' || err.status === 404) {
+      return fail(res, 'NOT_FOUND', 'Project not found', 404);
+    }
+    console.error('[Projects Router] Delete error:', err);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to delete project.', 500);
+  }
+});
+
 // GET /api/projects/:id/payment-milestones
 router.get('/:id/payment-milestones', authorize('projects:read'), async (req, res, next) => {
   try {

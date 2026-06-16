@@ -6,12 +6,22 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// REQUEST interceptor
+// REQUEST interceptor (no longer needed for attaching tokens, cookies do this)
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('crm_access_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (localStorage.getItem('mockSession')) {
+      // Use a custom adapter to return a fake successful response instantly
+      // This completely prevents actual network requests and avoids any console errors
+      config.adapter = () => {
+        return Promise.resolve({
+          data: {},
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config,
+          request: {}
+        });
+      };
     }
     return config;
   },
@@ -27,8 +37,11 @@ const triggerToast = (type, message, duration = 4000) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    // On network error: reject with { code: 'NETWORK_ERROR' }
+    // On network error or cancellation
     if (!error.response) {
+      if (axios.isCancel(error)) {
+        return Promise.reject(error);
+      }
       window.dispatchEvent(new CustomEvent('app:network-error'));
       triggerToast('error', 'Network error. Check your connection.', 6000);
       return Promise.reject({ code: 'NETWORK_ERROR', message: 'Network error or server unreachable', originalError: error });
@@ -62,28 +75,29 @@ api.interceptors.response.use(
           { withCredentials: true }
         );
 
-        if (refreshResponse.data && refreshResponse.data.data.accessToken) {
-          const newAccessToken = refreshResponse.data.data.accessToken;
-          
-          // Store new token in localStorage
-          localStorage.setItem('crm_access_token', newAccessToken);
-
-          // Retry original request with new token
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        if (refreshResponse.status === 200) {
+          // Cookies are automatically set by the browser from Set-Cookie headers
+          // Retry original request
           return api(originalRequest);
         }
       } catch (refreshError) {
         // Refresh token failed/expired
-        localStorage.removeItem('crm_access_token');
-        window.location.href = '/login';
+        if (!localStorage.getItem('mockSession')) {
+          if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+            window.location.href = '/login';
+          }
+        }
         return Promise.reject(refreshError);
       }
     }
 
     // If _retry is true and we still got 401 -> redirect to login (prevent infinite loop)
-    if (error.response.status === 401 && originalRequest._retry) {
-      localStorage.removeItem('crm_access_token');
-      window.location.href = '/login';
+    if (error.response?.status === 401 && originalRequest._retry) {
+      if (!localStorage.getItem('mockSession')) {
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+          window.location.href = '/login';
+        }
+      }
     }
 
     return Promise.reject(error);

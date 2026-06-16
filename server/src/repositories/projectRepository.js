@@ -1,7 +1,7 @@
 const pool = require('../config/db');
 
 class ProjectRepository {
-  async createProject(tenantId, data) {
+  async createProject(tenantId, data, dbClient = pool) {
     const {
       lead_id, client_name, client_phone, client_email,
       name, project_type, pm_id, designer_id,
@@ -26,7 +26,7 @@ class ProjectRepository {
       site_address || null, custom_fields, created_by || null
     ];
 
-    const { rows } = await pool.query(query, values);
+    const { rows } = await dbClient.query(query, values);
     return rows[0];
   }
 
@@ -114,7 +114,7 @@ class ProjectRepository {
       LEFT JOIN users d ON p.designer_id = d.id
       WHERE ${whereClause}
       ORDER BY p.created_at DESC
-      LIMIT $${idx++} OFFSET $${idx++}
+      LIMIT $${idx++} OFFSET $${idx}
     `;
     
     values.push(limit, offset);

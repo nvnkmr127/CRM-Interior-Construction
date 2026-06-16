@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import styles from './TaskDetail.module.css'
 import { Drawer, Button, Badge, Avatar, Select } from '../ui'
 import { useToast } from '../../store/toastContext'
-import { getTask, updateTask, addTaskComment } from '../../api/tasks'
+import { getTask, updateTask, addTaskComment, deleteTask } from '../../api/tasks'
 
 const PRIORITIES = ['low', 'medium', 'high', 'urgent']
 const PRIORITY_COLORS = { low: 'info', medium: 'warning', high: 'danger', urgent: 'danger' }
@@ -69,6 +69,18 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId }) {
       toast.error('Failed to update title')
     }
   }
+
+  const handleDelete = async () => {
+    if (window.confirm('Are you sure you want to delete this task?')) {
+      try {
+        await deleteTask(projectId, taskId);
+        onClose();
+        window.location.reload();
+      } catch (e) {
+        toast.error('Failed to delete task');
+      }
+    }
+  };
 
   const handleDescChange = (e) => {
     setDesc(e.target.value)
@@ -169,9 +181,12 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId }) {
         <>
           <div className={styles.headerRow}>
             <Badge variant={PRIORITY_COLORS[task.priority]} style={{ textTransform: 'capitalize' }}>{task.priority}</Badge>
-            <Button variant="primary" size="sm" onClick={() => handleStatusChange('done')} disabled={task.status === 'done'}>
-              {task.status === 'done' ? '✓ Completed' : 'Mark Complete'}
-            </Button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button variant="outline" size="sm" style={{color: 'var(--color-danger)', borderColor: 'var(--color-danger)'}} onClick={handleDelete}>Delete</Button>
+              <Button variant="primary" size="sm" onClick={() => handleStatusChange('done')} disabled={task.status === 'done'}>
+                {task.status === 'done' ? '✓ Completed' : 'Mark Complete'}
+              </Button>
+            </div>
           </div>
           <input 
             className={styles.titleInput} 

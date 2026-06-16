@@ -1,0 +1,224 @@
+const { z } = require('zod');
+const { createLead } = require('../services/leads/createLead');
+const { updateLead } = require('../services/leads/updateLead');
+const { deleteLead } = require('../services/leads/deleteLead');
+const { changeStage } = require('../services/leads/changeStage');
+const { bulkDeleteLeads } = require('../services/leads/bulkDeleteLeads');
+const { bulkAssignLeads } = require('../services/leads/bulkAssignLeads');
+const { findLeads, findLeadById, getLeadStats } = require('../repositories/leadRepository');
+const { listActivities, logActivity } = require('../services/activities/activityService');
+const { success, fail, paginate } = require('../utils/response');
+const AppError = require('../utils/AppError');
+
+const createLeadSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  phone: z.string(),
+  email: z.string().email('Invalid email format').optional().or(z.literal('')),
+  source: z.string().optional(),
+  stageId: z.string().uuid('Invalid stage ID').optional().or(z.literal('')),
+  assigneeId: z.string().uuid('Invalid assignee ID').optional().or(z.literal('')),
+  notes: z.string().optional(),
+  custom_fields: z.record(z.any()).optional()
+});
+
+const logActivitySchema = z.object({
+  type: z.enum(['call', 'note', 'email', 'whatsapp', 'site_visit', 'meeting']),
+  title: z.string().optional(),
+  notes: z.string(),
+  outcome: z.string().optional(),
+  scheduledAt: z.string().datetime().optional()
+});
+
+const getTenantAndUser = (req) => {
+  const tenantId = req.tenantId || (req.user && req.user.tenantId);
+  const userId = req.user && req.user.userId;
+  if (!tenantId) {
+    throw new AppError('Tenant context missing', 401, 'UNAUTHORIZED');
+  }
+  return { tenantId, userId };
+};
+
+exports.createLeadHandler = async (req, res, next) => {
+  try {
+    const parsed = createLeadSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return fail(res, 'VALIDATION_ERROR', 'Validation failed', 400, parsed.error.issues);
+    }
+    const { tenantId, userId } = getTenantAndUser(req);
+    const lead = await createLead({ tenantId, userId, data: parsed.data });
+    return success(res, lead, {}, 201);
+  } catch (error) {
+    if (error.message.includes('VALIDATION_ERROR') || error.message === 'INVALID_STAGE') {
+      return fail(res, 'VALIDATION_ERROR', error.message, 400);
+    }
+    next(error);
+  }
+};
+
+exports.getLeadsHandler = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { stageId, assigneeId, source, search, sortBy, sortDesc, page, limit } = req.query;
+
+    const result = await findLeads(tenantId, {
+      stageId,
+      assigneeId,
+      source,
+      search,
+      sortBy,
+      sortDesc,
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 20
+    });
+
+    return paginate(res, result.data, result.total, result.page, result.limit);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getLeadStatsHandler = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const stats = await getLeadStats(tenantId);
+    return success(res, stats);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getLeadByIdHandler = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const leadId = req.params.id;
+
+    const lead = await findLeadById(tenantId, leadId);
+    if (!lead) {
+      return fail(res, 'NOT_FOUND', 'Lead not found', 404);
+    }
+
+    const activitiesResult = await listActivities({ tenantId, leadId, limit: 5 });
+    return success(res, { ...lead, activities: activitiesResult.data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateLeadHandler = async (req, res, next) => {
+  try {
+    const { tenantId, userId } = getTenantAndUser(req);
+    const leadId = req.params.id;
+
+    const updatedLead = await updateLead({ tenantId, userId, leadId, data: req.body });
+    return success(res, updatedLead);
+  } catch (error) {
+    if (error.code === 'STAGE_GATE_FAILED') {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'STAGE_GATE_FAILED', message: 'Missing mandatory fields for this stage', missing: error.missing },
+        timestamp: new Date().toISOString()
+      });
+    }
+    if (error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Lead not found', 404);
+    if (error.message === 'INVALID_STAGE') return fail(res, 'VALIDATION_ERROR', 'Invalid stage', 400);
+    next(error);
+  }
+};
+
+exports.deleteLeadHandler = async (req, res, next) => {
+  try {
+    const { tenantId, userId } = getTenantAndUser(req);
+    const leadId = req.params.id;
+    await deleteLead({ tenantId, userId, leadId });
+    return res.status(204).send();
+  } catch (error) {
+    if (error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Lead not found', 404);
+    next(error);
+  }
+};
+
+exports.bulkDeleteLeadsHandler = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { leadIds } = req.body;
+    if (!leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
+      return fail(res, 'VALIDATION_ERROR', 'An array of leadIds is required', 400);
+    }
+    const deletedCount = await bulkDeleteLeads(leadIds, tenantId);
+    return success(res, { count: deletedCount }, { message: `Deleted ${deletedCount} leads` });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.bulkAssignLeadsHandler = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { leadIds, assigneeId } = req.body;
+    if (!leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
+      return fail(res, 'VALIDATION_ERROR', 'An array of leadIds is required', 400);
+    }
+    const updatedCount = await bulkAssignLeads(leadIds, assigneeId, tenantId);
+    return success(res, { count: updatedCount }, { message: `Assigned ${updatedCount} leads` });
+  } catch (error) {
+    if (error.message === 'Invalid assignee') return fail(res, 'VALIDATION_ERROR', 'Assignee not found in this tenant', 400);
+    next(error);
+  }
+};
+
+exports.changeStageHandler = async (req, res, next) => {
+  try {
+    const { tenantId, userId } = getTenantAndUser(req);
+    const leadId = req.params.id;
+    const { stageId } = req.body;
+    if (!stageId) return fail(res, 'VALIDATION_ERROR', 'stageId is required', 400);
+
+    const updatedLead = await changeStage({ tenantId, userId, leadId, newStageId: stageId });
+    return success(res, updatedLead);
+  } catch (error) {
+    if (error.code === 'STAGE_GATE_FAILED') {
+      return res.status(422).json({
+        success: false,
+        error: { code: 'STAGE_GATE_FAILED', message: 'Missing mandatory fields for this stage', missing: error.missing },
+        timestamp: new Date().toISOString()
+      });
+    }
+    if (error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Lead not found', 404);
+    if (error.message === 'INVALID_STAGE') return fail(res, 'VALIDATION_ERROR', 'Invalid stage', 400);
+    next(error);
+  }
+};
+
+exports.logActivityHandler = async (req, res, next) => {
+  try {
+    const { tenantId, userId } = getTenantAndUser(req);
+    const leadId = req.params.id;
+    const parsed = logActivitySchema.safeParse(req.body);
+    if (!parsed.success) return fail(res, 'VALIDATION_ERROR', 'Validation failed', 400, parsed.error.issues);
+
+    const activity = await logActivity({ tenantId, userId, leadId, ...parsed.data });
+    return success(res, activity, {}, 201);
+  } catch (error) {
+    if (error.message.includes('INVALID_ACTIVITY_TYPE')) return fail(res, 'VALIDATION_ERROR', error.message, 400);
+    next(error);
+  }
+};
+
+exports.getActivitiesHandler = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const leadId = req.params.id;
+    const { type, page, limit } = req.query;
+
+    const result = await listActivities({
+      tenantId,
+      leadId,
+      type,
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 20
+    });
+    return paginate(res, result.data, result.total, result.page, result.limit);
+  } catch (error) {
+    next(error);
+  }
+};

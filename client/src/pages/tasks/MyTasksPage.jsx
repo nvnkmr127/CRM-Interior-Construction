@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import styles from './MyTasksPage.module.css'
-import { Badge, Select, Button, Spinner } from '../../components/ui'
+import { Badge, Select, Button, ContentLoader, EmptyState } from '../../components/ui'
 import TaskDetail from '../../components/tasks/TaskDetail'
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
@@ -39,7 +39,7 @@ export default function MyTasksPage() {
     setLoading(true)
     getGlobalTasks({ assigneeId: 'me', limit: 100 })
       .then(res => {
-        const raw = res.data?.data || res.data || []
+        const _r = res.data?.data || res.data; const raw = Array.isArray(_r) ? _r : [];
         const normalized = raw.map(t => ({
           id: t.id,
           title: t.title,
@@ -218,21 +218,13 @@ export default function MyTasksPage() {
 
       <div className={styles.taskList}>
         {loading ? (
-          <>
-            <div className={styles.projectGroup}>
-              <div className={styles.projectHeader}><div className={styles.projectName}>Loading projects...</div></div>
-              <div className={styles.skeletonRow} />
-              <div className={styles.skeletonRow} />
-            </div>
-            <div className={styles.projectGroup}>
-              <div className={styles.projectHeader}><div className={styles.projectName}>Loading projects...</div></div>
-              <div className={styles.skeletonRow} />
-            </div>
-          </>
+            <ContentLoader type="list" rows={5} />
         ) : groupedTasks.length === 0 ? (
-          <div className={styles.emptyState}>
-            <div className={styles.emptyIcon}>{emptyState.icon}</div>
-            <div>{emptyState.text}</div>
+          <div style={{ padding: '40px 0' }}>
+            <EmptyState 
+              icon={<span style={{fontSize: 32}}>{emptyState.icon}</span>}
+              title={emptyState.text}
+            />
           </div>
         ) : (
           groupedTasks.map(group => (

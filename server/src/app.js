@@ -6,9 +6,36 @@ const cookieParser = require('cookie-parser');
 
 const app = express();
 
+app.set('trust proxy', 1);
 app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_URL }));
+app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true }));
 app.use(morgan('dev'));
+
+const rateLimit = require('express-rate-limit');
+
+const isDev = process.env.NODE_ENV !== 'production';
+
+// Global API rate limiter
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: isDev ? 5000 : 100, // High limit in dev to prevent 429s on hot reload
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many requests, please try again later.' }
+});
+
+// Stricter rate limiter for auth routes
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: isDev ? 1000 : 15, // High limit in dev
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many authentication attempts, please try again later.' }
+});
+
+app.use('/api/', apiLimiter);
+app.use('/api/auth', authLimiter);
+app.use('/api/portal/auth', authLimiter);
 app.use(express.json({
   verify: (req, res, buf) => {
     req.rawBody = buf;

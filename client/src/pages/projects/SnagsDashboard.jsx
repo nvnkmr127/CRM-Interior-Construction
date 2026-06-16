@@ -19,7 +19,7 @@ export default function SnagsDashboard({ projectId }) {
     setLoading(true)
     getSnags({ projectId })
       .then(res => {
-        const raw = res.data?.data || res.data || []
+        const _r = res.data?.data || res.data; const raw = Array.isArray(_r) ? _r : [];
         setSnags(raw.map(s => ({
           id: s.id,
           title: s.title,

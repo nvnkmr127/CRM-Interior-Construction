@@ -7,6 +7,7 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid
 } from 'recharts';
 import { Skeleton } from '../../components/ui';
+import ErrorBoundary from '../../components/ErrorBoundary';
 import styles from './DashboardPage.module.css';
 
 /* ── Static sparkline data (one series per KPI) ───────────────────────── */
@@ -307,7 +308,8 @@ export default function DashboardPage() {
       </div>
 
       {/* ── KPI GRID ───────────────────────────────────────────────────── */}
-      <div className={styles.kpiGrid}>
+      <ErrorBoundary>
+        <div className={styles.kpiGrid}>
         {loading
           ? Array(4).fill(0).map((_, i) => (
               <div key={i} className={styles.kpiCard}>
@@ -336,10 +338,12 @@ export default function DashboardPage() {
               </div>
             ))
         }
-      </div>
+        </div>
+      </ErrorBoundary>
 
       {/* ── MIDDLE ROW ─────────────────────────────────────────────────── */}
-      <div className={styles.midRow}>
+      <ErrorBoundary>
+        <div className={styles.midRow}>
 
         {/* Revenue Trend chart */}
         <div className={styles.card}>
@@ -436,10 +440,12 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-      </div>
+        </div>
+      </ErrorBoundary>
 
       {/* ── BOTTOM ROW ─────────────────────────────────────────────────── */}
-      <div className={styles.botRow}>
+      <ErrorBoundary>
+        <div className={styles.botRow}>
 
         {/* Recent Activity */}
         <div className={styles.card}>
@@ -558,7 +564,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-      </div>
+        </div>
+      </ErrorBoundary>
     </div>
   );
 }

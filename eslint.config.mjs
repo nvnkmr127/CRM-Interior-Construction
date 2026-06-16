@@ -9,7 +9,7 @@ export default [
     ...js.configs.recommended,
     files: ['server/**/*.js', 'shared/**/*.js'],
     languageOptions: {
-      globals: { ...globals.node },
+      globals: { ...globals.node, ...globals.jest },
       parserOptions: { ecmaVersion: 2022 },
     },
     rules: {

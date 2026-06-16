@@ -45,7 +45,7 @@ async function findLeadById(tenantId, leadId) {
   return result.rows[0] || null;
 }
 
-async function findLeads(tenantId, { stageId, assigneeId, search, source, page = 1, limit = 20 }) {
+async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy, sortDesc, page = 1, limit = 20 }) {
   let query = `
     SELECT l.*,
            u.name AS assignee_name, u.avatar_url AS assignee_avatar,
@@ -85,9 +85,15 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, page =
   const countResult = await pool.query(countQuery, values);
   const total = parseInt(countResult.rows[0].count, 10);
   
-  // Apply pagination
+  // Apply ordering
+  let orderField = 'l.created_at';
+  if (sortBy === 'score') orderField = 'l.score';
+  else if (sortBy === 'name') orderField = 'l.name';
+  
+  const orderDirection = sortDesc === 'false' || sortDesc === false ? 'ASC' : 'DESC';
+
   const offset = (page - 1) * limit;
-  query += ` ORDER BY l.created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
+  query += ` ORDER BY ${orderField} ${orderDirection} LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
   values.push(limit, offset);
   
   const result = await pool.query(query, values);
@@ -122,7 +128,7 @@ async function updateLead(tenantId, leadId, updates) {
   const query = `
     UPDATE leads
     SET ${fields.join(', ')}
-    WHERE tenant_id = $${paramIndex++} AND id = $${paramIndex++} AND deleted_at IS NULL
+    WHERE tenant_id = $${paramIndex++} AND id = $${paramIndex} AND deleted_at IS NULL
     RETURNING *
   `;
   
@@ -150,11 +156,42 @@ async function convertLeadToProject(tenantId, leadId, projectId) {
   await pool.query(query, [projectId, tenantId, leadId]);
 }
 
+async function getLeadStats(tenantId) {
+  const query = `
+    SELECT
+      COUNT(*) AS total_leads,
+      COUNT(*) FILTER (
+        WHERE s.is_won = true 
+        AND (l.updated_at >= date_trunc('month', CURRENT_DATE) OR l.created_at >= date_trunc('month', CURRENT_DATE))
+      ) AS won_this_month,
+      COUNT(*) FILTER (WHERE s.is_won = true) AS total_won,
+      AVG(NULLIF(l.score, 0)) AS avg_score
+    FROM leads l
+    LEFT JOIN lead_stages s ON l.stage_id = s.id
+    WHERE l.tenant_id = $1 AND l.deleted_at IS NULL
+  `;
+  const result = await pool.query(query, [tenantId]);
+  const row = result.rows[0];
+  
+  const totalLeads = parseInt(row.total_leads, 10) || 0;
+  const totalWon = parseInt(row.total_won, 10) || 0;
+  const avgScore = Math.round(parseFloat(row.avg_score)) || 0;
+  const convPct = totalLeads > 0 ? Math.round((totalWon / totalLeads) * 100) : 0;
+
+  return {
+    total: totalLeads,
+    wonThisMonth: parseInt(row.won_this_month, 10) || 0,
+    avgScore,
+    convPct
+  };
+}
+
 module.exports = {
   createLead,
   findLeadById,
   findLeads,
   updateLead,
   softDeleteLead,
-  convertLeadToProject
+  convertLeadToProject,
+  getLeadStats
 };

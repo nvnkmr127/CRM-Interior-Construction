@@ -55,7 +55,7 @@ async function listActivities({ tenantId, leadId, type, page = 1, limit = 20 }) 
 
   // Apply pagination and sorting
   const offset = (page - 1) * limit;
-  query += ` ORDER BY a.created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
+  query += ` ORDER BY a.created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
   values.push(limit, offset);
 
   const result = await pool.query(query, values);

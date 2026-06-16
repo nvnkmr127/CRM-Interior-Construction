@@ -21,13 +21,13 @@ export default function PhaseTimeline({ projectId }) {
 
     getPhases(projectId)
       .then(async res => {
-        const rawPhases = res.data?.data || res.data || [];
+        const _r = res.data?.data || res.data; const rawPhases = Array.isArray(_r) ? _r : [];
         // Fetch milestones for each phase in parallel
         const withMilestones = await Promise.all(
           rawPhases.map(async phase => {
             try {
               const mRes = await getMilestones(phase.id);
-              const milestones = (mRes.data?.data || mRes.data || []).map(m => ({
+              const _m = mRes.data?.data || mRes.data; const milestones = (Array.isArray(_m) ? _m : []).map(m => ({
                 id: m.id,
                 name: m.name,
                 done: m.status === 'completed' || m.status === 'done',

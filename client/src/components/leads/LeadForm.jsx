@@ -3,8 +3,8 @@ import { Modal, Input, Button } from '../ui';
 import api from '../../api/axios';
 import { createLead, updateLead } from '../../api/leads';
 import { useForm } from '../../hooks/useForm';
-import { validators } from '../../utils/validators';
 import { useToast } from '../../store/toastContext';
+import { validators, run } from '../../utils/validators';
 import styles from './LeadForm.module.css';
 
 export default function LeadForm({ lead, onSave, onClose }) {
@@ -21,9 +21,9 @@ export default function LeadForm({ lead, onSave, onClose }) {
     notes: lead?.notes || '',
     custom_fields: lead?.custom_fields || {}
   }, {
-    name: [validators.required, validators.minLen(2)],
-    phone: [validators.required, validators.phone],
-    email: [validators.email]
+    name: run(validators.required('Name'), validators.minLen(2, 'Name')),
+    phone: run(validators.required('Phone'), validators.phone),
+    email: validators.email
   });
 
   const [stages, setStages] = useState([]);
@@ -54,9 +54,14 @@ export default function LeadForm({ lead, onSave, onClose }) {
     if (!validateAll()) return;
 
     try {
+      const payload = { ...values };
+      if (!payload.stageId) delete payload.stageId;
+      if (!payload.assigneeId) delete payload.assigneeId;
+      if (!payload.source) delete payload.source;
+
       const res = isEdit 
-        ? await updateLead(lead.id, values)
-        : await createLead(values);
+        ? await updateLead(lead.id, payload)
+        : await createLead(payload);
         
       if (res.success) {
         const assignedUserName = users.find(u => u.id === values.assigneeId)?.name || 'Unassigned';
@@ -65,15 +70,24 @@ export default function LeadForm({ lead, onSave, onClose }) {
         onClose();
       }
     } catch (err) {
-      const message = err.response?.data?.error?.message || 'Could not save lead. Phone number already exists.';
+      const message = err.response?.data?.error?.message || err.message || 'An unexpected error occurred while saving the lead.';
       toast.error(message);
     }
   };
 
   const isSubmitDisabled = !isValid;
 
+  const handleClose = () => {
+    if (Object.keys(touched).length > 0) {
+      if (!window.confirm("You have unsaved changes. Are you sure you want to discard them?")) {
+        return;
+      }
+    }
+    onClose();
+  };
+
   return (
-    <Modal isOpen onClose={onClose}>
+    <Modal isOpen onClose={handleClose}>
       <div className={styles.formWrap}>
         <div className={styles.header}>
           <div className={styles.title}>{isEdit ? 'Edit Lead' : 'New Lead'}</div>
@@ -138,7 +152,7 @@ export default function LeadForm({ lead, onSave, onClose }) {
         </div>
 
         <div className={styles.footer}>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" onClick={handleClose}>Cancel</Button>
           <Button variant="primary" disabled={isSubmitDisabled} onClick={handleSubmit}>
             Save Lead
           </Button>

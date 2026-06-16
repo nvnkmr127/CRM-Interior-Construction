@@ -107,7 +107,7 @@ export default function ProfilePage() {
           <div className={styles.inputGroup}>
             <label className={styles.label}>Role</label>
             <div>
-              <Badge variant="neutral">{user?.role || 'Admin'}</Badge>
+              <Badge variant="neutral">{user?.role?.name || 'Admin'}</Badge>
             </div>
           </div>
 

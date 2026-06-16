@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import styles from './PortalApprovals.module.css'
 import { useToast } from '../../store/toastContext'
+import api from '../../api/axios'
 
 export default function PortalApprovals() {
   const [designs, setDesigns] = useState([])
@@ -13,15 +14,22 @@ export default function PortalApprovals() {
   const toast = useToast()
 
   useEffect(() => {
-    setTimeout(() => {
-      setDesigns([
-        { id: '1', name: 'Kitchen 3D Layout', version: 'v2', uploader: 'Priya Mehta', date: '2025-01-12', type: 'image', status: 'pending', url: '/mock-url' },
-        { id: '2', name: 'False Ceiling Plan', version: 'v1', uploader: 'Rahul Desai', date: '2025-01-14', type: 'pdf', status: 'pending', url: '/mock-url' },
-        { id: '3', name: 'Master Bedroom Wardrobe', version: 'v3', uploader: 'Priya Mehta', date: '2025-01-10', type: 'image', status: 'revision_requested', note: 'Can we make the left door slightly darker?', url: '/mock-url' },
-        { id: '4', name: 'Living Room Render', version: 'v1', uploader: 'Rahul Desai', date: '2025-01-05', type: 'image', status: 'approved', approvedAt: '2025-01-10' }
-      ])
-      setLoading(false)
-    }, 600)
+    api.get('/portal/approvals')
+      .then(res => {
+        const raw = res.data?.data || []
+        setDesigns(raw.map(d => ({
+          id: d.id,
+          name: d.name,
+          version: d.version || 'v1',
+          uploader: 'Project Team',
+          date: d.created_at,
+          type: d.doc_type || 'image',
+          status: 'pending',
+          url: d.downloadUrl
+        })))
+      })
+      .catch(() => toast.error('Failed to load approvals'))
+      .finally(() => setLoading(false))
   }, [])
 
   const handleDownload = (id, url) => {
@@ -29,21 +37,30 @@ export default function PortalApprovals() {
     setDownloadedIds(new Set(downloadedIds).add(id))
   }
 
-  const handleApprove = (id) => {
+  const handleApprove = async (id) => {
     setFadingId(id)
-    setTimeout(() => {
+    try {
+      await api.post(`/portal/approvals/${id}/approve`);
       setDesigns(designs.map(d => d.id === id ? { ...d, status: 'approved', approvedAt: new Date().toISOString() } : d))
       setFadingId(null)
       toast.success('✓ Design approved!')
-    }, 400)
+    } catch (e) {
+      toast.error('Failed to approve design');
+      setFadingId(null);
+    }
   }
 
-  const handleRequestChanges = (id) => {
+  const handleRequestChanges = async (id) => {
     if (!revisionNote.trim()) return toast.error('Please describe what needs to change')
-    setDesigns(designs.map(d => d.id === id ? { ...d, status: 'revision_requested', note: revisionNote } : d))
-    setRejectingId(null)
-    setRevisionNote('')
-    toast.success('Revision requested successfully.')
+    try {
+      await api.post(`/portal/approvals/${id}/revision`, { note: revisionNote });
+      setDesigns(designs.map(d => d.id === id ? { ...d, status: 'revision_requested', note: revisionNote } : d))
+      setRejectingId(null)
+      setRevisionNote('')
+      toast.success('Revision requested successfully.')
+    } catch (e) {
+      toast.error('Failed to request revision');
+    }
   }
 
   if (loading) return <div style={{padding: 24, textAlign: 'center', color: 'var(--color-text-muted)'}}>Loading approvals...</div>

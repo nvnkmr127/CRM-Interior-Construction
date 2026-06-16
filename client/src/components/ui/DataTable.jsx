@@ -1,5 +1,6 @@
 import { useState, Fragment } from 'react'
 import styles from './DataTable.module.css'
+import EmptyState from './EmptyState'
 
 export default function DataTable({
   columns = [],
@@ -91,14 +92,12 @@ export default function DataTable({
           ) : data.length === 0 ? (
             <tr>
               <td colSpan={columns.length + (selectable ? 1 : 0) + (expandable ? 1 : 0)}>
-                <div className={styles.emptyState}>
-                  <div className={styles.emptyIcon}>⊡</div>
-                  <div className={styles.emptyTitle}>{emptyMessage || 'No data'}</div>
-                  {emptyAction && (
-                    <button className={styles.emptyActionBtn} onClick={emptyAction.onClick}>
-                      {emptyAction.label}
-                    </button>
-                  )}
+                <div style={{ padding: '40px 0' }}>
+                  <EmptyState 
+                    icon={<span style={{fontSize: 32}}>⊡</span>}
+                    title={emptyMessage || 'No data found'} 
+                    action={emptyAction} 
+                  />
                 </div>
               </td>
             </tr>

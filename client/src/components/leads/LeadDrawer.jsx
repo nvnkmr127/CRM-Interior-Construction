@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
+import { useToast } from '../../store/toastContext';
 import { Drawer, Button, Badge } from '../ui';
 import ScoreBadge from './ScoreBadge';
 import ActivityTimeline from './ActivityTimeline';
 import ConvertToProjectModal from './ConvertToProjectModal';
-import { getLead, changeLeadStage } from '../../api/leads';
+import { getLead, changeLeadStage, deleteLead } from '../../api/leads';
+import LeadForm from './LeadForm';
 import api from '../../api/axios';
 import styles from './LeadDrawer.module.css';
 
-export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated }) {
+export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, stages = [] }) {
+  const toast = useToast();
   const [lead, setLead] = useState(null);
-  const [stages, setStages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [pendingStage, setPendingStage] = useState(null);
   const [missingFields, setMissingFields] = useState([]);
   const [errorMsg, setErrorMsg] = useState(null);
@@ -19,7 +22,6 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated }) {
   useEffect(() => {
     if (isOpen && leadId) {
       fetchLead();
-      fetchStages();
     }
   }, [isOpen, leadId]);
 
@@ -35,12 +37,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated }) {
     }
   };
 
-  const fetchStages = async () => {
-    try {
-      const res = await api.get('/config/lead-stages');
-      if (res.data?.success) setStages(res.data.data);
-    } catch (e) { console.error(e); }
-  };
+
 
   const handleStageSelect = (e) => {
     const newStageId = e.target.value;
@@ -76,10 +73,27 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated }) {
       if (res.success) {
         setLead(res.data);
         onLeadUpdated?.(res.data);
+        toast.success(`Stage updated to ${stages.find(s => s.id === newStageId)?.name}`);
       }
     } catch (e) {
       setLead(prev => ({ ...prev, stage_id: oldStageId }));
+      toast.error('Failed to update stage. Reverted.');
       setErrorMsg('Failed to update stage. Reverted.');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (window.confirm('WARNING: Are you sure you want to PERMANENTLY delete this lead? This action cannot be undone.')) {
+      try {
+        await deleteLead(leadId);
+        toast.success('Lead deleted successfully');
+        onClose();
+        if (onLeadUpdated) onLeadUpdated(null); // Signal deletion
+        else window.location.reload();
+      } catch (e) {
+        toast.error('Failed to delete lead.');
+        setErrorMsg('Failed to delete lead.');
+      }
     }
   };
 
@@ -106,6 +120,8 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated }) {
               <Button variant="ghost" size="sm" leftIcon="📝">Note</Button>
               <Button variant="ghost" size="sm" leftIcon="✉">Email</Button>
               <Button variant="ghost" size="sm" leftIcon="📅">Schedule</Button>
+              <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)}>Edit</Button>
+              <Button variant="ghost" size="sm" style={{color: 'var(--color-danger)', fontWeight: 'bold'}} aria-label={`Delete lead ${lead.name}`} onClick={handleDelete}>Delete</Button>
               {stages.find(s => s.id === lead.stage_id)?.is_won && (
                 <Button variant="ghost" size="sm" leftIcon="→" onClick={() => setIsConvertModalOpen(true)}>Convert</Button>
               )}
@@ -155,6 +171,17 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated }) {
               lead={lead} 
               isOpen={isConvertModalOpen} 
               onClose={() => setIsConvertModalOpen(false)} 
+            />
+          )}
+
+          {isEditing && (
+            <LeadForm 
+              lead={lead} 
+              onClose={() => setIsEditing(false)} 
+              onSave={(updatedLead) => {
+                setLead(updatedLead);
+                onLeadUpdated?.(updatedLead);
+              }} 
             />
           )}
         </>

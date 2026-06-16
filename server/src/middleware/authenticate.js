@@ -5,23 +5,22 @@ const authenticateApiKey = require('./authenticateApiKey');
  */
 async function authenticate(req, res, next) {
   try {
-    // 1. Read Authorization header or X-API-Key
+    // 1. Read Authorization header, X-API-Key, or cookie
     const authHeader = req.headers.authorization;
     const apiKeyHeader = req.headers['x-api-key'];
+    let token = req.cookies?.accessToken;
 
     // Route to API Key authentication if present
     if (apiKeyHeader) {
       return authenticateApiKey(req, res, next);
     }
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      // 2. If no token -> 401 UNAUTHORIZED
-      return res.status(401).json({ success: false, error: 'UNAUTHORIZED' });
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
     }
 
-    const token = authHeader.split(' ')[1];
-
     if (!token) {
+      // 2. If no token -> 401 UNAUTHORIZED
       return res.status(401).json({ success: false, error: 'UNAUTHORIZED' });
     }
 

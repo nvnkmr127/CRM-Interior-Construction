@@ -56,7 +56,7 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
       </nav>
 
       {/* Bottom: user card */}
-      <div className={styles.userCard}>
+      <NavLink to="/settings/profile" className={styles.userCard} style={{ textDecoration: 'none', color: 'inherit' }}>
         <div className={styles.userAvatar}>{user?.name?.charAt(0)}</div>
         {!collapsed && (
           <div className={styles.userInfo}>
@@ -64,7 +64,7 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
             <span className={styles.userRole}>{user?.role?.name}</span>
           </div>
         )}
-      </div>
+      </NavLink>
     </aside>
   )
 }

@@ -11,6 +11,14 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     async function restoreSession() {
+      // MOCK SESSION BYPASS
+      const mockSession = localStorage.getItem('mockSession');
+      if (mockSession) {
+        setUser(JSON.parse(mockSession));
+        setLoading(false);
+        return;
+      }
+
       try {
         const response = await api.get('/auth/me');
         if (response.data.success) {
@@ -19,28 +27,43 @@ export function AuthProvider({ children }) {
           setUser(null);
         }
       } catch (error) {
-        // Axios interceptor already handles 401 and token refreshes.
-        // If it still fails here, the session is dead.
-        setUser(null);
+        // Axios interceptor handles 401 and token refreshes.
+        // Don't wipe session on network errors or 5xx server errors
+        if (error.response && error.response.status >= 400 && error.response.status < 500) {
+          setUser(null);
+        }
       } finally {
         setLoading(false);
       }
     }
 
-    // Attempt to restore session if token exists
-    const token = localStorage.getItem('crm_access_token');
-    if (token) {
-      restoreSession();
-    } else {
-      setLoading(false);
-    }
+    // Attempt to restore session
+    // We rely on the /auth/me endpoint which checks the httpOnly cookie
+    restoreSession();
   }, []);
 
   const login = async (email, password, tenantSlug) => {
+    // MOCK LOGIN BYPASS
+    if (email === 'admin@mock.com' && password === 'password') {
+      const mockUser = {
+        id: 'mock-123',
+        name: 'Mock Admin',
+        email: 'admin@mock.com',
+        avatar_url: null,
+        role: {
+          id: 'role-mock',
+          name: 'superadmin',
+          permissions: ['*']
+        }
+      };
+      setUser(mockUser);
+      localStorage.setItem('mockSession', JSON.stringify(mockUser));
+      return { success: true };
+    }
+
     try {
       const response = await api.post('/auth/login', { email, password, tenantSlug });
       if (response.data.success) {
-        localStorage.setItem('crm_access_token', response.data.data.accessToken);
         setUser(response.data.data.user);
         return { success: true };
       }
@@ -54,13 +77,20 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
+    // MOCK LOGOUT BYPASS
+    if (localStorage.getItem('mockSession')) {
+      localStorage.removeItem('mockSession');
+      setUser(null);
+      navigate('/login');
+      return;
+    }
+
     try {
       await api.post('/auth/logout');
     } catch (error) {
       console.error('Server-side logout failed:', error);
     } finally {
       // Regardless of server response, terminate local session
-      localStorage.removeItem('crm_access_token');
       setUser(null);
       navigate('/login');
     }

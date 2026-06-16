@@ -2,7 +2,8 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Badge } from '../../components/ui';
 import styles from './ProjectDetail.module.css';
-import { getProject } from '../../api/projects';
+import { getProject, deleteProject } from '../../api/projects';
+import ProjectForm from '../../components/projects/ProjectForm';
 
 // Lazy load tabs
 const PhaseTimeline = React.lazy(() => import('../../components/projects/PhaseTimeline'));
@@ -131,6 +132,18 @@ export default function ProjectDetail() {
   const [activeTab, setActiveTab] = useState('Overview');
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+
+  const handleDelete = async () => {
+    if (window.confirm('Are you sure you want to delete this project?')) {
+      try {
+        await deleteProject(projectId);
+        navigate('/projects');
+      } catch (e) {
+        console.error('Failed to delete project', e);
+      }
+    }
+  };
 
   const tabs = ['Overview', 'Phases', 'Tasks', 'Documents', 'Payments', 'Snags', 'Handover'];
 
@@ -206,7 +219,8 @@ export default function ProjectDetail() {
           </div>
           <div className={styles.headerRight}>
             <div className={styles.value}>{formatValue(project.value)}</div>
-            <Button variant="outline" size="sm">Edit</Button>
+            <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>Edit</Button>
+            <Button variant="outline" size="sm" style={{color: 'var(--color-danger)', borderColor: 'var(--color-danger)'}} onClick={handleDelete}>Delete</Button>
           </div>
         </div>
 
@@ -279,6 +293,17 @@ export default function ProjectDetail() {
           {renderTabContent()}
         </Suspense>
       </div>
+
+      {isEditing && (
+        <ProjectForm 
+          project={project} 
+          onClose={() => setIsEditing(false)} 
+          onSave={(updatedProject) => {
+            setProject({...project, ...updatedProject});
+            setIsEditing(false);
+          }} 
+        />
+      )}
     </div>
   );
 }

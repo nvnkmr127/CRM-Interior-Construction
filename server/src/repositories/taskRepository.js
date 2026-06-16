@@ -124,7 +124,7 @@ class TaskRepository {
       LEFT JOIN projects p ON t.project_id = p.id
       WHERE ${whereClause}
       ORDER BY t.sort_order ASC, t.created_at DESC
-      LIMIT $${idx++} OFFSET $${idx++}
+      LIMIT $${idx++} OFFSET $${idx}
     `;
     values.push(limit, offset);
     const { rows } = await pool.query(query, values);

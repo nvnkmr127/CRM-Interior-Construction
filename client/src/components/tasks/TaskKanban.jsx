@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Badge, Button } from '../ui';
+import { Badge, Button, ContentLoader } from '../ui';
 import styles from './TaskKanban.module.css';
 import { getTasks, updateTask } from '../../api/projects';
+import TaskForm from './TaskForm';
 import { useToast } from '../../store/toastContext';
 
 const COLUMNS = [
-  { id: 'todo',        name: 'To Do',       color: '#E5E1D8' },
-  { id: 'in_progress', name: 'In Progress', color: '#3B82F6' },
-  { id: 'blocked',     name: 'Blocked',     color: '#F59E0B' },
-  { id: 'done',        name: 'Done',        color: '#10B981' },
+  { id: 'todo',        name: 'To Do',       color: 'var(--color-neutral, #E5E1D8)' },
+  { id: 'in_progress', name: 'In Progress', color: 'var(--color-primary, #3B82F6)' },
+  { id: 'blocked',     name: 'Blocked',     color: 'var(--color-warning, #F59E0B)' },
+  { id: 'done',        name: 'Done',        color: 'var(--color-success, #10B981)' },
 ];
 
 function getPriorityVariant(p) {
@@ -44,13 +45,15 @@ export default function TaskKanban({ projectId }) {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toastMsg, setToastMsg] = useState(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [defaultStatus, setDefaultStatus] = useState('todo');
 
   useEffect(() => {
     if (!projectId) return;
     setLoading(true);
     getTasks(projectId)
       .then(res => {
-        const raw = res.data?.data || res.data || [];
+        const _r = res.data?.data || res.data; const raw = Array.isArray(_r) ? _r : [];
         setTasks(raw.map(normalizeTask));
       })
       .catch(() => setTasks([]))
@@ -87,7 +90,9 @@ export default function TaskKanban({ projectId }) {
 
   if (loading) {
     return (
-      <div style={{ padding: '32px', color: 'var(--color-text-muted)' }}>Loading tasks…</div>
+      <div style={{ padding: '32px' }}>
+        <ContentLoader type="card" rows={3} />
+      </div>
     );
   }
 
@@ -117,7 +122,7 @@ export default function TaskKanban({ projectId }) {
                 <div className={styles.colTitle}>
                   {col.name} <Badge variant="neutral" size="sm">{colTasks.length}</Badge>
                 </div>
-                <Button variant="ghost" size="sm">+</Button>
+                <Button variant="ghost" size="sm" onClick={() => { setDefaultStatus(col.id); setIsFormOpen(true); }}>+</Button>
               </div>
               <div className={styles.colBody}>
                 {colTasks.length === 0 && (
@@ -166,6 +171,14 @@ export default function TaskKanban({ projectId }) {
           );
         })}
       </div>
+      {isFormOpen && (
+        <TaskForm 
+          projectId={projectId} 
+          defaultStatus={defaultStatus} 
+          onClose={() => setIsFormOpen(false)} 
+          onSave={() => { setIsFormOpen(false); window.location.reload(); }} 
+        />
+      )}
     </div>
   );
 }

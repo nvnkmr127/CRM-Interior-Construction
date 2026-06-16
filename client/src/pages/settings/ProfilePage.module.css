@@ -12,8 +12,8 @@
 .form { display: flex; flex-direction: column; gap: var(--space-4); }
 .inputGroup { display: flex; flex-direction: column; gap: 8px; position: relative; }
 .label { font-size: var(--text-sm); font-weight: 600; color: var(--color-text); }
-.input { width: 100%; padding: 10px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: var(--text-base); outline: none; background: var(--color-surface); transition: 0.2s; font-family: inherit; }
-.input:focus { border-color: var(--color-accent); background: white; box-shadow: 0 0 0 3px rgba(232, 147, 90, 0.1); }
+.input { width: 100%; padding: 10px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: var(--text-base); outline: none; background: var(--color-surface); color: var(--color-text); transition: 0.2s; font-family: inherit; }
+.input:focus { border-color: var(--color-accent); background: var(--color-surface); box-shadow: 0 0 0 3px rgba(232, 147, 90, 0.1); }
 .inputReadOnly { background: var(--color-surface-2); color: var(--color-text-secondary); cursor: not-allowed; }
 .inputReadOnly:focus { border-color: var(--color-border); box-shadow: none; }
 

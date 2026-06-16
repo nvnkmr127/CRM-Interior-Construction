@@ -38,21 +38,19 @@ router.get('/', async (req, res) => {
 
     query += ` ORDER BY u.created_at DESC`;
 
-    // Implement pagination if needed, or just return all based on the instruction
-    if (limit) {
-      params.push(parseInt(limit, 10));
-      query += ` LIMIT $${params.length}`;
-    }
-    if (page && limit) {
-      params.push((parseInt(page, 10) - 1) * parseInt(limit, 10));
-      query += ` OFFSET $${params.length}`;
-    }
+    // Implement pagination
+    const { getPagination } = require('../utils/pagination');
+    const { limit: safeLimit, offset: safeOffset } = getPagination(page, limit);
+    params.push(safeLimit);
+    query += ` LIMIT $${params.length}`;
+    params.push(safeOffset);
+    query += ` OFFSET $${params.length}`;
 
     const { rows } = await pool.query(query, params);
     
     // Remove password hashes from response
     const safeUsers = rows.map(u => {
-      const { password_hash, ...rest } = u;
+      const { password_hash: _password_hash, ...rest } = u;
       return rest;
     });
 
@@ -102,7 +100,7 @@ router.patch('/:id', authorize('users:manage'), async (req, res) => {
 
     if (rows.length === 0) return res.status(404).json(fail('User not found'));
 
-    const { password_hash, ...safeUser } = rows[0];
+    const { password_hash: _password_hash, ...safeUser } = rows[0];
     res.json(success(safeUser));
   } catch (error) {
     res.status(500).json(fail('User update failed'));
@@ -129,10 +127,30 @@ router.post('/invite', authorize('users:manage'), async (req, res) => {
 
     console.log(`Invitation email would be sent to ${email}`);
 
-    const { password_hash, ...safeUser } = rows[0];
+    const { password_hash: _password_hash, ...safeUser } = rows[0];
     res.json(success(safeUser));
   } catch (error) {
     res.status(500).json(fail('User invite failed'));
+  }
+});
+
+router.delete('/:id', authorize('users:manage'), async (req, res) => {
+  const tenantId = req.tenantId;
+  const userIdToDelete = req.params.id;
+
+  try {
+    const { rowCount } = await pool.query(
+      `UPDATE users SET deleted_at = NOW() WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL`,
+      [userIdToDelete, tenantId]
+    );
+
+    if (rowCount === 0) {
+      return res.status(404).json(fail('User not found or already deleted'));
+    }
+
+    res.json(success({ message: 'User deleted successfully' }));
+  } catch (error) {
+    res.status(500).json(fail('User deletion failed'));
   }
 });
 

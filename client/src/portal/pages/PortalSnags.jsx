@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import styles from './PortalSnags.module.css'
 import { useToast } from '../../store/toastContext'
+import api from '../../api/axios'
 
 const CATEGORIES = ['Carpentry', 'Electrical', 'Plumbing', 'Paint', 'Flooring', 'Other']
 
@@ -28,14 +29,22 @@ export default function PortalSnags() {
   }, [])
 
   useEffect(() => {
-    setTimeout(() => {
-      setIssues([
-        { id: '1', title: 'Paint peeling near window', category: 'Paint', desc: 'The paint is starting to peel off near the master bedroom window sill.', status: 'resolved', resolutionNote: 'Scraped the area, applied primer and repainted with two coats. Wait 24h to dry fully.', reportedAt: new Date(Date.now()-86400000*3).toISOString(), photos: ['/placeholder.jpg'] },
-        { id: '2', title: 'Wardrobe door alignment', category: 'Carpentry', desc: 'Left door of master wardrobe scraping the bottom drawer.', status: 'in_progress', reportedAt: new Date(Date.now()-3600000*5).toISOString(), photos: [] },
-        { id: '3', title: 'Missing handle on kitchen cabinet', category: 'Carpentry', status: 'verified', resolutionNote: 'Attached missing D-handle.', reportedAt: new Date(Date.now()-86400000*5).toISOString(), photos: [] }
-      ])
-      setLoading(false)
-    }, 600)
+    api.get('/portal/snags')
+      .then(res => {
+        const raw = res.data?.data || []
+        setIssues(raw.map(s => ({
+          id: s.id,
+          title: s.title,
+          category: s.category,
+          desc: s.description || '',
+          status: s.status,
+          reportedAt: s.created_at,
+          resolutionNote: s.resolutionNote || '',
+          photos: []
+        })))
+      })
+      .catch(() => toast.error('Failed to load snags'))
+      .finally(() => setLoading(false))
   }, [])
 
   const handlePhotoSelect = (e) => {
@@ -57,28 +66,41 @@ export default function PortalSnags() {
     if (!title || !category) return toast.error('Please provide a title and category.')
     setSubmitting(true)
     
-    // Mock API call
-    await new Promise(r => setTimeout(r, 1200))
-    
-    const newIssue = {
-      id: Date.now().toString(),
-      title, category, desc, status: 'open',
-      reportedAt: new Date().toISOString(),
-      photos: photos.map(p => p.url)
+    try {
+      const res = await api.post('/portal/snags', {
+        title,
+        category,
+        description: desc,
+        photoKeys: [] 
+      });
+      const snag = res.data.data;
+      const newIssue = {
+        id: snag.id,
+        title: snag.title,
+        category: snag.category,
+        desc: snag.description || '',
+        status: snag.status,
+        reportedAt: snag.created_at,
+        photos: []
+      };
+      setIssues([newIssue, ...issues]);
+      setTitle(''); setCategory(''); setDesc(''); setPhotos([]);
+      toast.success('✓ Issue reported successfully!');
+    } catch (e) {
+      toast.error('Failed to report issue');
+    } finally {
+      setSubmitting(false)
     }
-    
-    setIssues([newIssue, ...issues])
-    setTitle('')
-    setCategory('')
-    setDesc('')
-    setPhotos([])
-    setSubmitting(false)
-    toast.success('✓ Issue reported successfully!')
   }
 
-  const handleVerify = (id) => {
-    setIssues(issues.map(iss => iss.id === id ? { ...iss, status: 'verified' } : iss))
-    toast.success('✓ Issue verified and closed!')
+  const handleVerify = async (id) => {
+    try {
+      await api.post(`/portal/snags/${id}/verify`);
+      setIssues(issues.map(iss => iss.id === id ? { ...iss, status: 'verified' } : iss))
+      toast.success('✓ Issue verified and closed!')
+    } catch (e) {
+      toast.error('Failed to verify issue');
+    }
   }
 
   return (

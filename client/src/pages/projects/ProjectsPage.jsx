@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Button, Skeleton } from '../../components/ui';
+import { Button, Skeleton, Pagination } from '../../components/ui';
 import ProjectCard from '../../components/projects/ProjectCard';
 import ProjectForm from '../../components/projects/ProjectForm';
 import styles from './ProjectsPage.module.css';
@@ -68,19 +68,33 @@ export default function ProjectsPage() {
   const [search, setSearch] = useState('');
   const [pmFilter, setPmFilter] = useState('all');
   const [sortBy, setSortBy] = useState('deadline_asc');
+  
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const limit = 20;
 
   const loadProjects = () => {
     setLoading(true);
-    getProjects()
+    getProjects({ page, limit })
       .then(res => {
-        setProjects(res.data?.data || []);
+        const rawData = res.data?.data || res.data?.results || res.data;
+        const arr = Array.isArray(rawData) ? rawData : [];
+        setProjects(arr);
+        
+        if (res.data?.pagination) {
+          setTotal(res.data.pagination.total || 0);
+        } else if (res.data?.total !== undefined) {
+          setTotal(res.data.total);
+        } else {
+          setTotal(arr.length);
+        }
         setError(null);
       })
       .catch(() => setError('Failed to load projects.'))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { loadProjects(); }, []);
+  useEffect(() => { loadProjects(); }, [page, limit]);
 
   const counts = {
     active: projects.filter(p => p.status === 'active').length,
@@ -341,6 +355,12 @@ export default function ProjectsPage() {
               })}
             </tbody>
           </table>
+          <Pagination 
+            currentPage={page} 
+            totalItems={total} 
+            itemsPerPage={limit} 
+            onPageChange={setPage} 
+          />
         </div>
       )}
 

@@ -3,7 +3,7 @@ import { Badge, Button, EmptyState } from '../ui';
 import LeadCard from './LeadCard';
 import styles from './KanbanBoard.module.css';
 
-export default function KanbanBoard({ stages, leadsByStage, onLeadClick }) {
+export default function KanbanBoard({ stages, leadsByStage, onLeadClick, onAddLead }) {
   return (
     <div className={styles.board}>
       {stages.map(stage => (
@@ -13,7 +13,7 @@ export default function KanbanBoard({ stages, leadsByStage, onLeadClick }) {
               {stage.name}
               <Badge variant="neutral" size="sm">{leadsByStage[stage.id]?.length || 0}</Badge>
             </div>
-            <Button variant="ghost" size="sm">+ Add</Button>
+            <Button variant="ghost" size="sm" onClick={onAddLead}>+ Add</Button>
           </div>
           <div className={styles.colBody}>
             {(!leadsByStage[stage.id] || leadsByStage[stage.id].length === 0) ? (
@@ -21,7 +21,7 @@ export default function KanbanBoard({ stages, leadsByStage, onLeadClick }) {
                 icon="◎" 
                 title="No leads in this stage" 
                 description=""
-                action={{ label: 'Add a lead', onClick: () => console.log('Add lead') }}
+                action={{ label: 'Add a lead', onClick: onAddLead }}
               />
             ) : (
               leadsByStage[stage.id].map(lead => (

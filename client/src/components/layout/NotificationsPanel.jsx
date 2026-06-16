@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import api from '../../api/axios'
 import styles from './NotificationsPanel.module.css'
 import Avatar from '../ui/Avatar'
 
@@ -32,20 +33,19 @@ export default function NotificationsPanel() {
 
   const fetchUnreadCount = async () => {
     try {
-      const res = await fetch('/api/notifications/unread-count')
-      if (res.ok) {
-        const data = await res.json()
-        setUnreadCount(data.count || 0)
+      const res = await api.get('/notifications/unread-count')
+      if (res.data) {
+        setUnreadCount(res.data.count || 0)
       }
     } catch (e) { console.error(e) }
   }
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch('/api/notifications?limit=20')
-      if (res.ok) {
-        const data = await res.json()
-        setNotifications(data || [])
+      const res = await api.get('/notifications?limit=20')
+      if (res.data) {
+        const rawData = res.data?.data || res.data?.results || res.data;
+        setNotifications(Array.isArray(rawData) ? rawData : []);
       }
     } catch (e) { console.error(e) }
   }
@@ -54,11 +54,7 @@ export default function NotificationsPanel() {
     const unreadIds = notifications.filter(n => !n.isRead).map(n => n.id)
     if (!unreadIds.length) return
     try {
-      await fetch('/api/notifications/mark-read', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: unreadIds })
-      })
+      await api.post('/notifications/mark-read', { ids: unreadIds })
       setNotifications(notifications.map(n => ({ ...n, isRead: true })))
       setUnreadCount(0)
     } catch (e) { console.error(e) }
@@ -67,11 +63,7 @@ export default function NotificationsPanel() {
   const handleNotificationClick = async (n) => {
     if (!n.isRead) {
       try {
-        await fetch('/api/notifications/mark-read', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ids: [n.id] })
-        })
+        await api.post('/notifications/mark-read', { ids: [n.id] })
         setNotifications(notifications.map(x => x.id === n.id ? { ...x, isRead: true } : x))
         setUnreadCount(c => Math.max(0, c - 1))
       } catch (e) { console.error(e) }

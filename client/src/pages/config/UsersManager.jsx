@@ -21,7 +21,7 @@ export default function UsersManager() {
 
   useEffect(() => {
     api.get('/users')
-      .then(res => setUsers(res.data?.data || res.data || []))
+      .then(res => { const r = res.data?.data || res.data; setUsers(Array.isArray(r) ? r : []); })
       .catch(() => setUsers([]))
   }, [])
 

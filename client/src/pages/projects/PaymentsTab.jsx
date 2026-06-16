@@ -17,7 +17,7 @@ export default function PaymentsTab({ projectId }) {
     setLoading(true);
     getPaymentMilestones(projectId)
       .then(res => {
-        const raw = res.data?.data || res.data || [];
+        const _r = res.data?.data || res.data; const raw = Array.isArray(_r) ? _r : [];
         setPayments(raw.map(p => ({
           id: p.id,
           milestone: p.title || p.milestone || p.name,

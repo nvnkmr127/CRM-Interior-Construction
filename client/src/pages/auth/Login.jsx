@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../store/authContext';
 import { useToast } from '../../store/toastContext';
 import { useForm } from '../../hooks/useForm';
-import { validators } from '../../utils/validators';
+import { validators, run } from '../../utils/validators';
 import { Button } from '../../components/ui';
 import styles from './Login.module.css';
 
@@ -17,9 +17,9 @@ export default function Login() {
     email: '',
     password: ''
   }, {
-    tenantSlug: [validators.required],
-    email: [validators.required, validators.email],
-    password: [validators.required, validators.minLen(6)]
+    tenantSlug: run(validators.required('Tenant Slug')),
+    email: run(validators.required('Email'), validators.email),
+    password: run(validators.required('Password'), validators.minLen(6, 'Password'))
   });
   
   const [showPassword, setShowPassword] = useState(false);

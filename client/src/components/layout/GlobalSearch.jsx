@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
+import api from '../../api/axios'
 import styles from './GlobalSearch.module.css'
 
 export default function GlobalSearch({ isOpen, onClose }) {
@@ -27,9 +28,9 @@ export default function GlobalSearch({ isOpen, onClose }) {
     }
     const timer = setTimeout(() => {
       setLoading(true)
-      fetch(`/api/search?q=${encodeURIComponent(query)}&types=leads,projects,tasks`)
-        .then(r => r.json())
-        .then(data => {
+      api.get(`/search?q=${encodeURIComponent(query)}&types=leads,projects,tasks`)
+        .then(r => {
+          const data = r.data || {}
           setResults({
             leads: data.leads || [],
             projects: data.projects || [],

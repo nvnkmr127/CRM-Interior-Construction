@@ -81,6 +81,25 @@
   --content-max-width:      1280px;
 }
 
+/* ── DARK MODE OVERRIDES ── */
+.dark {
+  --color-bg:             #0f1014;
+  --color-surface:        #18191e;
+  --color-surface-2:      #212229;
+  --color-surface-3:      #2b2d35;
+
+  --color-text:           #e2e4e9;
+  --color-text-secondary: #9ca3af;
+  --color-text-muted:     #6b7280;
+  --color-text-inverse:   #1c1c1e;
+
+  --color-border:         #2b2d35;
+  --color-border-strong:  #373a43;
+  
+  --color-sidebar-bg:     #121317;
+  --color-sidebar-hover:  #1b1d22;
+}
+
 /* ── GLOBAL RESET ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 

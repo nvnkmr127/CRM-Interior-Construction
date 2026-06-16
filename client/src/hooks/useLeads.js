@@ -5,6 +5,8 @@ import { getLeads, changeLeadStage } from '../api/leads';
 export function useLeads(filters = {}) {
   const [leads, setLeads] = useState([]);
   const [stages, setStages] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [stats, setStats] = useState({ total: 0, wonThisMonth: 0, avgScore: 0, convPct: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -18,27 +20,31 @@ export function useLeads(filters = {}) {
       if (!params.source) delete params.source;
       if (!params.search) delete params.search;
 
-      const [leadsRes, stagesRes] = await Promise.all([
+      const [leadsRes, stagesRes, statsRes] = await Promise.all([
         getLeads(params),
-        api.get('/config/lead-stages').catch(() => ({ data: { data: [] } }))
+        api.get('/config/lead-stages').catch(() => ({ data: { data: [] } })),
+        api.get('/leads/stats').catch(() => ({ data: { data: { total: 0, wonThisMonth: 0, avgScore: 0, convPct: 0 } } }))
       ]);
 
       if (leadsRes.success) {
-        let fetchedLeads = leadsRes.data;
-        if (filters.sortBy) {
-          fetchedLeads.sort((a, b) => {
-            let valA = a[filters.sortBy];
-            let valB = b[filters.sortBy];
-            if (valA < valB) return filters.sortDesc ? 1 : -1;
-            if (valA > valB) return filters.sortDesc ? -1 : 1;
-            return 0;
-          });
+        let fetchedLeads = leadsRes.data || leadsRes.results || [];
+        if (leadsRes.pagination) {
+          setTotal(leadsRes.pagination.total || 0);
+        } else if (leadsRes.total !== undefined) {
+          setTotal(leadsRes.total);
+        } else {
+          setTotal(fetchedLeads.length);
         }
+
         setLeads(fetchedLeads);
       }
 
       if (stagesRes.data?.success) {
         setStages(stagesRes.data.data);
+      }
+      
+      if (statsRes.data?.success) {
+        setStats(statsRes.data.data);
       }
     } catch (err) {
       console.error('Error fetching leads:', err);
@@ -46,7 +52,7 @@ export function useLeads(filters = {}) {
     } finally {
       setLoading(false);
     }
-  }, [filters.stageId, filters.assigneeId, filters.source, filters.search, filters.sortBy, filters.sortDesc]);
+  }, [filters.stageId, filters.assigneeId, filters.source, filters.search, filters.sortBy, filters.sortDesc, filters.page, filters.limit]);
 
   useEffect(() => {
     fetchLeadsAndStages();
@@ -83,5 +89,5 @@ export function useLeads(filters = {}) {
     return fetchLeadsAndStages();
   };
 
-  return { leads, stages, loading, error, refetch, optimisticStageChange };
+  return { leads, stages, stats, total, loading, error, refetch, optimisticStageChange };
 }
