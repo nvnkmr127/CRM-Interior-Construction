@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button, Skeleton } from '../../components/ui';
 import ProjectCard from '../../components/projects/ProjectCard';
+import ProjectForm from '../../components/projects/ProjectForm';
 import styles from './ProjectsPage.module.css';
 import { useNavigate } from 'react-router-dom';
 import { getProjects } from '../../api/projects';
@@ -62,12 +63,14 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [pmFilter, setPmFilter] = useState('all');
   const [sortBy, setSortBy] = useState('deadline_asc');
 
-  useEffect(() => {
+  const loadProjects = () => {
+    setLoading(true);
     getProjects()
       .then(res => {
         setProjects(res.data?.data || []);
@@ -75,7 +78,9 @@ export default function ProjectsPage() {
       })
       .catch(() => setError('Failed to load projects.'))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { loadProjects(); }, []);
 
   const counts = {
     active: projects.filter(p => p.status === 'active').length,
@@ -136,7 +141,7 @@ export default function ProjectsPage() {
       {/* Header */}
       <div className={styles.header}>
         <h1 className={styles.title}>Projects</h1>
-        <Button variant="primary" onClick={() => navigate('/projects/new')}>+ New Project</Button>
+        <Button variant="primary" onClick={() => setIsFormOpen(true)}>+ New Project</Button>
       </div>
 
       {/* Stats Ribbon */}
@@ -338,6 +343,12 @@ export default function ProjectsPage() {
           </table>
         </div>
       )}
+
+      <ProjectForm
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        onSave={() => { setIsFormOpen(false); loadProjects(); }}
+      />
     </div>
   );
 }

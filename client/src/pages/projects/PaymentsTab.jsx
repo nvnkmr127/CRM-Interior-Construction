@@ -1,17 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Badge, Button, Modal, Input } from '../../components/ui';
 import styles from './PaymentsTab.module.css';
+import { getPaymentMilestones, updatePaymentMilestone } from '../../api/paymentMilestones';
+import { useToast } from '../../store/toastContext';
 
 export default function PaymentsTab({ projectId }) {
-  const [payments, setPayments] = useState([
-    { id: 1, milestone: 'Advance', phase: 'Kickoff', amount: '₹1,50,000', amountValue: 150000, dueDate: '2026-08-01', status: 'paid' },
-    { id: 2, milestone: '3D Renders Approval', phase: 'Design Concept', amount: '₹1,70,000', amountValue: 170000, dueDate: '2026-08-15', status: 'paid' },
-    { id: 3, milestone: 'Material Sourcing', phase: 'Execution', amount: '₹2,50,000', amountValue: 250000, dueDate: '2026-05-10', status: 'invoice_raised' },
-    { id: 4, milestone: 'Keys Handover', phase: 'Handover', amount: '₹2,80,000', amountValue: 280000, dueDate: '2026-11-15', status: 'scheduled' }
-  ]);
-
+  const toast = useToast();
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
+  const [paidDate, setPaidDate] = useState('');
+
+  useEffect(() => {
+    if (!projectId) return;
+    setLoading(true);
+    getPaymentMilestones(projectId)
+      .then(res => {
+        const raw = res.data?.data || res.data || [];
+        setPayments(raw.map(p => ({
+          id: p.id,
+          milestone: p.title || p.milestone || p.name,
+          phase: p.phase_name || p.phase || '—',
+          amountValue: Number(p.amount || 0),
+          dueDate: p.due_date ? p.due_date.split('T')[0] : null,
+          status: p.status || 'scheduled',
+        })));
+      })
+      .catch(() => setPayments([]))
+      .finally(() => setLoading(false));
+  }, [projectId]);
 
   // Overdue logic
   const today = new Date().toISOString().split('T')[0];
@@ -35,7 +53,19 @@ export default function PaymentsTab({ projectId }) {
 
   const handleMarkPaidClick = (p) => {
     setSelectedPayment(p);
+    setPaidDate(new Date().toISOString().split('T')[0]);
     setModalOpen(true);
+  };
+
+  const handleConfirmPaid = async () => {
+    try {
+      await updatePaymentMilestone(selectedPayment.id, { status: 'paid', paid_date: paidDate });
+      setPayments(prev => prev.map(p => p.id === selectedPayment.id ? { ...p, status: 'paid' } : p));
+      toast.success('Payment marked as paid');
+    } catch {
+      toast.error('Failed to update payment');
+    }
+    setModalOpen(false);
   };
 
   const getStatusVariant = (st) => {
@@ -44,6 +74,10 @@ export default function PaymentsTab({ projectId }) {
     if (st === 'invoice_raised') return 'info';
     return 'neutral';
   };
+
+  if (loading) {
+    return <div style={{ padding: '32px', color: 'var(--color-text-muted)' }}>Loading payments…</div>;
+  }
 
   return (
     <div className={styles.tabWrap}>
@@ -92,7 +126,7 @@ export default function PaymentsTab({ projectId }) {
               <tr key={p.id} className={p.isOverdue ? styles.rowOverdue : ''}>
                 <td style={{fontWeight: 500}}>{p.milestone}</td>
                 <td>{p.phase}</td>
-                <td style={{fontWeight: 600}}>{p.amount}</td>
+                <td style={{fontWeight: 600}}>{formatLakhs(p.amountValue)}</td>
                 <td style={p.isOverdue ? {color: 'var(--color-danger)', fontWeight: 600} : {}}>{p.dueDate}</td>
                 <td><Badge variant={getStatusVariant(p.displayStatus)} size="sm">{p.displayStatus.replace('_', ' ').toUpperCase()}</Badge></td>
                 <td>
@@ -110,11 +144,11 @@ export default function PaymentsTab({ projectId }) {
         <Modal isOpen onClose={() => setModalOpen(false)}>
           <div style={{padding: 'var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)'}}>
             <h3 style={{fontSize: 'var(--text-lg)', fontWeight: 700}}>Mark Payment Paid</h3>
-            <Input label="Amount Paid" defaultValue={selectedPayment?.amount} />
-            <Input label="Date Paid" type="date" defaultValue={today} />
+            <Input label="Amount" value={formatLakhs(selectedPayment?.amountValue || 0)} readOnly />
+            <Input label="Date Paid" type="date" value={paidDate} onChange={e => setPaidDate(e.target.value)} />
             <div style={{display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)', marginTop: 'var(--space-4)'}}>
               <Button variant="ghost" onClick={() => setModalOpen(false)}>Cancel</Button>
-              <Button variant="primary" onClick={() => setModalOpen(false)}>Confirm Payment</Button>
+              <Button variant="primary" onClick={handleConfirmPaid}>Confirm Payment</Button>
             </div>
           </div>
         </Modal>
