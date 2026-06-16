@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../store/authContext';
+import api from '../../api/axios';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid
@@ -111,49 +112,111 @@ export default function DashboardPage() {
   const [payments,setPayments]  = useState(null);
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      setStats({
-        activeLeads:    { val: 42,       trend: 12  },
-        wonMonth:       { val: '₹14.2L', trend: 8   },
-        activeProjects: { val: 12,       overdue: 2  },
-        tasksDueToday:  { val: 15,       overdue: 4  },
-      });
+    const PIPE_COLORS = ['#3B82F6','#8B5CF6','#F59E0B','#EC4899','#10B981','#059669','#E8935A'];
 
-      setActivity([
-        { id: 1, user: 'Priya Desai',  action: 'moved',    text: 'Sharma Residence to Execution phase', time: '10 mins ago'  },
-        { id: 2, user: 'Rahul Sharma', action: 'uploaded',  text: 'v2 of Kitchen Layout PDF',           time: '1 hour ago'   },
-        { id: 3, user: 'Ananya Rao',   action: 'logged',    text: 'a call with Gupta Family',            time: '2 hours ago'  },
-        { id: 4, user: 'Naveen K.',    action: 'moved',     text: 'Villa Fitout to Design Concept',      time: '4 hours ago'  },
-        { id: 5, user: 'Kiran Mehta',  action: 'created',   text: 'new snag for Birla Penthouse',        time: '5 hours ago'  },
-      ]);
+    const formatRevenue = (val) => {
+      const n = Number(val || 0);
+      if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
+      return `₹${n.toLocaleString('en-IN')}`;
+    };
 
-      setPipeline([
-        { id: 1, name: 'New',       count: 12, color: '#3B82F6' },
-        { id: 2, name: 'Contacted', count: 8,  color: '#8B5CF6' },
-        { id: 3, name: 'Qualified', count: 5,  color: '#F59E0B' },
-        { id: 4, name: 'Site Visit',count: 3,  color: '#EC4899' },
-        { id: 5, name: 'Proposal',  count: 2,  color: '#10B981' },
-        { id: 6, name: 'Won',       count: 1,  color: '#059669' },
-      ]);
+    const formatDue = (d) => d ? new Date(d).toISOString().split('T')[0] : '—';
+    const isOverdue = (d) => d && new Date(d) < new Date();
 
-      setTasks([
-        { id: 1, title: 'Finalize layout drawing',   project: 'Sharma Residence', due: '2026-06-12', overdue: true,  done: false, priority: 'urgent' },
-        { id: 2, title: 'Call client for budget',    project: 'Gupta Family',     due: '2026-06-15', overdue: false, done: false, priority: 'high'   },
-        { id: 3, title: 'Send quotation',            project: 'Villa 42',         due: '2026-06-16', overdue: false, done: false, priority: 'low'    },
-        { id: 4, title: 'Approve material samples',  project: 'Birla Penthouse',  due: '2026-06-13', overdue: true,  done: false, priority: 'urgent' },
-        { id: 5, title: 'Update phase timeline',     project: 'Sharma Residence', due: '2026-06-18', overdue: false, done: false, priority: 'high'   },
-      ]);
+    Promise.allSettled([
+      api.get('/dashboard/stats'),
+      api.get('/dashboard/activity'),
+      api.get('/analytics/leads'),
+      api.get('/tasks', { params: { assigneeId: 'me', limit: 5, status: 'todo,in_progress' } }),
+      api.get('/dashboard/payments-due'),
+    ]).then(([statsR, actR, analyticsR, tasksR, paymentsR]) => {
+      // Stats
+      if (statsR.status === 'fulfilled') {
+        const s = statsR.value.data?.data || {};
+        setStats({
+          activeLeads:    { val: s.activeLeads?.val    ?? 0, trend: s.activeLeads?.trend    ?? 0 },
+          wonMonth:       { val: formatRevenue(s.wonMonth?.val), trend: s.wonMonth?.trend    ?? 0 },
+          activeProjects: { val: s.activeProjects?.val ?? 0, overdue: s.activeProjects?.overdue ?? 0 },
+          tasksDueToday:  { val: s.tasksDueToday?.val  ?? 0, overdue: s.tasksDueToday?.overdue  ?? 0 },
+        });
+      } else {
+        setStats({
+          activeLeads:    { val: 0, trend: 0 },
+          wonMonth:       { val: '₹0', trend: 0 },
+          activeProjects: { val: 0, overdue: 0 },
+          tasksDueToday:  { val: 0, overdue: 0 },
+        });
+      }
 
-      setPayments([
-        { id: 1, project: 'Sharma Residence', milestone: 'Material Sourcing', amount: '₹2.5L', due: '2026-06-10', overdue: true  },
-        { id: 2, project: 'Villa 42',         milestone: 'Advance',           amount: '₹1.5L', due: '2026-06-20', overdue: false },
-        { id: 3, project: 'Birla Penthouse',  milestone: 'Design Sign-off',   amount: '₹3.0L', due: '2026-06-08', overdue: true  },
-        { id: 4, project: 'Gupta Family',     milestone: 'Final Handover',    amount: '₹4.2L', due: '2026-06-30', overdue: false },
-      ]);
+      // Activity
+      if (actR.status === 'fulfilled') {
+        const rows = actR.value.data?.data || [];
+        const timeAgo = (d) => {
+          const diff = Date.now() - new Date(d).getTime();
+          const mins = Math.floor(diff / 60000);
+          if (mins < 60) return `${mins}m ago`;
+          const hrs = Math.floor(mins / 60);
+          if (hrs < 24) return `${hrs}h ago`;
+          return `${Math.floor(hrs / 24)}d ago`;
+        };
+        setActivity(rows.map((r, i) => ({
+          id: r.id || i,
+          user: r.user_name || 'System',
+          action: r.action || 'updated',
+          text: `${r.entity} ${r.entity_id ? `#${r.entity_id.slice(0,6)}` : ''}`,
+          time: timeAgo(r.created_at),
+        })));
+      } else {
+        setActivity([]);
+      }
+
+      // Pipeline from analytics
+      if (analyticsR.status === 'fulfilled') {
+        const stages = analyticsR.value.data?.data?.stageDistribution || [];
+        setPipeline(stages.map((s, i) => ({
+          id: s.stageId || i,
+          name: s.stageName,
+          count: s.count,
+          color: PIPE_COLORS[i % PIPE_COLORS.length],
+        })));
+      } else {
+        setPipeline([]);
+      }
+
+      // My tasks
+      if (tasksR.status === 'fulfilled') {
+        const raw = tasksR.value.data?.data || [];
+        const today = new Date().toISOString().split('T')[0];
+        setTasks(raw.slice(0, 5).map(t => ({
+          id: t.id,
+          title: t.title,
+          project: t.project_name || '—',
+          due: formatDue(t.due_date),
+          overdue: isOverdue(t.due_date),
+          done: t.status === 'done',
+          priority: t.priority || 'medium',
+        })));
+      } else {
+        setTasks([]);
+      }
+
+      // Payments due
+      if (paymentsR.status === 'fulfilled') {
+        const raw = paymentsR.value.data?.data || [];
+        setPayments(raw.map(p => ({
+          id: p.id,
+          project: p.project_name || '—',
+          milestone: p.title || '—',
+          amount: p.amount >= 100000 ? `₹${(p.amount / 100000).toFixed(1)}L` : `₹${Number(p.amount).toLocaleString('en-IN')}`,
+          due: formatDue(p.due_date),
+          overdue: isOverdue(p.due_date),
+        })));
+      } else {
+        setPayments([]);
+      }
 
       setLoading(false);
-    }, 900);
-    return () => clearTimeout(t);
+    });
   }, []);
 
   const handleTaskToggle = (id) => {
