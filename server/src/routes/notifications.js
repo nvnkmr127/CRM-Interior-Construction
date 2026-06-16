@@ -66,4 +66,52 @@ router.post('/mark-read', async (req, res) => {
   }
 });
 
+const { addClient } = require('../integrations/notificationService');
+
+router.get('/stream', (req, res) => {
+  const userId = req.user.id;
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  // Register client
+  addClient(userId, res);
+
+  // Send initial ping to establish connection
+  res.write(': connected\n\n');
+});
+
+router.get('/preferences', async (req, res) => {
+  const tenantId = req.tenantId;
+  const userId = req.user.id;
+  try {
+    const { rows } = await pool.query('SELECT * FROM user_preferences WHERE user_id=$1 AND tenant_id=$2', [userId, tenantId]);
+    res.json(success(rows[0] || {}));
+  } catch (err) {
+    res.status(500).json(fail('Failed to fetch preferences'));
+  }
+});
+
+router.patch('/preferences', async (req, res) => {
+  const tenantId = req.tenantId;
+  const userId = req.user.id;
+  const { email_sla_breaches, push_score_changes, dnd_start_time, dnd_end_time } = req.body;
+  try {
+    await pool.query(`
+      INSERT INTO user_preferences (user_id, tenant_id, email_sla_breaches, push_score_changes, dnd_start_time, dnd_end_time)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT(user_id) DO UPDATE SET
+        email_sla_breaches=EXCLUDED.email_sla_breaches,
+        push_score_changes=EXCLUDED.push_score_changes,
+        dnd_start_time=EXCLUDED.dnd_start_time,
+        dnd_end_time=EXCLUDED.dnd_end_time,
+        updated_at=CURRENT_TIMESTAMP
+    `, [userId, tenantId, email_sla_breaches ?? true, push_score_changes ?? true, dnd_start_time || '22:00', dnd_end_time || '08:00']);
+    res.json(success({ message: 'Preferences updated' }));
+  } catch (err) {
+    res.status(500).json(fail('Failed to update preferences'));
+  }
+});
+
 module.exports = router;

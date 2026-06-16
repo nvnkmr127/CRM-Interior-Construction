@@ -5,6 +5,7 @@ const { deleteLead } = require('../services/leads/deleteLead');
 const { changeStage } = require('../services/leads/changeStage');
 const { bulkDeleteLeads } = require('../services/leads/bulkDeleteLeads');
 const { bulkAssignLeads } = require('../services/leads/bulkAssignLeads');
+const { bulkChangeStage } = require('../services/leads/bulkChangeStage');
 const { findLeads, findLeadById, getLeadStats } = require('../repositories/leadRepository');
 const { listActivities, logActivity } = require('../services/activities/activityService');
 const { success, fail, paginate } = require('../utils/response');
@@ -166,6 +167,24 @@ exports.bulkAssignLeadsHandler = async (req, res, next) => {
   }
 };
 
+exports.bulkChangeStageHandler = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { leadIds, stageId } = req.body;
+    if (!leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
+      return fail(res, 'VALIDATION_ERROR', 'An array of leadIds is required', 400);
+    }
+    if (!stageId) {
+      return fail(res, 'VALIDATION_ERROR', 'stageId is required', 400);
+    }
+    const updatedCount = await bulkChangeStage(leadIds, stageId, tenantId);
+    return success(res, { count: updatedCount }, { message: `Moved ${updatedCount} leads to new stage` });
+  } catch (error) {
+    if (error.message === 'Invalid stage') return fail(res, 'VALIDATION_ERROR', 'Stage not found in this tenant', 400);
+    next(error);
+  }
+};
+
 exports.changeStageHandler = async (req, res, next) => {
   try {
     const { tenantId, userId } = getTenantAndUser(req);
@@ -185,6 +204,47 @@ exports.changeStageHandler = async (req, res, next) => {
     }
     if (error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Lead not found', 404);
     if (error.message === 'INVALID_STAGE') return fail(res, 'VALIDATION_ERROR', 'Invalid stage', 400);
+    next(error);
+  }
+};
+
+exports.convertToProjectHandler = async (req, res, next) => {
+  try {
+    const { tenantId, userId } = getTenantAndUser(req);
+    const leadId = req.params.id;
+    const { 
+      booking_received, floor_plan, scope_finalized,
+      projectName, projectType, clientName, clientPhone, clientEmail, pm, contractValue 
+    } = req.body;
+
+    if (!booking_received || !floor_plan || !scope_finalized) {
+      return fail(res, 'VALIDATION_ERROR', 'All checklist items must be verified to convert.', 400);
+    }
+    if (!projectName || !pm || !projectType) {
+      return fail(res, 'VALIDATION_ERROR', 'Project name, type and PM are required.', 400);
+    }
+
+    // 1. Get the lead
+    const leadRes = await pool.query('SELECT * FROM leads WHERE id = $1 AND tenant_id = $2', [leadId, tenantId]);
+    if (leadRes.rows.length === 0) return fail(res, 'NOT_FOUND', 'Lead not found', 404);
+    const lead = leadRes.rows[0];
+
+    // 2. Insert into projects
+    const insertRes = await pool.query(`
+      INSERT INTO projects (tenant_id, name, client_name, pm_id, status, value, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, 'active', $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      RETURNING id
+    `, [tenantId, projectName, clientName || lead.name, pm, contractValue || lead.budget_max || 0]);
+    
+    const newProjectId = insertRes.rows[0].id;
+
+    // 3. Update lead stage to won if not already
+    if (lead.stage !== 'won') {
+      await pool.query('UPDATE leads SET stage = $1 WHERE id = $2', ['won', leadId]);
+    }
+
+    return success(res, { project_id: newProjectId, message: 'Project created successfully' }, {}, 201);
+  } catch (error) {
     next(error);
   }
 };
@@ -219,6 +279,91 @@ exports.getActivitiesHandler = async (req, res, next) => {
     });
     return paginate(res, result.data, result.total, result.page, result.limit);
   } catch (error) {
+    next(error);
+  }
+};
+
+const pool = require('../db/pool');
+
+exports.checkDuplicateHandler = async (req, res, next) => {
+  try {
+    const { phone } = req.query;
+    if (!phone) {
+      return fail(res, 'VALIDATION_ERROR', 'phone query parameter is required', 400);
+    }
+    
+    // In public contexts, if tenant context isn't strictly required or we use a default
+    // We'll extract tenantId if authenticated, otherwise use the first one
+    let tenantId;
+    try {
+      tenantId = getTenantAndUser(req).tenantId;
+    } catch(e) {
+       const tenantRes = await pool.query('SELECT id FROM tenants LIMIT 1');
+       if (tenantRes.rows.length > 0) tenantId = tenantRes.rows[0].id;
+    }
+
+    if (!tenantId) {
+       return fail(res, 'SYSTEM_ERROR', 'No tenant context', 500);
+    }
+
+    const result = await pool.query(
+      'SELECT id, stage, assigned_rep_id as assigned_to FROM leads WHERE phone = $1 AND tenant_id = $2 AND deleted_at IS NULL LIMIT 1',
+      [phone, tenantId]
+    );
+
+    if (result.rows.length > 0) {
+      const row = result.rows[0];
+      return success(res, {
+        exists: true,
+        lead_id: row.id,
+        stage: row.stage,
+        assigned_to: row.assigned_to
+      });
+    }
+
+    return success(res, { exists: false });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.createPublicLeadHandler = async (req, res, next) => {
+  try {
+    const parsed = createLeadSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return fail(res, 'VALIDATION_ERROR', 'Validation failed', 400, parsed.error.issues);
+    }
+    
+    // Use first tenant if no auth context
+    let tenantId;
+    try {
+      tenantId = getTenantAndUser(req).tenantId;
+    } catch(e) {
+       const tenantRes = await pool.query('SELECT id FROM tenants LIMIT 1');
+       if (tenantRes.rows.length > 0) tenantId = tenantRes.rows[0].id;
+    }
+
+    if (!tenantId) {
+      return fail(res, 'SYSTEM_ERROR', 'No tenant context', 500);
+    }
+
+    // Lead capturing system sets userId to null representing public system
+    const lead = await createLead({ tenantId, userId: null, data: parsed.data });
+
+    // Optionally retrieve the assigned rep's info for the "Thank You" screen
+    let repInfo = null;
+    if (lead.assigned_rep_id) {
+       const repRes = await pool.query('SELECT name, avatar_url as photo FROM users WHERE id = $1', [lead.assigned_rep_id]);
+       if (repRes.rows.length > 0) {
+          repInfo = repRes.rows[0];
+       }
+    }
+
+    return success(res, { lead, rep: repInfo }, {}, 201);
+  } catch (error) {
+    if (error.message.includes('VALIDATION_ERROR') || error.message === 'INVALID_STAGE') {
+      return fail(res, 'VALIDATION_ERROR', error.message, 400);
+    }
     next(error);
   }
 };

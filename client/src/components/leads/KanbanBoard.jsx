@@ -3,11 +3,29 @@ import { Badge, Button, EmptyState } from '../ui';
 import LeadCard from './LeadCard';
 import styles from './KanbanBoard.module.css';
 
-export default function KanbanBoard({ stages, leadsByStage, onLeadClick, onAddLead }) {
+export default function KanbanBoard({ stages, leadsByStage, onLeadClick, onAddLead, onMoveLead }) {
+  const handleDragOver = (e) => {
+    e.preventDefault(); // Necessary to allow dropping
+  };
+
+  const handleDrop = (e, stageId) => {
+    e.preventDefault();
+    const leadId = e.dataTransfer.getData('leadId');
+    if (leadId && onMoveLead) {
+      onMoveLead(leadId, stageId);
+    }
+  };
+
   return (
     <div className={styles.board}>
       {stages.map(stage => (
-        <div key={stage.id} className={styles.column} style={{ '--col-color': stage.color || 'var(--color-border)' }}>
+        <div 
+          key={stage.id} 
+          className={styles.column} 
+          style={{ '--col-color': stage.color || 'var(--color-border)' }}
+          onDragOver={handleDragOver}
+          onDrop={(e) => handleDrop(e, stage.id)}
+        >
           <div className={styles.colHeader}>
             <div className={styles.colTitle}>
               {stage.name}
@@ -25,7 +43,7 @@ export default function KanbanBoard({ stages, leadsByStage, onLeadClick, onAddLe
               />
             ) : (
               leadsByStage[stage.id].map(lead => (
-                <LeadCard key={lead.id} lead={lead} onClick={() => onLeadClick(lead.id)} />
+                <LeadCard key={lead.id} lead={lead} onClick={() => onLeadClick(lead.id)} draggable />
               ))
             )}
           </div>

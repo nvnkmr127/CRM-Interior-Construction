@@ -38,7 +38,7 @@ export default function LeadsPage() {
     return f;
   }, [search, sourceFilter, assigneeFilter, scoreRange, sortBy, page, limit]);
 
-  const { leads, stages, stats, total, loading, optimisticStageChange, refetch } = useLeads(filters);
+  const { leads, stages, stats, total, loading, optimisticStageChange, bulkChangeStage, refetch } = useLeads(filters);
 
   // Unique assignees for dropdown
   const assignees = useMemo(() => {
@@ -107,6 +107,7 @@ export default function LeadsPage() {
               leadsByStage={leadsByStage}
               onLeadClick={setSelectedLeadId}
               onAddLead={() => setIsFormOpen(true)}
+              onMoveLead={handleMoveStage}
             />
           </ErrorBoundary>
         ) : (
@@ -117,6 +118,7 @@ export default function LeadsPage() {
             setSelectedLeadId={setSelectedLeadId}
             stageMenuLeadId={stageMenuLeadId} setStageMenuLeadId={setStageMenuLeadId}
             stages={stages} handleMoveStage={handleMoveStage}
+            bulkChangeStage={bulkChangeStage}
             clearFilters={clearFilters}
           />
         )}

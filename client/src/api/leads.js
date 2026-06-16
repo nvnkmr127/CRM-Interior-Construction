@@ -77,6 +77,17 @@ export const changeLeadStage = async (id, stageId) => {
 };
 
 /**
+ * Bulk change the stage of multiple leads.
+ * @param {Array<string>} leadIds - UUIDs of the leads.
+ * @param {string} stageId - The UUID of the new stage.
+ * @returns {Promise<{ success: boolean, data: Object }>} Result.
+ */
+export const bulkChangeLeadStage = async (leadIds, stageId) => {
+  const response = await api.post(`/leads/bulk/stage`, { leadIds, stageId });
+  return response.data;
+};
+
+/**
  * Log a new activity for a lead.
  * @param {string} leadId - The UUID of the lead.
  * @param {Object} data - The activity data.

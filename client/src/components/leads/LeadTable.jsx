@@ -30,9 +30,10 @@ function formatDate(dateStr) {
 export default function LeadTable({
   filteredLeads, loading, page, limit, total, setPage,
   setSelectedLeadId, stageMenuLeadId, setStageMenuLeadId,
-  stages, handleMoveStage, clearFilters
+  stages, handleMoveStage, bulkChangeStage, clearFilters
 }) {
   const [selectedIds, setSelectedIds] = React.useState(new Set());
+  const [showBulkStageMenu, setShowBulkStageMenu] = React.useState(false);
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
@@ -50,7 +51,20 @@ export default function LeadTable({
     setSelectedIds(newSet);
   };
 
-  const clearSelection = () => setSelectedIds(new Set());
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+    setShowBulkStageMenu(false);
+  };
+  
+  const handleBulkMove = async (stageId) => {
+    try {
+      await bulkChangeStage(Array.from(selectedIds), stageId);
+      clearSelection();
+    } catch (err) {
+      console.error('Failed to bulk move leads', err);
+      alert('Failed to bulk move leads');
+    }
+  };
   if (loading) {
     return (
       <div className={styles.listWrapper} style={{ padding: '20px' }}>
@@ -209,9 +223,24 @@ export default function LeadTable({
           display: 'flex', alignItems: 'center', gap: '24px', zIndex: 100, border: '1px solid var(--color-border)'
         }}>
           <div style={{ fontWeight: 500 }}>{selectedIds.size} selected</div>
-          <div style={{ display: 'flex', gap: '12px' }}>
+          <div style={{ display: 'flex', gap: '12px', position: 'relative' }}>
             <Button variant="secondary" onClick={clearSelection}>Cancel</Button>
-            <Button variant="primary" onClick={() => alert('Bulk move functionality pending backend support')}>Move Stage</Button>
+            <div className={styles.stageMenuWrap} style={{position: 'relative'}}>
+              <Button variant="primary" onClick={() => setShowBulkStageMenu(!showBulkStageMenu)}>Move Stage</Button>
+              {showBulkStageMenu && (
+                <div className={styles.stageDropdown} style={{bottom: '100%', top: 'auto', marginBottom: '8px', right: 0, left: 'auto'}}>
+                  {stages.map(s => (
+                    <button
+                      key={s.id}
+                      className={styles.stageDropdownItem}
+                      onClick={() => handleBulkMove(s.id)}
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

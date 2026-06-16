@@ -15,11 +15,25 @@ try {
 }
 
 async function createLead({ tenantId, userId, data }) {
-  const { name, phone, stageId, assigneeId } = data;
+  const { name, phone, email, stageId, assigneeId } = data;
 
   // 1. Validate required: name, phone (at minimum).
   if (!name || !phone) {
     throw new Error('VALIDATION_ERROR: Name and phone are required');
+  }
+
+  // Duplicate detection for phone or email
+  const duplicateCheckValues = [tenantId, phone];
+  let duplicateQuery = 'SELECT id FROM leads WHERE tenant_id = $1 AND phone = $2 AND deleted_at IS NULL LIMIT 1';
+  
+  if (email) {
+    duplicateQuery = 'SELECT id FROM leads WHERE tenant_id = $1 AND (phone = $2 OR email = $3) AND deleted_at IS NULL LIMIT 1';
+    duplicateCheckValues.push(email);
+  }
+  
+  const duplicateCheck = await pool.query(duplicateQuery, duplicateCheckValues);
+  if (duplicateCheck.rows.length > 0) {
+    throw new Error('VALIDATION_ERROR: A lead with this phone or email already exists');
   }
 
   // 2. If stageId provided: verify it belongs to tenant. If not → throw Error('INVALID_STAGE').

@@ -3,11 +3,20 @@ import { Badge } from '../ui';
 import ScoreBadge from './ScoreBadge';
 import styles from './LeadCard.module.css';
 
-export default function LeadCard({ lead, onClick }) {
+export default function LeadCard({ lead, onClick, draggable }) {
   const isOverdue = lead.follow_up_overdue_days > 0;
 
+  const handleDragStart = (e) => {
+    e.dataTransfer.setData('leadId', lead.id);
+  };
+
   return (
-    <div className={styles.card} onClick={onClick}>
+    <div 
+      className={styles.card} 
+      onClick={onClick}
+      draggable={draggable}
+      onDragStart={draggable ? handleDragStart : undefined}
+    >
       <div className={styles.row}>
         <span className={styles.name}>{lead.name}</span>
         <ScoreBadge score={lead.score} />

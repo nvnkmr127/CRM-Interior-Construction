@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../api/axios';
-import { getLeads, changeLeadStage } from '../api/leads';
+import { getLeads, changeLeadStage, bulkChangeLeadStage } from '../api/leads';
 
 export function useLeads(filters = {}) {
   const [leads, setLeads] = useState([]);
@@ -85,9 +85,35 @@ export function useLeads(filters = {}) {
     }
   };
 
+  const bulkChangeStage = async (leadIds, newStageId) => {
+    const previousLeads = [...leads];
+    
+    // 1. Optimistic UI update
+    setLeads(prev => prev.map(lead => {
+      if (leadIds.includes(lead.id)) {
+        const targetStage = stages.find(s => s.id === newStageId);
+        return { 
+          ...lead, 
+          stage_id: newStageId,
+          stage_name: targetStage ? targetStage.name : lead.stage_name
+        };
+      }
+      return lead;
+    }));
+
+    // 2. Call API
+    try {
+      await bulkChangeLeadStage(leadIds, newStageId);
+    } catch (err) {
+      // 3. Revert on error
+      setLeads(previousLeads);
+      throw err;
+    }
+  };
+
   const refetch = () => {
     return fetchLeadsAndStages();
   };
 
-  return { leads, stages, stats, total, loading, error, refetch, optimisticStageChange };
+  return { leads, stages, stats, total, loading, error, refetch, optimisticStageChange, bulkChangeStage };
 }
