@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo } from 'react'
 import styles from './MyTasksPage.module.css'
 import { Badge, Select, Button, Spinner } from '../../components/ui'
 import TaskDetail from '../../components/tasks/TaskDetail'
-import usePageTitle from '../../hooks/usePageTitle'
-import useBreadcrumbs from '../../hooks/useBreadcrumbs'
+import { usePageTitle } from '../../hooks/usePageTitle';
+import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import { useToast } from '../../store/toastContext'
 
 const TABS = [

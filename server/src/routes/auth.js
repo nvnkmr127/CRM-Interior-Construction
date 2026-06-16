@@ -210,4 +210,93 @@ router.get('/me', authenticate, async (req, res, next) => {
   }
 });
 
+router.patch('/me', authenticate, async (req, res, next) => {
+  try {
+    const userId = req.user.id || req.user.userId;
+    const tenantId = req.tenantId;
+    const { name, avatar_url } = req.body;
+
+    const updates = [];
+    const params = [userId, tenantId];
+
+    if (name) {
+      params.push(name);
+      updates.push(`name = $${params.length}`);
+    }
+    if (avatar_url !== undefined) {
+      params.push(avatar_url);
+      updates.push(`avatar_url = $${params.length}`);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json(fail('No fields to update'));
+    }
+
+    updates.push('updated_at = NOW()');
+
+    const result = await pool.query(`
+      UPDATE users SET ${updates.join(', ')}
+      WHERE id = $1 AND tenant_id = $2
+      RETURNING *
+    `, params);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json(fail('User not found'));
+    }
+
+    const { password_hash, ...safeUser } = result.rows[0];
+    res.json(success(safeUser));
+  } catch (error) {
+    next(error);
+  }
+});
+
+const bcrypt = require('bcryptjs');
+
+router.post('/change-password', authenticate, async (req, res, next) => {
+  try {
+    const userId = req.user.id || req.user.userId;
+    const tenantId = req.tenantId;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json(fail('New password must be at least 8 characters long'));
+    }
+
+    const userRes = await pool.query('SELECT password_hash FROM users WHERE id = $1 AND tenant_id = $2', [userId, tenantId]);
+    if (userRes.rows.length === 0) {
+      return res.status(404).json(fail('User not found'));
+    }
+
+    const user = userRes.rows[0];
+    const isValid = await bcrypt.compare(currentPassword, user.password_hash);
+    
+    if (!isValid) {
+      return res.status(401).json(fail('WRONG_PASSWORD'));
+    }
+
+    const newHash = await bcrypt.hash(newPassword, 10);
+    
+    await pool.query('UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3', [newHash, userId, tenantId]);
+    await pool.query('DELETE FROM sessions WHERE user_id = $1 AND tenant_id = $2', [userId, tenantId]);
+    
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/sessions', authenticate, async (req, res, next) => {
+  try {
+    const userId = req.user.id || req.user.userId;
+    const tenantId = req.tenantId;
+
+    await pool.query('DELETE FROM sessions WHERE user_id = $1 AND tenant_id = $2', [userId, tenantId]);
+    
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

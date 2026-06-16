@@ -37,6 +37,11 @@ const portalApprovalsRoutes = require('./routes/portal/approvals');
 const portalBrandingRoutes = require('./routes/portal/branding');
 const errorHandler = require('./middleware/errorHandler');
 
+const dashboardRouter = require('./routes/dashboard');
+const searchRouter = require('./routes/search');
+const notificationsRouter = require('./routes/notifications');
+const usersRouter = require('./routes/users');
+
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
@@ -46,8 +51,10 @@ app.use('/api/leads', leadsRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/projects', projectsRoutes);
 app.use('/api/snags', snagsRoutes);
+app.use('/api/projects/:id/snags', snagsRoutes);
 app.use('/api/payment-milestones', paymentMilestonesRoutes);
 app.use('/api/handover', handoverRoutes);
+app.use('/api/projects/:id/handover', handoverRoutes);
 app.use('/api/phases/:phaseId/milestones', milestonesRoutes);
 app.use('/api/tasks', globalTasksRoutes);
 app.use('/api/analytics', analyticsRoutes);
@@ -59,6 +66,11 @@ app.use('/api/portal/project', portalProjectRoutes);
 app.use('/api/portal/snags', portalSnagsRoutes);
 app.use('/api/portal/approvals', portalApprovalsRoutes);
 app.use('/api/portal/branding', portalBrandingRoutes);
+
+app.use('/api/dashboard', dashboardRouter);
+app.use('/api/search', searchRouter);
+app.use('/api/notifications', notificationsRouter);
+app.use('/api/users', usersRouter);
 
 // Error handler MUST be the last middleware
 app.use(errorHandler);

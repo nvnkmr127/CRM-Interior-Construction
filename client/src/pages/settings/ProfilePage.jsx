@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import styles from './ProfilePage.module.css'
 import { useAuth } from '../../store/authContext'
 import { useToast } from '../../store/toastContext'
-import usePageTitle from '../../hooks/usePageTitle'
-import useBreadcrumbs from '../../hooks/useBreadcrumbs'
+import { usePageTitle } from '../../hooks/usePageTitle';
+import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import { Avatar, Badge, Button } from '../../components/ui'
 
 export default function ProfilePage() {

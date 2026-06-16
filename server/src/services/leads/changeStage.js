@@ -3,6 +3,8 @@ const stageRepository = require('../../repositories/stageRepository');
 const { updateLead } = require('./updateLead');
 const { logAction } = require('../auditLog');
 const { dispatchEvent } = require('../webhooks/webhookDispatcher');
+const { createNotification } = require('../notificationService');
+const pool = require('../../config/db');
 
 async function changeStage({ tenantId, userId, leadId, newStageId }) {
   // 1. Fetch current lead to get the old stage info
@@ -49,6 +51,21 @@ async function changeStage({ tenantId, userId, leadId, newStageId }) {
 
   // 6. Return the updated lead with fully joined properties (stage_name, assignee_name)
   const updatedLeadFull = await leadRepository.findLeadById(tenantId, leadId);
+
+  // Notify lead assignee: 'Lead X moved to Stage Y'
+  if (updatedLeadFull.assignee_id && updatedLeadFull.assignee_id !== userId) {
+    const userRes = await pool.query('SELECT name FROM users WHERE id=$1', [userId]);
+    const actorName = userRes.rows[0] ? userRes.rows[0].name : 'System';
+    createNotification({
+      tenantId,
+      userId: updatedLeadFull.assignee_id,
+      type: 'lead_stage_changed',
+      message: `Lead ${updatedLeadFull.name} moved to Stage ${newStage.name}`,
+      referenceUrl: `/leads`,
+      actorId: userId,
+      actorName
+    });
+  }
 
   // 7. Dispatch webhook
   dispatchEvent(tenantId, 'lead.stage_changed', updatedLeadFull);

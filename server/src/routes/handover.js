@@ -5,7 +5,7 @@ const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const { updateItem, clientSignOff } = require('../services/postSale/handoverService');
 
-const router = express.Router();
+const router = express.Router({ mergeParams: true });
 
 router.use(authenticate);
 

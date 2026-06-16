@@ -1,6 +1,7 @@
 const pool = require('../../db/pool');
 const { logAction } = require('../auditLog');
 const { dispatchEvent } = require('../webhooks/webhookDispatcher');
+const { createNotification } = require('../notificationService');
 
 async function createSnag({ tenantId, projectId, raisedBy, raisedByClient, title, description, photoKeys, category }) {
   const result = await pool.query(
@@ -18,6 +19,20 @@ async function createSnag({ tenantId, projectId, raisedBy, raisedByClient, title
       projectId,
       title
     });
+
+    // Notify PM: 'Client raised snag: Title'
+    const projRes = await pool.query('SELECT pm_id FROM projects WHERE id=$1', [projectId]);
+    if (projRes.rows.length > 0 && projRes.rows[0].pm_id) {
+      createNotification({
+        tenantId,
+        userId: projRes.rows[0].pm_id,
+        type: 'snag_raised',
+        message: `Client raised snag: ${title}`,
+        referenceUrl: `/projects/${projectId}/snags`,
+        actorId: raisedBy, // assuming client portal user ID
+        actorName: 'Client'
+      });
+    }
   }
 
   return snag;

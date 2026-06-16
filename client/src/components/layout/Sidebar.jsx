@@ -38,16 +38,17 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
             <div key={group.group} className={styles.navGroup}>
               {!collapsed && <span className={styles.groupLabel}>{group.group}</span>}
               {group.items.map(item => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({isActive}) => `${styles.navItem} ${isActive ? styles.active : ''}`}
-                  onClick={onClose}
-                >
-                  <span className={styles.navIcon}>{item.icon}</span>
-                  {!collapsed && <span className={styles.navLabel}>{item.label}</span>}
-                  {collapsed && <span className={styles.tooltip}>{item.label}</span>}
-                </NavLink>
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.to === '/config' ? false : undefined}
+                    className={({isActive}) => `${styles.navItem} ${isActive ? styles.active : ''}`}
+                    onClick={onClose}
+                  >
+                    <span className={styles.navIcon}>{item.icon}</span>
+                    {!collapsed && <span className={styles.navLabel}>{item.label}</span>}
+                    {collapsed && <span className={styles.tooltip}>{item.label}</span>}
+                  </NavLink>
               ))}
             </div>
           )

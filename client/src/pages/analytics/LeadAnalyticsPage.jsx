@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import styles from './LeadAnalyticsPage.module.css'
 import { Select, Avatar, Badge, DataTable } from '../../components/ui'
-import usePageTitle from '../../hooks/usePageTitle'
-import useBreadcrumbs from '../../hooks/useBreadcrumbs'
+import { usePageTitle } from '../../hooks/usePageTitle';
+import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 
 const PIE_COLOURS = ['#E8935A','#2D6A4F','#1A3A5C','#8B2020','#4A2040','#D97706']

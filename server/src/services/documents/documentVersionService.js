@@ -1,5 +1,6 @@
 const pool = require('../../config/db');
 const { dispatchEvent } = require('../webhooks/webhookDispatcher');
+const { createNotification } = require('../notificationService');
 
 async function addVersion(tenantId, originalDocId, { storageKey, uploadedBy, fileSize, mimeType }) {
   const client = await pool.connect();
@@ -77,6 +78,20 @@ async function approveDocument(tenantId, docId, userId) {
     version: doc.version,
     docType: doc.doc_type
   }).catch(e => console.error('[Webhook Error] client.design_approved:', e));
+
+  if (doc.uploaded_by) {
+    const userRes = await pool.query('SELECT name FROM users WHERE id=$1', [userId]);
+    const actorName = userRes.rows[0] ? userRes.rows[0].name : 'Client';
+    createNotification({
+      tenantId,
+      userId: doc.uploaded_by,
+      type: 'document_approved',
+      message: `Client approved: ${doc.name}`,
+      referenceUrl: `/projects/${doc.project_id}`,
+      actorId: userId,
+      actorName
+    });
+  }
 
   return doc;
 }

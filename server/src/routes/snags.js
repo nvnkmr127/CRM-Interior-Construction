@@ -3,7 +3,7 @@ const { getSnags, updateSnagStatus, assignSnag } = require('../services/postSale
 const authenticate = require('../middleware/authenticate');
 const { success, fail } = require('../utils/response');
 
-const router = express.Router();
+const router = express.Router({ mergeParams: true });
 
 router.use(authenticate);
 

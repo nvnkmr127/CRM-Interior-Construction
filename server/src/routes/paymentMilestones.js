@@ -5,9 +5,34 @@ const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const { createPaymentMilestone, updatePaymentMilestone } = require('../services/projects/paymentMilestoneService');
 
-const router = express.Router();
+const router = express.Router({ mergeParams: true });
 
 router.use(authenticate);
+
+router.get('/', async (req, res, next) => {
+  // If we are nested under /api/projects/:id/payment-milestones, req.params.id will have the projectId.
+  const projectId = req.params.id || req.params.projectId;
+  if (!projectId) {
+    return next(); // Fall through if not project context, though we shouldn't really hit this.
+  }
+
+  const tenantId = req.tenantId;
+
+  try {
+    const pool = require('../config/db');
+    const { rows } = await pool.query(`
+      SELECT pm.*, m.name as milestone_name
+      FROM payment_milestones pm
+      LEFT JOIN milestones m ON m.id=pm.milestone_id
+      WHERE pm.project_id=$1 AND pm.tenant_id=$2
+      ORDER BY pm.due_date ASC NULLS LAST
+    `, [projectId, tenantId]);
+
+    return success(res, rows);
+  } catch (error) {
+    next(error);
+  }
+});
 
 const createSchema = z.object({
   projectId: z.string().uuid(),

@@ -1,46 +1,70 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react'
 
-export function useForm(initialValues, validationRules) {
-  const [values, setValues] = useState(initialValues);
-  const [errors, setErrors] = useState({});
-  const [touched, setTouched] = useState({});
+// validationRules: { fieldName: (value) => errorString | null }
+// Example:
+//   const { values, errors, handleChange, handleBlur, validateAll, isValid } = useForm(
+//     { name: '', phone: '' },
+//     { name: run(validators.required('Name'), validators.minLen(2)), phone: validators.phone }
+//   )
 
-  const validate = (fieldName, value) => {
-    const rules = validationRules[fieldName] || [];
-    for (const rule of rules) {
-      const error = rule(value);
-      if (error) return error;
-    }
-    return null;
-  };
+export function useForm(initialValues, validationRules = {}) {
+  const [values,  setValues]  = useState(initialValues)
+  const [errors,  setErrors]  = useState({})
+  const [touched, setTouched] = useState({})
 
-  const handleChange = (name, value) => {
-    setValues(v => ({ ...v, [name]: value }));
+  const validate = useCallback((name, value) => {
+    const rule = validationRules[name]
+    return rule ? rule(value) : null
+  }, [validationRules])
+
+  const handleChange = useCallback((name, value) => {
+    setValues(v => ({ ...v, [name]: value }))
     if (touched[name]) {
-      const error = validate(name, value);
-      setErrors(e => ({ ...e, [name]: error }));
+      setErrors(e => ({ ...e, [name]: validate(name, value) }))
     }
-  };
+  }, [touched, validate])
 
-  const handleBlur = (name) => {
-    setTouched(t => ({ ...t, [name]: true }));
-    const error = validate(name, values[name]);
-    setErrors(e => ({ ...e, [name]: error }));
-  };
+  const handleBlur = useCallback((name) => {
+    setTouched(t => ({ ...t, [name]: true }))
+    setErrors(e => ({ ...e, [name]: validate(name, values[name]) }))
+  }, [validate, values])
 
-  const validateAll = () => {
-    const newErrors = {};
-    let hasErrors = false;
+  const validateAll = useCallback(() => {
+    const newErrors = {}
+    let valid = true
+    const newTouched = {}
     Object.keys(validationRules).forEach(name => {
-      const error = validate(name, values[name]);
-      if (error) { newErrors[name] = error; hasErrors = true; }
-    });
-    setErrors(newErrors);
-    setTouched(Object.keys(validationRules).reduce((a,k) => ({...a,[k]:true}), {}));
-    return !hasErrors;
-  };
+      newTouched[name] = true
+      const err = validate(name, values[name])
+      if (err) { newErrors[name] = err; valid = false }
+    })
+    setErrors(newErrors)
+    setTouched(newTouched)
+    return valid
+  }, [validate, validationRules, values])
 
-  const isValid = Object.keys(validationRules).every(k => !validate(k, values[k]));
-  
-  return { values, errors, touched, handleChange, handleBlur, validateAll, isValid, setValues };
+  const reset = useCallback((newValues = initialValues) => {
+    setValues(newValues); setErrors({}); setTouched({})
+  }, [initialValues])
+
+  const setFieldError = useCallback((name, error) => {
+    setErrors(e => ({ ...e, [name]: error }))
+  }, [])
+
+  const isValid = Object.keys(validationRules).every(
+    name => !validate(name, values[name])
+  )
+
+  return {
+    values, errors, touched,
+    handleChange, handleBlur, validateAll, reset, setFieldError,
+    isValid,
+    // Convenience for controlled inputs:
+    field: (name) => ({
+      value: values[name] ?? '',
+      onChange: (e) => handleChange(name, e.target ? e.target.value : e),
+      onBlur:   ()  => handleBlur(name),
+      error:    touched[name] ? errors[name] : null,
+    }),
+  }
 }

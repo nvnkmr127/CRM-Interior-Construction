@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import styles from './ProjectAnalyticsPage.module.css'
 import { Select, Badge, DataTable, Avatar } from '../../components/ui'
-import usePageTitle from '../../hooks/usePageTitle'
-import useBreadcrumbs from '../../hooks/useBreadcrumbs'
+import { usePageTitle } from '../../hooks/usePageTitle';
+import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 
 const STATUS_COLORS = {
