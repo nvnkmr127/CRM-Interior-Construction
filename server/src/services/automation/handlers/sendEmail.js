@@ -2,7 +2,7 @@
  * Email Action Handler (Stub)
  */
 async function handle(config, context) {
-  const { templateId, recipientField, subjectTemplate, bodyTemplate } = config;
+  const { templateId, recipientField } = config;
   const { record } = context;
 
   const email = record[recipientField] || 'UNKNOWN_EMAIL';

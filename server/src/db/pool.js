@@ -10,12 +10,27 @@ class Pool {
   async query(sql, params) {
     console.log('MOCK DB QUERY:', sql, params);
     
-    // Updates/Inserts
+    // Updates/Inserts — generic catch for writes
     if (sql.includes('UPDATE client_portal_users') || sql.includes('UPDATE documents') || sql.includes('INSERT INTO snags') || sql.includes('UPDATE snags')) {
       return { rows: [{ id: 'mock-updated-id' }] };
     }
+    if (sql.includes('INSERT INTO projects')) {
+      return { rows: [{ id: 'mock-project-id', tenant_id: params[0], client_name: params[2], name: params[5], status: 'active', created_at: new Date() }] };
+    }
+    if (sql.includes('INSERT INTO leads')) {
+      return { rows: [{ id: 'mock-lead-id', tenant_id: params[0], name: params[1], phone: params[3], status: 'active', score: 0, created_at: new Date() }] };
+    }
+    if (sql.includes('INSERT INTO') || sql.includes('UPDATE ') || sql.includes('DELETE FROM')) {
+      return { rows: [{ id: 'mock-id' }], rowCount: 1 };
+    }
 
     // Auth routes
+    if (sql.includes('FROM roles WHERE id = $1')) {
+      return { rows: [{ name: 'admin', permissions: ['leads:read', 'leads:create', 'leads:update', 'leads:delete', 'projects:read', 'projects:create', 'projects:update', 'projects:manage', 'tasks:read', 'tasks:create', 'tasks:update'] }] };
+    }
+    if (sql.includes('FROM users WHERE tenant_id') || sql.includes('FROM users WHERE id')) {
+      return { rows: [{ id: 'mock-user-id', tenant_id: 'mock-tenant-id', role_id: 'mock-role-id', name: 'Demo User', email: 'demo@example.com', status: 'active', password_hash: require('bcryptjs').hashSync('password123', 10), avatar_url: null, created_at: new Date() }] };
+    }
     if (sql.includes('SELECT id FROM tenants WHERE slug = $1')) {
       return { rows: [{ id: 'mock-tenant-id' }] };
     }
@@ -86,8 +101,13 @@ class Pool {
       ] };
     }
 
+    // COUNT queries
+    if (sql.trim().startsWith('SELECT COUNT(*)')) {
+      return { rows: [{ count: '0' }] };
+    }
+
     // Catch-all
-    return { rows: [] };
+    return { rows: [], rowCount: 0 };
   }
 }
 

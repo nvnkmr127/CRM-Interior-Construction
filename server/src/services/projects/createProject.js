@@ -28,7 +28,7 @@ async function createProject({ tenantId, userId, data }) {
     action: 'project.created',
     entity: 'project',
     entityId: project.id,
-    details: { name: project.name, client_name: project.client_name }
+    newValue: { name: project.name, client_name: project.client_name }
   });
 
   // 4. Trigger automation engine

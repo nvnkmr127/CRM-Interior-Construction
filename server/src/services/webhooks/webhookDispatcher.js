@@ -82,18 +82,18 @@ async function sendWebhook(tenantId, webhook, eventType, payload) {
     attempt++;
     const startTime = Date.now();
     let statusCode = 0;
-    let responseBodyText = '';
-    
+    let responseBodyText;
+
     try {
       const response = await axios.post(webhook.url, bodyString, {
         headers,
         timeout: 10000
       });
-      
+
       success = true;
       statusCode = response.status;
       responseBodyText = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
-      
+
     } catch (error) {
       if (error.response) {
         statusCode = error.response.status;
@@ -117,7 +117,7 @@ async function sendWebhook(tenantId, webhook, eventType, payload) {
         eventType,
         bodyString,
         statusCode,
-        responseBodyText.substring(0, 5000),
+        (responseBodyText || '').substring(0, 5000),
         latencyMs,
         attempt
       ]);
@@ -129,6 +129,10 @@ async function sendWebhook(tenantId, webhook, eventType, payload) {
       const delay = Math.pow(2, attempt - 1) * 1000;
       await new Promise(res => setTimeout(res, delay));
     }
+  }
+
+  if (!success && lastError) {
+    console.error(`[Webhook] All ${maxRetries} attempts failed for webhook ${webhook.id} (event: ${eventType}):`, lastError.message);
   }
 }
 
@@ -162,7 +166,7 @@ async function retryLog(tenantId, logId) {
   const startTime = Date.now();
   let statusCode = 0;
   let success = false;
-  let responseBodyText = '';
+  let responseBodyText;
 
   try {
     const response = await axios.post(webhook.url, bodyString, { headers, timeout: 10000 });

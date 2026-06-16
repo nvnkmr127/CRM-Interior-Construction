@@ -13,12 +13,14 @@ function success(res, data, meta = {}, status = 200) {
 /**
  * Standardize failed API responses.
  */
-function fail(res, code, message, status = 400) {
-  return res.status(status).json({
+function fail(res, code, message, status = 400, details = null) {
+  const body = {
     success: false,
     error: { code, message },
     timestamp: new Date().toISOString()
-  });
+  };
+  if (details) body.error.details = details;
+  return res.status(status).json(body);
 }
 
 /**

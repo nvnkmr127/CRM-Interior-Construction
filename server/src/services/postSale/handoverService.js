@@ -67,7 +67,7 @@ async function createChecklist({ tenantId, projectId, items = [] }) {
 }
 
 async function addDefaultItems(checklistId, projectType) {
-  let defaultItems = [];
+  let defaultItems;
 
   switch (projectType) {
     case 'modular_kitchen':

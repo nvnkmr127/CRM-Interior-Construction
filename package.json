@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "concurrently \"npm run dev -w server\" \"npm run dev -w client\"",
     "build": "npm run build -w server && npm run build -w client",
-    "lint": "eslint . --ext .js,.jsx"
+    "lint": "eslint ."
   },
   "devDependencies": {
     "concurrently": "^10.0.3",

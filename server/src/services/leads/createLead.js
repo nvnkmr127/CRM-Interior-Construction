@@ -15,7 +15,7 @@ try {
 }
 
 async function createLead({ tenantId, userId, data }) {
-  const { name, email, phone, source, stageId, assigneeId, notes, custom_fields } = data;
+  const { name, phone, stageId, assigneeId } = data;
 
   // 1. Validate required: name, phone (at minimum).
   if (!name || !phone) {

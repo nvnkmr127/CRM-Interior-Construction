@@ -55,7 +55,7 @@ router.post('/:docId/approve', async (req, res, next) => {
     }
 
     // Approve document. Note: userId is null for client approvals.
-    const doc = await documentVersionService.approveDocument(tenantId, docId, null);
+    await documentVersionService.approveDocument(tenantId, docId, null);
 
     // Record separately in a metadata field
     const metadataUpdate = await pool.query(
@@ -94,7 +94,7 @@ router.post('/:docId/revision', async (req, res, next) => {
     }
 
     // Request revision. Note: userId is null for client request.
-    const doc = await documentVersionService.requestRevision(tenantId, docId, note, null);
+    await documentVersionService.requestRevision(tenantId, docId, note, null);
 
     // Record separately in metadata field
     const metadataUpdate = await pool.query(

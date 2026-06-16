@@ -1,5 +1,5 @@
 const express = require('express');
-const { success, fail, paginate } = require('../utils/response');
+const { fail, paginate } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
 const taskRepository = require('../repositories/taskRepository');
 

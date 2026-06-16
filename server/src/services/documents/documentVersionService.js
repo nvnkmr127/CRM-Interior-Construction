@@ -81,7 +81,7 @@ async function approveDocument(tenantId, docId, userId) {
   return doc;
 }
 
-async function requestRevision(tenantId, docId, note, userId) {
+async function requestRevision(tenantId, docId, note, _userId) {
   const { rows } = await pool.query(`
     UPDATE documents 
     SET status = 'revision_requested', revision_note = $1

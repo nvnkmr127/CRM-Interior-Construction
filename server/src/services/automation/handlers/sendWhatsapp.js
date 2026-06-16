@@ -3,7 +3,7 @@
  * Full WABA integration will be built out in Phase 2.
  */
 async function handle(config, context) {
-  const { templateName, recipientField, variables = [] } = config;
+  const { templateName, recipientField } = config;
   const { record } = context;
 
   const phone = record[recipientField] || 'UNKNOWN_PHONE';
