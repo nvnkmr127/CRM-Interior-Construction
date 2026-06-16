@@ -1,316 +1,498 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Badge, Skeleton, EmptyState } from '../../components/ui';
 import { useNavigate } from 'react-router-dom';
-import api from '../../api/axios';
+import {
+  AreaChart, Area, XAxis, YAxis, Tooltip,
+  ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid
+} from 'recharts';
+import { Skeleton } from '../../components/ui';
 import styles from './DashboardPage.module.css';
 
+/* ── Static sparkline data (one series per KPI) ───────────────────────── */
+const sparkLeads   = [22,28,31,35,38,36,40,39,41,40,42,42].map((v,i) => ({ i, v }));
+const sparkRevenue = [8,9,10,11,10,12,11,13,12,13,14,14].map((v,i) => ({ i, v }));
+const sparkProjects= [7,8,8,9,10,10,11,11,12,11,12,12].map((v,i) => ({ i, v }));
+const sparkTasks   = [6,8,10,12,9,11,14,13,15,14,15,15].map((v,i) => ({ i, v }));
+
+/* ── Revenue trend (12-week rolling) ─────────────────────────────────── */
+const revenueTrend = [
+  { week: 'W1',  amt: 8.2 },  { week: 'W2',  amt: 9.1 },
+  { week: 'W3',  amt: 7.8 },  { week: 'W4',  amt: 10.4 },
+  { week: 'W5',  amt: 11.2 }, { week: 'W6',  amt: 10.0 },
+  { week: 'W7',  amt: 12.1 }, { week: 'W8',  amt: 11.5 },
+  { week: 'W9',  amt: 13.2 }, { week: 'W10', amt: 12.8 },
+  { week: 'W11', amt: 13.9 }, { week: 'W12', amt: 14.2 },
+];
+
+/* ── Helpers ──────────────────────────────────────────────────────────── */
+function getHour() { return new Date().getHours(); }
+function greeting() {
+  const h = getHour();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function avatarColor(name) {
+  const palette = [
+    ['#E8935A', '#C4813E'],
+    ['#3B82F6', '#1D4ED8'],
+    ['#8B5CF6', '#6D28D9'],
+    ['#10B981', '#059669'],
+    ['#EC4899', '#BE185D'],
+  ];
+  const idx = name.charCodeAt(0) % palette.length;
+  return palette[idx];
+}
+
+/* ── Mini sparkline component ─────────────────────────────────────────── */
+function Spark({ data, color }) {
+  return (
+    <ResponsiveContainer width="100%" height={48}>
+      <AreaChart data={data} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
+        <defs>
+          <linearGradient id={`sg-${color.replace('#','')}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+            <stop offset="100%" stopColor={color} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <Area
+          type="monotone"
+          dataKey="v"
+          stroke={color}
+          strokeWidth={1.5}
+          fill={`url(#sg-${color.replace('#','')})`}
+          dot={false}
+          isAnimationActive={false}
+        />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+}
+
+/* ── Custom pie legend ────────────────────────────────────────────────── */
+function PipeLegend({ pipeline }) {
+  const total = pipeline.reduce((s, p) => s + p.count, 0);
+  return (
+    <div className={styles.pipeLegend}>
+      {pipeline.map(p => (
+        <div key={p.id} className={styles.pipeLegendRow}>
+          <span className={styles.pipeLegendDot} style={{ background: p.color }} />
+          <span className={styles.pipeLegendName}>{p.name}</span>
+          <span className={styles.pipeLegendCount}>{p.count}</span>
+          <span className={styles.pipeLegendPct}>{Math.round((p.count / total) * 100)}%</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ── Custom revenue tooltip ───────────────────────────────────────────── */
+function RevTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className={styles.revTooltip}>
+      <div className={styles.revTooltipLabel}>{label}</div>
+      <div className={styles.revTooltipVal}>₹{payload[0].value}L</div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════ */
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState(null);
-  const [activity, setActivity] = useState(null);
-  const [pipeline, setPipeline] = useState(null);
-  const [tasks, setTasks] = useState(null);
-  const [projects, setProjects] = useState(null);
-  const [payments, setPayments] = useState(null);
-  
-  const [activityError, setActivityError] = useState(false);
-  const [statsError, setStatsError] = useState(false);
+  const [loading, setLoading]   = useState(true);
+  const [period,  setPeriod]    = useState('30D');
+  const [stats,   setStats]     = useState(null);
+  const [activity,setActivity]  = useState(null);
+  const [pipeline,setPipeline]  = useState(null);
+  const [tasks,   setTasks]     = useState(null);
+  const [payments,setPayments]  = useState(null);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      
-      try {
-        // Simulated mock data since backend might not have these specific routes yet
-        setTimeout(() => {
-          setStats({
-            activeLeads: { val: 42, trend: 5 },
-            wonMonth: { val: 8, valRupees: '₹14.2L', trend: -2 },
-            activeProjects: { val: 12, overdue: 2 },
-            tasksDueToday: { val: 15, overdue: 4 }
-          });
-          setStatsError(false);
-          
-          setActivity([
-            { id: 1, user: 'Priya Desai', action: 'moved', text: 'Sharma Residence to Execution phase', time: '10 mins ago' },
-            { id: 2, user: 'Rahul Sharma', action: 'uploaded', text: 'v2 of Kitchen Layout PDF', time: '1 hour ago' },
-            { id: 3, user: 'Ananya Rao', action: 'logged', text: 'a call with Gupta Family', time: '2 hours ago' },
-            { id: 4, user: 'Naveen K.', action: 'moved', text: 'Villa Fitout to Design Concept', time: '4 hours ago' }
-          ]);
+    const t = setTimeout(() => {
+      setStats({
+        activeLeads:    { val: 42,       trend: 12  },
+        wonMonth:       { val: '₹14.2L', trend: 8   },
+        activeProjects: { val: 12,       overdue: 2  },
+        tasksDueToday:  { val: 15,       overdue: 4  },
+      });
 
-          setPipeline([
-            { id: 1, name: 'New', count: 12, color: '#3B82F6' },
-            { id: 2, name: 'Contacted', count: 8, color: '#8B5CF6' },
-            { id: 3, name: 'Qualified', count: 5, color: '#F59E0B' },
-            { id: 4, name: 'Site Visit', count: 3, color: '#EC4899' },
-            { id: 5, name: 'Proposal', count: 2, color: '#10B981' },
-            { id: 6, name: 'Won', count: 1, color: '#059669' }
-          ]);
+      setActivity([
+        { id: 1, user: 'Priya Desai',  action: 'moved',    text: 'Sharma Residence to Execution phase', time: '10 mins ago'  },
+        { id: 2, user: 'Rahul Sharma', action: 'uploaded',  text: 'v2 of Kitchen Layout PDF',           time: '1 hour ago'   },
+        { id: 3, user: 'Ananya Rao',   action: 'logged',    text: 'a call with Gupta Family',            time: '2 hours ago'  },
+        { id: 4, user: 'Naveen K.',    action: 'moved',     text: 'Villa Fitout to Design Concept',      time: '4 hours ago'  },
+        { id: 5, user: 'Kiran Mehta',  action: 'created',   text: 'new snag for Birla Penthouse',        time: '5 hours ago'  },
+      ]);
 
-          setTasks([
-            { id: 1, title: 'Finalize layout drawing', project: 'Sharma Residence', due: '2026-06-12', overdue: true, done: false },
-            { id: 2, title: 'Call client for budget', project: 'Gupta Family', due: '2026-06-15', overdue: false, done: false },
-            { id: 3, title: 'Send quotation', project: 'Villa 42', due: '2026-06-16', overdue: false, done: false },
-          ]);
+      setPipeline([
+        { id: 1, name: 'New',       count: 12, color: '#3B82F6' },
+        { id: 2, name: 'Contacted', count: 8,  color: '#8B5CF6' },
+        { id: 3, name: 'Qualified', count: 5,  color: '#F59E0B' },
+        { id: 4, name: 'Site Visit',count: 3,  color: '#EC4899' },
+        { id: 5, name: 'Proposal',  count: 2,  color: '#10B981' },
+        { id: 6, name: 'Won',       count: 1,  color: '#059669' },
+      ]);
 
-          setProjects([
-            { id: 1, name: 'Sharma Residence', client: 'Mr. Sharma', progress: 65, phase: 'Execution' },
-            { id: 2, name: 'Villa Fitout', client: 'Aditya Birla', progress: 20, phase: 'Design Concept' }
-          ]);
+      setTasks([
+        { id: 1, title: 'Finalize layout drawing',   project: 'Sharma Residence', due: '2026-06-12', overdue: true,  done: false, priority: 'urgent' },
+        { id: 2, title: 'Call client for budget',    project: 'Gupta Family',     due: '2026-06-15', overdue: false, done: false, priority: 'high'   },
+        { id: 3, title: 'Send quotation',            project: 'Villa 42',         due: '2026-06-16', overdue: false, done: false, priority: 'low'    },
+        { id: 4, title: 'Approve material samples',  project: 'Birla Penthouse',  due: '2026-06-13', overdue: true,  done: false, priority: 'urgent' },
+        { id: 5, title: 'Update phase timeline',     project: 'Sharma Residence', due: '2026-06-18', overdue: false, done: false, priority: 'high'   },
+      ]);
 
-          setPayments([
-            { id: 1, project: 'Sharma Residence', milestone: 'Material Sourcing', amount: '₹2.5L', due: '2026-06-10', overdue: true },
-            { id: 2, project: 'Villa 42', milestone: 'Advance', amount: '₹1.5L', due: '2026-06-20', overdue: false }
-          ]);
+      setPayments([
+        { id: 1, project: 'Sharma Residence', milestone: 'Material Sourcing', amount: '₹2.5L', due: '2026-06-10', overdue: true  },
+        { id: 2, project: 'Villa 42',         milestone: 'Advance',           amount: '₹1.5L', due: '2026-06-20', overdue: false },
+        { id: 3, project: 'Birla Penthouse',  milestone: 'Design Sign-off',   amount: '₹3.0L', due: '2026-06-08', overdue: true  },
+        { id: 4, project: 'Gupta Family',     milestone: 'Final Handover',    amount: '₹4.2L', due: '2026-06-30', overdue: false },
+      ]);
 
-          setLoading(false);
-        }, 1000);
-      } catch (err) {
-        setStatsError(true);
-        setActivityError(true);
-        setLoading(false);
-      }
-    };
-    
-    fetchData();
+      setLoading(false);
+    }, 900);
+    return () => clearTimeout(t);
   }, []);
 
   const handleTaskToggle = (id) => {
     setTasks(prev => (prev || []).map(t => t.id === id ? { ...t, done: !t.done } : t));
   };
 
-  const renderVerb = (action) => {
-    switch(action) {
-      case 'moved': return <span className={styles.verbInfo}>moved</span>;
-      case 'uploaded': return <span className={styles.verbAccent}>uploaded</span>;
-      case 'logged': return <span className={styles.verbSuccess}>logged</span>;
-      default: return <span>{action}</span>;
-    }
-  };
+  const today = new Date().toLocaleDateString('en-IN', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+  });
 
-  const maxPipeline = pipeline ? Math.max(...pipeline.map(p => p.count)) : 1;
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const priorityColor = { urgent: 'var(--color-danger)', high: 'var(--color-warning)', low: 'var(--color-text-muted)' };
 
+  const verbClass = { moved: styles.verbInfo, uploaded: styles.verbAccent, logged: styles.verbSuccess, created: styles.verbAccent };
+
+  /* ── KPI card data ──────────────────────────────────────────────────── */
+  const kpiCards = stats ? [
+    {
+      label:   'Active Leads',
+      value:   stats.activeLeads.val,
+      trend:   stats.activeLeads.trend,
+      spark:   sparkLeads,
+      color:   '#3B82F6',
+      suffix:  null,
+      sub:     null,
+    },
+    {
+      label:   'Revenue This Month',
+      value:   stats.wonMonth.val,
+      trend:   stats.wonMonth.trend,
+      spark:   sparkRevenue,
+      color:   '#E8935A',
+      suffix:  null,
+      sub:     null,
+    },
+    {
+      label:   'Active Projects',
+      value:   stats.activeProjects.val,
+      trend:   null,
+      spark:   sparkProjects,
+      color:   '#8B5CF6',
+      suffix:  null,
+      sub:     stats.activeProjects.overdue > 0 ? `${stats.activeProjects.overdue} overdue` : null,
+      subDanger: true,
+    },
+    {
+      label:   'Tasks Due',
+      value:   stats.tasksDueToday.val,
+      trend:   null,
+      spark:   sparkTasks,
+      color:   '#F59E0B',
+      suffix:  null,
+      sub:     stats.tasksDueToday.overdue > 0 ? `${stats.tasksDueToday.overdue} overdue` : null,
+      subDanger: true,
+    },
+  ] : [];
+
+  /* ═══════════════════════════ RENDER ══════════════════════════════════ */
   return (
     <div className={styles.page}>
+
+      {/* ── HEADER ─────────────────────────────────────────────────────── */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          <div className={styles.greeting}>Good morning, Naveen 👋</div>
-          <div className={styles.dateText}>{today}</div>
+          <h1 className={styles.greeting}>{greeting()}, Naveen</h1>
+          <p className={styles.dateText}>{today}</p>
         </div>
+
+        <div className={styles.timePills}>
+          {['7D', '30D', '90D'].map(p => (
+            <button
+              key={p}
+              className={`${styles.timePill} ${period === p ? styles.timePillActive : ''}`}
+              onClick={() => setPeriod(p)}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+
         <div className={styles.headerRight}>
-          <Button variant="secondary" onClick={() => navigate('/projects')}>+ New Project</Button>
-          <Button variant="primary" onClick={() => navigate('/leads')}>+ New Lead</Button>
+          <button className={styles.btnSecondary} onClick={() => navigate('/leads/new')}>
+            + Lead
+          </button>
+          <button className={styles.btnPrimary} onClick={() => navigate('/projects/new')}>
+            + Project
+          </button>
         </div>
       </div>
 
-      <div className={styles.kpiRow}>
-        {/* KPI 1 */}
-        <div className={styles.kpiCard}>
-          <div className={styles.kpiIconWrap}>
-            <div className={styles.kpiIcon}>👥</div>
-          </div>
-          <div className={styles.kpiLabel}>Active Leads</div>
-          {loading ? <Skeleton height="36px" width="60px" /> : statsError ? <div className={styles.errorState}>—<br/>Unable to load</div> : (
-            <>
-              <div className={styles.kpiValue}>{stats.activeLeads.val}</div>
-              {stats.activeLeads.trend > 0 ? (
-                <div className={styles.trendPos}>↑ {Math.abs(stats.activeLeads.trend)} from last week</div>
-              ) : (
-                <div className={styles.trendNeg}>↓ {Math.abs(stats.activeLeads.trend)} from last week</div>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* KPI 2 */}
-        <div className={styles.kpiCard}>
-          <div className={styles.kpiIconWrap}>
-            <div className={styles.kpiIcon} style={{background: 'var(--color-success-bg)', color: 'var(--color-success)'}}>🏆</div>
-          </div>
-          <div className={styles.kpiLabel}>Won This Month</div>
-          {loading ? <Skeleton height="36px" width="60px" /> : statsError ? <div className={styles.errorState}>—<br/>Unable to load</div> : (
-            <>
-              <div className={styles.kpiValue}>
-                {stats.wonMonth.val}
-                <span className={styles.kpiSubValue}>{stats.wonMonth.valRupees}</span>
+      {/* ── KPI GRID ───────────────────────────────────────────────────── */}
+      <div className={styles.kpiGrid}>
+        {loading
+          ? Array(4).fill(0).map((_, i) => (
+              <div key={i} className={styles.kpiCard}>
+                <Skeleton height="12px" width="60%" />
+                <Skeleton height="36px" width="50%" />
+                <Skeleton height="12px" width="40%" />
+                <div className={styles.kpiSpark}><Skeleton height="48px" width="100%" /></div>
               </div>
-              {stats.wonMonth.trend > 0 ? (
-                <div className={styles.trendPos}>↑ {Math.abs(stats.wonMonth.trend)} from last week</div>
-              ) : (
-                <div className={styles.trendNeg}>↓ {Math.abs(stats.wonMonth.trend)} from last week</div>
-              )}
-            </>
-          )}
+            ))
+          : kpiCards.map((k, i) => (
+              <div key={i} className={styles.kpiCard}>
+                <div className={styles.kpiLabel}>{k.label}</div>
+                <div className={styles.kpiValue}>{k.value}</div>
+                {k.trend !== null && k.trend !== undefined ? (
+                  <div className={k.trend >= 0 ? styles.kpiTrendUp : styles.kpiTrendDown}>
+                    {k.trend >= 0 ? '↑' : '↓'} {Math.abs(k.trend)}%
+                  </div>
+                ) : k.sub ? (
+                  <div className={k.subDanger ? styles.kpiTrendDown : styles.kpiTrendUp}>
+                    {k.sub}
+                  </div>
+                ) : null}
+                <div className={styles.kpiSpark}>
+                  <Spark data={k.spark} color={k.color} />
+                </div>
+              </div>
+            ))
+        }
+      </div>
+
+      {/* ── MIDDLE ROW ─────────────────────────────────────────────────── */}
+      <div className={styles.midRow}>
+
+        {/* Revenue Trend chart */}
+        <div className={styles.card}>
+          <div className={styles.cardHead}>
+            <span className={styles.cardTitle}>Revenue Trend</span>
+            <span className={styles.cardPeriodBadge}>{period}</span>
+          </div>
+          <div className={styles.revChartWrap}>
+            {loading ? (
+              <Skeleton height="220px" width="100%" />
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <AreaChart data={revenueTrend} margin={{ top: 12, right: 16, left: -10, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%"   stopColor="#E8935A" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="#E8935A" stopOpacity={0}    />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                  <XAxis
+                    dataKey="week"
+                    tick={{ fontSize: 11, fill: 'var(--color-text-secondary)', fontFamily: 'var(--font-sans)' }}
+                    axisLine={false}
+                    tickLine={false}
+                    dy={6}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: 'var(--color-text-secondary)', fontFamily: 'var(--font-sans)' }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={v => `₹${v}L`}
+                    width={42}
+                  />
+                  <Tooltip content={<RevTooltip />} cursor={{ stroke: 'var(--color-border-strong)', strokeWidth: 1, strokeDasharray: '4 2' }} />
+                  <Area
+                    type="monotone"
+                    dataKey="amt"
+                    stroke="#E8935A"
+                    strokeWidth={2}
+                    fill="url(#revGrad)"
+                    dot={false}
+                    activeDot={{ r: 4, fill: '#E8935A', stroke: '#fff', strokeWidth: 2 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
         </div>
 
-        {/* KPI 3 */}
-        <div className={styles.kpiCard}>
-          <div className={styles.kpiIconWrap}>
-            <div className={styles.kpiIcon} style={{background: '#E0E7FF', color: '#4F46E5'}}>🏗️</div>
-            {stats?.activeProjects?.overdue > 0 && <Badge variant="danger" className={styles.kpiBadge}>{stats.activeProjects.overdue} overdue</Badge>}
+        {/* Lead Pipeline donut */}
+        <div className={styles.card}>
+          <div className={styles.cardHead}>
+            <span className={styles.cardTitle}>Lead Pipeline</span>
+            <a href="/leads" className={styles.viewAll} onClick={e => { e.preventDefault(); navigate('/leads'); }}>View all</a>
           </div>
-          <div className={styles.kpiLabel}>Active Projects</div>
-          {loading ? <Skeleton height="36px" width="60px" /> : statsError ? <div className={styles.errorState}>—<br/>Unable to load</div> : (
-            <div className={styles.kpiValue}>{stats.activeProjects.val}</div>
-          )}
-        </div>
-
-        {/* KPI 4 */}
-        <div className={styles.kpiCard}>
-          <div className={styles.kpiIconWrap}>
-            <div className={styles.kpiIcon} style={{background: '#FEF3C7', color: '#D97706'}}>✅</div>
-            {stats?.tasksDueToday?.overdue > 0 && <Badge variant="danger" className={styles.kpiBadge}>{stats.tasksDueToday.overdue} overdue</Badge>}
+          <div className={styles.pipeChartWrap}>
+            {loading ? (
+              <>
+                <Skeleton height="160px" width="160px" style={{ borderRadius: '50%', margin: '0 auto' }} />
+                <div style={{ marginTop: 16 }}>{Array(5).fill(0).map((_, i) => <Skeleton key={i} height="14px" width="100%" style={{ marginBottom: 6 }} />)}</div>
+              </>
+            ) : (
+              <>
+                <ResponsiveContainer width="100%" height={170}>
+                  <PieChart>
+                    <Pie
+                      data={pipeline}
+                      dataKey="count"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={52}
+                      outerRadius={78}
+                      paddingAngle={2}
+                      strokeWidth={0}
+                    >
+                      {pipeline.map((p, i) => <Cell key={i} fill={p.color} />)}
+                    </Pie>
+                    <Tooltip
+                      formatter={(val, name) => [`${val} leads`, name]}
+                      contentStyle={{
+                        fontSize: 12,
+                        fontFamily: 'var(--font-sans)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: 'var(--radius-md)',
+                        boxShadow: 'var(--shadow-md)',
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <PipeLegend pipeline={pipeline} />
+              </>
+            )}
           </div>
-          <div className={styles.kpiLabel}>Tasks Due Today</div>
-          {loading ? <Skeleton height="36px" width="60px" /> : statsError ? <div className={styles.errorState}>—<br/>Unable to load</div> : (
-            <div className={styles.kpiValue}>{stats.tasksDueToday.val}</div>
-          )}
         </div>
       </div>
 
-      <div className={styles.mainGrid}>
-        {/* LEFT COLUMN */}
-        <div className={styles.column}>
-          
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <div className={styles.cardTitle}>Recent Activity</div>
-              <a href="#" className={styles.viewAll}>View all →</a>
-            </div>
-            <div className={styles.cardBodyNoPad}>
-              {loading ? (
-                Array(5).fill(0).map((_, i) => (
+      {/* ── BOTTOM ROW ─────────────────────────────────────────────────── */}
+      <div className={styles.botRow}>
+
+        {/* Recent Activity */}
+        <div className={styles.card}>
+          <div className={styles.cardHead}>
+            <span className={styles.cardTitle}>Recent Activity</span>
+            <a href="/activity" className={styles.viewAll} onClick={e => { e.preventDefault(); }}>View all</a>
+          </div>
+          <div className={styles.cardBody}>
+            {loading
+              ? Array(4).fill(0).map((_, i) => (
                   <div key={i} className={styles.actRow}>
-                    <Skeleton circle width="28px" height="28px" />
-                    <div style={{flex: 1}}><Skeleton height="16px" width="80%" /><Skeleton height="12px" width="40%" style={{marginTop: '4px'}} /></div>
-                  </div>
-                ))
-              ) : activityError ? (
-                <EmptyState title="Could not load activity" />
-              ) : activity?.length === 0 ? (
-                <div style={{padding: 'var(--space-6)', textAlign: 'center', color: 'var(--color-text-secondary)'}}>No activity yet today.</div>
-              ) : (
-                activity.map(act => (
-                  <div key={act.id} className={styles.actRow}>
-                    <div className={styles.actAvatar}>{act.user.charAt(0)}</div>
-                    <div className={styles.actContent}>
-                      <b>{act.user}</b> {renderVerb(act.action)} {act.text}
-                      <div className={styles.actTime}>{act.time}</div>
+                    <Skeleton height="32px" width="32px" style={{ borderRadius: '50%', flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <Skeleton height="13px" width="80%" />
+                      <Skeleton height="11px" width="40%" style={{ marginTop: 4 }} />
                     </div>
                   </div>
                 ))
-              )}
-            </div>
-          </div>
-
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <div className={styles.cardTitle}>Lead Pipeline</div>
-            </div>
-            <div className={styles.cardBody}>
-              {loading ? (
-                Array(5).fill(0).map((_, i) => <Skeleton key={i} height="24px" width="100%" />)
-              ) : (
-                pipeline?.map(stage => (
-                  <div key={stage.id} className={styles.pipeRow}>
-                    <div className={styles.pipeLabel}>{stage.name}</div>
-                    <div className={styles.pipeBarWrap} onClick={() => navigate(`/leads?stageId=${stage.id}`)}>
-                      <div className={styles.pipeBar} style={{width: `${Math.max((stage.count / maxPipeline) * 100, 5)}%`, backgroundColor: stage.color}} />
-                      <div className={styles.pipeCount}>{stage.count}</div>
+              : activity?.map(act => {
+                  const [c1, c2] = avatarColor(act.user);
+                  return (
+                    <div key={act.id} className={styles.actRow}>
+                      <div
+                        className={styles.actAvatar}
+                        style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}
+                      >
+                        {act.user.charAt(0)}
+                      </div>
+                      <div className={styles.actContent}>
+                        <span className={styles.actName}>{act.user}</span>
+                        {' '}
+                        <span className={verbClass[act.action] || styles.verbInfo}>{act.action}</span>
+                        {' '}{act.text}
+                        <div className={styles.actTime}>{act.time}</div>
+                      </div>
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
+                  );
+                })
+            }
           </div>
-
         </div>
 
-        {/* RIGHT COLUMN */}
-        <div className={styles.column}>
-          
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <div className={styles.cardTitle}>My Tasks</div>
-              <a href="#" className={styles.viewAll}>View all →</a>
-            </div>
-            <div className={styles.cardBodyNoPad}>
-              {loading ? (
-                Array(3).fill(0).map((_, i) => (
-                  <div key={i} className={styles.taskRow}><Skeleton circle width="16px" height="16px" /><Skeleton height="16px" width="100%" /></div>
+        {/* My Tasks */}
+        <div className={styles.card}>
+          <div className={styles.cardHead}>
+            <span className={styles.cardTitle}>My Tasks</span>
+            <a href="/tasks" className={styles.viewAll} onClick={e => { e.preventDefault(); navigate('/tasks'); }}>View all</a>
+          </div>
+          <div className={styles.cardBody}>
+            {loading
+              ? Array(4).fill(0).map((_, i) => (
+                  <div key={i} className={styles.taskRow}>
+                    <Skeleton height="8px" width="8px" style={{ borderRadius: '50%', flexShrink: 0, marginTop: 5 }} />
+                    <div style={{ flex: 1 }}>
+                      <Skeleton height="13px" width="75%" />
+                      <Skeleton height="11px" width="50%" style={{ marginTop: 4 }} />
+                    </div>
+                  </div>
                 ))
-              ) : tasks?.length === 0 ? (
-                <div style={{padding: 'var(--space-6)', textAlign: 'center', color: 'var(--color-success)', fontWeight: 600}}>🎉 All caught up!</div>
-              ) : (
-                tasks?.map(task => (
-                  <div key={task.id} className={`${styles.taskRow} ${task.done ? styles.taskRowDone : ''}`}>
-                    <input type="checkbox" checked={task.done} onChange={() => handleTaskToggle(task.id)} style={{marginTop: '4px'}} />
-                    <div className={styles.taskContent}>
-                      <div className={styles.taskTitle} style={{textDecoration: task.done ? 'line-through' : 'none'}}>{task.title}</div>
+              : tasks?.map(task => (
+                  <div
+                    key={task.id}
+                    className={`${styles.taskRow} ${task.done ? styles.taskRowDone : ''}`}
+                    onClick={() => handleTaskToggle(task.id)}
+                  >
+                    <span
+                      className={styles.taskDot}
+                      style={{ background: priorityColor[task.priority] || 'var(--color-text-muted)' }}
+                    />
+                    <div className={styles.taskBody}>
+                      <div className={styles.taskTitle} style={{ textDecoration: task.done ? 'line-through' : 'none' }}>
+                        {task.title}
+                      </div>
                       <div className={styles.taskMeta}>
                         <span className={styles.taskProject}>{task.project}</span>
-                        <span className={`${styles.taskDate} ${task.overdue && !task.done ? styles.taskDateOverdue : ''}`}>{task.due}</span>
+                        <span className={`${styles.taskDate} ${task.overdue && !task.done ? styles.taskDateOverdue : ''}`}>
+                          {task.overdue && !task.done ? 'Overdue · ' : ''}{task.due}
+                        </span>
                       </div>
                     </div>
                   </div>
                 ))
-              )}
-            </div>
+            }
           </div>
+        </div>
 
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <div className={styles.cardTitle}>Projects in Progress</div>
-            </div>
-            <div className={styles.cardBodyNoPad}>
-              {loading ? (
-                Array(3).fill(0).map((_, i) => <div key={i} style={{padding: '12px 20px'}}><Skeleton height="32px" width="100%" /></div>)
-              ) : (
-                projects?.map(proj => (
-                  <div key={proj.id} className={styles.projRow} onClick={() => navigate(`/projects/${proj.id}`)}>
-                    <div className={styles.projTop}>
-                      <span className={styles.projName}>{proj.name}</span>
-                      <span className={styles.projClient}>{proj.client}</span>
-                    </div>
-                    <div className={styles.projProgWrap}>
-                      <div className={styles.projProgTrack}>
-                        <div className={styles.projProgFill} style={{width: `${proj.progress}%`}} />
-                      </div>
-                      <span className={styles.projPhase}>{proj.phase}</span>
-                    </div>
+        {/* Payments Due */}
+        <div className={styles.card}>
+          <div className={styles.cardHead}>
+            <span className={styles.cardTitle}>Payments Due</span>
+            <a href="/payments" className={styles.viewAll} onClick={e => { e.preventDefault(); }}>View all</a>
+          </div>
+          <div className={styles.cardBody}>
+            {loading
+              ? Array(3).fill(0).map((_, i) => (
+                  <div key={i} className={styles.payRow}>
+                    <Skeleton height="13px" width="65%" />
+                    <Skeleton height="11px" width="80%" style={{ marginTop: 4 }} />
                   </div>
                 ))
-              )}
-            </div>
-          </div>
-
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <div className={styles.cardTitle}>Payments Due</div>
-            </div>
-            <div className={styles.cardBodyNoPad}>
-              {loading ? (
-                Array(2).fill(0).map((_, i) => <div key={i} style={{padding: '12px 20px'}}><Skeleton height="32px" width="100%" /></div>)
-              ) : (
-                payments?.map(pay => (
-                  <div key={pay.id} className={`${styles.payRow} ${pay.overdue ? styles.payRowOverdue : ''}`}>
+              : payments?.map(pay => (
+                  <div key={pay.id} className={`${styles.payRow} ${pay.overdue ? styles.payOverdue : ''}`}>
                     <div className={styles.payTop}>
-                      <span className={styles.payProj}>{pay.project}</span>
-                      <span className={styles.payVal}>{pay.amount}</span>
+                      <span className={styles.payProject}>{pay.project}</span>
+                      <span className={styles.payAmount}>{pay.amount}</span>
                     </div>
                     <div className={styles.payBot}>
-                      <span className={styles.payMile}>{pay.milestone}</span>
-                      <span className={`${styles.payDate} ${pay.overdue ? styles.payDateOverdue : ''}`}>{pay.due}</span>
+                      <span className={styles.payMilestone}>{pay.milestone}</span>
+                      <span className={`${styles.payDate} ${pay.overdue ? styles.payDateOverdue : ''}`}>
+                        {pay.overdue ? 'Overdue · ' : ''}{pay.due}
+                      </span>
                     </div>
                   </div>
                 ))
-              )}
-            </div>
+            }
           </div>
-
         </div>
+
       </div>
     </div>
   );

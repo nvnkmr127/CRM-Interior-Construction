@@ -1,49 +1,480 @@
-.page { padding: var(--space-6); max-width: 1200px; margin: 0 auto; }
-.headerRow { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--space-6); }
-.title { font-size: var(--text-2xl); font-weight: 700; color: var(--color-text); margin: 0; }
-.desc { color: var(--color-text-secondary); margin-top: 4px; }
+/* ─── Page Shell ─────────────────────────────────────────── */
+.page {
+  padding: var(--space-6);
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
 
-.kpiStrip { display: grid; grid-template-columns: repeat(1, 1fr); gap: var(--space-4); margin-bottom: var(--space-6); }
-@media (min-width: 640px) { .kpiStrip { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 1024px) { .kpiStrip { grid-template-columns: repeat(4, 1fr); } }
+/* ─── Header ─────────────────────────────────────────────── */
+.headerRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
 
-.kpiCard { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-4); display: flex; flex-direction: column; gap: 8px; box-shadow: var(--shadow-sm); }
-.kpiLabel { font-size: var(--text-sm); font-weight: 600; color: var(--color-text-secondary); }
-.kpiValue { font-size: var(--text-2xl); font-weight: 700; color: var(--color-text); }
-.kpiTrend { font-size: 11px; font-weight: 500; display: flex; align-items: center; gap: 4px; }
-.trendUp { color: var(--color-success); }
-.trendDown { color: var(--color-danger); }
+.title {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 4px 0;
+  line-height: 1.2;
+}
+
+.desc {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* ─── Date Range Pills ────────────────────────────────────── */
+.rangePills {
+  display: flex;
+  gap: var(--space-1);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 4px;
+}
+
+.rangePill {
+  padding: 6px 16px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.rangePill:hover:not(.rangePillActive) {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+
+.rangePillActive {
+  background: var(--color-accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ─── KPI Strip ───────────────────────────────────────────── */
+.kpiStrip {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .kpiStrip { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  .kpiStrip { grid-template-columns: repeat(4, 1fr); }
+}
+
+.kpiCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.kpiCard:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-border-strong);
+}
+
+.kpiIconWrap {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.kpiIcon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.kpiBody {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.kpiLabel {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.kpiValue {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.trend {
+  font-size: 11px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 2px;
+}
+
+.trendUp     { color: var(--color-success); }
+.trendDown   { color: var(--color-danger); }
 .trendNeutral { color: var(--color-text-muted); }
 
-.grid { display: grid; grid-template-columns: 1fr; gap: var(--space-6); margin-bottom: var(--space-6); }
-@media (min-width: 992px) { .grid { grid-template-columns: 3fr 2fr; } }
-.fullWidth { grid-column: 1 / -1; }
+/* ─── Charts Row (2 side by side) ────────────────────────── */
+.chartsRow {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
 
-.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; }
-.cardHeader { font-size: var(--text-md); font-weight: 600; color: var(--color-text); margin-bottom: var(--space-4); display: flex; justify-content: space-between; align-items: center; }
+@media (min-width: 900px) {
+  .chartsRow { grid-template-columns: 1fr 1fr; }
+}
 
-.funnelList { display: flex; flex-direction: column; gap: var(--space-3); }
-.funnelRow { display: flex; align-items: center; gap: var(--space-3); cursor: pointer; transition: opacity 0.2s; }
-.funnelRow:hover { opacity: 0.8; }
-.funnelLabel { width: 120px; font-size: var(--text-sm); font-weight: 500; color: var(--color-text-secondary); flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.funnelBarBg { flex: 1; height: 24px; background: var(--color-surface-2); border-radius: 12px; overflow: hidden; position: relative; }
-.funnelBarFill { height: 100%; transition: width 0.5s ease; border-radius: 12px; }
-.funnelCount { width: 40px; font-size: var(--text-sm); font-weight: 600; color: var(--color-text); text-align: right; flex-shrink: 0; }
+/* ─── Card ────────────────────────────────────────────────── */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+}
 
-.legend { display: flex; flex-direction: column; gap: 8px; margin-top: var(--space-4); }
-.legendRow { display: flex; align-items: center; justify-content: space-between; font-size: var(--text-sm); }
-.legendLabel { display: flex; align-items: center; gap: 8px; color: var(--color-text-secondary); }
-.legendDot { width: 12px; height: 12px; border-radius: 50%; }
-.legendValue { font-weight: 600; color: var(--color-text); }
-.legendPercent { color: var(--color-text-muted); font-size: 11px; margin-left: 6px; }
+.cardFullWidth {
+  width: 100%;
+}
 
-.tableCard { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: var(--shadow-sm); }
-.tableHeader { font-size: var(--text-md); font-weight: 600; color: var(--color-text); margin-bottom: var(--space-4); }
+.cardHeader {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-4);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 
-.skeleton { animation: pulse 1.5s infinite; background: var(--color-surface-2); border-radius: var(--radius-md); }
-@keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
-.skeletonKpi { height: 100px; }
-.skeletonChart { height: 200px; }
-.skeletonTable { height: 300px; }
+.cardSubtitle {
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
 
-.emptyState { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 24px; text-align: center; color: var(--color-text-secondary); background: var(--color-surface); border: 1px dashed var(--color-border); border-radius: var(--radius-lg); margin-top: var(--space-6); }
+/* ─── Bar Chart Area ──────────────────────────────────────── */
+.chartArea {
+  height: 260px;
+  width: 100%;
+}
+
+/* ─── Donut ───────────────────────────────────────────────── */
+.donutWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+}
+
+.donutCenter {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.donutTotal {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1;
+}
+
+.donutLabel {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+/* ─── Pie Legend ──────────────────────────────────────────── */
+.pieLegend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.pieLegendRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--text-sm);
+}
+
+.pieLegendLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+}
+
+.pieDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.pieName {
+  font-size: var(--text-sm);
+}
+
+.pieLegendRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pieCount {
+  font-weight: 600;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.piePct {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  min-width: 40px;
+  text-align: right;
+}
+
+/* ─── Area Chart ──────────────────────────────────────────── */
+.areaChartArea {
+  height: 240px;
+  width: 100%;
+}
+
+.trendLegend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.trendDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+
+/* ─── Custom Tooltip ──────────────────────────────────────── */
+.tooltip {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  min-width: 130px;
+}
+
+.tooltipLabel {
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 4px;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tooltipRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.tooltipDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tooltipName { flex: 1; }
+
+.tooltipVal {
+  font-weight: 600;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Table ───────────────────────────────────────────────── */
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.th {
+  text-align: left;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 2px solid var(--color-border);
+  white-space: nowrap;
+  background: var(--color-surface-2);
+}
+
+.td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  vertical-align: middle;
+}
+
+.tr {
+  transition: background 0.12s;
+}
+
+.tr:last-child .td {
+  border-bottom: none;
+}
+
+.tr:hover {
+  background: var(--color-surface-2);
+}
+
+/* ─── Rank Badge ──────────────────────────────────────────── */
+.rankBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
+}
+
+.rankGold   { background: #FEF3C7; color: #92400E; }
+.rankSilver { background: #F3F4F6; color: #374151; }
+.rankBronze { background: #FEF3C7; color: #B45309; }
+
+/* ─── Member Cell ─────────────────────────────────────────── */
+.memberCell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.memberAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-accent-light, #FDE8D8);
+  color: var(--color-accent-dark, #c15f2e);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.memberName {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+/* ─── Performance Bar ─────────────────────────────────────── */
+.perfBarBg {
+  height: 8px;
+  background: var(--color-surface-2);
+  border-radius: 4px;
+  overflow: hidden;
+  min-width: 80px;
+}
+
+.perfBarFill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+
+/* ─── Score Badge ─────────────────────────────────────────── */
+.scoreBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.scoreBadgeHigh { background: #ECFDF5; color: #059669; }
+.scoreBadgeMid  { background: #FFFBEB; color: #D97706; }
+.scoreBadgeLow  { background: #F3F4F6; color: #6B7280; }
+
+/* ─── Skeleton ────────────────────────────────────────────── */
+.skeleton {
+  background: var(--color-surface-2);
+  border-radius: var(--radius-md);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%   { opacity: 0.55; }
+  50%  { opacity: 1; }
+  100% { opacity: 0.55; }
+}
+
+.skeletonKpi   { height: 100px; }
+.skeletonChart { height: 280px; }
+.skeletonArea  { height: 280px; }
+.skeletonTable { height: 240px; }

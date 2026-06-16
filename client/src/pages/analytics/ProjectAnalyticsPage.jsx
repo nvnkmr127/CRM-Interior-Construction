@@ -1,81 +1,152 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import styles from './ProjectAnalyticsPage.module.css'
-import { Select, Badge, DataTable, Avatar } from '../../components/ui'
 import usePageTitle from '../../hooks/usePageTitle'
 import useBreadcrumbs from '../../hooks/useBreadcrumbs'
-import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import {
+  AreaChart, Area,
+  BarChart, Bar,
+  PieChart, Pie, Cell,
+  XAxis, YAxis,
+  CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer
+} from 'recharts'
 
+/* ─── Design constants ──────────────────────────────────────────────── */
+const ACCENT = '#E8935A'
 const STATUS_COLORS = {
   active: '#2563EB',
   on_hold: '#D97706',
   completed: '#059669',
-  cancelled: '#6B7280'
+  cancelled: '#9CA3AF',
 }
 
+/* ─── Mock data factory ─────────────────────────────────────────────── */
+function buildMockData(range) {
+  const monthSets = {
+    '7D':  [{ month: 'Mon', planned: 4.2, collected: 3.8 }, { month: 'Tue', planned: 5.0, collected: 5.0 }, { month: 'Wed', planned: 6.5, collected: 5.9 }, { month: 'Thu', planned: 3.5, collected: 3.5 }, { month: 'Fri', planned: 7.8, collected: 7.2 }, { month: 'Sat', planned: 4.0, collected: 3.6 }, { month: 'Sun', planned: 2.5, collected: 2.0 }],
+    '30D': [{ month: 'Wk 1', planned: 18, collected: 15.5 }, { month: 'Wk 2', planned: 22, collected: 21 }, { month: 'Wk 3', planned: 19, collected: 16 }, { month: 'Wk 4', planned: 25, collected: 24.5 }],
+    '90D': [{ month: 'Jan', planned: 42, collected: 38.5 }, { month: 'Feb', planned: 55, collected: 52 }, { month: 'Mar', planned: 60, collected: 48 }],
+    '1Y':  [
+      { month: 'Jan', planned: 42, collected: 38.5 },
+      { month: 'Feb', planned: 55, collected: 52 },
+      { month: 'Mar', planned: 60, collected: 48 },
+      { month: 'Apr', planned: 35, collected: 35 },
+      { month: 'May', planned: 80, collected: 76 },
+      { month: 'Jun', planned: 72, collected: 58 },
+      { month: 'Jul', planned: 65, collected: 63 },
+      { month: 'Aug', planned: 90, collected: 88 },
+      { month: 'Sep', planned: 78, collected: 70 },
+      { month: 'Oct', planned: 85, collected: 82 },
+      { month: 'Nov', planned: 68, collected: 65 },
+      { month: 'Dec', planned: 95, collected: 90 },
+    ],
+  }
+
+  return {
+    kpis: {
+      active: 12,
+      revenue: range === '7D' ? 30.5 : range === '30D' ? 77 : range === '90D' ? 138.5 : 745,
+      onTimeRate: range === '7D' ? 91 : range === '30D' ? 87 : range === '90D' ? 83 : 79,
+      avgDuration: 118,
+    },
+    revenueData: monthSets[range],
+    statusData: [
+      { name: 'Active', count: 12, id: 'active' },
+      { name: 'On Hold', count: 2, id: 'on_hold' },
+      { name: 'Completed', count: 8, id: 'completed' },
+      { name: 'Cancelled', count: 1, id: 'cancelled' },
+    ],
+    topProjects: [
+      { name: 'Prestige Lakeside Villa', value: 185 },
+      { name: 'TechCorp HQ Fit-out', value: 142 },
+      { name: 'Reddy Mega Residence 5BHK', value: 98 },
+      { name: 'Jubilee Hills Penthouse', value: 76 },
+      { name: 'Banjara Hills Apartment', value: 54 },
+    ],
+    delayedProjects: [
+      { id: '101', name: 'TechCorp Office Fit-out', client: 'TechCorp Ltd', pm: 'Priya Sharma', targetDate: '2026-06-01', overdue: 14, phase: 'Execution' },
+      { id: '102', name: 'Banjara Hills Apartment', client: 'Anil Kumar', pm: 'Rahul Desai', targetDate: '2026-06-10', overdue: 5, phase: 'Design' },
+      { id: '103', name: 'Greenview Layout Clubhouse', client: 'Greenview Infra', pm: 'Meera Nair', targetDate: '2026-05-28', overdue: 18, phase: 'Handover' },
+    ],
+  }
+}
+
+/* ─── Helpers ────────────────────────────────────────────────────────── */
+function formatLakhs(val) {
+  if (val === null || val === undefined) return '—'
+  if (val >= 100) return `₹${(val / 100).toFixed(2)} Cr`
+  return `₹${val}L`
+}
+
+function KpiCard({ label, value, sub, accentColor, icon }) {
+  return (
+    <div className={styles.kpiCard}>
+      <div className={styles.kpiTop}>
+        <span className={styles.kpiLabel}>{label}</span>
+        {icon && <span className={styles.kpiIcon} style={{ color: accentColor }}>{icon}</span>}
+      </div>
+      <div className={styles.kpiValue} style={{ color: accentColor || 'var(--color-text)' }}>{value}</div>
+      {sub && <div className={styles.kpiSub}>{sub}</div>}
+    </div>
+  )
+}
+
+function CustomTooltip({ active, payload, label }) {
+  if (!active || !payload || !payload.length) return null
+  return (
+    <div className={styles.tooltip}>
+      <div className={styles.tooltipLabel}>{label}</div>
+      {payload.map((p, i) => (
+        <div key={i} className={styles.tooltipRow}>
+          <span style={{ color: p.color }}>●</span>
+          <span>{p.name}: <strong>{formatLakhs(p.value)}</strong></span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function PieTooltip({ active, payload }) {
+  if (!active || !payload || !payload.length) return null
+  const d = payload[0]
+  return (
+    <div className={styles.tooltip}>
+      <span style={{ color: d.payload.fill }}>● </span>
+      {d.name}: <strong>{d.value}</strong>
+    </div>
+  )
+}
+
+const DATE_RANGES = [
+  { key: '7D', label: '7D' },
+  { key: '30D', label: '30D' },
+  { key: '90D', label: '90D' },
+  { key: '1Y', label: '1Y' },
+]
+
+/* ─── Component ──────────────────────────────────────────────────────── */
 export default function ProjectAnalyticsPage() {
   usePageTitle('Project Analytics')
-  useBreadcrumbs([{label:'Analytics'},{label:'Projects'}])
+  useBreadcrumbs([{ label: 'Analytics' }, { label: 'Projects' }])
 
-  const [dateRange, setDateRange] = useState('year')
+  const navigate = useNavigate()
+  const [dateRange, setDateRange] = useState('1Y')
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState(null)
 
   useEffect(() => {
     setLoading(true)
-    // Mock Fetch
-    setTimeout(() => {
-      setData({
-        kpis: {
-          active: 24,
-          completed: 12,
-          revenue: 14500000, // 1.45 Cr
-          avgDuration: 115 // days
-        },
-        revenueData: [
-          { month: 'Jan', planned: 2000000, collected: 1800000, target: 2500000 },
-          { month: 'Feb', planned: 2500000, collected: 2500000, target: 2500000 },
-          { month: 'Mar', planned: 3000000, collected: 2100000, target: 2500000 },
-          { month: 'Apr', planned: 1500000, collected: 1500000, target: 2500000 },
-          { month: 'May', planned: 4000000, collected: 3800000, target: 3500000 },
-          { month: 'Jun', planned: 3500000, collected: 2800000, target: 3500000 }
-        ],
-        statusData: [
-          { name: 'Active', count: 24, id: 'active' },
-          { name: 'On Hold', count: 4, id: 'on_hold' },
-          { name: 'Completed', count: 12, id: 'completed' },
-          { name: 'Cancelled', count: 2, id: 'cancelled' }
-        ],
-        taskData: [
-          { id: '1', name: 'Sharma Residence 3BHK', pct: 92 },
-          { id: '2', name: 'Reddy Villa Renovation', pct: 85 },
-          { id: '3', name: 'TechCorp Office Fit-out', pct: 60 },
-          { id: '4', name: 'Banjara Hills Apartment', pct: 45 },
-          { id: '5', name: 'Kitchen Remodel - Gupta', pct: 30 },
-          { id: '6', name: 'Jubilee Hills 4BHK', pct: 15 }
-        ],
-        delayedProjects: [
-          { id: '101', name: 'TechCorp Office Fit-out', client: 'TechCorp Ltd', pm: { name: 'Priya Sharma' }, targetDate: '2026-06-01', overdue: 14, phase: 'Execution' },
-          { id: '102', name: 'Banjara Hills Apartment', client: 'Anil Kumar', pm: { name: 'Rahul Desai' }, targetDate: '2026-06-10', overdue: 5, phase: 'Design' }
-        ]
-      })
+    const t = setTimeout(() => {
+      setData(buildMockData(dateRange))
       setLoading(false)
-    }, 800)
+    }, 600)
+    return () => clearTimeout(t)
   }, [dateRange])
 
-  const formatRupees = (val) => {
-    if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)}Cr`
-    if (val >= 100000) return `₹${(val / 100000).toFixed(2)}L`
-    if (val >= 1000) return `₹${(val / 1000).toFixed(0)}k`
-    return `₹${val}`
-  }
+  const totalProjects = data ? data.statusData.reduce((s, d) => s + d.count, 0) : 0
 
-  const getTaskBarColor = (pct) => {
-    if (pct < 50) return '#DC2626' // Crimson
-    if (pct < 80) return '#D97706' // Amber
-    return '#059669' // Emerald
-  }
-
+  /* ── Loading skeleton ─────────────────────────────────────────────── */
   if (loading) {
     return (
       <div className={styles.page}>
@@ -86,147 +157,294 @@ export default function ProjectAnalyticsPage() {
           </div>
         </div>
         <div className={styles.kpiStrip}>
-          <div className={`${styles.skeleton} ${styles.skeletonKpi}`} />
-          <div className={`${styles.skeleton} ${styles.skeletonKpi}`} />
-          <div className={`${styles.skeleton} ${styles.skeletonKpi}`} />
-          <div className={`${styles.skeleton} ${styles.skeletonKpi}`} />
+          {[1, 2, 3, 4].map(i => <div key={i} className={`${styles.skeleton} ${styles.skeletonKpi}`} />)}
         </div>
-        <div className={styles.grid}>
-          <div className={`${styles.skeleton} ${styles.skeletonChart} ${styles.fullWidth}`} />
-          <div className={`${styles.skeleton} ${styles.skeletonChart}`} />
-          <div className={`${styles.skeleton} ${styles.skeletonChart}`} />
+        <div className={styles.chartsRow}>
+          <div className={`${styles.skeleton} ${styles.skeletonChart}`} style={{ flex: '0 0 60%' }} />
+          <div className={`${styles.skeleton} ${styles.skeletonChart}`} style={{ flex: '0 0 38%' }} />
         </div>
+        <div className={`${styles.skeleton} ${styles.skeletonChart}`} style={{ height: 240, marginBottom: 'var(--space-6)' }} />
+        <div className={`${styles.skeleton} ${styles.skeletonChart}`} style={{ height: 200 }} />
       </div>
     )
   }
 
-  const totalProjects = data.statusData.reduce((acc, d) => acc + d.count, 0)
-
   return (
     <div className={styles.page}>
+      {/* ── Header ───────────────────────────────────────────────────── */}
       <div className={styles.headerRow}>
         <div>
           <h1 className={styles.title}>Project Analytics</h1>
-          <div className={styles.desc}>Monitor project health, delivery, and revenue.</div>
+          <div className={styles.desc}>Monitor project health, delivery, and revenue performance.</div>
         </div>
-        <div>
-          <Select 
-            options={[
-              {value:'30d',label:'Last 30 days'}, 
-              {value:'90d',label:'Last 90 days'}, 
-              {value:'year',label:'This Year'}, 
-              {value:'custom',label:'Custom'}
-            ]}
-            value={dateRange}
-            onChange={setDateRange}
-          />
+
+        <div className={styles.dateRangePills}>
+          {DATE_RANGES.map(r => (
+            <button
+              key={r.key}
+              className={`${styles.rangePill} ${dateRange === r.key ? styles.rangePillActive : ''}`}
+              onClick={() => setDateRange(r.key)}
+            >
+              {r.label}
+            </button>
+          ))}
         </div>
       </div>
 
+      {/* ── KPI Strip ────────────────────────────────────────────────── */}
       <div className={styles.kpiStrip}>
-        <div className={styles.kpiCard}>
-          <div className={styles.kpiLabel}>Active Projects</div>
-          <div className={styles.kpiValue}>{data.kpis.active}</div>
-        </div>
-        <div className={styles.kpiCard}>
-          <div className={styles.kpiLabel}>Completed This Period</div>
-          <div className={styles.kpiValue}>{data.kpis.completed}</div>
-        </div>
-        <div className={styles.kpiCard}>
-          <div className={styles.kpiLabel}>Revenue Collected</div>
-          <div className={styles.kpiValue}>{formatRupees(data.kpis.revenue)}</div>
-        </div>
-        <div className={styles.kpiCard}>
-          <div className={styles.kpiLabel}>Avg Project Duration</div>
-          <div className={styles.kpiValue}>{data.kpis.avgDuration} <span style={{fontSize:14, fontWeight:500, color:'var(--color-text-secondary)'}}>days</span></div>
-        </div>
+        <KpiCard
+          label="Active Projects"
+          value={data.kpis.active}
+          sub="Currently running"
+          accentColor="var(--color-info)"
+          icon="◈"
+        />
+        <KpiCard
+          label="Revenue Collected"
+          value={formatLakhs(data.kpis.revenue)}
+          sub={`Period: ${dateRange}`}
+          accentColor={ACCENT}
+          icon="₹"
+        />
+        <KpiCard
+          label="On-Time Rate"
+          value={`${data.kpis.onTimeRate}%`}
+          sub="Projects on schedule"
+          accentColor="var(--color-success)"
+          icon="✓"
+        />
+        <KpiCard
+          label="Avg. Duration"
+          value={data.kpis.avgDuration}
+          sub="days per project"
+          accentColor="var(--color-text)"
+          icon="◷"
+        />
       </div>
 
-      <div className={styles.grid}>
-        <div className={`${styles.card} ${styles.fullWidth}`}>
-          <div className={styles.cardHeader}>Monthly Revenue</div>
-          <div style={{width:'100%', height:260}}>
+      {/* ── Charts Row ───────────────────────────────────────────────── */}
+      <div className={styles.chartsRow}>
+        {/* Area chart — Planned vs Collected */}
+        <div className={styles.card} style={{ flex: '0 0 calc(60% - var(--space-3))' }}>
+          <div className={styles.cardHeader}>
+            <span>Revenue: Planned vs Collected</span>
+            <span className={styles.cardSubLabel}>(₹ Lakhs)</span>
+          </div>
+          <div style={{ width: '100%', height: 260 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={data.revenueData} margin={{top:20, right:30, left:20, bottom:0}}>
+              <AreaChart data={data.revenueData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="gradCollected" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={ACCENT} stopOpacity={0.25} />
+                    <stop offset="95%" stopColor={ACCENT} stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="gradPlanned" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#9CA3AF" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#9CA3AF" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                <XAxis dataKey="month" tick={{fontSize:12,fill:'var(--color-text-secondary)'}} axisLine={false} tickLine={false} />
-                <YAxis tickFormatter={formatRupees} tick={{fontSize:12,fill:'var(--color-text-secondary)'}} axisLine={false} tickLine={false} />
-                <Tooltip 
-                  formatter={(value) => formatRupees(value)} 
-                  contentStyle={{background:'var(--color-surface)',border:'1px solid var(--color-border)',borderRadius:8,boxShadow:'var(--shadow-md)'}} 
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontSize: 12, fill: 'var(--color-text-secondary)' }}
+                  axisLine={false}
+                  tickLine={false}
                 />
-                <Legend wrapperStyle={{paddingTop:20}} />
-                <Bar dataKey="planned" fill="var(--color-border-strong)" name="Planned" radius={[4,4,0,0]} barSize={30} />
-                <Bar dataKey="collected" fill="#E8935A" name="Collected" radius={[4,4,0,0]} barSize={30} />
-                <Line type="monotone" dataKey="target" stroke="#059669" strokeDasharray="5 5" name="Target" strokeWidth={2} dot={{r: 4}} />
-              </ComposedChart>
+                <YAxis
+                  tickFormatter={v => `₹${v}L`}
+                  tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={52}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend
+                  wrapperStyle={{ paddingTop: 16, fontSize: 13 }}
+                  formatter={(value) => <span style={{ color: 'var(--color-text-secondary)' }}>{value}</span>}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="planned"
+                  stroke="#9CA3AF"
+                  strokeWidth={2}
+                  fill="url(#gradPlanned)"
+                  name="Planned"
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 0 }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="collected"
+                  stroke={ACCENT}
+                  strokeWidth={2.5}
+                  fill="url(#gradCollected)"
+                  name="Collected"
+                  dot={false}
+                  activeDot={{ r: 5, fill: ACCENT, strokeWidth: 0 }}
+                />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className={styles.card}>
-          <div className={styles.cardHeader}>Project Status</div>
-          <div className={styles.donutContainer}>
-            <PieChart width={220} height={220}>
-              <Pie data={data.statusData} cx={110} cy={110} innerRadius={70} outerRadius={100} paddingAngle={2} dataKey="count" stroke="none">
-                {data.statusData.map((entry, i) => <Cell key={i} fill={STATUS_COLORS[entry.id]} />)}
-              </Pie>
-              <Tooltip contentStyle={{background:'var(--color-surface)',border:'1px solid var(--color-border)',borderRadius:8,boxShadow:'var(--shadow-md)'}} />
-            </PieChart>
-            <div className={styles.donutCenterText}>
-              <div className={styles.donutCenterVal}>{totalProjects}</div>
-              <div className={styles.donutCenterLabel}>Total</div>
+        {/* Donut — Status breakdown */}
+        <div className={styles.card} style={{ flex: '1 1 0', minWidth: 200 }}>
+          <div className={styles.cardHeader}>
+            <span>Project Status</span>
+          </div>
+          <div className={styles.donutWrap}>
+            <div className={styles.donutContainer}>
+              <ResponsiveContainer width={200} height={200}>
+                <PieChart>
+                  <Pie
+                    data={data.statusData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={58}
+                    outerRadius={85}
+                    paddingAngle={3}
+                    dataKey="count"
+                    stroke="none"
+                  >
+                    {data.statusData.map((entry) => (
+                      <Cell key={entry.id} fill={STATUS_COLORS[entry.id]} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<PieTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className={styles.donutCenter}>
+                <div className={styles.donutVal}>{totalProjects}</div>
+                <div className={styles.donutLabel}>Total</div>
+              </div>
             </div>
-          </div>
-          <div className={styles.legend}>
-            {data.statusData.map((d, i) => (
-              <div key={i} className={styles.legendItem}>
-                <div className={styles.legendDot} style={{background: STATUS_COLORS[d.id]}} />
-                {d.name} ({d.count})
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className={styles.card}>
-          <div className={styles.cardHeader}>Task Completion Rate (Active)</div>
-          <div className={styles.taskList}>
-            {data.taskData.sort((a,b) => a.pct - b.pct).slice(0, 8).map((task) => (
-              <div key={task.id} className={styles.taskRow}>
-                <div className={styles.taskName} title={task.name}>{task.name}</div>
-                <div className={styles.taskBarBg}>
-                  <div className={styles.taskBarFill} style={{width: `${task.pct}%`, background: getTaskBarColor(task.pct)}} />
+            <div className={styles.pieLegend}>
+              {data.statusData.map(d => (
+                <div key={d.id} className={styles.pieLegendItem}>
+                  <span className={styles.pieDot} style={{ background: STATUS_COLORS[d.id] }} />
+                  <span className={styles.pieLegendName}>{d.name}</span>
+                  <span className={styles.pieLegendCount}>{d.count}</span>
                 </div>
-                <div className={styles.taskPct}>{task.pct}%</div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
+      {/* ── Top Projects Horizontal Bar ───────────────────────────────── */}
+      <div className={styles.card} style={{ marginBottom: 'var(--space-6)' }}>
+        <div className={styles.cardHeader}>
+          <span>Top 5 Projects by Value</span>
+          <span className={styles.cardSubLabel}>(₹ Lakhs)</span>
+        </div>
+        <div style={{ width: '100%', height: 220 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={data.topProjects}
+              layout="vertical"
+              margin={{ top: 0, right: 40, left: 0, bottom: 0 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
+              <XAxis
+                type="number"
+                tickFormatter={v => `₹${v}L`}
+                tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                type="category"
+                dataKey="name"
+                width={170}
+                tick={{ fontSize: 12, fill: 'var(--color-text)' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                formatter={(v) => [formatLakhs(v), 'Project Value']}
+                contentStyle={{
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 8,
+                  boxShadow: 'var(--shadow-md)',
+                  fontSize: 13,
+                }}
+              />
+              <Bar
+                dataKey="value"
+                fill={ACCENT}
+                radius={[0, 6, 6, 0]}
+                barSize={20}
+                label={{ position: 'right', formatter: v => `₹${v}L`, fontSize: 11, fill: 'var(--color-text-secondary)' }}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* ── Delayed Projects Table ────────────────────────────────────── */}
       <div className={styles.tableCard}>
-        <div className={styles.tableHeader}>Delayed Projects</div>
+        <div className={styles.tableHeaderRow}>
+          <div className={styles.tableTitle}>
+            <span className={styles.tableTitleDot} />
+            Delayed Projects
+          </div>
+          <span className={styles.tableCount}>{data.delayedProjects.length} project{data.delayedProjects.length !== 1 ? 's' : ''} overdue</span>
+        </div>
+
         {data.delayedProjects.length === 0 ? (
-          <div style={{color:'var(--color-success)', padding: '32px 0', textAlign: 'center'}}>✓ No delayed projects. All on track!</div>
+          <div className={styles.noDelays}>
+            <span style={{ fontSize: 28 }}>✓</span>
+            <span>All projects are on track!</span>
+          </div>
         ) : (
-          <DataTable
-            columns={[
-              { id: 'name', label: 'Project' },
-              { id: 'client', label: 'Client' },
-              { id: 'pm', label: 'PM', render: (row) => (
-                <div style={{display:'flex', alignItems:'center', gap:8}}>
-                  <Avatar name={row.pm.name} size="xs" />
-                  <span>{row.pm.name}</span>
-                </div>
-              )},
-              { id: 'targetDate', label: 'Target Date', render: (row) => new Date(row.targetDate).toLocaleDateString() },
-              { id: 'overdue', label: 'Days Overdue', render: (row) => <Badge variant="danger">{row.overdue} days</Badge> },
-              { id: 'phase', label: 'Current Phase' },
-              { id: 'actions', label: 'Actions', render: (row) => <Link to={`/projects/${row.id}`} style={{color:'var(--color-accent)', textDecoration:'none', fontWeight:500, fontSize:14}}>View Project →</Link> }
-            ]}
-            data={data.delayedProjects.sort((a, b) => b.overdue - a.overdue)}
-            keyField="id"
-          />
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th className={styles.th}>Project</th>
+                  <th className={styles.th}>Client</th>
+                  <th className={styles.th}>PM</th>
+                  <th className={styles.th}>Days Overdue</th>
+                  <th className={styles.th}>Phase</th>
+                  <th className={styles.th}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...data.delayedProjects].sort((a, b) => b.overdue - a.overdue).map(row => (
+                  <tr key={row.id} className={styles.tr}>
+                    <td className={styles.td}>
+                      <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{row.name}</span>
+                    </td>
+                    <td className={styles.td} style={{ color: 'var(--color-text-secondary)' }}>{row.client}</td>
+                    <td className={styles.td}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div className={styles.pmAvatar}>{row.pm.charAt(0)}</div>
+                        <span style={{ fontSize: 'var(--text-sm)' }}>{row.pm}</span>
+                      </div>
+                    </td>
+                    <td className={styles.td}>
+                      <span className={`${styles.overdueBadge} ${row.overdue > 10 ? styles.overdueBadgeDanger : styles.overdueBadgeWarn}`}>
+                        {row.overdue} days
+                      </span>
+                    </td>
+                    <td className={styles.td}>
+                      <span className={styles.phaseTag}>{row.phase}</span>
+                    </td>
+                    <td className={styles.td}>
+                      <button
+                        className={styles.escalateBtn}
+                        onClick={() => navigate(`/projects/${row.id}`)}
+                      >
+                        Escalate →
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
