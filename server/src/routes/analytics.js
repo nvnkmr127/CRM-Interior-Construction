@@ -129,4 +129,103 @@ router.get('/leads', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/analytics/projects
+ * Returns analytics data for projects.
+ * Query params: from (ISO date), to (ISO date)
+ */
+router.get('/projects', async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    const tenantId = req.tenantId;
+
+    let dateFilter = '';
+    const values = [tenantId];
+
+    if (from && to) {
+      dateFilter = ' AND p.created_at BETWEEN $2 AND $3 ';
+      values.push(from, to);
+    } else if (from) {
+      dateFilter = ' AND p.created_at >= $2 ';
+      values.push(from);
+    } else if (to) {
+      dateFilter = ' AND p.created_at <= $2 ';
+      values.push(to);
+    }
+
+    // 1. Status distribution
+    const statusQuery = `
+      SELECT p.status, COUNT(p.id) as count
+      FROM projects p
+      WHERE p.tenant_id = $1 ${dateFilter}
+      GROUP BY p.status
+      ORDER BY count DESC
+    `;
+    const statusRes = await pool.query(statusQuery, values);
+
+    // 2. Revenue: planned vs collected per month (last 12 months)
+    const revenueQuery = `
+      SELECT
+        TO_CHAR(DATE_TRUNC('month', pm.due_date), 'Mon') as month,
+        SUM(pm.amount) as planned,
+        SUM(CASE WHEN pm.status = 'paid' THEN pm.amount ELSE 0 END) as collected
+      FROM payment_milestones pm
+      JOIN projects p ON p.id = pm.project_id AND p.tenant_id = $1
+      WHERE pm.due_date >= NOW() - INTERVAL '12 months'
+      GROUP BY DATE_TRUNC('month', pm.due_date)
+      ORDER BY DATE_TRUNC('month', pm.due_date) ASC
+    `;
+    const revenueRes = await pool.query(revenueQuery, [tenantId]);
+
+    // 3. Delayed projects (past target date, not completed)
+    const delayedQuery = `
+      SELECT p.id, p.name, p.target_date, p.status,
+             u.name as pm_name,
+             CURRENT_DATE - p.target_date::date as days_delayed
+      FROM projects p
+      LEFT JOIN users u ON u.id = p.pm_id AND u.tenant_id = $1
+      WHERE p.tenant_id = $1
+        AND p.target_date < CURRENT_DATE
+        AND p.status NOT IN ('completed', 'cancelled')
+      ORDER BY days_delayed DESC
+      LIMIT 10
+    `;
+    const delayedRes = await pool.query(delayedQuery, [tenantId]);
+
+    // 4. Top projects by value
+    const topProjectsQuery = `
+      SELECT p.id, p.name, p.value, p.status
+      FROM projects p
+      WHERE p.tenant_id = $1 ${dateFilter}
+        AND p.value IS NOT NULL
+      ORDER BY p.value DESC
+      LIMIT 5
+    `;
+    const topRes = await pool.query(topProjectsQuery, values);
+
+    res.json({
+      success: true,
+      data: {
+        statusDistribution: statusRes.rows.map(r => ({ ...r, count: parseInt(r.count, 10) })),
+        revenueTimeline: revenueRes.rows.map(r => ({
+          month: r.month,
+          planned: parseFloat(r.planned) || 0,
+          collected: parseFloat(r.collected) || 0,
+        })),
+        delayedProjects: delayedRes.rows.map(r => ({
+          ...r,
+          days_delayed: parseInt(r.days_delayed, 10) || 0,
+        })),
+        topProjects: topRes.rows.map(r => ({
+          ...r,
+          value: parseFloat(r.value) || 0,
+        })),
+      }
+    });
+  } catch (err) {
+    console.error('Project Analytics Error:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch project analytics data' });
+  }
+});
+
 module.exports = router;

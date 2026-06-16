@@ -5,7 +5,7 @@ import { useToast } from '../../store/toastContext'
 
 const FILTERS = ['All', 'Open', 'Assigned', 'In Progress', 'Resolved', 'Verified']
 
-export default function SnagsDashboard() {
+export default function SnagsDashboard({ projectId }) {
   const [activeFilter, setActiveFilter] = useState('All')
   const [snags, setSnags] = useState([])
   const [loading, setLoading] = useState(true)

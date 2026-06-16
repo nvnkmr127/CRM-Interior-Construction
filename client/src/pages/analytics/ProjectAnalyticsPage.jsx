@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { getProjectAnalytics } from '../../api/analytics'
 import styles from './ProjectAnalyticsPage.module.css'
 import usePageTitle from '../../hooks/usePageTitle'
 import useBreadcrumbs from '../../hooks/useBreadcrumbs'
@@ -137,11 +138,56 @@ export default function ProjectAnalyticsPage() {
 
   useEffect(() => {
     setLoading(true)
-    const t = setTimeout(() => {
-      setData(buildMockData(dateRange))
-      setLoading(false)
-    }, 600)
-    return () => clearTimeout(t)
+
+    const rangeToParams = {
+      '7D':  { from: new Date(Date.now() - 7   * 86400000).toISOString() },
+      '30D': { from: new Date(Date.now() - 30  * 86400000).toISOString() },
+      '90D': { from: new Date(Date.now() - 90  * 86400000).toISOString() },
+      '1Y':  { from: new Date(Date.now() - 365 * 86400000).toISOString() },
+    }
+
+    getProjectAnalytics(rangeToParams[dateRange])
+      .then(res => {
+        const raw = res.data?.data || {}
+        const statusData    = (raw.statusDistribution || []).map(s => ({
+          name: s.status.charAt(0).toUpperCase() + s.status.slice(1).replace('_', ' '),
+          count: s.count,
+          id: s.status,
+        }))
+        const revenueData   = (raw.revenueTimeline   || []).map(r => ({
+          month: r.month,
+          planned: r.planned / 100000,
+          collected: r.collected / 100000,
+        }))
+        const delayedProjects = (raw.delayedProjects || []).map(p => ({
+          id: p.id,
+          name: p.name,
+          pm: p.pm_name || '—',
+          targetDate: p.target_date ? new Date(p.target_date).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—',
+          daysDelayed: p.days_delayed,
+          status: p.status,
+        }))
+        const topProjects   = (raw.topProjects       || []).map(p => ({
+          name: p.name,
+          value: p.value / 100000,
+          status: p.status,
+        }))
+
+        if (statusData.length === 0 && revenueData.length === 0) {
+          setData(buildMockData(dateRange))
+        } else {
+          const mock = buildMockData(dateRange)
+          setData({
+            kpis: mock.kpis,
+            revenueData:      revenueData.length      ? revenueData      : mock.revenueData,
+            statusData:       statusData.length       ? statusData       : mock.statusData,
+            topProjects:      topProjects.length      ? topProjects      : mock.topProjects,
+            delayedProjects:  delayedProjects.length  ? delayedProjects  : mock.delayedProjects,
+          })
+        }
+      })
+      .catch(() => setData(buildMockData(dateRange)))
+      .finally(() => setLoading(false))
   }, [dateRange])
 
   const totalProjects = data ? data.statusData.reduce((s, d) => s + d.count, 0) : 0

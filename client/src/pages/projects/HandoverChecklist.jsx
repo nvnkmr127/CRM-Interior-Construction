@@ -3,7 +3,7 @@ import styles from './HandoverChecklist.module.css'
 import { Badge, Button, Modal } from '../../components/ui'
 import { useToast } from '../../store/toastContext'
 
-export default function HandoverChecklist() {
+export default function HandoverChecklist({ projectId }) {
   const [checklist, setChecklist] = useState(null)
   const [loading, setLoading] = useState(true)
   const [collapsedRooms, setCollapsedRooms] = useState(new Set())

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../store/authContext';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid
@@ -100,6 +101,7 @@ function RevTooltip({ active, payload, label }) {
 /* ══════════════════════════════════════════════════════════════════════ */
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [loading, setLoading]   = useState(true);
   const [period,  setPeriod]    = useState('30D');
   const [stats,   setStats]     = useState(null);
@@ -215,7 +217,7 @@ export default function DashboardPage() {
       {/* ── HEADER ─────────────────────────────────────────────────────── */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          <h1 className={styles.greeting}>{greeting()}, Naveen</h1>
+          <h1 className={styles.greeting}>{greeting()}, {user?.name?.split(' ')[0] || 'there'}</h1>
           <p className={styles.dateText}>{today}</p>
         </div>
 
@@ -232,10 +234,10 @@ export default function DashboardPage() {
         </div>
 
         <div className={styles.headerRight}>
-          <button className={styles.btnSecondary} onClick={() => navigate('/leads/new')}>
+          <button className={styles.btnSecondary} onClick={() => navigate('/leads')}>
             + Lead
           </button>
-          <button className={styles.btnPrimary} onClick={() => navigate('/projects/new')}>
+          <button className={styles.btnPrimary} onClick={() => navigate('/projects')}>
             + Project
           </button>
         </div>

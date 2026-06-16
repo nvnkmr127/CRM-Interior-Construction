@@ -8,6 +8,8 @@ const PhaseTimeline = React.lazy(() => import('../../components/projects/PhaseTi
 const TaskKanban = React.lazy(() => import('../../components/tasks/TaskKanban'));
 const DocumentPanel = React.lazy(() => import('../../components/projects/DocumentPanel'));
 const PaymentsTab = React.lazy(() => import('./PaymentsTab'));
+const SnagsDashboard = React.lazy(() => import('./SnagsDashboard'));
+const HandoverChecklist = React.lazy(() => import('./HandoverChecklist'));
 
 export default function ProjectDetail() {
   const { id: projectId } = useParams();
@@ -37,6 +39,8 @@ export default function ProjectDetail() {
       case 'Tasks': return <TaskKanban projectId={projectId} />;
       case 'Documents': return <DocumentPanel projectId={projectId} />;
       case 'Payments': return <PaymentsTab projectId={projectId} />;
+      case 'Snags': return <SnagsDashboard projectId={projectId} />;
+      case 'Handover': return <HandoverChecklist projectId={projectId} />;
       default: return <div>{activeTab} Content (Coming Soon)</div>;
     }
   };

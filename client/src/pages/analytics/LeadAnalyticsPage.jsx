@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { getLeadAnalytics } from '../../api/analytics';
 import {
   AreaChart, Area,
   BarChart, Bar,
@@ -150,11 +151,56 @@ export default function LeadAnalyticsPage() {
   useEffect(() => {
     setLoading(true);
     setData(null);
-    const t = setTimeout(() => {
-      setData(makeMockData(dateRange));
-      setLoading(false);
-    }, 600);
-    return () => clearTimeout(t);
+
+    const rangeToParams = {
+      '7d':  { from: new Date(Date.now() - 7  * 86400000).toISOString() },
+      '30d': { from: new Date(Date.now() - 30 * 86400000).toISOString() },
+      '90d': { from: new Date(Date.now() - 90 * 86400000).toISOString() },
+      '1y':  { from: new Date(Date.now() - 365* 86400000).toISOString() },
+    };
+
+    getLeadAnalytics(rangeToParams[dateRange])
+      .then(res => {
+        const raw = res.data?.data || {};
+        const stageData  = (raw.stageDistribution  || []).map(s => ({ stage: s.stageName, count: s.count }));
+        const sourceData = (raw.sourceBreakdown     || []).map(s => ({ name: s.source, count: s.count }));
+        const teamData   = (raw.teamPerformance     || []).map((t, i) => ({
+          id: t.userId,
+          name: t.name,
+          assigned: t.totalLeads,
+          won: t.wonLeads,
+          convRate: t.totalLeads > 0 ? +((t.wonLeads / t.totalLeads) * 100).toFixed(1) : 0,
+          avgScore: t.avgScore,
+        }));
+        const weeklyData = (raw.timeSeries || []).map((w, i) => ({
+          week: `W${i + 1}`,
+          created: w.count,
+          won: w.wonCount,
+        }));
+
+        const total  = stageData.reduce((a, s) => a + s.count, 0);
+        const wonRow = stageData.find(s => s.stage?.toLowerCase().includes('won'));
+        const won    = wonRow?.count || 0;
+
+        if (stageData.length === 0 && sourceData.length === 0) {
+          setData(makeMockData(dateRange));
+        } else {
+          setData({
+            kpis: {
+              total:    { val: total, trend: 0 },
+              won:      { val: won,   trend: 0 },
+              convRate: { val: total > 0 ? `${((won / total) * 100).toFixed(1)}%` : '0%', trend: 0 },
+              avgScore: { val: teamData.length ? Math.round(teamData.reduce((a,t)=>a+t.avgScore,0)/teamData.length) : 0, trend: 0 },
+            },
+            weeklyData: weeklyData.length ? weeklyData : makeMockData(dateRange).weeklyData,
+            stageData:  stageData.length  ? stageData  : makeMockData(dateRange).stageData,
+            sourceData: sourceData.length ? sourceData : makeMockData(dateRange).sourceData,
+            teamData:   teamData.length   ? teamData   : makeMockData(dateRange).teamData,
+          });
+        }
+      })
+      .catch(() => setData(makeMockData(dateRange)))
+      .finally(() => setLoading(false));
   }, [dateRange]);
 
   const totalSources = data?.sourceData.reduce((a, d) => a + d.count, 0) || 0;
