@@ -1,11 +1,7 @@
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
-const { Pool } = require('pg');
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/crm_db'
-});
+const pool = require('../src/db/pool');
 
 async function runMigrations() {
   try {
@@ -19,15 +15,13 @@ async function runMigrations() {
       const filePath = path.join(migrationsDir, file);
       const sql = fs.readFileSync(filePath, 'utf-8');
       
-      await pool.query(sql);
+      pool.db.exec(sql);
       console.log(`Successfully completed migration: ${file}`);
     }
 
     console.log('All migrations completed successfully.');
   } catch (error) {
     console.error('Migration failed:', error);
-  } finally {
-    await pool.end();
   }
 }
 

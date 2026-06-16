@@ -1,1 +1,1 @@
-ALTER TABLE documents ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
+ALTER TABLE documents ADD COLUMN metadata TEXT DEFAULT '{}';
