@@ -1,13 +1,13 @@
 CREATE TABLE IF NOT EXISTS lead_scoring_rules (
-  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))),
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   name VARCHAR(200) NOT NULL,
   field VARCHAR(100) NOT NULL,       -- 'source','custom_fields.budget','phone'
   operator VARCHAR(50) NOT NULL,     -- 'eq','neq','contains','is_not_empty'
   value TEXT,
   weight INTEGER NOT NULL DEFAULT 10,-- positive or negative
   is_active BOOLEAN DEFAULT true,
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_scoring_tenant ON lead_scoring_rules(tenant_id, is_active);

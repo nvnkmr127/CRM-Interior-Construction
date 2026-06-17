@@ -20,7 +20,7 @@ async function createLead(tenantId, data) {
     stage_id || null,
     assignee_id || null,
     score || 0,
-    custom_fields || '{}',
+    typeof custom_fields === 'object' ? JSON.stringify(custom_fields) : (custom_fields || '{}'),
     notes || null,
     status || 'active',
     created_by || null
@@ -116,7 +116,11 @@ async function updateLead(tenantId, leadId, updates) {
       continue;
     }
     fields.push(`${key} = $${paramIndex++}`);
-    values.push(value);
+    if (key === 'custom_fields' && typeof value === 'object') {
+      values.push(JSON.stringify(value));
+    } else {
+      values.push(value);
+    }
   }
   
   if (fields.length === 0) {

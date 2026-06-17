@@ -1,6 +1,6 @@
 const express = require('express');
-const pool = require('../../../db/pool');
-const { createLead } = require('../../../services/leads/createLead');
+const pool = require('../../db/pool');
+const { createLead } = require('../../services/leads/createLead');
 // Note: assuming calculateLeadScore exists; we'll mock its logic or require it if possible.
 // In reality, scoring might be called within createLead or via an event.
 

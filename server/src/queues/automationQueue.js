@@ -36,7 +36,6 @@ async function processAutomationJobs() {
       WHERE status = 'pending'
       ORDER BY created_at ASC
       LIMIT 10
-      FOR UPDATE SKIP LOCKED
     `;
     const jobsResult = await client.query(fetchQuery);
     const jobs = jobsResult.rows;

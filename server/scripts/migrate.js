@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 const fs = require('fs');
 const path = require('path');
 const pool = require('../src/db/pool');
@@ -15,13 +15,15 @@ async function runMigrations() {
       const filePath = path.join(migrationsDir, file);
       const sql = fs.readFileSync(filePath, 'utf-8');
       
-      pool.db.exec(sql);
+      await pool.query(sql);
       console.log(`Successfully completed migration: ${file}`);
     }
 
     console.log('All migrations completed successfully.');
+    process.exit(0);
   } catch (error) {
     console.error('Migration failed:', error);
+    process.exit(1);
   }
 }
 

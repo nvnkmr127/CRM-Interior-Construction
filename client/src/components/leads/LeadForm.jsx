@@ -51,7 +51,10 @@ export default function LeadForm({ lead, onSave, onClose }) {
   const onBlur = (e) => handleBlur(e.target.name);
 
   const handleSubmit = async () => {
-    if (!validateAll()) return;
+    if (!validateAll()) {
+      toast.error('Please check the form for validation errors');
+      return;
+    }
 
     try {
       const payload = { ...values };
@@ -153,7 +156,7 @@ export default function LeadForm({ lead, onSave, onClose }) {
 
         <div className={styles.footer}>
           <Button variant="ghost" onClick={handleClose}>Cancel</Button>
-          <Button variant="primary" disabled={isSubmitDisabled} onClick={handleSubmit}>
+          <Button variant="primary" onClick={handleSubmit}>
             Save Lead
           </Button>
         </div>

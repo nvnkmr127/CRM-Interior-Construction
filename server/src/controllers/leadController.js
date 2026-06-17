@@ -40,16 +40,19 @@ const getTenantAndUser = (req) => {
 };
 
 exports.createLeadHandler = async (req, res, next) => {
+  console.log('--- Incoming createLead Request ---', req.body);
   try {
     const parsed = createLeadSchema.safeParse(req.body);
     if (!parsed.success) {
+      console.error('Lead Validation Error:', JSON.stringify(parsed.error.issues, null, 2));
       return fail(res, 'VALIDATION_ERROR', 'Validation failed', 400, parsed.error.issues);
     }
     const { tenantId, userId } = getTenantAndUser(req);
     const lead = await createLead({ tenantId, userId, data: parsed.data });
     return success(res, lead, {}, 201);
   } catch (error) {
-    if (error.message.includes('VALIDATION_ERROR') || error.message === 'INVALID_STAGE') {
+    console.error('Lead Creation Error Details:', error);
+    if (error.message && (error.message.includes('VALIDATION_ERROR') || error.message === 'INVALID_STAGE')) {
       return fail(res, 'VALIDATION_ERROR', error.message, 400);
     }
     next(error);
@@ -328,9 +331,11 @@ exports.checkDuplicateHandler = async (req, res, next) => {
 };
 
 exports.createPublicLeadHandler = async (req, res, next) => {
+  console.log('--- Incoming createPublicLead Request ---', req.body);
   try {
     const parsed = createLeadSchema.safeParse(req.body);
     if (!parsed.success) {
+      console.error('Public Lead Validation Error:', JSON.stringify(parsed.error.issues, null, 2));
       return fail(res, 'VALIDATION_ERROR', 'Validation failed', 400, parsed.error.issues);
     }
     
@@ -361,7 +366,8 @@ exports.createPublicLeadHandler = async (req, res, next) => {
 
     return success(res, { lead, rep: repInfo }, {}, 201);
   } catch (error) {
-    if (error.message.includes('VALIDATION_ERROR') || error.message === 'INVALID_STAGE') {
+    console.error('Public Lead Creation Error Details:', error);
+    if (error.message && (error.message.includes('VALIDATION_ERROR') || error.message === 'INVALID_STAGE')) {
       return fail(res, 'VALIDATION_ERROR', error.message, 400);
     }
     next(error);

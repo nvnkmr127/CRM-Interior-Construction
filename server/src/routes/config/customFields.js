@@ -12,8 +12,8 @@ const {
 
 const router = express.Router();
 
-// Apply auth & RBAC to all routes in this module
-router.use(authenticate, authorize('config:manage'));
+// Apply auth to all routes in this module
+router.use(authenticate);
 
 router.get('/', async (req, res, next) => {
   try {
@@ -38,7 +38,7 @@ const createSchema = z.object({
   sort_order: z.number().optional()
 });
 
-router.post('/', async (req, res, next) => {
+router.post('/', authorize('config:manage'), async (req, res, next) => {
   try {
     const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -66,7 +66,7 @@ const updateSchema = z.object({
   is_active: z.boolean().optional()
 });
 
-router.put('/:id', async (req, res, next) => {
+router.put('/:id', authorize('config:manage'), async (req, res, next) => {
   try {
     const parsed = updateSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -86,7 +86,7 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', authorize('config:manage'), async (req, res, next) => {
   try {
     await deleteField(req.tenantId, req.params.id);
     return res.status(204).send();

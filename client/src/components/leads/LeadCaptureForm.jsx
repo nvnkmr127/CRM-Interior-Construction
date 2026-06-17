@@ -53,7 +53,7 @@ export default function LeadCaptureForm() {
   const validateStep = () => {
     if (step === 1) {
       if (!formData.name) return 'Name is required';
-      if (!formData.phone || !/^\d{10}$/.test(formData.phone)) return 'Phone must be exactly 10 digits';
+      if (!formData.phone || !/^\d{10,15}$/.test(formData.phone)) return 'Phone must be between 10 and 15 digits';
       if (!formData.city) return 'City is required';
       if (!formData.locality) return 'Locality is required';
     } else if (step === 2) {

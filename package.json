@@ -18,5 +18,8 @@
     "concurrently": "^10.0.3",
     "eslint": "^10.5.0",
     "prettier": "^3.8.4"
+  },
+  "dependencies": {
+    "pg": "^8.21.0"
   }
 }

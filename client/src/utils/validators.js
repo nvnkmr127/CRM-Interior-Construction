@@ -12,8 +12,8 @@ export const validators = {
     !v ? null : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? 'Enter a valid email address' : null,
 
   phone: (v) =>
-    !v ? null : !/^[6-9]\d{9}$/.test(v.replace(/[\s-+]/g,'').replace(/^91/,''))
-      ? 'Enter a valid 10-digit Indian mobile number' : null,
+    !v ? null : !/^\d{10,15}$/.test(v.replace(/[\s-+]/g,'').replace(/^91/,''))
+      ? 'Enter a valid phone number (10-15 digits)' : null,
 
   amount: (v) =>
     !v ? null : isNaN(Number(v)) || Number(v) < 0 ? 'Enter a valid amount' : null,

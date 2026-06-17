@@ -7,7 +7,7 @@ const { success, fail } = require('../../utils/response');
 
 const router = express.Router();
 
-router.use(authenticate, authorize('config:manage'));
+router.use(authenticate);
 
 router.get('/', async (req, res, next) => {
   try {
@@ -35,7 +35,7 @@ const createStageSchema = z.object({
   mandatory_fields: z.array(z.string()).optional()
 });
 
-router.post('/', async (req, res, next) => {
+router.post('/', authorize('config:manage'), async (req, res, next) => {
   try {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
     if (!tenantId) return fail(res, 'UNAUTHORIZED', 'Tenant context missing', 401);
@@ -78,7 +78,7 @@ const updateStageSchema = z.object({
   mandatory_fields: z.array(z.string()).optional()
 });
 
-router.put('/:id', async (req, res, next) => {
+router.put('/:id', authorize('config:manage'), async (req, res, next) => {
   try {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
     if (!tenantId) return fail(res, 'UNAUTHORIZED', 'Tenant context missing', 401);
@@ -134,7 +134,7 @@ const reorderSchema = z.object({
   orderedIds: z.array(z.string().uuid())
 });
 
-router.patch('/reorder', async (req, res, next) => {
+router.patch('/reorder', authorize('config:manage'), async (req, res, next) => {
   const client = await pool.connect();
   try {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
@@ -174,7 +174,7 @@ router.patch('/reorder', async (req, res, next) => {
   }
 });
 
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', authorize('config:manage'), async (req, res, next) => {
   try {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
     if (!tenantId) return fail(res, 'UNAUTHORIZED', 'Tenant context missing', 401);
