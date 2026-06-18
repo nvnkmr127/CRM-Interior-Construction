@@ -23,6 +23,12 @@ router.get('/manager/pending-approvals', authenticate, requireRole(['manager', '
 router.get('/manager/scheduled-visits', authenticate, requireRole(['manager', 'gm']), managerController.getScheduledVisits);
 router.post('/manager/approvals/:id/decide', authenticate, requireRole(['manager', 'gm']), managerController.decideApproval);
 
+router.get('/export', authenticate, authorize('leads:read'), leadController.exportLeadsHandler);
+router.post('/import', authenticate, authorize('leads:create'), leadController.importLeadsHandler);
+
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
 router.get('/:id', authenticate, authorize('leads:read'), leadController.getLeadByIdHandler);
 router.patch('/:id', authenticate, authorize('leads:update'), leadController.updateLeadHandler);
 router.delete('/:id', authenticate, authorize('leads:delete'), leadController.deleteLeadHandler);
@@ -33,5 +39,14 @@ router.post('/:id/stage', authenticate, authorize('leads:update'), leadControlle
 router.post('/:id/convert-to-project', authenticate, authorize('leads:update'), leadController.convertToProjectHandler);
 router.post('/:id/activities', authenticate, leadController.logActivityHandler);
 router.get('/:id/activities', authenticate, leadController.getActivitiesHandler);
+
+router.post('/:id/files', authenticate, authorize('leads:update'), upload.single('file'), leadController.uploadFileHandler);
+router.get('/:id/files', authenticate, authorize('leads:read'), leadController.getFilesHandler);
+router.delete('/:id/files/:fileId', authenticate, authorize('leads:update'), leadController.deleteFileHandler);
+
+router.get('/:id/followups', authenticate, authorize('leads:read'), leadController.getFollowupsHandler);
+router.post('/:id/followups', authenticate, authorize('leads:update'), leadController.createFollowupHandler);
+router.patch('/:id/followups/:fid', authenticate, authorize('leads:update'), leadController.updateFollowupHandler);
+router.delete('/:id/followups/:fid', authenticate, authorize('leads:update'), leadController.deleteFollowupHandler);
 
 module.exports = router;

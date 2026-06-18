@@ -45,7 +45,7 @@ async function findLeadById(tenantId, leadId) {
   return result.rows[0] || null;
 }
 
-async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy, sortDesc, page = 1, limit = 20 }) {
+async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy, sortDesc, page = 1, limit = 20, createdFrom, createdTo, scoreMin, scoreMax }) {
   let query = `
     SELECT l.*,
            u.name AS assignee_name, u.avatar_url AS assignee_avatar,
@@ -79,7 +79,24 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
     values.push(`%${search}%`);
     paramIndex++;
   }
-  
+
+  if (createdFrom) {
+    query += ` AND l.created_at >= $${paramIndex++}`;
+    values.push(createdFrom);
+  }
+  if (createdTo) {
+    query += ` AND l.created_at <= $${paramIndex++}`;
+    values.push(createdTo);
+  }
+  if (scoreMin !== undefined && scoreMin !== null && scoreMin !== '') {
+    query += ` AND l.score >= $${paramIndex++}`;
+    values.push(parseInt(scoreMin, 10));
+  }
+  if (scoreMax !== undefined && scoreMax !== null && scoreMax !== '') {
+    query += ` AND l.score <= $${paramIndex++}`;
+    values.push(parseInt(scoreMax, 10));
+  }
+
   // Count total for pagination
   const countQuery = `SELECT COUNT(*) FROM (${query}) AS count_q`;
   const countResult = await pool.query(countQuery, values);
