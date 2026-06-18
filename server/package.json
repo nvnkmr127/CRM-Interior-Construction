@@ -4,6 +4,7 @@
   "private": true,
   "main": "src/app.js",
   "scripts": {
+    "build": "echo 'No build step required for server'",
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "test": "jest --runInBand --forceExit",

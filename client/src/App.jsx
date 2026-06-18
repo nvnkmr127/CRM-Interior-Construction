@@ -49,7 +49,7 @@ export default function App() {
                     <Route path='/projects' element={<ProjectsPage />} />
                     <Route path='/projects/:id' element={<ProjectDetail />} />
                     <Route path='/tasks' element={<MyTasksPage />} />
-                    <Route path='/leads/analytics' element={<LeadAnalytics />} />
+                    <Route path='/analytics/leads' element={<LeadAnalytics />} />
                     <Route path='/analytics/projects' element={<ProjectAnalytics />} />
                     <Route path='/settings/profile' element={<ProfilePage />} />
                     <Route path='/settings/preferences' element={<PreferencesPage />} />

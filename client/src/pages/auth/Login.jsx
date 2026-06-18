@@ -177,15 +177,31 @@ export default function Login() {
               {touched.password && errors.password && <div style={{color:'var(--color-danger)', fontSize:'12px', marginTop:'4px'}}>{errors.password}</div>}
             </div>
 
-            <Button 
-              type="submit" 
-              variant="primary"
-              size="lg"
-              className={styles.submitBtn} 
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Signing in...' : 'Sign In'}
-            </Button>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <Button 
+                type="submit" 
+                variant="primary"
+                size="lg"
+                className={styles.submitBtn} 
+                disabled={isSubmitting}
+                style={{ flex: 1 }}
+              >
+                {isSubmitting ? 'Signing in...' : 'Sign In'}
+              </Button>
+              {import.meta.env.DEV && (
+                <Button 
+                  type="button" 
+                  variant="secondary"
+                  size="lg"
+                  className={styles.submitBtn} 
+                  disabled={isSubmitting}
+                  onClick={() => login('admin@mock.com', 'password', 'mock')}
+                  style={{ flex: 1, background: 'var(--color-bg-subtle)', color: 'var(--color-text)' }}
+                >
+                  Auto Login
+                </Button>
+              )}
+            </div>
           </form>
 
           <div className={styles.footer}>

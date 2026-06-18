@@ -58,7 +58,7 @@ export default function ConfigPage() {
             {group.items.map(item => (
               <NavLink
                 key={item.to}
-                to={item.to}
+                to={`/config/${item.to}`}
                 className={({isActive}) => `${styles.navItem} ${isActive ? styles.active : ''}`}
               >
                 <span className={styles.itemIcon}>{item.icon}</span>
@@ -76,7 +76,7 @@ export default function ConfigPage() {
       <main className={styles.content}>
         <Suspense fallback={<div className={styles.loading}>Loading...</div>}>
           <Routes>
-            <Route index element={<Navigate to='lead-stages' replace />} />
+            <Route index element={<Navigate to='/config/lead-stages' replace />} />
             <Route path='lead-stages'   element={<LeadStagesManager />} />
             <Route path='custom-fields' element={<CustomFieldsManager />} />
             <Route path='templates'     element={<TemplateBuilder />} />
@@ -85,7 +85,7 @@ export default function ConfigPage() {
             <Route path='webhooks'      element={<WebhooksManager />} />
             <Route path='logs'          element={<LogsViewer />} />
             <Route path='users'         element={<UsersManager />} />
-            <Route path='*'             element={<Navigate to='lead-stages' replace />} />
+            <Route path='*'             element={<Navigate to='/config/lead-stages' replace />} />
           </Routes>
         </Suspense>
       </main>

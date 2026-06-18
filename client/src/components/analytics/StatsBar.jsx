@@ -1,7 +1,8 @@
 import React from 'react';
+import styles from './StatsBar.module.css';
 
 export default function StatsBar({ data }) {
-  if (!data) return <div className="animate-pulse flex gap-4 h-24 mb-6"><div className="flex-1 bg-gray-200 rounded-lg"></div></div>;
+  if (!data) return <div className={styles.pulse}><div className={styles.skeletonCard}></div></div>;
 
   const formattedValue = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(data.pipeline_value_total || 0);
 
@@ -13,12 +14,12 @@ export default function StatsBar({ data }) {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div className={styles.grid}>
       {metrics.map((m, i) => (
-        <div key={i} className="bg-white p-5 rounded-lg border shadow-sm">
-          <p className="text-sm font-medium text-gray-500 mb-1">{m.label}</p>
-          <h3 className="text-2xl font-bold text-gray-900">{m.value}</h3>
-          <p className="text-xs text-gray-400 mt-1">{m.subtext}</p>
+        <div key={i} className={styles.card}>
+          <p className={styles.label}>{m.label}</p>
+          <h3 className={styles.value}>{m.value}</h3>
+          <p className={styles.subtext}>{m.subtext}</p>
         </div>
       ))}
     </div>

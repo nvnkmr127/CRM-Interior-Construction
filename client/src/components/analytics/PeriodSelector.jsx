@@ -1,4 +1,5 @@
 import React from 'react';
+import styles from './PeriodSelector.module.css';
 
 export default function PeriodSelector({ period, setPeriod }) {
   const periods = [
@@ -8,16 +9,12 @@ export default function PeriodSelector({ period, setPeriod }) {
   ];
 
   return (
-    <div className="flex gap-2">
+    <div className={styles.container}>
       {periods.map(p => (
         <button
           key={p.value}
           onClick={() => setPeriod(p.value)}
-          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-            period === p.value 
-              ? 'bg-blue-600 text-white shadow-sm' 
-              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-          }`}
+          className={`${styles.button} ${period === p.value ? styles.active : styles.inactive}`}
         >
           {p.label}
         </button>

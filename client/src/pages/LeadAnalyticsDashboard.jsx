@@ -6,6 +6,7 @@ import FunnelChart from '../components/analytics/FunnelChart';
 import SourceROITable from '../components/analytics/SourceROITable';
 import RepLeaderboard from '../components/analytics/RepLeaderboard';
 import LostReasonsChart from '../components/analytics/LostReasonsChart';
+import styles from './LeadAnalyticsDashboard.module.css';
 
 export default function LeadAnalyticsDashboard() {
   const [period, setPeriod] = useState('30d');
@@ -52,33 +53,33 @@ export default function LeadAnalyticsDashboard() {
   }, [period]);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+    <div className={styles.container}>
+      <div className={styles.header}>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Lead Analytics</h1>
-          <p className="text-gray-500 mt-1">Measure pipeline health and rep performance</p>
+          <h1 className={styles.title}>Lead Analytics</h1>
+          <p className={styles.subtitle}>Measure pipeline health and rep performance</p>
         </div>
         <PeriodSelector period={period} setPeriod={setPeriod} />
       </div>
 
       {loading ? (
-        <div className="animate-pulse space-y-6">
-          <div className="h-24 bg-gray-200 rounded-lg"></div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-             <div className="h-64 bg-gray-200 rounded-lg"></div>
-             <div className="h-64 bg-gray-200 rounded-lg"></div>
+        <div className={styles.pulse}>
+          <div className={styles.skeletonHeader}></div>
+          <div className={styles.grid}>
+             <div className={styles.skeletonChart}></div>
+             <div className={styles.skeletonChart}></div>
           </div>
         </div>
       ) : (
         <>
           <StatsBar data={data.summary} />
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className={styles.grid}>
             <FunnelChart data={data.funnel} />
             <LostReasonsChart data={data.lost} />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className={styles.grid}>
             <SourceROITable data={data.sources} />
             <RepLeaderboard data={data.reps} />
           </div>

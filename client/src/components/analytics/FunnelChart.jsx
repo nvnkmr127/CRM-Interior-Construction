@@ -1,19 +1,20 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import styles from './FunnelChart.module.css';
 
 export default function FunnelChart({ data }) {
   if (!data || data.length === 0) {
-    return <div className="h-64 flex items-center justify-center text-gray-400 bg-gray-50 rounded border border-dashed">No funnel data available for this period.</div>;
+    return <div className={styles.emptyState}>No funnel data available for this period.</div>;
   }
 
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       const { stage, count, drop_off_rate } = payload[0].payload;
       return (
-        <div className="bg-white p-3 border rounded shadow-md text-sm">
-          <p className="font-bold capitalize mb-1">{stage.replace('_', ' ')}</p>
-          <p>Leads: {count}</p>
-          {drop_off_rate > 0 && <p className="text-red-500 font-medium mt-1">Drop-off: {drop_off_rate}%</p>}
+        <div className={styles.tooltip}>
+          <p className={styles.tooltipTitle}>{stage.replace('_', ' ')}</p>
+          <p className={styles.tooltipText}>Leads: {count}</p>
+          {drop_off_rate > 0 && <p className={styles.tooltipDanger}>Drop-off: {drop_off_rate}%</p>}
         </div>
       );
     }
@@ -21,9 +22,9 @@ export default function FunnelChart({ data }) {
   };
 
   return (
-    <div className="bg-white p-5 rounded-lg border shadow-sm">
-      <h3 className="font-semibold text-gray-800 mb-4">Pipeline Funnel</h3>
-      <div className="h-64">
+    <div className={styles.container}>
+      <h3 className={styles.title}>Pipeline Funnel</h3>
+      <div className={styles.chartWrapper}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
             <XAxis type="number" hide />
@@ -31,7 +32,7 @@ export default function FunnelChart({ data }) {
             <Tooltip content={<CustomTooltip />} cursor={{fill: 'transparent'}} />
             <Bar dataKey="count" radius={[0, 4, 4, 0]}>
               {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={`hsl(210, 80%, ${80 - index * 6}%)`} />
+                <Cell key={`cell-${index}`} fill={`var(--color-accent, hsl(270, 100%, ${60 + index * 5}%))`} />
               ))}
             </Bar>
           </BarChart>

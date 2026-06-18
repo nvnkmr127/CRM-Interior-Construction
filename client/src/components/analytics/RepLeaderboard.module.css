@@ -1,0 +1,171 @@
+.container {
+  background: var(--bg);
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.emptyState {
+  height: 192px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  background: var(--color-bg-subtle, #f4f4f4);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--border);
+  font-size: var(--text-sm);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+
+.title {
+  font-family: var(--heading);
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.downloadBtn {
+  font-size: 12px;
+  color: var(--color-accent);
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.downloadBtn:hover {
+  text-decoration: underline;
+}
+
+.list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.repCard {
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.repCardTop {
+  border-color: #fde047; /* yellow-300 */
+  background: #fefce8; /* yellow-50 */
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.repInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.avatarContainer {
+  position: relative;
+}
+
+.avatarImg, .avatarFallback {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.avatarFallback {
+  background: #dbeafe; /* blue-100 */
+  color: #1d4ed8; /* blue-700 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.crown {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  font-size: 12px;
+}
+
+.repName {
+  font-weight: 600;
+  color: var(--text-h);
+  font-size: var(--text-sm);
+  margin: 0;
+}
+
+.repStats {
+  font-size: 12px;
+  color: var(--text);
+  margin: 0;
+  opacity: 0.8;
+}
+
+.scoreContainer {
+  text-align: right;
+}
+
+.wonText {
+  font-weight: 700;
+  color: var(--text-h);
+  margin: 0;
+}
+
+.convText {
+  font-size: 12px;
+  color: var(--color-success, #16a34a);
+  font-weight: 500;
+  margin: 0;
+}
+
+.progressBarContainer {
+  width: 100%;
+  background: var(--border);
+  border-radius: 9999px;
+  height: 6px;
+  margin-top: var(--space-2);
+}
+
+.progressBar {
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--color-accent);
+}
+
+.progressBarTop {
+  background: #facc15; /* yellow-400 */
+}
+
+.footerStats {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-2);
+  font-size: 10px;
+  color: var(--text);
+  text-transform: uppercase;
+  font-weight: 600;
+  opacity: 0.7;
+}

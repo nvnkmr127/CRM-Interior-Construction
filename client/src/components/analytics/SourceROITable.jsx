@@ -1,8 +1,9 @@
 import React from 'react';
+import styles from './SourceROITable.module.css';
 
 export default function SourceROITable({ data }) {
   if (!data || data.length === 0) {
-    return <div className="h-48 flex items-center justify-center text-gray-400 bg-gray-50 rounded border border-dashed">No source data available for this period.</div>;
+    return <div className={styles.emptyState}>No source data available for this period.</div>;
   }
 
   const handleDownload = () => {
@@ -20,30 +21,30 @@ export default function SourceROITable({ data }) {
   };
 
   return (
-    <div className="bg-white p-5 rounded-lg border shadow-sm flex flex-col h-full">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-semibold text-gray-800">Source ROI</h3>
-        <button onClick={handleDownload} className="text-xs text-blue-600 font-medium hover:underline">Download CSV</button>
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <h3 className={styles.title}>Source ROI</h3>
+        <button onClick={handleDownload} className={styles.downloadBtn}>Download CSV</button>
       </div>
-      <div className="overflow-x-auto flex-1">
-        <table className="w-full text-sm text-left">
-          <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b">
+      <div className={styles.tableWrapper}>
+        <table className={styles.table}>
+          <thead className={styles.thead}>
             <tr>
-              <th className="px-4 py-3 font-medium">Source</th>
-              <th className="px-4 py-3 font-medium text-right">Leads</th>
-              <th className="px-4 py-3 font-medium text-right">Won</th>
-              <th className="px-4 py-3 font-medium text-right">Conv %</th>
-              <th className="px-4 py-3 font-medium text-right">Pipeline Value</th>
+              <th className={styles.th}>Source</th>
+              <th className={`${styles.th} ${styles.thRight}`}>Leads</th>
+              <th className={`${styles.th} ${styles.thRight}`}>Won</th>
+              <th className={`${styles.th} ${styles.thRight}`}>Conv %</th>
+              <th className={`${styles.th} ${styles.thRight}`}>Pipeline Value</th>
             </tr>
           </thead>
           <tbody>
             {data.map((row, i) => (
-              <tr key={i} className="border-b last:border-0 hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium text-gray-900 capitalize">{row.source?.replace('_', ' ') || 'Unknown'}</td>
-                <td className="px-4 py-3 text-right">{row.count}</td>
-                <td className="px-4 py-3 text-right text-green-600 font-medium">{row.won_count}</td>
-                <td className="px-4 py-3 text-right">{row.conversion_rate}%</td>
-                <td className="px-4 py-3 text-right">
+              <tr key={i} className={styles.tr}>
+                <td className={`${styles.td} ${styles.tdSource}`}>{row.source?.replace('_', ' ') || 'Unknown'}</td>
+                <td className={`${styles.td} ${styles.tdRight}`}>{row.count}</td>
+                <td className={`${styles.td} ${styles.tdRight} ${styles.tdSuccess}`}>{row.won_count}</td>
+                <td className={`${styles.td} ${styles.tdRight}`}>{row.conversion_rate}%</td>
+                <td className={`${styles.td} ${styles.tdRight}`}>
                   {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(row.total_value)}
                 </td>
               </tr>
