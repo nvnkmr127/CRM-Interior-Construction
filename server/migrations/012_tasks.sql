@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   due_date DATE,
   priority VARCHAR(20) DEFAULT 'medium',  -- low, medium, high, urgent
   status VARCHAR(50) DEFAULT 'todo',      -- todo, in_progress, blocked, done
-  sort_order BOOLEAN DEFAULT FALSE,
+  sort_order INTEGER DEFAULT 0,
   tags TEXT DEFAULT '[]',
   custom_fields TEXT DEFAULT '{}',
   deleted_at TEXT,

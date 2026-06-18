@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS project_phases (
   project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
-  sort_order BOOLEAN DEFAULT FALSE,
+  sort_order INTEGER DEFAULT 0,
   status VARCHAR(50) DEFAULT 'pending',  -- pending, in_progress, completed
   duration_days INTEGER,
   starts_at DATE,

@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS milestones (
   completion_date DATE,
   completed_by UUID REFERENCES users(id),
   triggers_payment BOOLEAN DEFAULT false,
-  sort_order BOOLEAN DEFAULT FALSE,
+  sort_order INTEGER DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

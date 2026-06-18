@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS lead_stages (
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   name VARCHAR(100) NOT NULL,
   color VARCHAR(7) DEFAULT '#6B6B6B',
-  sort_order BOOLEAN DEFAULT FALSE,
+  sort_order INTEGER DEFAULT 0,
   is_won BOOLEAN DEFAULT false,
   is_lost BOOLEAN DEFAULT false,
   mandatory_fields TEXT DEFAULT '[]',   -- fields required before leaving this stage

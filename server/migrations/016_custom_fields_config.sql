@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS custom_fields_config (
   options TEXT DEFAULT '[]',    -- for dropdown/multi_select
   is_required BOOLEAN DEFAULT false,
   visible_to_roles TEXT DEFAULT '["all"]',
-  sort_order BOOLEAN DEFAULT FALSE,
+  sort_order INTEGER DEFAULT 0,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
