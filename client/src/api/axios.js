@@ -10,11 +10,21 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     if (import.meta.env.DEV && localStorage.getItem('mockSession')) {
-      // Use a custom adapter to return a fake successful response instantly
-      // This completely prevents actual network requests and avoids any console errors
+      // DEV mock: intercept all API calls and return a minimal valid response shape.
+      // WARNING: mutations (POST/PATCH/DELETE) are silently swallowed here — nothing is
+      // saved to the database. To test real data persistence, log in with real credentials
+      // and clear the 'mockSession' key from localStorage.
+      const method = (config.method || 'get').toLowerCase();
+      const isMutation = ['post', 'patch', 'put', 'delete'].includes(method);
+      if (isMutation) {
+        console.warn(
+          `[MockSession] ${method.toUpperCase()} ${config.url} intercepted — request NOT sent to server. ` +
+          'Clear localStorage.mockSession to use real auth.'
+        );
+      }
       config.adapter = () => {
         return Promise.resolve({
-          data: {},
+          data: { success: true, data: {}, meta: {} },
           status: 200,
           statusText: 'OK',
           headers: {},
