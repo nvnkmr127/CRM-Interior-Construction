@@ -11,12 +11,14 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     async function restoreSession() {
-      // MOCK SESSION BYPASS
-      const mockSession = localStorage.getItem('mockSession');
-      if (mockSession) {
-        setUser(JSON.parse(mockSession));
-        setLoading(false);
-        return;
+      // Dev-only mock session bypass — stripped in production builds
+      if (import.meta.env.DEV) {
+        const mockSession = localStorage.getItem('mockSession');
+        if (mockSession) {
+          setUser(JSON.parse(mockSession));
+          setLoading(false);
+          return;
+        }
       }
 
       try {
@@ -43,8 +45,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (email, password, tenantSlug) => {
-    // MOCK LOGIN BYPASS
-    if (email === 'admin@mock.com' && password === 'password') {
+    // Dev-only mock login bypass — stripped in production builds
+    if (import.meta.env.DEV && email === 'admin@mock.com' && password === 'password') {
       const mockUser = {
         id: 'mock-123',
         name: 'Mock Admin',
@@ -77,8 +79,8 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
-    // MOCK LOGOUT BYPASS
-    if (localStorage.getItem('mockSession')) {
+    // Dev-only mock logout bypass — stripped in production builds
+    if (import.meta.env.DEV && localStorage.getItem('mockSession')) {
       localStorage.removeItem('mockSession');
       setUser(null);
       navigate('/login');
