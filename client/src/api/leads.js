@@ -124,6 +124,6 @@ export const getActivities = async (leadId, params) => {
  * @returns {Promise<{ success: boolean, data: Object }>} The newly created project details.
  */
 export const convertToProject = async (leadId, projectData) => {
-  const response = await api.post(`/leads/${leadId}/convert`, projectData);
+  const response = await api.post(`/leads/${leadId}/convert-to-project`, projectData);
   return response.data;
 };
