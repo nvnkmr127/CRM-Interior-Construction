@@ -375,3 +375,197 @@ exports.createPublicLeadHandler = async (req, res, next) => {
     next(error);
   }
 };
+
+exports.exportLeadsHandler = async function exportLeadsHandler(req, res) {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const params = { ...req.query, limit: 10000, page: 1 };
+    const result = await findLeads(tenantId, params);
+
+    const fields = ['name', 'phone', 'email', 'source', 'stage_name', 'assignee_name', 'score', 'notes', 'created_at'];
+    const header = fields.join(',');
+    const rows = result.data.map(lead =>
+      fields.map(f => {
+        const val = lead[f] ?? '';
+        const str = String(val).replace(/"/g, '""');
+        return str.includes(',') || str.includes('"') || str.includes('\n') ? `"${str}"` : str;
+      }).join(',')
+    );
+
+    const csv = [header, ...rows].join('\n');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="leads.csv"');
+    res.send(csv);
+  } catch (err) {
+    console.error('exportLeadsHandler error:', err);
+    res.status(500).json({ success: false, error: { message: 'Export failed' } });
+  }
+};
+
+exports.importLeadsHandler = async function importLeadsHandler(req, res) {
+  try {
+    const { tenantId, userId } = getTenantAndUser(req);
+    const csvText = req.body.csv || '';
+    if (!csvText) return res.status(400).json({ success: false, error: { message: 'No CSV data provided' } });
+
+    const lines = csvText.trim().split('\n');
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
+
+    const results = { created: 0, skipped: 0, errors: [] };
+    const { createLead: createLeadService } = require('../services/leads/createLead');
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+      const row = {};
+      headers.forEach((h, idx) => { row[h] = cols[idx] || ''; });
+
+      if (!row.name || !row.phone) {
+        results.errors.push({ row: i + 1, error: 'Missing name or phone' });
+        results.skipped++;
+        continue;
+      }
+
+      try {
+        await createLeadService({ tenantId, userId, ...row });
+        results.created++;
+      } catch (err) {
+        results.errors.push({ row: i + 1, error: err.message });
+        results.skipped++;
+      }
+    }
+
+    res.json({ success: true, data: results });
+  } catch (err) {
+    console.error('importLeadsHandler error:', err);
+    res.status(500).json({ success: false, error: { message: 'Import failed' } });
+  }
+};
+
+exports.uploadFileHandler = async function uploadFileHandler(req, res) {
+  try {
+    const { tenantId, userId } = getTenantAndUser(req);
+    const { id: leadId } = req.params;
+
+    if (!req.file) return res.status(400).json({ success: false, error: { message: 'No file uploaded' } });
+
+    const storageKey = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+
+    const result = await pool.query(
+      `INSERT INTO lead_files (tenant_id, lead_id, uploaded_by, file_name, file_size, mime_type, storage_key)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, file_name, file_size, mime_type, created_at`,
+      [tenantId, leadId, userId, req.file.originalname, req.file.size, req.file.mimetype, storageKey]
+    );
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    console.error('uploadFileHandler error:', err);
+    res.status(500).json({ success: false, error: { message: 'Upload failed' } });
+  }
+};
+
+exports.getFilesHandler = async function getFilesHandler(req, res) {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { id: leadId } = req.params;
+
+    const result = await pool.query(
+      `SELECT f.id, f.file_name, f.file_size, f.mime_type, f.storage_key, f.created_at, u.name AS uploaded_by_name
+       FROM lead_files f LEFT JOIN users u ON f.uploaded_by = u.id
+       WHERE f.tenant_id = $1 AND f.lead_id = $2
+       ORDER BY f.created_at DESC`,
+      [tenantId, leadId]
+    );
+
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch files' } });
+  }
+};
+
+exports.deleteFileHandler = async function deleteFileHandler(req, res) {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { id: leadId, fileId } = req.params;
+
+    await pool.query(
+      'DELETE FROM lead_files WHERE id = $1 AND lead_id = $2 AND tenant_id = $3',
+      [fileId, leadId, tenantId]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: { message: 'Delete failed' } });
+  }
+};
+
+exports.getFollowupsHandler = async function getFollowupsHandler(req, res) {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { id: leadId } = req.params;
+    const result = await pool.query(
+      `SELECT f.*, u.name AS assignee_name FROM lead_followups f
+       LEFT JOIN users u ON f.assignee_id = u.id
+       WHERE f.tenant_id = $1 AND f.lead_id = $2
+       ORDER BY f.due_at ASC`,
+      [tenantId, leadId]
+    );
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch follow-ups' } });
+  }
+};
+
+exports.createFollowupHandler = async function createFollowupHandler(req, res) {
+  try {
+    const { tenantId, userId } = getTenantAndUser(req);
+    const { id: leadId } = req.params;
+    const { title, due_at, assignee_id, notes } = req.body;
+    if (!title || !due_at) return res.status(400).json({ success: false, error: { message: 'title and due_at required' } });
+
+    const result = await pool.query(
+      `INSERT INTO lead_followups (tenant_id, lead_id, created_by, assignee_id, title, due_at, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [tenantId, leadId, userId, assignee_id || userId, title, due_at, notes || null]
+    );
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    console.error('createFollowupHandler error:', err);
+    res.status(500).json({ success: false, error: { message: 'Failed to create follow-up' } });
+  }
+};
+
+exports.updateFollowupHandler = async function updateFollowupHandler(req, res) {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { id: leadId, fid } = req.params;
+    const { is_done, title, due_at, notes } = req.body;
+    const result = await pool.query(
+      `UPDATE lead_followups SET
+        is_done = COALESCE($1, is_done),
+        done_at = CASE WHEN $1 = true THEN NOW() ELSE done_at END,
+        title = COALESCE($2, title),
+        due_at = COALESCE($3, due_at),
+        notes = COALESCE($4, notes)
+       WHERE id = $5 AND lead_id = $6 AND tenant_id = $7
+       RETURNING *`,
+      [is_done ?? null, title || null, due_at || null, notes || null, fid, leadId, tenantId]
+    );
+    if (!result.rows[0]) return res.status(404).json({ success: false, error: { message: 'Follow-up not found' } });
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: { message: 'Failed to update follow-up' } });
+  }
+};
+
+exports.deleteFollowupHandler = async function deleteFollowupHandler(req, res) {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { id: leadId, fid } = req.params;
+    await pool.query('DELETE FROM lead_followups WHERE id = $1 AND lead_id = $2 AND tenant_id = $3', [fid, leadId, tenantId]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: { message: 'Failed to delete follow-up' } });
+  }
+};

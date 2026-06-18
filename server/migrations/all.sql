@@ -736,3 +736,34 @@ ALTER TABLE leads
   ALTER COLUMN score DROP DEFAULT,
   ALTER COLUMN score TYPE INTEGER USING CASE WHEN score THEN 1 ELSE 0 END,
   ALTER COLUMN score SET DEFAULT 0;
+
+-- 028_lead_files
+CREATE TABLE IF NOT EXISTS lead_files (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id   UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  lead_id     UUID NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+  uploaded_by UUID REFERENCES users(id),
+  file_name   TEXT NOT NULL,
+  file_size   INTEGER,
+  mime_type   TEXT,
+  storage_key TEXT NOT NULL,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_lead_files_lead_id ON lead_files(lead_id);
+
+-- 029_lead_followups
+CREATE TABLE IF NOT EXISTS lead_followups (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id   UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  lead_id     UUID NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+  created_by  UUID REFERENCES users(id),
+  assignee_id UUID REFERENCES users(id),
+  title       TEXT NOT NULL,
+  due_at      TIMESTAMPTZ NOT NULL,
+  is_done     BOOLEAN DEFAULT FALSE,
+  done_at     TIMESTAMPTZ,
+  notes       TEXT,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_lead_followups_lead_id ON lead_followups(lead_id);
+CREATE INDEX IF NOT EXISTS idx_lead_followups_due_at ON lead_followups(due_at) WHERE is_done = FALSE;

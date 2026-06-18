@@ -72,6 +72,14 @@ async function updateLead({ tenantId, userId, leadId, data }) {
   // 3. Update lead
   const updatedLead = await leadRepository.updateLead(tenantId, leadId, updateData);
 
+  // 3b. Recalculate score
+  const { getAndScoreLead } = require('../scoreLeadService');
+  const newScore = await getAndScoreLead(tenantId, updatedLead);
+  let finalLead = updatedLead;
+  if (newScore !== updatedLead.score) {
+    finalLead = await leadRepository.updateLead(tenantId, leadId, { score: newScore });
+  }
+
   // 4. logAction
   await logAction({
     tenantId,
@@ -80,7 +88,7 @@ async function updateLead({ tenantId, userId, leadId, data }) {
     entity: 'lead',
     entityId: leadId,
     oldValue: currentLead,
-    newValue: updatedLead
+    newValue: finalLead
   });
 
   // 5. If stage changed -> enqueueAutomation
@@ -100,10 +108,10 @@ async function updateLead({ tenantId, userId, leadId, data }) {
   }
 
   // 6. Dispatch Webhook
-  dispatchEvent(tenantId, 'lead.updated', updatedLead);
+  dispatchEvent(tenantId, 'lead.updated', finalLead);
 
-  // 7. Return updatedLead
-  return updatedLead;
+  // 7. Return finalLead
+  return finalLead;
 }
 
 module.exports = { updateLead };
