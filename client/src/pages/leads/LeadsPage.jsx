@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Button } from '../../components/ui';
+import { useToast } from '../../store/toastContext';
+import api from '../../api/axios';
 import KanbanBoard from '../../components/leads/KanbanBoard';
 import LeadDrawer from '../../components/leads/LeadDrawer';
 import LeadForm from '../../components/leads/LeadForm';
@@ -11,6 +13,7 @@ import { useLeads } from '../../hooks/useLeads';
 import styles from './LeadsPage.module.css';
 
 export default function LeadsPage() {
+  const toast = useToast();
   const [search, setSearch] = useState('');
   const [assigneeFilter, setAssigneeFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('All Sources');
@@ -20,7 +23,9 @@ export default function LeadsPage() {
   const [selectedLeadId, setSelectedLeadId] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [stageMenuLeadId, setStageMenuLeadId] = useState(null);
-  
+  const [createdFrom, setCreatedFrom] = useState('');
+  const [createdTo, setCreatedTo] = useState('');
+
   const [page, setPage] = useState(1);
   const limit = 20;
 
@@ -30,13 +35,15 @@ export default function LeadsPage() {
     if (sourceFilter && sourceFilter !== 'All Sources') f.source = sourceFilter;
     if (assigneeFilter) f.assigneeId = assigneeFilter;
     if (scoreRange && scoreRange !== 'all') f.scoreRange = scoreRange;
+    if (createdFrom) f.createdFrom = createdFrom;
+    if (createdTo) f.createdTo = createdTo;
     if (sortBy) {
       if (sortBy === 'latest') { f.sortBy = 'created_at'; f.sortDesc = true; }
       else if (sortBy === 'score') { f.sortBy = 'score'; f.sortDesc = true; }
       else if (sortBy === 'name') { f.sortBy = 'name'; f.sortDesc = false; }
     }
     return f;
-  }, [search, sourceFilter, assigneeFilter, scoreRange, sortBy, page, limit]);
+  }, [search, sourceFilter, assigneeFilter, scoreRange, sortBy, createdFrom, createdTo, page, limit]);
 
   const { leads, stages, stats, total, loading, optimisticStageChange, bulkChangeStage, refetch } = useLeads(filters);
 
@@ -75,6 +82,43 @@ export default function LeadsPage() {
     setSourceFilter('All Sources');
     setAssigneeFilter('');
     setScoreRange('all');
+    setCreatedFrom('');
+    setCreatedTo('');
+  };
+
+  const handleExport = async () => {
+    try {
+      const params = new URLSearchParams(filters);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000/api'}/leads/export?${params}`, {
+        credentials: 'include'
+      });
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `leads-${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Export failed');
+    }
+  };
+
+  const handleImport = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const csv = await file.text();
+    try {
+      const res = await api.post('/leads/import', { csv });
+      if (res.data.success) {
+        const { created, skipped } = res.data.data;
+        toast.success(`Imported ${created} leads${skipped > 0 ? `, ${skipped} skipped` : ''}`);
+        refetch();
+      }
+    } catch {
+      toast.error('Import failed');
+    }
+    e.target.value = '';
   };
 
   return (
@@ -84,7 +128,12 @@ export default function LeadsPage() {
           <h1 className={styles.title}>Leads</h1>
           <p className={styles.subtitle}>Manage your interior construction pipeline</p>
         </div>
-        <Button variant="primary" onClick={() => setIsFormOpen(true)}>+ New Lead</Button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <Button variant="outline" onClick={handleExport}>&#8595; Export</Button>
+          <Button variant="outline" onClick={() => document.getElementById('csv-import-input').click()}>&#8593; Import</Button>
+          <input id="csv-import-input" type="file" accept=".csv" style={{display:'none'}} onChange={handleImport} />
+          <Button variant="primary" onClick={() => setIsFormOpen(true)}>+ New Lead</Button>
+        </div>
       </div>
 
       <LeadStatsBar stats={stats} loading={loading} />
@@ -97,6 +146,9 @@ export default function LeadsPage() {
         sortBy={sortBy} setSortBy={setSortBy}
         view={view} setView={setView}
         assignees={assignees}
+        createdFrom={createdFrom} setCreatedFrom={setCreatedFrom}
+        createdTo={createdTo} setCreatedTo={setCreatedTo}
+        onClearFilters={clearFilters}
       />
 
       <div className={styles.content}>

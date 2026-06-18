@@ -5,6 +5,7 @@ import ScoreBadge from './ScoreBadge';
 import ActivityTimeline from './ActivityTimeline';
 import TaskWidget from './TaskWidget';
 import ConvertToProjectModal from './ConvertToProjectModal';
+import FollowupsTab from './FollowupsTab';
 import { getLead, changeLeadStage, deleteLead } from '../../api/leads';
 import api from '../../api/axios';
 
@@ -12,16 +13,22 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   const toast = useToast();
   const [lead, setLead] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview'); // overview, activity, tasks, files
+  const [activeTab, setActiveTab] = useState('overview'); // overview, activity, tasks, followups, files
   const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
 
   // Auto-saving state
   const [saveStatus, setSaveStatus] = useState(''); // 'saving', 'saved', 'error', ''
-  
+
   // Stage change states
   const [pendingStage, setPendingStage] = useState(null);
   const [missingFields, setMissingFields] = useState([]);
   const [errorMsg, setErrorMsg] = useState(null);
+
+  // Score override
+  const [editingScore, setEditingScore] = useState(false);
+
+  // Files state
+  const [files, setFiles] = useState([]);
 
   useEffect(() => {
     if (isOpen && leadId) {
@@ -29,6 +36,15 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
       setActiveTab('overview');
     }
   }, [isOpen, leadId]);
+
+  // Load files when tab is activated
+  useEffect(() => {
+    if (activeTab === 'files' && leadId) {
+      api.get(`/leads/${leadId}/files`)
+        .then(res => { if (res.data.success) setFiles(res.data.data); })
+        .catch(() => {});
+    }
+  }, [activeTab, leadId]);
 
   const fetchLead = async () => {
     setLoading(true);
@@ -55,6 +71,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
         setSaveStatus('saved');
         setTimeout(() => setSaveStatus(''), 2000);
         onLeadUpdated?.(res.data.data);
+        if (field === 'score') setLead(prev => ({ ...prev, score: value }));
       }
     } catch (e) {
       setSaveStatus('error');
@@ -118,6 +135,32 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
     }
   };
 
+  const uploadFile = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await api.post(`/leads/${leadId}/files`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (res.data.success) {
+        const filesRes = await api.get(`/leads/${leadId}/files`);
+        if (filesRes.data.success) setFiles(filesRes.data.data);
+        toast.success('File uploaded');
+      }
+    } catch {
+      toast.error('Upload failed');
+    }
+  };
+
+  const deleteFile = async (fileId) => {
+    try {
+      await api.delete(`/leads/${leadId}/files/${fileId}`);
+      setFiles(prev => prev.filter(f => f.id !== fileId));
+    } catch {
+      toast.error('Failed to delete file');
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -126,12 +169,12 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
         <div className="p-6 flex items-center justify-center text-gray-500">Loading lead details...</div>
       ) : (
         <div className="flex flex-col h-full bg-gray-50">
-          
+
           {/* HEADER */}
           <div className="bg-white border-b border-gray-200 px-6 pt-6 pb-4 shrink-0 shadow-sm relative z-10">
             <div className="flex justify-between items-start mb-3">
               <div className="flex-1 mr-4">
-                <input 
+                <input
                   type="text"
                   value={lead.name}
                   onChange={(e) => handleFieldChange('name', e.target.value)}
@@ -144,10 +187,27 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
               </Button>
             </div>
-            
+
             <div className="flex flex-wrap items-center gap-3 mb-4">
               <Badge variant="outline" className="text-gray-600 font-mono text-xs">{lead.lead_number || `LD-${lead.id.substring(0,4).toUpperCase()}`}</Badge>
-              <ScoreBadge score={lead.score} />
+              {editingScore ? (
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  const val = parseInt(e.target.score.value, 10);
+                  if (isNaN(val) || val < 0 || val > 100) return;
+                  await handleFieldBlur('score', val);
+                  setEditingScore(false);
+                }} className="flex items-center gap-1">
+                  <input name="score" type="number" min="0" max="100" defaultValue={lead.score}
+                    className="w-16 text-xs border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:border-blue-500" autoFocus />
+                  <button type="submit" className="text-xs text-blue-600 font-medium">Save</button>
+                  <button type="button" onClick={() => setEditingScore(false)} className="text-xs text-gray-500">&#x2715;</button>
+                </form>
+              ) : (
+                <span onClick={() => setEditingScore(true)} title="Click to override score" className="cursor-pointer">
+                  <ScoreBadge score={lead.score} />
+                </span>
+              )}
               {lead.assignee_name && (
                 <div className="flex items-center gap-1.5 bg-gray-100 rounded-full px-2.5 py-1 text-xs font-medium text-gray-700 cursor-pointer hover:bg-gray-200" title="Reassign">
                   {lead.assignee_avatar ? (
@@ -162,9 +222,9 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
             <div className="flex items-center justify-between">
               <div className="relative w-48">
-                <select 
-                  value={lead.stage_id} 
-                  onChange={handleStageSelect} 
+                <select
+                  value={lead.stage_id}
+                  onChange={handleStageSelect}
                   className="block w-full pl-3 pr-10 py-1.5 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 cursor-pointer"
                 >
                   {stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -182,7 +242,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
           {/* TABS NAVIGATION */}
           <div className="bg-white px-6 border-b border-gray-200 shrink-0">
             <nav className="-mb-px flex space-x-6">
-              {['overview', 'activity', 'tasks', 'files'].map(tab => (
+              {['overview', 'activity', 'tasks', 'followups', 'files'].map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -202,15 +262,15 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
           <div className="flex-1 overflow-y-auto p-6">
             {activeTab === 'overview' && (
               <div className="space-y-6">
-                
+
                 {/* Contact Info */}
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                   <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Contact Info</h4>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between group">
                       <span className="text-sm text-gray-500 w-24">Phone</span>
-                      <input 
-                        type="text" value={lead.phone || ''} 
+                      <input
+                        type="text" value={lead.phone || ''}
                         onChange={e => handleFieldChange('phone', e.target.value)}
                         onBlur={e => handleFieldBlur('phone', e.target.value)}
                         className="flex-1 text-sm font-medium border-transparent focus:border-gray-300 focus:ring-0 px-2 py-1 rounded hover:bg-gray-50 transition-colors"
@@ -219,8 +279,8 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                     </div>
                     <div className="flex items-center justify-between group">
                       <span className="text-sm text-gray-500 w-24">Email</span>
-                      <input 
-                        type="email" value={lead.email || ''} 
+                      <input
+                        type="email" value={lead.email || ''}
                         onChange={e => handleFieldChange('email', e.target.value)}
                         onBlur={e => handleFieldBlur('email', e.target.value)}
                         className="flex-1 text-sm font-medium border-transparent focus:border-gray-300 focus:ring-0 px-2 py-1 rounded hover:bg-gray-50 transition-colors"
@@ -236,7 +296,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Type</label>
-                      <select 
+                      <select
                         value={lead.property_type || ''}
                         onChange={e => handleFieldChange('property_type', e.target.value)}
                         onBlur={e => handleFieldBlur('property_type', e.target.value)}
@@ -250,7 +310,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Scope</label>
-                      <select 
+                      <select
                         value={lead.scope || ''}
                         onChange={e => handleFieldChange('scope', e.target.value)}
                         onBlur={e => handleFieldBlur('scope', e.target.value)}
@@ -264,8 +324,8 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                     </div>
                     <div className="col-span-2">
                       <label className="block text-xs text-gray-500 mb-1">Locality / City</label>
-                      <input 
-                        type="text" value={lead.locality || ''} 
+                      <input
+                        type="text" value={lead.locality || ''}
                         onChange={e => handleFieldChange('locality', e.target.value)}
                         onBlur={e => handleFieldBlur('locality', e.target.value)}
                         className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
@@ -273,9 +333,9 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">Budget Max (₹)</label>
-                      <input 
-                        type="number" value={lead.budget_max || ''} 
+                      <label className="block text-xs text-gray-500 mb-1">Budget Max (&#8377;)</label>
+                      <input
+                        type="number" value={lead.budget_max || ''}
                         onChange={e => handleFieldChange('budget_max', e.target.value)}
                         onBlur={e => handleFieldBlur('budget_max', e.target.value)}
                         className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
@@ -284,8 +344,8 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Carpet Area</label>
-                      <input 
-                        type="number" value={lead.carpet_area_sqft || ''} 
+                      <input
+                        type="number" value={lead.carpet_area_sqft || ''}
                         onChange={e => handleFieldChange('carpet_area_sqft', e.target.value)}
                         onBlur={e => handleFieldBlur('carpet_area_sqft', e.target.value)}
                         className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
@@ -301,8 +361,8 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   <div className="space-y-4">
                     <label className="flex items-center justify-between">
                       <span className="text-sm font-medium text-gray-700">Do Not Contact (DNC)</span>
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         checked={lead.dnc_flag || false}
                         onChange={e => {
                           handleFieldChange('dnc_flag', e.target.checked);
@@ -313,8 +373,8 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                     </label>
                     <label className="flex items-center justify-between">
                       <span className="text-sm font-medium text-gray-700">Consent given</span>
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         checked={lead.consent_whatsapp || false}
                         onChange={e => {
                           handleFieldChange('consent_whatsapp', e.target.checked);
@@ -325,8 +385,8 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                     </label>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Competitor Mentioned</label>
-                      <input 
-                        type="text" value={lead.competitor_mentioned || ''} 
+                      <input
+                        type="text" value={lead.competitor_mentioned || ''}
                         onChange={e => handleFieldChange('competitor_mentioned', e.target.value)}
                         onBlur={e => handleFieldBlur('competitor_mentioned', e.target.value)}
                         className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
@@ -351,17 +411,50 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               </div>
             )}
 
+            {activeTab === 'followups' && (
+              <FollowupsTab leadId={leadId} />
+            )}
+
             {activeTab === 'files' && (
               <div className="space-y-4">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:bg-gray-50 transition-colors cursor-pointer">
+                <div
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:bg-gray-50 transition-colors cursor-pointer"
+                  onClick={() => document.getElementById(`file-input-${leadId}`).click()}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={async (e) => {
+                    e.preventDefault();
+                    const file = e.dataTransfer.files[0];
+                    if (file) await uploadFile(file);
+                  }}
+                >
+                  <input
+                    id={`file-input-${leadId}`}
+                    type="file"
+                    style={{ display: 'none' }}
+                    onChange={async (e) => {
+                      if (e.target.files[0]) await uploadFile(e.target.files[0]);
+                      e.target.value = '';
+                    }}
+                  />
                   <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                  <p className="mt-2 text-sm font-medium text-gray-900">Drag & drop files to upload</p>
-                  <p className="text-xs text-gray-500">Floor plans, reference images, or proposal PDFs.</p>
+                  <p className="mt-2 text-sm font-medium text-gray-900">Drag &amp; drop or click to upload</p>
+                  <p className="text-xs text-gray-500">Floor plans, reference images, or proposal PDFs. Max 10MB.</p>
                 </div>
                 <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
                   <div className="px-4 py-3 border-b text-sm font-semibold text-gray-700 bg-gray-50">Uploaded Files</div>
                   <ul className="divide-y divide-gray-200 text-sm">
-                     <li className="p-4 text-center text-gray-500">No files uploaded yet.</li>
+                    {files.length === 0 ? (
+                      <li className="p-4 text-center text-gray-500">No files uploaded yet.</li>
+                    ) : files.map(f => (
+                      <li key={f.id} className="p-3 flex items-center justify-between hover:bg-gray-50">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-gray-400">&#128206;</span>
+                          <a href={f.storage_key} download={f.file_name} className="text-blue-600 hover:underline truncate text-sm font-medium">{f.file_name}</a>
+                          <span className="text-xs text-gray-400 shrink-0">{f.file_size ? `${(f.file_size/1024).toFixed(0)}KB` : ''}</span>
+                        </div>
+                        <button onClick={() => deleteFile(f.id)} className="text-gray-400 hover:text-red-500 shrink-0 ml-2 text-lg leading-none">&times;</button>
+                      </li>
+                    ))}
                   </ul>
                 </div>
               </div>
@@ -376,7 +469,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
             </div>
             <div className="flex gap-2">
               <Button variant="ghost" size="sm" onClick={handleDelete} className="text-red-600 hover:text-red-700 hover:bg-red-50">Mark Lost</Button>
-              
+
               {/* Show Convert button if logic matches a won or late stage */}
               {(lead.stage_id === 'won' || lead.stage_name === 'Won' || lead.stage_name === 'Booking' || lead.stage_id === 'booking') && (
                 <Button variant="primary" size="sm" onClick={() => setIsConvertModalOpen(true)}>Convert to Project</Button>
@@ -386,10 +479,10 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
           {/* MODALS */}
           {isConvertModalOpen && (
-            <ConvertToProjectModal 
-              lead={lead} 
-              isOpen={isConvertModalOpen} 
-              onClose={() => setIsConvertModalOpen(false)} 
+            <ConvertToProjectModal
+              lead={lead}
+              isOpen={isConvertModalOpen}
+              onClose={() => setIsConvertModalOpen(false)}
               onConverted={(projectId) => {
                  toast.success('Successfully converted!');
                  onLeadUpdated?.(lead);
