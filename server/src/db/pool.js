@@ -9,9 +9,8 @@ const pool = new Pool({
   ssl: useSSL ? { rejectUnauthorized: false } : false
 });
 
-pool.on('error', (err, client) => {
-  console.error('Unexpected error on idle client', err);
-  process.exit(-1);
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle DB client — connection will be replaced by the pool', err);
 });
 
 module.exports = pool;

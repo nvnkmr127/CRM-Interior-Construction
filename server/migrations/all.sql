@@ -727,3 +727,12 @@ CREATE TABLE IF NOT EXISTS notifications (
 );
 
 CREATE INDEX idx_notif_user ON notifications(user_id, is_read, created_at DESC);
+
+
+-- Migration: 027_fix_lead_score_column.sql
+
+-- Fix score column: was incorrectly created as BOOLEAN, must be INTEGER (0-100 scoring range)
+ALTER TABLE leads
+  ALTER COLUMN score DROP DEFAULT,
+  ALTER COLUMN score TYPE INTEGER USING CASE WHEN score THEN 1 ELSE 0 END,
+  ALTER COLUMN score SET DEFAULT 0;

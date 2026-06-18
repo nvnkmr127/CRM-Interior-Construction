@@ -95,7 +95,16 @@
 
   --color-border:         #2b2d35;
   --color-border-strong:  #373a43;
-  
+
+  /* Accent toned down for dark surfaces */
+  --color-accent-light:   rgba(232, 147, 90, 0.12);
+
+  /* Status backgrounds adapted for dark mode */
+  --color-success-bg:     rgba(5, 150, 105, 0.12);
+  --color-warning-bg:     rgba(217, 119, 6, 0.12);
+  --color-danger-bg:      rgba(220, 38, 38, 0.12);
+  --color-info-bg:        rgba(37, 99, 235, 0.12);
+
   --color-sidebar-bg:     #121317;
   --color-sidebar-hover:  #1b1d22;
 }

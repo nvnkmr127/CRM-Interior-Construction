@@ -1,4 +1,5 @@
 const { z } = require('zod');
+const pool = require('../db/pool');
 const { createLead } = require('../services/leads/createLead');
 const { updateLead } = require('../services/leads/updateLead');
 const { deleteLead } = require('../services/leads/deleteLead');
@@ -241,9 +242,12 @@ exports.convertToProjectHandler = async (req, res, next) => {
     
     const newProjectId = insertRes.rows[0].id;
 
-    // 3. Update lead stage to won if not already
-    if (lead.stage !== 'won') {
-      await pool.query('UPDATE leads SET stage = $1 WHERE id = $2', ['won', leadId]);
+    // 3. Mark lead as converted (status field) if not already won
+    if (lead.status !== 'converted') {
+      await pool.query(
+        'UPDATE leads SET status = $1, converted_to_project_id = $2, updated_at = NOW() WHERE id = $3',
+        ['converted', newProjectId, leadId]
+      );
     }
 
     return success(res, { project_id: newProjectId, message: 'Project created successfully' }, {}, 201);
@@ -285,8 +289,6 @@ exports.getActivitiesHandler = async (req, res, next) => {
     next(error);
   }
 };
-
-const pool = require('../db/pool');
 
 exports.checkDuplicateHandler = async (req, res, next) => {
   try {

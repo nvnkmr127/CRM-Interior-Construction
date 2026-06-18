@@ -9,7 +9,7 @@ const api = axios.create({
 // REQUEST interceptor (no longer needed for attaching tokens, cookies do this)
 api.interceptors.request.use(
   (config) => {
-    if (localStorage.getItem('mockSession')) {
+    if (import.meta.env.DEV && localStorage.getItem('mockSession')) {
       // Use a custom adapter to return a fake successful response instantly
       // This completely prevents actual network requests and avoids any console errors
       config.adapter = () => {
@@ -82,7 +82,7 @@ api.interceptors.response.use(
         }
       } catch (refreshError) {
         // Refresh token failed/expired
-        if (!localStorage.getItem('mockSession')) {
+        if (!(import.meta.env.DEV && localStorage.getItem('mockSession'))) {
           if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
             window.location.href = '/login';
           }
@@ -93,7 +93,7 @@ api.interceptors.response.use(
 
     // If _retry is true and we still got 401 -> redirect to login (prevent infinite loop)
     if (error.response?.status === 401 && originalRequest._retry) {
-      if (!localStorage.getItem('mockSession')) {
+      if (!(import.meta.env.DEV && localStorage.getItem('mockSession'))) {
         if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
           window.location.href = '/login';
         }
