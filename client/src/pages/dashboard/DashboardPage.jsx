@@ -151,7 +151,8 @@ export default function DashboardPage() {
 
       // Activity
       if (actR.status === 'fulfilled') {
-        const rows = actR.value.data?.data || [];
+        const rawData = actR.value.data?.data;
+        const rows = Array.isArray(rawData) ? rawData : [];
         const timeAgo = (d) => {
           const diff = Date.now() - new Date(d).getTime();
           const mins = Math.floor(diff / 60000);
@@ -173,7 +174,8 @@ export default function DashboardPage() {
 
       // Pipeline from analytics
       if (analyticsR.status === 'fulfilled') {
-        const stages = analyticsR.value.data?.data?.stageDistribution || [];
+        const rawStages = analyticsR.value.data?.data?.stageDistribution;
+        const stages = Array.isArray(rawStages) ? rawStages : [];
         setPipeline(stages.map((s, i) => ({
           id: s.stageId || i,
           name: s.stageName,
@@ -186,7 +188,8 @@ export default function DashboardPage() {
 
       // My tasks
       if (tasksR.status === 'fulfilled') {
-        const raw = tasksR.value.data?.data || [];
+        const rawData = tasksR.value.data?.data;
+        const raw = Array.isArray(rawData) ? rawData : [];
         const today = new Date().toISOString().split('T')[0];
         setTasks(raw.slice(0, 5).map(t => ({
           id: t.id,
@@ -203,7 +206,8 @@ export default function DashboardPage() {
 
       // Payments due
       if (paymentsR.status === 'fulfilled') {
-        const raw = paymentsR.value.data?.data || [];
+        const rawData = paymentsR.value.data?.data;
+        const raw = Array.isArray(rawData) ? rawData : [];
         setPayments(raw.map(p => ({
           id: p.id,
           project: p.project_name || '—',

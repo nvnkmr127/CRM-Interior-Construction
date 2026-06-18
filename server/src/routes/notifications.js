@@ -20,7 +20,7 @@ router.get('/', async (req, res) => {
       ORDER BY n.created_at DESC LIMIT $3
     `, [tenantId, userId, limit]);
 
-    res.json(success(rows));
+    return success(res, rows);
   } catch (error) {
     res.status(500).json(fail('Notifications fetch failed'));
   }
@@ -36,7 +36,7 @@ router.get('/unread-count', async (req, res) => {
       WHERE tenant_id=$1 AND user_id=$2 AND is_read=false
     `, [tenantId, userId]);
 
-    res.json(success({ count: parseInt(rows[0].count, 10) }));
+    return success(res, { count: parseInt(rows[0].count, 10) });
   } catch (error) {
     res.status(500).json(fail('Unread count fetch failed'));
   }
@@ -87,7 +87,7 @@ router.get('/preferences', async (req, res) => {
   const userId = req.user.id;
   try {
     const { rows } = await pool.query('SELECT * FROM user_preferences WHERE user_id=$1 AND tenant_id=$2', [userId, tenantId]);
-    res.json(success(rows[0] || {}));
+    return success(res, rows[0] || {});
   } catch (err) {
     res.status(500).json(fail('Failed to fetch preferences'));
   }
@@ -108,7 +108,7 @@ router.patch('/preferences', async (req, res) => {
         dnd_end_time=EXCLUDED.dnd_end_time,
         updated_at=CURRENT_TIMESTAMP
     `, [userId, tenantId, email_sla_breaches ?? true, push_score_changes ?? true, dnd_start_time || '22:00', dnd_end_time || '08:00']);
-    res.json(success({ message: 'Preferences updated' }));
+    return success(res, { message: 'Preferences updated' });
   } catch (err) {
     res.status(500).json(fail('Failed to update preferences'));
   }

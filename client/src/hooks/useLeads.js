@@ -27,7 +27,7 @@ export function useLeads(filters = {}) {
       ]);
 
       if (leadsRes.success) {
-        let fetchedLeads = leadsRes.data || leadsRes.results || [];
+        let fetchedLeads = Array.isArray(leadsRes.data) ? leadsRes.data : Array.isArray(leadsRes.results) ? leadsRes.results : [];
         if (leadsRes.pagination) {
           setTotal(leadsRes.pagination.total || 0);
         } else if (leadsRes.total !== undefined) {
@@ -44,7 +44,7 @@ export function useLeads(filters = {}) {
       }
       
       if (statsRes.data?.success) {
-        setStats(statsRes.data.data);
+        setStats(statsRes.data.data || { total: 0, wonThisMonth: 0, avgScore: 0, convPct: 0 });
       }
     } catch (err) {
       console.error('Error fetching leads:', err);

@@ -22,9 +22,10 @@ api.interceptors.request.use(
           'Clear localStorage.mockSession to use real auth.'
         );
       }
+      /* Disable adapter override as it returns invalid data shapes causing React crashes
       config.adapter = () => {
         return Promise.resolve({
-          data: { success: true, data: {}, meta: {} },
+          data: { success: true, data: null, meta: {} },
           status: 200,
           statusText: 'OK',
           headers: {},
@@ -32,6 +33,7 @@ api.interceptors.request.use(
           request: {}
         });
       };
+      */
     }
     return config;
   },

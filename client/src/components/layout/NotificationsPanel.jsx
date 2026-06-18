@@ -62,7 +62,7 @@ export default function NotificationsPanel() {
     try {
       const res = await api.get('/notifications/unread-count')
       if (res.data?.success) {
-        setUnreadCount(res.data.data.count || 0)
+        setUnreadCount(res.data.data?.count || 0)
       }
     } catch (e) { console.error(e) }
   }

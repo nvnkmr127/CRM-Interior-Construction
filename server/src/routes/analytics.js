@@ -54,7 +54,7 @@ router.get('/leads/summary', async (req, res) => {
     const won = parseInt(row.won_count, 10) || 0;
     const conversionRate = total > 0 ? ((won / total) * 100).toFixed(1) : 0;
 
-    res.json(success({
+    return success(res, {
       total_leads: total,
       new_this_period: parseInt(row.new_this_period, 10) || 0,
       conversion_rate: parseFloat(conversionRate),
@@ -66,7 +66,7 @@ router.get('/leads/summary', async (req, res) => {
         cold: parseInt(row.tier_cold, 10) || 0,
         dead: parseInt(row.tier_dead, 10) || 0
       }
-    }));
+    });
   } catch (err) {
     res.status(500).json(fail('Failed to fetch summary: ' + err.message));
   }
@@ -100,7 +100,7 @@ router.get('/leads/funnel', async (req, res) => {
       return { stage, count, drop_off_rate: parseFloat(drop_off_rate) };
     });
 
-    res.json(success(funnel));
+    return success(res, funnel);
   } catch (err) {
     res.status(500).json(fail('Failed to fetch funnel'));
   }
@@ -135,7 +135,7 @@ router.get('/leads/by_source', async (req, res) => {
       };
     });
 
-    res.json(success(data));
+    return success(res, data);
   } catch (err) {
     res.status(500).json(fail('Failed to fetch sources'));
   }
@@ -196,7 +196,7 @@ router.get('/leads/rep_performance', async (req, res) => {
       };
     });
 
-    res.json(success(data));
+    return success(res, data);
   } catch (err) {
     res.status(500).json(fail('Failed to fetch rep performance'));
   }
@@ -225,7 +225,7 @@ router.get('/leads/lost_reasons', async (req, res) => {
       };
     });
 
-    res.json(success(data));
+    return success(res, data);
   } catch (err) {
     res.status(500).json(fail('Failed to fetch lost reasons'));
   }
@@ -281,13 +281,13 @@ router.get('/projects', authorize('analytics:read'), async (req, res) => {
       `, [tenantId])
     ]);
 
-    res.json(success({
+    return success(res, {
       kpis: kpisRes.rows[0],
       statusDist: distRes.rows,
       monthlyRevenue: revenueRes.rows,
       taskCompletion: completionRes.rows,
       delayedProjects: delayedRes.rows
-    }));
+    });
   } catch (error) {
     res.status(500).json(fail('Projects analytics failed'));
   }

@@ -65,7 +65,7 @@ router.get('/', async (req, res) => {
 
     await Promise.all(promises);
 
-    res.json(success(results));
+    return success(res, results);
   } catch (error) {
     res.status(500).json(fail('Search failed'));
   }

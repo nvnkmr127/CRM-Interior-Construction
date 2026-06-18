@@ -73,7 +73,7 @@ router.get('/stats', async (req, res) => {
       }
     };
 
-    res.json(success(data));
+    return success(res, data);
   } catch (error) {
     res.status(500).json(fail('Dashboard stats failed'));
   }
@@ -92,7 +92,7 @@ router.get('/activity', async (req, res) => {
       ORDER BY al.created_at DESC LIMIT $2
     `, [tenantId, limit]);
 
-    res.json(success(rows.map(row => ({
+    return success(res, rows.map(row => ({
       id: row.id,
       action: row.action,
       entity: row.entity,
@@ -101,7 +101,7 @@ router.get('/activity', async (req, res) => {
       avatar_url: row.avatar_url,
       created_at: row.created_at,
       new_value: row.new_value
-    }))));
+    })));
   } catch (error) {
     res.status(500).json(fail('Activity fetch failed'));
   }
@@ -119,7 +119,7 @@ router.get('/pipeline', async (req, res) => {
       GROUP BY ls.id ORDER BY ls.sort_order
     `, [tenantId]);
 
-    res.json(success(rows));
+    return success(res, rows);
   } catch (error) {
     res.status(500).json(fail('Pipeline fetch failed'));
   }
@@ -140,7 +140,7 @@ router.get('/my-tasks', async (req, res) => {
       ORDER BY t.due_date ASC NULLS LAST LIMIT $3
     `, [tenantId, userId, limit]);
 
-    res.json(success(rows));
+    return success(res, rows);
   } catch (error) {
     res.status(500).json(fail('My tasks fetch failed'));
   }

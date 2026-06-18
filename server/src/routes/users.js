@@ -54,7 +54,7 @@ router.get('/', async (req, res) => {
       return rest;
     });
 
-    res.json(success(safeUsers));
+    return success(res, safeUsers);
   } catch (error) {
     res.status(500).json(fail('Users fetch failed'));
   }
@@ -101,7 +101,7 @@ router.patch('/:id', authorize('users:manage'), async (req, res) => {
     if (rows.length === 0) return res.status(404).json(fail('User not found'));
 
     const { password_hash: _password_hash, ...safeUser } = rows[0];
-    res.json(success(safeUser));
+    return success(res, safeUser);
   } catch (error) {
     res.status(500).json(fail('User update failed'));
   }
@@ -128,7 +128,7 @@ router.post('/invite', authorize('users:manage'), async (req, res) => {
     console.log(`Invitation email would be sent to ${email}`);
 
     const { password_hash: _password_hash, ...safeUser } = rows[0];
-    res.json(success(safeUser));
+    return success(res, safeUser);
   } catch (error) {
     res.status(500).json(fail('User invite failed'));
   }
@@ -148,7 +148,7 @@ router.delete('/:id', authorize('users:manage'), async (req, res) => {
       return res.status(404).json(fail('User not found or already deleted'));
     }
 
-    res.json(success({ message: 'User deleted successfully' }));
+    return success(res, { message: 'User deleted successfully' });
   } catch (error) {
     res.status(500).json(fail('User deletion failed'));
   }

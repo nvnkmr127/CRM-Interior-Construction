@@ -266,7 +266,7 @@ router.patch('/me', authenticate, async (req, res, next) => {
     }
 
     const { password_hash: _password_hash, ...safeUser } = result.rows[0];
-    res.json(success(safeUser));
+    return success(res, safeUser);
   } catch (error) {
     next(error);
   }
