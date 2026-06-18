@@ -21,7 +21,10 @@ export default function LeadFilterRow({
   scoreRange, setScoreRange,
   sortBy, setSortBy,
   view, setView,
-  assignees
+  assignees,
+  createdFrom, setCreatedFrom,
+  createdTo, setCreatedTo,
+  onClearFilters
 }) {
   return (
     <div className={styles.filterRow}>
@@ -59,6 +62,21 @@ export default function LeadFilterRow({
         {SCORE_RANGES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
       </select>
 
+      <input
+        type="date"
+        className={styles.filterSelect}
+        value={createdFrom}
+        onChange={e => setCreatedFrom(e.target.value)}
+        title="Created from"
+      />
+      <input
+        type="date"
+        className={styles.filterSelect}
+        value={createdTo}
+        onChange={e => setCreatedTo(e.target.value)}
+        title="Created to"
+      />
+
       <select
         className={styles.filterSelect}
         value={sortBy}
@@ -66,6 +84,10 @@ export default function LeadFilterRow({
       >
         {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
+
+      {(search || assigneeFilter || sourceFilter !== 'All Sources' || scoreRange !== 'all' || createdFrom || createdTo) && (
+        <button className={styles.clearBtn} onClick={onClearFilters}>✕ Clear</button>
+      )}
 
       <div className={styles.viewToggle}>
         <button
