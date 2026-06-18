@@ -121,19 +121,63 @@ async function processAutomationJobs() {
 // Semaphore to ensure the polling routine does not stack overlaps
 let isProcessing = false;
 
+// Detect DB connection/network errors that warrant backoff
+function isConnectionError(err) {
+  if (!err) return false;
+  const msg = (err.message || '').toLowerCase();
+  return (
+    err.code === 'ENOTFOUND' ||
+    err.code === 'ECONNREFUSED' ||
+    err.code === 'ETIMEDOUT' ||
+    err.code === 'ECONNRESET' ||
+    // pg FATAL from Supabase pooler when host unreachable (code XX000)
+    (err.severity === 'FATAL' && msg.includes('not found'))
+  );
+}
+
 function startQueuePolling() {
+  const BASE_DELAY = 5_000;       // 5 s normal poll interval
+  const MAX_BACKOFF = 120_000;    // 2 min ceiling
+  let backoff = BASE_DELAY;
+  let consecutiveConnErrors = 0;
+
   console.log('[AutomationQueue] Poller started (5000ms cycle).');
-  setInterval(async () => {
-    if (isProcessing) return;
-    isProcessing = true;
-    try {
-      await processAutomationJobs();
-    } catch (e) {
-      console.error('[AutomationQueue Poller] Execution exception:', e);
-    } finally {
-      isProcessing = false;
-    }
-  }, 5000);
+
+  const schedule = () => {
+    setTimeout(async () => {
+      if (isProcessing) { schedule(); return; }
+      isProcessing = true;
+      try {
+        await processAutomationJobs();
+        // Successful poll — reset backoff
+        if (consecutiveConnErrors > 0) {
+          console.log('[AutomationQueue] DB connection restored. Resuming normal polling.');
+          consecutiveConnErrors = 0;
+        }
+        backoff = BASE_DELAY;
+      } catch (e) {
+        if (isConnectionError(e)) {
+          consecutiveConnErrors++;
+          backoff = Math.min(backoff * 2, MAX_BACKOFF);
+          // Only log the first occurrence and every 5th repeat to avoid spam
+          if (consecutiveConnErrors === 1 || consecutiveConnErrors % 5 === 0) {
+            console.error(
+              `[AutomationQueue] DB unreachable (attempt ${consecutiveConnErrors}). ` +
+              `Backing off to ${backoff / 1000}s. Error: ${e.message}`
+            );
+          }
+        } else {
+          console.error('[AutomationQueue Poller] Execution exception:', e);
+          backoff = BASE_DELAY;
+        }
+      } finally {
+        isProcessing = false;
+        schedule();
+      }
+    }, backoff);
+  };
+
+  schedule();
 }
 
 module.exports = {
