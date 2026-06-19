@@ -19,7 +19,16 @@ export default function LeadForm({ lead, onSave, onClose }) {
     stageId: lead?.stage_id || '',
     assigneeId: lead?.assignee_id || '',
     notes: lead?.notes || '',
-    custom_fields: lead?.custom_fields || {}
+    custom_fields: lead?.custom_fields || {},
+    builder_name: lead?.builder_name || '',
+    possession_date: lead?.possession_date ? lead.possession_date.substring(0, 10) : '',
+    house_status: lead?.house_status || '',
+    loan_approved: lead?.loan_approved || false,
+    interior_style: lead?.interior_style || '',
+    material_preference: lead?.material_preference || '',
+    preferred_communication: lead?.preferred_communication || '',
+    preferred_language: lead?.preferred_language || '',
+    referral_source: lead?.referral_source || ''
   }, {
     name: run(validators.required('Name'), validators.minLen(2, 'Name')),
     phone: run(validators.required('Phone'), validators.phone),
@@ -47,7 +56,10 @@ export default function LeadForm({ lead, onSave, onClose }) {
     });
   }, [isEdit, values.stageId, setValues]);
 
-  const onChange = (e) => handleChange(e.target.name, e.target.value);
+  const onChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    handleChange(name, type === 'checkbox' ? checked : value);
+  };
   const onBlur = (e) => handleBlur(e.target.name);
 
   const handleSubmit = async () => {
@@ -151,6 +163,36 @@ export default function LeadForm({ lead, onSave, onClose }) {
               name="notes" value={values.notes} onChange={onChange}
               style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', minHeight: '80px', fontFamily: 'inherit'}}
             />
+          </div>
+
+          <div className={styles.fullWidth} style={{ marginTop: 'var(--space-4)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-4)' }}>
+            <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 600, marginBottom: 'var(--space-3)' }}>Qualification Details</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+              <Input label="Builder Name" name="builder_name" value={values.builder_name} onChange={onChange} onBlur={onBlur} />
+              <Input label="Possession Date" type="date" name="possession_date" value={values.possession_date} onChange={onChange} onBlur={onBlur} />
+              
+              <div>
+                <label style={{fontSize: 'var(--text-sm)', fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)'}}>House Status</label>
+                <select name="house_status" value={values.house_status} onChange={onChange} style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)'}}>
+                  <option value="">Select status</option>
+                  <option value="Under Construction">Under Construction</option>
+                  <option value="Ready to Move">Ready to Move</option>
+                  <option value="Renovation">Renovation</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{fontSize: 'var(--text-sm)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px', height: '100%', marginTop: '24px'}}>
+                  <input type="checkbox" name="loan_approved" checked={values.loan_approved} onChange={onChange} />
+                  Loan Approved
+                </label>
+              </div>
+
+              <Input label="Interior Style" name="interior_style" placeholder="e.g. Modern, Minimal, Luxury" value={values.interior_style} onChange={onChange} onBlur={onBlur} />
+              <Input label="Material Preference" name="material_preference" placeholder="e.g. Modular, Wood" value={values.material_preference} onChange={onChange} onBlur={onBlur} />
+              <Input label="Preferred Communication" name="preferred_communication" placeholder="Call / WhatsApp / Email" value={values.preferred_communication} onChange={onChange} onBlur={onBlur} />
+              <Input label="Preferred Language" name="preferred_language" value={values.preferred_language} onChange={onChange} onBlur={onBlur} />
+            </div>
           </div>
         </div>
 

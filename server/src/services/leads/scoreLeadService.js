@@ -91,7 +91,51 @@ async function getAndScoreLead(tenantId, leadData) {
   return scoreLead(leadData, result.rows);
 }
 
+function calculateAIScore(leadData) {
+  let winProb = 10;
+  const breakdown = {
+    "Buying Intent": 10,
+    "Budget Confidence": 10,
+    "Completeness": 0
+  };
+
+  if (leadData.budget_max && Number(leadData.budget_max) > 0) {
+    breakdown["Budget Confidence"] += 40;
+    winProb += 20;
+  }
+  if (leadData.loan_approved) {
+    breakdown["Budget Confidence"] += 40;
+    winProb += 15;
+  }
+
+  if (leadData.possession_date) {
+    const today = new Date();
+    const possDate = new Date(leadData.possession_date);
+    const monthsAway = (possDate.getTime() - today.getTime()) / (1000 * 3600 * 24 * 30);
+    if (monthsAway <= 3 && monthsAway >= 0) {
+      breakdown["Buying Intent"] += 50;
+      winProb += 20;
+    } else {
+      breakdown["Buying Intent"] += 20;
+    }
+  }
+
+  const keys = ['builder_name', 'house_status', 'interior_style', 'material_preference', 'property_type', 'carpet_area_sqft'];
+  let filled = 0;
+  keys.forEach(k => { if (leadData[k]) filled++; });
+  breakdown["Completeness"] = Math.round((filled / keys.length) * 100);
+  winProb += (filled * 5);
+
+  if (winProb > 99) winProb = 99;
+
+  return {
+    win_probability: Math.round(winProb),
+    ai_score_breakdown: breakdown
+  };
+}
+
 module.exports = {
   scoreLead,
-  getAndScoreLead
+  getAndScoreLead,
+  calculateAIScore
 };

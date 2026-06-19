@@ -6,12 +6,15 @@ const { dispatchEvent } = require('../webhooks/webhookDispatcher');
 // The scoreLeadService might be created in D2-10 as per instructions.
 // We'll require it, but wrap it in try-catch or just require it so it will throw if not present yet.
 let scoreLead;
+let calculateAIScore;
 try {
   const scoreLeadService = require('./scoreLeadService');
   scoreLead = scoreLeadService.scoreLead;
+  calculateAIScore = scoreLeadService.calculateAIScore;
 } catch (e) {
   // If not yet implemented, provide a dummy fallback for now
   scoreLead = () => 0;
+  calculateAIScore = null;
 }
 
 async function createLead({ tenantId, userId, data }) {
@@ -66,12 +69,22 @@ async function createLead({ tenantId, userId, data }) {
   const score = scoreLead(data, rulesResult.rows);
   console.log('[createLead] Score calculated:', score);
 
+  let win_probability = 0;
+  let ai_score_breakdown = {};
+  if (calculateAIScore) {
+    const aiScores = calculateAIScore(data);
+    win_probability = aiScores.win_probability;
+    ai_score_breakdown = aiScores.ai_score_breakdown;
+  }
+
   // 4. leadRepository.createLead
   const leadDataForRepo = {
     ...data,
     stage_id: stageId,
     assignee_id: assigneeId,
     score,
+    win_probability,
+    ai_score_breakdown,
     created_by: userId
   };
   console.log('[createLead] Inserting lead into DB...', leadDataForRepo);

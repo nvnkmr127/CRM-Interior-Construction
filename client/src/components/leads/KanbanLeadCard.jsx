@@ -22,7 +22,9 @@ export default function KanbanLeadCard({ lead, onAction }) {
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const isSlaBreached = lead.days_in_stage > 3; // Example SLA: > 3 days is breached
+  const slaLimit = lead.max_days_in_stage || 3;
+  const isSlaBreached = lead.days_in_stage > slaLimit;
+  const isOverdue = lead.follow_up_overdue_days > 0;
 
   const handleAction = (e, actionType) => {
     e.stopPropagation();
@@ -40,7 +42,14 @@ export default function KanbanLeadCard({ lead, onAction }) {
     >
       <div className="flex justify-between items-start mb-2">
         <h4 className="font-semibold text-gray-800 line-clamp-1">{lead.name}</h4>
-        <ScoreBadge score={lead.score} />
+        <div className="flex gap-2 items-center">
+          {lead.win_probability !== undefined && (
+            <div className={`text-xs px-2 py-1 rounded-full font-medium ${lead.win_probability > 70 ? 'bg-green-100 text-green-700' : lead.win_probability > 30 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'}`}>
+              {lead.win_probability}% Win
+            </div>
+          )}
+          <ScoreBadge score={lead.score} />
+        </div>
       </div>
 
       <div className="text-sm text-gray-500 mb-2 space-y-1">
@@ -55,8 +64,16 @@ export default function KanbanLeadCard({ lead, onAction }) {
       </div>
 
       <div className="flex justify-between items-end mt-4">
-        <div className={`text-xs px-2 py-1 rounded-full ${isSlaBreached ? 'bg-red-100 text-red-700 font-medium' : 'bg-gray-100 text-gray-600'}`}>
-          {lead.days_in_stage || 0}d in stage
+        <div className="flex flex-col gap-1">
+          <div className={`text-xs px-2 py-1 rounded-full ${isSlaBreached ? 'bg-red-100 text-red-700 font-medium' : 'bg-gray-100 text-gray-600'}`}>
+            {lead.days_in_stage || 0}d in stage
+          </div>
+          {isOverdue && (
+            <div className="text-[10px] px-2 py-0.5 rounded text-red-600 bg-red-50 border border-red-200 font-bold flex items-center gap-1">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              Overdue {lead.follow_up_overdue_days}d
+            </div>
+          )}
         </div>
         
         <div className="flex items-center gap-2">

@@ -2,16 +2,23 @@ const pool = require('../../db/pool');
 
 const VALID_TYPES = ['call', 'note', 'email', 'whatsapp', 'site_visit', 'meeting'];
 
-async function logActivity({ tenantId, userId, leadId, type, title, notes, outcome, scheduledAt }) {
+async function logActivity({ tenantId, userId, leadId, type, title, notes, outcome, scheduledAt, ai_summary, metadata }) {
   if (!VALID_TYPES.includes(type)) {
     throw new Error(`INVALID_ACTIVITY_TYPE: Type must be one of ${VALID_TYPES.join(', ')}`);
   }
 
+  // MOCK AI Summarization for Site Visits if notes are provided but no summary yet
+  let finalAiSummary = ai_summary;
+  if (type === 'site_visit' && !finalAiSummary && notes) {
+    // Generate mock AI summary based on notes
+    finalAiSummary = `[AI Generated] Key takeaway from site visit: ${notes.substring(0, 50)}... The client is highly engaged.`;
+  }
+
   const query = `
     INSERT INTO activities (
-      tenant_id, lead_id, user_id, type, title, notes, outcome, scheduled_at, completed_at
+      tenant_id, lead_id, user_id, type, title, notes, outcome, scheduled_at, completed_at, ai_summary, metadata
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, NOW()
+      $1, $2, $3, $4, $5, $6, $7, $8, NOW(), $9, $10
     ) RETURNING *
   `;
   
@@ -23,7 +30,9 @@ async function logActivity({ tenantId, userId, leadId, type, title, notes, outco
     title || null,
     notes || null,
     outcome || null,
-    scheduledAt || null
+    scheduledAt || null,
+    finalAiSummary || null,
+    metadata ? JSON.stringify(metadata) : '{}'
   ];
 
   const result = await pool.query(query, values);

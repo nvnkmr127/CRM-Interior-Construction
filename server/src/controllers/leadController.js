@@ -20,15 +20,31 @@ const createLeadSchema = z.object({
   stageId: z.string().uuid('Invalid stage ID').optional().or(z.literal('')),
   assigneeId: z.string().uuid('Invalid assignee ID').optional().or(z.literal('')),
   notes: z.string().optional(),
-  custom_fields: z.record(z.any()).optional()
+  custom_fields: z.record(z.any()).optional(),
+  builder_name: z.string().optional(),
+  possession_date: z.string().optional(),
+  house_status: z.string().optional(),
+  loan_approved: z.boolean().optional(),
+  interior_style: z.string().optional(),
+  material_preference: z.string().optional(),
+  preferred_communication: z.string().optional(),
+  preferred_language: z.string().optional(),
+  referral_source: z.string().optional(),
+  lifestyle_preferences: z.any().optional(),
+  additional_contacts: z.array(z.any()).optional(),
+  win_probability: z.number().min(0).max(100).optional(),
+  last_contacted_at: z.string().datetime().optional(),
+  ai_score_breakdown: z.record(z.any()).optional()
 });
 
 const logActivitySchema = z.object({
   type: z.enum(['call', 'note', 'email', 'whatsapp', 'site_visit', 'meeting']),
   title: z.string().optional(),
-  notes: z.string(),
+  notes: z.string().optional(),
   outcome: z.string().optional(),
-  scheduledAt: z.string().datetime().optional()
+  scheduledAt: z.string().datetime().optional(),
+  ai_summary: z.string().optional(),
+  metadata: z.record(z.any()).optional()
 });
 
 const getTenantAndUser = (req) => {

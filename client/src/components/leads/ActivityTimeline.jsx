@@ -38,7 +38,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 20 });
-  const [activeForm, setActiveForm] = useState(null); // 'note', 'email', 'task'
+  const [activeForm, setActiveForm] = useState(null); // 'note', 'email', 'task', 'site_visit'
 
   // Generic form data
   const [formData, setFormData] = useState({
@@ -47,7 +47,11 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
     title: '',
     due_date: '',
     assigned_to: '',
-    priority: 'medium'
+    priority: 'medium',
+    // Site Visit specific
+    site_address: '',
+    client_feedback: '',
+    measurements_taken: false
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -94,13 +98,21 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
         if (onTaskAdded) onTaskAdded();
         // Also log a system activity that a task was scheduled
         await logActivity(leadId, { type: 'note', notes: `Scheduled task: ${formData.title} due on ${formData.due_date}` });
+      } else if (activeForm === 'site_visit') {
+        if (!formData.notes.trim()) return;
+        const metadata = {
+          site_address: formData.site_address,
+          client_feedback: formData.client_feedback,
+          measurements_taken: formData.measurements_taken
+        };
+        await logActivity(leadId, { type: 'site_visit', notes: formData.notes, metadata });
       } else {
         if (!formData.notes.trim()) return;
         await logActivity(leadId, { type: activeForm, notes: formData.notes });
       }
       
       await fetchActivities(1, false);
-      setFormData({ notes: '', title: '', due_date: '', assigned_to: '', priority: 'medium' });
+      setFormData({ notes: '', title: '', due_date: '', assigned_to: '', priority: 'medium', site_address: '', client_feedback: '', measurements_taken: false });
       setActiveForm(null);
     } catch (err) {
       alert('Failed to save.');
@@ -146,6 +158,12 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
           >
             <Icons.task /> Schedule Task
           </button>
+          <button 
+            onClick={() => setActiveForm(activeForm === 'site_visit' ? null : 'site_visit')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm ${activeForm === 'site_visit' ? 'bg-green-100 text-green-700 border-green-300' : 'bg-white border text-gray-700 hover:bg-gray-100'}`}
+          >
+            <Icons.site_visit /> Site Visit
+          </button>
         </div>
 
         {activeForm && (
@@ -177,6 +195,37 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
                     <option value="">Assign to (optional)</option>
                     {reps.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                   </select>
+                </div>
+              </div>
+            ) : activeForm === 'site_visit' ? (
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  placeholder="Site Address"
+                  value={formData.site_address}
+                  onChange={(e) => setFormData(prev => ({ ...prev, site_address: e.target.value }))}
+                  className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+                <textarea
+                  required
+                  rows="3"
+                  placeholder="Detailed Visit Notes (AI will summarize this)"
+                  value={formData.notes}
+                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  className="w-full rounded-md border border-gray-300 p-3 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none shadow-inner"
+                ></textarea>
+                <div className="flex gap-4">
+                  <input
+                    type="text"
+                    placeholder="Client Feedback (e.g. 'Loved the living room plan')"
+                    value={formData.client_feedback}
+                    onChange={(e) => setFormData(prev => ({ ...prev, client_feedback: e.target.value }))}
+                    className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  />
+                  <label className="flex items-center gap-2 text-sm text-gray-700 whitespace-nowrap">
+                    <input type="checkbox" checked={formData.measurements_taken} onChange={(e) => setFormData(prev => ({ ...prev, measurements_taken: e.target.checked }))} className="rounded" />
+                    Measurements Taken
+                  </label>
                 </div>
               </div>
             ) : (
@@ -253,6 +302,15 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
                     
                     {activity.notes && (
                       <ExpandableText text={activity.notes} />
+                    )}
+
+                    {activity.ai_summary && (
+                      <div className="mt-3 bg-indigo-50 p-3 rounded border border-indigo-100 flex gap-2">
+                        <svg className="w-5 h-5 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        <div className="text-sm text-indigo-900 leading-relaxed font-medium">
+                          {activity.ai_summary}
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>

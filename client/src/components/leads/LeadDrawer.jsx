@@ -263,6 +263,33 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
             {activeTab === 'overview' && (
               <div className="space-y-6">
 
+                {/* AI Insights Section */}
+                {(lead.win_probability !== undefined || lead.ai_score_breakdown) && (
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg shadow-sm border border-blue-100">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-xs font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        AI Insights
+                      </h4>
+                      {lead.win_probability !== undefined && (
+                        <Badge variant="outline" className={`font-semibold ${lead.win_probability > 70 ? 'text-green-700 bg-green-100 border-green-200' : lead.win_probability > 30 ? 'text-yellow-700 bg-yellow-100 border-yellow-200' : 'text-gray-700 bg-gray-100 border-gray-200'}`}>
+                          {lead.win_probability}% Win Probability
+                        </Badge>
+                      )}
+                    </div>
+                    {lead.ai_score_breakdown && Object.keys(lead.ai_score_breakdown).length > 0 && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        {Object.entries(lead.ai_score_breakdown).map(([key, val]) => (
+                          <div key={key} className="bg-white p-2 rounded border border-blue-50">
+                            <div className="text-[10px] text-gray-500 uppercase font-semibold">{key}</div>
+                            <div className="text-sm font-medium text-gray-800">{val}/100</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Contact Info */}
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                   <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Contact Info</h4>

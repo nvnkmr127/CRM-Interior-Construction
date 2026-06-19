@@ -1,13 +1,23 @@
 const pool = require('../db/pool');
 
 async function createLead(tenantId, data) {
-  const { name, email, phone, source, stage_id, assignee_id, score, custom_fields, notes, status, created_by } = data;
+  const { 
+    name, email, phone, source, stage_id, assignee_id, score, custom_fields, notes, status, created_by,
+    builder_name, possession_date, house_status, loan_approved, interior_style, material_preference, 
+    preferred_communication, preferred_language, referral_source, lifestyle_preferences, additional_contacts,
+    win_probability, last_contacted_at, ai_score_breakdown
+  } = data;
   
   const query = `
     INSERT INTO leads (
-      tenant_id, name, email, phone, source, stage_id, assignee_id, score, custom_fields, notes, status, created_by
+      tenant_id, name, email, phone, source, stage_id, assignee_id, score, custom_fields, notes, status, created_by,
+      builder_name, possession_date, house_status, loan_approved, interior_style, material_preference,
+      preferred_communication, preferred_language, referral_source, lifestyle_preferences, additional_contacts,
+      win_probability, last_contacted_at, ai_score_breakdown
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+      $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23,
+      $24, $25, $26
     ) RETURNING *
   `;
   
@@ -23,7 +33,21 @@ async function createLead(tenantId, data) {
     typeof custom_fields === 'object' ? JSON.stringify(custom_fields) : (custom_fields || '{}'),
     notes || null,
     status || 'active',
-    created_by || null
+    created_by || null,
+    builder_name || null,
+    possession_date || null,
+    house_status || null,
+    loan_approved || false,
+    interior_style || null,
+    material_preference || null,
+    preferred_communication || null,
+    preferred_language || null,
+    referral_source || null,
+    typeof lifestyle_preferences === 'object' ? JSON.stringify(lifestyle_preferences) : (lifestyle_preferences || '{}'),
+    typeof additional_contacts === 'object' ? JSON.stringify(additional_contacts) : (additional_contacts || '[]'),
+    win_probability || 0,
+    last_contacted_at || null,
+    typeof ai_score_breakdown === 'object' ? JSON.stringify(ai_score_breakdown) : (ai_score_breakdown || '{}')
   ];
   
   const result = await pool.query(query, values);
@@ -34,7 +58,9 @@ async function findLeadById(tenantId, leadId) {
   const query = `
     SELECT l.*,
            u.name AS assignee_name, u.avatar_url AS assignee_avatar,
-           s.name AS stage_name, s.color AS stage_color
+           s.name AS stage_name, s.color AS stage_color, s.max_days_in_stage,
+           COALESCE(EXTRACT(DAY FROM CURRENT_TIMESTAMP - COALESCE(l.stage_updated_at, l.updated_at)), 0) AS days_in_stage,
+           (SELECT COALESCE(MAX(EXTRACT(DAY FROM CURRENT_TIMESTAMP - due_at)), 0) FROM lead_followups WHERE lead_id = l.id AND is_done = FALSE AND due_at < CURRENT_TIMESTAMP) AS follow_up_overdue_days
     FROM leads l
     LEFT JOIN users u ON l.assignee_id = u.id
     LEFT JOIN lead_stages s ON l.stage_id = s.id
@@ -49,7 +75,9 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
   let query = `
     SELECT l.*,
            u.name AS assignee_name, u.avatar_url AS assignee_avatar,
-           s.name AS stage_name, s.color AS stage_color
+           s.name AS stage_name, s.color AS stage_color, s.max_days_in_stage,
+           COALESCE(EXTRACT(DAY FROM CURRENT_TIMESTAMP - COALESCE(l.stage_updated_at, l.updated_at)), 0) AS days_in_stage,
+           (SELECT COALESCE(MAX(EXTRACT(DAY FROM CURRENT_TIMESTAMP - due_at)), 0) FROM lead_followups WHERE lead_id = l.id AND is_done = FALSE AND due_at < CURRENT_TIMESTAMP) AS follow_up_overdue_days
     FROM leads l
     LEFT JOIN users u ON l.assignee_id = u.id
     LEFT JOIN lead_stages s ON l.stage_id = s.id
@@ -142,6 +170,10 @@ async function updateLead(tenantId, leadId, updates) {
   
   if (fields.length === 0) {
     return findLeadById(tenantId, leadId);
+  }
+  
+  if (updates.stage_id !== undefined) {
+    fields.push(`stage_updated_at = NOW()`);
   }
   
   fields.push(`updated_at = NOW()`);
