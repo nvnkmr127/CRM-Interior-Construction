@@ -7,6 +7,8 @@ export default function AIMeetingModal({ isOpen, onClose, leadId, onSummarySaved
   const [transcript, setTranscript] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [coachFeedback, setCoachFeedback] = useState(null);
+  const [loadingCoach, setLoadingCoach] = useState(false);
   const toast = useToast();
 
   const handleSummarize = async () => {
@@ -14,6 +16,7 @@ export default function AIMeetingModal({ isOpen, onClose, leadId, onSummarySaved
     
     setLoading(true);
     setResult(null);
+    setCoachFeedback(null);
     try {
       const res = await api.post(`/leads/${leadId}/meeting-summary`, { transcript });
       if (res.data.success) {
@@ -25,6 +28,20 @@ export default function AIMeetingModal({ isOpen, onClose, leadId, onSummarySaved
       toast.error('Failed to summarize meeting');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGetCoachFeedback = async () => {
+    setLoadingCoach(true);
+    try {
+      const res = await api.post(`/leads/${leadId}/sales-coach`, { transcript });
+      if (res.data.success) {
+        setCoachFeedback(res.data.data);
+      }
+    } catch (e) {
+      toast.error('Failed to get coaching feedback');
+    } finally {
+      setLoadingCoach(false);
     }
   };
 
@@ -95,15 +112,49 @@ export default function AIMeetingModal({ isOpen, onClose, leadId, onSummarySaved
 
                 <div>
                   <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Sentiment</h4>
-                  <span className={\`inline-block px-3 py-1 rounded-full text-xs font-semibold \${
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
                     result.customer_sentiment?.toLowerCase().includes('positive') ? 'bg-green-100 text-green-700' : 
                     result.customer_sentiment?.toLowerCase().includes('negative') ? 'bg-red-100 text-red-700' : 
                     'bg-gray-100 text-gray-700'
-                  }\`}>
+                  }`}>
                     {result.customer_sentiment || 'Neutral'}
                   </span>
                 </div>
               </div>
+
+              {/* AI Coach Section */}
+              <div className="mt-4 border-t pt-4">
+                {!coachFeedback && !loadingCoach ? (
+                  <Button variant="outline" size="sm" onClick={handleGetCoachFeedback} className="w-full text-indigo-600 border-indigo-200 bg-indigo-50 hover:bg-indigo-100">
+                    🧠 Get AI Sales Coach Feedback
+                  </Button>
+                ) : loadingCoach ? (
+                  <div className="text-center text-indigo-600 text-sm py-2 animate-pulse">
+                    AI Coach is analyzing your performance...
+                  </div>
+                ) : coachFeedback ? (
+                  <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                    <h4 className="text-sm font-bold text-indigo-900 mb-2 flex items-center gap-2">🧠 AI Coach Feedback</h4>
+                    <p className="text-sm text-indigo-800 mb-3">{coachFeedback.feedback}</p>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <h5 className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-1">Strengths</h5>
+                        <ul className="text-xs text-indigo-800 space-y-1">
+                          {coachFeedback.strengths?.map((s, i) => <li key={i}>👍 {s}</li>)}
+                        </ul>
+                      </div>
+                      <div>
+                        <h5 className="text-xs font-bold text-red-600 uppercase tracking-wider mb-1">Missed Questions</h5>
+                        <ul className="text-xs text-red-800 space-y-1">
+                          {coachFeedback.missed_questions?.map((q, i) => <li key={i}>❓ {q}</li>)}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
             </div>
           )}
 

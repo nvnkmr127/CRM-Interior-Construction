@@ -33,51 +33,19 @@ const STAGE_COLORS = {
   Won:         SUCCESS,
 };
 
-/* ── Date-range mock multipliers ─────────────────────────── */
-function makeMockData(range) {
-  const mul = range === '7d' ? 0.25 : range === '30d' ? 1 : range === '90d' ? 2.8 : 9;
-
-  const total = Math.round(145 * mul);
-  const won   = Math.round(42  * mul);
-
-  const weeks = range === '7d' ? 1 : range === '30d' ? 4 : range === '90d' ? 13 : 52;
-  const trendBase = [30, 35, 40, 40, 45, 42, 50, 55, 48, 60, 62, 58];
-  const weeklyData = Array.from({ length: weeks }, (_, i) => ({
-    week: weeks <= 4 ? `Week ${i + 1}` : weeks <= 13 ? `Wk ${i + 1}` : `W${i + 1}`,
-    created: Math.round((trendBase[i % trendBase.length] || 40) * (mul / 4)),
-    won:     Math.round(((trendBase[i % trendBase.length] || 40) * (mul / 4)) * 0.29),
-  }));
-
+/* ── Default Empty Data ─────────────────────────── */
+function getEmptyData() {
   return {
     kpis: {
-      total:    { val: total, trend: 12 },
-      won:      { val: won,   trend: 5 },
-      convRate: { val: `${((won / total) * 100).toFixed(1)}%`, trend: 2.1 },
-      avgScore: { val: 76,    trend: -3 },
+      total:    { val: 0, trend: 0 },
+      won:      { val: 0, trend: 0 },
+      convRate: { val: '0%', trend: 0 },
+      avgScore: { val: 0, trend: 0 },
     },
-    weeklyData,
-    stageData: [
-      { stage: 'New',         count: Math.round(145 * mul) },
-      { stage: 'Contacted',   count: Math.round(110 * mul) },
-      { stage: 'Site Visit',  count: Math.round(85  * mul) },
-      { stage: 'Quotation',   count: Math.round(60  * mul) },
-      { stage: 'Negotiation', count: Math.round(50  * mul) },
-      { stage: 'Won',         count: Math.round(42  * mul) },
-    ],
-    sourceData: [
-      { name: 'Facebook',  count: Math.round(65 * mul) },
-      { name: 'IndiaMART', count: Math.round(45 * mul) },
-      { name: 'Referral',  count: Math.round(20 * mul) },
-      { name: 'Website',   count: Math.round(10 * mul) },
-      { name: 'Direct',    count: Math.round(5  * mul) },
-    ],
-    teamData: [
-      { id: '1', name: 'Priya Sharma',  assigned: Math.round(60 * mul), won: Math.round(22 * mul), convRate: 36.6, avgScore: 82 },
-      { id: '2', name: 'Rahul Desai',   assigned: Math.round(55 * mul), won: Math.round(15 * mul), convRate: 27.2, avgScore: 71 },
-      { id: '3', name: 'Amit Kumar',    assigned: Math.round(30 * mul), won: Math.round(5  * mul), convRate: 16.6, avgScore: 65 },
-      { id: '4', name: 'Sneha Patil',   assigned: Math.round(40 * mul), won: Math.round(18 * mul), convRate: 45.0, avgScore: 88 },
-      { id: '5', name: 'Karan Mehta',   assigned: Math.round(25 * mul), won: Math.round(4  * mul), convRate: 16.0, avgScore: 59 },
-    ],
+    weeklyData: [],
+    stageData: [],
+    sourceData: [],
+    teamData: [],
   };
 }
 
@@ -185,7 +153,7 @@ export default function LeadAnalyticsPage() {
         const won    = wonRow?.count || 0;
 
         if (stageData.length === 0 && sourceData.length === 0) {
-          setData(makeMockData(dateRange));
+          setData(getEmptyData());
         } else {
           setData({
             kpis: {
@@ -194,14 +162,14 @@ export default function LeadAnalyticsPage() {
               convRate: { val: total > 0 ? `${((won / total) * 100).toFixed(1)}%` : '0%', trend: 0 },
               avgScore: { val: teamData.length ? Math.round(teamData.reduce((a,t)=>a+t.avgScore,0)/teamData.length) : 0, trend: 0 },
             },
-            weeklyData: weeklyData.length ? weeklyData : makeMockData(dateRange).weeklyData,
-            stageData:  stageData.length  ? stageData  : makeMockData(dateRange).stageData,
-            sourceData: sourceData.length ? sourceData : makeMockData(dateRange).sourceData,
-            teamData:   teamData.length   ? teamData   : makeMockData(dateRange).teamData,
+            weeklyData,
+            stageData,
+            sourceData,
+            teamData,
           });
         }
       })
-      .catch(() => setData(makeMockData(dateRange)))
+      .catch(() => setData(getEmptyData()))
       .finally(() => setLoading(false));
   }, [dateRange]);
 

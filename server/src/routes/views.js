@@ -1,81 +1,87 @@
 const express = require('express');
 const router = express.Router();
-const { requireAuth } = require('../middleware/auth');
+const authenticate = require('../middleware/authenticate');
 const pool = require('../db/pool');
 const { success, fail } = require('../utils/response');
 
-// Get all saved views for the current user
-router.get('/', requireAuth, async (req, res, next) => {
+// Get user's custom views
+router.get('/', authenticate, async (req, res, next) => {
   try {
     const tenantId = req.tenantId || req.user.tenantId;
-    const userId = req.user.userId;
+    const userId = req.user.userId || req.user.id;
 
     const query = `
-      SELECT * FROM saved_views 
+      SELECT * FROM user_views
       WHERE tenant_id = $1 AND user_id = $2
-      ORDER BY created_at ASC
+      ORDER BY created_at DESC
     `;
     const result = await pool.query(query, [tenantId, userId]);
+    
     return success(res, result.rows);
   } catch (error) {
     next(error);
   }
 });
 
-// Create a new saved view
-router.post('/', requireAuth, async (req, res, next) => {
+// Create a new view
+router.post('/', authenticate, async (req, res, next) => {
   try {
     const tenantId = req.tenantId || req.user.tenantId;
-    const userId = req.user.userId;
-    const { name, entity_type, filters, sort_by, sort_direction, is_default } = req.body;
+    const userId = req.user.userId || req.user.id;
+    const { name, module, view_state, is_default } = req.body;
 
     const query = `
-      INSERT INTO saved_views (tenant_id, user_id, name, entity_type, filters, sort_by, sort_direction, is_default)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO user_views (tenant_id, user_id, name, module, view_state, is_default)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
     `;
     const result = await pool.query(query, [
-      tenantId, userId, name, entity_type || 'lead', JSON.stringify(filters || {}), sort_by, sort_direction || 'DESC', is_default || false
+      tenantId, userId, name, module || 'leads', JSON.stringify(view_state), is_default || false
     ]);
+
     return success(res, result.rows[0], {}, 201);
   } catch (error) {
     next(error);
   }
 });
 
-// Update a saved view
-router.put('/:id', requireAuth, async (req, res, next) => {
+// Update a view
+router.patch('/:id', authenticate, async (req, res, next) => {
   try {
-    const tenantId = req.tenantId || req.user.tenantId;
-    const userId = req.user.userId;
     const { id } = req.params;
-    const { name, filters, sort_by, sort_direction, is_default } = req.body;
+    const tenantId = req.tenantId || req.user.tenantId;
+    const userId = req.user.userId || req.user.id;
+    const { name, view_state, is_default } = req.body;
 
     const query = `
-      UPDATE saved_views 
-      SET name = $1, filters = $2, sort_by = $3, sort_direction = $4, is_default = $5, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $6 AND tenant_id = $7 AND user_id = $8
+      UPDATE user_views 
+      SET name = COALESCE($1, name),
+          view_state = COALESCE($2, view_state),
+          is_default = COALESCE($3, is_default),
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $4 AND tenant_id = $5 AND user_id = $6
       RETURNING *
     `;
     const result = await pool.query(query, [
-      name, JSON.stringify(filters || {}), sort_by, sort_direction, is_default, id, tenantId, userId
+      name, view_state ? JSON.stringify(view_state) : null, is_default, id, tenantId, userId
     ]);
 
-    if (result.rowCount === 0) return fail(res, 'View not found or unauthorized', 404);
+    if (result.rows.length === 0) return fail(res, 'NOT_FOUND', 'View not found', 404);
+    
     return success(res, result.rows[0]);
   } catch (error) {
     next(error);
   }
 });
 
-// Delete a saved view
-router.delete('/:id', requireAuth, async (req, res, next) => {
+// Delete a view
+router.delete('/:id', authenticate, async (req, res, next) => {
   try {
     const tenantId = req.tenantId || req.user.tenantId;
     const userId = req.user.userId;
     const { id } = req.params;
 
-    const query = `DELETE FROM saved_views WHERE id = $1 AND tenant_id = $2 AND user_id = $3`;
+    const query = `DELETE FROM user_views WHERE id = $1 AND tenant_id = $2 AND user_id = $3`;
     const result = await pool.query(query, [id, tenantId, userId]);
 
     if (result.rowCount === 0) return fail(res, 'View not found or unauthorized', 404);

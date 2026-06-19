@@ -5,17 +5,27 @@ const pool = require('../../../db/pool');
  * Inserts a new task associated with the triggering record natively into the database.
  */
 async function handle(config, context) {
-  const { title, assigneeField, dueDaysFromNow, milestoneId } = config;
+  const { title, assigneeField, dueDaysFromNow, dueInHours, assignToRole, milestoneId } = config;
   const { tenantId, record } = context;
 
   // Resolve the dynamic assignee from the record payload
-  const assigneeId = record[assigneeField] || null;
+  let assigneeId = assigneeField ? record[assigneeField] : (record.assigned_rep_id || null);
   
+  if (!assigneeId && assignToRole) {
+    const roleRes = await pool.query(`SELECT id FROM users WHERE tenant_id = $1 AND role = $2 LIMIT 1`, [tenantId, assignToRole]);
+    if (roleRes.rows.length > 0) {
+      assigneeId = roleRes.rows[0].id;
+    }
+  }
+
   // Dynamically calculate the strict due date
   let dueDate = null;
   if (dueDaysFromNow) {
     dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + Number(dueDaysFromNow));
+  } else if (dueInHours) {
+    dueDate = new Date();
+    dueDate.setHours(dueDate.getHours() + Number(dueInHours));
   }
 
   // Attempt to contextually resolve parent relations
@@ -37,6 +47,8 @@ async function handle(config, context) {
     leadId,
     milestoneId || null
   ]);
+  
+  console.log(`[Automation] Created task '${title}' for ${leadId ? 'lead '+leadId : 'project '+projectId}`);
 }
 
 module.exports = { handle };

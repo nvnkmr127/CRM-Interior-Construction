@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import api from '../../../api/axios';
-import { useToast } from '../../../store/toastContext';
-import { Button } from '../../ui';
+import api from '../../api/axios';
+import { useToast } from '../../store/toastContext';
+import { Button } from '../../components/ui';
 
 export default function PreferencesPage() {
   const [preferences, setPreferences] = useState({

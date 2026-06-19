@@ -96,9 +96,15 @@ export default function MyTasksPage() {
       if (activeTab !== 'completed' && t.status === 'done') return false // Hide done from other tabs by default unless we specifically want them. The spec implies done tasks are hidden or handled. Let's hide done unless 'completed' tab. Wait, if I mark done, it strikethroughs. If it immediately disappears, it's jarring. We'll leave it in memory but filter out if activeTab applies. Let's hide done from 'all' tab if we strictly follow standard UX, but the spec says "strikethrough + muted if done". So they stay visible. I'll show done tasks only in 'completed' or 'all'.
       if (activeTab === 'today' && (!isToday(t.dueDate) || t.status === 'done')) return false
       if (activeTab === 'overdue' && (!isOverdue(t.dueDate) || t.status === 'done')) return false
-      // For 'week', a simple mock logic
-      if (activeTab === 'week' && t.status === 'done') return false
-
+      // For 'week', only show tasks due within the current week
+      if (activeTab === 'week') {
+        if (!t.dueDate) return false
+        const date = new Date(t.dueDate)
+        const today = new Date()
+        const startOfWeek = new Date(today.setDate(today.getDate() - today.getDay()))
+        const endOfWeek = new Date(today.setDate(today.getDate() - today.getDay() + 6))
+        if (date < startOfWeek || date > endOfWeek || t.status === 'done') return false
+      }
       // Bar filters
       if (priorityFilter !== 'all' && t.priority !== priorityFilter) return false
       if (projectFilter !== 'all' && t.project.id !== projectFilter) return false
@@ -133,8 +139,22 @@ export default function MyTasksPage() {
     return {
       overdue: tasks.filter(t => isOverdue(t.dueDate) && t.status !== 'done').length,
       today: tasks.filter(t => isToday(t.dueDate) && t.status !== 'done').length,
-      week: tasks.filter(t => t.status !== 'done').length, // Simplified
-      doneWeek: tasks.filter(t => t.status === 'done').length
+      week: tasks.filter(t => {
+        if (t.status === 'done' || !t.dueDate) return false
+        const date = new Date(t.dueDate)
+        const today = new Date()
+        const startOfWeek = new Date(today.setDate(today.getDate() - today.getDay()))
+        const endOfWeek = new Date(today.setDate(today.getDate() - today.getDay() + 6))
+        return date >= startOfWeek && date <= endOfWeek
+      }).length,
+      doneWeek: tasks.filter(t => {
+        if (t.status !== 'done' || !t.dueDate) return false
+        const date = new Date(t.dueDate)
+        const today = new Date()
+        const startOfWeek = new Date(today.setDate(today.getDate() - today.getDay()))
+        const endOfWeek = new Date(today.setDate(today.getDate() - today.getDay() + 6))
+        return date >= startOfWeek && date <= endOfWeek
+      }).length
     }
   }, [tasks])
 

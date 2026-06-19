@@ -77,6 +77,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/leads/manager', require('./routes/manager'));
 app.use('/api/leads', leadsRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/projects', projectsRoutes);
@@ -107,6 +108,7 @@ app.use('/api/site-visits', siteVisitRoutes);
 app.use('/api/communications', require('./routes/communications'));
 app.use('/api/views', require('./routes/views'));
 app.use('/api/sequences', require('./routes/sequences'));
+app.use('/api/automation', require('./routes/automation'));
 
 // Error handler MUST be the last middleware
 app.use(errorHandler);

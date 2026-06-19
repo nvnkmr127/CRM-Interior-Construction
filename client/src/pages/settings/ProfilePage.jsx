@@ -6,6 +6,7 @@ import { useToast } from '../../store/toastContext'
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import { Avatar, Badge, Button } from '../../components/ui'
+import api from '../../api/axios'
 
 export default function ProfilePage() {
   usePageTitle('My Profile')
@@ -24,13 +25,17 @@ export default function ProfilePage() {
   const [pwdForm, setPwdForm] = useState({ current: '', new: '', confirm: '' })
   const [pwdSaving, setPwdSaving] = useState(false)
 
-  const handleProfileSave = (e) => {
+  const handleProfileSave = async (e) => {
     e.preventDefault()
     setProfileSaving(true)
-    setTimeout(() => {
+    try {
+      await api.patch('/auth/me', { name })
+      toast.success('Profile updated successfully')
+    } catch {
+      toast.error('Failed to update profile')
+    } finally {
       setProfileSaving(false)
-      toast.success('Profile updated')
-    }, 800)
+    }
   }
 
   const calculateStrength = (pwd) => {
@@ -47,34 +52,50 @@ export default function ProfilePage() {
   const strengthColor = pwdScore <= 2 ? 'var(--color-danger)' : pwdScore <= 4 ? 'var(--color-warning)' : 'var(--color-success)'
   const strengthWidth = `${(pwdScore / 5) * 100}%`
 
-  const handlePasswordSave = (e) => {
+  const handlePasswordSave = async (e) => {
     e.preventDefault()
     if (pwdForm.new !== pwdForm.confirm) {
       return toast.error('New passwords do not match')
     }
     setPwdSaving(true)
-    setTimeout(() => {
-      setPwdSaving(false)
+    try {
+      await api.post('/auth/change-password', {
+        currentPassword: pwdForm.current,
+        newPassword: pwdForm.new
+      })
       setPwdForm({ current: '', new: '', confirm: '' })
       toast.success("Password changed. You've been signed out of all devices.")
       logout()
       navigate('/login')
-    }, 1000)
-  }
-
-  const handleSignOutAll = () => {
-    if (window.confirm('Are you sure you want to sign out of all devices?')) {
-      toast.success('Signed out of all devices.')
-      logout()
-      navigate('/login')
+    } catch (err) {
+      if (err.response?.status === 401) {
+        toast.error('Incorrect current password')
+      } else {
+        toast.error('Failed to change password')
+      }
+    } finally {
+      setPwdSaving(false)
     }
   }
 
-  const handlePhotoUpload = (e) => {
+  const handleSignOutAll = async () => {
+    if (window.confirm('Are you sure you want to sign out of all devices?')) {
+      try {
+        await api.delete('/auth/sessions')
+        toast.success('Signed out of all devices.')
+        logout()
+        navigate('/login')
+      } catch {
+        toast.error('Failed to sign out of all devices')
+      }
+    }
+  }
+
+  const handlePhotoUpload = async (e) => {
     const file = e.target.files[0]
     if (file) {
-      toast.success('Profile photo updated')
-      // Mock upload logic
+      // In a real app, you would upload to S3 here.
+      toast.success('Profile photo updated (simulated)')
     }
   }
 

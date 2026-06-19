@@ -10,6 +10,8 @@ import styles from './LeadForm.module.css';
 export default function LeadForm({ lead, onSave, onClose }) {
   const isEdit = !!lead;
   const toast = useToast();
+  const [step, setStep] = useState(1);
+  const totalSteps = 3;
   
   const { values, errors, touched, handleChange, handleBlur, validateAll, isValid, setValues } = useForm({
     name: lead?.name || '',
@@ -62,6 +64,19 @@ export default function LeadForm({ lead, onSave, onClose }) {
   };
   const onBlur = (e) => handleBlur(e.target.name);
 
+  const handleNext = () => {
+    // Add simple validation for current step before proceeding if needed
+    if (step === 1 && (!values.name || !values.phone)) {
+      toast.error('Name and Phone are required');
+      return;
+    }
+    if (step < totalSteps) setStep(step + 1);
+  };
+
+  const handlePrev = () => {
+    if (step > 1) setStep(step - 1);
+  };
+
   const handleSubmit = async () => {
     if (!validateAll()) {
       toast.error('Please check the form for validation errors');
@@ -102,105 +117,143 @@ export default function LeadForm({ lead, onSave, onClose }) {
   };
 
   return (
-    <Modal isOpen onClose={handleClose}>
+    <Modal isOpen onClose={handleClose} size="lg">
       <div className={styles.formWrap}>
         <div className={styles.header}>
           <div className={styles.title}>{isEdit ? 'Edit Lead' : 'New Lead'}</div>
+          {/* Step Indicator */}
+          <div className="flex items-center gap-2 mt-4 mb-2">
+            {[1, 2, 3].map(s => (
+              <React.Fragment key={s}>
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold ${step === s ? 'bg-blue-600 text-white' : step > s ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                  {step > s ? '✓' : s}
+                </div>
+                {s < 3 && <div className={`flex-1 h-1 rounded ${step > s ? 'bg-green-500' : 'bg-gray-100'}`} />}
+              </React.Fragment>
+            ))}
+          </div>
+          <div className="text-xs text-gray-500 font-medium text-center">
+            {step === 1 && 'Contact Details'}
+            {step === 2 && 'Property & Qualification'}
+            {step === 3 && 'Assignment & Notes'}
+          </div>
         </div>
 
         <div className={styles.body}>
-          <Input 
-            label="Name" required 
-            name="name" value={values.name} 
-            onChange={onChange} onBlur={onBlur}
-            error={touched.name && errors.name}
-          />
-          <Input 
-            label="Phone" required 
-            name="phone" value={values.phone} 
-            onChange={onChange} onBlur={onBlur}
-            error={touched.phone && errors.phone}
-          />
-          <Input 
-            label="Email" 
-            name="email" value={values.email} 
-            onChange={onChange} onBlur={onBlur}
-            error={touched.email && errors.email}
-          />
-          
-          <div>
-            <label style={{fontSize: 'var(--text-sm)', fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)'}}>Source</label>
-            <select name="source" value={values.source} onChange={onChange} style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)'}}>
-              <option value="">Select source</option>
-              <option value="Facebook">Facebook</option>
-              <option value="IndiaMART">IndiaMART</option>
-              <option value="Referral">Referral</option>
-              <option value="Website">Website</option>
-              <option value="Direct">Direct</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-
-          <div>
-            <label style={{fontSize: 'var(--text-sm)', fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)'}}>Stage</label>
-            <select name="stageId" value={values.stageId} onChange={onChange} style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)'}}>
-              <option value="">Select stage</option>
-              {stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label style={{fontSize: 'var(--text-sm)', fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)'}}>Assignee</label>
-            <select name="assigneeId" value={values.assigneeId} onChange={onChange} style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)'}}>
-              <option value="">Select user</option>
-              {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-            </select>
-          </div>
-
-          <div className={styles.fullWidth}>
-            <label style={{fontSize: 'var(--text-sm)', fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)'}}>Notes</label>
-            <textarea 
-              name="notes" value={values.notes} onChange={onChange}
-              style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', minHeight: '80px', fontFamily: 'inherit'}}
-            />
-          </div>
-
-          <div className={styles.fullWidth} style={{ marginTop: 'var(--space-4)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-4)' }}>
-            <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 600, marginBottom: 'var(--space-3)' }}>Qualification Details</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
-              <Input label="Builder Name" name="builder_name" value={values.builder_name} onChange={onChange} onBlur={onBlur} />
-              <Input label="Possession Date" type="date" name="possession_date" value={values.possession_date} onChange={onChange} onBlur={onBlur} />
+          {/* STEP 1: Contact Details */}
+          {step === 1 && (
+            <div className="space-y-4 animate-fadeIn">
+              <Input 
+                label="Name *" required 
+                name="name" value={values.name} 
+                onChange={onChange} onBlur={onBlur}
+                error={touched.name && errors.name}
+              />
+              <Input 
+                label="Phone *" required 
+                name="phone" value={values.phone} 
+                onChange={onChange} onBlur={onBlur}
+                error={touched.phone && errors.phone}
+              />
+              <Input 
+                label="Email" 
+                name="email" value={values.email} 
+                onChange={onChange} onBlur={onBlur}
+                error={touched.email && errors.email}
+              />
               
               <div>
-                <label style={{fontSize: 'var(--text-sm)', fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)'}}>House Status</label>
-                <select name="house_status" value={values.house_status} onChange={onChange} style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)'}}>
-                  <option value="">Select status</option>
-                  <option value="Under Construction">Under Construction</option>
-                  <option value="Ready to Move">Ready to Move</option>
-                  <option value="Renovation">Renovation</option>
+                <label style={{fontSize: 'var(--text-sm)', fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)'}}>Source</label>
+                <select name="source" value={values.source} onChange={onChange} style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)'}}>
+                  <option value="">Select source</option>
+                  <option value="Facebook">Facebook</option>
+                  <option value="IndiaMART">IndiaMART</option>
+                  <option value="Referral">Referral</option>
+                  <option value="Website">Website</option>
+                  <option value="Direct">Direct</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3: Assignment & Notes */}
+          {step === 3 && (
+            <div className="space-y-4 animate-fadeIn">
+              <div>
+                <label style={{fontSize: 'var(--text-sm)', fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)'}}>Stage</label>
+                <select name="stageId" value={values.stageId} onChange={onChange} style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)'}}>
+                  <option value="">Select stage</option>
+                  {stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
 
               <div>
-                <label style={{fontSize: 'var(--text-sm)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px', height: '100%', marginTop: '24px'}}>
-                  <input type="checkbox" name="loan_approved" checked={values.loan_approved} onChange={onChange} />
-                  Loan Approved
-                </label>
+                <label style={{fontSize: 'var(--text-sm)', fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)'}}>Assignee</label>
+                <select name="assigneeId" value={values.assigneeId} onChange={onChange} style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)'}}>
+                  <option value="">Select user</option>
+                  {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </select>
               </div>
 
-              <Input label="Interior Style" name="interior_style" placeholder="e.g. Modern, Minimal, Luxury" value={values.interior_style} onChange={onChange} onBlur={onBlur} />
-              <Input label="Material Preference" name="material_preference" placeholder="e.g. Modular, Wood" value={values.material_preference} onChange={onChange} onBlur={onBlur} />
-              <Input label="Preferred Communication" name="preferred_communication" placeholder="Call / WhatsApp / Email" value={values.preferred_communication} onChange={onChange} onBlur={onBlur} />
-              <Input label="Preferred Language" name="preferred_language" value={values.preferred_language} onChange={onChange} onBlur={onBlur} />
+              <div className={styles.fullWidth}>
+                <label style={{fontSize: 'var(--text-sm)', fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)'}}>Notes</label>
+                <textarea 
+                  name="notes" value={values.notes} onChange={onChange}
+                  style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', minHeight: '80px', fontFamily: 'inherit'}}
+                  placeholder="Any initial notes about the lead..."
+                />
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* STEP 2: Property & Qualification */}
+          {step === 2 && (
+            <div className="space-y-4 animate-fadeIn">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+                <Input label="Builder Name" name="builder_name" value={values.builder_name} onChange={onChange} onBlur={onBlur} />
+                <Input label="Possession Date" type="date" name="possession_date" value={values.possession_date} onChange={onChange} onBlur={onBlur} />
+                
+                <div>
+                  <label style={{fontSize: 'var(--text-sm)', fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)'}}>House Status</label>
+                  <select name="house_status" value={values.house_status} onChange={onChange} style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)'}}>
+                    <option value="">Select status</option>
+                    <option value="Under Construction">Under Construction</option>
+                    <option value="Ready to Move">Ready to Move</option>
+                    <option value="Renovation">Renovation</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{fontSize: 'var(--text-sm)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px', height: '100%', marginTop: '24px'}}>
+                    <input type="checkbox" name="loan_approved" checked={values.loan_approved} onChange={onChange} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                    Loan Approved
+                  </label>
+                </div>
+
+                <Input label="Interior Style" name="interior_style" placeholder="e.g. Modern, Minimal, Luxury" value={values.interior_style} onChange={onChange} onBlur={onBlur} />
+                <Input label="Material Preference" name="material_preference" placeholder="e.g. Modular, Wood" value={values.material_preference} onChange={onChange} onBlur={onBlur} />
+                <Input label="Preferred Communication" name="preferred_communication" placeholder="Call / WhatsApp" value={values.preferred_communication} onChange={onChange} onBlur={onBlur} />
+                <Input label="Preferred Language" name="preferred_language" value={values.preferred_language} onChange={onChange} onBlur={onBlur} />
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className={styles.footer}>
-          <Button variant="ghost" onClick={handleClose}>Cancel</Button>
-          <Button variant="primary" onClick={handleSubmit}>
-            Save Lead
-          </Button>
+        <div className={styles.footer} style={{ display: 'flex', justifyContent: 'space-between' }}>
+          {step === 1 ? (
+            <Button variant="ghost" onClick={handleClose}>Cancel</Button>
+          ) : (
+            <Button variant="ghost" onClick={handlePrev}>Back</Button>
+          )}
+          
+          {step < totalSteps ? (
+            <Button variant="primary" onClick={handleNext}>Next Step</Button>
+          ) : (
+            <Button variant="primary" onClick={handleSubmit} disabled={isSubmitDisabled}>
+              Save Lead
+            </Button>
+          )}
         </div>
       </div>
     </Modal>

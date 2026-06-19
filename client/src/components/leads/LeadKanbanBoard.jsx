@@ -1,30 +1,22 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { DndContext, DragOverlay, closestCorners, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useDroppable } from '@dnd-kit/core';
 import KanbanLeadCard from './KanbanLeadCard';
 import LeadFilterBar from './LeadFilterBar';
-import { Badge } from '../ui/badge'; // Standard UI badge
+import { Badge } from '../ui'; // Standard UI badge
 
-const STAGES = [
-  { id: 'new', name: 'New' },
-  { id: 'contacted', name: 'Contacted' },
-  { id: 'site_visit', name: 'Site Visit' },
-  { id: 'design_review', name: 'Design Review' },
-  { id: 'proposal_sent', name: 'Proposal Sent' },
-  { id: 'negotiation', name: 'Negotiation' },
-  { id: 'booking', name: 'Booking' }
-];
+// Stages are now passed as props from the database
 
 // Droppable Column Component
-function KanbanColumn({ stage, leads, activeId }) {
+function KanbanColumn({ stage, leads, activeId, onLeadClick }) {
   const { setNodeRef } = useDroppable({ id: stage.id });
   
   const totalValue = leads.reduce((sum, lead) => sum + (Number(lead.budget_max) || 0), 0);
   const formattedValue = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(totalValue);
 
   return (
-    <div className="flex flex-col bg-gray-50 rounded-lg border min-w-[300px] max-w-[300px] max-h-full flex-shrink-0 mr-4">
+    <div className="flex flex-col bg-gray-50 rounded-lg border min-w-[280px] max-w-[280px] max-h-full flex-shrink-0 mr-4">
       <div className="p-3 border-b bg-gray-100/50 flex justify-between items-center rounded-t-lg">
         <div>
           <h3 className="font-semibold text-gray-700">{stage.name} <Badge variant="secondary" className="ml-2">{leads.length}</Badge></h3>
@@ -38,7 +30,10 @@ function KanbanColumn({ stage, leads, activeId }) {
             <KanbanLeadCard 
               key={lead.id} 
               lead={lead} 
-              onAction={(action) => console.log('Action triggered:', action, lead.id)} 
+              onAction={(action) => {
+                if (action === 'view' && onLeadClick) onLeadClick(lead.id);
+                else console.log('Action triggered:', action, lead.id);
+              }} 
             />
           ))}
         </SortableContext>
@@ -52,10 +47,14 @@ function KanbanColumn({ stage, leads, activeId }) {
   );
 }
 
-export default function LeadKanbanBoard({ initialLeads = [], reps = [], onStageChange }) {
+export default function LeadKanbanBoard({ initialLeads = [], stages = [], reps = [], onStageChange, onLeadClick }) {
   const [leads, setLeads] = useState(initialLeads);
   const [activeId, setActiveId] = useState(null);
   
+  useEffect(() => {
+    setLeads(initialLeads);
+  }, [initialLeads]);
+
   const [filters, setFilters] = useState({
     search: '',
     reps: [],
@@ -94,14 +93,20 @@ export default function LeadKanbanBoard({ initialLeads = [], reps = [], onStageC
 
   const leadsByStage = useMemo(() => {
     const acc = {};
-    STAGES.forEach(s => acc[s.id] = []);
+    stages.forEach(s => acc[s.id] = []);
     filteredLeads.forEach(lead => {
-      if (acc[lead.stage]) {
-        acc[lead.stage].push(lead);
+      // lead.stage_id from database
+      const stageId = lead.stage_id || lead.stage;
+      if (acc[stageId]) {
+        acc[stageId].push(lead);
+      } else {
+        // Fallback if stage is unknown
+        if (!acc['unknown']) acc['unknown'] = [];
+        acc['unknown'].push(lead);
       }
     });
     return acc;
-  }, [filteredLeads]);
+  }, [filteredLeads, stages]);
 
   const handleDragStart = (event) => {
     setActiveId(event.active.id);
@@ -116,26 +121,25 @@ export default function LeadKanbanBoard({ initialLeads = [], reps = [], onStageC
     const targetStageId = over.id; // Usually we set droppable id to the stage id
 
     const lead = leads.find(l => l.id === leadId);
-    if (!lead || lead.stage === targetStageId) return;
+    const leadStageId = lead?.stage_id || lead?.stage;
+    if (!lead || leadStageId === targetStageId) return;
 
     // --- EXIT CRITERIA LOGIC ---
-    if (targetStageId === 'proposal_sent' && (!lead.lead_files || lead.lead_files.length === 0)) {
-      showToast('Missing Requirement: Lead needs at least 1 file attached for Proposal Sent.');
+    const targetStageName = stages.find(s => s.id === targetStageId)?.name;
+    
+    if (targetStageName === 'Quotation' && (!lead.lead_files || lead.lead_files.length === 0)) {
+      showToast('Missing Requirement: Lead needs at least 1 file attached for Quotation.');
       return;
     }
-    if (targetStageId === 'booking' && (!lead.budget_max || lead.budget_max <= 0)) {
-      showToast('Missing Requirement: Lead requires a filled budget max before Booking.');
-      return;
-    }
-    if (targetStageId === 'won' && !lead.manager_approval) {
-      showToast('Missing Requirement: Manager approval required for Won status.');
+    if (targetStageName === 'Closing' && (!lead.budget_max || lead.budget_max <= 0)) {
+      showToast('Missing Requirement: Lead requires a filled budget max before Closing.');
       return;
     }
 
-    const previousStage = lead.stage;
+    const previousStage = leadStageId;
 
     // Optimistic Update
-    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, stage: targetStageId, days_in_stage: 0 } : l));
+    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, stage_id: targetStageId, stage: targetStageId, days_in_stage: 0 } : l));
 
     try {
       if (onStageChange) {
@@ -144,7 +148,7 @@ export default function LeadKanbanBoard({ initialLeads = [], reps = [], onStageC
     } catch (err) {
       // Rollback
       showToast('Failed to update stage. Reverting.', 'error');
-      setLeads(prev => prev.map(l => l.id === leadId ? { ...l, stage: previousStage } : l));
+      setLeads(prev => prev.map(l => l.id === leadId ? { ...l, stage_id: previousStage, stage: previousStage } : l));
     }
   };
 
@@ -164,12 +168,13 @@ export default function LeadKanbanBoard({ initialLeads = [], reps = [], onStageC
       <div className="flex-1 overflow-x-auto overflow-y-hidden pb-4">
         <div className="flex h-full items-start">
           <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-            {STAGES.map(stage => (
+            {stages.map(stage => (
               <KanbanColumn 
                 key={stage.id} 
                 stage={stage} 
-                leads={leadsByStage[stage.id]} 
+                leads={leadsByStage[stage.id] || []} 
                 activeId={activeId} 
+                onLeadClick={onLeadClick}
               />
             ))}
 

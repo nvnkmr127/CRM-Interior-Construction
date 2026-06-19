@@ -27,6 +27,15 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
 }
 
+function getAgingBadge(lastActivityAt, createdAt) {
+  const date = new Date(lastActivityAt || createdAt);
+  if (isNaN(date)) return null;
+  const daysOld = Math.floor((new Date() - date) / (1000 * 60 * 60 * 24));
+  if (daysOld >= 7) return <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 uppercase tracking-wide">Stale {daysOld}d</span>;
+  if (daysOld <= 1) return <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 uppercase tracking-wide">Fresh</span>;
+  return null;
+}
+
 export default function LeadTable({
   filteredLeads, loading, page, limit, total, setPage,
   setSelectedLeadId, stageMenuLeadId, setStageMenuLeadId,
@@ -90,6 +99,7 @@ export default function LeadTable({
             <th className={styles.listTh}>Source</th>
             <th className={styles.listTh}>Stage</th>
             <th className={styles.listTh}>Score</th>
+            <th className={styles.listTh}>AI Recommendation</th>
             <th className={styles.listTh}>Assignee</th>
             <th className={styles.listTh}>Last Activity</th>
             <th className={styles.listTh} style={{ textAlign: 'right' }}>Actions</th>
@@ -158,6 +168,11 @@ export default function LeadTable({
                   )}
                 </td>
                 <td className={styles.listTd}>
+                  <span style={{ fontSize: '12px', background: '#f3f4f6', padding: '4px 8px', borderRadius: '4px', color: '#374151' }}>
+                    {lead.ai_recommendation || 'Follow up'}
+                  </span>
+                </td>
+                <td className={styles.listTd}>
                   {lead.assignee_name ? (
                     <div className={styles.assigneeCell}>
                       <div className={styles.avatarSm}>{getInitials(lead.assignee_name)}</div>
@@ -168,20 +183,26 @@ export default function LeadTable({
                   )}
                 </td>
                 <td className={styles.listTd}>
-                  <span className={styles.lastActivity}>
-                    {formatDate(lead.last_activity_at || lead.updated_at)}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <span className={styles.lastActivity}>
+                      {formatDate(lead.last_activity_at || lead.updated_at)}
+                    </span>
+                    {getAgingBadge(lead.last_activity_at, lead.created_at)}
+                  </div>
                 </td>
                 <td className={styles.listTd} onClick={e => e.stopPropagation()}>
                   <div className={styles.actionGroup}>
+                    <button className={styles.actionIconBtn} title="Call" aria-label="Call">📞</button>
+                    <button className={styles.actionIconBtn} title="WhatsApp" aria-label="WhatsApp">💬</button>
+                    <button className={styles.actionIconBtn} title="Email" aria-label="Email">✉️</button>
                     <div className={styles.stageMenuWrap}>
                       <button
-                        className={styles.actionBtn}
+                        className={styles.actionIconBtn}
                         title="Move stage"
                         aria-label={`Move ${lead.name} to another stage`}
                         onClick={() => setStageMenuLeadId(stageMenuLeadId === lead.id ? null : lead.id)}
                       >
-                        ↗ Move
+                        ↗
                       </button>
                       {stageMenuLeadId === lead.id && (
                         <div className={styles.stageDropdown}>
@@ -198,12 +219,12 @@ export default function LeadTable({
                       )}
                     </div>
                     <button
-                      className={styles.actionBtn}
+                      className={styles.actionIconBtn}
                       title="View lead"
                       aria-label={`View details for ${lead.name}`}
                       onClick={() => setSelectedLeadId(lead.id)}
                     >
-                      ⋯
+                      👁
                     </button>
                   </div>
                 </td>

@@ -8,6 +8,7 @@ import Shell from './components/layout/Shell'
 import PageLoader from './components/ui/PageLoader'
 import ErrorBoundary from './components/ErrorBoundary'
 import OfflineBanner from './components/layout/OfflineBanner'
+import CommandPalette from './components/ui/CommandPalette'
 
 // Lazy-load ALL pages
 const Login          = lazy(() => import('./pages/auth/Login'))
@@ -35,6 +36,7 @@ export default function App() {
           <BreadcrumbsProvider>
             <ErrorBoundary>
               <OfflineBanner />
+              <CommandPalette />
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path='/login' element={<Login />} />

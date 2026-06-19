@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import styles from './Register.module.css'
 import { useToast } from '../../store/toastContext'
+import api from '../../api/axios'
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -45,16 +46,26 @@ export default function Register() {
     }
 
     setLoading(true)
-    // Mock API call
-    setTimeout(() => {
-      setLoading(false)
-      if (formData.email === 'test@example.com') {
+    try {
+      await api.post('/auth/register', {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        tenantSlug: formData.slug
+      })
+      toast.success('Account created! Sign in to continue.')
+      navigate('/login')
+    } catch (err) {
+      if (err.response?.status === 404) {
+        setErrors({ slug: 'Workspace not found' })
+      } else if (err.response?.status === 400 && err.response.data?.message?.includes('already exists')) {
         setErrors({ email: 'This email is already registered' })
       } else {
-        toast.success('Account created! Sign in to continue.')
-        navigate('/login')
+        toast.error('Failed to create account')
       }
-    }, 1000)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleChange = (e) => {

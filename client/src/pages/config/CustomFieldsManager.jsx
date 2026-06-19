@@ -170,7 +170,7 @@ export default function CustomFieldsManager() {
         await configApi.updateCustomField(editingField.id, payload);
       } else {
         payload.sort_order = fields.length;
-        await configApi.createCustomField(payload);
+        await configApi.addCustomField(payload);
       }
       setIsModalOpen(false);
       fetchFields();

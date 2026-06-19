@@ -3,22 +3,32 @@ import layoutStyles from './ConfigLayout.module.css'
 import styles from './LogsViewer.module.css'
 import { Badge, DataTable, Select, Input, Button } from '../../components/ui'
 import { useToast } from '../../store/toastContext'
+import { configApi } from '../../api/config'
 
 export default function LogsViewer() {
   const [activeTab, setActiveTab] = useState('deliveries')
   const [deliveries, setDeliveries] = useState([])
   const [automations, setAutomations] = useState([])
-  const [inbounds, setInbounds] = useState([]) // currently stubbed
+  const [inbounds, setInbounds] = useState([])
   const toast = useToast()
 
   useEffect(() => {
-    // Mock Deliveries
-    setDeliveries([
-      { id: '1', timestamp: new Date(Date.now()-60000).toISOString(), event: 'lead.created', webhook: 'Zapier Lead Sync', status: 200, latency: 120, attempt: 1, payload: { id: 'l_123', name: 'John Doe', source: 'Website' } },
-      { id: '2', timestamp: new Date(Date.now()-3600000).toISOString(), event: 'project.phase_completed', webhook: 'ERP Integration', status: 500, latency: 650, attempt: 3, payload: { projectId: 'p_456', phase: 'Design', status: 'Completed' } },
-    ])
+    if (activeTab === 'deliveries') {
+      configApi.getWebhookLogs().then(data => {
+        setDeliveries(data.data.map(l => ({
+          id: l.id, timestamp: l.created_at, event: l.event, webhook: l.webhook_id, 
+          status: l.status_code, latency: l.latency_ms, attempt: l.attempt_count, payload: l.payload
+        })))
+      }).catch(() => toast.error('Failed to load webhook logs'))
+    } else if (activeTab === 'inbound') {
+      configApi.getInboundLogs().then(data => {
+        setInbounds(data.data || [])
+      }).catch(() => toast.error('Failed to load inbound logs'))
+    }
+  }, [activeTab])
 
-    // Mock Automations
+  useEffect(() => {
+    // Automations logging not yet supported in backend, using mock
     setAutomations([
       { id: '1', timestamp: new Date(Date.now()-120000).toISOString(), ruleName: 'Assign to Sales Manager', trigger: 'lead.created', entity: 'Lead: John Doe', status: 'completed', actions: ['Update Owner', 'Send Notification'], duration: 45, matchedConditions: ['source == "Website"'], errors: null },
       { id: '2', timestamp: new Date(Date.now()-4000000).toISOString(), ruleName: 'Send Follow-up Email', trigger: 'lead.stage_changed', entity: 'Lead: Jane Smith', status: 'failed', actions: ['Send Email'], duration: 800, matchedConditions: ['stage == "Contacted"'], errors: ['SMTP Connection Timeout'] },
@@ -26,8 +36,14 @@ export default function LogsViewer() {
     ])
   }, [])
 
-  const handleRetry = (id) => {
+  const handleRetry = async (id) => {
     toast.info('Retrying webhook delivery...')
+    try {
+      await configApi.retryWebhook(id)
+      toast.success('Webhook retry initiated')
+    } catch (err) {
+      toast.error('Failed to retry webhook')
+    }
   }
 
   const deliveryColumns = [

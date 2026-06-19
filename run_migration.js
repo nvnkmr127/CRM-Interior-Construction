@@ -1,3 +1,4 @@
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const fs = require('fs');
 const path = require('path');
 const pool = require('./server/src/db/pool');
@@ -5,7 +6,8 @@ const pool = require('./server/src/db/pool');
 async function runMigration() {
   try {
     const migrations = [
-      '043_lead_locations.sql'
+      '052_materialized_views.sql',
+      '053_audit_log_partitioning.sql'
     ];
     for (const file of migrations) {
       const sqlPath = path.join(__dirname, 'server/migrations', file);

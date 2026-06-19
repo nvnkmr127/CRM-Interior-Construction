@@ -293,7 +293,73 @@ exports.logActivityHandler = async (req, res, next) => {
     const parsed = logActivitySchema.safeParse(req.body);
     if (!parsed.success) return fail(res, 'VALIDATION_ERROR', 'Validation failed', 400, parsed.error.issues);
 
-    const activity = await logActivity({ tenantId, userId, leadId, ...parsed.data });
+    const activityData = parsed.data;
+    const { summarizeActivity, generateTasksFromActivity, analyzeLeadIntelligence } = require('../services/aiService');
+    
+    try {
+      activityData.ai_summary = await summarizeActivity(activityData.notes);
+      
+      const suggestedTasks = await generateTasksFromActivity(activityData.notes, activityData.type);
+      if (suggestedTasks && suggestedTasks.length > 0) {
+        activityData.metadata = activityData.metadata || {};
+        activityData.metadata.suggested_tasks = suggestedTasks;
+      }
+      
+      setTimeout(async () => {
+        try {
+          const { findLeadById } = require('../repositories/leadRepository');
+          const { listActivities } = require('../services/activities/activityService');
+          
+          const lead = await findLeadById(tenantId, leadId);
+          if (!lead) return;
+          
+          const { data: acts } = await listActivities({ tenantId, leadId, limit: 10 });
+          const intel = await analyzeLeadIntelligence(lead, acts, [], lead.custom_fields || {});
+          
+          const newCustomFields = {
+            ...(typeof lead.custom_fields === 'object' ? lead.custom_fields : {}),
+            ai_recommendation: {
+              recommendedAction: intel.nextAction,
+              reason: 'Based on recent activity.',
+              sentiment: intel.sentiment,
+              intent: intel.buyIntent,
+              objections: intel.objections,
+              signals: intel.signals
+            }
+          };
+
+          await pool.query(`
+            UPDATE leads 
+            SET score = $1, 
+                win_probability = $2, 
+                ai_score_breakdown = $3,
+                custom_fields = $4::jsonb,
+                updated_at = NOW()
+            WHERE id = $5 AND tenant_id = $6
+          `, [
+            intel.winProbability, 
+            intel.winProbability, 
+            JSON.stringify(intel.aiScoreBreakdown || {}),
+            JSON.stringify(newCustomFields),
+            leadId,
+            tenantId
+          ]);
+
+          await pool.query(`
+            INSERT INTO lead_scores_history (tenant_id, lead_id, overall_score, calculated_by, calculated_at)
+            VALUES ($1, $2, $3, $4, NOW())
+          `, [tenantId, leadId, intel.winProbability, userId]);
+
+          console.log(`[AI] Updated Decision Intelligence for lead ${leadId}`);
+        } catch(e) {
+          console.error('[AI] Failed to update decision intelligence', e);
+        }
+      }, 0);
+    } catch (e) {
+      console.error('AI Processing error in logActivity:', e);
+    }
+
+    const activity = await logActivity({ tenantId, userId, leadId, ...activityData });
     return success(res, activity, {}, 201);
   } catch (error) {
     if (error.message.includes('INVALID_ACTIVITY_TYPE')) return fail(res, 'VALIDATION_ERROR', error.message, 400);
@@ -904,5 +970,129 @@ exports.summarizeMeetingHandler = async function summarizeMeetingHandler(req, re
   } catch (err) {
     console.error('summarizeMeetingHandler error:', err);
     res.status(500).json({ success: false, error: { message: 'Failed to summarize meeting' } });
+  }
+};
+
+// RECOVERED STUBS
+exports.uploadFileHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.getFilesHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.deleteFileHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.parseFileHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.getFollowupsHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.createFollowupHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.updateFollowupHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.deleteFollowupHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.createNativeEstimateHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.getEstimatesHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.getContactsHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.createContactHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.deleteContactHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.getCommunicationsHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.createCommunicationHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.draftCommunicationHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.getInspirationsHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.createInspirationHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.deleteInspirationHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.getAiInsightsHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.generateDesignProposalHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.summarizeMeetingHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.updateRequirementsHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.getBudgetPlannerHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.salesCoachHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.knowledgeAssistantHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.generateProposalHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.updateNegotiationHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+exports.updateBudgetHandler = async (req, res, next) => { res.status(501).json({ success: false, error: { message: 'Not Implemented' } }); };
+
+exports.getTimelineHandler = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const leadId = req.params.id;
+    const { type, page, limit } = req.query;
+
+    const { getLeadTimeline } = require('../repositories/leadRepository');
+
+    const result = await getLeadTimeline(tenantId, leadId, {
+      type,
+      page: page ? parseInt(page, 10) : 1,
+      limit: limit ? parseInt(limit, 10) : 20
+    });
+    return paginate(res, result.data, result.total, result.page, result.limit);
+  } catch (error) {
+    next(error);
+  }
+};
+
+async function upsertLeadAiInsights(tenantId, leadId, data) {
+  const existing = await pool.query('SELECT id FROM lead_ai_insights WHERE tenant_id = $1 AND lead_id = $2 LIMIT 1', [tenantId, leadId]);
+  if (existing.rows.length > 0) {
+    const sets = [];
+    const values = [];
+    let i = 1;
+    for (const [key, value] of Object.entries(data)) {
+      sets.push(`${key} = $${i}`);
+      values.push(value);
+      i++;
+    }
+    values.push(existing.rows[0].id);
+    await pool.query(`UPDATE lead_ai_insights SET ${sets.join(', ')}, generated_at = NOW() WHERE id = $${i}`, values);
+  } else {
+    const keys = Object.keys(data);
+    const values = Object.values(data);
+    const placeholders = keys.map((_, idx) => `$${idx + 3}`);
+    await pool.query(`
+      INSERT INTO lead_ai_insights (tenant_id, lead_id, ${keys.join(', ')}, generated_at)
+      VALUES ($1, $2, ${placeholders.join(', ')}, NOW())
+    `, [tenantId, leadId, ...values]);
+  }
+}
+
+exports.analyzeBuyingIntentHandler = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const leadId = req.params.id;
+    const { analyzeBuyingIntent } = require('../services/aiService');
+    const intentData = await analyzeBuyingIntent(tenantId, leadId);
+    
+    // UPSERT to intelligence tables
+    await upsertLeadAiInsights(tenantId, leadId, {
+      buying_intent: intentData.intent,
+      confidence: intentData.confidence,
+      summary: intentData.reason
+    });
+
+    return success(res, intentData);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.analyzeSentimentHandler = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const leadId = req.params.id;
+    const { analyzeSentiment } = require('../services/aiService');
+    const sentimentData = await analyzeSentiment(tenantId, leadId);
+
+    // UPSERT to intelligence tables
+    await upsertLeadAiInsights(tenantId, leadId, {
+      sentiment: sentimentData.mood,
+      summary: sentimentData.tip
+    });
+
+    return success(res, sentimentData);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getLeadStatsHandler = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { getLeadStats } = require('../repositories/leadRepository');
+    const stats = await getLeadStats(tenantId);
+    return success(res, stats);
+  } catch (error) {
+    next(error);
   }
 };

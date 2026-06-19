@@ -23,54 +23,19 @@ const STATUS_COLORS = {
   cancelled: '#9CA3AF',
 }
 
-/* ─── Mock data factory ─────────────────────────────────────────────── */
-function buildMockData(range) {
-  const monthSets = {
-    '7D':  [{ month: 'Mon', planned: 4.2, collected: 3.8 }, { month: 'Tue', planned: 5.0, collected: 5.0 }, { month: 'Wed', planned: 6.5, collected: 5.9 }, { month: 'Thu', planned: 3.5, collected: 3.5 }, { month: 'Fri', planned: 7.8, collected: 7.2 }, { month: 'Sat', planned: 4.0, collected: 3.6 }, { month: 'Sun', planned: 2.5, collected: 2.0 }],
-    '30D': [{ month: 'Wk 1', planned: 18, collected: 15.5 }, { month: 'Wk 2', planned: 22, collected: 21 }, { month: 'Wk 3', planned: 19, collected: 16 }, { month: 'Wk 4', planned: 25, collected: 24.5 }],
-    '90D': [{ month: 'Jan', planned: 42, collected: 38.5 }, { month: 'Feb', planned: 55, collected: 52 }, { month: 'Mar', planned: 60, collected: 48 }],
-    '1Y':  [
-      { month: 'Jan', planned: 42, collected: 38.5 },
-      { month: 'Feb', planned: 55, collected: 52 },
-      { month: 'Mar', planned: 60, collected: 48 },
-      { month: 'Apr', planned: 35, collected: 35 },
-      { month: 'May', planned: 80, collected: 76 },
-      { month: 'Jun', planned: 72, collected: 58 },
-      { month: 'Jul', planned: 65, collected: 63 },
-      { month: 'Aug', planned: 90, collected: 88 },
-      { month: 'Sep', planned: 78, collected: 70 },
-      { month: 'Oct', planned: 85, collected: 82 },
-      { month: 'Nov', planned: 68, collected: 65 },
-      { month: 'Dec', planned: 95, collected: 90 },
-    ],
-  }
-
+/* ─── Default Empty Data ─────────────────────────────────────────────── */
+function getEmptyData() {
   return {
     kpis: {
-      active: 12,
-      revenue: range === '7D' ? 30.5 : range === '30D' ? 77 : range === '90D' ? 138.5 : 745,
-      onTimeRate: range === '7D' ? 91 : range === '30D' ? 87 : range === '90D' ? 83 : 79,
-      avgDuration: 118,
+      active: 0,
+      revenue: 0,
+      onTimeRate: 0,
+      avgDuration: 0,
     },
-    revenueData: monthSets[range],
-    statusData: [
-      { name: 'Active', count: 12, id: 'active' },
-      { name: 'On Hold', count: 2, id: 'on_hold' },
-      { name: 'Completed', count: 8, id: 'completed' },
-      { name: 'Cancelled', count: 1, id: 'cancelled' },
-    ],
-    topProjects: [
-      { name: 'Prestige Lakeside Villa', value: 185 },
-      { name: 'TechCorp HQ Fit-out', value: 142 },
-      { name: 'Reddy Mega Residence 5BHK', value: 98 },
-      { name: 'Jubilee Hills Penthouse', value: 76 },
-      { name: 'Banjara Hills Apartment', value: 54 },
-    ],
-    delayedProjects: [
-      { id: '101', name: 'TechCorp Office Fit-out', client: 'TechCorp Ltd', pm: 'Priya Sharma', targetDate: '2026-06-01', overdue: 14, phase: 'Execution' },
-      { id: '102', name: 'Banjara Hills Apartment', client: 'Anil Kumar', pm: 'Rahul Desai', targetDate: '2026-06-10', overdue: 5, phase: 'Design' },
-      { id: '103', name: 'Greenview Layout Clubhouse', client: 'Greenview Infra', pm: 'Meera Nair', targetDate: '2026-05-28', overdue: 18, phase: 'Handover' },
-    ],
+    revenueData: [],
+    statusData: [],
+    topProjects: [],
+    delayedProjects: [],
   }
 }
 
@@ -175,19 +140,24 @@ export default function ProjectAnalyticsPage() {
         }))
 
         if (statusData.length === 0 && revenueData.length === 0) {
-          setData(buildMockData(dateRange))
+          setData(getEmptyData())
         } else {
-          const mock = buildMockData(dateRange)
+          const totalProjects = statusData.reduce((s, d) => s + d.count, 0)
           setData({
-            kpis: mock.kpis,
-            revenueData:      revenueData.length      ? revenueData      : mock.revenueData,
-            statusData:       statusData.length       ? statusData       : mock.statusData,
-            topProjects:      topProjects.length      ? topProjects      : mock.topProjects,
-            delayedProjects:  delayedProjects.length  ? delayedProjects  : mock.delayedProjects,
+            kpis: {
+              active: statusData.find(s => s.id === 'active')?.count || 0,
+              revenue: topProjects.reduce((a, b) => a + b.value, 0),
+              onTimeRate: 100 - (delayedProjects.length > 0 ? Math.round((delayedProjects.length / (totalProjects || 1)) * 100) : 0),
+              avgDuration: 0,
+            },
+            revenueData,
+            statusData,
+            topProjects,
+            delayedProjects,
           })
         }
       })
-      .catch(() => setData(buildMockData(dateRange)))
+      .catch(() => setData(getEmptyData()))
       .finally(() => setLoading(false))
   }, [dateRange])
 

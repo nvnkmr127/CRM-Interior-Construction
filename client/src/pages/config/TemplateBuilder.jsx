@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import styles from './TemplateBuilder.module.css'
 import { Button, Modal, Input, Select, Badge } from '../../components/ui'
 import { useToast } from '../../store/toastContext'
+import { configApi } from '../../api/config'
 
 const PROJECT_TYPES = [
   { value: 'full_interior', label: 'Full Interior' },
@@ -22,23 +23,24 @@ export default function TemplateBuilder() {
   })
 
   useEffect(() => {
-    setTemplates([
-      { 
-        id: '1', name: 'Standard 3BHK Interior', type: 'full_interior', 
-        desc: 'Standard template for a 3BHK full home interior design & execution.',
-        phases: [
-          { id: 'p1', name: 'Design Phase', duration: 15, milestones: [
-            { id: 'm1', name: 'Initial Layout Approval', triggersPayment: false },
-            { id: 'm2', name: '3D Renders Sign-off', triggersPayment: true }
-          ]},
-          { id: 'p2', name: 'Execution Phase', duration: 45, milestones: [
-            { id: 'm3', name: 'Material Delivery', triggersPayment: true },
-            { id: 'm4', name: 'Carpentry Completion', triggersPayment: false }
-          ]}
-        ]
-      }
-    ])
+    fetchTemplates()
   }, [])
+
+  const fetchTemplates = async () => {
+    try {
+      const data = await configApi.getTemplates()
+      const formatted = data.map(t => ({
+        id: t.id,
+        name: t.name,
+        type: t.project_type || 'full_interior',
+        desc: t.description || '',
+        phases: t.phases || []
+      }))
+      setTemplates(formatted)
+    } catch (err) {
+      toast.error('Failed to load templates')
+    }
+  }
 
   const openEditor = (tmpl = null) => {
     if (tmpl) {
@@ -62,16 +64,40 @@ export default function TemplateBuilder() {
     setDraft({ ...draft, phases: newPhases })
   }
 
-  const saveTemplate = () => {
+  const saveTemplate = async () => {
     if (!draft.name) return toast.error('Template name required')
     
-    if (draft.id) {
-      setTemplates(templates.map(t => t.id === draft.id ? draft : t))
-    } else {
-      setTemplates([...templates, { ...draft, id: Date.now().toString() }])
+    const payload = {
+      name: draft.name,
+      project_type: draft.type,
+      description: draft.desc,
+      phases: draft.phases
     }
-    toast.success('Template saved successfully')
-    setIsModalOpen(false)
+
+    try {
+      if (draft.id) {
+        await configApi.updateTemplate(draft.id, payload)
+        toast.success('Template updated')
+      } else {
+        await configApi.createTemplate(payload)
+        toast.success('Template created')
+      }
+      setIsModalOpen(false)
+      fetchTemplates()
+    } catch (err) {
+      toast.error('Failed to save template')
+    }
+  }
+
+  const deleteTemplate = async (id) => {
+    if (!window.confirm('Delete this template?')) return
+    try {
+      await configApi.deleteTemplate(id)
+      setTemplates(templates.filter(x => x.id !== id))
+      toast.success('Template deleted')
+    } catch (err) {
+      toast.error('Failed to delete template')
+    }
   }
 
   return (
@@ -98,7 +124,7 @@ export default function TemplateBuilder() {
               
               <div className={styles.cardActions}>
                 <Button variant="ghost" size="sm" onClick={() => openEditor(t)}>Edit</Button>
-                <Button variant="ghost" size="sm" style={{color:'var(--color-danger)'}} onClick={() => setTemplates(templates.filter(x => x.id !== t.id))}>Delete</Button>
+                <Button variant="ghost" size="sm" style={{color:'var(--color-danger)'}} onClick={() => deleteTemplate(t.id)}>Delete</Button>
                 <Button variant="secondary" size="sm" style={{marginLeft:'auto'}}>Apply to Project</Button>
               </div>
             </div>

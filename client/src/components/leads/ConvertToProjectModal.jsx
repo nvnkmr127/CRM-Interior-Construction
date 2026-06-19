@@ -81,7 +81,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
       isOpen={isOpen}
       onClose={onClose}
       title="Convert Lead to Project"
-      size="md"
+      size="lg"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
@@ -92,6 +92,38 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
       }
     >
       <div className="space-y-6 pb-2">
+        {/* Lead Summary Section */}
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+          <h4 className="font-semibold text-gray-800 mb-3 text-sm flex items-center gap-2">
+            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            Lead Summary
+          </h4>
+          <div className="grid grid-cols-2 gap-y-3 gap-x-6 text-sm">
+            <div>
+              <span className="text-gray-500 block text-xs mb-0.5">Client</span>
+              <span className="font-medium text-gray-900">{lead.name || 'N/A'}</span>
+            </div>
+            <div>
+              <span className="text-gray-500 block text-xs mb-0.5">Contact</span>
+              <span className="font-medium text-gray-900">{lead.phone || 'N/A'}</span>
+            </div>
+            <div>
+              <span className="text-gray-500 block text-xs mb-0.5">Scope</span>
+              <span className="font-medium text-gray-900 capitalize">{(lead.scope || '').replace('_', ' ') || 'N/A'}</span>
+            </div>
+            <div>
+              <span className="text-gray-500 block text-xs mb-0.5">Max Budget</span>
+              <span className="font-medium text-gray-900">{lead.budget_max ? `₹${Number(lead.budget_max).toLocaleString()}` : 'TBD'}</span>
+            </div>
+            {lead.locality && (
+              <div className="col-span-2">
+                <span className="text-gray-500 block text-xs mb-0.5">Locality</span>
+                <span className="font-medium text-gray-900">{lead.locality}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Checklist Section */}
         <div className="bg-blue-50 border border-blue-100 p-4 rounded-md">
           <h4 className="font-semibold text-blue-900 mb-3 text-sm">Pre-Conversion Checklist</h4>

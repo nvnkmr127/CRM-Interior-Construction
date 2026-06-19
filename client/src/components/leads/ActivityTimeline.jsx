@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getActivities, logActivity } from '../../api/leads';
+import { getLeadTimeline, logActivity } from '../../api/leads';
 import api from '../../api/axios';
 import { formatDistanceToNow, format } from 'date-fns';
 import AIMeetingModal from './AIMeetingModal';
@@ -40,6 +40,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
   const [loading, setLoading] = useState(true);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 20 });
   const [activeForm, setActiveForm] = useState(null); // 'note', 'email', 'task', 'site_visit'
+  const [filter, setFilter] = useState('all'); // 'all', 'note', 'email', 'site_visit', 'task', 'system'
 
   // Generic form data
   const [formData, setFormData] = useState({
@@ -56,6 +57,43 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Voice to text
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = React.useRef(null);
+
+  const toggleListening = () => {
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+      return;
+    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Your browser does not support Speech Recognition.");
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    
+    recognition.onresult = (event) => {
+      let finalTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript + ' ';
+        }
+      }
+      if (finalTranscript) {
+        setFormData(prev => ({ ...prev, notes: prev.notes + finalTranscript }));
+      }
+    };
+    
+    recognition.onend = () => setIsListening(false);
+    recognition.start();
+    setIsListening(true);
+  };
+
   // You might want to fetch reps for task assignment
   const [reps, setReps] = useState([]);
   useEffect(() => {
@@ -66,21 +104,25 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
     if (!leadId) return;
     try {
       if (!append) setLoading(true);
-      const res = await getActivities(leadId, { page, limit: 20 });
+      const queryParams = { page, limit: 20 };
+      if (filter !== 'all') {
+        queryParams.type = filter;
+      }
+      const res = await getLeadTimeline(leadId, queryParams);
       if (res.success) {
         setActivities(prev => append ? [...prev, ...res.data] : res.data);
         setMeta({ total: res.total, page: res.page, limit: res.limit });
       }
     } catch (error) {
-      console.error('Failed to load activities', error);
+      console.error('Failed to load timeline events', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchActivities();
-  }, [leadId]);
+    fetchActivities(1, false);
+  }, [leadId, filter]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -178,6 +220,21 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
             </button>
           </div>
         </div>
+        
+        {/* Filters */}
+        <div className="flex gap-2 p-2 px-3 border-b border-gray-100 bg-white overflow-x-auto">
+          {['all', 'note', 'email', 'site_visit', 'task', 'system'].map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
+                filter === f ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {f === 'site_visit' ? 'Site Visits' : f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
 
         {activeForm && (
           <form onSubmit={handleSubmit} className="p-4 space-y-4">
@@ -219,14 +276,23 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
                   onChange={(e) => setFormData(prev => ({ ...prev, site_address: e.target.value }))}
                   className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none"
                 />
-                <textarea
-                  required
-                  rows="3"
-                  placeholder="Detailed Visit Notes (AI will summarize this)"
-                  value={formData.notes}
-                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  className="w-full rounded-md border border-gray-300 p-3 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none shadow-inner"
-                ></textarea>
+                <div className="relative">
+                  <textarea
+                    required
+                    rows="3"
+                    placeholder="Detailed Visit Notes (AI will summarize this)"
+                    value={formData.notes}
+                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                    className="w-full rounded-md border border-gray-300 p-3 pr-10 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none shadow-inner"
+                  ></textarea>
+                  <button
+                    type="button"
+                    onClick={toggleListening}
+                    className={`absolute right-3 bottom-4 p-1.5 rounded-full transition-colors ${isListening ? 'bg-red-100 text-red-600 animate-pulse' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+                  </button>
+                </div>
                 <div className="flex gap-4">
                   <input
                     type="text"
@@ -242,14 +308,24 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
                 </div>
               </div>
             ) : (
-              <textarea
-                required
-                rows="3"
-                placeholder={activeForm === 'email' ? "Enter email details..." : "Write a note..."}
-                value={formData.notes}
-                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                className="w-full rounded-md border border-gray-300 p-3 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none shadow-inner"
-              ></textarea>
+              <div className="relative">
+                <textarea
+                  required
+                  rows="3"
+                  placeholder={activeForm === 'email' ? "Enter email details..." : "Write a note... (Click mic to dictate)"}
+                  value={formData.notes}
+                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  className="w-full rounded-md border border-gray-300 p-3 pr-10 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none shadow-inner"
+                ></textarea>
+                <button
+                  type="button"
+                  onClick={toggleListening}
+                  className={`absolute right-3 bottom-4 p-1.5 rounded-full transition-colors ${isListening ? 'bg-red-100 text-red-600 animate-pulse' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}
+                  title={isListening ? "Stop listening" : "Start Voice Dictation"}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+                </button>
+              </div>
             )}
 
             <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
@@ -322,6 +398,41 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
                         <svg className="w-5 h-5 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                         <div className="text-sm text-indigo-900 leading-relaxed font-medium">
                           {activity.ai_summary}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {activity.metadata?.suggested_tasks && activity.metadata.suggested_tasks.length > 0 && (
+                      <div className="mt-3 bg-blue-50 p-3 rounded border border-blue-100">
+                        <h4 className="text-sm font-semibold text-blue-900 mb-2 flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                          AI Suggested Tasks
+                        </h4>
+                        <div className="space-y-2">
+                          {activity.metadata.suggested_tasks.map((task, idx) => (
+                            <div key={idx} className="flex justify-between items-center text-sm bg-white p-2 border border-blue-100 rounded">
+                              <span className="text-gray-700">{task.title}</span>
+                              <button 
+                                onClick={async () => {
+                                  const dueDate = new Date();
+                                  dueDate.setDate(dueDate.getDate() + (task.due_in_days || 0));
+                                  await api.post('/tasks', {
+                                    lead_id: leadId,
+                                    title: task.title,
+                                    due_date: dueDate.toISOString().split('T')[0],
+                                    priority: 'medium',
+                                    status: 'open'
+                                  });
+                                  await logActivity(leadId, { type: 'note', notes: `Accepted AI Task: ${task.title}` });
+                                  fetchActivities(1, false);
+                                  if (onTaskAdded) onTaskAdded();
+                                }}
+                                className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition-colors font-medium whitespace-nowrap ml-2"
+                              >
+                                Accept Task
+                              </button>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}

@@ -38,16 +38,16 @@ async function seedDemoData() {
 
   // 4. Create leads (5 per stage)
   const leadData = [
-    { name:'Rajesh Sharma',  phone:'9876543210', source:'referral',  stage:'Qualified',          score:75 },
-    { name:'Meena Gupta',    phone:'9876543211', source:'facebook',  stage:'Site Visit Scheduled',score:60 },
-    { name:'Arun Kapoor',    phone:'9876543212', source:'indimart',  stage:'New',                score:35 },
-    { name:'Sunita Verma',   phone:'9876543213', source:'website',   stage:'Proposal Sent',      score:80 },
-    { name:'Vikram Nair',    phone:'9876543214', source:'referral',  stage:'Won',                score:90 },
-    { name:'Deepa Iyer',     phone:'9876543215', source:'facebook',  stage:'Contacted',          score:45 },
-    { name:'Kiran Reddy',    phone:'9876543216', source:'direct',    stage:'Qualified',          score:65 },
-    { name:'Ramesh Patel',   phone:'9876543217', source:'indimart',  stage:'New',                score:20 },
-    { name:'Anita Joshi',    phone:'9876543218', source:'referral',  stage:'Site Visit Scheduled',score:70 },
-    { name:'Suresh Kumar',   phone:'9876543219', source:'website',   stage:'Lost',               score:30 },
+    { name:'Rajesh Sharma',  phone:'9876543210', source:'referral',  stage:'Discovery Call',          score:75 },
+    { name:'Meena Gupta',    phone:'9876543211', source:'facebook',  stage:'Site Visit Scheduling',   score:60 },
+    { name:'Arun Kapoor',    phone:'9876543212', source:'indimart',  stage:'Lead Capture',            score:35 },
+    { name:'Sunita Verma',   phone:'9876543213', source:'website',   stage:'Quotation',               score:80 },
+    { name:'Vikram Nair',    phone:'9876543214', source:'referral',  stage:'Closing',                 score:90 },
+    { name:'Deepa Iyer',     phone:'9876543215', source:'facebook',  stage:'First Contact',           score:45 },
+    { name:'Kiran Reddy',    phone:'9876543216', source:'direct',    stage:'AI Budgeting',            score:65 },
+    { name:'Ramesh Patel',   phone:'9876543217', source:'indimart',  stage:'AI Qualification',        score:20 },
+    { name:'Anita Joshi',    phone:'9876543218', source:'referral',  stage:'Site Visit Conducted',    score:70 },
+    { name:'Suresh Kumar',   phone:'9876543219', source:'website',   stage:'Negotiation',             score:30 },
   ]
   for (const l of leadData) {
     await pool.query(

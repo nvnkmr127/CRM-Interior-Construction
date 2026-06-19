@@ -371,6 +371,27 @@
   color: var(--color-text);
 }
 
+.actionIconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  transition: all 0.15s;
+}
+
+.actionIconBtn:hover {
+  background: var(--color-surface-2);
+  border-color: var(--color-border-strong);
+  transform: translateY(-1px);
+}
+
 /* ─── Stage Move Dropdown ─────────────────────────────────── */
 .stageMenuWrap {
   position: relative;

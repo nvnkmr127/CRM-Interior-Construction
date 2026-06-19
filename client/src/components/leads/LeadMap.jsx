@@ -5,15 +5,8 @@ export default function LeadMap({ leads, onLeadClick }) {
   // We simulate a map view since we don't have Google Maps/Mapbox API keys.
   // In a real app, you would use react-map-gl or @react-google-maps/api.
 
-  // Filter leads that have coordinates or mock some locations
-  const leadsWithLocation = leads.filter(l => l.latitude && l.longitude).length > 0 
-    ? leads.filter(l => l.latitude && l.longitude)
-    : leads.slice(0, 15).map((l, i) => ({
-        ...l,
-        latitude: l.latitude || 12.9716 + (Math.random() - 0.5) * 0.1,
-        longitude: l.longitude || 77.5946 + (Math.random() - 0.5) * 0.1,
-        isMocked: !l.latitude
-      }));
+  // Only show leads that have real geographic coordinates
+  const leadsWithLocation = leads.filter(l => l.latitude && l.longitude);
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-full flex flex-col relative overflow-hidden min-h-[600px]">

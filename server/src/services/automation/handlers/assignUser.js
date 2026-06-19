@@ -2,10 +2,10 @@ const pool = require('../../../db/pool');
 
 /**
  * Assign User Action Handler
- * Dynamically assigns a specific user (assigneeId) to a designated user field on the entity.
+ * Dynamically assigns a specific user (assigneeId) or uses a strategy to a designated user field on the entity.
  */
 async function handle(config, context) {
-  const { entity, userIdField, assigneeId } = config;
+  let { entity = 'lead', userIdField = 'assigned_rep_id', assigneeId, strategy } = config;
   const { tenantId, record } = context;
 
   if (!record || !record.id) {
@@ -20,6 +20,27 @@ async function handle(config, context) {
     throw new Error('Invalid entity or field configuration syntax');
   }
 
+  // If no assigneeId is provided, try to resolve via strategy
+  if (!assigneeId && strategy) {
+    if (strategy === 'senior_rep') {
+      const res = await pool.query(`SELECT id FROM users WHERE tenant_id = $1 AND role = 'senior_sales_rep' LIMIT 1`, [tenantId]);
+      if (res.rows.length > 0) assigneeId = res.rows[0].id;
+    } else if (strategy === 'round_robin' || strategy === 'reassign_round_robin') {
+      const res = await pool.query(`
+        SELECT id FROM users 
+        WHERE tenant_id = $1 AND role IN ('sales_rep', 'senior_sales_rep') 
+        ORDER BY active_leads_count ASC NULLS FIRST LIMIT 1
+      `, [tenantId]);
+      if (res.rows.length > 0) assigneeId = res.rows[0].id;
+    }
+  }
+
+  // If still no assigneeId, fallback to a system assignment or do nothing
+  if (!assigneeId) {
+    console.log(`[Automation] assignUser strategy '${strategy}' failed to find a valid user for tenant ${tenantId}`);
+    return;
+  }
+
   const tableName = safeEntity + 's'; 
 
   const query = `
@@ -29,6 +50,7 @@ async function handle(config, context) {
   `;
 
   await pool.query(query, [assigneeId, record.id, tenantId]);
+  console.log(`[Automation] Assigned user ${assigneeId} to ${tableName} ${record.id}`);
 }
 
 module.exports = { handle };

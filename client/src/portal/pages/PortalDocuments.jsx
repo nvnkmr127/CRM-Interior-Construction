@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import api from '../../api/axios'
 import styles from './PortalDocuments.module.css'
 
 const FILTERS = ['All', 'Drawings', 'BOQ', 'Renders', 'Contracts', 'Photos']
@@ -9,17 +10,21 @@ export default function PortalDocuments() {
   const [activeFilter, setActiveFilter] = useState('All')
 
   useEffect(() => {
-    setTimeout(() => {
-      setDocuments([
-        { id: '1', name: 'Final_Contract_Signed.pdf', category: 'Contracts', type: 'pdf', version: 'v1', addedAt: '2025-01-05' },
-        { id: '2', name: 'Master_Bedroom_Renders.zip', category: 'Renders', type: 'image', version: 'v2', addedAt: '2025-01-12' },
-        { id: '3', name: 'Kitchen_Plumbing_Layout.pdf', category: 'Drawings', type: 'pdf', version: 'v1', addedAt: '2025-01-14' },
-        { id: '4', name: 'Project_BOQ_v3.xlsx', category: 'BOQ', type: 'sheet', version: 'v3', addedAt: '2025-01-15' },
-        { id: '5', name: 'Site_Visit_Photos_Week_2.jpg', category: 'Photos', type: 'image', version: 'v1', addedAt: '2025-01-20' },
-        { id: '6', name: 'False_Ceiling_Plan.pdf', category: 'Drawings', type: 'pdf', version: 'v2', addedAt: '2025-01-22' }
-      ])
-      setLoading(false)
-    }, 600)
+    api.get('/portal/project/documents')
+      .then(res => {
+        const raw = res.data?.data || []
+        setDocuments(raw.map(d => ({
+          id: d.id,
+          name: d.name,
+          category: d.docType || 'Other',
+          type: d.mimeType?.includes('pdf') ? 'pdf' : d.mimeType?.includes('image') ? 'image' : d.mimeType?.includes('sheet') ? 'sheet' : 'doc',
+          version: 'v1',
+          addedAt: d.createdAt,
+          downloadUrl: d.downloadUrl
+        })))
+      })
+      .catch(err => console.error(err))
+      .finally(() => setLoading(false))
   }, [])
 
   const filteredDocs = activeFilter === 'All' 
@@ -27,8 +32,8 @@ export default function PortalDocuments() {
     : documents.filter(d => d.category === activeFilter)
 
   const handleDownload = (url) => {
-    // window.open(url, '_blank')
-    alert('Downloading document...')
+    if (url) window.open(url, '_blank')
+    else alert('Download link unavailable')
   }
 
   const getIconClass = (type) => {
@@ -88,7 +93,7 @@ export default function PortalDocuments() {
                   <div className={styles.metaText}>Added {new Date(doc.addedAt).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'})}</div>
                 </div>
               </div>
-              <button className={styles.dlBtn} onClick={() => handleDownload('/mock')}>
+              <button className={styles.dlBtn} onClick={() => handleDownload(doc.downloadUrl)}>
                 ⬇ Download
               </button>
             </div>

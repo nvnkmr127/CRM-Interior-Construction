@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { requireAuth } = require('../middleware/auth');
+const authenticate = require('../middleware/authenticate');
 const pool = require('../db/pool');
 const { success, fail } = require('../utils/response');
 
 // Get all site visits for a lead
-router.get('/lead/:leadId', requireAuth, async (req, res, next) => {
+router.get('/lead/:leadId', authenticate, async (req, res, next) => {
   try {
     const { leadId } = req.params;
     const tenantId = req.tenantId || req.user.tenantId;
@@ -27,7 +27,7 @@ router.get('/lead/:leadId', requireAuth, async (req, res, next) => {
 });
 
 // Create a new site visit
-router.post('/lead/:leadId', requireAuth, async (req, res, next) => {
+router.post('/lead/:leadId', authenticate, async (req, res, next) => {
   try {
     const { leadId } = req.params;
     const tenantId = req.tenantId || req.user.tenantId;
@@ -49,7 +49,7 @@ router.post('/lead/:leadId', requireAuth, async (req, res, next) => {
 });
 
 // Update a site visit (Check-in, complete, add measurements)
-router.patch('/:id', requireAuth, async (req, res, next) => {
+router.patch('/:id', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
     const tenantId = req.tenantId || req.user.tenantId;

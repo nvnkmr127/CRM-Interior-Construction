@@ -1,47 +1,42 @@
 /**
- * Estimator App Service (Stub/Placeholder for client's specific estimator app)
+ * Native Estimator Service
  */
+const pool = require('../config/db');
 
-async function sendLeadToEstimator(lead) {
-  const apiUrl = process.env.ESTIMATOR_API_URL || 'https://api.your-estimator-app.com/v1/leads';
-  const apiKey = process.env.ESTIMATOR_API_KEY;
-
-  if (!apiKey) {
-    console.warn('[Estimator Service] API Key missing. Simulating sending lead to estimator app:', lead.id);
-    return { success: true, simulated: true, estimator_reference_id: `est_${Date.now()}` };
-  }
-
-  try {
-    const payload = {
-      external_id: lead.id,
-      client_name: lead.name,
-      client_phone: lead.phone,
-      client_email: lead.email,
-      project_type: lead.project_type,
-      scope_notes: lead.scope
-    };
-
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify(payload)
+async function createEstimate(tenantId, leadId, payload) {
+  // calculate total amount from payload (rooms -> items -> qty * rate)
+  let totalAmount = 0;
+  if (payload && payload.rooms) {
+    payload.rooms.forEach(room => {
+      if (room.items) {
+        room.items.forEach(item => {
+          totalAmount += (Number(item.qty) || 0) * (Number(item.rate) || 0);
+        });
+      }
     });
-
-    if (!response.ok) {
-      throw new Error(`Estimator API error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return { success: true, data };
-  } catch (error) {
-    console.error('[Estimator Service] Failed to send lead to estimator:', error);
-    throw error;
   }
+
+  // generate a fake reference ID
+  const refId = `EST-${Math.floor(1000 + Math.random() * 9000)}`;
+
+  const result = await pool.query(
+    `INSERT INTO lead_estimates (tenant_id, lead_id, estimator_reference_id, status, total_amount, payload, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+     RETURNING *`,
+    [tenantId, leadId, refId, 'draft', totalAmount, payload]
+  );
+  return result.rows[0];
+}
+
+async function getEstimates(tenantId, leadId) {
+  const result = await pool.query(
+    `SELECT * FROM lead_estimates WHERE tenant_id = $1 AND lead_id = $2 ORDER BY created_at DESC`,
+    [tenantId, leadId]
+  );
+  return result.rows;
 }
 
 module.exports = {
-  sendLeadToEstimator
+  createEstimate,
+  getEstimates
 };

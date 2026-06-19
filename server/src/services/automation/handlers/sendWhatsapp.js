@@ -6,16 +6,18 @@ const configEnv = require('../../../config/env');
  * Integrates with third-party WhatsApp API.
  */
 async function handle(config, context) {
-  const { templateName, recipientField } = config;
+  const { templateName, templateId, recipientField } = config;
   const { record } = context;
+
+  const tName = templateName || templateId;
 
   const phone = record[recipientField] || record.phone;
   if (!phone) {
-    console.log(`[Automation Action] No phone number found to send WhatsApp template '${templateName}'`);
+    console.log(`[Automation Action] No phone number found to send WhatsApp template '${tName}'`);
     return;
   }
 
-  console.log(`[Automation Action] Sending WhatsApp to ${phone} using template '${templateName}'`);
+  console.log(`[Automation Action] Sending WhatsApp to ${phone} using template '${tName}'`);
 
   try {
     const waApiUrl = process.env.WHATSAPP_API_URL;
@@ -31,7 +33,7 @@ async function handle(config, context) {
       to: phone,
       type: "template",
       template: {
-        name: templateName,
+        name: tName,
         language: { code: "en" }
       }
     };

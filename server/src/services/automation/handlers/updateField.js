@@ -5,7 +5,7 @@ const pool = require('../../../db/pool');
  * Dynamically updates a specific field directly on a target entity record.
  */
 async function handle(config, context) {
-  const { entity, field, value } = config;
+  let { entity = 'lead', field, value, relative = false } = config;
   const { tenantId, record } = context;
 
   if (!record || !record.id) {
@@ -13,7 +13,6 @@ async function handle(config, context) {
   }
 
   // Strict sanitize layer to prevent severe SQL injection vectors 
-  // since table and column names cannot be strictly parameterized via $1 syntax.
   const safeEntity = entity.replace(/[^a-z_]/gi, '');
   const safeField = field.replace(/[^a-z_]/gi, '');
 
@@ -21,14 +20,22 @@ async function handle(config, context) {
     throw new Error('Invalid entity or field configuration syntax detected.');
   }
 
-  // Standardize the target table string resolution (e.g. 'lead' -> 'leads')
   const tableName = safeEntity + 's'; 
 
-  const query = `
-    UPDATE ${tableName}
-    SET ${safeField} = $1, updated_at = NOW()
-    WHERE id = $2 AND tenant_id = $3
-  `;
+  let query;
+  if (relative && typeof value === 'number') {
+    query = `
+      UPDATE ${tableName}
+      SET ${safeField} = COALESCE(${safeField}, 0) + $1, updated_at = NOW()
+      WHERE id = $2 AND tenant_id = $3
+    `;
+  } else {
+    query = `
+      UPDATE ${tableName}
+      SET ${safeField} = $1, updated_at = NOW()
+      WHERE id = $2 AND tenant_id = $3
+    `;
+  }
 
   await pool.query(query, [value, record.id, tenantId]);
 }

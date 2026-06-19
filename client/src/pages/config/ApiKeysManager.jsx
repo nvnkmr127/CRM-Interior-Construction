@@ -3,6 +3,7 @@ import layoutStyles from './ConfigLayout.module.css'
 import styles from './ApiKeysManager.module.css'
 import { Button, Badge, Modal, DataTable, Input } from '../../components/ui'
 import { useToast } from '../../store/toastContext'
+import { configApi } from '../../api/config'
 
 export default function ApiKeysManager() {
   const [keys, setKeys] = useState([])
@@ -23,12 +24,26 @@ export default function ApiKeysManager() {
   const toast = useToast()
 
   useEffect(() => {
-    // Mock fetch
-    setKeys([
-      { id: '1', name: 'Zapier Integration', prefix: 'ext_xk9f', scopes: ['read', 'write'], lastUsed: new Date(Date.now() - 3600000).toISOString(), expires: new Date(Date.now() + 86400000 * 30).toISOString(), status: 'active' },
-      { id: '2', name: 'Legacy Sync Script', prefix: 'ext_a1b2', scopes: ['leads:read', 'projects:read'], lastUsed: new Date(Date.now() - 86400000 * 5).toISOString(), expires: new Date(Date.now() + 86400000 * 3).toISOString(), status: 'active' },
-    ])
+    fetchKeys()
   }, [])
+
+  const fetchKeys = async () => {
+    try {
+      const data = await configApi.getApiKeys()
+      const formatted = data.map(k => ({
+        id: k.id,
+        name: k.name,
+        prefix: k.key_prefix,
+        scopes: k.scopes || [],
+        lastUsed: k.last_used_at,
+        expires: k.expires_at,
+        status: k.is_active ? 'active' : 'revoked'
+      }))
+      setKeys(formatted)
+    } catch (err) {
+      toast.error('Failed to load API keys')
+    }
+  }
 
   useEffect(() => {
     let timer
@@ -45,34 +60,43 @@ export default function ApiKeysManager() {
     setFormData({ ...formData, scopes: next })
   }
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!formData.name) return toast.error('Key name is required')
     
-    // Mock API call
-    const generatedKey = `ext_${Math.random().toString(36).substring(2, 6)}_${Math.random().toString(36).substring(2, 15)}`
-    
-    setKeys([{
-      id: Date.now().toString(),
-      name: formData.name,
-      prefix: generatedKey.split('_').slice(0, 2).join('_'),
-      scopes: Array.from(formData.scopes),
-      lastUsed: null,
-      expires: formData.expires || null,
-      status: 'active'
-    }, ...keys])
-
-    setIsGenerateOpen(false)
-    setFormData({ name: '', scopes: new Set(), rateLimit: 60, expires: '' })
-    setNewKeyData(generatedKey)
-    setIsKeyRevealed(false)
-    setCopied(false)
-    setDoneCountdown(5)
+    try {
+      const payload = {
+        name: formData.name,
+        scopes: Array.from(formData.scopes),
+        rateLimitRpm: formData.rateLimit,
+        expiresAt: formData.expires || null
+      }
+      
+      const res = await configApi.createApiKey(payload)
+      
+      setIsGenerateOpen(false)
+      setFormData({ name: '', scopes: new Set(), rateLimit: 60, expires: '' })
+      setNewKeyData(res.rawKey)
+      setIsKeyRevealed(false)
+      setCopied(false)
+      setDoneCountdown(5)
+      
+      fetchKeys()
+    } catch (err) {
+      toast.error('Failed to generate API key')
+    }
   }
 
-  const confirmRevoke = () => {
-    setKeys(keys.filter(k => k.id !== revokeTarget.id))
-    setRevokeTarget(null)
-    toast.success('API Key revoked')
+  const confirmRevoke = async () => {
+    if (!revokeTarget) return
+    try {
+      await configApi.revokeApiKey(revokeTarget.id)
+      setKeys(keys.filter(k => k.id !== revokeTarget.id))
+      toast.success('API Key revoked')
+    } catch (err) {
+      toast.error('Failed to revoke API key')
+    } finally {
+      setRevokeTarget(null)
+    }
   }
 
   const copyToClipboard = () => {

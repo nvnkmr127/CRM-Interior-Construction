@@ -20,6 +20,7 @@ import layoutStyles from './ConfigLayout.module.css'
 import styles from './LeadStagesManager.module.css'
 import { Button, Badge, Modal } from '../../components/ui'
 import { useToast } from '../../store/toastContext'
+import api from '../../api/axios'
 
 const PRESET_COLOURS = [
   '#6B7280', '#1A3A5C', '#E8935A', '#2D6A4F', '#8B2020', '#4A2040',
@@ -94,7 +95,6 @@ function SortableStage({ stage, updateStage, deleteStage }) {
       {stage.isLost && <Badge variant="danger">Is Lost</Badge>}
 
       <div className={styles.actions}>
-        <Button variant="ghost" size="sm">Edit</Button>
         <Button variant="ghost" size="sm" style={{color:'var(--color-danger)'}} onClick={() => deleteStage(stage)}>
           Delete
         </Button>
@@ -109,14 +109,26 @@ export default function LeadStagesManager() {
   const toast = useToast()
 
   useEffect(() => {
-    setStages([
-      { id: '1', name: 'New Lead', color: '#6B7280', requiredFields: 0, leadCount: 12 },
-      { id: '2', name: 'Contacted', color: '#2563EB', requiredFields: 2, leadCount: 5 },
-      { id: '3', name: 'Proposal Sent', color: '#D97706', requiredFields: 4, leadCount: 3 },
-      { id: '4', name: 'Won', color: '#059669', requiredFields: 0, isWon: true, leadCount: 0 },
-      { id: '5', name: 'Lost', color: '#DC2626', requiredFields: 0, isLost: true, leadCount: 0 }
-    ])
+    fetchStages()
   }, [])
+
+  const fetchStages = async () => {
+    try {
+      const res = await api.get('/config/lead-stages')
+      const formatted = res.data.data.map(s => ({
+        id: s.id,
+        name: s.name,
+        color: s.color,
+        requiredFields: s.mandatory_fields ? s.mandatory_fields.length : 0,
+        isWon: s.is_won,
+        isLost: s.is_lost,
+        leadCount: s.lead_count || 0 // Assuming backend might return this later, default 0
+      }))
+      setStages(formatted)
+    } catch (err) {
+      toast.error('Failed to fetch lead stages')
+    }
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -125,31 +137,64 @@ export default function LeadStagesManager() {
     })
   );
 
-  const handleDragEnd = (event) => {
+  const handleDragEnd = async (event) => {
     const {active, over} = event;
     if (over && active.id !== over.id) {
-      setStages((items) => {
-        const oldIndex = items.findIndex(i => i.id === active.id);
-        const newIndex = items.findIndex(i => i.id === over.id);
-        const newItems = arrayMove(items, oldIndex, newIndex);
+      const oldIndex = stages.findIndex(i => i.id === active.id);
+      const newIndex = stages.findIndex(i => i.id === over.id);
+      const newItems = arrayMove(stages, oldIndex, newIndex);
+      setStages(newItems);
+
+      try {
+        await api.patch('/config/lead-stages/reorder', { orderedIds: newItems.map(i => i.id) })
         toast.success('Stage order saved')
-        return newItems;
-      });
+      } catch (err) {
+        toast.error('Failed to save stage order')
+      }
     }
   }
 
-  const updateStage = (id, updates) => {
-    setStages(stages.map(s => s.id === id ? { ...s, ...updates } : s))
+  const updateStage = async (id, updates) => {
+    try {
+      await api.put(`/config/lead-stages/${id}`, updates)
+      setStages(stages.map(s => s.id === id ? { ...s, ...updates } : s))
+      toast.success('Stage updated')
+    } catch (err) {
+      toast.error('Failed to update stage')
+    }
+  }
+
+  const addStage = async () => {
+    const newStageName = window.prompt("Enter new stage name:")
+    if (!newStageName) return
+
+    try {
+      const res = await api.post('/config/lead-stages', { name: newStageName })
+      toast.success('Stage created')
+      fetchStages()
+    } catch (err) {
+      toast.error('Failed to create stage')
+    }
   }
 
   const requestDelete = (stage) => {
     setStageToDelete(stage)
   }
 
-  const confirmDelete = () => {
-    setStages(stages.filter(s => s.id !== stageToDelete.id))
-    setStageToDelete(null)
-    toast.success('Stage deleted')
+  const confirmDelete = async () => {
+    try {
+      await api.delete(`/config/lead-stages/${stageToDelete.id}`)
+      setStages(stages.filter(s => s.id !== stageToDelete.id))
+      toast.success('Stage deleted')
+    } catch (err) {
+      if (err.response?.status === 409) {
+        toast.error('Cannot delete: Stage contains active leads.')
+      } else {
+        toast.error('Failed to delete stage')
+      }
+    } finally {
+      setStageToDelete(null)
+    }
   }
 
   return (
@@ -159,7 +204,7 @@ export default function LeadStagesManager() {
           <h2 className={layoutStyles.sectionTitle}>Lead Stages</h2>
           <p className={layoutStyles.sectionDesc}>Define the stages in your sales pipeline.</p>
         </div>
-        <Button variant="primary">+ Add Stage</Button>
+        <Button variant="primary" onClick={addStage}>+ Add Stage</Button>
       </div>
 
       <div className={styles.list}>

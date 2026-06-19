@@ -1,6 +1,5 @@
 import React from 'react';
-import { Input } from '../ui/input';
-import { Button } from '../ui/button';
+import { Input, Button } from '../ui';
 
 export default function LeadFilterBar({ filters, setFilters, reps }) {
   const handleChange = (e) => {

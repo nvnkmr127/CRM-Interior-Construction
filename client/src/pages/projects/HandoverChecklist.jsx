@@ -70,8 +70,13 @@ export default function HandoverChecklist({ projectId }) {
     setCollapsedRooms(next)
   }
 
-  const toggleItem = (roomId, itemId) => {
+  const toggleItem = async (roomId, itemId) => {
     if (checklist.status === 'signed_off') return
+    
+    // Optimistic Update
+    const oldChecklist = checklist;
+    let isCheckedNew = false;
+    
     const newRooms = checklist.rooms.map(r => {
       if (r.id !== roomId) return r
       return {
@@ -79,30 +84,46 @@ export default function HandoverChecklist({ projectId }) {
         items: r.items.map(i => {
           if (i.id !== itemId) return i
           const isChecked = !i.isChecked
+          isCheckedNew = isChecked;
           return { ...i, isChecked, checkedBy: isChecked ? 'You' : null, checkedAt: isChecked ? new Date().toISOString() : null }
         })
       }
     })
     setChecklist({ ...checklist, rooms: newRooms })
+    
+    try {
+      await updateHandoverItem(itemId, { checklistId: checklist.id, is_checked: isCheckedNew })
+    } catch {
+      toast.error('Failed to update item status')
+      setChecklist(oldChecklist)
+    }
   }
 
-  const handlePhotoUpload = (roomId, itemId, e) => {
+  const handlePhotoUpload = async (roomId, itemId, e) => {
     const file = e.target.files[0]
     if (!file) return
     setUploadingItem(itemId)
-    // Mock upload
-    setTimeout(() => {
+    
+    // In production, we'd upload to S3 first. 
+    // Here we simulate the successful upload by updating the item with a mock storage key.
+    const mockStorageKey = `handover/photos/${Date.now()}-${file.name}`
+    
+    try {
+      await updateHandoverItem(itemId, { checklistId: checklist.id, photo_key: mockStorageKey })
       const newRooms = checklist.rooms.map(r => {
         if (r.id !== roomId) return r
         return {
           ...r,
-          items: r.items.map(i => i.id === itemId ? { ...i, photoKey: '/mock-uploaded.jpg' } : i)
+          items: r.items.map(i => i.id === itemId ? { ...i, photoKey: mockStorageKey } : i)
         }
       })
       setChecklist({ ...checklist, rooms: newRooms })
+      toast.success('Photo uploaded successfully')
+    } catch {
+      toast.error('Failed to upload photo')
+    } finally {
       setUploadingItem(null)
-      toast.success('Photo uploaded')
-    }, 1500)
+    }
   }
 
   const triggerFileInput = (roomId, itemId) => {

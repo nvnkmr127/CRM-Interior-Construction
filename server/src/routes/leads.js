@@ -41,6 +41,7 @@ router.post('/:id/stage', authenticate, authorize('leads:update'), leadControlle
 router.post('/:id/convert-to-project', authenticate, authorize('leads:update'), leadController.convertToProjectHandler);
 router.post('/:id/activities', authenticate, leadController.logActivityHandler);
 router.get('/:id/activities', authenticate, leadController.getActivitiesHandler);
+router.get('/:id/timeline', authenticate, leadController.getTimelineHandler);
 
 router.post('/:id/files', authenticate, authorize('leads:update'), upload.single('file'), leadController.uploadFileHandler);
 router.get('/:id/files', authenticate, authorize('leads:read'), leadController.getFilesHandler);
@@ -52,25 +53,40 @@ router.post('/:id/followups', authenticate, authorize('leads:update'), leadContr
 router.patch('/:id/followups/:fid', authenticate, authorize('leads:update'), leadController.updateFollowupHandler);
 router.delete('/:id/followups/:fid', authenticate, authorize('leads:update'), leadController.deleteFollowupHandler);
 
-// Estimator App Integration
-router.post('/:id/send-to-estimator', authenticate, authorize('leads:update'), leadController.sendToEstimatorHandler);
+// Native Estimator Integration
+router.post('/:id/estimates', authenticate, authorize('leads:update'), leadController.createNativeEstimateHandler);
 router.get('/:id/estimates', authenticate, authorize('leads:read'), leadController.getEstimatesHandler);
-router.post('/:id/estimates/webhook', leadController.estimatorWebhookHandler);
 
 // Multi-Contact Management
 router.get('/:id/contacts', authenticate, authorize('leads:read'), leadController.getContactsHandler);
 router.post('/:id/contacts', authenticate, authorize('leads:update'), leadController.createContactHandler);
 router.delete('/:id/contacts/:cid', authenticate, authorize('leads:update'), leadController.deleteContactHandler);
 
+// Communications Hub
+router.get('/:id/communications', authenticate, authorize('leads:read'), leadController.getCommunicationsHandler);
+router.post('/:id/communications', authenticate, authorize('leads:update'), leadController.createCommunicationHandler);
+router.post('/:id/communications/draft', authenticate, authorize('leads:update'), leadController.draftCommunicationHandler);
+
 // Inspiration Board
 router.get('/:id/inspirations', authenticate, authorize('leads:read'), leadController.getInspirationsHandler);
 router.post('/:id/inspirations', authenticate, authorize('leads:update'), leadController.createInspirationHandler);
 router.delete('/:id/inspirations/:iid', authenticate, authorize('leads:update'), leadController.deleteInspirationHandler);
 
-// AI Copilot
+// AI Copilot & Planning
 router.get('/:id/ai-insights', authenticate, authorize('leads:read'), leadController.getAiInsightsHandler);
 router.post('/:id/ai-design-proposal', authenticate, authorize('leads:update'), leadController.generateDesignProposalHandler);
 router.post('/:id/meeting-summary', authenticate, authorize('leads:update'), leadController.summarizeMeetingHandler);
+router.patch('/:id/requirements', authenticate, authorize('leads:update'), leadController.updateRequirementsHandler);
+router.post('/:id/budget-planner', authenticate, authorize('leads:read'), leadController.getBudgetPlannerHandler);
+router.post('/:id/sales-coach', authenticate, authorize('leads:update'), leadController.salesCoachHandler);
+router.post('/:id/knowledge-assistant', authenticate, authorize('leads:read'), leadController.knowledgeAssistantHandler);
+router.post('/:id/buying-intent', authenticate, authorize('leads:read'), leadController.analyzeBuyingIntentHandler);
+router.post('/:id/sentiment', authenticate, authorize('leads:read'), leadController.analyzeSentimentHandler);
+
+// Bottom of Funnel (Proposal & Negotiation)
+router.post('/:id/generate-proposal', authenticate, authorize('leads:read'), leadController.generateProposalHandler);
+router.patch('/:id/negotiation', authenticate, authorize('leads:update'), leadController.updateNegotiationHandler);
+router.patch('/:id/budget', authenticate, authorize('leads:update'), leadController.updateBudgetHandler);
 
 // Add AI Persona Twin route
 router.post('/:id/ai-twin', authenticate, async (req, res, next) => {
@@ -79,32 +95,9 @@ router.post('/:id/ai-twin', authenticate, async (req, res, next) => {
     const { prompt } = req.body;
     if (!prompt) return res.status(400).json({ success: false, error: 'Prompt is required' });
     
+    const { simulateLeadPersona } = require('../services/aiService');
     const responseText = await simulateLeadPersona(tenantId, req.params.id, prompt);
     return res.status(200).json({ success: true, data: { text: responseText } });
-  } catch (error) {
-    next(error);
-  }
-});
-
-const { analyzeBuyingIntent, analyzeSentiment } = require('../services/aiService');
-
-// Buying Intent route
-router.post('/:id/buying-intent', authenticate, authorize('leads:read'), async (req, res, next) => {
-  try {
-    const { tenantId } = req.user;
-    const intentData = await analyzeBuyingIntent(tenantId, req.params.id);
-    return res.status(200).json({ success: true, data: intentData });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Mood / Sentiment route
-router.post('/:id/sentiment', authenticate, authorize('leads:read'), async (req, res, next) => {
-  try {
-    const { tenantId } = req.user;
-    const sentimentData = await analyzeSentiment(tenantId, req.params.id);
-    return res.status(200).json({ success: true, data: sentimentData });
   } catch (error) {
     next(error);
   }

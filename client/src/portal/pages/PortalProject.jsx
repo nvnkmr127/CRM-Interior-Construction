@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import styles from './PortalProject.module.css'
 import { usePortalAuth } from '../store/portalAuthContext'
+import api from '../../api/axios'
 
 export default function PortalProject() {
   const { portalUser } = usePortalAuth()
@@ -17,36 +18,50 @@ export default function PortalProject() {
   }, [])
 
   useEffect(() => {
-    // Mock Fetch
-    setTimeout(() => {
+    Promise.all([
+      api.get('/portal/project'),
+      api.get('/portal/project/phases'),
+      api.get('/portal/project/payments')
+    ])
+    .then(([projRes, phasesRes, payRes]) => {
+      const proj = projRes.data.data;
+      const phases = phasesRes.data.data || [];
+      const payments = payRes.data.data || [];
+
       setData({
-        project: { name: 'Sharma Residence' },
-        pm: { name: 'Priya Sharma', phone: '9876543210' },
+        project: { name: proj.client_name ? `${proj.client_name}'s Residence` : proj.name },
+        pm: { name: proj.pm_name || 'Assigned Soon', phone: 'Contact office' },
         progress: {
-          percent: 68,
-          completedTasks: 34,
-          totalTasks: 50,
-          phases: [
-            { name: 'Design', status: 'done' },
-            { name: 'Approvals', status: 'done' },
-            { name: 'Material', status: 'active' },
-            { name: 'Execution', status: 'pending' },
-            { name: 'Handover', status: 'pending' }
-          ]
+          percent: proj.task_completion_pct || 0,
+          completedTasks: 0, // Could fetch tasks in the future
+          totalTasks: 0,
+          phases: phases.map(p => ({
+            name: p.name,
+            status: p.status === 'completed' ? 'done' : p.status === 'in_progress' ? 'active' : 'pending'
+          }))
         },
-        nextSteps: [
-          { phase: 'Material', name: 'Approve Kitchen Laminates', date: 'Due Tomorrow' },
-          { phase: 'Material', name: 'Select Bathroom Fixtures', date: 'Due in 3 days' },
-          { phase: 'Execution', name: 'Start False Ceiling', date: 'Next Week' }
-        ],
-        payments: [
-          { name: 'Advance Payment', amount: 500000, date: '2025-01-05', status: 'Paid' },
-          { name: 'Design Sign-off', amount: 300000, date: '2025-02-10', status: 'Overdue' },
-          { name: 'Material Delivery', amount: 400000, date: '2025-03-15', status: 'Upcoming' }
-        ]
-      })
-    }, 600)
-  }, [])
+        nextSteps: phases
+          .filter(p => p.status === 'in_progress')
+          .flatMap(p => p.milestones.filter(m => m.status !== 'completed').map(m => ({
+            phase: p.name,
+            name: m.name,
+            date: m.due_date ? new Date(m.due_date).toLocaleDateString() : 'Upcoming'
+          })))
+          .slice(0, 3),
+        payments: payments.map(p => ({
+          id: p.id,
+          name: p.name,
+          amount: parseFloat(p.amount) || 0,
+          date: p.due_date || 'TBD',
+          status: p.status.charAt(0).toUpperCase() + p.status.slice(1)
+        }))
+      });
+    })
+    .catch(err => {
+      console.error(err);
+      // Keep data null to show loading or error state
+    });
+  }, []);
 
   if (!data) return <div style={{padding: 24, textAlign: 'center', color: 'var(--color-text-muted)'}}>Loading your project...</div>
 

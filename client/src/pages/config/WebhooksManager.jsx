@@ -3,6 +3,7 @@ import layoutStyles from './ConfigLayout.module.css'
 import styles from './WebhooksManager.module.css'
 import { Button, Badge, Modal, Input, Select } from '../../components/ui'
 import { useToast } from '../../store/toastContext'
+import api from '../../api/axios'
 
 const EVENT_GROUPS = [
   { label: 'Lead Events', events: ['lead.created', 'lead.updated', 'lead.stage_changed', 'lead.converted'] },
@@ -23,35 +24,61 @@ export default function WebhooksManager() {
   const toast = useToast()
 
   useEffect(() => {
-    setWebhooks([
-      { id: '1', name: 'Zapier Lead Sync', url: 'https://hooks.zapier.com/hooks/catch/12345/abcde/', active: true, events: ['lead.created', 'lead.stage_changed'], headers: [], retryCount: 3, lastDelivery: { success: true, status: 200, time: new Date(Date.now()-7200000).toISOString() } },
-      { id: '2', name: 'ERP Integration', url: 'https://api.internal-erp.com/webhooks/crm', active: false, events: ['project.phase_completed', 'payment.received'], headers: [{key:'Authorization', value:'Bearer xyz'}], retryCount: 5, lastDelivery: { success: false, status: 500, time: new Date(Date.now()-86400000).toISOString(), message: 'Failed 3 times' } },
-    ])
+    fetchWebhooks()
   }, [])
+
+  const fetchWebhooks = async () => {
+    try {
+      const res = await api.get('/config/webhooks')
+      const formatted = res.data.data.map(w => ({
+        id: w.id,
+        name: w.name,
+        url: w.url,
+        active: w.is_active,
+        events: w.events || [],
+        headers: Object.entries(w.custom_headers || {}).map(([key, value]) => ({ key, value })),
+        retryCount: w.retry_count || 3,
+        // Since delivery logs might need a separate query, we use mock lastDelivery here unless backend exposes it
+        lastDelivery: null
+      }))
+      setWebhooks(formatted)
+    } catch (err) {
+      toast.error('Failed to load webhooks')
+    }
+  }
 
   const handleTest = async (id) => {
     setTestingId(id)
-    // mock API delay
-    await new Promise(r => setTimeout(r, 800))
-    const isSuccess = Math.random() > 0.3
-    const result = isSuccess 
-      ? { type: 'success', msg: `✓ Delivered in ${Math.floor(Math.random()*400)+100}ms — Status 200` }
-      : { type: 'fail', msg: '✕ Failed — Status 500: Internal Server Error' }
-    
-    setTestResults(prev => ({ ...prev, [id]: result }))
-    setTestingId(null)
-
-    setTimeout(() => {
-      setTestResults(prev => {
-        const next = {...prev}
-        delete next[id]
-        return next
-      })
-    }, 10000)
+    try {
+      const res = await api.post(`/config/webhooks/${id}/test`)
+      const { statusCode, latencyMs, success } = res.data.data
+      const result = success 
+        ? { type: 'success', msg: `✓ Delivered in ${latencyMs}ms — Status ${statusCode}` }
+        : { type: 'fail', msg: `✕ Failed — Status ${statusCode || 'Unknown Error'}` }
+      
+      setTestResults(prev => ({ ...prev, [id]: result }))
+    } catch (err) {
+      setTestResults(prev => ({ ...prev, [id]: { type: 'fail', msg: '✕ Test request failed completely.' } }))
+    } finally {
+      setTestingId(null)
+      setTimeout(() => {
+        setTestResults(prev => {
+          const next = {...prev}
+          delete next[id]
+          return next
+        })
+      }, 10000)
+    }
   }
 
-  const toggleActive = (id) => {
-    setWebhooks(webhooks.map(w => w.id === id ? {...w, active: !w.active} : w))
+  const toggleActive = async (id) => {
+    try {
+      await api.patch(`/config/webhooks/${id}/toggle`)
+      setWebhooks(webhooks.map(w => w.id === id ? {...w, active: !w.active} : w))
+      toast.success('Webhook toggled')
+    } catch (err) {
+      toast.error('Failed to toggle webhook')
+    }
   }
 
   const openEditor = (webhook = null) => {
@@ -63,19 +90,50 @@ export default function WebhooksManager() {
     setIsEditOpen(true)
   }
 
-  const saveWebhook = () => {
+  const saveWebhook = async () => {
     if (!editTarget.name || !editTarget.url) return toast.error('Name and URL are required')
-    const finalData = { ...editTarget, events: Array.from(editTarget.events) }
     
-    if (finalData.id) {
-      setWebhooks(webhooks.map(w => w.id === finalData.id ? finalData : w))
-      toast.success('Webhook updated')
-    } else {
-      finalData.id = Date.now().toString()
-      setWebhooks([...webhooks, finalData])
-      toast.success('Webhook created')
+    // Map headers array to object
+    const headersObj = {}
+    editTarget.headers.forEach(h => {
+      if (h.key && h.value) headersObj[h.key] = h.value
+    })
+
+    const payload = {
+      name: editTarget.name,
+      url: editTarget.url,
+      secret: editTarget.secret,
+      events: Array.from(editTarget.events),
+      custom_headers: headersObj,
+      retry_count: editTarget.retryCount
     }
-    setIsEditOpen(false)
+    
+    try {
+      if (editTarget.id) {
+        await api.put(`/config/webhooks/${editTarget.id}`, payload)
+        toast.success('Webhook updated')
+      } else {
+        await api.post('/config/webhooks', payload)
+        toast.success('Webhook created')
+      }
+      setIsEditOpen(false)
+      fetchWebhooks()
+    } catch (err) {
+      toast.error('Failed to save webhook')
+    }
+  }
+
+  const deleteWebhook = async () => {
+    if (!deleteTarget) return
+    try {
+      await api.delete(`/config/webhooks/${deleteTarget.id}`)
+      setWebhooks(webhooks.filter(w => w.id !== deleteTarget.id))
+      toast.success('Webhook deleted')
+    } catch (err) {
+      toast.error('Failed to delete webhook')
+    } finally {
+      setDeleteTarget(null)
+    }
   }
 
   const toggleEvent = (e) => {
@@ -228,7 +286,7 @@ export default function WebhooksManager() {
         footer={
           <>
             <Button variant="ghost" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-            <Button variant="danger" onClick={() => { setWebhooks(webhooks.filter(w => w.id !== deleteTarget.id)); setDeleteTarget(null); toast.success('Webhook deleted') }}>Delete</Button>
+            <Button variant="danger" onClick={deleteWebhook}>Delete</Button>
           </>
         }
       >

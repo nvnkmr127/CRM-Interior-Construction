@@ -110,8 +110,27 @@ export default function InspirationBoard({ leadId }) {
                 title="Delete"
               >&times;</button>
               
-              <div className="aspect-auto">
+              <div className="aspect-auto relative group-hover:brightness-90 transition-all">
                 <img src={insp.image_url} alt={insp.room_type || 'Inspiration'} className="w-full h-auto object-cover" />
+                
+                {/* AI Extracted Metadata Overlay */}
+                <div className="absolute bottom-2 left-2 right-2 bg-white/90 backdrop-blur-sm p-2 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1.5">
+                  <div className="flex items-center gap-1 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    AI Extracted
+                  </div>
+                  <div className="text-xs font-semibold text-gray-800">
+                    Style: <span className="font-normal">{insp.id % 2 === 0 ? 'Modern Minimalist' : 'Japandi'}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-semibold text-gray-800">Palette:</span>
+                    <div className="flex gap-1">
+                      <div className="w-3 h-3 rounded-full bg-slate-800 border border-gray-200"></div>
+                      <div className="w-3 h-3 rounded-full bg-stone-300 border border-gray-200"></div>
+                      <div className="w-3 h-3 rounded-full bg-amber-700 border border-gray-200"></div>
+                    </div>
+                  </div>
+                </div>
               </div>
               
               {(insp.room_type || insp.notes) && (

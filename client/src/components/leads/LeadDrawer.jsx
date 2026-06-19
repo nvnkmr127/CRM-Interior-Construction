@@ -11,6 +11,16 @@ import PreferencesTab from './PreferencesTab';
 import StakeholdersTab from './StakeholdersTab';
 import InspirationBoard from './InspirationBoard';
 import AICopilotTab from './AICopilotTab';
+import AIKnowledgeAssistantTab from './AIKnowledgeAssistantTab';
+import LeadQualificationScore from './LeadQualificationScore';
+import DiscoveryCallChecklist from './DiscoveryCallChecklist';
+import RequirementsWorkshop from './RequirementsWorkshop';
+import BudgetPlanner from './BudgetPlanner';
+import AIProposalGenerator from './AIProposalGenerator';
+import NegotiationDesk from './NegotiationDesk';
+import DesignPresentationModal from './DesignPresentationModal';
+import EstimatorBuilder from './EstimatorBuilder';
+import AssignDesignerModal from './AssignDesignerModal';
 import { getLead, changeLeadStage, deleteLead } from '../../api/leads';
 import api from '../../api/axios';
 
@@ -20,6 +30,8 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview'); // overview, activity, tasks, followups, files
   const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
+  const [isPresentModalOpen, setIsPresentModalOpen] = useState(false);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
 
   // Auto-saving state
   const [saveStatus, setSaveStatus] = useState(''); // 'saving', 'saved', 'error', ''
@@ -37,6 +49,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   
   // Estimates state
   const [estimates, setEstimates] = useState([]);
+  const [isBuildingEstimate, setIsBuildingEstimate] = useState(false);
   
   // Buying intent state
   const [buyingIntent, setBuyingIntent] = useState(null);
@@ -216,21 +229,13 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
     }
   };
 
-  const handleSendToEstimator = async () => {
-    toast.info('Sending lead to Estimator...');
-    try {
-      const res = await api.post(`/leads/${leadId}/send-to-estimator`);
-      if (res.data.success) {
-        toast.success('Lead sent to Estimator successfully!');
-        // Refresh estimates tab if needed
-        if (activeTab === 'estimates') {
-          const estRes = await api.get(`/leads/${leadId}/estimates`);
-          if (estRes.data.success) setEstimates(estRes.data.data);
-        }
-      }
-    } catch (err) {
-      toast.error('Failed to send lead to Estimator');
-    }
+  const fetchEstimates = async () => {
+    const estRes = await api.get(`/leads/${leadId}/estimates`);
+    if (estRes.data.success) setEstimates(estRes.data.data);
+  };
+
+  const handleCreateEstimate = () => {
+    setIsBuildingEstimate(true);
   };
 
   const handleParseFile = async (fileId) => {
@@ -262,7 +267,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   if (!isOpen) return null;
 
   return (
-    <Drawer isOpen={isOpen} onClose={onClose} width="480px">
+    <Drawer isOpen={isOpen} onClose={onClose} width="1100px">
       {loading || !lead ? (
         <div className="p-6 flex items-center justify-center text-gray-500">Loading lead details...</div>
       ) : (
@@ -340,7 +345,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
           {/* TABS NAVIGATION */}
           <div className="bg-white px-6 border-b border-gray-200 shrink-0">
             <nav className="flex -mb-px px-6 gap-6 overflow-x-auto">
-              {['overview', 'ai-copilot', 'stakeholders', 'communications', 'preferences', 'activity', 'tasks', 'followups', 'files', 'estimates', 'inspirations', 'twin'].map(tab => (
+              {['overview', 'requirements', 'budget', 'proposal', 'negotiation', 'ai-copilot', 'knowledge-base', 'stakeholders', 'communications', 'preferences', 'activity', 'tasks', 'followups', 'files', 'estimates', 'inspirations', 'twin'].map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -350,7 +355,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
-                  {tab}
+                  {tab === 'knowledge-base' ? 'AI Knowledge Base' : tab}
                 </button>
               ))}
             </nav>
@@ -359,256 +364,279 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
           {/* TAB CONTENT (SCROLLABLE) */}
           <div className="flex-1 overflow-y-auto p-6">
             {activeTab === 'overview' && (
-              <div className="space-y-6">
-
-                {/* AI Insights Section */}
-                {(lead.win_probability !== undefined || lead.ai_score_breakdown) && (
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg shadow-sm border border-blue-100">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-xs font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                        AI Insights
-                      </h4>
-                      {lead.win_probability !== undefined && (
-                        <Badge variant="outline" className={`font-semibold ${lead.win_probability > 70 ? 'text-green-700 bg-green-100 border-green-200' : lead.win_probability > 30 ? 'text-yellow-700 bg-yellow-100 border-yellow-200' : 'text-gray-700 bg-gray-100 border-gray-200'}`}>
-                          {lead.win_probability}% Win Probability
-                        </Badge>
-                      )}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* LEFT PANEL: Details */}
+                <div className="space-y-6 flex flex-col">
+                  {/* Contact Info */}
+                  <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Contact Info</h4>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between group">
+                        <span className="text-sm text-gray-500 w-24">Phone</span>
+                        <input
+                          type="text" value={lead.phone || ''}
+                          onChange={e => handleFieldChange('phone', e.target.value)}
+                          onBlur={e => handleFieldBlur('phone', e.target.value)}
+                          className="flex-1 text-sm font-medium border-transparent focus:border-gray-300 focus:ring-0 px-2 py-1 rounded hover:bg-gray-50 transition-colors"
+                          placeholder="Add phone..."
+                        />
+                      </div>
+                      <div className="flex items-center justify-between group">
+                        <span className="text-sm text-gray-500 w-24">Email</span>
+                        <input
+                          type="email" value={lead.email || ''}
+                          onChange={e => handleFieldChange('email', e.target.value)}
+                          onBlur={e => handleFieldBlur('email', e.target.value)}
+                          className="flex-1 text-sm font-medium border-transparent focus:border-gray-300 focus:ring-0 px-2 py-1 rounded hover:bg-gray-50 transition-colors"
+                          placeholder="Add email..."
+                        />
+                      </div>
                     </div>
-                    {lead.ai_score_breakdown && Object.keys(lead.ai_score_breakdown).length > 0 && (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        {Object.entries(lead.ai_score_breakdown).map(([key, val]) => (
-                          <div key={key} className="bg-white p-2 rounded border border-blue-50">
-                            <div className="text-[10px] text-gray-500 uppercase font-semibold">{key}</div>
-                            <div className="text-sm font-medium text-gray-800">{val}/100</div>
+                  </div>
+
+                  {/* Property & Scope */}
+                  <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Property Details</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Type</label>
+                        <select
+                          value={lead.property_type || ''}
+                          onChange={e => handleFieldChange('property_type', e.target.value)}
+                          onBlur={e => handleFieldBlur('property_type', e.target.value)}
+                          className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="">Select...</option>
+                          <option value="flat">Flat</option>
+                          <option value="villa">Villa</option>
+                          <option value="commercial">Commercial</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Scope</label>
+                        <select
+                          value={lead.scope || ''}
+                          onChange={e => handleFieldChange('scope', e.target.value)}
+                          onBlur={e => handleFieldBlur('scope', e.target.value)}
+                          className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="">Select...</option>
+                          <option value="full_home">Full Home</option>
+                          <option value="modular_kitchen">Modular Kitchen</option>
+                          <option value="partial">Partial</option>
+                        </select>
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-xs text-gray-500 mb-1">Locality / City</label>
+                        <input
+                          type="text" value={lead.locality || ''}
+                          onChange={e => handleFieldChange('locality', e.target.value)}
+                          onBlur={e => handleFieldBlur('locality', e.target.value)}
+                          className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="e.g. Indiranagar, Bangalore"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Budget Max (&#8377;)</label>
+                        <input
+                          type="number" value={lead.budget_max || ''}
+                          onChange={e => handleFieldChange('budget_max', e.target.value)}
+                          onBlur={e => handleFieldBlur('budget_max', e.target.value)}
+                          className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="e.g. 1500000"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Carpet Area</label>
+                        <input
+                          type="number" value={lead.carpet_area_sqft || ''}
+                          onChange={e => handleFieldChange('carpet_area_sqft', e.target.value)}
+                          onBlur={e => handleFieldBlur('carpet_area_sqft', e.target.value)}
+                          className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Sq. ft"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Preferences & Tracking */}
+                  <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Preferences</h4>
+                    <div className="space-y-4">
+                      <label className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">Do Not Contact (DNC)</span>
+                        <input
+                          type="checkbox"
+                          checked={lead.dnc_flag || false}
+                          onChange={e => {
+                            handleFieldChange('dnc_flag', e.target.checked);
+                            handleFieldBlur('dnc_flag', e.target.checked);
+                          }}
+                          className="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500"
+                        />
+                      </label>
+                      <label className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">Consent given</span>
+                        <input
+                          type="checkbox"
+                          checked={lead.consent_whatsapp || false}
+                          onChange={e => {
+                            handleFieldChange('consent_whatsapp', e.target.checked);
+                            handleFieldBlur('consent_whatsapp', e.target.checked);
+                          }}
+                          className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500"
+                        />
+                      </label>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Competitor Mentioned</label>
+                        <input
+                          type="text" value={lead.competitor_mentioned || ''}
+                          onChange={e => handleFieldChange('competitor_mentioned', e.target.value)}
+                          onBlur={e => handleFieldBlur('competitor_mentioned', e.target.value)}
+                          className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="e.g. Livspace, HomeLane"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {/* END LEFT PANEL */}
+
+                {/* CENTER PANEL: Timeline & Checklist */}
+                <div className="space-y-4 border-l border-r border-gray-100 px-4">
+                  <DiscoveryCallChecklist lead={lead} onUpdate={fetchLead} />
+                  
+                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Activity Timeline</h4>
+                  <ActivityTimeline leadId={leadId} />
+                </div>
+                {/* END CENTER PANEL */}
+
+                {/* RIGHT PANEL: AI Insights & Score */}
+                <div className="space-y-6">
+                  <LeadQualificationScore lead={lead} />
+                  
+                  {/* AI Insights Section */}
+                  {(lead.win_probability !== undefined || lead.ai_score_breakdown) && (
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg shadow-sm border border-blue-100">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-xs font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                          AI Insights
+                        </h4>
+                        {lead.win_probability !== undefined && (
+                          <Badge variant="outline" className={`font-semibold ${lead.win_probability > 70 ? 'text-green-700 bg-green-100 border-green-200' : lead.win_probability > 30 ? 'text-yellow-700 bg-yellow-100 border-yellow-200' : 'text-gray-700 bg-gray-100 border-gray-200'}`}>
+                            {lead.win_probability}% Win Probability
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-3 mt-4">
+                        <div className="bg-white p-2 rounded shadow-sm border border-blue-50">
+                          <div className="text-[10px] text-gray-500 uppercase font-semibold">Next Action</div>
+                          <div className="text-sm font-medium text-gray-800">{lead.ai_recommendation || 'Follow up'}</div>
+                        </div>
+                        <div className="bg-white p-2 rounded shadow-sm border border-blue-50">
+                          <div className="text-[10px] text-gray-500 uppercase font-semibold">Budget Confidence</div>
+                          <div className="text-sm font-medium text-gray-800">{lead.budget_confidence || 'High'}</div>
+                        </div>
+                        <div className="bg-white p-2 rounded shadow-sm border border-blue-50">
+                          <div className="text-[10px] text-gray-500 uppercase font-semibold">Decision Maker</div>
+                          <div className="text-sm font-medium text-gray-800">{lead.decision_maker || 'Spouse'}</div>
+                        </div>
+                        <div className="bg-white p-2 rounded shadow-sm border border-blue-50">
+                          <div className="text-[10px] text-gray-500 uppercase font-semibold">Risk Level</div>
+                          <div className="text-sm font-medium text-gray-800">{lead.risk_level || 'Low'}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* BUYING INTENT WIDGET */}
+                  <div className="bg-orange-50/50 p-4 rounded-lg shadow-sm border border-orange-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-xs font-bold text-orange-800 uppercase tracking-wider flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                        Buying Intent Engine
+                      </h4>
+                      <Button variant="outline" size="sm" onClick={fetchBuyingIntent} disabled={intentLoading} className="text-[10px] py-1 h-7">
+                        {intentLoading ? 'Analyzing...' : 'Analyze Intent'}
+                      </Button>
+                    </div>
+                    {buyingIntent ? (
+                      <div className="bg-white p-3 rounded border border-orange-50 flex items-center justify-between">
+                        <div>
+                          <div className="text-xs text-gray-500 uppercase font-semibold">Predicted Intent</div>
+                          <div className={`text-lg font-bold flex items-center gap-2 ${
+                            buyingIntent.intent === 'Hot' ? 'text-red-600' : 
+                            buyingIntent.intent === 'Warm' ? 'text-orange-500' : 'text-blue-500'
+                          }`}>
+                            {buyingIntent.intent === 'Hot' && '🔥 '}
+                            {buyingIntent.intent === 'Warm' && '☀️ '}
+                            {buyingIntent.intent === 'Cold' && '❄️ '}
+                            {buyingIntent.intent} ({buyingIntent.confidence}%)
                           </div>
-                        ))}
+                          <div className="text-xs text-gray-700 mt-1">{buyingIntent.reason}</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-orange-600/70 italic text-center py-2">
+                        Click analyze to run the AI intent prediction model.
                       </div>
                     )}
                   </div>
-                )}
-
-                {/* BUYING INTENT WIDGET */}
-                <div className="bg-orange-50/50 p-4 rounded-lg shadow-sm border border-orange-100">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-xs font-bold text-orange-800 uppercase tracking-wider flex items-center gap-1">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                      Buying Intent Engine
-                    </h4>
-                    <Button variant="outline" size="sm" onClick={fetchBuyingIntent} disabled={intentLoading} className="text-[10px] py-1 h-7">
-                      {intentLoading ? 'Analyzing...' : 'Analyze Intent'}
-                    </Button>
-                  </div>
-                  {buyingIntent ? (
-                    <div className="bg-white p-3 rounded border border-orange-50 flex items-center justify-between">
-                      <div>
-                        <div className="text-xs text-gray-500 uppercase font-semibold">Predicted Intent</div>
-                        <div className={`text-lg font-bold flex items-center gap-2 ${
-                          buyingIntent.intent === 'Hot' ? 'text-red-600' : 
-                          buyingIntent.intent === 'Warm' ? 'text-orange-500' : 'text-blue-500'
-                        }`}>
-                          {buyingIntent.intent === 'Hot' && '🔥 '}
-                          {buyingIntent.intent === 'Warm' && '☀️ '}
-                          {buyingIntent.intent === 'Cold' && '❄️ '}
-                          {buyingIntent.intent} ({buyingIntent.confidence}%)
-                        </div>
-                        <div className="text-xs text-gray-700 mt-1">{buyingIntent.reason}</div>
-                      </div>
+                  
+                  {/* REFERRAL NETWORK WIDGET */}
+                  <div className="bg-indigo-50/50 rounded-lg p-5 border border-indigo-100">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="text-xl">🤝</span>
+                      <h3 className="text-sm font-bold text-indigo-900 uppercase tracking-wider">Referral Network</h3>
                     </div>
-                  ) : (
-                    <div className="text-xs text-orange-600/70 italic text-center py-2">
-                      Click analyze to run the AI intent prediction model.
-                    </div>
-                  )}
-                </div>
-
-                {/* REFERRAL NETWORK WIDGET */}
-                <div className="bg-indigo-50/50 rounded-lg p-5 border border-indigo-100 mt-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="text-xl">🤝</span>
-                    <h3 className="text-sm font-bold text-indigo-900 uppercase tracking-wider">Referral Network</h3>
-                  </div>
-                  {lead.referrals && lead.referrals.length > 0 ? (
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-end border-b border-indigo-200 pb-2 mb-3">
-                        <div className="text-xs text-indigo-600 font-semibold uppercase">Total Referrals: {lead.referrals.length}</div>
-                        <div className="text-xs text-indigo-600 font-semibold uppercase">
-                          Value: ₹{(lead.referrals.reduce((sum, r) => sum + (parseFloat(r.budget_max) || 0), 0)).toLocaleString()}
-                        </div>
-                      </div>
-                      {lead.referrals.map(ref => (
-                        <div key={ref.id} className="flex justify-between items-center bg-white p-3 rounded shadow-sm border border-indigo-50">
-                          <div>
-                            <div className="font-medium text-gray-900 text-sm">{ref.name}</div>
-                            <div className="text-xs text-gray-500">{ref.stage_name} • {new Date(ref.created_at).toLocaleDateString()}</div>
-                          </div>
-                          <div className="text-sm font-semibold text-gray-700">
-                            {ref.budget_max ? `₹${Number(ref.budget_max).toLocaleString()}` : 'TBD'}
+                    {lead.referrals && lead.referrals.length > 0 ? (
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-end border-b border-indigo-200 pb-2 mb-3">
+                          <div className="text-xs text-indigo-600 font-semibold uppercase">Total Referrals: {lead.referrals.length}</div>
+                          <div className="text-xs text-indigo-600 font-semibold uppercase">
+                            Value: ₹{(lead.referrals.reduce((sum, r) => sum + (parseFloat(r.budget_max) || 0), 0)).toLocaleString()}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-indigo-400 text-center py-4 bg-white/50 rounded border border-dashed border-indigo-200">
-                      No referrals recorded yet.
-                    </div>
-                  )}
-                </div>
-
-                {/* Contact Info */}
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Contact Info</h4>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between group">
-                      <span className="text-sm text-gray-500 w-24">Phone</span>
-                      <input
-                        type="text" value={lead.phone || ''}
-                        onChange={e => handleFieldChange('phone', e.target.value)}
-                        onBlur={e => handleFieldBlur('phone', e.target.value)}
-                        className="flex-1 text-sm font-medium border-transparent focus:border-gray-300 focus:ring-0 px-2 py-1 rounded hover:bg-gray-50 transition-colors"
-                        placeholder="Add phone..."
-                      />
-                    </div>
-                    <div className="flex items-center justify-between group">
-                      <span className="text-sm text-gray-500 w-24">Email</span>
-                      <input
-                        type="email" value={lead.email || ''}
-                        onChange={e => handleFieldChange('email', e.target.value)}
-                        onBlur={e => handleFieldBlur('email', e.target.value)}
-                        className="flex-1 text-sm font-medium border-transparent focus:border-gray-300 focus:ring-0 px-2 py-1 rounded hover:bg-gray-50 transition-colors"
-                        placeholder="Add email..."
-                      />
-                    </div>
+                        {lead.referrals.map(ref => (
+                          <div key={ref.id} className="flex justify-between items-center bg-white p-3 rounded shadow-sm border border-indigo-50">
+                            <div>
+                              <div className="font-medium text-gray-900 text-sm">{ref.name}</div>
+                              <div className="text-xs text-gray-500">{ref.stage_name} • {new Date(ref.created_at).toLocaleDateString()}</div>
+                            </div>
+                            <div className="text-sm font-semibold text-gray-700">
+                              {ref.budget_max ? `₹${Number(ref.budget_max).toLocaleString()}` : 'TBD'}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-indigo-400 text-center py-4 bg-white/50 rounded border border-dashed border-indigo-200">
+                        No referrals recorded yet.
+                      </div>
+                    )}
                   </div>
                 </div>
-
-                {/* Property & Scope */}
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Property Details</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Type</label>
-                      <select
-                        value={lead.property_type || ''}
-                        onChange={e => handleFieldChange('property_type', e.target.value)}
-                        onBlur={e => handleFieldBlur('property_type', e.target.value)}
-                        className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="">Select...</option>
-                        <option value="flat">Flat</option>
-                        <option value="villa">Villa</option>
-                        <option value="commercial">Commercial</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Scope</label>
-                      <select
-                        value={lead.scope || ''}
-                        onChange={e => handleFieldChange('scope', e.target.value)}
-                        onBlur={e => handleFieldBlur('scope', e.target.value)}
-                        className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="">Select...</option>
-                        <option value="full_home">Full Home</option>
-                        <option value="modular_kitchen">Modular Kitchen</option>
-                        <option value="partial">Partial</option>
-                      </select>
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-xs text-gray-500 mb-1">Locality / City</label>
-                      <input
-                        type="text" value={lead.locality || ''}
-                        onChange={e => handleFieldChange('locality', e.target.value)}
-                        onBlur={e => handleFieldBlur('locality', e.target.value)}
-                        className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="e.g. Indiranagar, Bangalore"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Budget Max (&#8377;)</label>
-                      <input
-                        type="number" value={lead.budget_max || ''}
-                        onChange={e => handleFieldChange('budget_max', e.target.value)}
-                        onBlur={e => handleFieldBlur('budget_max', e.target.value)}
-                        className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="e.g. 1500000"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Carpet Area</label>
-                      <input
-                        type="number" value={lead.carpet_area_sqft || ''}
-                        onChange={e => handleFieldChange('carpet_area_sqft', e.target.value)}
-                        onBlur={e => handleFieldBlur('carpet_area_sqft', e.target.value)}
-                        className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Sq. ft"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Latitude</label>
-                      <input
-                        type="number" step="any" value={lead.latitude || ''}
-                        onChange={e => handleFieldChange('latitude', e.target.value)}
-                        onBlur={e => handleFieldBlur('latitude', e.target.value)}
-                        className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="e.g. 12.9716"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Longitude</label>
-                      <input
-                        type="number" step="any" value={lead.longitude || ''}
-                        onChange={e => handleFieldChange('longitude', e.target.value)}
-                        onBlur={e => handleFieldBlur('longitude', e.target.value)}
-                        className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="e.g. 77.5946"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Preferences & Tracking */}
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Preferences</h4>
-                  <div className="space-y-4">
-                    <label className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700">Do Not Contact (DNC)</span>
-                      <input
-                        type="checkbox"
-                        checked={lead.dnc_flag || false}
-                        onChange={e => {
-                          handleFieldChange('dnc_flag', e.target.checked);
-                          handleFieldBlur('dnc_flag', e.target.checked);
-                        }}
-                        className="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500"
-                      />
-                    </label>
-                    <label className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700">Consent given</span>
-                      <input
-                        type="checkbox"
-                        checked={lead.consent_whatsapp || false}
-                        onChange={e => {
-                          handleFieldChange('consent_whatsapp', e.target.checked);
-                          handleFieldBlur('consent_whatsapp', e.target.checked);
-                        }}
-                        className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500"
-                      />
-                    </label>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Competitor Mentioned</label>
-                      <input
-                        type="text" value={lead.competitor_mentioned || ''}
-                        onChange={e => handleFieldChange('competitor_mentioned', e.target.value)}
-                        onBlur={e => handleFieldBlur('competitor_mentioned', e.target.value)}
-                        className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="e.g. Livspace, HomeLane"
-                      />
-                    </div>
-                  </div>
-                </div>
+                {/* END RIGHT PANEL */}
 
               </div>
+            )}
+
+            {activeTab === 'requirements' && (
+              <RequirementsWorkshop leadId={leadId} lead={lead} onUpdate={fetchLead} />
+            )}
+
+            {activeTab === 'budget' && (
+              <BudgetPlanner leadId={leadId} lead={lead} />
+            )}
+
+            {activeTab === 'proposal' && (
+              <AIProposalGenerator leadId={leadId} lead={lead} />
+            )}
+
+            {activeTab === 'negotiation' && (
+              <NegotiationDesk leadId={leadId} lead={lead} onUpdate={fetchLead} />
             )}
 
             {activeTab === 'ai-copilot' && (
@@ -738,14 +766,14 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-semibold text-gray-900">Quotes & Estimates</h3>
-                  <Button variant="outline" size="sm" onClick={handleSendToEstimator}>
+                  <Button variant="outline" size="sm" onClick={handleCreateEstimate}>
                     Generate Estimate
                   </Button>
                 </div>
                 {estimates.length === 0 ? (
                   <div className="text-center py-8 text-gray-500 bg-gray-50 rounded border border-dashed border-gray-300">
                     <p className="text-sm">No estimates generated yet.</p>
-                    <p className="text-xs mt-1">Click "Generate Estimate" to sync this lead with your Estimator App.</p>
+                    <p className="text-xs mt-1">Click "Generate Estimate" to create a new BOQ.</p>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-3">
@@ -785,8 +813,9 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
           {/* STICKY FOOTER */}
           <div className="bg-white border-t border-gray-200 p-4 shrink-0 flex items-center justify-between">
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => {}}>Reassign</Button>
+              <Button variant="outline" size="sm" onClick={() => setIsAssignModalOpen(true)}>Reassign</Button>
               <Button variant="outline" size="sm" onClick={() => {}}>Park</Button>
+              <Button variant="outline" size="sm" onClick={() => setIsPresentModalOpen(true)}>Log Presentation</Button>
             </div>
             <div className="flex gap-2">
               <Button variant="ghost" size="sm" onClick={handleDelete} className="text-red-600 hover:text-red-700 hover:bg-red-50">Mark Lost</Button>
@@ -807,7 +836,41 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               onConverted={(projectId) => {
                  toast.success('Successfully converted!');
                  onLeadUpdated?.(lead);
+                 setIsConvertModalOpen(false);
                  onClose();
+              }}
+            />
+          )}
+
+          {isPresentModalOpen && (
+            <DesignPresentationModal
+              leadId={leadId}
+              isOpen={isPresentModalOpen}
+              onClose={() => setIsPresentModalOpen(false)}
+              onLogged={fetchLead}
+            />
+          )}
+
+          {isBuildingEstimate && (
+            <EstimatorBuilder
+              leadId={leadId}
+              onCancel={() => setIsBuildingEstimate(false)}
+              onSaved={() => {
+                setIsBuildingEstimate(false);
+                fetchEstimates();
+              }}
+            />
+          )}
+
+          {isAssignModalOpen && (
+            <AssignDesignerModal
+              leadId={leadId}
+              currentAssigneeId={lead.assignee_id}
+              isOpen={isAssignModalOpen}
+              onClose={() => setIsAssignModalOpen(false)}
+              onAssigned={(updatedLead) => {
+                setLead(prev => ({ ...prev, ...updatedLead }));
+                onLeadUpdated?.(updatedLead);
               }}
             />
           )}

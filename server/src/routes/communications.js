@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { requireAuth } = require('../middleware/auth');
+const authenticate = require('../middleware/authenticate');
 const pool = require('../db/pool');
 const { success, fail } = require('../utils/response');
 const { logActivity } = require('../services/activities/activityService');
 
 // Get all communications for a lead
-router.get('/lead/:leadId', requireAuth, async (req, res, next) => {
+router.get('/lead/:leadId', authenticate, async (req, res, next) => {
   try {
     const { leadId } = req.params;
     const tenantId = req.tenantId || req.user.tenantId;
@@ -26,7 +26,7 @@ router.get('/lead/:leadId', requireAuth, async (req, res, next) => {
 });
 
 // Add a new communication (e.g., logging a call or sending a manual email/whatsapp)
-router.post('/lead/:leadId', requireAuth, async (req, res, next) => {
+router.post('/lead/:leadId', authenticate, async (req, res, next) => {
   try {
     const { leadId } = req.params;
     const tenantId = req.tenantId || req.user.tenantId;
@@ -70,7 +70,7 @@ router.post('/lead/:leadId', requireAuth, async (req, res, next) => {
 const { draftCommunication } = require('../services/aiService');
 
 // Draft a message using AI
-router.post('/lead/:leadId/draft', requireAuth, async (req, res, next) => {
+router.post('/lead/:leadId/draft', authenticate, async (req, res, next) => {
   try {
     const { leadId } = req.params;
     const tenantId = req.tenantId || req.user.tenantId;

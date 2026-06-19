@@ -101,7 +101,7 @@ export const createSiteVisit = async (id, data) => {
  * Fetch communications for a lead.
  */
 export const getCommunications = async (id) => {
-  const response = await api.get(`/communications/lead/${id}`);
+  const response = await api.get(`/leads/${id}/communications`);
   return response.data;
 };
 
@@ -109,7 +109,7 @@ export const getCommunications = async (id) => {
  * Create a communication for a lead.
  */
 export const createCommunication = async (id, data) => {
-  const response = await api.post(`/communications/lead/${id}`, data);
+  const response = await api.post(`/leads/${id}/communications`, data);
   return response.data;
 };
 
@@ -117,7 +117,7 @@ export const createCommunication = async (id, data) => {
  * Draft a communication with AI.
  */
 export const draftCommunication = async (id, data) => {
-  const response = await api.post(`/communications/lead/${id}/draft`, data);
+  const response = await api.post(`/leads/${id}/communications/draft`, data);
   return response.data;
 };
 
@@ -163,6 +163,20 @@ export const getActivities = async (leadId, params) => {
 };
 
 /**
+ * Fetch a paginated list of timeline events for a specific lead.
+ * @param {string} leadId - The UUID of the lead.
+ * @param {Object} params - Query parameters.
+ * @param {string} [params.type] - Filter by event type ('all', 'system', 'note', 'email', etc).
+ * @param {number} [params.page] - Page number (default: 1).
+ * @param {number} [params.limit] - Results per page (default: 20).
+ * @returns {Promise<{ success: boolean, data: Array, meta: Object }>} Paginated list of events.
+ */
+export const getLeadTimeline = async (leadId, params) => {
+  const response = await api.get(`/leads/${leadId}/timeline`, { params });
+  return response.data;
+};
+
+/**
  * Convert a lead to a project (stub for D3 integration).
  * @param {string} leadId - The UUID of the lead.
  * @param {Object} projectData - The payload to initialize the project.
@@ -174,12 +188,13 @@ export const convertToProject = async (leadId, projectData) => {
 };
 
 /**
- * Send a lead to the Estimator App.
+ * Create a native estimate.
  * @param {string} leadId - The UUID of the lead.
+ * @param {Object} payload - The estimate data (rooms, items).
  * @returns {Promise<{ success: boolean, data: Object }>} The created estimate.
  */
-export const sendToEstimator = async (leadId) => {
-  const response = await api.post(`/leads/${leadId}/send-to-estimator`);
+export const createEstimate = async (leadId, payload) => {
+  const response = await api.post(`/leads/${leadId}/estimates`, payload);
   return response.data;
 };
 

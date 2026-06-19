@@ -16,9 +16,9 @@ async function logActivity({ tenantId, userId, leadId, type, title, notes, outco
 
   const query = `
     INSERT INTO activities (
-      tenant_id, lead_id, user_id, type, title, notes, outcome, scheduled_at, completed_at, ai_summary, metadata
+      tenant_id, lead_id, user_id, type, title, notes, outcome, scheduled_at, completed_at
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, NOW(), $9, $10
+      $1, $2, $3, $4, $5, $6, $7, $8, NOW()
     ) RETURNING *
   `;
   
@@ -30,13 +30,24 @@ async function logActivity({ tenantId, userId, leadId, type, title, notes, outco
     title || null,
     notes || null,
     outcome || null,
-    scheduledAt || null,
-    finalAiSummary || null,
-    metadata ? JSON.stringify(metadata) : '{}'
+    scheduledAt || null
   ];
 
   const result = await pool.query(query, values);
-  return result.rows[0];
+  const activity = result.rows[0];
+
+  // Insert into event timeline
+  try {
+    const summaryText = `Logged a ${type}: ${title || notes?.substring(0, 50) || 'No details provided'}`;
+    await pool.query(`
+      INSERT INTO lead_timeline (tenant_id, lead_id, event_type, entity, entity_id, summary, user_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [tenantId, leadId, 'activity.logged', 'activities', activity.id, summaryText, userId]);
+  } catch (err) {
+    console.error('[activityService] Failed to insert into lead_timeline', err);
+  }
+
+  return activity;
 }
 
 async function listActivities({ tenantId, leadId, type, page = 1, limit = 20 }) {

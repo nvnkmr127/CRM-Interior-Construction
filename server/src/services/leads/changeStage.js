@@ -68,6 +68,9 @@ async function changeStage({ tenantId, userId, leadId, newStageId }) {
   // 7. Dispatch webhook
   dispatchEvent(tenantId, 'lead.stage_changed', updatedLeadFull);
 
+  // 8. Refresh materialized view concurrently
+  leadRepository.refreshPipelineSummary(tenantId).catch(console.error);
+
   return updatedLeadFull;
 }
 

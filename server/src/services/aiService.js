@@ -195,22 +195,25 @@ async function analyzeLeadIntelligence(lead, activities, communications, prefere
       sentiment: 'Neutral',
       signals: ['User expressed interest in layout', 'Budget discussed briefly'],
       objections: ['Waiting for spouse approval'],
-      nextAction: 'Schedule a showroom visit to build trust.'
+      nextAction: 'Schedule a showroom visit to build trust.',
+      buyIntent: 'medium',
+      winProbability: 50,
+      aiScoreBreakdown: { "Base Score": "+50" }
     };
   }
 
   const ai = new GoogleGenAI({ apiKey });
 
   const timelineText = [
-    ...activities.map(a => `[Activity] ${a.created_at} - ${a.type}: ${a.notes || a.summary || ''}`),
-    ...communications.map(c => `[Comms] ${c.created_at} - ${c.type} (${c.direction}): ${c.content || ''}`)
+    ...(activities || []).map(a => `[Activity] ${a.created_at} - ${a.type}: ${a.notes || a.summary || ''}`),
+    ...(communications || []).map(c => `[Comms] ${c.created_at} - ${c.type} (${c.direction}): ${c.content || ''}`)
   ].join('\n');
 
   const prefsText = preferences ? JSON.stringify(preferences) : 'None';
 
   const prompt = `
     You are an expert AI Sales Copilot for an interior design CRM.
-    Analyze the following lead profile, preferences, and interaction timeline.
+    Analyze the following lead profile, preferences, and interaction timeline to extract deep sales intelligence, including win probability and lead scoring.
 
     Lead Name: ${lead.name}
     Lead Scope: ${lead.scope || 'N/A'}
@@ -225,15 +228,20 @@ async function analyzeLeadIntelligence(lead, activities, communications, prefere
     2. Signals: An array of 1-3 short bullet points summarizing positive buying signals (e.g. "Asked for floorplan").
     3. Objections: An array of 1-3 short bullet points summarizing any hesitations or objections (e.g. "Price is too high"). If none, return an empty array.
     4. Next Action: A single, specific 1-sentence recommendation on what the sales rep should do next.
+    5. Buy Intent: "high", "medium", or "low".
+    6. Win Probability: An integer from 0 to 100 representing the likelihood to close.
+    7. AI Score Breakdown: A JSON object of factors that added or subtracted to the score (e.g. {"Responsive": "+10", "Budget concern": "-5"}).
 
     Return a strictly formatted JSON object exactly matching this schema:
     {
       "sentiment": "Positive|Neutral|Negative|At-Risk",
       "signals": ["signal 1", "signal 2"],
       "objections": ["objection 1"],
-      "nextAction": "Action string"
+      "nextAction": "Action string",
+      "buyIntent": "high|medium|low",
+      "winProbability": 75,
+      "aiScoreBreakdown": { "Factor Name": "+10" }
     }
-    No markdown formatting, just raw JSON.
   `;
 
   try {
@@ -245,14 +253,19 @@ async function analyzeLeadIntelligence(lead, activities, communications, prefere
       }
     });
 
-    const resultText = response.text();
-    const result = JSON.parse(resultText);
+    let text = typeof response.text === 'function' ? response.text() : response.text;
+    text = text.trim();
+    if (text.startsWith('\`\`\`json')) text = text.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '').trim();
+    const result = JSON.parse(text);
 
     return {
       sentiment: result.sentiment || 'Neutral',
       signals: result.signals || [],
       objections: result.objections || [],
-      nextAction: result.nextAction || 'Follow up with the customer to understand their needs.'
+      nextAction: result.nextAction || 'Follow up with the customer to understand their needs.',
+      buyIntent: result.buyIntent || 'medium',
+      winProbability: typeof result.winProbability === 'number' ? result.winProbability : 50,
+      aiScoreBreakdown: result.aiScoreBreakdown || {}
     };
   } catch (error) {
     console.error('[AI Service] Failed to generate lead intelligence:', error);
@@ -260,7 +273,10 @@ async function analyzeLeadIntelligence(lead, activities, communications, prefere
       sentiment: 'Neutral',
       signals: [],
       objections: [],
-      nextAction: 'Could not generate AI recommendation due to an error.'
+      nextAction: 'Could not generate AI recommendation due to an error.',
+      buyIntent: 'medium',
+      winProbability: 50,
+      aiScoreBreakdown: { "Error": "0" }
     };
   }
 }
@@ -521,6 +537,289 @@ Return a valid JSON object ONLY:
   }
 }
 
+/**
+ * Analyzes the gap between customer budget and expected design budget, suggesting optimizations.
+ * @param {string} tenantId 
+ * @param {string} leadId 
+ * @param {number} customerBudget 
+ * @param {number} expectedBudget 
+ * @param {string} scope 
+ */
+async function analyzeBudgetVariance(tenantId, leadId, customerBudget, expectedBudget, scope) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return {
+      variance: expectedBudget - customerBudget,
+      status: 'Over Budget',
+      recommendations: [
+        'Switch from Acrylic to Laminate finishes in the kitchen.',
+        'Reduce the number of custom false ceiling elements.',
+        'Use standard modular wardrobes instead of custom built-ins.'
+      ]
+    };
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  const payload = `Analyze the budget variance for an interior design project.
+Customer Budget: ₹${customerBudget}
+Expected Budget (Planner): ₹${expectedBudget}
+Project Scope/Rooms: ${scope || 'General Home Interior'}
+
+The expected budget is higher than the customer budget. Give exactly 3 actionable, professional interior design recommendations on how to bridge this gap by value-engineering or changing materials/scope, without losing the premium feel.
+
+Return a valid JSON object ONLY:
+{
+  "variance": ${expectedBudget - customerBudget},
+  "status": "Over Budget",
+  "recommendations": ["Recommendation 1", "Recommendation 2", "Recommendation 3"]
+}`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: payload
+    });
+    let text = response.text.trim();
+    if (text.startsWith('```json')) text = text.replace(/```json|```/g, '').trim();
+    return JSON.parse(text);
+  } catch (error) {
+    console.error('Gemini Budget Variance Error:', error);
+    return {
+      variance: expectedBudget - customerBudget,
+      status: 'Over Budget',
+      recommendations: ['Failed to generate AI budget recommendations.']
+    };
+  }
+}
+
+/**
+ * Generates an executive proposal summary for the bottom of the funnel.
+ */
+async function generateExecutiveProposal(tenantId, leadId, lead, requirements, targetBudget) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return {
+      proposal_text: `### Executive Summary\n\nDear ${lead.name},\n\nBased on our discussions, we have structured a design plan for your ${lead.property_type || 'home'}. The scope includes ${requirements?.length || 'several'} rooms, tailored to a budget of ₹${targetBudget?.toLocaleString() || lead.budget_max}. \n\nWe look forward to transforming your space into a Modern Minimalist masterpiece.`
+    };
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  const payload = `You are a top-tier interior design sales executive.
+Write a 1-page executive summary proposal (in markdown format) for a prospective client.
+Client Name: ${lead.name}
+Property: ${lead.property_type || 'Residential'} - ${lead.locality || ''}
+Target Budget: ₹${targetBudget || lead.budget_max}
+Requirements/Scope: ${JSON.stringify(requirements)}
+
+The proposal should have:
+1. A warm opening thanking them.
+2. An 'Executive Summary' of the design vision.
+3. A 'Scope of Work' high-level breakdown.
+4. A 'Financial Investment' section.
+5. A professional closing.
+
+Return a valid JSON object ONLY:
+{
+  "proposal_text": "<the markdown formatted proposal text>"
+}`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: payload
+    });
+    let text = response.text.trim();
+    if (text.startsWith('```json')) text = text.replace(/```json|```/g, '').trim();
+    return JSON.parse(text);
+  } catch (error) {
+    console.error('Gemini Proposal Error:', error);
+    return {
+      proposal_text: 'Failed to generate proposal due to an error.'
+    };
+  }
+}
+
+/**
+ * AI Task Generation: Parses an activity and recommends follow-up tasks.
+ */
+async function generateTasksFromActivity(activityText, activityType) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return [
+      { title: 'Follow up on ' + activityType, due_in_days: 1 }
+    ];
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+  const prompt = `
+    You are an AI sales assistant. Based on the following logged activity (${activityType}), suggest 1 to 3 logical follow-up tasks for the sales rep.
+    
+    Activity Notes:
+    ${activityText}
+
+    Return a valid JSON array ONLY, where each object has:
+    - title: "Short task description (e.g., Send Quote, Schedule Site Visit)"
+    - due_in_days: number (e.g. 0 for today, 1 for tomorrow)
+
+    Example:
+    [
+      { "title": "Send updated quotation based on new measurements", "due_in_days": 1 }
+    ]
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: { responseMimeType: 'application/json' }
+    });
+    
+    let text = typeof response.text === 'function' ? response.text() : response.text;
+    text = text.trim();
+    if (text.startsWith('\`\`\`json')) text = text.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '').trim();
+    return JSON.parse(text);
+  } catch (error) {
+    console.error('Gemini Task Generation Error:', error);
+    return [];
+  }
+}
+
+/**
+ * AI Follow-up Suggestions: Recommends specific follow-up actions and drafts.
+ */
+async function generateFollowupRecommendations(lead, lastActivityDate) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return {
+      recommendedAction: 'Call',
+      reason: 'No contact recently.',
+      draftMessage: 'Hi ' + lead.name + ', following up on our last conversation.'
+    };
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+  const prompt = `
+    You are an AI sales assistant. Recommend a follow-up action for this lead.
+    
+    Lead Name: ${lead.name}
+    Status/Stage: ${lead.stage || 'Active'}
+    Budget: ${lead.budget_max || 'Unknown'}
+    Last Contacted: ${lastActivityDate || 'Unknown'}
+    Notes: ${lead.notes || 'No notes.'}
+    
+    Return a valid JSON object ONLY:
+    {
+      "recommendedAction": "Call" | "WhatsApp" | "Email" | "Meeting",
+      "reason": "A short sentence explaining why.",
+      "draftMessage": "A short drafted message for the rep to use (if WhatsApp or Email)."
+    }
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: { responseMimeType: 'application/json' }
+    });
+    
+    let text = typeof response.text === 'function' ? response.text() : response.text;
+    text = text.trim();
+    if (text.startsWith('\`\`\`json')) text = text.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '').trim();
+    return JSON.parse(text);
+  } catch (error) {
+    console.error('Gemini Follow-up Recommendation Error:', error);
+    return { recommendedAction: 'Call', reason: 'Error generating recommendation.', draftMessage: '' };
+  }
+}
+
+/**
+ * AI Sales Coach: Analyzes a meeting transcript and provides constructive feedback
+ */
+async function analyzeMeetingForCoaching(transcript) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return {
+      feedback: 'You missed asking about their strict timeline.',
+      missed_questions: ['What is the hard deadline for move-in?'],
+      strengths: ['Built great rapport early on.']
+    };
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+  const prompt = `
+    You are an expert AI Sales Coach for interior design.
+    Analyze this meeting transcript and give constructive feedback to the sales rep.
+    
+    Transcript:
+    """
+    ${transcript}
+    """
+    
+    Return exactly this JSON schema:
+    {
+      "feedback": "A 2-3 sentence overview of the rep's performance.",
+      "missed_questions": ["Important question 1 that the rep forgot to ask", "Important question 2"],
+      "strengths": ["Thing 1 the rep did well", "Thing 2"]
+    }
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: { responseMimeType: 'application/json' }
+    });
+    
+    let text = typeof response.text === 'function' ? response.text() : response.text;
+    text = text.trim();
+    if (text.startsWith('\`\`\`json')) text = text.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '').trim();
+    return JSON.parse(text);
+  } catch (error) {
+    console.error('AI Sales Coach Error:', error);
+    return { feedback: 'Failed to analyze.', missed_questions: [], strengths: [] };
+  }
+}
+
+/**
+ * AI Knowledge Assistant: Answers questions about a lead's history
+ */
+async function chatWithLeadContext(lead, activities, question) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return "API Key missing. Cannot answer context questions.";
+
+  const ai = new GoogleGenAI({ apiKey });
+  
+  const timelineText = activities.map(a => `[${a.created_at}] ${a.type}: ${a.notes || a.summary || ''}`).join('\n');
+
+  const prompt = `
+    You are an AI Knowledge Assistant for a CRM.
+    Answer the sales rep's question based strictly on the lead's history below. Keep it concise and actionable.
+
+    Lead Name: ${lead.name}
+    Lead Profile: Budget ${lead.budget_max || 'Unknown'}, Scope ${lead.scope || 'Unknown'}
+    
+    History:
+    ${timelineText || 'No history.'}
+
+    Question: ${question}
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt
+    });
+    
+    let text = typeof response.text === 'function' ? response.text() : response.text;
+    return text.trim();
+  } catch (error) {
+    console.error('AI Knowledge Assistant Error:', error);
+    return "Sorry, I encountered an error while searching the lead's history.";
+  }
+}
+
 module.exports = {
   analyzeLeadConversations,
   summarizeActivity,
@@ -530,5 +829,11 @@ module.exports = {
   summarizeMeeting,
   simulateLeadPersona,
   analyzeBuyingIntent,
-  analyzeSentiment
+  analyzeSentiment,
+  analyzeBudgetVariance,
+  generateExecutiveProposal,
+  generateTasksFromActivity,
+  generateFollowupRecommendations,
+  analyzeMeetingForCoaching,
+  chatWithLeadContext
 };

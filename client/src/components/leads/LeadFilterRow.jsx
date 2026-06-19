@@ -28,13 +28,6 @@ export default function LeadFilterRow({
 }) {
   return (
     <div className={styles.filterRow}>
-      <input
-        className={styles.searchInput}
-        placeholder="Search leads..."
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-      />
-
       <select
         className={styles.filterSelect}
         value={assigneeFilter}
@@ -91,6 +84,12 @@ export default function LeadFilterRow({
 
       <div className="flex border border-gray-300 rounded-md overflow-hidden shrink-0 bg-white">
         <button
+          onClick={() => setView('dashboard')}
+          className={`px-3 py-1.5 text-sm font-medium transition-colors ${view === 'dashboard' ? 'bg-blue-50 text-blue-700 border-r border-gray-300' : 'text-gray-600 hover:bg-gray-50 border-r border-gray-300'}`}
+        >
+          &#128202; Dashboard
+        </button>
+        <button
           onClick={() => setView('list')}
           className={`px-3 py-1.5 text-sm font-medium transition-colors ${view === 'list' ? 'bg-blue-50 text-blue-700 border-r border-gray-300' : 'text-gray-600 hover:bg-gray-50 border-r border-gray-300'}`}
         >
@@ -101,6 +100,12 @@ export default function LeadFilterRow({
           className={`px-3 py-1.5 text-sm font-medium transition-colors ${view === 'kanban' ? 'bg-blue-50 text-blue-700 border-r border-gray-300' : 'text-gray-600 hover:bg-gray-50 border-r border-gray-300'}`}
         >
           &#9638; Kanban
+        </button>
+        <button
+          onClick={() => setView('calendar')}
+          className={`px-3 py-1.5 text-sm font-medium transition-colors ${view === 'calendar' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50 border-r border-gray-300'}`}
+        >
+          &#128197; Calendar
         </button>
         <button
           onClick={() => setView('map')}

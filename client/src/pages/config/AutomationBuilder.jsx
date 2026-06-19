@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import styles from './AutomationBuilder.module.css'
 import { Button, Modal, Input, Select } from '../../components/ui'
 import { useToast } from '../../store/toastContext'
+import api from '../../api/axios'
 
 const TRIGGER_TYPES = [
   { id: 'record_created', icon: '◉', label: 'Record Created' },
@@ -26,15 +27,33 @@ export default function AutomationBuilder() {
   })
 
   useEffect(() => {
-    setRules([
-      { id: '1', name: 'New Lead Auto-Reply', active: true, triggerSummary: 'When lead.created → send WhatsApp + create task', lastRun: '3h ago · 12 times total' },
-      { id: '2', name: 'Overdue Task Alert', active: false, triggerSummary: 'When date is 1 day after due_date → send Email', lastRun: 'Never' }
-    ])
+    fetchRules()
   }, [])
+
+  const fetchRules = async () => {
+    try {
+      const res = await api.get('/config/automations')
+      const formatted = res.data.data.map(r => ({
+        id: r.id,
+        name: r.name,
+        active: r.is_active,
+        triggerSummary: `When ${r.trigger?.entity || 'record'}.${r.trigger?.type || 'event'} → ${r.actions?.length || 0} action(s)`,
+        lastRun: r.last_run_at ? new Date(r.last_run_at).toLocaleString() : 'Never',
+        triggerType: r.trigger?.type || '',
+        entity: r.trigger?.entity || '',
+        watchField: r.trigger?.watchField || '',
+        conditions: r.conditions || [],
+        actions: r.actions || []
+      }))
+      setRules(formatted)
+    } catch (err) {
+      toast.error('Failed to fetch automations')
+    }
+  }
 
   const openWizard = (rule = null) => {
     if (rule) {
-      setDraft(rule) // Needs proper mapping for real app
+      setDraft(rule)
     } else {
       setDraft({ id: null, name: '', triggerType: '', entity: '', watchField: '', conditions: [], actions: [] })
     }
@@ -42,8 +61,35 @@ export default function AutomationBuilder() {
     setIsWizardOpen(true)
   }
 
-  const toggleActive = (id) => {
-    setRules(rules.map(r => r.id === id ? {...r, active: !r.active} : r))
+  const toggleActive = async (id) => {
+    try {
+      await api.patch(`/config/automations/${id}/toggle`)
+      setRules(rules.map(r => r.id === id ? {...r, active: !r.active} : r))
+      toast.success('Automation toggled')
+    } catch (err) {
+      toast.error('Failed to toggle automation')
+    }
+  }
+
+  const deleteRule = async (id) => {
+    if (!window.confirm('Delete this rule?')) return
+    try {
+      await api.delete(`/config/automations/${id}`)
+      setRules(rules.filter(x => x.id !== id))
+      toast.success('Automation deleted')
+    } catch (err) {
+      toast.error('Failed to delete automation')
+    }
+  }
+
+  const testRun = async (id) => {
+    try {
+      // Pass a dummy record to simulate
+      await api.post(`/config/automations/${id}/test-run`, { record: { test: true } })
+      toast.success('Test run triggered successfully')
+    } catch (err) {
+      toast.error('Failed to trigger test run')
+    }
   }
 
   const addCondition = () => {
@@ -54,17 +100,34 @@ export default function AutomationBuilder() {
     setDraft({ ...draft, actions: [...draft.actions, { type: '', config: {} }] })
   }
 
-  const saveRule = () => {
+  const saveRule = async () => {
     if (!draft.name) return toast.error('Rule name required')
     if (draft.actions.length === 0) return toast.error('At least one action is required')
     
-    if (draft.id) {
-      setRules(rules.map(r => r.id === draft.id ? { ...draft, triggerSummary: `When ${draft.entity}.${draft.triggerType} → ${draft.actions.length} action(s)`, active: r.active, lastRun: r.lastRun } : r))
-    } else {
-      setRules([...rules, { ...draft, id: Date.now().toString(), triggerSummary: `When ${draft.entity}.${draft.triggerType} → ${draft.actions.length} action(s)`, active: true, lastRun: 'Never' }])
+    const payload = {
+      name: draft.name,
+      trigger: {
+        type: draft.triggerType,
+        entity: draft.entity,
+        watchField: draft.watchField
+      },
+      conditions: draft.conditions,
+      actions: draft.actions
     }
-    toast.success('Automation rule saved')
-    setIsWizardOpen(false)
+
+    try {
+      if (draft.id) {
+        await api.put(`/config/automations/${draft.id}`, payload)
+        toast.success('Automation updated')
+      } else {
+        await api.post('/config/automations', payload)
+        toast.success('Automation created')
+      }
+      setIsWizardOpen(false)
+      fetchRules()
+    } catch (err) {
+      toast.error('Failed to save automation rule')
+    }
   }
 
   return (
@@ -93,8 +156,8 @@ export default function AutomationBuilder() {
             
             <div className={styles.cardActions}>
               <Button variant="ghost" size="sm" onClick={() => openWizard(r)}>Edit</Button>
-              <Button variant="secondary" size="sm" onClick={() => toast.info('Test run triggered')}>Test Run</Button>
-              <Button variant="ghost" size="sm" style={{color:'var(--color-danger)'}} onClick={() => setRules(rules.filter(x => x.id !== r.id))}>Delete</Button>
+              <Button variant="secondary" size="sm" onClick={() => testRun(r.id)}>Test Run</Button>
+              <Button variant="ghost" size="sm" style={{color:'var(--color-danger)'}} onClick={() => deleteRule(r.id)}>Delete</Button>
             </div>
           </div>
         ))}
