@@ -6,7 +6,8 @@ const NAV_ITEMS = [
   { path: '/portal/overview', label: 'Overview', icon: '🏠' },
   { path: '/portal/approvals', label: 'Approvals', icon: '📋' },
   { path: '/portal/documents', label: 'Documents', icon: '📁' },
-  { path: '/portal/snags', label: 'Snags', icon: '🔧' }
+  { path: '/portal/snags', label: 'Snags', icon: '🔧' },
+  { path: '/portal/payments', label: 'Payments', icon: '💳' }
 ]
 
 export default function PortalShell({ children }) {

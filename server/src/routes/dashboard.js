@@ -17,7 +17,8 @@ router.get('/stats', async (req, res) => {
       wonThisMonthRes,
       projectsRes,
       tasksRes,
-      prevWeekLeadsRes
+      prevWeekLeadsRes,
+      targetsRes
     ] = await Promise.all([
       pool.query(`SELECT COUNT(*) FROM leads WHERE tenant_id=$1 AND status='active' AND deleted_at IS NULL`, [tenantId]),
       pool.query(`
@@ -45,13 +46,20 @@ router.get('/stats', async (req, res) => {
         WHERE tenant_id=$1 AND status='active' AND deleted_at IS NULL
         AND created_at >= NOW() - INTERVAL '14 days'
         AND created_at < NOW() - INTERVAL '7 days'
-      `, [tenantId])
+      `, [tenantId]),
+      pool.query(`
+        SELECT target_revenue, target_leads 
+        FROM sales_targets 
+        WHERE tenant_id=$1 AND user_id=$2 AND target_month = date_trunc('month', CURRENT_DATE)
+      `, [tenantId, userId])
     ]);
 
     const activeCount = parseInt(activeLeadsRes.rows[0].count, 10);
     const prevWeekCount = parseInt(prevWeekLeadsRes.rows[0].count, 10);
     const trendDiff = activeCount - prevWeekCount;
     const trend = trendDiff > 0 ? `+${trendDiff}` : `${trendDiff}`;
+    
+    const targets = targetsRes && targetsRes.rows.length > 0 ? targetsRes.rows[0] : { target_revenue: 0, target_leads: 0 };
 
     const data = {
       activeLeads: {
@@ -70,6 +78,10 @@ router.get('/stats', async (req, res) => {
       tasksDueToday: {
         count: parseInt(tasksRes.rows[0].due_today, 10) || 0,
         overdueCount: parseInt(tasksRes.rows[0].overdue, 10) || 0
+      },
+      salesTargets: {
+        targetRevenue: parseFloat(targets.target_revenue) || 0,
+        targetLeads: parseInt(targets.target_leads, 10) || 0
       }
     };
 

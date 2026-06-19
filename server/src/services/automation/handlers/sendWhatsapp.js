@@ -1,13 +1,53 @@
+const axios = require('axios');
+const configEnv = require('../../../config/env');
+
 /**
- * WhatsApp Action Handler (Stub)
- * Full WABA integration will be built out in Phase 2.
+ * WhatsApp Action Handler
+ * Integrates with third-party WhatsApp API.
  */
 async function handle(config, context) {
   const { templateName, recipientField } = config;
   const { record } = context;
 
-  const phone = record[recipientField] || 'UNKNOWN_PHONE';
-  console.log(`[Automation Action] WhatsApp message would be sent to ${phone} using template '${templateName}'`);
+  const phone = record[recipientField] || record.phone;
+  if (!phone) {
+    console.log(`[Automation Action] No phone number found to send WhatsApp template '${templateName}'`);
+    return;
+  }
+
+  console.log(`[Automation Action] Sending WhatsApp to ${phone} using template '${templateName}'`);
+
+  try {
+    const waApiUrl = process.env.WHATSAPP_API_URL;
+    const waApiToken = process.env.WHATSAPP_API_TOKEN;
+
+    if (!waApiUrl || !waApiToken) {
+      console.warn('[Automation Action] WHATSAPP_API_URL or WHATSAPP_API_TOKEN not set. Simulating send.');
+      return;
+    }
+
+    const payload = {
+      messaging_product: "whatsapp",
+      to: phone,
+      type: "template",
+      template: {
+        name: templateName,
+        language: { code: "en" }
+      }
+    };
+
+    await axios.post(waApiUrl, payload, {
+      headers: {
+        'Authorization': `Bearer ${waApiToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    console.log(`[Automation Action] WhatsApp successfully sent to ${phone}`);
+  } catch (err) {
+    console.error(`[Automation Action] Failed to send WhatsApp to ${phone}:`, err.message);
+  }
 }
 
 module.exports = { handle };
+

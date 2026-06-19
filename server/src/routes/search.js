@@ -19,7 +19,7 @@ router.get('/', async (req, res) => {
   const searchTypes = types ? types.split(',') : ['leads', 'projects', 'tasks'];
   const searchTerm = `%${q}%`;
 
-  const results = { leads: [], projects: [], tasks: [], query: q };
+  const results = { leads: [], projects: [], tasks: [], contacts: [], activities: [], query: q };
   const promises = [];
 
   try {
@@ -60,6 +60,35 @@ router.get('/', async (req, res) => {
           AND t.title ILIKE $2
           LIMIT 5
         `, [tenantId, searchTerm]).then(res => results.tasks = res.rows)
+      );
+    }
+
+    if (searchTypes.includes('leads') || searchTypes.includes('contacts')) {
+      promises.push(
+        pool.query(`
+          SELECT id, lead_id, name, phone, email, role 
+          FROM lead_contacts 
+          WHERE tenant_id = $1 
+          AND (
+            name ILIKE $2 OR 
+            email ILIKE $2 OR 
+            phone ILIKE $2
+          )
+          LIMIT 5
+        `, [tenantId, searchTerm]).then(res => results.contacts = res.rows)
+      );
+    }
+
+    if (searchTypes.includes('leads') || searchTypes.includes('activities')) {
+      promises.push(
+        pool.query(`
+          SELECT a.id, a.lead_id, a.type, a.notes, l.name as lead_name
+          FROM lead_activities a
+          JOIN leads l ON a.lead_id = l.id
+          WHERE a.tenant_id = $1 AND l.deleted_at IS NULL
+          AND a.notes ILIKE $2
+          LIMIT 5
+        `, [tenantId, searchTerm]).then(res => results.activities = res.rows)
       );
     }
 

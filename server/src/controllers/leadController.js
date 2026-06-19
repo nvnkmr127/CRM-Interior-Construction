@@ -119,7 +119,21 @@ exports.getLeadByIdHandler = async (req, res, next) => {
     }
 
     const activitiesResult = await listActivities({ tenantId, leadId, limit: 5 });
-    return success(res, { ...lead, activities: activitiesResult.data });
+    
+    // Fetch Referrals
+    const referralsQuery = await pool.query(`
+      SELECT id, name, stage_id, budget_max, created_at,
+        (SELECT name FROM lead_stages WHERE id = stage_id) as stage_name
+      FROM leads 
+      WHERE referred_by_lead_id = $1 AND tenant_id = $2 AND deleted_at IS NULL
+      ORDER BY created_at DESC
+    `, [leadId, tenantId]);
+
+    return success(res, { 
+      ...lead, 
+      activities: activitiesResult.data,
+      referrals: referralsQuery.rows 
+    });
   } catch (error) {
     next(error);
   }
@@ -516,6 +530,35 @@ exports.deleteFileHandler = async function deleteFileHandler(req, res) {
   }
 };
 
+const { parseDocument } = require('../services/aiService');
+
+exports.parseFileHandler = async function parseFileHandler(req, res) {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { id: leadId, fileId } = req.params;
+
+    // fetch file from db
+    const fileRes = await pool.query(
+      'SELECT storage_key, mime_type FROM lead_files WHERE id = $1 AND lead_id = $2 AND tenant_id = $3',
+      [fileId, leadId, tenantId]
+    );
+
+    if (fileRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: { message: 'File not found' } });
+    }
+
+    const file = fileRes.rows[0];
+    
+    // Parse using Gemini
+    const extractedData = await parseDocument(file.storage_key, file.mime_type);
+
+    res.json({ success: true, data: extractedData });
+  } catch (err) {
+    console.error('parseFileHandler error:', err);
+    res.status(500).json({ success: false, error: { message: err.message || 'Failed to parse file' } });
+  }
+};
+
 exports.getFollowupsHandler = async function getFollowupsHandler(req, res) {
   try {
     const { tenantId } = getTenantAndUser(req);
@@ -583,5 +626,271 @@ exports.deleteFollowupHandler = async function deleteFollowupHandler(req, res) {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: { message: 'Failed to delete follow-up' } });
+  }
+};
+
+const { sendLeadToEstimator } = require('../services/estimatorService');
+
+exports.sendToEstimatorHandler = async function sendToEstimatorHandler(req, res) {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { id: leadId } = req.params;
+
+    const leadRes = await pool.query('SELECT * FROM leads WHERE id = $1 AND tenant_id = $2', [leadId, tenantId]);
+    if (leadRes.rows.length === 0) return res.status(404).json({ success: false, error: { message: 'Lead not found' } });
+    
+    const lead = leadRes.rows[0];
+    const estRes = await sendLeadToEstimator(lead);
+
+    // If simulated or successful, we can log it
+    res.json({ success: true, data: estRes });
+  } catch (err) {
+    console.error('sendToEstimatorHandler error:', err);
+    res.status(500).json({ success: false, error: { message: 'Failed to send to estimator' } });
+  }
+};
+
+exports.getEstimatesHandler = async function getEstimatesHandler(req, res) {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { id: leadId } = req.params;
+
+    const result = await pool.query(
+      'SELECT * FROM lead_estimates WHERE lead_id = $1 AND tenant_id = $2 ORDER BY created_at DESC',
+      [leadId, tenantId]
+    );
+
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    console.error('getEstimatesHandler error:', err);
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch estimates' } });
+  }
+};
+
+exports.estimatorWebhookHandler = async function estimatorWebhookHandler(req, res) {
+  try {
+    // This endpoint should ideally be protected by a webhook secret
+    const { id: leadId } = req.params;
+    const { estimator_reference_id, status, total_amount, pdf_url, payload } = req.body;
+
+    const leadRes = await pool.query('SELECT tenant_id FROM leads WHERE id = $1', [leadId]);
+    if (leadRes.rows.length === 0) return res.status(404).json({ success: false, error: { message: 'Lead not found' } });
+    const tenantId = leadRes.rows[0].tenant_id;
+
+    // Insert or update estimate
+    const existing = await pool.query(
+      'SELECT id FROM lead_estimates WHERE lead_id = $1 AND estimator_reference_id = $2',
+      [leadId, estimator_reference_id]
+    );
+
+    if (existing.rows.length > 0) {
+      await pool.query(
+        `UPDATE lead_estimates SET status = $1, total_amount = $2, pdf_url = $3, payload = $4, updated_at = NOW() WHERE id = $5`,
+        [status, total_amount, pdf_url, payload, existing.rows[0].id]
+      );
+    } else {
+      await pool.query(
+        `INSERT INTO lead_estimates (tenant_id, lead_id, estimator_reference_id, status, total_amount, pdf_url, payload)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [tenantId, leadId, estimator_reference_id, status, total_amount, pdf_url, payload]
+      );
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('estimatorWebhookHandler error:', err);
+    res.status(500).json({ success: false, error: { message: 'Failed to process webhook' } });
+  }
+};
+
+exports.getContactsHandler = async function getContactsHandler(req, res) {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { id: leadId } = req.params;
+    const result = await pool.query(
+      'SELECT * FROM lead_contacts WHERE lead_id = $1 AND tenant_id = $2 ORDER BY created_at ASC',
+      [leadId, tenantId]
+    );
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    console.error('getContactsHandler error:', err);
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch contacts' } });
+  }
+};
+
+exports.createContactHandler = async function createContactHandler(req, res) {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { id: leadId } = req.params;
+    const { name, phone, email, role, decision_authority, relationship_notes } = req.body;
+
+    const result = await pool.query(
+      `INSERT INTO lead_contacts (tenant_id, lead_id, name, phone, email, role, decision_authority, relationship_notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [tenantId, leadId, name, phone, email, role, decision_authority, relationship_notes]
+    );
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    console.error('createContactHandler error:', err);
+    res.status(500).json({ success: false, error: { message: 'Failed to create contact' } });
+  }
+};
+
+exports.deleteContactHandler = async function deleteContactHandler(req, res) {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { id: leadId, cid } = req.params;
+    await pool.query('DELETE FROM lead_contacts WHERE id = $1 AND lead_id = $2 AND tenant_id = $3', [cid, leadId, tenantId]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('deleteContactHandler error:', err);
+    res.status(500).json({ success: false, error: { message: 'Failed to delete contact' } });
+  }
+};
+
+exports.getInspirationsHandler = async function getInspirationsHandler(req, res) {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { id: leadId } = req.params;
+    const result = await pool.query(
+      'SELECT * FROM lead_inspirations WHERE lead_id = $1 AND tenant_id = $2 ORDER BY created_at DESC',
+      [leadId, tenantId]
+    );
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    console.error('getInspirationsHandler error:', err);
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch inspirations' } });
+  }
+};
+
+exports.createInspirationHandler = async function createInspirationHandler(req, res) {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { id: leadId } = req.params;
+    const { image_url, room_type, notes } = req.body;
+
+    const result = await pool.query(
+      `INSERT INTO lead_inspirations (tenant_id, lead_id, image_url, room_type, notes)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [tenantId, leadId, image_url, room_type, notes]
+    );
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    console.error('createInspirationHandler error:', err);
+    res.status(500).json({ success: false, error: { message: 'Failed to create inspiration' } });
+  }
+};
+
+exports.deleteInspirationHandler = async function deleteInspirationHandler(req, res) {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { id: leadId, iid } = req.params;
+    await pool.query('DELETE FROM lead_inspirations WHERE id = $1 AND lead_id = $2 AND tenant_id = $3', [iid, leadId, tenantId]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('deleteInspirationHandler error:', err);
+    res.status(500).json({ success: false, error: { message: 'Failed to delete inspiration' } });
+  }
+};
+
+exports.getAiInsightsHandler = async function getAiInsightsHandler(req, res) {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { id: leadId } = req.params;
+
+    // Fetch lead details
+    const leadResult = await pool.query('SELECT * FROM leads WHERE id = $1 AND tenant_id = $2', [leadId, tenantId]);
+    if (leadResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: { message: 'Lead not found' } });
+    }
+    const lead = leadResult.rows[0];
+
+    // Fetch activities
+    const activitiesResult = await pool.query(
+      'SELECT type, notes, summary, created_at FROM lead_activities WHERE lead_id = $1 AND tenant_id = $2 ORDER BY created_at DESC LIMIT 20',
+      [leadId, tenantId]
+    );
+
+    // Fetch communications
+    const commsResult = await pool.query(
+      'SELECT type, direction, content, created_at FROM lead_communications WHERE lead_id = $1 AND tenant_id = $2 ORDER BY created_at DESC LIMIT 20',
+      [leadId, tenantId]
+    );
+
+    // Fetch preferences
+    const prefResult = await pool.query(
+      'SELECT style, colors, materials, requirements FROM lead_preferences WHERE lead_id = $1 AND tenant_id = $2',
+      [leadId, tenantId]
+    );
+    const preferences = prefResult.rows[0] || null;
+
+    // Call AI Service
+    const aiService = require('../services/aiService');
+    const insights = await aiService.analyzeLeadIntelligence(lead, activitiesResult.rows, commsResult.rows, preferences);
+
+    res.json({ success: true, data: insights });
+  } catch (err) {
+    console.error('getAiInsightsHandler error:', err);
+    res.status(500).json({ success: false, error: { message: 'Failed to generate AI insights' } });
+  }
+};
+
+exports.generateDesignProposalHandler = async function generateDesignProposalHandler(req, res) {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { id: leadId } = req.params;
+
+    const leadResult = await pool.query('SELECT * FROM leads WHERE id = $1 AND tenant_id = $2', [leadId, tenantId]);
+    if (leadResult.rows.length === 0) return res.status(404).json({ success: false, error: { message: 'Lead not found' } });
+    const lead = leadResult.rows[0];
+
+    const prefResult = await pool.query('SELECT style, colors, materials, requirements FROM lead_preferences WHERE lead_id = $1 AND tenant_id = $2', [leadId, tenantId]);
+    const preferences = prefResult.rows[0] || null;
+
+    const inspResult = await pool.query('SELECT room_type, notes FROM lead_inspirations WHERE lead_id = $1 AND tenant_id = $2', [leadId, tenantId]);
+    const inspirations = inspResult.rows;
+
+    const aiService = require('../services/aiService');
+    const proposal = await aiService.generateDesignProposal(lead, preferences, inspirations);
+
+    res.json({ success: true, data: proposal });
+  } catch (err) {
+    console.error('generateDesignProposalHandler error:', err);
+    res.status(500).json({ success: false, error: { message: 'Failed to generate AI design proposal' } });
+  }
+};
+
+exports.summarizeMeetingHandler = async function summarizeMeetingHandler(req, res) {
+  try {
+    const { tenantId, userId } = getTenantAndUser(req);
+    const { id: leadId } = req.params;
+    const { transcript } = req.body;
+
+    if (!transcript) return res.status(400).json({ success: false, error: { message: 'Transcript required' } });
+
+    const aiService = require('../services/aiService');
+    const summaryResult = await aiService.summarizeMeeting(transcript);
+
+    // 1. Log Activity Note
+    const noteContent = `**AI Meeting Summary**\n\n**Sentiment:** ${summaryResult.customer_sentiment}\n\n**Summary:**\n${summaryResult.summary}`;
+    await pool.query(
+      'INSERT INTO lead_activities (tenant_id, lead_id, type, notes, created_by) VALUES ($1, $2, $3, $4, $5)',
+      [tenantId, leadId, 'meeting', noteContent, userId]
+    );
+
+    // 2. Create Tasks for Action Items
+    for (const item of summaryResult.action_items) {
+      await pool.query(
+        'INSERT INTO lead_activities (tenant_id, lead_id, type, notes, scheduled_at, created_by) VALUES ($1, $2, $3, $4, NOW() + INTERVAL \'1 day\', $5)',
+        [tenantId, leadId, 'task', `[Action Item] ${item}`, userId]
+      );
+    }
+
+    res.json({ success: true, data: summaryResult });
+  } catch (err) {
+    console.error('summarizeMeetingHandler error:', err);
+    res.status(500).json({ success: false, error: { message: 'Failed to summarize meeting' } });
   }
 };

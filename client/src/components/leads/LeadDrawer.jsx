@@ -6,6 +6,11 @@ import ActivityTimeline from './ActivityTimeline';
 import TaskWidget from './TaskWidget';
 import ConvertToProjectModal from './ConvertToProjectModal';
 import FollowupsTab from './FollowupsTab';
+import CommunicationsTab from './CommunicationsTab';
+import PreferencesTab from './PreferencesTab';
+import StakeholdersTab from './StakeholdersTab';
+import InspirationBoard from './InspirationBoard';
+import AICopilotTab from './AICopilotTab';
 import { getLead, changeLeadStage, deleteLead } from '../../api/leads';
 import api from '../../api/axios';
 
@@ -29,6 +34,9 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
   // Files state
   const [files, setFiles] = useState([]);
+  
+  // Estimates state
+  const [estimates, setEstimates] = useState([]);
 
   useEffect(() => {
     if (isOpen && leadId) {
@@ -42,6 +50,15 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
     if (activeTab === 'files' && leadId) {
       api.get(`/leads/${leadId}/files`)
         .then(res => { if (res.data.success) setFiles(res.data.data); })
+        .catch(() => {});
+    }
+  }, [activeTab, leadId]);
+
+  // Load estimates when tab is activated
+  useEffect(() => {
+    if (activeTab === 'estimates' && leadId) {
+      api.get(`/leads/${leadId}/estimates`)
+        .then(res => { if (res.data.success) setEstimates(res.data.data); })
         .catch(() => {});
     }
   }, [activeTab, leadId]);
@@ -156,8 +173,51 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
     try {
       await api.delete(`/leads/${leadId}/files/${fileId}`);
       setFiles(prev => prev.filter(f => f.id !== fileId));
-    } catch {
+    } catch (err) {
       toast.error('Failed to delete file');
+    }
+  };
+
+  const handleSendToEstimator = async () => {
+    toast.info('Sending lead to Estimator...');
+    try {
+      const res = await api.post(`/leads/${leadId}/send-to-estimator`);
+      if (res.data.success) {
+        toast.success('Lead sent to Estimator successfully!');
+        // Refresh estimates tab if needed
+        if (activeTab === 'estimates') {
+          const estRes = await api.get(`/leads/${leadId}/estimates`);
+          if (estRes.data.success) setEstimates(estRes.data.data);
+        }
+      }
+    } catch (err) {
+      toast.error('Failed to send lead to Estimator');
+    }
+  };
+
+  const handleParseFile = async (fileId) => {
+    toast.info('Extracting data from file...');
+    try {
+      const res = await api.post(`/leads/${leadId}/files/${fileId}/parse`);
+      if (res.data.success) {
+        const { carpet_area, room_count, property_type, extracted_scope } = res.data.data;
+        // Optionally update the lead
+        const updates = {};
+        if (extracted_scope) updates.scope = (lead.scope ? lead.scope + '\n\n' : '') + extracted_scope;
+        if (property_type) updates.project_type = property_type;
+        // We could store carpet_area and room_count in lifestyle_preferences or directly if fields exist.
+        
+        // Update local state and backend
+        if (Object.keys(updates).length > 0) {
+          await api.patch(`/leads/${leadId}`, updates);
+          setLead(prev => ({ ...prev, ...updates }));
+          toast.success('Lead updated from document');
+        } else {
+          toast.success('Parsing completed, but no relevant updates found');
+        }
+      }
+    } catch (err) {
+      toast.error('Failed to parse file');
     }
   };
 
@@ -241,8 +301,8 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
           {/* TABS NAVIGATION */}
           <div className="bg-white px-6 border-b border-gray-200 shrink-0">
-            <nav className="-mb-px flex space-x-6">
-              {['overview', 'activity', 'tasks', 'followups', 'files'].map(tab => (
+            <nav className="flex -mb-px px-6 gap-6 overflow-x-auto">
+              {['overview', 'ai-copilot', 'stakeholders', 'communications', 'preferences', 'activity', 'tasks', 'followups', 'files', 'estimates', 'inspirations'].map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -289,6 +349,39 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                     )}
                   </div>
                 )}
+
+                {/* REFERRAL NETWORK WIDGET */}
+                <div className="bg-indigo-50/50 rounded-lg p-5 border border-indigo-100 mt-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-xl">🤝</span>
+                    <h3 className="text-sm font-bold text-indigo-900 uppercase tracking-wider">Referral Network</h3>
+                  </div>
+                  {lead.referrals && lead.referrals.length > 0 ? (
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-end border-b border-indigo-200 pb-2 mb-3">
+                        <div className="text-xs text-indigo-600 font-semibold uppercase">Total Referrals: {lead.referrals.length}</div>
+                        <div className="text-xs text-indigo-600 font-semibold uppercase">
+                          Value: ₹{(lead.referrals.reduce((sum, r) => sum + (parseFloat(r.budget_max) || 0), 0)).toLocaleString()}
+                        </div>
+                      </div>
+                      {lead.referrals.map(ref => (
+                        <div key={ref.id} className="flex justify-between items-center bg-white p-3 rounded shadow-sm border border-indigo-50">
+                          <div>
+                            <div className="font-medium text-gray-900 text-sm">{ref.name}</div>
+                            <div className="text-xs text-gray-500">{ref.stage_name} • {new Date(ref.created_at).toLocaleDateString()}</div>
+                          </div>
+                          <div className="text-sm font-semibold text-gray-700">
+                            {ref.budget_max ? `₹${Number(ref.budget_max).toLocaleString()}` : 'TBD'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-indigo-400 text-center py-4 bg-white/50 rounded border border-dashed border-indigo-200">
+                      No referrals recorded yet.
+                    </div>
+                  )}
+                </div>
 
                 {/* Contact Info */}
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
@@ -426,6 +519,26 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               </div>
             )}
 
+            {activeTab === 'ai-copilot' && (
+              <AICopilotTab leadId={leadId} />
+            )}
+
+            {activeTab === 'stakeholders' && (
+              <StakeholdersTab leadId={leadId} />
+            )}
+
+            {activeTab === 'communications' && (
+              <CommunicationsTab leadId={leadId} />
+            )}
+
+            {activeTab === 'preferences' && (
+              <PreferencesTab 
+                lead={lead} 
+                handleFieldChange={handleFieldChange} 
+                handleFieldBlur={handleFieldBlur} 
+              />
+            )}
+
             {activeTab === 'activity' && (
               <div className="space-y-4">
                 <ActivityTimeline leadId={leadId} />
@@ -479,12 +592,65 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                           <a href={f.storage_key} download={f.file_name} className="text-blue-600 hover:underline truncate text-sm font-medium">{f.file_name}</a>
                           <span className="text-xs text-gray-400 shrink-0">{f.file_size ? `${(f.file_size/1024).toFixed(0)}KB` : ''}</span>
                         </div>
-                        <button onClick={() => deleteFile(f.id)} className="text-gray-400 hover:text-red-500 shrink-0 ml-2 text-lg leading-none">&times;</button>
+                        <div className="flex items-center gap-2">
+                          {(f.mime_type?.includes('image') || f.mime_type?.includes('pdf')) && (
+                            <button 
+                              onClick={() => handleParseFile(f.id)} 
+                              className="text-xs text-primary hover:text-primary-dark font-medium mr-2"
+                              title="Extract properties with AI"
+                            >
+                              ✨ Extract
+                            </button>
+                          )}
+                          <button onClick={() => deleteFile(f.id)} className="text-gray-400 hover:text-red-500 shrink-0 text-lg leading-none">&times;</button>
+                        </div>
                       </li>
                     ))}
                   </ul>
                 </div>
               </div>
+            )}
+            {activeTab === 'estimates' && (
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-gray-900">Quotes & Estimates</h3>
+                  <Button variant="outline" size="sm" onClick={handleSendToEstimator}>
+                    Generate Estimate
+                  </Button>
+                </div>
+                {estimates.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500 bg-gray-50 rounded border border-dashed border-gray-300">
+                    <p className="text-sm">No estimates generated yet.</p>
+                    <p className="text-xs mt-1">Click "Generate Estimate" to sync this lead with your Estimator App.</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {estimates.map(est => (
+                      <div key={est.id} className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">Estimate {est.estimator_reference_id}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant={est.status === 'accepted' ? 'success' : est.status === 'sent' ? 'primary' : 'secondary'}>
+                              {est.status}
+                            </Badge>
+                            <span className="text-xs text-gray-500">{new Date(est.created_at).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-gray-900">₹{est.total_amount ? Number(est.total_amount).toLocaleString() : '0'}</p>
+                          {est.pdf_url && (
+                            <a href={est.pdf_url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline mt-1 block">View PDF</a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'inspirations' && (
+              <InspirationBoard leadId={leadId} />
             )}
           </div>
 

@@ -135,10 +135,16 @@ export default function DashboardPage() {
       if (statsR.status === 'fulfilled') {
         const s = statsR.value.data?.data || {};
         setStats({
-          activeLeads:    { val: s.activeLeads?.val    ?? 0, trend: s.activeLeads?.trend    ?? 0 },
-          wonMonth:       { val: formatRevenue(s.wonMonth?.val), trend: s.wonMonth?.trend    ?? 0 },
-          activeProjects: { val: s.activeProjects?.val ?? 0, overdue: s.activeProjects?.overdue ?? 0 },
-          tasksDueToday:  { val: s.tasksDueToday?.val  ?? 0, overdue: s.tasksDueToday?.overdue  ?? 0 },
+          activeLeads:    { val: s.activeLeads?.count  ?? 0, trend: s.activeLeads?.trend    ?? 0 },
+          wonMonth:       { val: formatRevenue(s.wonThisMonth?.value), trend: 0 },
+          activeProjects: { val: s.activeProjects?.count ?? 0, overdue: s.activeProjects?.overdueCount ?? 0 },
+          tasksDueToday:  { val: s.tasksDueToday?.count  ?? 0, overdue: s.tasksDueToday?.overdueCount  ?? 0 },
+          targets:        { 
+            targetRevenue: s.salesTargets?.targetRevenue ?? 0, 
+            targetLeads: s.salesTargets?.targetLeads ?? 0,
+            actualRevenue: s.wonThisMonth?.value ?? 0,
+            actualLeads: s.activeLeads?.count ?? 0
+          }
         });
       } else {
         setStats({
@@ -146,6 +152,7 @@ export default function DashboardPage() {
           wonMonth:       { val: '₹0', trend: 0 },
           activeProjects: { val: 0, overdue: 0 },
           tasksDueToday:  { val: 0, overdue: 0 },
+          targets:        { targetRevenue: 0, targetLeads: 0, actualRevenue: 0, actualLeads: 0 }
         });
       }
 
@@ -444,6 +451,36 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+
+        {/* Targets vs Actuals */}
+        {stats?.targets && (stats.targets.targetRevenue > 0 || stats.targets.targetLeads > 0) && (
+          <div className={styles.card}>
+            <div className={styles.cardHead}>
+              <span className={styles.cardTitle}>Sales Targets</span>
+              <span className={styles.cardPeriodBadge}>This Month</span>
+            </div>
+            <div className={styles.cardBody} style={{ paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 4 }}>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>Revenue (₹{stats.targets.actualRevenue}L / ₹{stats.targets.targetRevenue}L)</span>
+                  <span style={{ fontWeight: 500 }}>{stats.targets.targetRevenue > 0 ? Math.min(100, Math.round((stats.targets.actualRevenue / stats.targets.targetRevenue) * 100)) : 0}%</span>
+                </div>
+                <div style={{ height: 8, background: 'var(--color-bg-alt)', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${stats.targets.targetRevenue > 0 ? Math.min(100, (stats.targets.actualRevenue / stats.targets.targetRevenue) * 100) : 0}%`, background: 'var(--color-primary)' }} />
+                </div>
+              </div>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 4 }}>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>Active Leads ({stats.targets.actualLeads} / {stats.targets.targetLeads})</span>
+                  <span style={{ fontWeight: 500 }}>{stats.targets.targetLeads > 0 ? Math.min(100, Math.round((stats.targets.actualLeads / stats.targets.targetLeads) * 100)) : 0}%</span>
+                </div>
+                <div style={{ height: 8, background: 'var(--color-bg-alt)', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${stats.targets.targetLeads > 0 ? Math.min(100, (stats.targets.actualLeads / stats.targets.targetLeads) * 100) : 0}%`, background: 'var(--color-accent)' }} />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         </div>
       </ErrorBoundary>
 

@@ -77,6 +77,51 @@ export const changeLeadStage = async (id, stageId) => {
 };
 
 /**
+ * Fetch site visits for a lead.
+ * @param {string} id - The UUID of the lead.
+ * @returns {Promise<{ success: boolean, data: Array }>} List of site visits.
+ */
+export const getSiteVisits = async (id) => {
+  const response = await api.get(`/site-visits/lead/${id}`);
+  return response.data;
+};
+
+/**
+ * Create a site visit for a lead.
+ * @param {string} id - The UUID of the lead.
+ * @param {Object} data - The site visit data.
+ * @returns {Promise<{ success: boolean, data: Object }>} The created site visit.
+ */
+export const createSiteVisit = async (id, data) => {
+  const response = await api.post(`/site-visits/lead/${id}`, data);
+  return response.data;
+};
+
+/**
+ * Fetch communications for a lead.
+ */
+export const getCommunications = async (id) => {
+  const response = await api.get(`/communications/lead/${id}`);
+  return response.data;
+};
+
+/**
+ * Create a communication for a lead.
+ */
+export const createCommunication = async (id, data) => {
+  const response = await api.post(`/communications/lead/${id}`, data);
+  return response.data;
+};
+
+/**
+ * Draft a communication with AI.
+ */
+export const draftCommunication = async (id, data) => {
+  const response = await api.post(`/communications/lead/${id}/draft`, data);
+  return response.data;
+};
+
+/**
  * Bulk change the stage of multiple leads.
  * @param {Array<string>} leadIds - UUIDs of the leads.
  * @param {string} stageId - The UUID of the new stage.

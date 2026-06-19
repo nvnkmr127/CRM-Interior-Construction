@@ -145,4 +145,30 @@ router.get('/payments', async (req, res, next) => {
   }
 });
 
+// POST /api/portal/project/payments/:id/pay
+router.post('/payments/:paymentId/pay', async (req, res, next) => {
+  try {
+    const { projectId, tenantId } = req.portalUser;
+    const { paymentId } = req.params;
+
+    // Simulate payment processing
+    const query = `
+      UPDATE payment_milestones 
+      SET status = 'paid', paid_at = NOW(), paid_amount = amount 
+      WHERE id = $1 AND project_id = $2 AND tenant_id = $3
+      RETURNING *
+    `;
+
+    const result = await pool.query(query, [paymentId, projectId, tenantId]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Payment milestone not found' });
+    }
+
+    res.json({ success: true, data: result.rows[0], message: 'Payment successful' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

@@ -70,6 +70,7 @@ const dashboardRouter = require('./routes/dashboard');
 const searchRouter = require('./routes/search');
 const notificationsRouter = require('./routes/notifications');
 const usersRouter = require('./routes/users');
+const siteVisitRoutes = require('./routes/siteVisits');
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -102,6 +103,10 @@ app.use('/api/dashboard', dashboardRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/site-visits', siteVisitRoutes);
+app.use('/api/communications', require('./routes/communications'));
+app.use('/api/views', require('./routes/views'));
+app.use('/api/sequences', require('./routes/sequences'));
 
 // Error handler MUST be the last middleware
 app.use(errorHandler);

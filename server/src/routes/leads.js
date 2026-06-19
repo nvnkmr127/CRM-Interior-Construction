@@ -43,10 +43,31 @@ router.get('/:id/activities', authenticate, leadController.getActivitiesHandler)
 router.post('/:id/files', authenticate, authorize('leads:update'), upload.single('file'), leadController.uploadFileHandler);
 router.get('/:id/files', authenticate, authorize('leads:read'), leadController.getFilesHandler);
 router.delete('/:id/files/:fileId', authenticate, authorize('leads:update'), leadController.deleteFileHandler);
+router.post('/:id/files/:fileId/parse', authenticate, authorize('leads:update'), leadController.parseFileHandler);
 
 router.get('/:id/followups', authenticate, authorize('leads:read'), leadController.getFollowupsHandler);
 router.post('/:id/followups', authenticate, authorize('leads:update'), leadController.createFollowupHandler);
 router.patch('/:id/followups/:fid', authenticate, authorize('leads:update'), leadController.updateFollowupHandler);
 router.delete('/:id/followups/:fid', authenticate, authorize('leads:update'), leadController.deleteFollowupHandler);
+
+// Estimator App Integration
+router.post('/:id/send-to-estimator', authenticate, authorize('leads:update'), leadController.sendToEstimatorHandler);
+router.get('/:id/estimates', authenticate, authorize('leads:read'), leadController.getEstimatesHandler);
+router.post('/:id/estimates/webhook', leadController.estimatorWebhookHandler);
+
+// Multi-Contact Management
+router.get('/:id/contacts', authenticate, authorize('leads:read'), leadController.getContactsHandler);
+router.post('/:id/contacts', authenticate, authorize('leads:update'), leadController.createContactHandler);
+router.delete('/:id/contacts/:cid', authenticate, authorize('leads:update'), leadController.deleteContactHandler);
+
+// Inspiration Board
+router.get('/:id/inspirations', authenticate, authorize('leads:read'), leadController.getInspirationsHandler);
+router.post('/:id/inspirations', authenticate, authorize('leads:update'), leadController.createInspirationHandler);
+router.delete('/:id/inspirations/:iid', authenticate, authorize('leads:update'), leadController.deleteInspirationHandler);
+
+// AI Copilot
+router.get('/:id/ai-insights', authenticate, authorize('leads:read'), leadController.getAiInsightsHandler);
+router.post('/:id/ai-design-proposal', authenticate, authorize('leads:update'), leadController.generateDesignProposalHandler);
+router.post('/:id/meeting-summary', authenticate, authorize('leads:update'), leadController.summarizeMeetingHandler);
 
 module.exports = router;

@@ -46,6 +46,8 @@ export default function GlobalSearch({ isOpen, onClose }) {
 
   const flatResults = [
     ...results.leads.map(r => ({ ...r, _type: 'lead', _icon: '◎', _sub: r.stageName, _url: `/leads/${r.id}` })),
+    ...(results.contacts || []).map(r => ({ ...r, _type: 'contact', _icon: '👤', _sub: r.role, _url: `/leads/${r.lead_id}` })),
+    ...(results.activities || []).map(r => ({ ...r, _type: 'activity', _icon: '📝', _sub: r.lead_name, _url: `/leads/${r.lead_id}` })),
     ...results.projects.map(r => ({ ...r, _type: 'project', _icon: '◈', _sub: r.clientName, _url: `/projects/${r.id}` })),
     ...results.tasks.map(r => ({ ...r, _type: 'task', _icon: '◻', _sub: r.projectName, _url: `/tasks/${r.id}` }))
   ]

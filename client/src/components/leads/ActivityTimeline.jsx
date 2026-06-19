@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getActivities, logActivity } from '../../api/leads';
 import api from '../../api/axios';
 import { formatDistanceToNow, format } from 'date-fns';
+import AIMeetingModal from './AIMeetingModal';
 
 const Icons = {
   note: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>,
@@ -136,34 +137,46 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
 
   const systemActivityKeywords = ['stage_change', 'automation', 'score_tier_change', 'sla_breach', 'duplicate', 'task_completed'];
 
+  const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
+
   return (
     <div className="space-y-6">
       <div className="bg-white border border-gray-200 rounded-lg shadow-sm transition-all sticky top-0 z-10">
-        <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border-b rounded-t-lg justify-start">
-          <button 
-            onClick={() => setActiveForm(activeForm === 'email' ? null : 'email')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm ${activeForm === 'email' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-white border text-gray-700 hover:bg-gray-100'}`}
-          >
-            <Icons.email /> Log Email
-          </button>
-          <button 
-            onClick={() => setActiveForm(activeForm === 'note' ? null : 'note')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm ${activeForm === 'note' ? 'bg-gray-200 text-gray-800 border-gray-400' : 'bg-white border text-gray-700 hover:bg-gray-100'}`}
-          >
-            <Icons.note /> Add Note
-          </button>
-          <button 
-            onClick={() => setActiveForm(activeForm === 'task' ? null : 'task')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm ${activeForm === 'task' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-white border text-gray-700 hover:bg-gray-100'}`}
-          >
-            <Icons.task /> Schedule Task
-          </button>
-          <button 
-            onClick={() => setActiveForm(activeForm === 'site_visit' ? null : 'site_visit')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm ${activeForm === 'site_visit' ? 'bg-green-100 text-green-700 border-green-300' : 'bg-white border text-gray-700 hover:bg-gray-100'}`}
-          >
-            <Icons.site_visit /> Site Visit
-          </button>
+        <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border-b rounded-t-lg justify-between items-center">
+          <div className="flex flex-wrap gap-2">
+            <button 
+              onClick={() => setActiveForm(activeForm === 'email' ? null : 'email')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm ${activeForm === 'email' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-white border text-gray-700 hover:bg-gray-100'}`}
+            >
+              <Icons.email /> Log Email
+            </button>
+            <button 
+              onClick={() => setActiveForm(activeForm === 'note' ? null : 'note')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm ${activeForm === 'note' ? 'bg-gray-200 text-gray-800 border-gray-400' : 'bg-white border text-gray-700 hover:bg-gray-100'}`}
+            >
+              <Icons.note /> Add Note
+            </button>
+            <button 
+              onClick={() => setActiveForm(activeForm === 'task' ? null : 'task')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm ${activeForm === 'task' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-white border text-gray-700 hover:bg-gray-100'}`}
+            >
+              <Icons.task /> Schedule Task
+            </button>
+            <button 
+              onClick={() => setActiveForm(activeForm === 'site_visit' ? null : 'site_visit')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm ${activeForm === 'site_visit' ? 'bg-green-100 text-green-700 border-green-300' : 'bg-white border text-gray-700 hover:bg-gray-100'}`}
+            >
+              <Icons.site_visit /> Site Visit
+            </button>
+          </div>
+          <div>
+            <button
+              onClick={() => setIsMeetingModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm bg-indigo-100 text-indigo-700 border border-indigo-300 hover:bg-indigo-200"
+            >
+              <span className="text-lg leading-none">🎙️</span> AI Summarize
+            </button>
+          </div>
         </div>
 
         {activeForm && (
@@ -331,6 +344,18 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
           </>
         )}
       </div>
+
+      {isMeetingModalOpen && (
+        <AIMeetingModal 
+          isOpen={isMeetingModalOpen} 
+          onClose={() => setIsMeetingModalOpen(false)} 
+          leadId={leadId} 
+          onSummarySaved={() => {
+            fetchActivities(1, false);
+            setIsMeetingModalOpen(false);
+          }} 
+        />
+      )}
     </div>
   );
 }

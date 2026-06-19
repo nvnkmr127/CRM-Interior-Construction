@@ -32,6 +32,14 @@ export default function KanbanLeadCard({ lead, onAction }) {
     if (onAction) onAction(actionType, lead);
   };
 
+  const getAgingStatus = () => {
+    if (isSlaBreached) return { label: 'At Risk', color: 'bg-red-100 text-red-700 font-medium', dot: '🔴' };
+    if (lead.days_in_stage >= slaLimit - 1) return { label: 'Needs Attention', color: 'bg-yellow-100 text-yellow-700 font-medium', dot: '🟡' };
+    return { label: 'Healthy', color: 'bg-green-100 text-green-700 font-medium', dot: '🟢' };
+  };
+
+  const aging = getAgingStatus();
+
   return (
     <div 
       ref={setNodeRef} 
@@ -53,8 +61,8 @@ export default function KanbanLeadCard({ lead, onAction }) {
       </div>
 
       <div className="text-sm text-gray-500 mb-2 space-y-1">
-        <div className="flex items-center gap-2">
-          <span className="truncate">{lead.locality || 'Unknown Locality'}</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="truncate max-w-[120px]">{lead.builder_name || lead.locality || 'Unknown'}</span>
           <span>•</span>
           <span>{lead.carpet_area_sqft ? `${lead.carpet_area_sqft} sqft` : 'Area TBA'}</span>
         </div>
@@ -65,8 +73,8 @@ export default function KanbanLeadCard({ lead, onAction }) {
 
       <div className="flex justify-between items-end mt-4">
         <div className="flex flex-col gap-1">
-          <div className={`text-xs px-2 py-1 rounded-full ${isSlaBreached ? 'bg-red-100 text-red-700 font-medium' : 'bg-gray-100 text-gray-600'}`}>
-            {lead.days_in_stage || 0}d in stage
+          <div className={`text-[10px] px-2 py-1 rounded-full flex items-center gap-1 w-max ${aging.color}`} title={`${lead.days_in_stage || 0}d in stage. SLA: ${slaLimit}d`}>
+            <span>{aging.dot}</span> {aging.label} ({lead.days_in_stage || 0}d)
           </div>
           {isOverdue && (
             <div className="text-[10px] px-2 py-0.5 rounded text-red-600 bg-red-50 border border-red-200 font-bold flex items-center gap-1">

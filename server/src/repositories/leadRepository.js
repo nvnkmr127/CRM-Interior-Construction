@@ -161,7 +161,7 @@ async function updateLead(tenantId, leadId, updates) {
       continue;
     }
     fields.push(`${key} = $${paramIndex++}`);
-    if (key === 'custom_fields' && typeof value === 'object') {
+    if (['custom_fields', 'lifestyle_preferences', 'additional_contacts', 'ai_score_breakdown'].includes(key) && typeof value === 'object') {
       values.push(JSON.stringify(value));
     } else {
       values.push(value);

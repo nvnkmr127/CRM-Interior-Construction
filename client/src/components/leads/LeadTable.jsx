@@ -141,7 +141,12 @@ export default function LeadTable({
                   <span className={styles.sourceTag}>{lead.source || '—'}</span>
                 </td>
                 <td className={styles.listTd}>
-                  <span className={styles.stageTag}>{lead.stage_name || '—'}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span title={`${lead.days_in_stage || 0}d in stage. SLA: ${lead.max_days_in_stage || 3}d`} style={{ fontSize: '10px' }}>
+                      {lead.days_in_stage > (lead.max_days_in_stage || 3) ? '🔴' : lead.days_in_stage >= (lead.max_days_in_stage || 3) - 1 ? '🟡' : '🟢'}
+                    </span>
+                    <span className={styles.stageTag}>{lead.stage_name || '—'}</span>
+                  </div>
                 </td>
                 <td className={styles.listTd}>
                   {lead.score != null ? (

@@ -6,6 +6,7 @@ import PortalProject from './pages/PortalProject'
 import PortalApprovals from './pages/PortalApprovals'
 import PortalSnags from './pages/PortalSnags'
 import PortalDocuments from './pages/PortalDocuments'
+import PortalPayments from './pages/PortalPayments'
 
 function PortalProtectedRoute({ children }) {
   const { portalUser, loading } = usePortalAuth()
@@ -33,6 +34,7 @@ function PortalAppContent() {
               <Route path="approvals" element={<PortalApprovals />} />
               <Route path="documents" element={<PortalDocuments />} />
               <Route path="snags" element={<PortalSnags />} />
+              <Route path="payments" element={<PortalPayments />} />
             </Routes>
           </PortalShell>
         </PortalProtectedRoute>
