@@ -219,3 +219,26 @@ exports.getPredictiveRevenue = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.getHeatMapData = async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId || req.user?.tenantId;
+    const { rows } = await pool.query(`
+      SELECT 
+        COALESCE(NULLIF(TRIM(location), ''), 'Unknown') as location,
+        COUNT(id) as lead_count,
+        SUM(COALESCE(budget_max, 0)) as total_pipeline,
+        SUM(CASE WHEN score >= 70 THEN 1 ELSE 0 END) as hot_leads
+      FROM leads
+      WHERE tenant_id = $1 
+        AND deleted_at IS NULL 
+        AND status = 'active'
+      GROUP BY COALESCE(NULLIF(TRIM(location), ''), 'Unknown')
+      ORDER BY total_pipeline DESC
+      LIMIT 10
+    `, [tenantId]);
+    return success(res, rows);
+  } catch (err) {
+    next(err);
+  }
+};

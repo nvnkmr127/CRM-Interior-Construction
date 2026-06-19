@@ -4,6 +4,7 @@ import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
 import { Button, Badge, Modal } from '../../components/ui';
 import PredictiveRevenueWidget from '../../components/leads/PredictiveRevenueWidget';
+import HeatMapWidget from '../../components/leads/HeatMapWidget';
 
 export default function ManagerDashboard() {
   const [slaBreaches, setSlaBreaches] = useState([]);
@@ -79,9 +80,10 @@ export default function ManagerDashboard() {
         </div>
       </div>
 
-      {/* SECTION 0: PREDICTIVE REVENUE */}
-      <section>
+      {/* SECTION 0: PREDICTIVE REVENUE & HEAT MAP */}
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <PredictiveRevenueWidget />
+        <HeatMapWidget />
       </section>
 
       {/* SECTION 1: SLA BREACHES */}

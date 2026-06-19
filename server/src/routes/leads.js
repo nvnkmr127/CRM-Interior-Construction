@@ -22,6 +22,7 @@ router.get('/manager/score-distribution', authenticate, requireRole(['manager', 
 router.get('/manager/pending-approvals', authenticate, requireRole(['manager', 'gm']), managerController.getPendingApprovals);
 router.get('/manager/scheduled-visits', authenticate, requireRole(['manager', 'gm']), managerController.getScheduledVisits);
 router.get('/manager/predictive-revenue', authenticate, requireRole(['manager', 'gm']), managerController.getPredictiveRevenue);
+router.get('/manager/heat-map', authenticate, requireRole(['manager', 'gm']), managerController.getHeatMapData);
 router.post('/manager/approvals/:id/decide', authenticate, requireRole(['manager', 'gm']), managerController.decideApproval);
 
 router.get('/export', authenticate, authorize('leads:read'), leadController.exportLeadsHandler);
