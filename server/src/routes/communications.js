@@ -32,13 +32,33 @@ router.post('/lead/:leadId', requireAuth, async (req, res, next) => {
     const tenantId = req.tenantId || req.user.tenantId;
     const { channel, direction, subject, body, status, metadata } = req.body;
 
+    let finalStatus = status || 'sent';
+
+    if (channel === 'whatsapp' && direction === 'outbound') {
+      const leadRes = await pool.query('SELECT phone FROM leads WHERE id = $1 AND tenant_id = $2', [leadId, tenantId]);
+      if (leadRes.rowCount > 0 && leadRes.rows[0].phone) {
+        const { sendWhatsAppMessage } = require('../services/whatsappService');
+        try {
+          const waResult = await sendWhatsAppMessage(leadRes.rows[0].phone, body);
+          if (!waResult.success) {
+            finalStatus = 'failed';
+          }
+        } catch (waErr) {
+          console.error('WhatsApp API Error:', waErr);
+          finalStatus = 'failed';
+        }
+      } else {
+        finalStatus = 'failed'; // No phone number
+      }
+    }
+
     const query = `
       INSERT INTO communications (tenant_id, lead_id, user_id, channel, direction, subject, body, status, metadata)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
     `;
     const result = await pool.query(query, [
-      tenantId, leadId, req.user.userId, channel, direction, subject, body, status || 'sent', metadata ? JSON.stringify(metadata) : '{}'
+      tenantId, leadId, req.user.userId, channel, direction, subject, body, finalStatus, metadata ? JSON.stringify(metadata) : '{}'
     ]);
 
     return success(res, result.rows[0], {}, 201);

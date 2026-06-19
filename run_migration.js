@@ -5,10 +5,7 @@ const pool = require('./server/src/db/pool');
 async function runMigration() {
   try {
     const migrations = [
-      '031_lead_qualification.sql',
-      '032_lead_scoring_and_pipeline.sql',
-      '033_site_visits_and_ai_summaries.sql',
-      '034_sla_automation.sql'
+      '043_lead_locations.sql'
     ];
     for (const file of migrations) {
       const sqlPath = path.join(__dirname, 'server/migrations', file);

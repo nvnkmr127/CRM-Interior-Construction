@@ -89,20 +89,24 @@ export default function LeadFilterRow({
         <button className={styles.clearBtn} onClick={onClearFilters}>✕ Clear</button>
       )}
 
-      <div className={styles.viewToggle}>
+      <div className="flex border border-gray-300 rounded-md overflow-hidden shrink-0 bg-white">
         <button
-          className={`${styles.viewBtn} ${view === 'kanban' ? styles.viewBtnActive : ''}`}
-          onClick={() => setView('kanban')}
-          title="Kanban view"
+          onClick={() => setView('list')}
+          className={`px-3 py-1.5 text-sm font-medium transition-colors ${view === 'list' ? 'bg-blue-50 text-blue-700 border-r border-gray-300' : 'text-gray-600 hover:bg-gray-50 border-r border-gray-300'}`}
         >
-          ⊞ Kanban
+          &#9776; List
         </button>
         <button
-          className={`${styles.viewBtn} ${view === 'list' ? styles.viewBtnActive : ''}`}
-          onClick={() => setView('list')}
-          title="List view"
+          onClick={() => setView('kanban')}
+          className={`px-3 py-1.5 text-sm font-medium transition-colors ${view === 'kanban' ? 'bg-blue-50 text-blue-700 border-r border-gray-300' : 'text-gray-600 hover:bg-gray-50 border-r border-gray-300'}`}
         >
-          ≡ List
+          &#9638; Kanban
+        </button>
+        <button
+          onClick={() => setView('map')}
+          className={`px-3 py-1.5 text-sm font-medium transition-colors ${view === 'map' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}
+        >
+          &#128506; Map
         </button>
       </div>
     </div>

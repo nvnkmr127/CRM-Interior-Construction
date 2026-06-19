@@ -412,6 +412,11 @@ exports.exportLeadsHandler = async function exportLeadsHandler(req, res) {
     const params = { ...req.query, limit: 10000, page: 1 };
     const result = await findLeads(tenantId, params);
 
+    const allowedFields = [
+      'name', 'phone', 'email', 'source', 'status', 'assignee_id', 'stage_id',
+      'priority', 'notes', 'custom_fields', 'value', 'expected_close_date',
+      'score', 'project_type', 'scope', 'budget_max', 'budget_min', 'locality', 'carpet_area_sqft', 'city', 'dnc_flag', 'consent_whatsapp', 'competitor_mentioned', 'latitude', 'longitude'
+    ];
     const fields = ['name', 'phone', 'email', 'source', 'stage_name', 'assignee_name', 'score', 'notes', 'created_at'];
     const header = fields.join(',');
     const rows = result.data.map(lead =>
@@ -641,6 +646,13 @@ exports.sendToEstimatorHandler = async function sendToEstimatorHandler(req, res)
     
     const lead = leadRes.rows[0];
     const estRes = await sendLeadToEstimator(lead);
+
+    if (estRes.success && estRes.estimator_reference_id) {
+      await pool.query(
+        `INSERT INTO lead_estimates (tenant_id, lead_id, estimator_reference_id, status) VALUES ($1, $2, $3, 'draft')`,
+        [tenantId, leadId, estRes.estimator_reference_id]
+      );
+    }
 
     // If simulated or successful, we can log it
     res.json({ success: true, data: estRes });

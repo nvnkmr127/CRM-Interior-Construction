@@ -21,6 +21,7 @@ router.get('/manager/rep-capacity', authenticate, requireRole(['manager', 'gm'])
 router.get('/manager/score-distribution', authenticate, requireRole(['manager', 'gm']), managerController.getScoreDistribution);
 router.get('/manager/pending-approvals', authenticate, requireRole(['manager', 'gm']), managerController.getPendingApprovals);
 router.get('/manager/scheduled-visits', authenticate, requireRole(['manager', 'gm']), managerController.getScheduledVisits);
+router.get('/manager/predictive-revenue', authenticate, requireRole(['manager', 'gm']), managerController.getPredictiveRevenue);
 router.post('/manager/approvals/:id/decide', authenticate, requireRole(['manager', 'gm']), managerController.decideApproval);
 
 router.get('/export', authenticate, authorize('leads:read'), leadController.exportLeadsHandler);
@@ -69,5 +70,43 @@ router.delete('/:id/inspirations/:iid', authenticate, authorize('leads:update'),
 router.get('/:id/ai-insights', authenticate, authorize('leads:read'), leadController.getAiInsightsHandler);
 router.post('/:id/ai-design-proposal', authenticate, authorize('leads:update'), leadController.generateDesignProposalHandler);
 router.post('/:id/meeting-summary', authenticate, authorize('leads:update'), leadController.summarizeMeetingHandler);
+
+// Add AI Persona Twin route
+router.post('/:id/ai-twin', authenticate, async (req, res, next) => {
+  try {
+    const { tenantId } = req.user;
+    const { prompt } = req.body;
+    if (!prompt) return res.status(400).json({ success: false, error: 'Prompt is required' });
+    
+    const responseText = await simulateLeadPersona(tenantId, req.params.id, prompt);
+    return res.status(200).json({ success: true, data: { text: responseText } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+const { analyzeBuyingIntent, analyzeSentiment } = require('../services/aiService');
+
+// Buying Intent route
+router.post('/:id/buying-intent', authenticate, authorize('leads:read'), async (req, res, next) => {
+  try {
+    const { tenantId } = req.user;
+    const intentData = await analyzeBuyingIntent(tenantId, req.params.id);
+    return res.status(200).json({ success: true, data: intentData });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Mood / Sentiment route
+router.post('/:id/sentiment', authenticate, authorize('leads:read'), async (req, res, next) => {
+  try {
+    const { tenantId } = req.user;
+    const sentimentData = await analyzeSentiment(tenantId, req.params.id);
+    return res.status(200).json({ success: true, data: sentimentData });
+  } catch (error) {
+    next(error);
+  }
+});
 
 module.exports = router;

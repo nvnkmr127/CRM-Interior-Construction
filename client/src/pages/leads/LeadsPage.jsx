@@ -9,6 +9,7 @@ import ErrorBoundary from '../../components/ErrorBoundary';
 import LeadStatsBar from '../../components/leads/LeadStatsBar';
 import LeadFilterRow from '../../components/leads/LeadFilterRow';
 import LeadTable from '../../components/leads/LeadTable';
+import LeadMap from '../../components/leads/LeadMap';
 import { useLeads } from '../../hooks/useLeads';
 import styles from './LeadsPage.module.css';
 
@@ -161,6 +162,10 @@ export default function LeadsPage() {
               onAddLead={() => setIsFormOpen(true)}
               onMoveLead={handleMoveStage}
             />
+          </ErrorBoundary>
+        ) : view === 'map' && !loading ? (
+          <ErrorBoundary>
+            <LeadMap leads={filteredLeads} onLeadClick={setSelectedLeadId} />
           </ErrorBoundary>
         ) : (
           <LeadTable

@@ -195,3 +195,27 @@ exports.getScheduledVisits = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.getPredictiveRevenue = async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId || req.user?.tenantId;
+    const { rows } = await pool.query(`
+      SELECT 
+        s.name as stage_name,
+        SUM(l.budget_max) as total_pipeline,
+        SUM(l.budget_max * (COALESCE(l.win_probability, 0) / 100.0)) as expected_revenue,
+        COUNT(l.id) as lead_count
+      FROM leads l
+      LEFT JOIN lead_stages s ON l.stage_id = s.id
+      WHERE l.tenant_id = $1 
+        AND l.deleted_at IS NULL 
+        AND l.status = 'active'
+        AND l.budget_max IS NOT NULL
+      GROUP BY s.name
+      ORDER BY expected_revenue DESC
+    `, [tenantId]);
+    return success(res, rows);
+  } catch (err) {
+    next(err);
+  }
+};

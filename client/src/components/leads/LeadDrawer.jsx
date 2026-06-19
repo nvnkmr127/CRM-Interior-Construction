@@ -37,11 +37,21 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   
   // Estimates state
   const [estimates, setEstimates] = useState([]);
+  
+  // Buying intent state
+  const [buyingIntent, setBuyingIntent] = useState(null);
+  const [intentLoading, setIntentLoading] = useState(false);
+
+  // Mood state
+  const [mood, setMood] = useState(null);
+  const [moodLoading, setMoodLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen && leadId) {
       fetchLead();
       setActiveTab('overview');
+      setBuyingIntent(null);
+      setMood(null);
     }
   }, [isOpen, leadId]);
 
@@ -73,6 +83,34 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
       toast.error('Failed to load lead details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchBuyingIntent = async () => {
+    setIntentLoading(true);
+    try {
+      const res = await api.post(`/leads/${leadId}/buying-intent`);
+      if (res.data.success) {
+        setBuyingIntent(res.data.data);
+      }
+    } catch (e) {
+      toast.error('Failed to analyze buying intent');
+    } finally {
+      setIntentLoading(false);
+    }
+  };
+
+  const fetchMood = async () => {
+    setMoodLoading(true);
+    try {
+      const res = await api.post(`/leads/${leadId}/sentiment`);
+      if (res.data.success) {
+        setMood(res.data.data);
+      }
+    } catch (e) {
+      toast.error('Failed to analyze mood');
+    } finally {
+      setMoodLoading(false);
     }
   };
 
@@ -302,7 +340,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
           {/* TABS NAVIGATION */}
           <div className="bg-white px-6 border-b border-gray-200 shrink-0">
             <nav className="flex -mb-px px-6 gap-6 overflow-x-auto">
-              {['overview', 'ai-copilot', 'stakeholders', 'communications', 'preferences', 'activity', 'tasks', 'followups', 'files', 'estimates', 'inspirations'].map(tab => (
+              {['overview', 'ai-copilot', 'stakeholders', 'communications', 'preferences', 'activity', 'tasks', 'followups', 'files', 'estimates', 'inspirations', 'twin'].map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -349,6 +387,40 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                     )}
                   </div>
                 )}
+
+                {/* BUYING INTENT WIDGET */}
+                <div className="bg-orange-50/50 p-4 rounded-lg shadow-sm border border-orange-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-bold text-orange-800 uppercase tracking-wider flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                      Buying Intent Engine
+                    </h4>
+                    <Button variant="outline" size="sm" onClick={fetchBuyingIntent} disabled={intentLoading} className="text-[10px] py-1 h-7">
+                      {intentLoading ? 'Analyzing...' : 'Analyze Intent'}
+                    </Button>
+                  </div>
+                  {buyingIntent ? (
+                    <div className="bg-white p-3 rounded border border-orange-50 flex items-center justify-between">
+                      <div>
+                        <div className="text-xs text-gray-500 uppercase font-semibold">Predicted Intent</div>
+                        <div className={`text-lg font-bold flex items-center gap-2 ${
+                          buyingIntent.intent === 'Hot' ? 'text-red-600' : 
+                          buyingIntent.intent === 'Warm' ? 'text-orange-500' : 'text-blue-500'
+                        }`}>
+                          {buyingIntent.intent === 'Hot' && '🔥 '}
+                          {buyingIntent.intent === 'Warm' && '☀️ '}
+                          {buyingIntent.intent === 'Cold' && '❄️ '}
+                          {buyingIntent.intent} ({buyingIntent.confidence}%)
+                        </div>
+                        <div className="text-xs text-gray-700 mt-1">{buyingIntent.reason}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-orange-600/70 italic text-center py-2">
+                      Click analyze to run the AI intent prediction model.
+                    </div>
+                  )}
+                </div>
 
                 {/* REFERRAL NETWORK WIDGET */}
                 <div className="bg-indigo-50/50 rounded-lg p-5 border border-indigo-100 mt-6">
@@ -472,6 +544,26 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                         placeholder="Sq. ft"
                       />
                     </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Latitude</label>
+                      <input
+                        type="number" step="any" value={lead.latitude || ''}
+                        onChange={e => handleFieldChange('latitude', e.target.value)}
+                        onBlur={e => handleFieldBlur('latitude', e.target.value)}
+                        className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="e.g. 12.9716"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Longitude</label>
+                      <input
+                        type="number" step="any" value={lead.longitude || ''}
+                        onChange={e => handleFieldChange('longitude', e.target.value)}
+                        onBlur={e => handleFieldBlur('longitude', e.target.value)}
+                        className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="e.g. 77.5946"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -541,6 +633,38 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
             {activeTab === 'activity' && (
               <div className="space-y-4">
+                {/* MOOD TRACKER WIDGET */}
+                <div className="bg-pink-50/50 p-4 rounded-lg shadow-sm border border-pink-100 mb-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-bold text-pink-800 uppercase tracking-wider flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                      AI Mood Tracker
+                    </h4>
+                    <Button variant="outline" size="sm" onClick={fetchMood} disabled={moodLoading} className="text-[10px] py-1 h-7">
+                      {moodLoading ? 'Analyzing...' : 'Analyze Mood'}
+                    </Button>
+                  </div>
+                  {mood ? (
+                    <div className="bg-white p-3 rounded border border-pink-50">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="text-3xl">{mood.emoji}</div>
+                        <div>
+                          <div className="text-[10px] text-gray-500 uppercase font-semibold">Current Mood</div>
+                          <div className="text-lg font-bold text-gray-900">{mood.mood}</div>
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-700 bg-pink-50 p-2 rounded border border-pink-100 italic">
+                        <span className="font-semibold text-pink-800 not-italic mr-1">Coach Tip:</span>
+                        {mood.tip}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-pink-600/70 italic text-center py-2">
+                      Click analyze to assess the prospect's emotional state based on recent activities.
+                    </div>
+                  )}
+                </div>
+
                 <ActivityTimeline leadId={leadId} />
               </div>
             )}
@@ -651,6 +775,10 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
             {activeTab === 'inspirations' && (
               <InspirationBoard leadId={leadId} />
+            )}
+
+            {activeTab === 'twin' && (
+              <AITwinTab leadId={leadId} lead={lead} />
             )}
           </div>
 

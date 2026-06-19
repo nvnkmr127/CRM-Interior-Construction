@@ -1,4 +1,6 @@
 const { GoogleGenAI } = require('@google/genai');
+const pdfParse = require('pdf-parse');
+const { findLeadById } = require('../repositories/leadRepository');
 
 /**
  * AI Service
@@ -395,12 +397,138 @@ async function summarizeMeeting(transcript) {
   }
 }
 
+/**
+ * Simulates a customer response using a Digital Customer Twin.
+ * @param {string} tenantId 
+ * @param {string} leadId 
+ * @param {string} prompt 
+ * @returns {Promise<string>} 
+ */
+async function simulateLeadPersona(tenantId, leadId, prompt) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return "I'm a simulated customer (API key missing). Let's pretend I asked for a discount!";
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  const lead = await findLeadById(tenantId, leadId);
+  if (!lead) throw new Error('Lead not found for AI persona simulation');
+
+  const budget = lead.budget_max ? `₹${lead.budget_max}` : 'Unspecified';
+  const notes = lead.notes || 'None';
+  const scope = lead.scope || 'Unspecified';
+  const type = lead.project_type || 'Unspecified';
+
+  const systemInstruction = `You are a Digital Customer Twin representing an interior design prospective client named ${lead.name || 'Client'}. 
+You are speaking to an interior design sales representative.
+Your budget is: ${budget}.
+Your scope is: ${scope}.
+Your project type is: ${type}.
+Previous notes about you: ${notes}.
+Your goal is to simulate how this specific customer would respond to the sales rep's message.
+Respond in the first person ("I", "my"). If the rep suggests something way over your budget, push back. If they suggest something aligned with your scope, be interested but maybe ask a question. Keep it conversational, realistic, and brief (2-3 sentences max).`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `System context: ${systemInstruction}\n\nSales Rep: ${prompt}`
+    });
+    return response.text;
+  } catch (error) {
+    console.error('Gemini Persona Error:', error);
+    return "I'm sorry, I couldn't understand that right now. (Simulation Error)";
+  }
+}
+
+/**
+ * Predicts the buying intent of a lead (Cold, Warm, Hot) based on recent activity and score.
+ * @param {string} tenantId 
+ * @param {string} leadId 
+ */
+async function analyzeBuyingIntent(tenantId, leadId) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return { intent: 'Warm', confidence: 75, reason: 'Mocked intent due to missing API key.' };
+
+  const ai = new GoogleGenAI({ apiKey });
+  const lead = await findLeadById(tenantId, leadId);
+  if (!lead) throw new Error('Lead not found for Buying Intent analysis');
+
+  const payload = `Analyze this lead and predict their buying intent (Cold, Warm, or Hot).
+Lead Profile:
+- Score: ${lead.score || 0}/100
+- Win Probability: ${lead.win_probability || 0}%
+- Budget: ${lead.budget_max || 'Unknown'}
+- Project Scope: ${lead.scope || 'Unknown'}
+
+Recent Activities Summary: (Assume high engagement if not provided, for demo purposes)
+${lead.notes || ''}
+
+Return a valid JSON object ONLY:
+{
+  "intent": "Cold" | "Warm" | "Hot",
+  "confidence": <number 0-100>,
+  "reason": "<one short sentence explaining why>"
+}`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: payload
+    });
+    let text = response.text.trim();
+    if (text.startsWith('```json')) text = text.replace(/```json|```/g, '').trim();
+    return JSON.parse(text);
+  } catch (error) {
+    console.error('Gemini Buying Intent Error:', error);
+    return { intent: 'Warm', confidence: 50, reason: 'Failed to analyze intent' };
+  }
+}
+
+/**
+ * Analyzes the sentiment of a lead based on their notes and profile.
+ * @param {string} tenantId 
+ * @param {string} leadId 
+ */
+async function analyzeSentiment(tenantId, leadId) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return { mood: 'Neutral', emoji: '😐', tip: 'Mocked sentiment due to missing API key.' };
+
+  const ai = new GoogleGenAI({ apiKey });
+  const lead = await findLeadById(tenantId, leadId);
+  if (!lead) throw new Error('Lead not found for Sentiment analysis');
+
+  const payload = `Analyze this lead's profile and notes to determine their current emotional mood/sentiment.
+Lead Name: ${lead.name}
+Notes/Activities: ${lead.notes || 'No recent notes.'}
+
+Return a valid JSON object ONLY:
+{
+  "mood": "Positive" | "Neutral" | "Negative" | "Frustrated" | "Excited",
+  "emoji": "<one suitable emoji>",
+  "tip": "<one actionable short coaching tip for the sales rep>"
+}`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: payload
+    });
+    let text = response.text.trim();
+    if (text.startsWith('```json')) text = text.replace(/```json|```/g, '').trim();
+    return JSON.parse(text);
+  } catch (error) {
+    console.error('Gemini Sentiment Error:', error);
+    return { mood: 'Neutral', emoji: '😐', tip: 'Failed to analyze sentiment.' };
+  }
+}
+
 module.exports = {
   analyzeLeadConversations,
   summarizeActivity,
-  draftCommunication,
   parseDocument,
   analyzeLeadIntelligence,
   generateDesignProposal,
-  summarizeMeeting
+  summarizeMeeting,
+  simulateLeadPersona,
+  analyzeBuyingIntent,
+  analyzeSentiment
 };

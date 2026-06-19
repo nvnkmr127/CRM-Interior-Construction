@@ -172,3 +172,23 @@ export const convertToProject = async (leadId, projectData) => {
   const response = await api.post(`/leads/${leadId}/convert-to-project`, projectData);
   return response.data;
 };
+
+/**
+ * Send a lead to the Estimator App.
+ * @param {string} leadId - The UUID of the lead.
+ * @returns {Promise<{ success: boolean, data: Object }>} The created estimate.
+ */
+export const sendToEstimator = async (leadId) => {
+  const response = await api.post(`/leads/${leadId}/send-to-estimator`);
+  return response.data;
+};
+
+/**
+ * Get estimates for a lead.
+ * @param {string} leadId - The UUID of the lead.
+ * @returns {Promise<{ success: boolean, data: Array }>} List of estimates.
+ */
+export const getEstimates = async (leadId) => {
+  const response = await api.get(`/leads/${leadId}/estimates`);
+  return response.data;
+};

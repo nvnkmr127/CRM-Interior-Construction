@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
 import { Button, Badge, Modal } from '../../components/ui';
+import PredictiveRevenueWidget from '../../components/leads/PredictiveRevenueWidget';
 
 export default function ManagerDashboard() {
   const [slaBreaches, setSlaBreaches] = useState([]);
@@ -77,6 +78,11 @@ export default function ManagerDashboard() {
           Live Sync Active
         </div>
       </div>
+
+      {/* SECTION 0: PREDICTIVE REVENUE */}
+      <section>
+        <PredictiveRevenueWidget />
+      </section>
 
       {/* SECTION 1: SLA BREACHES */}
       <section>
