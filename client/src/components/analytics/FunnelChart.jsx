@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import styles from './FunnelChart.module.css';
 
 export default function FunnelChart({ data }) {
@@ -25,15 +25,24 @@ export default function FunnelChart({ data }) {
     <div className={styles.container}>
       <h3 className={styles.title}>Pipeline Funnel</h3>
       <div className={styles.chartWrapper}>
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+        <ResponsiveContainer width="99%" height={300}>
+          <BarChart data={data} layout="vertical" margin={{ top: 20, right: 60, left: 20, bottom: 20 }}>
             <XAxis type="number" hide />
-            <YAxis dataKey="stage" type="category" axisLine={false} tickLine={false} tickFormatter={(v) => v.replace('_', ' ')} width={100} style={{ fontSize: '12px', textTransform: 'capitalize' }} />
-            <Tooltip content={<CustomTooltip />} cursor={{fill: 'transparent'}} />
-            <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+            <YAxis 
+              dataKey="stage" 
+              type="category" 
+              axisLine={false} 
+              tickLine={false} 
+              tickFormatter={(v) => v.replace(/_/g, ' ')} 
+              width={160} 
+              tick={{ fontSize: 13, textTransform: 'capitalize', fill: 'var(--text)' }}
+            />
+            <Tooltip content={<CustomTooltip />} cursor={{fill: 'var(--color-bg-subtle, rgba(0,0,0,0.05))'}} />
+            <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={32}>
               {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={`var(--color-accent, hsl(270, 100%, ${60 + index * 5}%))`} />
+                <Cell key={`cell-${index}`} fill={`var(--color-accent, hsl(270, 100%, ${55 + index * 8}%))`} />
               ))}
+              <LabelList dataKey="count" position="right" fill="var(--text-h)" fontSize={13} fontWeight={600} offset={15} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>

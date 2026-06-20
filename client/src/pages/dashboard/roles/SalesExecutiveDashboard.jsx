@@ -132,7 +132,7 @@ export default function SalesExecutiveDashboard() {
     Promise.allSettled([
       api.get('/dashboard/stats'),
       api.get('/dashboard/activity'),
-      api.get('/analytics/leads'),
+      api.get('/dashboard/pipeline'),
       api.get('/tasks', { params: { assigneeId: 'me', limit: 5, status: 'todo,in_progress' } }),
       api.get('/dashboard/payments-due'),
     ]).then(([statsR, actR, analyticsR, tasksR, paymentsR]) => {
@@ -186,12 +186,12 @@ export default function SalesExecutiveDashboard() {
 
       // Pipeline from analytics
       if (analyticsR.status === 'fulfilled') {
-        const rawStages = analyticsR.value.data?.data?.stageDistribution;
+        const rawStages = analyticsR.value.data?.data;
         const stages = Array.isArray(rawStages) ? rawStages : [];
         setPipeline(stages.map((s, i) => ({
-          id: s.stageId || i,
-          name: s.stageName,
-          count: s.count,
+          id: s.id || i,
+          name: s.name,
+          count: parseInt(s.count, 10),
           color: PIPE_COLORS[i % PIPE_COLORS.length],
         })));
       } else {

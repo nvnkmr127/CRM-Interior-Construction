@@ -71,6 +71,10 @@ async function authenticate(req, res, next) {
 
     // 6. Set request context
     req.user = decoded;
+    // Normalize user ID property
+    if (!req.user.id && req.user.userId) {
+      req.user.id = req.user.userId;
+    }
     req.tenantId = decoded.tenantId;
 
     // Attach the dynamically resolved database pool

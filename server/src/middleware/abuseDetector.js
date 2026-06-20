@@ -4,7 +4,8 @@ const { fail } = require('../utils/response');
 // Format: { 'ip_address': { failures: number, lastFailureTime: number, blockedUntil: number } }
 const abuseStore = new Map();
 
-const ABUSE_THRESHOLD = 20; // Max failures before block
+const isDev = process.env.NODE_ENV !== 'production';
+const ABUSE_THRESHOLD = isDev ? 1000 : 50; // Max failures before block
 const ABUSE_WINDOW_MS = 60 * 1000; // 1 minute
 const BLOCK_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -17,7 +18,7 @@ function abuseDetector(req, res, next) {
 
   // Check if IP is currently blocked
   if (record.blockedUntil > now) {
-    return res.status(429).json(fail('Too many failed attempts. Your IP is temporarily blocked for security reasons.'));
+    return fail(res, 'RATE_LIMITED', 'Too many failed attempts. Your IP is temporarily blocked for security reasons.', 429);
   }
 
   // Clean up old failures if outside window

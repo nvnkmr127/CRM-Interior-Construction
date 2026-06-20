@@ -121,6 +121,7 @@ class WorkflowEngine {
             console.error('[WorkflowEngine] Error fetching manager', e.message);
           }
         }
+      } else if (action.type === 'notify_pm') {
         const { notificationQueue } = require('../../queues/queueSetup');
         if (payload.milestone && payload.milestone.pm_id) {
           await notificationQueue.add('workflowNotification', {

@@ -1,12 +1,15 @@
 const { Worker } = require('bullmq');
-const { connection } = require('../queueSetup');
+const { connection, useRedis } = require('../queueSetup');
 const { findLeadById } = require('../../repositories/leadRepository');
 const { listActivities } = require('../../services/activities/activityService');
 const aiService = require('../../services/aiService');
 const eventBus = require('../../services/eventBus');
 const pool = require('../../db/pool');
 
-const aiWorker = new Worker('AI_Queue', async job => {
+let aiWorker = null;
+
+if (useRedis) {
+  aiWorker = new Worker('AI_Queue', async job => {
   const { tenantId, leadId } = job.data;
   
   if (job.name === 'analyzeLeadIntelligence') {
@@ -71,14 +74,20 @@ const aiWorker = new Worker('AI_Queue', async job => {
 
     console.log(`[aiWorker] Finished AI Intelligence for Lead: ${leadId}`);
   }
-}, { connection });
+  }, { connection });
 
-aiWorker.on('completed', job => {
-  console.log(`AI Job ${job.id} has completed!`);
-});
+  aiWorker.on('completed', job => {
+    console.log(`AI Job ${job.id} has completed!`);
+  });
 
-aiWorker.on('failed', (job, err) => {
-  console.error(`AI Job ${job.id} has failed with ${err.message}`);
-});
+  aiWorker.on('failed', (job, err) => {
+    console.error(`AI Job ${job.id} has failed with ${err.message}`);
+  });
+} else {
+  aiWorker = {
+    on: () => {},
+    close: async () => {}
+  };
+}
 
 module.exports = aiWorker;

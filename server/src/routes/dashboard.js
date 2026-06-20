@@ -21,7 +21,8 @@ router.get('/stats', cacheResponse(300), async (req, res) => {
 
     return success(res, data);
   } catch (error) {
-    res.status(500).json(fail('Dashboard stats failed'));
+    console.error('Dashboard stats error:', error);
+    return fail(res, 'INTERNAL_ERROR', 'Dashboard stats failed', 500);
   }
 });
 
@@ -49,7 +50,8 @@ router.get('/activity', async (req, res) => {
       new_value: row.new_value
     })));
   } catch (error) {
-    res.status(500).json(fail('Activity fetch failed'));
+    console.error('Activity fetch error:', error);
+    return fail(res, 'INTERNAL_ERROR', 'Activity fetch failed', 500);
   }
 });
 
@@ -68,7 +70,8 @@ router.get('/pipeline', cacheResponse(600), async (req, res) => {
 
     return success(res, rows);
   } catch (error) {
-    res.status(500).json(fail('Pipeline fetch failed'));
+    console.error('Pipeline fetch error:', error);
+    return fail(res, 'INTERNAL_ERROR', 'Pipeline fetch failed', 500);
   }
 });
 
@@ -89,7 +92,29 @@ router.get('/my-tasks', async (req, res) => {
 
     return success(res, rows);
   } catch (error) {
-    res.status(500).json(fail('My tasks fetch failed'));
+    console.error('My tasks fetch error:', error);
+    return fail(res, 'INTERNAL_ERROR', 'My tasks fetch failed', 500);
+  }
+});
+
+router.get('/payments-due', async (req, res) => {
+  const tenantId = req.tenantId;
+  const limit = parseInt(req.query.limit, 10) || 5;
+
+  try {
+    const { rows } = await readPool.query(`
+      SELECT pm.*, p.name as project_name, m.name as title
+      FROM payment_milestones pm
+      JOIN projects p ON p.id=pm.project_id
+      LEFT JOIN milestones m ON m.id=pm.milestone_id
+      WHERE pm.tenant_id=$1 AND pm.status!='paid'
+      ORDER BY pm.due_date ASC NULLS LAST LIMIT $2
+    `, [tenantId, limit]);
+
+    return success(res, rows);
+  } catch (error) {
+    console.error('Payments due fetch error:', error);
+    return fail(res, 'INTERNAL_ERROR', 'Payments due fetch failed', 500);
   }
 });
 

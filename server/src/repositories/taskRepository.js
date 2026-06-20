@@ -30,7 +30,7 @@ class TaskRepository {
 
   async findTaskById(tenantId, taskId) {
     const query = `
-      SELECT t.*, u.first_name || ' ' || u.last_name as assignee_name
+      SELECT t.*, u.name as assignee_name
       FROM tasks t
       LEFT JOIN users u ON t.assignee_id = u.id
       WHERE t.id = $1 AND t.tenant_id = $2 AND t.deleted_at IS NULL
@@ -42,7 +42,7 @@ class TaskRepository {
 
     // Fetch subtasks
     const subQuery = `
-      SELECT t.*, u.first_name || ' ' || u.last_name as assignee_name
+      SELECT t.*, u.name as assignee_name
       FROM tasks t
       LEFT JOIN users u ON t.assignee_id = u.id
       WHERE t.parent_task_id = $1 AND t.tenant_id = $2 AND t.deleted_at IS NULL
@@ -53,7 +53,7 @@ class TaskRepository {
 
     // Fetch comments
     const commentsQuery = `
-      SELECT c.*, u.first_name || ' ' || u.last_name as user_name
+      SELECT c.*, u.name as user_name
       FROM task_comments c
       LEFT JOIN users u ON c.user_id = u.id
       WHERE c.task_id = $1
@@ -116,7 +116,7 @@ class TaskRepository {
 
     const query = `
       SELECT t.*,
-        u.first_name || ' ' || u.last_name as assignee_name,
+        u.name as assignee_name,
         p.name as project_name,
         (SELECT count(id)::int FROM tasks sub WHERE sub.parent_task_id = t.id AND sub.deleted_at IS NULL) as subtask_count
       FROM tasks t

@@ -22,7 +22,7 @@ router.get('/', async (req, res) => {
 
     return success(res, rows);
   } catch (error) {
-    res.status(500).json(fail('Notifications fetch failed'));
+    return fail(res, 'INTERNAL_ERROR', 'Notifications fetch failed', 500);
   }
 });
 
@@ -38,7 +38,7 @@ router.get('/unread-count', async (req, res) => {
 
     return success(res, { count: parseInt(rows[0].count, 10) });
   } catch (error) {
-    res.status(500).json(fail('Unread count fetch failed'));
+    return fail(res, 'INTERNAL_ERROR', 'Unread count fetch failed', 500);
   }
 });
 
@@ -62,7 +62,7 @@ router.post('/mark-read', async (req, res) => {
 
     res.status(204).send();
   } catch (error) {
-    res.status(500).json(fail('Mark read failed'));
+    return fail(res, 'INTERNAL_ERROR', 'Mark read failed', 500);
   }
 });
 
@@ -89,7 +89,7 @@ router.get('/preferences', async (req, res) => {
     const { rows } = await pool.query('SELECT * FROM user_preferences WHERE user_id=$1 AND tenant_id=$2', [userId, tenantId]);
     return success(res, rows[0] || {});
   } catch (err) {
-    res.status(500).json(fail('Failed to fetch preferences'));
+    return fail(res, 'INTERNAL_ERROR', 'Failed to fetch preferences', 500);
   }
 });
 
@@ -110,7 +110,7 @@ router.patch('/preferences', async (req, res) => {
     `, [userId, tenantId, email_sla_breaches ?? true, push_score_changes ?? true, dnd_start_time || '22:00', dnd_end_time || '08:00']);
     return success(res, { message: 'Preferences updated' });
   } catch (err) {
-    res.status(500).json(fail('Failed to update preferences'));
+    return fail(res, 'INTERNAL_ERROR', 'Failed to update preferences', 500);
   }
 });
 
@@ -122,7 +122,7 @@ router.get('/inbox', async (req, res) => {
   try {
     const [notifsRes, tasksRes] = await Promise.all([
       pool.query(`
-        SELECT id, type, title, message, is_read, created_at, 'notification' as item_type
+        SELECT id, type, '' as title, message, is_read, created_at, 'notification' as item_type
         FROM notifications
         WHERE tenant_id=$1 AND user_id=$2
         ORDER BY created_at DESC LIMIT $3
@@ -141,7 +141,7 @@ router.get('/inbox', async (req, res) => {
 
     return success(res, inbox);
   } catch (error) {
-    res.status(500).json(fail('Inbox fetch failed'));
+    return fail(res, 'INTERNAL_ERROR', 'Inbox fetch failed', 500);
   }
 });
 

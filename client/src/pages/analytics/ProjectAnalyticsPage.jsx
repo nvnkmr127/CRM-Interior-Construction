@@ -249,7 +249,7 @@ export default function ProjectAnalyticsPage() {
             <span className={styles.cardSubLabel}>(₹ Lakhs)</span>
           </div>
           <div style={{ width: '100%', height: 260 }}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={260}>
               <AreaChart data={data.revenueData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="gradCollected" x1="0" y1="0" x2="0" y2="1">
@@ -356,7 +356,7 @@ export default function ProjectAnalyticsPage() {
           <span className={styles.cardSubLabel}>(₹ Lakhs)</span>
         </div>
         <div style={{ width: '100%', height: 220 }}>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={220}>
             <BarChart
               data={data.topProjects}
               layout="vertical"

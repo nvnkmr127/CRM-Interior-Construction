@@ -138,6 +138,7 @@ export default function Login() {
                   id="email"
                   type="email"
                   name="email"
+                  autoComplete="email"
                   value={values.email}
                   onChange={(e) => handleChange('email', e.target.value)}
                   onBlur={() => handleBlur('email')}
@@ -157,6 +158,7 @@ export default function Login() {
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   name="password"
+                  autoComplete="current-password"
                   value={values.password}
                   onChange={(e) => handleChange('password', e.target.value)}
                   onBlur={() => handleBlur('password')}

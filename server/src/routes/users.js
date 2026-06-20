@@ -56,7 +56,7 @@ router.get('/', async (req, res) => {
 
     return success(res, safeUsers);
   } catch (error) {
-    res.status(500).json(fail('Users fetch failed'));
+    return fail(res, 'INTERNAL_ERROR', 'Users fetch failed', 500);
   }
 });
 
@@ -87,7 +87,7 @@ router.patch('/:id', authorize('users:manage'), async (req, res) => {
     }
 
     if (updates.length === 0) {
-      return res.status(400).json(fail('No fields to update'));
+      return fail(res, 'VALIDATION_ERROR', 'No fields to update', 400);
     }
 
     updates.push('updated_at = NOW()');
@@ -98,12 +98,12 @@ router.patch('/:id', authorize('users:manage'), async (req, res) => {
       RETURNING *
     `, params);
 
-    if (rows.length === 0) return res.status(404).json(fail('User not found'));
+    if (rows.length === 0) return fail(res, 'NOT_FOUND', 'User not found', 404);
 
     const { password_hash: _password_hash, ...safeUser } = rows[0];
     return success(res, safeUser);
   } catch (error) {
-    res.status(500).json(fail('User update failed'));
+    return fail(res, 'INTERNAL_ERROR', 'User update failed', 500);
   }
 });
 
@@ -114,7 +114,7 @@ router.post('/invite', authorize('users:manage'), async (req, res) => {
   try {
     const checkRes = await pool.query(`SELECT id FROM users WHERE email=$1 AND tenant_id=$2`, [email, tenantId]);
     if (checkRes.rows.length > 0) {
-      return res.status(400).json(fail('Email already registered in this tenant'));
+      return fail(res, 'VALIDATION_ERROR', 'Email already registered in this tenant', 400);
     }
 
     const tempPasswordPlain = crypto.randomBytes(16).toString('hex');
@@ -131,7 +131,7 @@ router.post('/invite', authorize('users:manage'), async (req, res) => {
     const { password_hash: _password_hash, ...safeUser } = rows[0];
     return success(res, safeUser);
   } catch (error) {
-    res.status(500).json(fail('User invite failed'));
+    return fail(res, 'INTERNAL_ERROR', 'User invite failed', 500);
   }
 });
 
@@ -146,12 +146,12 @@ router.delete('/:id', authorize('users:manage'), async (req, res) => {
     );
 
     if (rowCount === 0) {
-      return res.status(404).json(fail('User not found or already deleted'));
+      return fail(res, 'NOT_FOUND', 'User not found or already deleted', 404);
     }
 
     return success(res, { message: 'User deleted successfully' });
   } catch (error) {
-    res.status(500).json(fail('User deletion failed'));
+    return fail(res, 'INTERNAL_ERROR', 'User deletion failed', 500);
   }
 });
 

@@ -24,7 +24,8 @@ app.use(helmet());
 app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true }));
 app.use(morgan('dev'));
 
-const rateLimit = require('express-rate-limit');
+const { rateLimit, default: defaultRateLimit } = require('express-rate-limit');
+const rateLimitFn = rateLimit || defaultRateLimit || require('express-rate-limit');
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -33,14 +34,16 @@ const abuseDetector = require('./middleware/abuseDetector');
 app.use(abuseDetector);
 
 // Global API rate limiter
-const apiLimiter = rateLimit({
+const apiLimiter = rateLimitFn({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: isDev ? 5000 : 100, // High limit in dev to prevent 429s on hot reload
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
+  keyGenerator: (req, res) => {
     // Use IP for auth routes to prevent credential stuffing
-    if (req.originalUrl && req.originalUrl.startsWith('/api/auth')) return req.ip;
+    if (req.originalUrl && req.originalUrl.startsWith('/api/auth')) {
+      return req.ip || 'unknown';
+    }
     
     const token = req.cookies?.accessToken || req.headers.authorization?.split(' ')[1];
     if (token) {
@@ -51,13 +54,13 @@ const apiLimiter = rateLimit({
         }
       } catch (e) {}
     }
-    return req.ip;
+    return req.ip || 'unknown';
   },
   message: { success: false, message: 'Too many requests, please try again later.' }
 });
 
 // Stricter rate limiter for auth routes
-const authLimiter = rateLimit({
+const authLimiter = rateLimitFn({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: isDev ? 1000 : 15, // High limit in dev
   standardHeaders: true,
@@ -70,12 +73,12 @@ app.use('/api/auth', authLimiter);
 app.use('/api/portal/auth', authLimiter);
 
 // 20. Enterprise CORS Hardening
-const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3000', 'https://crm.example.com'];
+const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3000', 'http://localhost:5173', 'https://crm.example.com'];
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
     // Or strictly enforce whitelisted origins
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+    if (process.env.NODE_ENV === 'development' || !origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS Policy (Strict)'));

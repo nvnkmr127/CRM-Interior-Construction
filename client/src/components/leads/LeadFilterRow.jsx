@@ -82,34 +82,34 @@ export default function LeadFilterRow({
         <button className={styles.clearBtn} onClick={onClearFilters}>✕ Clear</button>
       )}
 
-      <div className="flex border border-gray-300 rounded-md overflow-hidden shrink-0 bg-white">
+      <div className={styles.viewToggle}>
         <button
           onClick={() => setView('dashboard')}
-          className={`px-3 py-1.5 text-sm font-medium transition-colors ${view === 'dashboard' ? 'bg-blue-50 text-blue-700 border-r border-gray-300' : 'text-gray-600 hover:bg-gray-50 border-r border-gray-300'}`}
+          className={`${styles.viewBtn} ${view === 'dashboard' ? styles.viewBtnActive : ''}`}
         >
           &#128202; Dashboard
         </button>
         <button
           onClick={() => setView('list')}
-          className={`px-3 py-1.5 text-sm font-medium transition-colors ${view === 'list' ? 'bg-blue-50 text-blue-700 border-r border-gray-300' : 'text-gray-600 hover:bg-gray-50 border-r border-gray-300'}`}
+          className={`${styles.viewBtn} ${view === 'list' ? styles.viewBtnActive : ''}`}
         >
           &#9776; List
         </button>
         <button
           onClick={() => setView('kanban')}
-          className={`px-3 py-1.5 text-sm font-medium transition-colors ${view === 'kanban' ? 'bg-blue-50 text-blue-700 border-r border-gray-300' : 'text-gray-600 hover:bg-gray-50 border-r border-gray-300'}`}
+          className={`${styles.viewBtn} ${view === 'kanban' ? styles.viewBtnActive : ''}`}
         >
           &#9638; Kanban
         </button>
         <button
           onClick={() => setView('calendar')}
-          className={`px-3 py-1.5 text-sm font-medium transition-colors ${view === 'calendar' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50 border-r border-gray-300'}`}
+          className={`${styles.viewBtn} ${view === 'calendar' ? styles.viewBtnActive : ''}`}
         >
           &#128197; Calendar
         </button>
         <button
           onClick={() => setView('map')}
-          className={`px-3 py-1.5 text-sm font-medium transition-colors ${view === 'map' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}
+          className={`${styles.viewBtn} ${view === 'map' ? styles.viewBtnActive : ''}`}
         >
           &#128506; Map
         </button>

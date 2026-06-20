@@ -33,8 +33,8 @@ class ProjectRepository {
   async findProjectById(tenantId, projectId) {
     const query = `
       SELECT p.*,
-        pm.first_name || ' ' || pm.last_name as pm_name,
-        d.first_name || ' ' || d.last_name as designer_name
+        pm.name as pm_name,
+        d.name as designer_name
       FROM projects p
       LEFT JOIN users pm ON p.pm_id = pm.id
       LEFT JOIN users d ON p.designer_id = d.id
@@ -103,8 +103,8 @@ class ProjectRepository {
 
     const query = `
       SELECT p.*,
-        pm.first_name || ' ' || pm.last_name as pm_name,
-        d.first_name || ' ' || d.last_name as designer_name,
+        pm.name as pm_name,
+        d.name as designer_name,
         (SELECT count(id)::int FROM project_phases WHERE project_id = p.id AND tenant_id = $1) as phase_count,
         (SELECT count(id)::int FROM project_phases WHERE project_id = p.id AND tenant_id = $1 AND status = 'completed') as completed_phase_count,
         (SELECT count(id)::int FROM tasks WHERE project_id = p.id AND tenant_id = $1 AND deleted_at IS NULL) as total_tasks,

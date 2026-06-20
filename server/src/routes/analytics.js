@@ -31,21 +31,22 @@ const getDates = (req) => {
 router.get('/leads/summary', async (req, res) => {
   try {
     const { from, to } = getDates(req);
-    const tenantFilter = ''; // SQLite schema in this version may not enforce tenant_id, assume global for now or pass if available
+    const tenantFilter = ''; 
 
     const query = `
       SELECT 
-        COUNT(id) as total_leads,
-        COUNT(id) FILTER (WHERE stage = 'new') as new_this_period,
-        SUM(budget_max) as pipeline_value_total,
-        COUNT(id) FILTER (WHERE stage = 'won') as won_count,
-        COUNT(id) FILTER (WHERE score_tier = 'hot') as tier_hot,
-        COUNT(id) FILTER (WHERE score_tier = 'warm') as tier_warm,
-        COUNT(id) FILTER (WHERE score_tier = 'cold') as tier_cold,
-        COUNT(id) FILTER (WHERE score_tier = 'dead') as tier_dead,
-        AVG(EXTRACT(EPOCH FROM (updated_at - created_at))/86400) FILTER (WHERE stage = 'won') as avg_time_to_close_days
-      FROM leads
-      WHERE created_at BETWEEN $1 AND $2
+        COUNT(l.id) as total_leads,
+        COUNT(l.id) FILTER (WHERE ls.name ILIKE '%new%') as new_this_period,
+        0 as pipeline_value_total,
+        COUNT(l.id) FILTER (WHERE ls.is_won = true) as won_count,
+        COUNT(l.id) FILTER (WHERE l.score >= 80) as tier_hot,
+        COUNT(l.id) FILTER (WHERE l.score >= 50 AND l.score < 80) as tier_warm,
+        COUNT(l.id) FILTER (WHERE l.score >= 20 AND l.score < 50) as tier_cold,
+        COUNT(l.id) FILTER (WHERE l.score < 20) as tier_dead,
+        AVG(EXTRACT(EPOCH FROM (l.updated_at - l.created_at))/86400) FILTER (WHERE ls.is_won = true) as avg_time_to_close_days
+      FROM leads l
+      LEFT JOIN lead_stages ls ON l.stage_id = ls.id
+      WHERE l.created_at BETWEEN $1 AND $2
     `;
     const result = await pool.query(query, [from.toISOString(), to.toISOString()]);
     const row = result.rows[0];
@@ -77,32 +78,29 @@ router.get('/leads/funnel', async (req, res) => {
   try {
     const { from, to } = getDates(req);
     const query = `
-      SELECT stage, COUNT(id) as count 
-      FROM leads 
-      WHERE created_at BETWEEN $1 AND $2
-      GROUP BY stage
+      SELECT ls.name as stage, COUNT(l.id) as count 
+      FROM leads l
+      LEFT JOIN lead_stages ls ON l.stage_id = ls.id
+      WHERE l.created_at BETWEEN $1 AND $2 AND ls.name IS NOT NULL
+      GROUP BY ls.name, ls.sort_order
+      ORDER BY ls.sort_order ASC
     `;
     const result = await pool.query(query, [from.toISOString(), to.toISOString()]);
     
-    // Order correctly
-    const order = ['new', 'contacted', 'site_visit', 'design_review', 'proposal_sent', 'negotiation', 'booking', 'won', 'lost'];
-    const counts = {};
-    result.rows.forEach(r => counts[r.stage] = parseInt(r.count, 10));
-
     let prevCount = null;
-    const funnel = order.map(stage => {
-      const count = counts[stage] || 0;
+    const funnel = result.rows.map(r => {
+      const count = parseInt(r.count, 10);
       let drop_off_rate = 0;
-      if (prevCount !== null && prevCount > 0 && stage !== 'lost') {
+      if (prevCount !== null && prevCount > 0) {
         drop_off_rate = (((prevCount - count) / prevCount) * 100).toFixed(1);
       }
-      if (stage !== 'lost') prevCount = count; // Ignore lost for next drop off calculation
-      return { stage, count, drop_off_rate: parseFloat(drop_off_rate) };
+      prevCount = count;
+      return { stage: r.stage, count, drop_off_rate: parseFloat(drop_off_rate) };
     });
 
     return success(res, funnel);
   } catch (err) {
-    res.status(500).json(fail('Failed to fetch funnel'));
+    res.status(500).json(fail('Failed to fetch funnel: ' + err.message));
   }
 });
 
@@ -112,13 +110,14 @@ router.get('/leads/by_source', async (req, res) => {
     const { from, to } = getDates(req);
     const query = `
       SELECT 
-        source, 
-        COUNT(id) as count, 
-        COUNT(id) FILTER (WHERE stage = 'won') as won_count,
-        SUM(budget_max) as total_value
-      FROM leads 
-      WHERE created_at BETWEEN $1 AND $2 AND source IS NOT NULL
-      GROUP BY source
+        l.source, 
+        COUNT(l.id) as count, 
+        COUNT(l.id) FILTER (WHERE ls.is_won = true) as won_count,
+        0 as total_value
+      FROM leads l
+      LEFT JOIN lead_stages ls ON l.stage_id = ls.id
+      WHERE l.created_at BETWEEN $1 AND $2 AND l.source IS NOT NULL
+      GROUP BY l.source
       ORDER BY count DESC
     `;
     const result = await pool.query(query, [from.toISOString(), to.toISOString()]);
@@ -137,7 +136,7 @@ router.get('/leads/by_source', async (req, res) => {
 
     return success(res, data);
   } catch (err) {
-    res.status(500).json(fail('Failed to fetch sources'));
+    res.status(500).json(fail('Failed to fetch sources: ' + err.message));
   }
 });
 
@@ -151,22 +150,23 @@ router.get('/leads/rep_performance', async (req, res) => {
         u.name as rep_name,
         u.avatar_url,
         COUNT(l.id) as leads_assigned,
-        COUNT(l.id) FILTER (WHERE l.stage = 'won') as won,
-        COUNT(l.id) FILTER (WHERE l.first_contacted_at IS NOT NULL) as contacted_within_sla
+        COUNT(l.id) FILTER (WHERE ls.is_won = true) as won,
+        0 as contacted_within_sla
       FROM users u
-      LEFT JOIN leads l ON l.assigned_rep_id = u.id AND l.created_at BETWEEN $1 AND $2
-      WHERE u.role = 'sales_rep'
+      LEFT JOIN roles r ON u.role_id = r.id
+      LEFT JOIN leads l ON l.assignee_id = u.id AND l.created_at BETWEEN $1 AND $2
+      LEFT JOIN lead_stages ls ON l.stage_id = ls.id
+      WHERE r.name = 'sales_executive' OR r.name = 'sales_rep'
       GROUP BY u.id
       ORDER BY won DESC
     `;
     const result = await pool.query(query, [from.toISOString(), to.toISOString()]);
     
-    // We also need visits done and proposals sent. For pure performance we can query activities
     const activitiesQuery = `
-      SELECT logged_by as rep_id, type, COUNT(id) as act_count
-      FROM lead_activities
+      SELECT user_id as rep_id, type, COUNT(id) as act_count
+      FROM activities
       WHERE created_at BETWEEN $1 AND $2
-      GROUP BY logged_by, type
+      GROUP BY user_id, type
     `;
     const actResult = await pool.query(activitiesQuery, [from.toISOString(), to.toISOString()]);
     
@@ -174,9 +174,6 @@ router.get('/leads/rep_performance', async (req, res) => {
     actResult.rows.forEach(r => {
       if (!activitiesMap[r.rep_id]) activitiesMap[r.rep_id] = { site_visit: 0, proposal: 0 };
       if (r.type === 'site_visit') activitiesMap[r.rep_id].site_visit = parseInt(r.act_count, 10);
-      if (r.type === 'proposal_sent' || r.type === 'stage_change') {
-         // rough estimation for proposal sent if logged as stage change
-      }
     });
 
     const data = result.rows.map(r => {
@@ -190,7 +187,7 @@ router.get('/leads/rep_performance', async (req, res) => {
         leads_assigned: assigned,
         contacted_within_sla: parseInt(r.contacted_within_sla, 10),
         visits_done: acts.site_visit || 0,
-        proposals_sent: Math.round(assigned * 0.3), // Simulated since stage change log extraction is complex here
+        proposals_sent: Math.round(assigned * 0.3),
         won,
         conversion_rate: assigned > 0 ? parseFloat(((won / assigned) * 100).toFixed(1)) : 0
       };
@@ -198,7 +195,7 @@ router.get('/leads/rep_performance', async (req, res) => {
 
     return success(res, data);
   } catch (err) {
-    res.status(500).json(fail('Failed to fetch rep performance'));
+    res.status(500).json(fail('Failed to fetch rep performance: ' + err.message));
   }
 });
 
@@ -207,11 +204,11 @@ router.get('/leads/lost_reasons', async (req, res) => {
   try {
     const { from, to } = getDates(req);
     const query = `
-      SELECT lost_reason as reason, COUNT(id) as count
-      FROM leads
-      WHERE stage = 'lost' AND lost_reason IS NOT NULL AND created_at BETWEEN $1 AND $2
-      GROUP BY lost_reason
-      ORDER BY count DESC
+      SELECT 'No Reason Given' as reason, COUNT(l.id) as count
+      FROM leads l
+      LEFT JOIN lead_stages ls ON l.stage_id = ls.id
+      WHERE ls.is_lost = true AND l.created_at BETWEEN $1 AND $2
+      HAVING COUNT(l.id) > 0
     `;
     const result = await pool.query(query, [from.toISOString(), to.toISOString()]);
     
@@ -227,7 +224,7 @@ router.get('/leads/lost_reasons', async (req, res) => {
 
     return success(res, data);
   } catch (err) {
-    res.status(500).json(fail('Failed to fetch lost reasons'));
+    res.status(500).json(fail('Failed to fetch lost reasons: ' + err.message));
   }
 });
 
@@ -239,8 +236,8 @@ router.get('/projects', authorize('analytics:read'), async (req, res) => {
     const [kpisRes, distRes, revenueRes, completionRes, delayedRes] = await Promise.all([
       pool.query(`
         SELECT
-          COUNT(*) FILTER (WHERE status='active') as active,
-          COUNT(*) FILTER (WHERE status='completed' AND updated_at BETWEEN $2 AND $3) as completed_period,
+          COUNT(*) FILTER (WHERE p.status='active') as active,
+          COUNT(*) FILTER (WHERE p.status='completed' AND p.updated_at BETWEEN $2 AND $3) as completed_period,
           COALESCE(SUM(pm.paid_amount),0) as revenue_collected,
           ROUND(AVG(EXTRACT(EPOCH FROM (COALESCE(p.updated_at,NOW())-p.created_at))/86400)) as avg_duration_days
         FROM projects p
@@ -358,11 +355,11 @@ router.get('/projects', async (req, res) => {
 
     // 4. Top projects by value
     const topProjectsQuery = `
-      SELECT p.id, p.name, p.value, p.status
+      SELECT p.id, p.name, p.contract_value as value, p.status
       FROM projects p
       WHERE p.tenant_id = $1 ${dateFilter}
-        AND p.value IS NOT NULL
-      ORDER BY p.value DESC
+        AND p.contract_value IS NOT NULL
+      ORDER BY p.contract_value DESC
       LIMIT 5
     `;
     const topRes = await pool.query(topProjectsQuery, values);

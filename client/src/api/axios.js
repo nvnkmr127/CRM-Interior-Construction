@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:4000/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   withCredentials: true,  // send cookies
   headers: { 'Content-Type': 'application/json' },
 });
@@ -45,6 +45,21 @@ const triggerToast = (type, message, duration = 4000) => {
   window.dispatchEvent(new CustomEvent('app:toast', { detail: { type, message, duration } }));
 };
 
+let isRefreshing = false;
+let refreshSubscribers = [];
+
+const subscribeTokenRefresh = (cb, errCb) => {
+  refreshSubscribers.push({ cb, errCb });
+};
+
+const onRefreshed = (error = null) => {
+  refreshSubscribers.forEach(({ cb, errCb }) => {
+    if (error) errCb(error);
+    else cb();
+  });
+  refreshSubscribers = [];
+};
+
 // RESPONSE interceptor
 api.interceptors.response.use(
   (response) => response,
@@ -79,27 +94,41 @@ api.interceptors.response.use(
     if (error.response.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      try {
-        // POST /auth/refresh (no auth header, relying on httpOnly cookie)
-        const refreshResponse = await axios.post(
-          `${api.defaults.baseURL}/auth/refresh`,
-          {},
-          { withCredentials: true }
-        );
+      if (!isRefreshing) {
+        isRefreshing = true;
 
-        if (refreshResponse.status === 200) {
-          // Cookies are automatically set by the browser from Set-Cookie headers
-          // Retry original request
-          return api(originalRequest);
-        }
-      } catch (refreshError) {
-        // Refresh token failed/expired
-        if (!(import.meta.env.DEV && localStorage.getItem('mockSession'))) {
-          if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-            window.location.href = '/login';
+        try {
+          // POST /auth/refresh (no auth header, relying on httpOnly cookie)
+          const refreshResponse = await axios.post(
+            `${api.defaults.baseURL}/auth/refresh`,
+            {},
+            { withCredentials: true }
+          );
+
+          if (refreshResponse.status === 200) {
+            isRefreshing = false;
+            onRefreshed(null);
+            return api(originalRequest);
           }
+        } catch (refreshError) {
+          isRefreshing = false;
+          onRefreshed(refreshError);
+          // Refresh token failed/expired
+          if (!(import.meta.env.DEV && localStorage.getItem('mockSession'))) {
+            if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+              window.location.href = '/login';
+            }
+          }
+          return Promise.reject(refreshError);
         }
-        return Promise.reject(refreshError);
+      } else {
+        // Queue this request while refresh is happening
+        return new Promise((resolve, reject) => {
+          subscribeTokenRefresh(
+            () => resolve(api(originalRequest)),
+            (err) => reject(err)
+          );
+        });
       }
     }
 

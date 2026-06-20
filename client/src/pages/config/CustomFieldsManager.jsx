@@ -96,7 +96,7 @@ export default function CustomFieldsManager() {
     try {
       setLoading(true);
       const res = await configApi.getCustomFields(activeEntity);
-      const sorted = res.data.data.sort((a,b) => a.sort_order - b.sort_order);
+      const sorted = (res || []).sort((a,b) => a.sort_order - b.sort_order);
       setFields(sorted);
     } catch (e) {
       console.error(e);
@@ -203,21 +203,21 @@ export default function CustomFieldsManager() {
       </div>
 
       <div className={styles.tableContainer}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th className={styles.th} style={{width: '40px'}}></th>
-              <th className={styles.th}>Label</th>
-              <th className={styles.th}>Internal Name</th>
-              <th className={styles.th}>Type</th>
-              <th className={styles.th}>Required</th>
-              <th className={styles.th}>Active</th>
-              <th className={styles.th}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th className={styles.th} style={{width: '40px'}}></th>
+                <th className={styles.th}>Label</th>
+                <th className={styles.th}>Internal Name</th>
+                <th className={styles.th}>Type</th>
+                <th className={styles.th}>Required</th>
+                <th className={styles.th}>Active</th>
+                <th className={styles.th}>Actions</th>
+              </tr>
+            </thead>
+            <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
+              <tbody>
                 {fields.map(field => (
                   <SortableRow 
                     key={field.id} 
@@ -227,13 +227,13 @@ export default function CustomFieldsManager() {
                     onToggleActive={handleToggleActive}
                   />
                 ))}
-              </SortableContext>
-            </DndContext>
-            {fields.length === 0 && !loading && (
-              <tr><td colSpan="7" style={{padding: '20px', textAlign: 'center', color: 'var(--color-text-muted)'}}>No custom fields found.</td></tr>
-            )}
-          </tbody>
-        </table>
+                {fields.length === 0 && !loading && (
+                  <tr><td colSpan="7" style={{padding: '20px', textAlign: 'center', color: 'var(--color-text-muted)'}}>No custom fields found.</td></tr>
+                )}
+              </tbody>
+            </SortableContext>
+          </table>
+        </DndContext>
       </div>
 
       {isModalOpen && (

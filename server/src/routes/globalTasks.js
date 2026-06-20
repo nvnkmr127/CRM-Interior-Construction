@@ -13,7 +13,7 @@ router.get('/', async (req, res, next) => {
     
     // For "My Tasks", assigneeId is 'me'. Replace it with the logged in user's ID.
     if (assigneeId === 'me') {
-      assigneeId = req.user.userId;
+      assigneeId = req.user.id || req.user.userId;
     }
 
     const parsedPage = parseInt(page, 10) || 1;

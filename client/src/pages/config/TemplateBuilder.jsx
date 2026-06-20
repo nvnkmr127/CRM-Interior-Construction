@@ -29,13 +29,21 @@ export default function TemplateBuilder() {
   const fetchTemplates = async () => {
     try {
       const data = await configApi.getTemplates()
-      const formatted = data.map(t => ({
-        id: t.id,
-        name: t.name,
-        type: t.project_type || 'full_interior',
-        desc: t.description || '',
-        phases: t.phases || []
-      }))
+      const formatted = data.map(t => {
+        let parsedPhases = [];
+        try {
+          parsedPhases = typeof t.phases === 'string' ? JSON.parse(t.phases) : (t.phases || []);
+        } catch(e) {
+          console.error('Failed to parse phases for template', t.id, e);
+        }
+        return {
+          id: t.id,
+          name: t.name,
+          type: t.project_type || 'full_interior',
+          desc: t.description || '',
+          phases: parsedPhases
+        };
+      })
       setTemplates(formatted)
     } catch (err) {
       toast.error('Failed to load templates')
