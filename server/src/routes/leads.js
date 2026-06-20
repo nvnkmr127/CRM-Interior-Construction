@@ -37,6 +37,8 @@ router.delete('/:id', authenticate, authorize('leads:delete'), leadController.de
 router.post('/bulk/delete', authenticate, authorize('leads:delete'), leadController.bulkDeleteLeadsHandler);
 router.post('/bulk/assign', authenticate, authorize('leads:update'), leadController.bulkAssignLeadsHandler);
 router.post('/bulk/stage', authenticate, authorize('leads:update'), leadController.bulkChangeStageHandler);
+router.post('/bulk/tag', authenticate, authorize('leads:update'), leadController.bulkTagHandler);
+router.post('/merge', authenticate, authorize('leads:update'), leadController.mergeLeadsHandler);
 router.post('/:id/stage', authenticate, authorize('leads:update'), leadController.changeStageHandler);
 router.post('/:id/convert-to-project', authenticate, authorize('leads:update'), leadController.convertToProjectHandler);
 router.post('/:id/activities', authenticate, leadController.logActivityHandler);

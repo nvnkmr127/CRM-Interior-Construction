@@ -117,7 +117,8 @@ router.post('/invite', authorize('users:manage'), async (req, res) => {
       return res.status(400).json(fail('Email already registered in this tenant'));
     }
 
-    const tempPasswordHash = crypto.randomBytes(16).toString('hex'); // STUB hash
+    const tempPasswordPlain = crypto.randomBytes(16).toString('hex');
+    const tempPasswordHash = await bcrypt.hash(tempPasswordPlain, 10);
 
     const { rows } = await pool.query(`
       INSERT INTO users (tenant_id, name, email, role_id, status, password_hash)

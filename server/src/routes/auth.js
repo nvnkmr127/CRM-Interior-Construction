@@ -90,14 +90,23 @@ router.post('/login', async (req, res, next) => {
     // 3. Call loginUser
     const ip = req.ip || req.connection?.remoteAddress || 'Unknown';
     const userAgent = req.headers['user-agent'] || 'Unknown';
-    
-    const { accessToken, refreshToken, user } = await loginUser({
+    const loginResult = await loginUser({
       email,
       password,
       tenantId,
       ip,
       userAgent
     });
+
+    if (loginResult.mfaRequired) {
+      return success(res, {
+        mfaRequired: true,
+        tempToken: loginResult.tempToken,
+        user: loginResult.user
+      });
+    }
+
+    const { accessToken, refreshToken, user } = loginResult;
 
     // Set refreshToken and accessToken as httpOnly cookies
     const isProduction = process.env.NODE_ENV === 'production';
@@ -118,8 +127,8 @@ router.post('/login', async (req, res, next) => {
       maxAge: 15 * 60 * 1000 // 15 minutes (or however long your token is valid)
     });
 
-    // 4. Return 200 without exposing tokens in JS payload
-    return success(res, { user });
+    // 4. Return 200 and expose tokens in JS payload for mobile apps
+    return success(res, { user, accessToken, refreshToken });
   } catch (error) {
     next(error);
   }

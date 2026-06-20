@@ -3,19 +3,7 @@ const leadRepository = require('../../repositories/leadRepository');
 const { logAction } = require('../auditLog');
 const { enqueueAutomation } = require('../../queues/automationQueue');
 const { dispatchEvent } = require('../webhooks/webhookDispatcher');
-// The scoreLeadService might be created in D2-10 as per instructions.
-// We'll require it, but wrap it in try-catch or just require it so it will throw if not present yet.
-let scoreLead;
-let calculateAIScore;
-try {
-  const scoreLeadService = require('./scoreLeadService');
-  scoreLead = scoreLeadService.scoreLead;
-  calculateAIScore = scoreLeadService.calculateAIScore;
-} catch (e) {
-  // If not yet implemented, provide a dummy fallback for now
-  scoreLead = () => 0;
-  calculateAIScore = null;
-}
+const { scoreLead, calculateAIScore } = require('./scoreLeadService');
 
 async function createLead({ tenantId, userId, data }) {
   const { name, phone, email, stageId, assigneeId } = data;
@@ -77,11 +65,18 @@ async function createLead({ tenantId, userId, data }) {
     ai_score_breakdown = aiScores.ai_score_breakdown;
   }
 
+  let finalAssigneeId = assigneeId;
+  if (!finalAssigneeId) {
+    console.log('[createLead] No assigneeId provided, invoking Smart Router...');
+    const { assignLeadIntelligently } = require('./smartRoutingService');
+    finalAssigneeId = await assignLeadIntelligently(tenantId, data);
+  }
+
   // 4. leadRepository.createLead
   const leadDataForRepo = {
     ...data,
     stage_id: stageId,
-    assignee_id: assigneeId,
+    assignee_id: finalAssigneeId,
     score,
     win_probability,
     ai_score_breakdown,

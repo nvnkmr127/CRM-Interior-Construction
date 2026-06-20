@@ -99,7 +99,7 @@ async function findLeadById(tenantId, leadId) {
   return result.rows[0] || null;
 }
 
-async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy, sortDesc, page = 1, limit = 20, createdFrom, createdTo, scoreMin, scoreMax }) {
+async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy, sortDesc, page = 1, limit = 20, createdFrom, createdTo, scoreMin, scoreMax, cursor }) {
   let query = `
     SELECT l.*,
            u.name AS assignee_name, u.avatar_url AS assignee_avatar,
@@ -167,9 +167,26 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
   
   const orderDirection = sortDesc === 'false' || sortDesc === false ? 'ASC' : 'DESC';
 
+  if (cursor) {
+    // Basic cursor implementation: assuming sort order is descending ID (or ascending ID)
+    // For a robust implementation, cursor should encode the sort column value and the ID.
+    // Here we use a simple id-based cursor.
+    if (orderDirection === 'ASC') {
+      query += ` AND l.id > $${paramIndex++}`;
+    } else {
+      query += ` AND l.id < $${paramIndex++}`;
+    }
+    values.push(cursor);
+  }
+
   const offset = (page - 1) * limit;
-  query += ` ORDER BY ${orderField} ${orderDirection} LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
-  values.push(limit, offset);
+  if (cursor) {
+    query += ` ORDER BY ${orderField} ${orderDirection}, l.id ${orderDirection} LIMIT $${paramIndex++}`;
+    values.push(limit);
+  } else {
+    query += ` ORDER BY ${orderField} ${orderDirection}, l.id ${orderDirection} LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
+    values.push(limit, offset);
+  }
   
   const result = await pool.query(query, values);
   
@@ -177,7 +194,8 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
     data: result.rows,
     total,
     page: parseInt(page, 10),
-    limit: parseInt(limit, 10)
+    limit: parseInt(limit, 10),
+    nextCursor: result.rows.length > 0 ? result.rows[result.rows.length - 1].id : null
   };
 }
 
@@ -399,7 +417,7 @@ async function getLeadTimeline(tenantId, leadId, { type, page = 1, limit = 20 } 
   };
 }
 
-async function getLeadStats(tenantId) {
+async function getPipelineSummary(tenantId) {
   const result = await pool.query('SELECT * FROM pipeline_summary WHERE tenant_id = $1', [tenantId]);
   return result.rows;
 }
@@ -421,5 +439,6 @@ module.exports = {
   convertLeadToProject,
   getLeadStats,
   getLeadTimeline,
-  refreshPipelineSummary
+  refreshPipelineSummary,
+  getPipelineSummary
 };

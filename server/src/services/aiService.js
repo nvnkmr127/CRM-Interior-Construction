@@ -1,6 +1,7 @@
 const { GoogleGenAI } = require('@google/genai');
 const pdfParse = require('pdf-parse');
 const { findLeadById } = require('../repositories/leadRepository');
+const { sanitizePrompt, validateOutput } = require('../utils/aiSecurity');
 
 /**
  * AI Service
@@ -112,7 +113,7 @@ async function draftCommunication(lead, channel, instructions) {
     
     Lead Name: ${lead.name}
     Lead Scope: ${lead.scope || 'Interior Design'}
-    Instructions from User: ${instructions || 'Write a polite follow-up message asking for a good time to connect.'}
+    Instructions from User: ${sanitizePrompt(instructions || 'Write a polite follow-up message asking for a good time to connect.')}
     
     Keep the tone professional and warm. For WhatsApp, keep it brief and conversational. For email, use a proper structure.
     Output ONLY the draft text. Do not output markdown, preambles, or postambles.
@@ -231,6 +232,7 @@ async function analyzeLeadIntelligence(lead, activities, communications, prefere
     5. Buy Intent: "high", "medium", or "low".
     6. Win Probability: An integer from 0 to 100 representing the likelihood to close.
     7. AI Score Breakdown: A JSON object of factors that added or subtracted to the score (e.g. {"Responsive": "+10", "Budget concern": "-5"}).
+    8. Suggested Follow-Up Date: Calculate the optimal date and time (ISO 8601 string) to follow up next based on their engagement. For hot leads, suggest within 24 hours. For cold leads, suggest 1 week out. Ensure the timestamp is in the future. Today's date is: ${new Date().toISOString()}.
 
     Return a strictly formatted JSON object exactly matching this schema:
     {
@@ -240,7 +242,8 @@ async function analyzeLeadIntelligence(lead, activities, communications, prefere
       "nextAction": "Action string",
       "buyIntent": "high|medium|low",
       "winProbability": 75,
-      "aiScoreBreakdown": { "Factor Name": "+10" }
+      "aiScoreBreakdown": { "Factor Name": "+10" },
+      "suggestedFollowupDate": "YYYY-MM-DDTHH:mm:ssZ"
     }
   `;
 
@@ -265,7 +268,8 @@ async function analyzeLeadIntelligence(lead, activities, communications, prefere
       nextAction: result.nextAction || 'Follow up with the customer to understand their needs.',
       buyIntent: result.buyIntent || 'medium',
       winProbability: typeof result.winProbability === 'number' ? result.winProbability : 50,
-      aiScoreBreakdown: result.aiScoreBreakdown || {}
+      aiScoreBreakdown: result.aiScoreBreakdown || {},
+      suggestedFollowupDate: result.suggestedFollowupDate || null
     };
   } catch (error) {
     console.error('[AI Service] Failed to generate lead intelligence:', error);
@@ -368,7 +372,7 @@ async function summarizeMeeting(transcript) {
     console.warn('[AI Service] GEMINI_API_KEY missing. Returning stub Meeting Summary.');
     return {
       summary: 'Meeting summary stub. Discussed project timelines and budget.',
-      action_items: ['Send revised quote', 'Schedule site visit'],
+      action_items: [{ title: 'Send revised quote', due_in_days: 1 }, { title: 'Schedule site visit', due_in_days: 2 }],
       customer_sentiment: 'Positive',
       suggested_next_stage: null
     };
@@ -387,7 +391,9 @@ async function summarizeMeeting(transcript) {
     Return exactly this JSON schema:
     {
       "summary": "A 2-3 sentence summary of what was discussed",
-      "action_items": ["Task 1", "Task 2"],
+      "action_items": [
+        { "title": "Task name", "due_in_days": 1 }
+      ],
       "customer_sentiment": "Positive, Neutral, or Negative",
       "suggested_next_stage": "Stage name if mentioned (e.g. 'Site Visit Done', 'Quotation Sent') or null"
     }
@@ -400,7 +406,13 @@ async function summarizeMeeting(transcript) {
       config: { responseMimeType: 'application/json' }
     });
 
-    const result = JSON.parse(response.text());
+    const text = typeof response.text === 'function' ? response.text() : response.text;
+    let cleanText = text.trim();
+    if (cleanText.startsWith('\`\`\`json')) {
+      cleanText = cleanText.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '');
+    }
+    const result = JSON.parse(cleanText);
+    
     return {
       summary: result.summary || 'Summary could not be parsed.',
       action_items: result.action_items || [],
@@ -444,9 +456,10 @@ Your goal is to simulate how this specific customer would respond to the sales r
 Respond in the first person ("I", "my"). If the rep suggests something way over your budget, push back. If they suggest something aligned with your scope, be interested but maybe ask a question. Keep it conversational, realistic, and brief (2-3 sentences max).`;
 
   try {
+    const sanitizedPrompt = sanitizePrompt(prompt);
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: `System context: ${systemInstruction}\n\nSales Rep: ${prompt}`
+      contents: `System context: ${systemInstruction}\n\nSales Rep: ${sanitizedPrompt}`
     });
     return response.text;
   } catch (error) {
@@ -820,6 +833,345 @@ async function chatWithLeadContext(lead, activities, question) {
   }
 }
 
+/**
+ * AI Voice-to-CRM: Processes an uploaded audio file (voice note), returning transcript, summary, sentiment, and action items.
+ */
+async function processVoiceNote(base64Audio, mimeType, leadContext) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return {
+      transcript: "Audio transcription simulated (no API key).",
+      summary: "Simulated summary of a voice note about following up on pricing.",
+      sentiment: "Positive",
+      actionItems: [{ title: "Send simulated quote", due_in_days: 1 }]
+    };
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+  const base64Clean = base64Audio.includes('base64,') ? base64Audio.split('base64,')[1] : base64Audio;
+
+  const prompt = `
+    You are an expert AI sales assistant for an interior design CRM.
+    Listen to the following audio recording (a field sales rep's voice note).
+    The lead context is: Name: ${leadContext?.name || 'Unknown'}, Scope: ${leadContext?.scope || 'Unknown'}.
+
+    Return a strictly formatted JSON object exactly matching this schema (no markdown, just raw JSON):
+    {
+      "transcript": "A clean, punctuated transcription of what was said.",
+      "summary": "A 1-2 sentence concise summary.",
+      "sentiment": "Positive|Neutral|Negative",
+      "actionItems": [
+        { "title": "Extracted task name", "due_in_days": 1 }
+      ]
+    }
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [
+        {
+          inlineData: {
+            data: base64Clean,
+            mimeType: mimeType
+          }
+        },
+        prompt
+      ],
+      config: {
+        responseMimeType: "application/json",
+      }
+    });
+    
+    let text = response.text().trim();
+    if (text.startsWith('\`\`\`json')) {
+      text = text.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '');
+    }
+    return JSON.parse(text);
+  } catch (error) {
+    console.error('Gemini Task Generation Error:', error);
+    return [];
+  }
+}
+
+/**
+ * AI Follow-up Suggestions: Recommends specific follow-up actions and drafts.
+ */
+async function generateFollowupRecommendations(lead, lastActivityDate) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return {
+      recommendedAction: 'Call',
+      reason: 'No contact recently.',
+      draftMessage: 'Hi ' + lead.name + ', following up on our last conversation.'
+    };
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+  const prompt = `
+    You are an AI sales assistant. Recommend a follow-up action for this lead.
+    
+    Lead Name: ${lead.name}
+    Status/Stage: ${lead.stage || 'Active'}
+    Budget: ${lead.budget_max || 'Unknown'}
+    Last Contacted: ${lastActivityDate || 'Unknown'}
+    Notes: ${lead.notes || 'No notes.'}
+    
+    Return a valid JSON object ONLY:
+    {
+      "recommendedAction": "Call" | "WhatsApp" | "Email" | "Meeting",
+      "reason": "A short sentence explaining why.",
+      "draftMessage": "A short drafted message for the rep to use (if WhatsApp or Email)."
+    }
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: { responseMimeType: 'application/json' }
+    });
+    
+    let text = typeof response.text === 'function' ? response.text() : response.text;
+    text = text.trim();
+    if (text.startsWith('\`\`\`json')) text = text.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '').trim();
+    return JSON.parse(text);
+  } catch (error) {
+    console.error('Gemini Follow-up Recommendation Error:', error);
+    return { recommendedAction: 'Call', reason: 'Error generating recommendation.', draftMessage: '' };
+  }
+}
+
+/**
+ * AI Sales Coach: Analyzes a meeting transcript and provides constructive feedback
+ */
+async function analyzeMeetingForCoaching(transcript) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return {
+      feedback: 'You missed asking about their strict timeline.',
+      missed_questions: ['What is the hard deadline for move-in?'],
+      strengths: ['Built great rapport early on.']
+    };
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+  const prompt = `
+    You are an expert AI Sales Coach for interior design.
+    Analyze this meeting transcript and give constructive feedback to the sales rep.
+    
+    Transcript:
+    """
+    ${transcript}
+    """
+    
+    Return exactly this JSON schema:
+    {
+      "feedback": "A 2-3 sentence overview of the rep's performance.",
+      "missed_questions": ["Important question 1 that the rep forgot to ask", "Important question 2"],
+      "strengths": ["Thing 1 the rep did well", "Thing 2"]
+    }
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: { responseMimeType: 'application/json' }
+    });
+    
+    let text = typeof response.text === 'function' ? response.text() : response.text;
+    text = text.trim();
+    if (text.startsWith('\`\`\`json')) text = text.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '').trim();
+    return JSON.parse(text);
+  } catch (error) {
+    console.error('AI Sales Coach Error:', error);
+    return { feedback: 'Failed to analyze.', missed_questions: [], strengths: [] };
+  }
+}
+
+/**
+ * AI Knowledge Assistant: Answers questions about a lead's history
+ */
+async function chatWithLeadContext(lead, activities, question) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return "API Key missing. Cannot answer context questions.";
+
+  const ai = new GoogleGenAI({ apiKey });
+  
+  const timelineText = activities.map(a => `[${a.created_at}] ${a.type}: ${a.notes || a.summary || ''}`).join('\n');
+
+  const prompt = `
+    You are an AI Knowledge Assistant for a CRM.
+    Answer the sales rep's question based strictly on the lead's history below. Keep it concise and actionable.
+
+    Lead Name: ${lead.name}
+    Lead Profile: Budget ${lead.budget_max || 'Unknown'}, Scope ${lead.scope || 'Unknown'}
+    
+    History:
+    ${timelineText || 'No history.'}
+
+    Question: ${question}
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt
+    });
+    
+    let text = typeof response.text === 'function' ? response.text() : response.text;
+    return text.trim();
+  } catch (error) {
+    console.error('AI Knowledge Assistant Error:', error);
+    return "Sorry, I encountered an error while searching the lead's history.";
+  }
+}
+
+/**
+ * AI Voice-to-CRM: Processes an uploaded audio file (voice note), returning transcript, summary, sentiment, and action items.
+ */
+async function processVoiceNote(base64Audio, mimeType, leadContext) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return {
+      transcript: "Audio transcription simulated (no API key).",
+      summary: "Simulated summary of a voice note about following up on pricing.",
+      sentiment: "Positive",
+      actionItems: [{ title: "Send simulated quote", due_in_days: 1 }]
+    };
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+  const base64Clean = base64Audio.includes('base64,') ? base64Audio.split('base64,')[1] : base64Audio;
+
+  const prompt = `
+    You are an expert AI sales assistant for an interior design CRM.
+    Listen to the following audio recording (a field sales rep's voice note).
+    The lead context is: Name: ${leadContext?.name || 'Unknown'}, Scope: ${leadContext?.scope || 'Unknown'}.
+
+    Return a strictly formatted JSON object exactly matching this schema (no markdown, just raw JSON):
+    {
+      "transcript": "A clean, punctuated transcription of what was said.",
+      "summary": "A 1-2 sentence concise summary.",
+      "sentiment": "Positive|Neutral|Negative",
+      "actionItems": [
+        { "title": "Extracted task name", "due_in_days": 1 }
+      ]
+    }
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [
+        {
+          inlineData: {
+            data: base64Clean,
+            mimeType: mimeType
+          }
+        },
+        prompt
+      ],
+      config: {
+        responseMimeType: "application/json",
+      }
+    });
+    
+    let text = response.text().trim();
+    if (text.startsWith('\`\`\`json')) {
+      text = text.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '');
+    }
+    return JSON.parse(text);
+  } catch (error) {
+    console.error('[AI Service] Failed to process voice note:', error);
+    throw new Error('Failed to extract data from voice note');
+  }
+}
+
+/**
+ * Analyzes communication transcript for sales objections.
+ */
+async function analyzeObjections(transcript) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return [];
+
+  const ai = new GoogleGenAI({ apiKey });
+  const prompt = `
+    You are an AI Sales Coach. Analyze the following conversation transcript.
+    Identify if the customer raised any objections (e.g., Price, Timeline, Competitor, Trust).
+    If so, return a JSON array of objects with the following schema:
+    [
+      { "category": "Price", "description": "Customer said it's too expensive", "suggested_rebuttal": "Focus on ROI and the long-term durability of materials." }
+    ]
+    If no objections, return an empty array [].
+
+    TRANSCRIPT:
+    """
+    ${transcript}
+    """
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: { responseMimeType: 'application/json' }
+    });
+
+    const text = typeof response.text === 'function' ? response.text() : response.text;
+    let cleanText = text.trim();
+    if (cleanText.startsWith('\`\`\`json')) {
+      cleanText = cleanText.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '');
+    }
+    return JSON.parse(cleanText);
+  } catch (error) {
+    console.error('[AI Service] Failed to analyze objections:', error);
+    return [];
+  }
+}
+
+/**
+ * AI Budget Optimizer: Breaks down a total budget into a logical room-by-room split.
+ */
+async function optimizeBudgetBreakdown(totalBudget, requirements) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return [];
+
+  const ai = new GoogleGenAI({ apiKey });
+  const prompt = `
+    You are an AI Budget Optimizer for an interior design firm.
+    The customer has a total budget of ${totalBudget}.
+    Their requirements are: ${requirements}.
+    
+    Allocate this budget realistically across the necessary rooms/areas based on standard interior design costs (e.g. Kitchens and Master Bedrooms take a larger chunk).
+    
+    Return a JSON array of objects exactly like this:
+    [
+      { "room": "Kitchen", "allocated_amount": 15000, "reason": "Custom cabinetry and appliances" },
+      { "room": "Master Bedroom", "allocated_amount": 10000, "reason": "Wardrobe and premium finishes" }
+    ]
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: { responseMimeType: 'application/json' }
+    });
+
+    const text = typeof response.text === 'function' ? response.text() : response.text;
+    let cleanText = text.trim();
+    if (cleanText.startsWith('\`\`\`json')) {
+      cleanText = cleanText.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '');
+    }
+    return JSON.parse(cleanText);
+  } catch (error) {
+    console.error('[AI Service] Failed to optimize budget:', error);
+    return [];
+  }
+}
+
 module.exports = {
   analyzeLeadConversations,
   summarizeActivity,
@@ -835,5 +1187,8 @@ module.exports = {
   generateTasksFromActivity,
   generateFollowupRecommendations,
   analyzeMeetingForCoaching,
-  chatWithLeadContext
+  chatWithLeadContext,
+  processVoiceNote,
+  analyzeObjections,
+  optimizeBudgetBreakdown
 };

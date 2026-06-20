@@ -2,16 +2,16 @@ const pool = require('../../db/pool');
 
 const VALID_TYPES = ['call', 'note', 'email', 'whatsapp', 'site_visit', 'meeting'];
 
+const { aiQueue } = require('../../queues/queueSetup');
+
 async function logActivity({ tenantId, userId, leadId, type, title, notes, outcome, scheduledAt, ai_summary, metadata }) {
   if (!VALID_TYPES.includes(type)) {
     throw new Error(`INVALID_ACTIVITY_TYPE: Type must be one of ${VALID_TYPES.join(', ')}`);
   }
 
-  // MOCK AI Summarization for Site Visits if notes are provided but no summary yet
-  let finalAiSummary = ai_summary;
-  if (type === 'site_visit' && !finalAiSummary && notes) {
-    // Generate mock AI summary based on notes
-    finalAiSummary = `[AI Generated] Key takeaway from site visit: ${notes.substring(0, 50)}... The client is highly engaged.`;
+  if (type === 'site_visit' && notes) {
+    // Dispatch to the background AI Queue for genuine transcript/notes summarization
+    await aiQueue.add('analyzeSiteVisit', { tenantId, leadId, notes, userId });
   }
 
   const query = `

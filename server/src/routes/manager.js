@@ -17,4 +17,10 @@ router.get('/scheduled-visits', managerAuth, managerController.getScheduledVisit
 
 router.post('/approvals/:id/decide', managerAuth, managerController.decideApproval);
 
+router.get('/benchmarks', managerAuth, managerController.getBenchmarks);
+router.get('/digital-twin', managerAuth, managerController.getDigitalTwin);
+router.get('/command-center', managerAuth, managerController.getCommandCenter);
+router.get('/referral-candidates', managerAuth, managerController.getReferralCandidates);
+router.get('/daily-revenue-plan', managerAuth, managerController.getDailyRevenuePlan);
+
 module.exports = router;

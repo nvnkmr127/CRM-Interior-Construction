@@ -13,10 +13,11 @@ describe('Leads API', () => {
 
   describe('POST /api/leads', () => {
     it('creates a lead and returns 201', async () => {
+      const randomPhone = `98${Math.floor(Math.random() * 100000000).toString().padStart(8, '0')}`;
       const res = await request(app)
         .post('/api/leads')
         .set('Authorization', `Bearer ${accessToken}`)
-        .send({ name:'Test Client', phone:'9876543210', source:'website' })
+        .send({ name:'Test Client', phone:randomPhone, source:'website' })
       expect(res.status).toBe(201)
       expect(res.body.data.name).toBe('Test Client')
       expect(res.body.data.score).toBeGreaterThanOrEqual(0)

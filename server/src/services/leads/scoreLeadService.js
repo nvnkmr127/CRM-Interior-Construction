@@ -92,44 +92,92 @@ async function getAndScoreLead(tenantId, leadData) {
 }
 
 function calculateAIScore(leadData) {
-  let winProb = 10;
+  let baseScore = 10;
   const breakdown = {
-    "Buying Intent": 10,
-    "Budget Confidence": 10,
-    "Completeness": 0
+    "Engagement": 10,
+    "Budget Fit": 10,
+    "Timeline": 10,
+    "Responsiveness": 10,
+    "Decision Readiness": 10,
+    "Property Readiness": 10,
+    "Risk Level": 10
   };
 
+  // 1. Budget Fit
   if (leadData.budget_max && Number(leadData.budget_max) > 0) {
-    breakdown["Budget Confidence"] += 40;
-    winProb += 20;
+    breakdown["Budget Fit"] += 40;
+    baseScore += 10;
   }
   if (leadData.loan_approved) {
-    breakdown["Budget Confidence"] += 40;
-    winProb += 15;
+    breakdown["Budget Fit"] += 40;
+    baseScore += 10;
   }
 
+  // 2. Timeline
   if (leadData.possession_date) {
     const today = new Date();
     const possDate = new Date(leadData.possession_date);
     const monthsAway = (possDate.getTime() - today.getTime()) / (1000 * 3600 * 24 * 30);
     if (monthsAway <= 3 && monthsAway >= 0) {
-      breakdown["Buying Intent"] += 50;
-      winProb += 20;
+      breakdown["Timeline"] += 70;
+      baseScore += 15;
+    } else if (monthsAway <= 6 && monthsAway > 3) {
+      breakdown["Timeline"] += 40;
+      baseScore += 10;
     } else {
-      breakdown["Buying Intent"] += 20;
+      breakdown["Timeline"] += 20;
     }
   }
 
-  const keys = ['builder_name', 'house_status', 'interior_style', 'material_preference', 'property_type', 'carpet_area_sqft'];
-  let filled = 0;
-  keys.forEach(k => { if (leadData[k]) filled++; });
-  breakdown["Completeness"] = Math.round((filled / keys.length) * 100);
-  winProb += (filled * 5);
+  // 3. Property Readiness
+  if (leadData.house_status === 'ready' || leadData.house_status === 'possession_taken') {
+    breakdown["Property Readiness"] += 70;
+    baseScore += 15;
+  } else if (leadData.house_status === 'under_construction') {
+    breakdown["Property Readiness"] += 30;
+    baseScore += 5;
+  }
 
-  if (winProb > 99) winProb = 99;
+  // 4. Decision Readiness & Completeness
+  const decisionKeys = ['interior_style', 'material_preference', 'property_type', 'carpet_area_sqft'];
+  let filled = 0;
+  decisionKeys.forEach(k => { if (leadData[k]) filled++; });
+  breakdown["Decision Readiness"] = 10 + Math.round((filled / decisionKeys.length) * 80);
+  baseScore += (filled * 5);
+
+  // 5. Engagement & Responsiveness (Derived from days in stage / last contact)
+  if (leadData.days_in_stage !== undefined) {
+    if (leadData.days_in_stage < 3) {
+      breakdown["Engagement"] += 60;
+      breakdown["Responsiveness"] += 60;
+      baseScore += 15;
+    } else if (leadData.days_in_stage < 7) {
+      breakdown["Engagement"] += 30;
+      breakdown["Responsiveness"] += 30;
+      baseScore += 5;
+    }
+  } else {
+    // Default assumptions if missing
+    breakdown["Engagement"] += 20;
+    breakdown["Responsiveness"] += 20;
+  }
+
+  // 6. Risk Level
+  if (leadData.competitor_mentioned) {
+    breakdown["Risk Level"] += 50; // Higher risk
+    baseScore -= 10;
+  }
+  
+  // Cap sub-scores at 100
+  Object.keys(breakdown).forEach(key => {
+    if (breakdown[key] > 100) breakdown[key] = 100;
+  });
+
+  if (baseScore > 99) baseScore = 99;
+  if (baseScore < 1) baseScore = 1;
 
   return {
-    win_probability: Math.round(winProb),
+    win_probability: Math.round(baseScore),
     ai_score_breakdown: breakdown
   };
 }

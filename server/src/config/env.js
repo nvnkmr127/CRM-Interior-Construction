@@ -16,6 +16,8 @@ const envSchema = z.object({
   S3_REGION: z.string().optional(),
   AWS_ACCESS_KEY_ID: z.string().optional(),
   AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  STORAGE_PROVIDER: z.enum(['s3', 'local']).default('s3'),
+  REDIS_URL: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -38,4 +40,6 @@ module.exports = {
   s3Region: env.S3_REGION,
   awsKey: env.AWS_ACCESS_KEY_ID,
   awsSecret: env.AWS_SECRET_ACCESS_KEY,
+  storageProvider: env.STORAGE_PROVIDER,
+  redisUrl: env.REDIS_URL,
 };

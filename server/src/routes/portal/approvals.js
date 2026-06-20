@@ -6,9 +6,10 @@ const documentVersionService = require('../../services/documents/documentVersion
 
 router.use(authenticatePortal);
 
-// Mock S3 pre-signed URL generator
+const storage = require('../../utils/storage');
+
 const generatePresignedUrl = async (key) => {
-  return `https://s3.stub.url/download/${encodeURIComponent(key)}?expires=3600`;
+  return await storage.getDownloadUrl(key);
 };
 
 // GET /api/portal/approvals

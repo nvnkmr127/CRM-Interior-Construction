@@ -28,17 +28,17 @@ async function checkSlaBreaches() {
         `, [lead.id]);
         
         if (checkAlert.rows.length === 0) {
-          const msg = \`SLA Breached: Lead has been in \${lead.stage_name} for \${lead.days_in_stage} days (Limit: \${lead.max_days_in_stage} days).\`;
+          const msg = `SLA Breached: Lead has been in ${lead.stage_name} for ${lead.days_in_stage} days (Limit: ${lead.max_days_in_stage} days).`;
           
-          await pool.query(\`
+          await pool.query(`
             INSERT INTO lead_activities (lead_id, type, summary, logged_by)
             VALUES ($1, 'system', $2, NULL)
-          \`, [lead.id, msg]);
+          `, [lead.id, msg]);
           
           // Optionally trigger full automation
           // await triggerAutomation('sla_breached', lead, { stageName: lead.stage_name });
           
-          console.log(\`[SLA Tracker] Breached SLA for lead \${lead.id}\`);
+          console.log(`[SLA Tracker] Breached SLA for lead ${lead.id}`);
         }
       }
     }

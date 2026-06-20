@@ -3,7 +3,7 @@ const stageRepository = require('../../repositories/stageRepository');
 const { updateLead } = require('./updateLead');
 const { logAction } = require('../auditLog');
 const { dispatchEvent } = require('../webhooks/webhookDispatcher');
-const { notifyUser } = require('../notificationService');
+const eventBus = require('../../utils/eventBus');
 // const pool = require('../../config/db');
 
 async function changeStage({ tenantId, userId, leadId, newStageId }) {
@@ -52,18 +52,14 @@ async function changeStage({ tenantId, userId, leadId, newStageId }) {
   // 6. Return the updated lead with fully joined properties (stage_name, assignee_name)
   const updatedLeadFull = await leadRepository.findLeadById(tenantId, leadId);
 
-  // Notify lead assignee: 'Lead X moved to Stage Y'
-  if (updatedLeadFull.assignee_id && updatedLeadFull.assignee_id !== userId) {
-    notifyUser({
-      tenantId,
-      userId: updatedLeadFull.assignee_id,
-      type: 'lead.stage_changed',
-      message: `Lead '${updatedLeadFull.name}' moved to ${newStage.name}`,
-      referenceUrl: `/leads`,
-      actorId: userId,
-      actorName: 'System', // Replace with req.user.name if available
-    });
-  }
+  // Emit domain event for Decoupled architecture (AI, Notifications, Workflows will listen)
+  eventBus.emit('lead.stage_changed', {
+    tenantId,
+    userId,
+    lead: updatedLeadFull,
+    oldStage: { id: oldLead.stage_id, name: oldLead.stage_name },
+    newStage: { id: newStage.id, name: newStage.name }
+  });
 
   // 7. Dispatch webhook
   dispatchEvent(tenantId, 'lead.stage_changed', updatedLeadFull);

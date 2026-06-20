@@ -114,4 +114,35 @@ router.patch('/preferences', async (req, res) => {
   }
 });
 
+router.get('/inbox', async (req, res) => {
+  const tenantId = req.tenantId || (req.user && req.user.tenantId);
+  const userId = req.user && (req.user.id || req.user.userId);
+  const limit = parseInt(req.query.limit, 10) || 20;
+
+  try {
+    const [notifsRes, tasksRes] = await Promise.all([
+      pool.query(`
+        SELECT id, type, title, message, is_read, created_at, 'notification' as item_type
+        FROM notifications
+        WHERE tenant_id=$1 AND user_id=$2
+        ORDER BY created_at DESC LIMIT $3
+      `, [tenantId, userId, limit]),
+      pool.query(`
+        SELECT id, 'task_overdue' as type, title, '' as message, false as is_read, due_date as created_at, 'task' as item_type
+        FROM tasks
+        WHERE tenant_id=$1 AND assignee_id=$2 AND status != 'done' AND due_date < CURRENT_DATE
+        ORDER BY due_date ASC LIMIT $3
+      `, [tenantId, userId, limit])
+    ]);
+
+    const inbox = [...notifsRes.rows, ...tasksRes.rows]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, limit);
+
+    return success(res, inbox);
+  } catch (error) {
+    res.status(500).json(fail('Inbox fetch failed'));
+  }
+});
+
 module.exports = router;

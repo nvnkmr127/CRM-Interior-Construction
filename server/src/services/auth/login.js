@@ -46,6 +46,21 @@ async function loginUser({ email, password, tenantId, ip, userAgent }) {
     }
   }
 
+  // Check MFA
+  if (user.mfa_enabled) {
+    const tempToken = require('jsonwebtoken').sign(
+      { userId: user.id, tenantId, role: roleName, permissions: rolePermissions, email: user.email, isMfaTemp: true },
+      process.env.JWT_SECRET || 'fallback_secret',
+      { expiresIn: '5m' }
+    );
+    delete user.password_hash;
+    return {
+      mfaRequired: true,
+      tempToken,
+      user
+    };
+  }
+
   const payload = {
     userId: user.id,
     tenantId,

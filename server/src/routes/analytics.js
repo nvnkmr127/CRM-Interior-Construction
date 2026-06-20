@@ -392,4 +392,12 @@ router.get('/projects', async (req, res) => {
   }
 });
 
+const analyticsController = require('../controllers/analyticsController');
+
+// Phase 2: Dedicated Analytics Endpoints
+router.get('/revenue', authenticate, authorize('analytics:read'), analyticsController.getRevenueAnalytics);
+router.get('/pipeline', authenticate, authorize('analytics:read'), analyticsController.getPipelineAnalytics);
+router.get('/conversion', authenticate, authorize('analytics:read'), analyticsController.getConversionAnalytics);
+router.get('/forecast', authenticate, authorize('analytics:read'), analyticsController.getForecastAnalytics);
+
 module.exports = router;

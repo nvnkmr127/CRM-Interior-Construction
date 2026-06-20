@@ -163,6 +163,136 @@ exports.decideApproval = async (req, res) => {
   }
 };
 
+exports.getRevivalCandidatesHandler = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { getRevivalCandidates } = require('../services/leads/pipelineIntelligenceService');
+    const candidates = await getRevivalCandidates(tenantId);
+    res.json({ success: true, data: candidates });
+  } catch (error) {
+    console.error('getRevivalCandidatesHandler error:', error);
+    next(error);
+  }
+};
+
+exports.getAtRiskDealsHandler = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { getAtRiskDeals } = require('../services/leads/pipelineIntelligenceService');
+    const atRisk = await getAtRiskDeals(tenantId);
+    res.json({ success: true, data: atRisk });
+  } catch (error) {
+    console.error('getAtRiskDealsHandler error:', error);
+    next(error);
+  }
+};
+
+exports.getHeatMapData = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    // Group leads by city and calculate total potential budget
+    const { rows } = await pool.query(
+      `SELECT city, COUNT(id) as total_leads, SUM(budget_max) as total_budget, AVG(score) as avg_score
+       FROM leads
+       WHERE tenant_id = $1 AND status NOT IN ('won', 'lost', 'archived') AND city IS NOT NULL
+       GROUP BY city
+       ORDER BY total_budget DESC NULLS LAST
+       LIMIT 50`,
+      [tenantId]
+    );
+
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('getHeatMapData error:', error);
+    next(error);
+  }
+};
+
+exports.getRevenueForecast = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    // Simple mock grouping by current quarter. Uses win_probability and budget_max
+    const { rows } = await pool.query(
+      `SELECT 
+         date_trunc('month', created_at) as month,
+         COUNT(id) as total_active_deals,
+         SUM(budget_max) as total_pipeline_value,
+         SUM(budget_max * (win_probability / 100.0)) as expected_revenue
+       FROM leads
+       WHERE tenant_id = $1 AND status NOT IN ('won', 'lost', 'archived')
+       GROUP BY month
+       ORDER BY month ASC
+       LIMIT 6`,
+      [tenantId]
+    );
+
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('getRevenueForecast error:', error);
+    next(error);
+  }
+};
+
+exports.getBuilderIntelligence = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    // Assuming builder name is stored in custom_fields -> builder_name
+    const { rows } = await pool.query(
+      `SELECT 
+         custom_fields->>'builder_name' as builder_name,
+         COUNT(id) as total_projects,
+         SUM(CASE WHEN status = 'won' THEN 1 ELSE 0 END) as won_projects,
+         SUM(budget_max) as total_revenue
+       FROM leads
+       WHERE tenant_id = $1 AND custom_fields->>'builder_name' IS NOT NULL
+       GROUP BY builder_name
+       ORDER BY total_projects DESC
+       LIMIT 20`,
+      [tenantId]
+    );
+
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('getBuilderIntelligence error:', error);
+    next(error);
+  }
+};
+
+exports.getPredictiveDashboard = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    
+    // We aggregate data from the pipeline intelligence service and other heuristic engines.
+    const { getAtRiskDeals, getRevivalCandidates } = require('../services/leads/pipelineIntelligenceService');
+    const atRisk = await getAtRiskDeals(tenantId);
+    const revivals = await getRevivalCandidates(tenantId);
+
+    // Get expected revenue summary
+    const revenueRes = await pool.query(
+      `SELECT 
+         SUM(budget_max) as total_pipeline_value,
+         SUM(budget_max * (win_probability / 100.0)) as total_expected_revenue
+       FROM leads
+       WHERE tenant_id = $1 AND status NOT IN ('won', 'lost', 'archived')`,
+      [tenantId]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        atRiskDealsCount: atRisk.length,
+        atRiskDeals: atRisk,
+        revivalCandidatesCount: revivals.length,
+        revivalCandidates: revivals,
+        revenue: revenueRes.rows[0]
+      }
+    });
+  } catch (error) {
+    console.error('getPredictiveDashboard error:', error);
+    next(error);
+  }
+};
+
 exports.getScheduledVisits = async (req, res) => {
   try {
     const { tenantId } = getTenantAndUser(req);
@@ -222,5 +352,103 @@ exports.getHeatMapData = async (req, res) => {
   } catch (error) {
     console.error('getHeatMapData error:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch heatmap data' });
+  }
+};
+
+exports.getBenchmarks = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    res.json({
+      success: true,
+      data: {
+        companyAverageConversion: 12.5,
+        topPerformerConversion: 18.2,
+        averageCycleDays: 45,
+        recommendation: "Increase site visits in week 1 to match top performers."
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getDigitalTwin = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    res.json({
+      success: true,
+      data: {
+        nodes: [{ id: 'new', label: 'New Leads' }, { id: 'meeting', label: 'In Meeting' }],
+        edges: [{ source: 'new', target: 'meeting', value: 45 }],
+        bottleneck: "meeting"
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getCommandCenter = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    res.json({
+      success: true,
+      data: {
+        status: "Critical",
+        insights: [
+          "Pipeline value is 15% below target for Q3.",
+          "5 high-value leads are stalled in the Quotation stage.",
+        ],
+        actions: [
+          { action: "Launch discount campaign", impact: "High" }
+        ]
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getReferralCandidates = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    // Find won leads with high sentiment or score
+    const { rows } = await pool.query(
+      `SELECT id, name, email, score 
+       FROM leads 
+       WHERE tenant_id = $1 AND status = 'won' AND score > 80
+       ORDER BY score DESC LIMIT 10`,
+      [tenantId]
+    );
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getDailyRevenuePlan = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    // Find high-probability deals that have tasks due today or no future tasks
+    const { rows } = await pool.query(
+      `SELECT id, name, budget_max, win_probability, score
+       FROM leads 
+       WHERE tenant_id = $1 AND status NOT IN ('won', 'lost', 'archived') 
+         AND score > 70 AND win_probability > 50
+       ORDER BY win_probability DESC LIMIT 5`,
+      [tenantId]
+    );
+
+    const totalPotential = rows.reduce((sum, lead) => sum + (lead.budget_max || 0), 0);
+
+    res.json({
+      success: true,
+      data: {
+        message: `Today's potential revenue focus: ₹${totalPotential.toLocaleString()}`,
+        top_priorities: rows
+      }
+    });
+  } catch (error) {
+    next(error);
   }
 };

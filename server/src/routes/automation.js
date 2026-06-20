@@ -10,15 +10,23 @@ router.get('/rules/:id', authenticate, automationController.getRuleById);
 router.patch('/rules/:id', authenticate, automationController.updateRule);
 router.delete('/rules/:id', authenticate, automationController.deleteRule);
 
-const stubHandler = (req, res) => res.status(501).json({ success: false, error: 'Not implemented' });
-
 // Toggle Status
-router.post('/rules/:id/toggle', authenticate, stubHandler);
+router.post('/rules/:id/toggle', authenticate, automationController.toggleRule);
 
 // Analytics
-router.get('/analytics', authenticate, stubHandler);
+router.get('/analytics', authenticate, automationController.getAnalytics);
 
 // Recent Logs/Events
-router.get('/logs', authenticate, stubHandler);
+router.get('/logs', authenticate, automationController.getLogs);
+
+// Phase 2: Workflow & Automation APIs
+// Alias rules as workflows
+router.get('/workflows', authenticate, automationController.getRules);
+router.post('/workflows', authenticate, automationController.createRule);
+
+// Workflow Execution
+router.post('/run', authenticate, automationController.runWorkflow);
+router.get('/history', authenticate, automationController.getHistory);
+router.get('/templates', authenticate, automationController.getAutomationTemplates);
 
 module.exports = router;

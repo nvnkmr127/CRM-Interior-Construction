@@ -18,13 +18,8 @@
   padding: 12px 16px;
   min-width: 300px;
   max-width: 400px;
-  animation: slideIn 200ms ease;
+  animation: toast-slide-in 200ms ease;
   border-left: 4px solid transparent;
-}
-
-@keyframes slideIn {
-  from { transform: translateX(100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
 }
 
 .success { border-left-color: #059669; }

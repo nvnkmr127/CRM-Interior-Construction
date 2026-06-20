@@ -19,14 +19,34 @@ router.get('/lead/:leadId', authenticate, async (req, res, next) => {
     `;
     const result = await pool.query(query, [tenantId, leadId]);
     
-    // For simplicity, returning empty array if no visits
     return success(res, result.rows);
   } catch (error) {
     next(error);
   }
 });
 
-// Create a new site visit
+// Get all site visits for a project
+router.get('/project/:projectId', authenticate, async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const tenantId = req.tenantId || req.user.tenantId;
+
+    const query = `
+      SELECT sv.*, u.name as assignee_name
+      FROM site_visits sv
+      LEFT JOIN users u ON sv.assignee_id = u.id
+      WHERE sv.tenant_id = $1 AND sv.project_id = $2
+      ORDER BY sv.scheduled_at DESC
+    `;
+    const result = await pool.query(query, [tenantId, projectId]);
+    
+    return success(res, result.rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Create a new site visit for a lead
 router.post('/lead/:leadId', authenticate, async (req, res, next) => {
   try {
     const { leadId } = req.params;
@@ -40,6 +60,28 @@ router.post('/lead/:leadId', authenticate, async (req, res, next) => {
     `;
     const result = await pool.query(query, [
       tenantId, leadId, assignee_id || req.user.userId, scheduled_at, notes, JSON.stringify(checklist || [])
+    ]);
+
+    return success(res, result.rows[0], {}, 201);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Create a new site visit for a project
+router.post('/project/:projectId', authenticate, async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const tenantId = req.tenantId || req.user.tenantId;
+    const { scheduled_at, assignee_id, notes, checklist } = req.body;
+
+    const query = `
+      INSERT INTO site_visits (tenant_id, project_id, assignee_id, scheduled_at, notes, checklist)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `;
+    const result = await pool.query(query, [
+      tenantId, projectId, assignee_id || req.user.userId, scheduled_at, notes, JSON.stringify(checklist || [])
     ]);
 
     return success(res, result.rows[0], {}, 201);

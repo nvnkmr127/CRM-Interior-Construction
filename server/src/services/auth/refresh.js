@@ -25,7 +25,15 @@ async function refreshTokens(rawRefreshToken) {
   );
 
   if (sessionResult.rows.length === 0) {
-    throw new Error('SESSION_NOT_FOUND');
+    // Token Reuse Detection
+    // The JWT is valid but the session is not found in the DB.
+    // This means the refresh token was already used or revoked.
+    // To protect against stolen tokens, we immediately revoke ALL sessions for this user.
+    if (decoded && decoded.userId) {
+      await pool.query('DELETE FROM sessions WHERE user_id = $1', [decoded.userId]);
+      console.warn(`[SECURITY] Token reuse detected for user ${decoded.userId}. All sessions revoked.`);
+    }
+    throw new Error('SESSION_NOT_FOUND_REUSE_DETECTED');
   }
 
   const session = sessionResult.rows[0];

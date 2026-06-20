@@ -26,13 +26,16 @@ function fail(res, code, message, status = 400, details = null) {
 /**
  * Standardize paginated API responses.
  */
-function paginate(res, data, total, page, limit) {
-  return success(res, data, {
+function paginate(res, data, total, page, limit, nextCursor = null) {
+  const meta = {
     total,
     page,
     limit,
     totalPages: Math.ceil(total / limit)
-  });
+  };
+  if (nextCursor) meta.nextCursor = nextCursor;
+  
+  return success(res, data, meta);
 }
 
 module.exports = {

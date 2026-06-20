@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../store/authContext';
-import api from '../../api/axios';
+import { useAuth } from '../../../store/authContext';
+import api from '../../../api/axios';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid
 } from 'recharts';
-import { Skeleton } from '../../components/ui';
-import ErrorBoundary from '../../components/ErrorBoundary';
+import { Skeleton } from '../../../components/ui';
+import ErrorBoundary from '../../../components/ErrorBoundary';
 import styles from '../DashboardPage.module.css';
 
-import { LeadAgingWidget } from '../../components/dashboard/widgets/LeadAgingWidget';
-import { AIPriorityLeadsWidget } from '../../components/dashboard/widgets/AIPriorityLeadsWidget';
-import { OverdueFollowUpWidget } from '../../components/dashboard/widgets/OverdueFollowUpWidget';
-import { RevenuePipelineWidget } from '../../components/dashboard/widgets/RevenuePipelineWidget';
+import { LeadAgingWidget } from '../../../components/dashboard/widgets/LeadAgingWidget';
+import { AIPriorityLeadsWidget } from '../../../components/dashboard/widgets/AIPriorityLeadsWidget';
+import { OverdueFollowUpWidget } from '../../../components/dashboard/widgets/OverdueFollowUpWidget';
+import { RevenuePipelineWidget } from '../../../components/dashboard/widgets/RevenuePipelineWidget';
 
 /* ── Static sparkline data (one series per KPI) ───────────────────────── */
 const sparkLeads   = [22,28,31,35,38,36,40,39,41,40,42,42].map((v,i) => ({ i, v }));

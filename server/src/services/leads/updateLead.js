@@ -69,11 +69,18 @@ async function updateLead({ tenantId, userId, leadId, data }) {
     delete updateData.assigneeId;
   }
 
-  // 3. Update lead
+  // 3. Calculate new AI score based on merged leadState
+  const { calculateAIScore } = require('./scoreLeadService');
+  const aiScoreObj = calculateAIScore(leadState);
+  
+  updateData.win_probability = aiScoreObj.win_probability;
+  updateData.ai_score_breakdown = aiScoreObj.ai_score_breakdown;
+
+  // 4. Update lead
   const updatedLead = await leadRepository.updateLead(tenantId, leadId, updateData);
 
-  // 3b. Recalculate score
-  const { getAndScoreLead } = require('../scoreLeadService');
+  // 5. Recalculate rules-based score
+  const { getAndScoreLead } = require('./scoreLeadService');
   const newScore = await getAndScoreLead(tenantId, updatedLead);
   let finalLead = updatedLead;
   if (newScore !== updatedLead.score) {

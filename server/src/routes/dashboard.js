@@ -1,89 +1,23 @@
 const express = require('express');
 const authenticate = require('../middleware/authenticate');
 const { success, fail } = require('../utils/response');
-const pool = require('../config/db'); // or '../db/pool' depending on what's available
+const db = require('../config/db');
+const readPool = db.readPool || db;
+const analyticsService = require('../services/analytics/analyticsService');
+const { cacheResponse } = require('../middleware/cache');
 
 const router = express.Router();
 
 router.use(authenticate);
 
-router.get('/stats', async (req, res) => {
+// Cache stats for 5 minutes
+router.get('/stats', cacheResponse(300), async (req, res) => {
   const tenantId = req.tenantId; // or req.user.tenantId depending on how authenticate works
   const userId = req.user.id;
 
   try {
-    const [
-      activeLeadsRes,
-      wonThisMonthRes,
-      projectsRes,
-      tasksRes,
-      prevWeekLeadsRes,
-      targetsRes
-    ] = await Promise.all([
-      pool.query(`SELECT COUNT(*) FROM leads WHERE tenant_id=$1 AND status='active' AND deleted_at IS NULL`, [tenantId]),
-      pool.query(`
-        SELECT COUNT(*), COALESCE(SUM(l.contract_value),0) as won_value
-        FROM leads l
-        JOIN lead_stages ls ON ls.id = l.stage_id
-        WHERE l.tenant_id=$1 AND ls.is_won=true
-        AND l.updated_at >= date_trunc('month', NOW())
-      `, [tenantId]),
-      pool.query(`
-        SELECT
-          COUNT(*) FILTER (WHERE status='active') as active,
-          COUNT(*) FILTER (WHERE status='active' AND target_date < NOW()) as overdue
-        FROM projects WHERE tenant_id=$1 AND deleted_at IS NULL
-      `, [tenantId]),
-      pool.query(`
-        SELECT
-          COUNT(*) FILTER (WHERE due_date=CURRENT_DATE) as due_today,
-          COUNT(*) FILTER (WHERE due_date < CURRENT_DATE AND status!='done') as overdue
-        FROM tasks
-        WHERE tenant_id=$1 AND assignee_id=$2 AND deleted_at IS NULL AND status!='done'
-      `, [tenantId, userId]),
-      pool.query(`
-        SELECT COUNT(*) FROM leads
-        WHERE tenant_id=$1 AND status='active' AND deleted_at IS NULL
-        AND created_at >= NOW() - INTERVAL '14 days'
-        AND created_at < NOW() - INTERVAL '7 days'
-      `, [tenantId]),
-      pool.query(`
-        SELECT target_revenue, target_leads 
-        FROM sales_targets 
-        WHERE tenant_id=$1 AND user_id=$2 AND target_month = date_trunc('month', CURRENT_DATE)
-      `, [tenantId, userId])
-    ]);
+    const data = await analyticsService.getGlobalStats(tenantId, userId);
 
-    const activeCount = parseInt(activeLeadsRes.rows[0].count, 10);
-    const prevWeekCount = parseInt(prevWeekLeadsRes.rows[0].count, 10);
-    const trendDiff = activeCount - prevWeekCount;
-    const trend = trendDiff > 0 ? `+${trendDiff}` : `${trendDiff}`;
-    
-    const targets = targetsRes && targetsRes.rows.length > 0 ? targetsRes.rows[0] : { target_revenue: 0, target_leads: 0 };
-
-    const data = {
-      activeLeads: {
-        count: activeCount,
-        prevWeekCount,
-        trend
-      },
-      wonThisMonth: {
-        count: parseInt(wonThisMonthRes.rows[0].count, 10),
-        value: parseFloat(wonThisMonthRes.rows[0].won_value)
-      },
-      activeProjects: {
-        count: parseInt(projectsRes.rows[0].active, 10) || 0,
-        overdueCount: parseInt(projectsRes.rows[0].overdue, 10) || 0
-      },
-      tasksDueToday: {
-        count: parseInt(tasksRes.rows[0].due_today, 10) || 0,
-        overdueCount: parseInt(tasksRes.rows[0].overdue, 10) || 0
-      },
-      salesTargets: {
-        targetRevenue: parseFloat(targets.target_revenue) || 0,
-        targetLeads: parseInt(targets.target_leads, 10) || 0
-      }
-    };
 
     return success(res, data);
   } catch (error) {
@@ -96,7 +30,7 @@ router.get('/activity', async (req, res) => {
   const limit = parseInt(req.query.limit, 10) || 10;
 
   try {
-    const { rows } = await pool.query(`
+    const { rows } = await readPool.query(`
       SELECT al.*, u.name as user_name, u.avatar_url
       FROM audit_logs al
       LEFT JOIN users u ON u.id = al.user_id
@@ -119,11 +53,12 @@ router.get('/activity', async (req, res) => {
   }
 });
 
-router.get('/pipeline', async (req, res) => {
+// Cache pipeline for 10 minutes
+router.get('/pipeline', cacheResponse(600), async (req, res) => {
   const tenantId = req.tenantId;
 
   try {
-    const { rows } = await pool.query(`
+    const { rows } = await readPool.query(`
       SELECT ls.id, ls.name, ls.color, ls.sort_order, COUNT(l.id) as count
       FROM lead_stages ls
       LEFT JOIN leads l ON l.stage_id=ls.id AND l.deleted_at IS NULL AND l.tenant_id=$1
@@ -143,7 +78,7 @@ router.get('/my-tasks', async (req, res) => {
   const limit = parseInt(req.query.limit, 10) || 7;
 
   try {
-    const { rows } = await pool.query(`
+    const { rows } = await readPool.query(`
       SELECT t.*, p.name as project_name, p.id as project_id
       FROM tasks t
       JOIN projects p ON p.id=t.project_id
@@ -155,6 +90,76 @@ router.get('/my-tasks', async (req, res) => {
     return success(res, rows);
   } catch (error) {
     res.status(500).json(fail('My tasks fetch failed'));
+  }
+});
+
+// Phase 1: Role-Specific Dashboards
+router.get('/sales', cacheResponse(300), async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId || (req.user && req.user.tenantId);
+    const userId = req.user && (req.user.id || req.user.userId);
+    
+    // Aggregate everything for a sales rep in one request
+    const data = await analyticsService.getSalesDashboard(tenantId, userId);
+    
+    // Using responseFormatter via throwing to res.json directly
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/manager', cacheResponse(300), async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId || (req.user && req.user.tenantId);
+    
+    // Aggregate everything for a manager in one request
+    const data = await analyticsService.getManagerDashboard(tenantId);
+    
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/ceo', cacheResponse(300), async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId || (req.user && req.user.tenantId);
+    const data = await analyticsService.getCeoDashboard(tenantId);
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/designer', cacheResponse(300), async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId || (req.user && req.user.tenantId);
+    const userId = req.user && (req.user.id || req.user.userId);
+    const data = await analyticsService.getDesignerDashboard(tenantId, userId);
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/marketing', cacheResponse(300), async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId || (req.user && req.user.tenantId);
+    const data = await analyticsService.getMarketingDashboard(tenantId);
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/operations', cacheResponse(300), async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId || (req.user && req.user.tenantId);
+    const data = await analyticsService.getOperationsDashboard(tenantId);
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
   }
 });
 

@@ -89,6 +89,18 @@ router.post('/upload-url', authorize('projects:manage'), async (req, res, next) 
 router.post('/register', authorize('projects:manage'), async (req, res, next) => {
   try {
     const data = registerSchema.parse(req.body);
+
+    // V2 Security: Validate File Magic Number against claimed MimeType
+    const storage = require('../utils/storage');
+    if (data.mimeType) {
+      const isValid = await storage.validateMagicNumber(data.storageKey, data.mimeType);
+      if (!isValid) {
+        // If invalid, delete the malicious file and reject the registration
+        await storage.deleteFile(data.storageKey).catch(e => console.error(e));
+        return fail(res, 'SECURITY_REJECTED', 'Malware scan failed: File signature does not match claimed MIME type.', 403);
+      }
+    }
+
     const doc = await registerDocument({
       tenantId: req.tenantId,
       projectId: req.params.projectId,
