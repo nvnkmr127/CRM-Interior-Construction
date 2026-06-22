@@ -13,7 +13,7 @@ export default function LeadForm({ lead, onSave, onClose }) {
   const [step, setStep] = useState(1);
   const totalSteps = 3;
   
-  const { values, errors, touched, handleChange, handleBlur, validateAll, isValid, setValues } = useForm({
+  const { values, errors, touched, handleChange, handleBlur, validateAll, isValid } = useForm({
     name: lead?.name || '',
     phone: lead?.phone || '',
     email: lead?.email || '',
@@ -53,10 +53,10 @@ export default function LeadForm({ lead, onSave, onClose }) {
       setUsers(uRes.data?.data || []);
       
       if (!isEdit && fetchedStages.length > 0 && !values.stageId) {
-        setValues(prev => ({ ...prev, stageId: fetchedStages[0].id }));
+        handleChange('stageId', fetchedStages[0].id);
       }
     });
-  }, [isEdit, values.stageId, setValues]);
+  }, [isEdit, values.stageId, handleChange]);
 
   const onChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -164,7 +164,7 @@ export default function LeadForm({ lead, onSave, onClose }) {
               
               <div>
                 <label style={{fontSize: 'var(--text-sm)', fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)'}}>Source</label>
-                <select name="source" value={values.source} onChange={onChange} style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)'}}>
+                <select name="source" value={values.source} onChange={onChange} style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--color-surface)', color: '#fff'}}>
                   <option value="">Select source</option>
                   <option value="Facebook">Facebook</option>
                   <option value="IndiaMART">IndiaMART</option>
@@ -182,7 +182,7 @@ export default function LeadForm({ lead, onSave, onClose }) {
             <div className="space-y-4 animate-fadeIn">
               <div>
                 <label style={{fontSize: 'var(--text-sm)', fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)'}}>Stage</label>
-                <select name="stageId" value={values.stageId} onChange={onChange} style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)'}}>
+                <select name="stageId" value={values.stageId} onChange={onChange} style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--color-surface)', color: 'var(--color-text)'}}>
                   <option value="">Select stage</option>
                   {stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
@@ -190,7 +190,7 @@ export default function LeadForm({ lead, onSave, onClose }) {
 
               <div>
                 <label style={{fontSize: 'var(--text-sm)', fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)'}}>Assignee</label>
-                <select name="assigneeId" value={values.assigneeId} onChange={onChange} style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)'}}>
+                <select name="assigneeId" value={values.assigneeId} onChange={onChange} style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--color-surface)', color: 'var(--color-text)'}}>
                   <option value="">Select user</option>
                   {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
@@ -200,7 +200,7 @@ export default function LeadForm({ lead, onSave, onClose }) {
                 <label style={{fontSize: 'var(--text-sm)', fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)'}}>Notes</label>
                 <textarea 
                   name="notes" value={values.notes} onChange={onChange}
-                  style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', minHeight: '80px', fontFamily: 'inherit'}}
+                  style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', minHeight: '80px', fontFamily: 'inherit', backgroundColor: 'var(--color-surface)', color: 'var(--color-text)'}}
                   placeholder="Any initial notes about the lead..."
                 />
               </div>
@@ -216,7 +216,7 @@ export default function LeadForm({ lead, onSave, onClose }) {
                 
                 <div>
                   <label style={{fontSize: 'var(--text-sm)', fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)'}}>House Status</label>
-                  <select name="house_status" value={values.house_status} onChange={onChange} style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)'}}>
+                  <select name="house_status" value={values.house_status} onChange={onChange} style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--color-surface)', color: 'var(--color-text)'}}>
                     <option value="">Select status</option>
                     <option value="Under Construction">Under Construction</option>
                     <option value="Ready to Move">Ready to Move</option>

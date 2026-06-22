@@ -31,7 +31,7 @@ const getDates = (req) => {
 router.get('/leads/summary', async (req, res) => {
   try {
     const { from, to } = getDates(req);
-    const tenantFilter = ''; 
+    const tenantId = req.tenantId;
 
     const query = `
       SELECT 
@@ -46,9 +46,9 @@ router.get('/leads/summary', async (req, res) => {
         AVG(EXTRACT(EPOCH FROM (l.updated_at - l.created_at))/86400) FILTER (WHERE ls.is_won = true) as avg_time_to_close_days
       FROM leads l
       LEFT JOIN lead_stages ls ON l.stage_id = ls.id
-      WHERE l.created_at BETWEEN $1 AND $2
+      WHERE l.tenant_id = $1 AND l.created_at BETWEEN $2 AND $3
     `;
-    const result = await pool.query(query, [from.toISOString(), to.toISOString()]);
+    const result = await pool.query(query, [tenantId, from.toISOString(), to.toISOString()]);
     const row = result.rows[0];
 
     const total = parseInt(row.total_leads, 10) || 0;
@@ -77,15 +77,16 @@ router.get('/leads/summary', async (req, res) => {
 router.get('/leads/funnel', async (req, res) => {
   try {
     const { from, to } = getDates(req);
+    const tenantId = req.tenantId;
     const query = `
       SELECT ls.name as stage, COUNT(l.id) as count 
       FROM leads l
       LEFT JOIN lead_stages ls ON l.stage_id = ls.id
-      WHERE l.created_at BETWEEN $1 AND $2 AND ls.name IS NOT NULL
+      WHERE l.tenant_id = $1 AND l.created_at BETWEEN $2 AND $3 AND ls.name IS NOT NULL
       GROUP BY ls.name, ls.sort_order
       ORDER BY ls.sort_order ASC
     `;
-    const result = await pool.query(query, [from.toISOString(), to.toISOString()]);
+    const result = await pool.query(query, [tenantId, from.toISOString(), to.toISOString()]);
     
     let prevCount = null;
     const funnel = result.rows.map(r => {
@@ -108,6 +109,7 @@ router.get('/leads/funnel', async (req, res) => {
 router.get('/leads/by_source', async (req, res) => {
   try {
     const { from, to } = getDates(req);
+    const tenantId = req.tenantId;
     const query = `
       SELECT 
         l.source, 
@@ -116,11 +118,11 @@ router.get('/leads/by_source', async (req, res) => {
         0 as total_value
       FROM leads l
       LEFT JOIN lead_stages ls ON l.stage_id = ls.id
-      WHERE l.created_at BETWEEN $1 AND $2 AND l.source IS NOT NULL
+      WHERE l.tenant_id = $1 AND l.created_at BETWEEN $2 AND $3 AND l.source IS NOT NULL
       GROUP BY l.source
       ORDER BY count DESC
     `;
-    const result = await pool.query(query, [from.toISOString(), to.toISOString()]);
+    const result = await pool.query(query, [tenantId, from.toISOString(), to.toISOString()]);
     
     const data = result.rows.map(r => {
       const count = parseInt(r.count, 10);
@@ -144,6 +146,7 @@ router.get('/leads/by_source', async (req, res) => {
 router.get('/leads/rep_performance', async (req, res) => {
   try {
     const { from, to } = getDates(req);
+    const tenantId = req.tenantId;
     const query = `
       SELECT 
         u.id as rep_id, 
@@ -154,21 +157,21 @@ router.get('/leads/rep_performance', async (req, res) => {
         0 as contacted_within_sla
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.id
-      LEFT JOIN leads l ON l.assignee_id = u.id AND l.created_at BETWEEN $1 AND $2
+      LEFT JOIN leads l ON l.assignee_id = u.id AND l.tenant_id = $1 AND l.created_at BETWEEN $2 AND $3
       LEFT JOIN lead_stages ls ON l.stage_id = ls.id
-      WHERE r.name = 'sales_executive' OR r.name = 'sales_rep'
+      WHERE u.tenant_id = $1 AND (r.name = 'sales_executive' OR r.name = 'sales_rep')
       GROUP BY u.id
       ORDER BY won DESC
     `;
-    const result = await pool.query(query, [from.toISOString(), to.toISOString()]);
+    const result = await pool.query(query, [tenantId, from.toISOString(), to.toISOString()]);
     
     const activitiesQuery = `
       SELECT user_id as rep_id, type, COUNT(id) as act_count
       FROM activities
-      WHERE created_at BETWEEN $1 AND $2
+      WHERE tenant_id = $1 AND created_at BETWEEN $2 AND $3
       GROUP BY user_id, type
     `;
-    const actResult = await pool.query(activitiesQuery, [from.toISOString(), to.toISOString()]);
+    const actResult = await pool.query(activitiesQuery, [tenantId, from.toISOString(), to.toISOString()]);
     
     const activitiesMap = {};
     actResult.rows.forEach(r => {
@@ -203,14 +206,15 @@ router.get('/leads/rep_performance', async (req, res) => {
 router.get('/leads/lost_reasons', async (req, res) => {
   try {
     const { from, to } = getDates(req);
+    const tenantId = req.tenantId;
     const query = `
       SELECT 'No Reason Given' as reason, COUNT(l.id) as count
       FROM leads l
       LEFT JOIN lead_stages ls ON l.stage_id = ls.id
-      WHERE ls.is_lost = true AND l.created_at BETWEEN $1 AND $2
+      WHERE l.tenant_id = $1 AND ls.is_lost = true AND l.created_at BETWEEN $2 AND $3
       HAVING COUNT(l.id) > 0
     `;
-    const result = await pool.query(query, [from.toISOString(), to.toISOString()]);
+    const result = await pool.query(query, [tenantId, from.toISOString(), to.toISOString()]);
     
     const totalLost = result.rows.reduce((sum, r) => sum + parseInt(r.count, 10), 0);
     const data = result.rows.map(r => {

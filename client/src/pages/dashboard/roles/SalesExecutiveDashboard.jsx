@@ -79,6 +79,7 @@ function Spark({ data, color }) {
 
 /* ── Custom pie legend ────────────────────────────────────────────────── */
 function PipeLegend({ pipeline }) {
+  if (!pipeline) return null;
   const total = pipeline.reduce((s, p) => s + p.count, 0);
   return (
     <div className={styles.pipeLegend}>
@@ -87,7 +88,7 @@ function PipeLegend({ pipeline }) {
           <span className={styles.pipeLegendDot} style={{ background: p.color }} />
           <span className={styles.pipeLegendName}>{p.name}</span>
           <span className={styles.pipeLegendCount}>{p.count}</span>
-          <span className={styles.pipeLegendPct}>{Math.round((p.count / total) * 100)}%</span>
+          <span className={styles.pipeLegendPct}>{total > 0 ? Math.round((p.count / total) * 100) : 0}%</span>
         </div>
       ))}
     </div>

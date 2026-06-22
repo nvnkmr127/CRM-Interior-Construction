@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Badge } from '../ui';
+import { Button, Badge, Input, Select } from '../ui';
 import { useToast } from '../../store/toastContext';
 import api from '../../api/axios';
 
@@ -66,34 +66,43 @@ export default function StakeholdersTab({ leadId }) {
       {isAdding && (
         <form onSubmit={handleAdd} className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
-              <input type="text" className="w-full border rounded p-2 text-sm" value={newContact.name} onChange={e => setNewContact({...newContact, name: e.target.value})} required />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Role (e.g. Spouse, Architect)</label>
-              <input type="text" className="w-full border rounded p-2 text-sm" value={newContact.role} onChange={e => setNewContact({...newContact, role: e.target.value})} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Phone</label>
-              <input type="text" className="w-full border rounded p-2 text-sm" value={newContact.phone} onChange={e => setNewContact({...newContact, phone: e.target.value})} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
-              <input type="email" className="w-full border rounded p-2 text-sm" value={newContact.email} onChange={e => setNewContact({...newContact, email: e.target.value})} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Authority</label>
-              <select className="w-full border rounded p-2 text-sm" value={newContact.decision_authority} onChange={e => setNewContact({...newContact, decision_authority: e.target.value})}>
-                <option value="Primary">Primary Decision Maker</option>
-                <option value="Influencer">Influencer</option>
-                <option value="Consultant">Consultant</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
-              <input type="text" className="w-full border rounded p-2 text-sm" value={newContact.relationship_notes} onChange={e => setNewContact({...newContact, relationship_notes: e.target.value})} />
-            </div>
+            <Input 
+              label="Name" 
+              value={newContact.name} 
+              onChange={e => setNewContact({...newContact, name: e.target.value})} 
+              required 
+            />
+            <Input 
+              label="Role (e.g. Spouse, Architect)" 
+              value={newContact.role} 
+              onChange={e => setNewContact({...newContact, role: e.target.value})} 
+            />
+            <Input 
+              label="Phone" 
+              value={newContact.phone} 
+              onChange={e => setNewContact({...newContact, phone: e.target.value})} 
+            />
+            <Input 
+              type="email" 
+              label="Email" 
+              value={newContact.email} 
+              onChange={e => setNewContact({...newContact, email: e.target.value})} 
+            />
+            <Select 
+              label="Authority" 
+              value={newContact.decision_authority} 
+              onChange={val => setNewContact({...newContact, decision_authority: val})}
+              options={[
+                { label: 'Primary Decision Maker', value: 'Primary' },
+                { label: 'Influencer', value: 'Influencer' },
+                { label: 'Consultant', value: 'Consultant' }
+              ]}
+            />
+            <Input 
+              label="Notes" 
+              value={newContact.relationship_notes} 
+              onChange={e => setNewContact({...newContact, relationship_notes: e.target.value})} 
+            />
           </div>
           <div className="flex justify-end">
             <Button variant="primary" size="sm" type="submit">Save Stakeholder</Button>

@@ -6,7 +6,7 @@ DECLARE
     v_sys_user_id UUID;
 BEGIN
     SELECT id INTO v_tenant_id FROM tenants LIMIT 1;
-    SELECT id INTO v_sys_user_id FROM users WHERE role = 'admin' AND tenant_id = v_tenant_id LIMIT 1;
+    SELECT id INTO v_sys_user_id FROM users WHERE email = 'admin@demo.com' AND tenant_id = v_tenant_id LIMIT 1;
     
     IF v_tenant_id IS NOT NULL THEN
         DELETE FROM automation_rules WHERE tenant_id = v_tenant_id;

@@ -11,5 +11,5 @@ CREATE TABLE IF NOT EXISTS lead_followups (
   notes       TEXT,
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE INDEX idx_lead_followups_lead_id ON lead_followups(lead_id);
-CREATE INDEX idx_lead_followups_due_at ON lead_followups(due_at) WHERE is_done = FALSE;
+CREATE INDEX IF NOT EXISTS idx_lead_followups_lead_id ON lead_followups(lead_id);
+CREATE INDEX IF NOT EXISTS idx_lead_followups_due_at ON lead_followups(due_at) WHERE is_done = FALSE;

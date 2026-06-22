@@ -12,7 +12,7 @@ export default function FunnelChart({ data }) {
       const { stage, count, drop_off_rate } = payload[0].payload;
       return (
         <div className={styles.tooltip}>
-          <p className={styles.tooltipTitle}>{stage.replace('_', ' ')}</p>
+          <p className={styles.tooltipTitle}>{stage ? stage.toString().replace(/_/g, ' ') : ''}</p>
           <p className={styles.tooltipText}>Leads: {count}</p>
           {drop_off_rate > 0 && <p className={styles.tooltipDanger}>Drop-off: {drop_off_rate}%</p>}
         </div>
@@ -33,7 +33,7 @@ export default function FunnelChart({ data }) {
               type="category" 
               axisLine={false} 
               tickLine={false} 
-              tickFormatter={(v) => v.replace(/_/g, ' ')} 
+              tickFormatter={(v) => v ? v.toString().replace(/_/g, ' ') : ''} 
               width={160} 
               tick={{ fontSize: 13, textTransform: 'capitalize', fill: 'var(--text)' }}
             />

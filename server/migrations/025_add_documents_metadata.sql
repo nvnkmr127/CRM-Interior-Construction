@@ -1,1 +1,1 @@
-ALTER TABLE documents ADD COLUMN metadata TEXT DEFAULT '{}';
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS metadata TEXT DEFAULT '{}';

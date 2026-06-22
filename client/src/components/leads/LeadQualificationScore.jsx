@@ -36,20 +36,20 @@ export default function LeadQualificationScore({ lead }) {
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
         {/* Win Probability */}
-        <div className={`p-3 rounded-md border flex flex-col items-center justify-center ${getColorByScore(win_probability)}`}>
-          <span className="text-xs uppercase font-semibold opacity-80 mb-1">Win Probability</span>
+        <div className={`p-3 rounded-md border flex flex-col items-center justify-center text-center min-w-0 overflow-hidden break-words ${getColorByScore(win_probability)}`}>
+          <span className="text-xs uppercase font-semibold opacity-80 mb-1 whitespace-normal break-words">Win Probability</span>
           <span className="text-2xl font-bold">{win_probability}%</span>
         </div>
 
         {/* Buying Intent */}
-        <div className={`p-3 rounded-md border flex flex-col items-center justify-center ${getColorByScore(buyingIntent)}`}>
-          <span className="text-xs uppercase font-semibold opacity-80 mb-1">Buying Intent</span>
+        <div className={`p-3 rounded-md border flex flex-col items-center justify-center text-center min-w-0 overflow-hidden break-words ${getColorByScore(buyingIntent)}`}>
+          <span className="text-xs uppercase font-semibold opacity-80 mb-1 whitespace-normal break-words">Buying Intent</span>
           <span className="text-2xl font-bold">{buyingIntent}%</span>
         </div>
 
         {/* Budget Confidence */}
-        <div className={`p-3 rounded-md border flex flex-col items-center justify-center ${getColorByScore(budgetConfidence)}`}>
-          <span className="text-xs uppercase font-semibold opacity-80 mb-1">Budget Confidence</span>
+        <div className={`p-3 rounded-md border flex flex-col items-center justify-center text-center min-w-0 overflow-hidden break-words ${getColorByScore(budgetConfidence)}`}>
+          <span className="text-xs uppercase font-semibold opacity-80 mb-1 whitespace-normal break-words leading-tight">Budget Confidence</span>
           <span className="text-2xl font-bold">{budgetConfidence}%</span>
         </div>
       </div>

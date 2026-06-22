@@ -1,5 +1,5 @@
-.btn { position:relative; display:flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:50%; border:none; background:transparent; cursor:pointer; color:var(--text); transition:all 0.2s ease; }
-.btn:hover { background:rgba(0,0,0,0.04); color:var(--text-h); transform: scale(1.05); }
+.btn { position:relative; display:flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:50%; border:none; background:transparent; cursor:pointer; color:var(--color-text-secondary); transition:all 0.2s ease; }
+.btn:hover { background:rgba(0,0,0,0.04); color:var(--color-text); transform: scale(1.05); }
 .badge {
   position:absolute; top:2px; right:2px;
   background:#ef4444; color:white;
@@ -40,7 +40,7 @@
 .header { display:flex; justify-content:space-between; align-items:center; padding:20px; border-bottom:1px solid rgba(0,0,0,0.05); }
 :global(.dark) .header { border-bottom:1px solid rgba(255,255,255,0.05); }
 
-.headerTitle { font-size:16px; font-weight:700; color:var(--text-h); margin:0; }
+.headerTitle { font-size:16px; font-weight:700; color:var(--color-text-secondary); margin:0; }
 .markAllBtn { font-size:13px; color:var(--accent); background:none; border:none; cursor:pointer; font-weight:600; padding: 4px 8px; border-radius: 6px; transition: background 0.2s; }
 .markAllBtn:hover { background: var(--accent-bg); }
 
@@ -58,9 +58,9 @@
 .dot.unread { background:var(--accent); box-shadow: 0 0 0 2px var(--accent-bg); }
 .dot.read { background:var(--border); }
 
-.msg { font-size:14px; color:var(--text-h); line-height:1.4; margin-bottom: 2px; }
-.time { font-size:12px; color:var(--text); margin-top:4px; font-weight: 500; }
-.empty { padding: 48px 32px; text-align: center; color: var(--text); font-size: 14px; display:flex; flex-direction:column; align-items:center; gap: 12px; }
+.msg { font-size:14px; color:var(--color-text); line-height:1.4; margin-bottom: 2px; }
+.time { font-size:12px; color:var(--color-text-secondary); margin-top:4px; font-weight: 500; }
+.empty { padding: 48px 32px; text-align: center; color: var(--color-text-secondary); font-size: 14px; display:flex; flex-direction:column; align-items:center; gap: 12px; }
 .empty svg { opacity: 0.5; }
 
 .footer { padding:16px; text-align:center; border-top:1px solid rgba(0,0,0,0.05); font-size:13px; font-weight: 600; background: rgba(0,0,0,0.01); }

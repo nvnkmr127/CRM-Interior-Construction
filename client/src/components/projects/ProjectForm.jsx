@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import styles from './ProjectForm.module.css'
-import { Modal, Input, Select, Button } from '../ui'
+import { Modal, Input, Select, Button, Textarea } from '../ui'
 import { useToast } from '../../store/toastContext'
 import { createProject, updateProject } from '../../api/projects'
 
@@ -194,14 +194,12 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
 
         {/* Full width row spanning */}
         <div className={styles.fullWidth}>
-          <div style={{display:'flex', flexDirection:'column', gap:4}}>
-            <label style={{fontSize:'var(--text-sm)', fontWeight:500}}>Site Address</label>
-            <textarea 
-              style={{width:'100%', minHeight:60, padding:8, borderRadius:4, border:'1px solid var(--color-border)', outline:'none', fontFamily:'inherit'}}
-              value={formData.siteAddress}
-              onChange={e => setFormData({...formData, siteAddress: e.target.value})}
-            />
-          </div>
+          <Textarea 
+            label="Site Address"
+            value={formData.siteAddress}
+            onChange={e => setFormData({...formData, siteAddress: e.target.value})}
+            rows={3}
+          />
         </div>
 
         <div className={styles.fullWidth} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>

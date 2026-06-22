@@ -93,6 +93,10 @@
   background: var(--color-bg-subtle, #fafafa);
 }
 
+.tr:hover .td {
+  color: #000000;
+}
+
 .td {
   padding: var(--space-3) var(--space-4);
   color: var(--text-h);
