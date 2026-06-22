@@ -19,6 +19,7 @@
 .md  { max-width: 560px; }
 .lg  { max-width: 720px; }
 .xl  { max-width: 920px; }
+.2xl { max-width: 1125px; }
 .header {
   display: flex; align-items: center; justify-content: space-between;
   padding: var(--space-5) var(--space-6);

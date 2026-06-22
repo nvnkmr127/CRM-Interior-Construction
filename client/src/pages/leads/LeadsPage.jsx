@@ -12,6 +12,7 @@ import LeadTable from '../../components/leads/LeadTable';
 import LeadMap from '../../components/leads/LeadMap';
 import LeadDashboard from '../../components/leads/LeadDashboard';
 import LeadCalendar from '../../components/leads/LeadCalendar';
+import LeadImportModal from '../../components/leads/LeadImportModal';
 import { useLeads } from '../../hooks/useLeads';
 import styles from './LeadsPage.module.css';
 
@@ -22,10 +23,11 @@ export default function LeadsPage() {
   const [sourceFilter, setSourceFilter] = useState('All Sources');
   const [scoreRange, setScoreRange] = useState('all');
   const [sortBy, setSortBy] = useState('latest');
-  const [view, setView] = useState('dashboard');
+  const [view, setView] = useState('list');
   const [selectedLeadId, setSelectedLeadId] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [stageMenuLeadId, setStageMenuLeadId] = useState(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [createdFrom, setCreatedFrom] = useState('');
   const [createdTo, setCreatedTo] = useState('');
@@ -92,10 +94,15 @@ export default function LeadsPage() {
 
   const handleExport = async () => {
     try {
+      if (import.meta.env.DEV && localStorage.getItem('mockSession')) {
+        toast.success('Export simulated in mock session');
+        return;
+      }
       const params = new URLSearchParams(filters);
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000/api'}/leads/export?${params}`, {
         credentials: 'include'
       });
+      if (!response.ok) throw new Error('Export failed');
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -108,22 +115,7 @@ export default function LeadsPage() {
     }
   };
 
-  const handleImport = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const csv = await file.text();
-    try {
-      const res = await api.post('/leads/import', { csv });
-      if (res.data.success) {
-        const { created, skipped } = res.data.data;
-        toast.success(`Imported ${created} leads${skipped > 0 ? `, ${skipped} skipped` : ''}`);
-        refetch();
-      }
-    } catch {
-      toast.error('Import failed');
-    }
-    e.target.value = '';
-  };
+  // handleImport is now handled inside LeadImportModal
 
   return (
     <div className={styles.page}>
@@ -193,9 +185,8 @@ export default function LeadsPage() {
             )}
           </div>
 
-          <Button variant="outline" onClick={handleExport}>&#8595; Export</Button>
-          <Button variant="outline" onClick={() => document.getElementById('csv-import-input').click()}>&#8593; Import</Button>
-          <input id="csv-import-input" type="file" accept=".csv" style={{display:'none'}} onChange={handleImport} />
+          <Button variant="outline" onClick={handleExport}>&#8593; Export</Button>
+          <Button variant="outline" onClick={() => setIsImportModalOpen(true)}>&#8595; Import</Button>
           <Button variant="primary" onClick={() => setIsFormOpen(true)}>+ New Lead</Button>
         </div>
       </div>
@@ -270,6 +261,13 @@ export default function LeadsPage() {
         <LeadForm 
           onClose={() => setIsFormOpen(false)} 
           onSave={() => refetch()}
+        />
+      )}
+      {isImportModalOpen && (
+        <LeadImportModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          onImportSuccess={refetch}
         />
       )}
     </div>

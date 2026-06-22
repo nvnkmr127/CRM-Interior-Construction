@@ -14,6 +14,8 @@
   align-items: flex-start;
   justify-content: space-between;
   margin-bottom: var(--space-4);
+  gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
 .title {
@@ -30,6 +32,13 @@
   margin: 0;
 }
 
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
 /* ─── Stats Bar ───────────────────────────────────────────── */
 .statsBar {
   display: flex;
@@ -42,6 +51,7 @@
   border-radius: var(--radius-lg);
   margin-bottom: var(--space-4);
   box-shadow: var(--shadow-sm);
+  flex-wrap: wrap;
 }
 
 .stat {
@@ -49,6 +59,7 @@
   flex-direction: column;
   gap: 3px;
   min-width: 0;
+  flex: 1 1 100px;
 }
 
 .statLabel {
@@ -74,6 +85,15 @@
   flex-shrink: 0;
 }
 
+@media (max-width: 768px) {
+  .statSep {
+    display: none;
+  }
+  .statsBar {
+    gap: var(--space-4);
+  }
+}
+
 /* ─── Filter Row ──────────────────────────────────────────── */
 .filterRow {
   display: flex;
@@ -92,6 +112,8 @@
   color: var(--color-text);
   outline: none;
   width: 220px;
+  max-width: 100%;
+  flex: 1 1 200px;
   transition: border-color 0.15s;
 }
 
@@ -114,6 +136,7 @@
   cursor: pointer;
   outline: none;
   width: auto;
+  flex: 1 1 120px;
   transition: border-color 0.15s;
 }
 

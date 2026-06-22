@@ -25,7 +25,7 @@ export default function LostReasonsChart({ data }) {
     <div className={styles.container}>
       <h3 className={styles.title}>Lost Reasons Breakdown</h3>
       <div className={styles.chartWrapper}>
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
           <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
             <XAxis type="number" hide />
             <YAxis dataKey="reason" type="category" axisLine={false} tickLine={false} tickFormatter={(v) => v.replace('_', ' ')} width={100} style={{ fontSize: '12px', textTransform: 'capitalize' }} />

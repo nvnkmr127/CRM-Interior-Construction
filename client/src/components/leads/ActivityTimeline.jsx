@@ -361,7 +361,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
             {activities.map((activity) => {
               const isSystem = !activity.user_name || systemActivityKeywords.some(kw => activity.type?.includes(kw) || activity.title?.toLowerCase().includes(kw));
               const Icon = isSystem ? Icons.system : (Icons[activity.type] || Icons.note);
-              const typeLabel = activity.title || activity.type.replace('_', ' ');
+              const typeLabel = activity.title || activity.type?.replace('_', ' ') || 'Activity';
               let timeAgo = '';
               let exactDate = '';
               try {

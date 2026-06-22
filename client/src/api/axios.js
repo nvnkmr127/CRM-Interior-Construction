@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { setupMockInterceptor } from './mockInterceptor';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -6,37 +7,7 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// REQUEST interceptor (no longer needed for attaching tokens, cookies do this)
-api.interceptors.request.use(
-  (config) => {
-    if (import.meta.env.DEV && localStorage.getItem('mockSession')) {
-      // DEV mock: intercept all API calls and return a minimal valid response shape.
-      // WARNING: mutations (POST/PATCH/DELETE) are silently swallowed here — nothing is
-      // saved to the database. To test real data persistence, log in with real credentials
-      // and clear the 'mockSession' key from localStorage.
-      const method = (config.method || 'get').toLowerCase();
-      const isMutation = ['post', 'patch', 'put', 'delete'].includes(method);
-      if (isMutation) {
-        console.warn(
-          `[MockSession] ${method.toUpperCase()} ${config.url} intercepted — request NOT sent to server. ` +
-          'Clear localStorage.mockSession to use real auth.'
-        );
-      }
-      config.adapter = () => {
-        return Promise.resolve({
-          data: { success: true, data: [], meta: {} },
-          status: 200,
-          statusText: 'OK',
-          headers: {},
-          config,
-          request: {}
-        });
-      };
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+setupMockInterceptor(api);
 
 // Helper for triggering global toasts from outside React
 const triggerToast = (type, message, duration = 4000) => {

@@ -32,7 +32,7 @@ export default function RepLeaderboard({ data }) {
         {data.map((rep, index) => {
           const isTop = index === 0 && rep.won > 0;
           return (
-            <div key={rep.rep_id} className={`${styles.repCard} ${isTop ? styles.repCardTop : ''}`}>
+            <div key={rep.rep_id || index} className={`${styles.repCard} ${isTop ? styles.repCardTop : ''}`}>
               <div className={styles.cardHeader}>
                 <div className={styles.repInfo}>
                   <div className={styles.avatarContainer}>

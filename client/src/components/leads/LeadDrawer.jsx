@@ -12,6 +12,7 @@ import StakeholdersTab from './StakeholdersTab';
 import InspirationBoard from './InspirationBoard';
 import AICopilotTab from './AICopilotTab';
 import AIKnowledgeAssistantTab from './AIKnowledgeAssistantTab';
+import AITwinTab from './AITwinTab';
 import LeadQualificationScore from './LeadQualificationScore';
 import DiscoveryCallChecklist from './DiscoveryCallChecklist';
 import RequirementsWorkshop from './RequirementsWorkshop';
@@ -267,7 +268,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   if (!isOpen) return null;
 
   return (
-    <Drawer isOpen={isOpen} onClose={onClose} width="1100px">
+    <Drawer isOpen={isOpen} onClose={onClose} width="1295px" closeOnBackdrop={false} hideHeader noPadding>
       {loading || !lead ? (
         <div className="p-6 flex items-center justify-center text-gray-500">Loading lead details...</div>
       ) : (
@@ -286,13 +287,13 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   placeholder="Lead Name"
                 />
               </div>
-              <Button variant="ghost" size="sm" onClick={onClose} className="!p-1 text-gray-400 hover:text-gray-700">
+              <Button variant="ghost" size="sm" onClick={onClose} className="!p-1 text-gray-800 hover:text-black">
                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
               </Button>
             </div>
 
             <div className="flex flex-wrap items-center gap-3 mb-4">
-              <Badge variant="outline" className="text-gray-600 font-mono text-xs">{lead.lead_number || `LD-${lead.id.substring(0,4).toUpperCase()}`}</Badge>
+              <Badge variant="outline" className="text-gray-600 font-mono text-xs">{lead.lead_number || `LD-${String(lead.id).substring(0,4).toUpperCase()}`}</Badge>
               {editingScore ? (
                 <form onSubmit={async (e) => {
                   e.preventDefault();

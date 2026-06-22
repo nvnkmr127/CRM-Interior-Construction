@@ -25,14 +25,29 @@ function formatValue(val) {
 }
 
 export default function ProjectCard({ project, onClick }) {
-  const statusKey = project.overdue ? 'overdue' : (project.status?.toLowerCase() || 'active');
+  const displayProject = project || {
+    name: "Luxury Villa Interior - Phase 1",
+    client_name: "Mr. Sharma",
+    pm_name: "Rahul K.",
+    type: "Residential",
+    status: "active",
+    progress: 65,
+    completedTasks: 12,
+    totalTasks: 20,
+    phase: "Execution",
+    value: 4500000,
+    target_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+    overdue: false
+  };
+
+  const statusKey = displayProject.overdue ? 'overdue' : (displayProject.status?.toLowerCase() || 'active');
   const statusInfo = STATUS_MAP[statusKey] || STATUS_MAP.active;
 
-  const progress = project.progress || 0;
-  const pmName = project.pm_name || project.pmName || '';
-  const clientName = project.client_name || project.clientName || '';
-  const targetDate = project.target_date || project.targetDate;
-  const isResidential = (project.type || '').toLowerCase() === 'residential';
+  const progress = displayProject.progress || 0;
+  const pmName = displayProject.pm_name || displayProject.pmName || '';
+  const clientName = displayProject.client_name || displayProject.clientName || '';
+  const targetDate = displayProject.target_date || displayProject.targetDate;
+  const isResidential = (displayProject.type || '').toLowerCase() === 'residential';
 
   const deadlineStr = targetDate
     ? new Date(targetDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -42,7 +57,7 @@ export default function ProjectCard({ project, onClick }) {
     <div className={styles.card} onClick={onClick} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && onClick?.()}>
       {/* Top row: type icon + status badge */}
       <div className={styles.topRow}>
-        <span className={styles.typeIcon} title={project.type || 'Project'}>
+        <span className={styles.typeIcon} title={displayProject.type || 'Project'}>
           {isResidential ? (
             <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
               <path d="M10 2L2 8v10h5v-5h6v5h5V8L10 2z" />
@@ -68,7 +83,7 @@ export default function ProjectCard({ project, onClick }) {
 
       {/* Project name + client */}
       <div className={styles.titleBlock}>
-        <span className={styles.projName}>{project.name}</span>
+        <span className={styles.projName}>{displayProject.name}</span>
         {clientName && <span className={styles.clientName}>{clientName}</span>}
       </div>
 
@@ -94,8 +109,8 @@ export default function ProjectCard({ project, onClick }) {
         </div>
         <div className={styles.progressMeta}>
           <span className={styles.progressLabel}>
-            {project.completedTasks != null && project.totalTasks != null
-              ? `${project.completedTasks}/${project.totalTasks} tasks`
+            {displayProject.completedTasks != null && displayProject.totalTasks != null
+              ? `${displayProject.completedTasks}/${displayProject.totalTasks} tasks`
               : `${progress}% complete`}
           </span>
           <span className={styles.progressPct} style={{ color: getProgressColor(progress) }}>
@@ -105,18 +120,18 @@ export default function ProjectCard({ project, onClick }) {
       </div>
 
       {/* Phase chip */}
-      {project.phase && (
-        <div className={styles.phaseChip}>{project.phase}</div>
+      {displayProject.phase && (
+        <div className={styles.phaseChip}>{displayProject.phase}</div>
       )}
 
       {/* Bottom: value + deadline */}
       <div className={styles.bottomRow}>
         <span className={styles.value}>
-          {formatValue(project.value) || '—'}
+          {formatValue(displayProject.value) || '—'}
         </span>
         {deadlineStr && (
-          <span className={project.overdue ? styles.dateOverdue : styles.date}>
-            {project.overdue && <span className={styles.overdueLabel}>OVERDUE · </span>}
+          <span className={displayProject.overdue ? styles.dateOverdue : styles.date}>
+            {displayProject.overdue && <span className={styles.overdueLabel}>OVERDUE · </span>}
             {deadlineStr}
           </span>
         )}

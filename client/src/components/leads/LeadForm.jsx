@@ -13,6 +13,12 @@ export default function LeadForm({ lead, onSave, onClose }) {
   const [step, setStep] = useState(1);
   const totalSteps = 3;
   
+  const rules = React.useMemo(() => ({
+    name: run(validators.required('Name'), validators.minLen(2, 'Name')),
+    phone: run(validators.required('Phone'), validators.phone),
+    email: validators.email
+  }), []);
+
   const { values, errors, touched, handleChange, handleBlur, validateAll, isValid } = useForm({
     name: lead?.name || '',
     phone: lead?.phone || '',
@@ -31,11 +37,7 @@ export default function LeadForm({ lead, onSave, onClose }) {
     preferred_communication: lead?.preferred_communication || '',
     preferred_language: lead?.preferred_language || '',
     referral_source: lead?.referral_source || ''
-  }, {
-    name: run(validators.required('Name'), validators.minLen(2, 'Name')),
-    phone: run(validators.required('Phone'), validators.phone),
-    email: validators.email
-  });
+  }, rules);
 
   const [stages, setStages] = useState([]);
   const [users, setUsers] = useState([]);
@@ -56,7 +58,8 @@ export default function LeadForm({ lead, onSave, onClose }) {
         handleChange('stageId', fetchedStages[0].id);
       }
     });
-  }, [isEdit, values.stageId, handleChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEdit]);
 
   const onChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -164,7 +167,7 @@ export default function LeadForm({ lead, onSave, onClose }) {
               
               <div>
                 <label style={{fontSize: 'var(--text-sm)', fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)'}}>Source</label>
-                <select name="source" value={values.source} onChange={onChange} style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--color-surface)', color: '#fff'}}>
+                <select name="source" value={values.source} onChange={onChange} style={{width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--color-surface)', color: 'var(--color-text)'}}>
                   <option value="">Select source</option>
                   <option value="Facebook">Facebook</option>
                   <option value="IndiaMART">IndiaMART</option>

@@ -118,15 +118,9 @@ code {
   display: none;
 }
 
-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), 
-textarea, 
-select {
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), textarea, select) {
   background-color: #ffffff;
   color: #000000;
-  border-color: var(--border);
-}
-/* Ensure tailwind border class plays nice with the default border color */
-input.border, textarea.border, select.border {
   border-color: var(--border);
 }
 

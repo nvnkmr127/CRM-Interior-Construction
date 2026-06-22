@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import styles from './Drawer.module.css'
 
-export default function Drawer({ isOpen, onClose, title, width=520, children, footer, closeOnBackdrop=true }) {
+export default function Drawer({ isOpen, onClose, title, width=520, children, footer, closeOnBackdrop=true, hideHeader=false, noPadding=false }) {
   const panelRef = useRef(null)
 
   useEffect(() => {
@@ -32,13 +32,15 @@ export default function Drawer({ isOpen, onClose, title, width=520, children, fo
         ref={panelRef}
         className={styles.panel}
         style={{ width: typeof width === 'number' ? `${width}px` : width }}
-        role='dialog' aria-modal='true' aria-labelledby='drawer-title'
+        role='dialog' aria-modal='true' aria-labelledby={title ? 'drawer-title' : undefined}
       >
-        <div className={styles.header}>
-          <h2 id='drawer-title' className={styles.title}>{title}</h2>
-          <button className={styles.close} onClick={onClose} aria-label='Close'>✕</button>
-        </div>
-        <div className={styles.body}>{children}</div>
+        {!hideHeader && (
+          <div className={styles.header}>
+            <h2 id='drawer-title' className={styles.title}>{title}</h2>
+            <button className={styles.close} onClick={onClose} aria-label='Close'>✕</button>
+          </div>
+        )}
+        <div className={styles.body} style={noPadding ? { padding: 0 } : undefined}>{children}</div>
         {footer && <div className={styles.footer}>{footer}</div>}
       </div>
     </div>,

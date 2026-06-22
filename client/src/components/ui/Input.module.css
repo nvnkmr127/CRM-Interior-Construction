@@ -15,7 +15,7 @@
 .hasError { border-color: var(--color-danger) !important; }
 .hasError:focus-within { box-shadow: 0 0 0 3px rgba(220,38,38,0.15) !important; }
 .input {
-  flex: 1; border: none; background: transparent; outline: none;
+  flex: 1; border: none !important; background: transparent !important; outline: none;
   font-size: var(--text-base); color: var(--color-text);
   padding: 8px var(--space-3); min-width: 0;
 }
