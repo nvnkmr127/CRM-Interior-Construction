@@ -24,14 +24,14 @@
   font-family: var(--heading);
   font-size: 32px;
   font-weight: 700;
-  color: var(--text-h);
+  color: var(--color-text);
   margin: 0;
   line-height: 1.2;
   letter-spacing: -0.5px;
 }
 
 .subtitle {
-  color: var(--text);
+  color: var(--color-text-secondary);
   margin: 4px 0 0;
   font-size: var(--text-md);
 }
@@ -61,13 +61,13 @@
 
 .skeletonHeader {
   height: 96px;
-  background: var(--border);
+  background: var(--color-border);
   border-radius: var(--radius-lg);
   margin-bottom: var(--space-6);
 }
 
 .skeletonChart {
   height: 256px;
-  background: var(--border);
+  background: var(--color-border);
   border-radius: var(--radius-lg);
 }

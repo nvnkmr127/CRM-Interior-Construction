@@ -169,7 +169,7 @@ export default function LeadTable({
                   )}
                 </td>
                 <td className={styles.listTd}>
-                  <span style={{ fontSize: '12px', background: '#f3f4f6', padding: '4px 8px', borderRadius: '4px', color: '#374151' }}>
+                  <span style={{ fontSize: '12px', background: 'var(--color-surface-2)', padding: '4px 8px', borderRadius: '4px', color: 'var(--color-text-secondary)' }}>
                     {lead.ai_recommendation || 'Follow up'}
                   </span>
                 </td>

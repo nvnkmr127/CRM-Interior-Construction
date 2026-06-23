@@ -1,8 +1,8 @@
 .container {
-  background: var(--bg);
+  background: var(--color-surface);
   padding: var(--space-5);
   border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
+  border: 1px solid var(--color-border);
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
@@ -14,10 +14,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text);
-  background: var(--color-bg-subtle, #f4f4f4);
+  color: var(--color-text-secondary);
+  background: var(--color-surface-2);
   border-radius: var(--radius-md);
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--color-border);
   font-size: var(--text-sm);
 }
 
@@ -31,7 +31,7 @@
 .title {
   font-family: var(--heading);
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--color-text);
   margin: 0;
   font-size: var(--text-md);
 }
@@ -64,10 +64,10 @@
 
 .thead {
   font-size: 11px;
-  color: var(--text);
+  color: var(--color-text-secondary);
   text-transform: uppercase;
-  background: var(--color-bg-subtle, #f8f8f8);
-  border-bottom: 1px solid var(--border);
+  background: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .th {
@@ -81,7 +81,7 @@
 }
 
 .tr {
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--color-border);
   transition: background var(--transition-fast);
 }
 
@@ -90,16 +90,16 @@
 }
 
 .tr:hover {
-  background: var(--color-bg-subtle, #fafafa);
+  background: var(--color-surface-2);
 }
 
 .tr:hover .td {
-  color: #000000;
+  color: var(--color-text);
 }
 
 .td {
   padding: var(--space-3) var(--space-4);
-  color: var(--text-h);
+  color: var(--color-text);
 }
 
 .tdRight {
@@ -112,6 +112,6 @@
 }
 
 .tdSuccess {
-  color: var(--color-success, #16a34a);
+  color: var(--color-success);
   font-weight: 500;
 }

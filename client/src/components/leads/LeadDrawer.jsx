@@ -15,15 +15,27 @@ import AIKnowledgeAssistantTab from './AIKnowledgeAssistantTab';
 import AITwinTab from './AITwinTab';
 import LeadQualificationScore from './LeadQualificationScore';
 import DiscoveryCallChecklist from './DiscoveryCallChecklist';
-import RequirementsWorkshop from './RequirementsWorkshop';
-import BudgetPlanner from './BudgetPlanner';
-import AIProposalGenerator from './AIProposalGenerator';
+
 import NegotiationDesk from './NegotiationDesk';
 import DesignPresentationModal from './DesignPresentationModal';
 import EstimatorBuilder from './EstimatorBuilder';
 import AssignDesignerModal from './AssignDesignerModal';
 import { getLead, changeLeadStage, deleteLead } from '../../api/leads';
 import api from '../../api/axios';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+
+const formatDatetimeLocal = (dateStr) => {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 16);
+  } catch {
+    return dateStr;
+  }
+};
 
 export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, stages = [] }) {
   const toast = useToast();
@@ -44,6 +56,9 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
   // Score override
   const [editingScore, setEditingScore] = useState(false);
+
+  // Possession entry mode
+  const [isPossessionManual, setIsPossessionManual] = useState(false);
 
   // Files state
   const [files, setFiles] = useState([]);
@@ -346,7 +361,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
           {/* TABS NAVIGATION */}
           <div className="bg-white px-6 border-b border-gray-200 shrink-0">
             <nav className="flex -mb-px px-6 gap-6 overflow-x-auto">
-              {['overview', 'requirements', 'budget', 'proposal', 'negotiation', 'ai-copilot', 'knowledge-base', 'stakeholders', 'communications', 'preferences', 'activity', 'tasks', 'followups', 'files', 'estimates', 'inspirations', 'twin'].map(tab => (
+              {['overview', 'negotiation', 'ai-copilot', 'knowledge-base', 'stakeholders', 'communications', 'preferences', 'activity', 'tasks', 'followups', 'files', 'estimates', 'inspirations', 'twin'].map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -400,40 +415,50 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                     <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Property Details</h4>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs text-gray-500 mb-1">Type</label>
+                        <label className="block text-xs text-gray-500 mb-1">Type of property</label>
                         <select
                           value={lead.property_type || ''}
                           onChange={e => handleFieldChange('property_type', e.target.value)}
                           onBlur={e => handleFieldBlur('property_type', e.target.value)}
-                          className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full text-sm border border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
                         >
                           <option value="">Select...</option>
-                          <option value="flat">Flat</option>
-                          <option value="villa">Villa</option>
-                          <option value="commercial">Commercial</option>
+                          <option value="1bhk">1 BHK</option>
+                          <option value="2bhk">2 BHK</option>
+                          <option value="3bhk">3 BHK</option>
+                          <option value="4bhk">4 BHK</option>
+                          <option value="5bhk">5 BHK</option>
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-500 mb-1">Scope</label>
+                        <label className="block text-xs text-gray-500 mb-1">Product</label>
                         <select
                           value={lead.scope || ''}
                           onChange={e => handleFieldChange('scope', e.target.value)}
                           onBlur={e => handleFieldBlur('scope', e.target.value)}
-                          className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full text-sm border border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
                         >
                           <option value="">Select...</option>
-                          <option value="full_home">Full Home</option>
-                          <option value="modular_kitchen">Modular Kitchen</option>
-                          <option value="partial">Partial</option>
+                          <option value="kitchen">Kitchen</option>
+                          <option value="bedroom">Bedroom</option>
+                          <option value="wardrobe">Wardrobe</option>
+                          <option value="fullhouse">Full House</option>
+                          <option value="living_room">Living Room</option>
+                          <option value="bathroom">Bathroom</option>
+                          <option value="office">Office / Study</option>
+                          <option value="false_ceiling">False Ceiling</option>
+                          <option value="flooring">Flooring</option>
+                          <option value="painting">Painting</option>
+                          <option value="custom_furniture">Custom Furniture</option>
                         </select>
                       </div>
                       <div className="col-span-2">
-                        <label className="block text-xs text-gray-500 mb-1">Locality / City</label>
+                        <label className="block text-xs text-gray-500 mb-1">Address</label>
                         <input
                           type="text" value={lead.locality || ''}
                           onChange={e => handleFieldChange('locality', e.target.value)}
                           onBlur={e => handleFieldBlur('locality', e.target.value)}
-                          className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full text-sm border border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
                           placeholder="e.g. Indiranagar, Bangalore"
                         />
                       </div>
@@ -443,7 +468,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                           type="number" value={lead.budget_max || ''}
                           onChange={e => handleFieldChange('budget_max', e.target.value)}
                           onBlur={e => handleFieldBlur('budget_max', e.target.value)}
-                          className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full text-sm border border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
                           placeholder="e.g. 1500000"
                         />
                       </div>
@@ -453,9 +478,85 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                           type="number" value={lead.carpet_area_sqft || ''}
                           onChange={e => handleFieldChange('carpet_area_sqft', e.target.value)}
                           onBlur={e => handleFieldBlur('carpet_area_sqft', e.target.value)}
-                          className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full text-sm border border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
                           placeholder="Sq. ft"
                         />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Segment</label>
+                        <select
+                          value={lead.segment || ''}
+                          onChange={e => handleFieldChange('segment', e.target.value)}
+                          onBlur={e => handleFieldBlur('segment', e.target.value)}
+                          className="w-full text-sm border border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="">Select...</option>
+                          <option value="residential">Residential</option>
+                          <option value="commercial">Commercial</option>
+                          <option value="hospitality">Hospitality</option>
+                          <option value="retail">Retail</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Property Name</label>
+                        <input
+                          type="text" value={lead.property_name || ''}
+                          onChange={e => handleFieldChange('property_name', e.target.value)}
+                          onBlur={e => handleFieldBlur('property_name', e.target.value)}
+                          className="w-full text-sm border border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="e.g. Prestige Shantiniketan"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="block text-xs text-gray-500">Possession Date & Time</label>
+                          <button 
+                            type="button" 
+                            onClick={() => setIsPossessionManual(!isPossessionManual)} 
+                            className="text-[10px] text-blue-500 hover:text-blue-700 font-medium"
+                          >
+                            {isPossessionManual ? 'Use Calendar' : 'Manual Entry'}
+                          </button>
+                        </div>
+                        {isPossessionManual ? (
+                          <input
+                            type="text" value={lead.possession_month || ''}
+                            onChange={e => handleFieldChange('possession_month', e.target.value)}
+                            onBlur={e => handleFieldBlur('possession_month', e.target.value)}
+                            className="w-full text-sm border border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="e.g. Q4 2026, Next year"
+                          />
+                        ) : (
+                        <div className="relative">
+                          <DatePicker
+                            selected={lead.possession_month ? new Date(lead.possession_month) : null}
+                            onChange={(date) => {
+                              if (date) {
+                                const tzoffset = date.getTimezoneOffset() * 60000;
+                                const localISOTime = (new Date(date - tzoffset)).toISOString().slice(0, 16);
+                                handleFieldChange('possession_month', localISOTime);
+                                handleFieldBlur('possession_month', localISOTime);
+                              } else {
+                                handleFieldChange('possession_month', '');
+                                handleFieldBlur('possession_month', '');
+                              }
+                            }}
+                            showTimeSelect
+                            timeFormat="HH:mm"
+                            timeIntervals={15}
+                            dateFormat="MMMM d, yyyy h:mm aa"
+                            placeholderText="Select Date and Time"
+                            className="w-full text-sm border border-gray-300 rounded p-1.5 pr-10 focus:ring-blue-500 focus:border-blue-500 cursor-pointer hover:border-blue-400 shadow-sm transition-colors"
+                            wrapperClassName="w-full"
+                            popperPlacement="bottom-start"
+                            calendarClassName="shadow-xl rounded-xl border-gray-200 font-sans text-sm"
+                            popperProps={{ strategy: "fixed" }}
+                          />
+                          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-blue-500">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                          </div>
+                        </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -494,7 +595,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                           type="text" value={lead.competitor_mentioned || ''}
                           onChange={e => handleFieldChange('competitor_mentioned', e.target.value)}
                           onBlur={e => handleFieldBlur('competitor_mentioned', e.target.value)}
-                          className="w-full text-sm border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full text-sm border border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
                           placeholder="e.g. Livspace, HomeLane"
                         />
                       </div>
@@ -624,17 +725,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               </div>
             )}
 
-            {activeTab === 'requirements' && (
-              <RequirementsWorkshop leadId={leadId} lead={lead} onUpdate={fetchLead} />
-            )}
 
-            {activeTab === 'budget' && (
-              <BudgetPlanner leadId={leadId} lead={lead} />
-            )}
-
-            {activeTab === 'proposal' && (
-              <AIProposalGenerator leadId={leadId} lead={lead} />
-            )}
 
             {activeTab === 'negotiation' && (
               <NegotiationDesk leadId={leadId} lead={lead} onUpdate={fetchLead} />

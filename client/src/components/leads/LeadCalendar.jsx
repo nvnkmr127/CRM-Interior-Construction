@@ -35,9 +35,9 @@ export default function LeadCalendar({ leads, onLeadClick }) {
   }, [leads]);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div className="rounded-xl shadow-sm border p-6" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold text-gray-800">
+        <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>
           {currentDate.toLocaleString('default', { month: 'long' })} {currentYear}
         </h2>
         <div className="flex gap-2">
@@ -45,22 +45,22 @@ export default function LeadCalendar({ leads, onLeadClick }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-px bg-gray-200 border border-gray-200 rounded-lg overflow-hidden">
+      <div className="grid grid-cols-7 gap-px border rounded-lg overflow-hidden" style={{ background: 'var(--color-border)', borderColor: 'var(--color-border)' }}>
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-          <div key={day} className="bg-gray-50 py-2 text-center text-sm font-semibold text-gray-600">
+          <div key={day} className="py-2 text-center text-sm font-semibold" style={{ background: 'var(--color-surface-2)', color: 'var(--color-text-secondary)' }}>
             {day}
           </div>
         ))}
         {calendarDays.map((date, idx) => {
-          if (!date) return <div key={`empty-${idx}`} className="bg-gray-50 min-h-[120px]"></div>;
+          if (!date) return <div key={`empty-${idx}`} className="min-h-[120px]" style={{ background: 'var(--color-surface-2)' }}></div>;
           
           const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
           const dayLeads = leadsByDate[dateKey] || [];
           const isToday = new Date().toDateString() === date.toDateString();
 
           return (
-            <div key={dateKey} className={`bg-white p-2 min-h-[120px] ${isToday ? 'bg-blue-50/30' : ''}`}>
-              <div className={`text-sm font-medium w-6 h-6 flex items-center justify-center rounded-full mb-2 ${isToday ? 'bg-blue-600 text-white' : 'text-gray-700'}`}>
+            <div key={dateKey} className="p-2 min-h-[120px]" style={{ background: isToday ? 'var(--color-info-bg)' : 'var(--color-surface)' }}>
+              <div className="text-sm font-medium w-6 h-6 flex items-center justify-center rounded-full mb-2" style={isToday ? { background: '#2563eb', color: '#fff' } : { color: 'var(--color-text)' }}>
                 {date.getDate()}
               </div>
               <div className="flex flex-col gap-1">
@@ -68,14 +68,15 @@ export default function LeadCalendar({ leads, onLeadClick }) {
                   <div 
                     key={lead.id}
                     onClick={() => onLeadClick(lead.id)}
-                    className="text-xs px-2 py-1 bg-blue-50 text-blue-700 border border-blue-100 rounded cursor-pointer hover:bg-blue-100 truncate"
+                    className="text-xs px-2 py-1 border rounded cursor-pointer truncate"
+                    style={{ background: 'var(--color-surface-3)', color: 'var(--color-text)', borderColor: 'var(--color-border-strong)' }}
                     title={lead.name}
                   >
                     {lead.name}
                   </div>
                 ))}
                 {dayLeads.length > 3 && (
-                  <div className="text-xs text-gray-500 font-medium pl-1">
+                  <div className="text-xs font-medium pl-1" style={{ color: 'var(--color-text-secondary)' }}>
                     +{dayLeads.length - 3} more
                   </div>
                 )}

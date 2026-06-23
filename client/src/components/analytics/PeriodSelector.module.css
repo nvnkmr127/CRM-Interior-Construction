@@ -22,12 +22,12 @@
 }
 
 .inactive {
-  background: var(--bg);
-  color: var(--text);
-  border: 1px solid var(--border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
 }
 
 .inactive:hover {
   background: var(--color-bg-subtle, #f8f8f8);
-  border-color: var(--text);
+  border-color: var(--color-text-secondary);
 }

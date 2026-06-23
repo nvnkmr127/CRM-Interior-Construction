@@ -1,8 +1,8 @@
 .container {
-  background: var(--bg);
+  background: var(--color-surface);
   padding: var(--space-5);
   border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
+  border: 1px solid var(--color-border);
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
@@ -14,10 +14,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text);
-  background: var(--color-bg-subtle, #f4f4f4);
+  color: var(--color-text-secondary);
+  background: var(--color-surface-2);
   border-radius: var(--radius-md);
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--color-border);
   font-size: var(--text-sm);
 }
 
@@ -31,7 +31,7 @@
 .title {
   font-family: var(--heading);
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--color-text);
   margin: 0;
   font-size: var(--text-md);
 }
@@ -61,13 +61,13 @@
 .repCard {
   padding: var(--space-3);
   border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
-  background: var(--bg);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 
 .repCardTop {
-  border-color: #fde047; /* yellow-300 */
-  background: #fefce8; /* yellow-50 */
+  border-color: var(--color-warning);
+  background: var(--color-warning-bg);
 }
 
 .cardHeader {
@@ -94,8 +94,8 @@
 }
 
 .avatarFallback {
-  background: #dbeafe; /* blue-100 */
-  color: #1d4ed8; /* blue-700 */
+  background: var(--color-info-bg);
+  color: var(--color-info);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -112,14 +112,14 @@
 
 .repName {
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--color-text);
   font-size: var(--text-sm);
   margin: 0;
 }
 
 .repStats {
   font-size: 12px;
-  color: var(--text);
+  color: var(--color-text-secondary);
   margin: 0;
   opacity: 0.8;
 }
@@ -130,20 +130,20 @@
 
 .wonText {
   font-weight: 700;
-  color: var(--text-h);
+  color: var(--color-text);
   margin: 0;
 }
 
 .convText {
   font-size: 12px;
-  color: var(--color-success, #16a34a);
+  color: var(--color-success);
   font-weight: 500;
   margin: 0;
 }
 
 .progressBarContainer {
   width: 100%;
-  background: var(--border);
+  background: var(--color-border);
   border-radius: 9999px;
   height: 6px;
   margin-top: var(--space-2);
@@ -156,7 +156,7 @@
 }
 
 .progressBarTop {
-  background: #facc15; /* yellow-400 */
+  background: var(--color-warning);
 }
 
 .footerStats {
@@ -164,7 +164,7 @@
   justify-content: space-between;
   margin-top: var(--space-2);
   font-size: 10px;
-  color: var(--text);
+  color: var(--color-text-secondary);
   text-transform: uppercase;
   font-weight: 600;
   opacity: 0.7;

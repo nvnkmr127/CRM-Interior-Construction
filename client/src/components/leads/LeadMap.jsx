@@ -9,20 +9,22 @@ export default function LeadMap({ leads, onLeadClick }) {
   const leadsWithLocation = leads.filter(l => l.latitude && l.longitude);
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-full flex flex-col relative overflow-hidden min-h-[600px]">
+    <div className="rounded-lg shadow-sm border h-full flex flex-col relative overflow-hidden min-h-[600px]" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
       {/* Mock Map Background */}
       <div 
-        className="absolute inset-0 bg-blue-50 opacity-50 pointer-events-none" 
+        className="absolute inset-0 pointer-events-none" 
         style={{
+          backgroundColor: 'var(--color-surface-2)',
+          opacity: 0.5,
           backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(59, 130, 246, 0.2) 1px, transparent 0)',
           backgroundSize: '32px 32px'
         }}
       ></div>
       
-      <div className="p-4 border-b border-gray-200 bg-white/90 backdrop-blur-sm z-10 flex justify-between items-center">
+      <div className="p-4 border-b backdrop-blur-sm z-10 flex justify-between items-center" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
         <div>
-          <h3 className="text-lg font-bold text-gray-900">Lead Location Intelligence</h3>
-          <p className="text-sm text-gray-500">Plan your site visits efficiently (Demo Map View)</p>
+          <h3 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>Lead Location Intelligence</h3>
+          <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Plan your site visits efficiently (Demo Map View)</p>
         </div>
         <div className="flex gap-2">
           <Badge variant="success">Won</Badge>
@@ -53,7 +55,7 @@ export default function LeadMap({ leads, onLeadClick }) {
               onClick={() => onLeadClick?.(lead.id)}
               title={`${lead.name} (${lead.stage_name || 'New'})`}
             >
-              <div className="absolute top-5 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] px-2 py-1 rounded opacity-0 hover:opacity-100 whitespace-nowrap pointer-events-none">
+              <div className="absolute top-5 left-1/2 -translate-x-1/2 text-[10px] px-2 py-1 rounded opacity-0 hover:opacity-100 whitespace-nowrap pointer-events-none" style={{ background: 'var(--color-text)', color: 'var(--color-surface)' }}>
                 {lead.name} • {lead.locality || 'No Locality'}
               </div>
             </div>

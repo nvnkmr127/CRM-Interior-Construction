@@ -14,7 +14,7 @@ export default function LeadFilterBar({ filters, setFilters, reps }) {
   };
 
   return (
-    <div className="flex flex-wrap gap-4 items-center mb-6 p-4 bg-white rounded-lg shadow border">
+    <div className="flex flex-wrap gap-4 items-center mb-6 p-4 rounded-lg shadow" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', borderWidth: '1px' }}>
       <div className="flex-1 min-w-[200px]">
         <Input 
           type="text" 
@@ -37,7 +37,7 @@ export default function LeadFilterBar({ filters, setFilters, reps }) {
             <option key={rep.id} value={rep.id}>{rep.name}</option>
           ))}
         </select>
-        <span className="text-xs text-gray-400 mt-1 block">Hold Ctrl to select multiple</span>
+        <span className="text-xs mt-1 block" style={{ color: 'var(--color-text-secondary)' }}>Hold Ctrl to select multiple</span>
       </div>
 
       <div className="min-w-[120px]">

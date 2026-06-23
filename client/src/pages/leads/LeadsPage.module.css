@@ -353,18 +353,18 @@
 }
 
 .scoreHigh {
-  background: #ECFDF5;
-  color: #059669;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .scoreMid {
-  background: #FFFBEB;
-  color: #D97706;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
 }
 
 .scoreLow {
-  background: #F3F4F6;
-  color: #6B7280;
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
 }
 
 /* ─── Actions Column ──────────────────────────────────────── */
@@ -627,9 +627,9 @@
   font-size: 16px;
 }
 
-.notifIconInfo { background: #e0f2fe; color: #0284c7; }
-.notifIconAlert { background: #fee2e2; color: #dc2626; }
-.notifIconEvent { background: #dcfce7; color: #16a34a; }
+.notifIconInfo { background: var(--color-info-bg); color: var(--color-info); }
+.notifIconAlert { background: var(--color-danger-bg); color: var(--color-danger); }
+.notifIconEvent { background: var(--color-success-bg); color: var(--color-success); }
 
 .notifContent {
   flex: 1;

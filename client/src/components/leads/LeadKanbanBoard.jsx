@@ -16,11 +16,11 @@ function KanbanColumn({ stage, leads, activeId, onLeadClick }) {
   const formattedValue = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(totalValue);
 
   return (
-    <div className="flex flex-col bg-gray-50 rounded-lg border min-w-[280px] max-w-[280px] max-h-full flex-shrink-0 mr-4">
-      <div className="p-3 border-b bg-gray-100/50 flex justify-between items-center rounded-t-lg">
+    <div className="flex flex-col rounded-lg min-w-[280px] max-w-[280px] max-h-full flex-shrink-0 mr-4" style={{ background: 'var(--color-surface-2)', borderColor: 'var(--color-border)', borderWidth: '1px' }}>
+      <div className="p-3 flex justify-between items-center rounded-t-lg" style={{ background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)' }}>
         <div>
-          <h3 className="font-semibold text-gray-700">{stage.name} <Badge variant="secondary" className="ml-2">{leads.length}</Badge></h3>
-          <p className="text-xs text-gray-500 mt-1 font-medium">{formattedValue}</p>
+          <h3 className="font-semibold" style={{ color: 'var(--color-text)' }}>{stage.name} <Badge variant="secondary" className="ml-2">{leads.length}</Badge></h3>
+          <p className="text-xs mt-1 font-medium" style={{ color: 'var(--color-text-secondary)' }}>{formattedValue}</p>
         </div>
       </div>
       
@@ -38,7 +38,7 @@ function KanbanColumn({ stage, leads, activeId, onLeadClick }) {
           ))}
         </SortableContext>
         {leads.length === 0 && (
-          <div className="h-full flex items-center justify-center text-gray-400 text-sm border-2 border-dashed border-gray-200 rounded-lg">
+          <div className="h-full flex items-center justify-center text-sm border-2 border-dashed rounded-lg" style={{ color: 'var(--color-text-muted)', borderColor: 'var(--color-border-strong)' }}>
             Drop leads here
           </div>
         )}

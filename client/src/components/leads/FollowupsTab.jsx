@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 export default function FollowupsTab({ leadId }) {
   const toast = useToast();
@@ -59,12 +61,33 @@ export default function FollowupsTab({ leadId }) {
             onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
             className="w-full text-sm border-gray-300 rounded p-2 focus:ring-blue-500 focus:border-blue-500"
           />
-          <input
-            type="datetime-local"
-            value={form.due_at}
-            onChange={e => setForm(f => ({ ...f, due_at: e.target.value }))}
-            className="w-full text-sm border-gray-300 rounded p-2 focus:ring-blue-500 focus:border-blue-500"
-          />
+          <div className="relative">
+            <DatePicker
+              selected={form.due_at ? new Date(form.due_at) : null}
+              onChange={(date) => {
+                if (date) {
+                  const tzoffset = date.getTimezoneOffset() * 60000;
+                  const localISOTime = (new Date(date - tzoffset)).toISOString().slice(0, 16);
+                  setForm(f => ({ ...f, due_at: localISOTime }));
+                } else {
+                  setForm(f => ({ ...f, due_at: '' }));
+                }
+              }}
+              showTimeSelect
+              timeFormat="HH:mm"
+              timeIntervals={15}
+              dateFormat="MMMM d, yyyy h:mm aa"
+              placeholderText="Select Date and Time"
+              className="w-full text-sm border border-gray-300 rounded-lg p-2 pr-10 focus:ring-blue-500 focus:border-blue-500 cursor-pointer hover:border-blue-400 shadow-sm transition-colors"
+              wrapperClassName="w-full"
+              popperPlacement="bottom-start"
+              calendarClassName="shadow-xl rounded-xl border-gray-200 font-sans text-sm"
+              popperProps={{ strategy: "fixed" }}
+            />
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-blue-500">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            </div>
+          </div>
           <textarea
             placeholder="Notes (optional)"
             value={form.notes}

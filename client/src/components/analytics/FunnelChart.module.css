@@ -1,8 +1,8 @@
 .container {
-  background: var(--bg);
+  background: var(--color-surface);
   padding: var(--space-5);
   border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
+  border: 1px solid var(--color-border);
   box-shadow: var(--shadow);
 }
 
@@ -11,17 +11,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text);
+  color: var(--color-text-secondary);
   background: var(--color-bg-subtle, #f4f4f4);
   border-radius: var(--radius-md);
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--color-border);
   font-size: var(--text-sm);
 }
 
 .title {
   font-family: var(--heading);
   font-weight: 600;
-  color: var(--text-h);
+  color: var(--color-text);
   margin: 0 0 var(--space-4) 0;
   font-size: var(--text-md);
 }
@@ -31,9 +31,9 @@
 }
 
 .tooltip {
-  background: var(--bg);
+  background: var(--color-surface);
   padding: var(--space-3);
-  border: 1px solid var(--border);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow);
   font-size: var(--text-sm);
@@ -41,13 +41,13 @@
 
 .tooltipTitle {
   font-weight: 700;
-  color: var(--text-h);
+  color: var(--color-text);
   text-transform: capitalize;
   margin: 0 0 var(--space-1) 0;
 }
 
 .tooltipText {
-  color: var(--text);
+  color: var(--color-text-secondary);
   margin: 0;
 }
 
