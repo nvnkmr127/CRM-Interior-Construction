@@ -34,6 +34,33 @@ export const setupMockInterceptor = (api) => {
                 const leadsCount = (payload.csv?.split('\n').length || 2) - 1; // dummy count
                 responseData.data = { created: leadsCount, skipped: 0 };
               }
+            } else if (url.match(/\/leads\/[a-zA-Z0-9-]+\/convert-to-project$/)) {
+              if (method === 'post') {
+                const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                const newProj = {
+                  id: `mock-proj-${Date.now()}`,
+                  name: payload.projectName || 'Converted Project',
+                  client_name: payload.clientName || 'Client',
+                  status: 'active',
+                  progress: 0,
+                  created_at: new Date().toISOString(),
+                  value: payload.contractValue || 0,
+                  target_date: payload.handoverDate || null,
+                  pm_id: payload.pm || null
+                };
+                mockDatabase.projects.push(newProj);
+                
+                // Also mark lead as converted if possible
+                const match = url.match(/\/leads\/([a-zA-Z0-9-]+)\/convert-to-project$/);
+                if (match) {
+                  const leadId = match[1];
+                  const leadToUpdate = mockDatabase.leads.find(l => l.id === leadId);
+                  if (leadToUpdate) leadToUpdate.status = 'converted';
+                }
+                
+                persistDb();
+                responseData.data = { project_id: newProj.id };
+              }
             } else {
               const match = url.match(/\/leads\/([a-zA-Z0-9-]+)$/);
               const leadId = match ? match[1] : null;
@@ -44,6 +71,13 @@ export const setupMockInterceptor = (api) => {
                 newLead.created_at = new Date().toISOString();
                 newLead.status = newLead.status || 'new';
                 newLead.probability = newLead.probability || 10;
+                
+                // Add random coordinates near Bangalore for the map view
+                if (!newLead.latitude || !newLead.longitude) {
+                  newLead.latitude = 12.92 + (Math.random() * 0.1 - 0.05);
+                  newLead.longitude = 77.54 + (Math.random() * 0.1 - 0.05);
+                }
+                
                 mockDatabase.leads.push(newLead);
                 persistDb();
                 responseData.data = newLead;

@@ -15,6 +15,7 @@ import AIKnowledgeAssistantTab from './AIKnowledgeAssistantTab';
 import AITwinTab from './AITwinTab';
 import LeadQualificationScore from './LeadQualificationScore';
 import DiscoveryCallChecklist from './DiscoveryCallChecklist';
+import LeadForm from './LeadForm';
 
 import NegotiationDesk from './NegotiationDesk';
 import DesignPresentationModal from './DesignPresentationModal';
@@ -45,6 +46,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
   const [isPresentModalOpen, setIsPresentModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
 
   // Auto-saving state
   const [saveStatus, setSaveStatus] = useState(''); // 'saving', 'saved', 'error', ''
@@ -349,10 +351,13 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   {stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
-              <div className="text-xs text-gray-500 font-medium">
-                {saveStatus === 'saving' && <span className="animate-pulse">Saving...</span>}
-                {saveStatus === 'saved' && <span className="text-green-600 flex items-center gap-1"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg> Saved</span>}
-                {saveStatus === 'error' && <span className="text-red-600">Save failed</span>}
+              <div className="flex items-center gap-4">
+                <div className="text-xs text-gray-500 font-medium">
+                  {saveStatus === 'saving' && <span className="animate-pulse">Saving...</span>}
+                  {saveStatus === 'saved' && <span className="text-green-600 flex items-center gap-1"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg> Saved</span>}
+                  {saveStatus === 'error' && <span className="text-red-600">Save failed</span>}
+                </div>
+                <Button variant="primary" size="sm" onClick={() => setIsConvertModalOpen(true)}>Convert to Project</Button>
               </div>
             </div>
             {errorMsg && <div className="mt-2 text-xs text-red-600 font-medium bg-red-50 p-2 rounded border border-red-100">{errorMsg}</div>}
@@ -412,7 +417,13 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
                   {/* Property & Scope */}
                   <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Property Details</h4>
+                    <div className="flex justify-between items-center mb-3">
+                      <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Property Details</h4>
+                      <button onClick={() => setIsLeadFormOpen(true)} className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                        Edit
+                      </button>
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs text-gray-500 mb-1">Type of property</label>
@@ -963,6 +974,19 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               onAssigned={(updatedLead) => {
                 setLead(prev => ({ ...prev, ...updatedLead }));
                 onLeadUpdated?.(updatedLead);
+              }}
+            />
+          )}
+
+          {isLeadFormOpen && (
+            <LeadForm
+              lead={lead}
+              onClose={() => setIsLeadFormOpen(false)}
+              onSave={(updatedLead) => {
+                setLead(prev => ({ ...prev, ...updatedLead }));
+                onLeadUpdated?.(updatedLead);
+                setIsLeadFormOpen(false);
+                fetchLead();
               }}
             />
           )}

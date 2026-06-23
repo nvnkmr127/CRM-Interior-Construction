@@ -20,14 +20,21 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
     clientEmail: '',
     projectName: '',
     pm: '',
-    contractValue: ''
+    designer: '',
+    contractValue: '',
+    advanceAmount: '',
+    startDate: '',
+    handoverDate: '',
+    paymentTerms: ''
   });
   
   // Strict checklist logic
   const [checklist, setChecklist] = useState({
     booking_received: false,
     floor_plan: false,
-    scope_finalized: false
+    scope_finalized: false,
+    contract_signed: false,
+    site_address_confirmed: false
   });
 
   useEffect(() => {
@@ -39,11 +46,40 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
         clientEmail: lead.email || '',
         projectName: lead.name ? `${lead.name}'s Project` : '',
         pm: '',
-        contractValue: lead.budget_max || ''
+        designer: '',
+        contractValue: lead.budget_max || '',
+        advanceAmount: '',
+        startDate: '',
+        handoverDate: '',
+        paymentTerms: ''
       });
-      setChecklist({ booking_received: false, floor_plan: false, scope_finalized: false });
+      setChecklist({ booking_received: false, floor_plan: false, scope_finalized: false, contract_signed: false, site_address_confirmed: false });
     }
   }, [isOpen, lead]);
+
+  const fillMockData = () => {
+    setFormData({
+      projectType: formData.projectType || 'full_interior',
+      clientName: formData.clientName || lead?.name || 'Rahul Sharma',
+      clientPhone: formData.clientPhone || lead?.phone || '+91 9876543210',
+      clientEmail: formData.clientEmail || lead?.email || 'rahul.s@example.com',
+      projectName: formData.projectName || (lead?.name ? `${lead.name}'s Project` : 'Rahul - 3BHK Whitefield'),
+      pm: formData.pm || 'u1',
+      designer: formData.designer || 'u3',
+      contractValue: formData.contractValue || lead?.budget_max || '1500000',
+      advanceAmount: formData.advanceAmount || '150000',
+      startDate: formData.startDate || new Date().toISOString().slice(0, 10),
+      handoverDate: formData.handoverDate || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      paymentTerms: formData.paymentTerms || '10_40_40_10'
+    });
+    setChecklist({
+      booking_received: true,
+      floor_plan: true,
+      scope_finalized: true,
+      contract_signed: true,
+      site_address_confirmed: true
+    });
+  };
 
   const allChecked = Object.values(checklist).every(v => v === true);
 
@@ -51,24 +87,27 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
     if (!allChecked) {
       return toast.error("Please complete the checklist before converting.");
     }
-    if (!formData.projectType || !formData.projectName || !formData.pm) {
+    if (!formData.projectType || !formData.projectName) {
       return toast.error("Please fill in the required project details.");
     }
-    
-    setLoading(true);
+
     try {
+      setLoading(true);
       const payload = {
         ...formData,
         ...checklist
       };
+      
+      // Send the actual conversion request
       const res = await api.post(`/leads/${lead.id}/convert-to-project`, payload);
+      
       if (res.data.success) {
         toast.success('Project successfully created!');
         onClose();
         if (onConverted) onConverted(res.data.data.project_id);
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to convert lead');
+      toast.error(err?.response?.data?.error?.message || 'Failed to convert lead');
     } finally {
       setLoading(false);
     }
@@ -94,10 +133,13 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
       <div className="space-y-6 pb-2">
         {/* Lead Summary Section */}
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
-          <h4 className="font-semibold text-gray-800 mb-3 text-sm flex items-center gap-2">
-            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            Lead Summary
-          </h4>
+          <div className="flex justify-between items-center mb-3">
+            <h4 className="font-semibold text-gray-800 text-sm flex items-center gap-2">
+              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              Lead Summary
+            </h4>
+            <Button variant="outline" size="sm" onClick={fillMockData} className="py-1 h-auto text-xs">Fill Mock Data</Button>
+          </div>
           <div className="grid grid-cols-2 gap-y-3 gap-x-6 text-sm">
             <div>
               <span className="text-gray-500 block text-xs mb-0.5">Client</span>
@@ -155,6 +197,24 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
               />
               Scope finalized
             </label>
+            <label className="flex items-center gap-2 text-sm text-blue-800 cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={checklist.contract_signed} 
+                onChange={e => setChecklist(p => ({...p, contract_signed: e.target.checked}))}
+                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-blue-300"
+              />
+              Signed contract attached
+            </label>
+            <label className="flex items-center gap-2 text-sm text-blue-800 cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={checklist.site_address_confirmed} 
+                onChange={e => setChecklist(p => ({...p, site_address_confirmed: e.target.checked}))}
+                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-blue-300"
+              />
+              Site address confirmed
+            </label>
           </div>
         </div>
 
@@ -180,6 +240,20 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
+            <Select 
+              label="Lead Designer" 
+              options={[{value:'',label:'Select Designer'}, {value:'u3',label:'Sneha Kapoor'}, {value:'u4',label:'Amit Patel'}]}
+              value={formData.designer}
+              onChange={v => setFormData({...formData, designer: v})}
+            />
+            <Select 
+              label="Payment Terms" 
+              options={[{value:'',label:'Select Terms'}, {value:'10_40_40_10',label:'10% - 40% - 40% - 10%'}, {value:'50_50',label:'50% - 50%'}]}
+              value={formData.paymentTerms}
+              onChange={v => setFormData({...formData, paymentTerms: v})}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
             <Input 
               label="Client Name" 
               value={formData.clientName} 
@@ -190,6 +264,28 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
               type="number"
               value={formData.contractValue} 
               onChange={e => setFormData({...formData, contractValue: e.target.value})} 
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input 
+              label="Advance Amount Received (₹)" 
+              type="number"
+              value={formData.advanceAmount} 
+              onChange={e => setFormData({...formData, advanceAmount: e.target.value})} 
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input 
+              label="Expected Start Date" 
+              type="date"
+              value={formData.startDate} 
+              onChange={e => setFormData({...formData, startDate: e.target.value})} 
+            />
+            <Input 
+              label="Target Handover Date" 
+              type="date"
+              value={formData.handoverDate} 
+              onChange={e => setFormData({...formData, handoverDate: e.target.value})} 
             />
           </div>
         </div>

@@ -1,256 +1,4 @@
-const { z } = require('zod');
-const pool = require('../db/pool');
-const { createLead } = require('../services/leads/createLead');
-const { updateLead } = require('../services/leads/updateLead');
-const { deleteLead } = require('../services/leads/deleteLead');
-const { changeStage } = require('../services/leads/changeStage');
-const { bulkDeleteLeads } = require('../services/leads/bulkDeleteLeads');
-const { bulkAssignLeads } = require('../services/leads/bulkAssignLeads');
-const { bulkChangeStage } = require('../services/leads/bulkChangeStage');
-const leadRepository = require('../repositories/leadRepository');
-const { findLeads, findLeadById, getLeadStats } = leadRepository;
-const activityService = require('../services/activities/activityService');
-const { listActivities, logActivity } = activityService;
-const aiService = require('../services/aiService');
-const { success, fail, paginate } = require('../utils/response');
-const AppError = require('../utils/AppError');
-
-const createLeadSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  phone: z.string(),
-  email: z.string().email('Invalid email format').optional().or(z.literal('')),
-  source: z.string().optional(),
-  stageId: z.string().uuid('Invalid stage ID').optional().or(z.literal('')),
-  assigneeId: z.string().uuid('Invalid assignee ID').optional().or(z.literal('')),
-  notes: z.string().optional(),
-  custom_fields: z.record(z.any()).optional(),
-  builder_name: z.string().optional(),
-  possession_date: z.string().optional(),
-  house_status: z.string().optional(),
-  loan_approved: z.boolean().optional(),
-  interior_style: z.string().optional(),
-  material_preference: z.string().optional(),
-  preferred_communication: z.string().optional(),
-  preferred_language: z.string().optional(),
-  referral_source: z.string().optional(),
-  lifestyle_preferences: z.any().optional(),
-  additional_contacts: z.array(z.any()).optional(),
-  win_probability: z.number().min(0).max(100).optional(),
-  last_contacted_at: z.string().datetime().optional(),
-  ai_score_breakdown: z.record(z.any()).optional()
-});
-
-const logActivitySchema = z.object({
-  type: z.enum(['call', 'note', 'email', 'whatsapp', 'site_visit', 'meeting']),
-  title: z.string().optional(),
-  notes: z.string().optional(),
-  outcome: z.string().optional(),
-  scheduledAt: z.string().datetime().optional(),
-  ai_summary: z.string().optional(),
-  metadata: z.record(z.any()).optional()
-});
-
-const getTenantAndUser = (req) => {
-  const tenantId = req.tenantId || (req.user && req.user.tenantId);
-  const userId = req.user && req.user.userId;
-  if (!tenantId) {
-    throw new AppError('Tenant context missing', 401, 'UNAUTHORIZED');
-  }
-  return { tenantId, userId };
-};
-
-exports.createLeadHandler = async (req, res, next) => {
-  console.log('--- Incoming createLead Request ---', req.body);
-  try {
-    const parsed = createLeadSchema.safeParse(req.body);
-    if (!parsed.success) {
-      console.error('Lead Validation Error:', JSON.stringify(parsed.error.issues, null, 2));
-      return fail(res, 'VALIDATION_ERROR', 'Validation failed', 400, parsed.error.issues);
-    }
-    const { tenantId, userId } = getTenantAndUser(req);
-    const lead = await createLead({ tenantId, userId, data: parsed.data });
-    return success(res, lead, {}, 201);
-  } catch (error) {
-    console.error('Lead Creation Error Details:', error);
-    if (error.message && (error.message.includes('VALIDATION_ERROR') || error.message === 'INVALID_STAGE')) {
-      return fail(res, 'VALIDATION_ERROR', error.message, 400);
-    }
-    next(error);
-  }
-};
-
-exports.getLeadsHandler = async (req, res, next) => {
-  try {
-    const { tenantId } = getTenantAndUser(req);
-    const { stageId, assigneeId, source, search, sortBy, sortDesc, page, limit, cursor } = req.query;
-
-    const result = await findLeads(tenantId, {
-      stageId,
-      assigneeId,
-      source,
-      search,
-      sortBy,
-      sortDesc,
-      cursor,
-      page: page ? parseInt(page, 10) : 1,
-      limit: limit ? parseInt(limit, 10) : 20
-    });
-
-    return paginate(res, result.data, result.total, result.page, result.limit, result.nextCursor);
-  } catch (error) {
-    next(error);
-  }
-};
-
-exports.getLeadStatsHandler = async (req, res, next) => {
-  try {
-    const { tenantId } = getTenantAndUser(req);
-    const stats = await getLeadStats(tenantId);
-    return success(res, stats);
-  } catch (error) {
-    next(error);
-  }
-};
-
-exports.getLeadByIdHandler = async (req, res, next) => {
-  try {
-    const { tenantId } = getTenantAndUser(req);
-    const leadId = req.params.id;
-
-    const lead = await findLeadById(tenantId, leadId);
-    if (!lead) {
-      return fail(res, 'NOT_FOUND', 'Lead not found', 404);
-    }
-
-    const activitiesResult = await listActivities({ tenantId, leadId, limit: 5 });
-    
-    // Fetch Referrals
-    const referralsQuery = await pool.query(`
-      SELECT id, name, stage_id, budget_max, created_at,
-        (SELECT name FROM lead_stages WHERE id = stage_id) as stage_name
-      FROM leads 
-      WHERE referred_by_lead_id = $1 AND tenant_id = $2 AND deleted_at IS NULL
-      ORDER BY created_at DESC
-    `, [leadId, tenantId]);
-
-    return success(res, { 
-      ...lead, 
-      activities: activitiesResult.data,
-      referrals: referralsQuery.rows 
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-exports.updateLeadHandler = async (req, res, next) => {
-  try {
-    const { tenantId, userId } = getTenantAndUser(req);
-    const leadId = req.params.id;
-
-    const updatedLead = await updateLead({ tenantId, userId, leadId, data: req.body });
-    return success(res, updatedLead);
-  } catch (error) {
-    if (error.code === 'STAGE_GATE_FAILED') {
-      return res.status(400).json({
-        success: false,
-        error: { code: 'STAGE_GATE_FAILED', message: 'Missing mandatory fields for this stage', missing: error.missing },
-        timestamp: new Date().toISOString()
-      });
-    }
-    if (error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Lead not found', 404);
-    if (error.message === 'INVALID_STAGE') return fail(res, 'VALIDATION_ERROR', 'Invalid stage', 400);
-    next(error);
-  }
-};
-
-exports.deleteLeadHandler = async (req, res, next) => {
-  try {
-    const { tenantId, userId } = getTenantAndUser(req);
-    const leadId = req.params.id;
-    await deleteLead({ tenantId, userId, leadId });
-    return res.status(204).send();
-  } catch (error) {
-    if (error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Lead not found', 404);
-    next(error);
-  }
-};
-
-exports.bulkDeleteLeadsHandler = async (req, res, next) => {
-  try {
-    const { tenantId } = getTenantAndUser(req);
-    const { leadIds } = req.body;
-    if (!leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
-      return fail(res, 'VALIDATION_ERROR', 'An array of leadIds is required', 400);
-    }
-    const deletedCount = await bulkDeleteLeads(leadIds, tenantId);
-    return success(res, { count: deletedCount }, { message: `Deleted ${deletedCount} leads` });
-  } catch (error) {
-    next(error);
-  }
-};
-
-exports.bulkAssignLeadsHandler = async (req, res, next) => {
-  try {
-    const { tenantId } = getTenantAndUser(req);
-    const { leadIds, assigneeId } = req.body;
-    if (!leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
-      return fail(res, 'VALIDATION_ERROR', 'An array of leadIds is required', 400);
-    }
-    const updatedCount = await bulkAssignLeads(leadIds, assigneeId, tenantId);
-    return success(res, { count: updatedCount }, { message: `Assigned ${updatedCount} leads` });
-  } catch (error) {
-    if (error.message === 'Invalid assignee') return fail(res, 'VALIDATION_ERROR', 'Assignee not found in this tenant', 400);
-    next(error);
-  }
-};
-
-exports.bulkChangeStageHandler = async (req, res, next) => {
-  try {
-    const { tenantId } = getTenantAndUser(req);
-    const { leadIds, stageId } = req.body;
-    if (!leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
-      return fail(res, 'VALIDATION_ERROR', 'An array of leadIds is required', 400);
-    }
-    if (!stageId) {
-      return fail(res, 'VALIDATION_ERROR', 'stageId is required', 400);
-    }
-    const updatedCount = await bulkChangeStage(leadIds, stageId, tenantId);
-    return success(res, { count: updatedCount }, { message: `Moved ${updatedCount} leads to new stage` });
-  } catch (error) {
-    if (error.message === 'Invalid stage') return fail(res, 'VALIDATION_ERROR', 'Stage not found in this tenant', 400);
-    next(error);
-  }
-};
-
-exports.changeStageHandler = async (req, res, next) => {
-  try {
-    const { tenantId, userId } = getTenantAndUser(req);
-    const leadId = req.params.id;
-    const { stageId } = req.body;
-    if (!stageId) return fail(res, 'VALIDATION_ERROR', 'stageId is required', 400);
-
-    const updatedLead = await changeStage({ tenantId, userId, leadId, newStageId: stageId });
-    return success(res, updatedLead);
-  } catch (error) {
-    if (error.code === 'STAGE_GATE_FAILED') {
-      return res.status(422).json({
-        success: false,
-        error: { code: 'STAGE_GATE_FAILED', message: 'Missing mandatory fields for this stage', missing: error.missing },
-        timestamp: new Date().toISOString()
-      });
-    }
-    if (error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Lead not found', 404);
-    if (error.message === 'INVALID_STAGE') return fail(res, 'VALIDATION_ERROR', 'Invalid stage', 400);
-    next(error);
-  }
-};
-
-exports.convertToProjectHandler = async (req, res, next) => {
-  try {
-    const { tenantId, userId } = getTenantAndUser(req);
-    const leadId = req.params.id;
-    const { 
+const { 
       booking_received, floor_plan, scope_finalized,
       projectName, projectType, clientName, clientPhone, clientEmail, pm, contractValue 
     } = req.body;
@@ -258,8 +6,8 @@ exports.convertToProjectHandler = async (req, res, next) => {
     if (!booking_received || !floor_plan || !scope_finalized) {
       return fail(res, 'VALIDATION_ERROR', 'All checklist items must be verified to convert.', 400);
     }
-    if (!projectName || !pm || !projectType) {
-      return fail(res, 'VALIDATION_ERROR', 'Project name, type and PM are required.', 400);
+    if (!projectName || !projectType) {
+      return fail(res, 'VALIDATION_ERROR', 'Project name and type are required.', 400);
     }
 
     // 1. Get the lead
@@ -267,14 +15,33 @@ exports.convertToProjectHandler = async (req, res, next) => {
     if (leadRes.rows.length === 0) return fail(res, 'NOT_FOUND', 'Lead not found', 404);
     const lead = leadRes.rows[0];
 
-    // 2. Insert into projects
-    const insertRes = await pool.query(`
-      INSERT INTO projects (tenant_id, name, client_name, pm_id, status, value, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, 'active', $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      RETURNING id
-    `, [tenantId, projectName, clientName || lead.name, pm, contractValue || lead.budget_max || 0]);
+        // 2. Create project using the service to ensure all fields and automations are triggered
+    const { createProject } = require('../services/projects/createProject');
+    const newProject = await createProject({
+      tenantId,
+      userId,
+      data: {
+        lead_id: leadId,
+        name: projectName,
+        project_type: projectType,
+        client_name: clientName || lead.name,
+        client_phone: clientPhone || lead.phone,
+        client_email: clientEmail || lead.email,
+        pm_id: pm,
+        designer_id: req.body.designer,
+        contract_value: contractValue || lead.budget_max || 0,
+        start_date: req.body.startDate,
+        target_date: req.body.handoverDate,
+        custom_fields: {
+          advance_amount: req.body.advanceAmount,
+          payment_terms: req.body.paymentTerms,
+          contract_signed: req.body.contract_signed,
+          site_address_confirmed: req.body.site_address_confirmed
+        }
+      }
+    });
     
-    const newProjectId = insertRes.rows[0].id;
+    const newProjectId = newProject.id;
 
     // 3. Mark lead as converted (status field) if not already won
     if (lead.status !== 'converted') {

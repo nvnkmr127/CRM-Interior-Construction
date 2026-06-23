@@ -11,6 +11,8 @@ export const initialMockDatabase = {
       revenue_potential: 2500000,
       decision_complexity: 'Medium',
       urgency: 'High',
+      latitude: 12.9216,
+      longitude: 77.5446,
       ai_score_breakdown: {
         "Buying Intent": 88,
         "Budget Confidence": 72
@@ -27,6 +29,8 @@ export const initialMockDatabase = {
       revenue_potential: 1200000,
       decision_complexity: 'Low',
       urgency: 'Medium',
+      latitude: 12.9350,
+      longitude: 77.5300,
       ai_score_breakdown: {
         "Buying Intent": 45,
         "Budget Confidence": 60
@@ -114,7 +118,29 @@ export const loadMockDatabase = () => {
     if (saved) {
       const parsed = JSON.parse(saved);
       // Ensure missing top-level keys get defaults from initial
-      return { ...initialMockDatabase, ...parsed };
+      const merged = { ...initialMockDatabase, ...parsed };
+      
+      // Also ensure that initial leads that were saved without lat/lng get patched with the new coordinates
+      if (merged.leads && Array.isArray(merged.leads)) {
+        merged.leads = merged.leads.map(lead => {
+          let updatedLead = { ...lead };
+          
+          const initialLead = initialMockDatabase.leads.find(l => l.id === lead.id);
+          if (initialLead) {
+            updatedLead = { ...initialLead, ...lead }; // lead overrides initial, but initial provides missing lat/lng
+          }
+          
+          // If the lead STILL has no coordinates (e.g. newly created lead before this fix), give it random ones
+          if (!updatedLead.latitude || !updatedLead.longitude) {
+            updatedLead.latitude = 12.92 + (Math.random() * 0.1 - 0.05);
+            updatedLead.longitude = 77.54 + (Math.random() * 0.1 - 0.05);
+          }
+          
+          return updatedLead;
+        });
+      }
+      
+      return merged;
     }
   } catch (e) {
     console.error('Failed to parse mockDatabase from localStorage', e);
