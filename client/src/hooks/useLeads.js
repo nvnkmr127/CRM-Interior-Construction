@@ -111,9 +111,25 @@ export function useLeads(filters = {}) {
     }
   };
 
+  const bulkDelete = async (leadIds) => {
+    // 1. Optimistic UI update
+    const previousLeads = [...leads];
+    setLeads(prev => prev.filter(lead => !leadIds.includes(lead.id)));
+    
+    // 2. Call API
+    try {
+      const { bulkDeleteLeads } = await import('../api/leads');
+      await bulkDeleteLeads(leadIds);
+    } catch (err) {
+      // 3. Revert on error
+      setLeads(previousLeads);
+      throw err;
+    }
+  };
+
   const refetch = () => {
     return fetchLeadsAndStages();
   };
 
-  return { leads, stages, stats, total, loading, error, refetch, optimisticStageChange, bulkChangeStage };
+  return { leads, stages, stats, total, loading, error, refetch, optimisticStageChange, bulkChangeStage, bulkDelete };
 }

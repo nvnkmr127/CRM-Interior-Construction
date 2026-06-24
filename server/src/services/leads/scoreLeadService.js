@@ -29,6 +29,7 @@ function getFieldValue(obj, path) {
 
 function scoreLead(leadData, scoringRules) {
   let score = 0;
+  const breakdown = [];
   
   for (const rule of scoringRules) {
     // Only process active rules
@@ -71,7 +72,12 @@ function scoreLead(leadData, scoringRules) {
     }
     
     if (isMatch) {
-      score += (rule.weight || 0);
+      const weight = rule.weight || 0;
+      score += weight;
+      breakdown.push({
+        rule_name: rule.name || `${rule.field} ${rule.operator} ${rule.value}`,
+        points: weight
+      });
     }
   }
   
@@ -79,7 +85,7 @@ function scoreLead(leadData, scoringRules) {
   if (score < 0) score = 0;
   if (score > 100) score = 100;
   
-  return Math.round(score);
+  return { score: Math.round(score), breakdown };
 }
 
 async function getAndScoreLead(tenantId, leadData) {

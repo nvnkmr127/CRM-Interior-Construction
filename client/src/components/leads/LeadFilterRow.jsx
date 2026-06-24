@@ -26,6 +26,55 @@ export default function LeadFilterRow({
   createdTo, setCreatedTo,
   onClearFilters
 }) {
+  const [savedFilters, setSavedFilters] = React.useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('crm_lead_saved_filters') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  const handleSaveFilter = () => {
+    const name = window.prompt('Enter a name for this filter preset:');
+    if (!name) return;
+    
+    const newFilter = {
+      id: Date.now().toString(),
+      name,
+      config: {
+        search, assigneeFilter, sourceFilter, scoreRange, sortBy, createdFrom, createdTo
+      }
+    };
+    
+    const updated = [...savedFilters, newFilter];
+    setSavedFilters(updated);
+    localStorage.setItem('crm_lead_saved_filters', JSON.stringify(updated));
+  };
+
+  const applySavedFilter = (id) => {
+    if (!id) {
+      onClearFilters();
+      return;
+    }
+    const filter = savedFilters.find(f => f.id === id);
+    if (!filter) return;
+    
+    setSearch(filter.config.search || '');
+    setAssigneeFilter(filter.config.assigneeFilter || '');
+    setSourceFilter(filter.config.sourceFilter || 'All Sources');
+    setScoreRange(filter.config.scoreRange || 'all');
+    setSortBy(filter.config.sortBy || 'latest');
+    setCreatedFrom(filter.config.createdFrom || '');
+    setCreatedTo(filter.config.createdTo || '');
+  };
+
+  const deleteSavedFilter = (id, e) => {
+    e.stopPropagation();
+    const updated = savedFilters.filter(f => f.id !== id);
+    setSavedFilters(updated);
+    localStorage.setItem('crm_lead_saved_filters', JSON.stringify(updated));
+  };
+
   return (
     <div className={styles.filterRow}>
       <select
@@ -78,9 +127,31 @@ export default function LeadFilterRow({
         {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
 
-      {(search || assigneeFilter || sourceFilter !== 'All Sources' || scoreRange !== 'all' || createdFrom || createdTo) && (
-        <button className={styles.clearBtn} onClick={onClearFilters}>✕ Clear</button>
-      )}
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginLeft: 'auto' }}>
+        <select
+          className={styles.filterSelect}
+          onChange={e => applySavedFilter(e.target.value)}
+          value=""
+          style={{ width: '130px' }}
+        >
+          <option value="">Presets...</option>
+          {savedFilters.map(sf => (
+            <option key={sf.id} value={sf.id}>{sf.name}</option>
+          ))}
+        </select>
+        <button 
+          className={styles.clearBtn} 
+          onClick={handleSaveFilter} 
+          style={{ color: 'var(--color-primary, #3b82f6)' }}
+          title="Save current filters"
+        >
+          Save
+        </button>
+
+        {(search || assigneeFilter || sourceFilter !== 'All Sources' || scoreRange !== 'all' || createdFrom || createdTo) && (
+          <button className={styles.clearBtn} onClick={onClearFilters}>✕ Clear</button>
+        )}
+      </div>
 
       <div className={styles.viewToggle}>
         <button

@@ -11,11 +11,32 @@ export default function LeadForm({ lead, onSave, onClose }) {
   const isEdit = !!lead;
   const toast = useToast();
   
-  const rules = React.useMemo(() => ({
-    name: run(validators.required('Name'), validators.minLen(2, 'Name')),
-    phone: run(validators.required('Phone'), validators.phone),
-    email: validators.email
-  }), []);
+  const isReq = (field) => {
+    if (field === 'name' || field === 'phone') return true;
+    const stage = stages.find(s => s.id === values.stageId);
+    return stage?.mandatory_fields?.includes(field) || false;
+  };
+
+  const rules = React.useMemo(() => {
+    const stage = stages.find(s => s.id === values.stageId);
+    const mFields = stage?.mandatory_fields || [];
+    const baseRules = {
+      name: run(validators.required('Name'), validators.minLen(2, 'Name')),
+      phone: run(validators.required('Phone'), validators.phone),
+    };
+    if (mFields.includes('email')) {
+      baseRules.email = run(validators.required('Email'), validators.email);
+    } else {
+      baseRules.email = validators.email;
+    }
+    mFields.forEach(f => {
+      if (!baseRules[f] && f !== 'email') {
+        const labelName = f.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        baseRules[f] = validators.required(labelName);
+      }
+    });
+    return baseRules;
+  }, [stages, values.stageId]);
 
   const { values, errors, touched, handleChange, handleBlur, validateAll, isValid } = useForm({
     name: lead?.name || '',
@@ -73,6 +94,10 @@ export default function LeadForm({ lead, onSave, onClose }) {
       if (!payload.stageId) delete payload.stageId;
       if (!payload.assigneeId) delete payload.assigneeId;
       if (!payload.source) delete payload.source;
+      
+      if (isEdit && lead) {
+        payload.updated_at = lead.updated_at;
+      }
 
       const res = isEdit 
         ? await updateLead(lead.id, payload)
@@ -125,13 +150,14 @@ export default function LeadForm({ lead, onSave, onClose }) {
                 error={touched.phone && errors.phone}
               />
               <Input 
-                label="Email Address" 
+                label={`Email Address${isReq('email') ? ' *' : ''}`} 
+                required={isReq('email')}
                 name="email" value={values.email} 
                 onChange={onChange} onBlur={onBlur}
                 error={touched.email && errors.email}
               />
               <div>
-                <label className={styles.fieldLabel}>Lead Source</label>
+                <label className={styles.fieldLabel}>Lead Source{isReq('source') ? ' *' : ''}</label>
                 <select name="source" value={values.source} onChange={onChange} className={styles.selectInput}>
                   <option value="">Select source</option>
                   <option value="Facebook">Facebook</option>
@@ -141,6 +167,7 @@ export default function LeadForm({ lead, onSave, onClose }) {
                   <option value="Direct">Direct</option>
                   <option value="Other">Other</option>
                 </select>
+                {touched.source && errors.source && <span className={styles.errorText}>{errors.source}</span>}
               </div>
             </div>
           </div>
@@ -149,17 +176,18 @@ export default function LeadForm({ lead, onSave, onClose }) {
           <div className={styles.section}>
             <div className={styles.sectionTitle}>Property & Qualification</div>
             <div className={styles.grid2}>
-              <Input label="Builder Name" name="builder_name" value={values.builder_name} onChange={onChange} onBlur={onBlur} />
-              <Input label="Possession Date" type="date" name="possession_date" value={values.possession_date} onChange={onChange} onBlur={onBlur} />
+              <Input label={`Builder Name${isReq('builder_name') ? ' *' : ''}`} required={isReq('builder_name')} error={touched.builder_name && errors.builder_name} name="builder_name" value={values.builder_name} onChange={onChange} onBlur={onBlur} />
+              <Input label={`Possession Date${isReq('possession_date') ? ' *' : ''}`} required={isReq('possession_date')} error={touched.possession_date && errors.possession_date} type="date" name="possession_date" value={values.possession_date} onChange={onChange} onBlur={onBlur} />
               
               <div>
-                <label className={styles.fieldLabel}>House Status</label>
+                <label className={styles.fieldLabel}>House Status{isReq('house_status') ? ' *' : ''}</label>
                 <select name="house_status" value={values.house_status} onChange={onChange} className={styles.selectInput}>
                   <option value="">Select status</option>
                   <option value="Under Construction">Under Construction</option>
                   <option value="Ready to Move">Ready to Move</option>
                   <option value="Renovation">Renovation</option>
                 </select>
+                {touched.house_status && errors.house_status && <span className={styles.errorText}>{errors.house_status}</span>}
               </div>
 
               <div>
@@ -175,10 +203,10 @@ export default function LeadForm({ lead, onSave, onClose }) {
           <div className={styles.section}>
             <div className={styles.sectionTitle}>Design Preferences</div>
             <div className={styles.grid2}>
-              <Input label="Interior Style" name="interior_style" placeholder="e.g. Modern, Minimal, Luxury" value={values.interior_style} onChange={onChange} onBlur={onBlur} />
-              <Input label="Material Preference" name="material_preference" placeholder="e.g. Modular, Wood" value={values.material_preference} onChange={onChange} onBlur={onBlur} />
-              <Input label="Preferred Communication" name="preferred_communication" placeholder="Call / WhatsApp" value={values.preferred_communication} onChange={onChange} onBlur={onBlur} />
-              <Input label="Preferred Language" name="preferred_language" value={values.preferred_language} onChange={onChange} onBlur={onBlur} />
+              <Input label={`Interior Style${isReq('interior_style') ? ' *' : ''}`} required={isReq('interior_style')} error={touched.interior_style && errors.interior_style} name="interior_style" placeholder="e.g. Modern, Minimal, Luxury" value={values.interior_style} onChange={onChange} onBlur={onBlur} />
+              <Input label={`Material Preference${isReq('material_preference') ? ' *' : ''}`} required={isReq('material_preference')} error={touched.material_preference && errors.material_preference} name="material_preference" placeholder="e.g. Modular, Wood" value={values.material_preference} onChange={onChange} onBlur={onBlur} />
+              <Input label={`Preferred Communication${isReq('preferred_communication') ? ' *' : ''}`} required={isReq('preferred_communication')} error={touched.preferred_communication && errors.preferred_communication} name="preferred_communication" placeholder="Call / WhatsApp" value={values.preferred_communication} onChange={onChange} onBlur={onBlur} />
+              <Input label={`Preferred Language${isReq('preferred_language') ? ' *' : ''}`} required={isReq('preferred_language')} error={touched.preferred_language && errors.preferred_language} name="preferred_language" value={values.preferred_language} onChange={onChange} onBlur={onBlur} />
             </div>
           </div>
 

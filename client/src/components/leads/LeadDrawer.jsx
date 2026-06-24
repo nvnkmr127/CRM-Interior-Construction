@@ -152,16 +152,21 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   const handleFieldBlur = async (field, value) => {
     setSaveStatus('saving');
     try {
-      const res = await api.patch(`/leads/${leadId}`, { [field]: value });
+      const res = await api.patch(`/leads/${leadId}`, { [field]: value, updated_at: lead.updated_at });
       if (res.data?.success) {
         setSaveStatus('saved');
         setTimeout(() => setSaveStatus(''), 2000);
+        setLead(prev => ({ ...prev, updated_at: res.data.data.updated_at }));
         onLeadUpdated?.(res.data.data);
         if (field === 'score') setLead(prev => ({ ...prev, score: value }));
       }
     } catch (e) {
       setSaveStatus('error');
-      toast.error(`Failed to save ${field}`);
+      if (e.response?.data?.error?.code === 'OPTIMISTIC_LOCK_FAILED') {
+        toast.error('This lead was modified by someone else. Please refresh to see the latest changes.');
+      } else {
+        toast.error(`Failed to save ${field}`);
+      }
     }
   };
 
@@ -204,6 +209,24 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
     } catch (e) {
       setLead(prev => ({ ...prev, stage_id: oldStageId }));
       toast.error('Failed to update stage. Reverted.');
+    }
+  };
+
+  const handleArchiveToggle = async () => {
+    const newStatus = lead.status === 'archived' ? 'active' : 'archived';
+    try {
+      const res = await api.patch(`/leads/${leadId}`, { status: newStatus, updated_at: lead.updated_at });
+      if (res.data?.success) {
+        toast.success(`Lead ${newStatus === 'archived' ? 'archived' : 'unarchived'} successfully`);
+        setLead(prev => ({ ...prev, status: newStatus, updated_at: res.data.data.updated_at }));
+        onLeadUpdated?.(res.data.data);
+      }
+    } catch (e) {
+      if (e.response?.data?.error?.code === 'OPTIMISTIC_LOCK_FAILED') {
+        toast.error('This lead was modified by someone else. Please refresh to see the latest changes.');
+      } else {
+        toast.error(`Failed to ${newStatus === 'archived' ? 'archive' : 'unarchive'} lead`);
+      }
     }
   };
 
@@ -325,9 +348,33 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   <button type="button" onClick={() => setEditingScore(false)} className="text-xs text-gray-500">&#x2715;</button>
                 </form>
               ) : (
-                <span onClick={() => setEditingScore(true)} title="Click to override score" className="cursor-pointer">
-                  <ScoreBadge score={lead.score} />
-                </span>
+                <div className="relative group flex items-center">
+                  <span onClick={() => setEditingScore(true)} className="cursor-pointer">
+                    <ScoreBadge score={lead.score} />
+                  </span>
+                  {lead.custom_fields?.score_breakdown && lead.custom_fields.score_breakdown.length > 0 && (
+                    <div className="absolute left-0 top-full mt-2 w-64 bg-white border border-gray-200 shadow-lg rounded-lg p-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                      <h5 className="text-xs font-bold text-gray-700 uppercase mb-2 border-b pb-1">Score Breakdown</h5>
+                      <ul className="space-y-1">
+                        {lead.custom_fields.score_breakdown.map((item, idx) => (
+                          <li key={idx} className="flex justify-between items-center text-xs">
+                            <span className="text-gray-600 truncate mr-2" title={item.rule_name}>{item.rule_name}</span>
+                            <span className={`font-semibold ${item.points > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {item.points > 0 ? '+' : ''}{item.points}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="mt-2 text-[10px] text-gray-400 italic text-center">Click badge to override score</div>
+                    </div>
+                  )}
+                </div>
+              )}
+              {lead.win_probability != null && (
+                <Badge variant="outline" className={`font-semibold ${lead.win_probability > 70 ? 'text-green-700 bg-green-100 border-green-200' : lead.win_probability > 30 ? 'text-yellow-700 bg-yellow-100 border-yellow-200' : 'text-gray-700 bg-gray-100 border-gray-200'}`} title="AI-calculated probability of winning this lead">
+                  <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                  {lead.win_probability}% Win Probability
+                </Badge>
               )}
               {lead.assignee_name && (
                 <div className="flex items-center gap-1.5 bg-gray-100 rounded-full px-2.5 py-1 text-xs font-medium text-gray-700 cursor-pointer hover:bg-gray-200" title="Reassign">
@@ -844,7 +891,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       <li key={f.id} className="p-3 flex items-center justify-between hover:bg-gray-50">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="text-gray-400">&#128206;</span>
-                          <a href={f.storage_key} download={f.file_name} className="text-blue-600 hover:underline truncate text-sm font-medium">{f.file_name}</a>
+                          <a href={f.download_url || f.storage_key} download={f.file_name} className="text-blue-600 hover:underline truncate text-sm font-medium">{f.file_name}</a>
                           <span className="text-xs text-gray-400 shrink-0">{f.file_size ? `${(f.file_size/1024).toFixed(0)}KB` : ''}</span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -921,6 +968,9 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               <Button variant="outline" size="sm" onClick={() => setIsPresentModalOpen(true)}>Log Presentation</Button>
             </div>
             <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleArchiveToggle} className="text-gray-700 hover:bg-gray-50">
+                {lead.status === 'archived' ? 'Unarchive' : 'Archive'}
+              </Button>
               <Button variant="ghost" size="sm" onClick={handleDelete} className="text-red-600 hover:text-red-700 hover:bg-red-50">Mark Lost</Button>
 
               {/* Show Convert button if logic matches a won or late stage */}

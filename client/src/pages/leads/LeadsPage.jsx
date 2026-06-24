@@ -14,15 +14,22 @@ import LeadDashboard from '../../components/leads/LeadDashboard';
 import LeadCalendar from '../../components/leads/LeadCalendar';
 import LeadImportModal from '../../components/leads/LeadImportModal';
 import { useLeads } from '../../hooks/useLeads';
+import { useAuth } from '../../store/authContext';
 import styles from './LeadsPage.module.css';
 
 export default function LeadsPage() {
   const toast = useToast();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [search, setSearch] = useState('');
   const [assigneeFilter, setAssigneeFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('All Sources');
   const [scoreRange, setScoreRange] = useState('all');
-  const [sortBy, setSortBy] = useState('latest');
+  const [sortBy, setSortBy] = useState(() => localStorage.getItem('crm_leads_sortBy') || 'latest');
+
+  React.useEffect(() => {
+    localStorage.setItem('crm_leads_sortBy', sortBy);
+  }, [sortBy]);
   const [view, setView] = useState('list');
   const [selectedLeadId, setSelectedLeadId] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -51,7 +58,7 @@ export default function LeadsPage() {
     return f;
   }, [search, sourceFilter, assigneeFilter, scoreRange, sortBy, createdFrom, createdTo, page, limit]);
 
-  const { leads, stages, stats, total, loading, optimisticStageChange, bulkChangeStage, refetch } = useLeads(filters);
+  const { leads, stages, stats, total, loading, optimisticStageChange, bulkChangeStage, bulkDelete, refetch } = useLeads(filters);
 
   // Unique assignees for dropdown
   const assignees = useMemo(() => {
@@ -77,10 +84,11 @@ export default function LeadsPage() {
   const handleMoveStage = async (leadId, newStageId) => {
     try {
       await optimisticStageChange(leadId, newStageId);
-    } catch {
-      // error handling deferred to hook
+      setStageMenuLeadId(null);
+    } catch (err) {
+      setStageMenuLeadId(null);
+      throw err;
     }
-    setStageMenuLeadId(null);
   };
 
   const clearFilters = () => {
@@ -185,7 +193,12 @@ export default function LeadsPage() {
             )}
           </div>
 
-          <Button variant="outline" onClick={handleExport}>&#8593; Export</Button>
+          <Button 
+            variant="outline" 
+            onClick={handleExport}
+            disabled={!isAdmin}
+            title={!isAdmin ? "Exporting leads is restricted to administrators (DLP Policy)" : "Export Leads to CSV"}
+          >&#8593; Export</Button>
           <Button variant="outline" onClick={() => setIsImportModalOpen(true)}>&#8595; Import</Button>
           <Button variant="primary" onClick={() => setIsFormOpen(true)}>+ New Lead</Button>
         </div>
@@ -241,6 +254,7 @@ export default function LeadsPage() {
             stageMenuLeadId={stageMenuLeadId} setStageMenuLeadId={setStageMenuLeadId}
             stages={stages} handleMoveStage={handleMoveStage}
             bulkChangeStage={bulkChangeStage}
+            bulkDelete={bulkDelete}
             clearFilters={clearFilters}
           />
         )}

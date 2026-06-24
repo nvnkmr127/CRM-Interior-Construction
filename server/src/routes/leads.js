@@ -87,6 +87,7 @@ router.post('/:id/sentiment', authenticate, authorize('leads:read'), leadControl
 
 // Bottom of Funnel (Proposal & Negotiation)
 router.post('/:id/generate-proposal', authenticate, authorize('leads:read'), leadController.generateProposalHandler);
+router.get('/:id/proposals', authenticate, authorize('leads:read'), leadController.getProposalsHandler);
 router.patch('/:id/negotiation', authenticate, authorize('leads:update'), leadController.updateNegotiationHandler);
 router.patch('/:id/budget', authenticate, authorize('leads:update'), leadController.updateBudgetHandler);
 

@@ -133,6 +133,16 @@ export const bulkChangeLeadStage = async (leadIds, stageId) => {
 };
 
 /**
+ * Bulk delete multiple leads.
+ * @param {Array<string>} leadIds - UUIDs of the leads.
+ * @returns {Promise<{ success: boolean, data: Object }>} Result.
+ */
+export const bulkDeleteLeads = async (leadIds) => {
+  const response = await api.post(`/leads/bulk/delete`, { leadIds });
+  return response.data;
+};
+
+/**
  * Log a new activity for a lead.
  * @param {string} leadId - The UUID of the lead.
  * @param {Object} data - The activity data.

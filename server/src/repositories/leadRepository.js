@@ -31,16 +31,16 @@ async function createLead(tenantId, data) {
 
     const leadQuery = `
       INSERT INTO leads (
-        tenant_id, name, email, phone, source, stage_id, assignee_id, score, custom_fields, notes, status, created_by
+        tenant_id, name, email, phone, source, stage_id, assignee_id, score, custom_fields, notes, status, created_by, win_probability
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
       ) RETURNING *
     `;
     
     const leadValues = [
       tenantId, name, email || null, phone || null, source || null, stage_id || null, assignee_id || null, score || 0,
       JSON.stringify(finalCustomFields),
-      notes || null, status || 'active', created_by || null
+      notes || null, status || 'active', created_by || null, win_probability || 0
     ];
     
     const leadResult = await client.query(leadQuery, leadValues);

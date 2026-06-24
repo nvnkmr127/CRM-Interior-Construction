@@ -39,10 +39,11 @@ function getAgingBadge(lastActivityAt, createdAt) {
 export default function LeadTable({
   filteredLeads, loading, page, limit, total, setPage,
   setSelectedLeadId, stageMenuLeadId, setStageMenuLeadId,
-  stages, handleMoveStage, bulkChangeStage, clearFilters
+  stages, handleMoveStage, bulkChangeStage, bulkDelete, clearFilters
 }) {
   const [selectedIds, setSelectedIds] = React.useState(new Set());
   const [showBulkStageMenu, setShowBulkStageMenu] = React.useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
@@ -71,7 +72,23 @@ export default function LeadTable({
       clearSelection();
     } catch (err) {
       console.error('Failed to bulk move leads', err);
-      alert('Failed to bulk move leads');
+      const apiErr = err.response?.data?.error;
+      if (apiErr?.code === 'STAGE_GATE_FAILED' && apiErr?.missing?.length > 0) {
+        alert(`Missing Required Fields: ${apiErr.missing.join(', ')} required to move these leads.`);
+      } else {
+        alert(apiErr?.message || 'Failed to bulk move leads');
+      }
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    try {
+      await bulkDelete(Array.from(selectedIds));
+      clearSelection();
+      setShowDeleteConfirm(false);
+    } catch (err) {
+      console.error('Failed to bulk delete leads', err);
+      alert('Failed to bulk delete leads');
     }
   };
   if (loading) {
@@ -161,7 +178,13 @@ export default function LeadTable({
                 </td>
                 <td className={styles.listTd}>
                   {lead.score != null ? (
-                    <span className={`${styles.scoreChip} ${scoreClass(Number(lead.score))}`}>
+                    <span 
+                      className={`${styles.scoreChip} ${scoreClass(Number(lead.score))}`}
+                      title={lead.custom_fields?.score_breakdown?.length 
+                        ? lead.custom_fields.score_breakdown.map(i => `${i.rule_name}: ${i.points > 0 ? '+' : ''}${i.points}`).join('\n') 
+                        : 'Click lead to view score breakdown'
+                      }
+                    >
                       {lead.score}
                     </span>
                   ) : (
@@ -219,7 +242,18 @@ export default function LeadTable({
                             <button
                               key={s.id}
                               className={styles.stageDropdownItem}
-                              onClick={() => handleMoveStage(lead.id, s.id)}
+                              onClick={async () => {
+                                try {
+                                  await handleMoveStage(lead.id, s.id);
+                                } catch (err) {
+                                  const apiErr = err.response?.data?.error;
+                                  if (apiErr?.code === 'STAGE_GATE_FAILED' && apiErr?.missing?.length > 0) {
+                                    alert(`Missing Required Fields: ${apiErr.missing.join(', ')} required for this stage.`);
+                                  } else {
+                                    alert(apiErr?.message || 'Failed to move stage');
+                                  }
+                                }
+                              }}
                             >
                               {s.name}
                             </button>
@@ -244,12 +278,17 @@ export default function LeadTable({
       </table>
       </div>
       
-      <Pagination 
-        currentPage={page} 
-        totalItems={total} 
-        itemsPerPage={limit} 
-        onPageChange={setPage} 
-      />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+        <div style={{ fontSize: '13px', color: 'var(--color-text-secondary, #6b7280)', marginLeft: '8px' }}>
+          Showing <b>{filteredLeads.length}</b> leads {total > 0 && <span>(out of <b>{total}</b> matching records)</span>}
+        </div>
+        <Pagination 
+          currentPage={page} 
+          totalItems={total} 
+          itemsPerPage={limit} 
+          onPageChange={setPage} 
+        />
+      </div>
 
       {selectedIds.size > 0 && (
         <div style={{
@@ -260,6 +299,7 @@ export default function LeadTable({
         }}>
           <div style={{ fontWeight: 500 }}>{selectedIds.size} selected</div>
           <div style={{ display: 'flex', gap: '12px', position: 'relative' }}>
+            <Button variant="outline" style={{color: 'var(--color-danger, #ef4444)', borderColor: 'var(--color-danger, #ef4444)'}} onClick={() => setShowDeleteConfirm(true)}>Delete</Button>
             <Button variant="secondary" onClick={clearSelection}>Cancel</Button>
             <div className={styles.stageMenuWrap} style={{position: 'relative'}}>
               <Button variant="primary" onClick={() => setShowBulkStageMenu(!showBulkStageMenu)}>Move Stage</Button>
@@ -276,6 +316,30 @@ export default function LeadTable({
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteConfirm && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+          background: 'rgba(0,0,0,0.5)', zIndex: 1000, 
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{
+            background: 'var(--color-surface, #fff)', padding: '24px', borderRadius: '8px',
+            maxWidth: '400px', width: '100%', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '12px', fontSize: '18px', fontWeight: 'bold' }}>Delete Leads</h3>
+            <p style={{ color: 'var(--color-text-secondary)', marginBottom: '24px' }}>
+              Are you sure you want to delete the selected {selectedIds.size} lead(s)? This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <Button variant="ghost" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
+              <Button variant="primary" style={{ background: 'var(--color-danger, #ef4444)', borderColor: 'var(--color-danger, #ef4444)' }} onClick={handleBulkDelete}>
+                Delete
+              </Button>
             </div>
           </div>
         </div>

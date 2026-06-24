@@ -43,7 +43,17 @@ function errorHandler(err, req, res, next) {
     case 'ACCOUNT_INACTIVE':
       response.error = { code: 'ACCOUNT_INACTIVE', message: 'Account is inactive' };
       return res.status(403).json(response);
+    case 'STAGE_GATE_FAILED':
+      response.error = { code: 'STAGE_GATE_FAILED', message: 'Missing mandatory fields', missing: err.missing || [] };
+      return res.status(400).json(response);
+    case 'OPTIMISTIC_LOCK_FAILED':
+      response.error = { code: 'OPTIMISTIC_LOCK_FAILED', message: 'This lead has been modified by someone else since you last fetched it.' };
+      return res.status(409).json(response);
     default:
+      if (err.message && err.message.startsWith('VALIDATION_ERROR:')) {
+        response.error = { code: 'VALIDATION_ERROR', message: err.message.split('VALIDATION_ERROR:')[1].trim() };
+        return res.status(400).json(response);
+      }
       response.error = { code: 'INTERNAL_ERROR', message: 'Something went wrong' };
       
       // Include stack trace only in development

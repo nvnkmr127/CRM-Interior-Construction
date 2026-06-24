@@ -32,7 +32,8 @@ const createStageSchema = z.object({
   sort_order: z.number().int().optional(),
   is_won: z.boolean().optional(),
   is_lost: z.boolean().optional(),
-  mandatory_fields: z.array(z.string()).optional()
+  mandatory_fields: z.array(z.string()).optional(),
+  wip_limit: z.number().int().nullable().optional()
 });
 
 router.post('/', authorize('config:manage'), async (req, res, next) => {
@@ -45,13 +46,13 @@ router.post('/', authorize('config:manage'), async (req, res, next) => {
       return fail(res, 'VALIDATION_ERROR', 'Validation failed', 400, parsed.error.issues);
     }
 
-    const { name, color, sort_order, is_won, is_lost, mandatory_fields } = parsed.data;
+    const { name, color, sort_order, is_won, is_lost, mandatory_fields, wip_limit } = parsed.data;
 
     const query = `
       INSERT INTO lead_stages (
-        tenant_id, name, color, sort_order, is_won, is_lost, mandatory_fields
+        tenant_id, name, color, sort_order, is_won, is_lost, mandatory_fields, wip_limit
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7
+        $1, $2, $3, $4, $5, $6, $7, $8
       ) RETURNING *
     `;
 
@@ -62,7 +63,8 @@ router.post('/', authorize('config:manage'), async (req, res, next) => {
       sort_order || 0,
       is_won || false,
       is_lost || false,
-      JSON.stringify(mandatory_fields || [])
+      JSON.stringify(mandatory_fields || []),
+      wip_limit || null
     ];
 
     const result = await pool.query(query, values);
@@ -75,7 +77,8 @@ router.post('/', authorize('config:manage'), async (req, res, next) => {
 const updateStageSchema = z.object({
   name: z.string().min(1).optional(),
   color: z.string().optional(),
-  mandatory_fields: z.array(z.string()).optional()
+  mandatory_fields: z.array(z.string()).optional(),
+  wip_limit: z.number().int().nullable().optional()
 });
 
 router.put('/:id', authorize('config:manage'), async (req, res, next) => {
@@ -90,7 +93,7 @@ router.put('/:id', authorize('config:manage'), async (req, res, next) => {
       return fail(res, 'VALIDATION_ERROR', 'Validation failed', 400, parsed.error.issues);
     }
 
-    const { name, color, mandatory_fields } = parsed.data;
+    const { name, color, mandatory_fields, wip_limit } = parsed.data;
 
     let query = 'UPDATE lead_stages SET ';
     const fields = [];
@@ -108,6 +111,10 @@ router.put('/:id', authorize('config:manage'), async (req, res, next) => {
     if (mandatory_fields !== undefined) {
       fields.push(`mandatory_fields = $${paramIndex++}`);
       values.push(JSON.stringify(mandatory_fields));
+    }
+    if (wip_limit !== undefined) {
+      fields.push(`wip_limit = $${paramIndex++}`);
+      values.push(wip_limit);
     }
 
     if (fields.length === 0) {

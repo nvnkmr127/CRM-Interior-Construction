@@ -341,7 +341,45 @@ exports.uploadFileHandler = async function uploadFileHandler(req, res) {
 
     if (!req.file) return res.status(400).json({ success: false, error: { message: 'No file uploaded' } });
 
-    const storageKey = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+    // 1. Per-file limit (10MB)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024;
+    if (req.file.size > MAX_FILE_SIZE) {
+      return res.status(400).json({ success: false, error: { message: 'File size exceeds the 10MB limit.' } });
+    }
+
+    // 2. Per-lead total limit (50MB)
+    const MAX_TOTAL_SIZE = 50 * 1024 * 1024;
+    const sizeRes = await pool.query(
+      'SELECT COALESCE(SUM(file_size), 0) as total_size FROM lead_files WHERE lead_id = $1 AND tenant_id = $2',
+      [leadId, tenantId]
+    );
+    const currentTotalSize = parseInt(sizeRes.rows[0].total_size, 10);
+    if (currentTotalSize + req.file.size > MAX_TOTAL_SIZE) {
+      return res.status(400).json({ success: false, error: { message: `Upload rejected: The 50MB total storage limit for this lead would be exceeded. Current usage: ${(currentTotalSize / (1024 * 1024)).toFixed(1)}MB.` } });
+    }
+
+    // Validate MIME type and Magic Number
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+    if (!allowedMimeTypes.includes(req.file.mimetype)) {
+      return res.status(400).json({ success: false, error: { message: 'Invalid file type. Only JPEG, PNG, and PDF are allowed.' } });
+    }
+
+    const hex = req.file.buffer.subarray(0, 4).toString('hex').toUpperCase();
+    let magicValid = false;
+    if (req.file.mimetype === 'application/pdf' && hex.startsWith('25504446')) magicValid = true;
+    else if ((req.file.mimetype === 'image/jpeg' || req.file.mimetype === 'image/jpg') && hex.startsWith('FFD8FF')) magicValid = true;
+    else if (req.file.mimetype === 'image/png' && hex.startsWith('89504E47')) magicValid = true;
+
+    if (!magicValid) {
+      return res.status(400).json({ success: false, error: { message: 'File contents do not match the declared MIME type or file is corrupted.' } });
+    }
+
+    const storage = require('../utils/storage');
+    // Generate a unique S3 key
+    const storageKey = `tenant-${tenantId}/leads/${leadId}/${Date.now()}-${req.file.originalname.replace(/\s+/g, '_')}`;
+    
+    // Upload the raw buffer to S3 / Local storage
+    await storage.uploadBuffer(storageKey, req.file.buffer, req.file.mimetype);
 
     const result = await pool.query(
       `INSERT INTO lead_files (tenant_id, lead_id, uploaded_by, file_name, file_size, mime_type, storage_key)
@@ -360,6 +398,7 @@ exports.getFilesHandler = async function getFilesHandler(req, res) {
   try {
     const { tenantId } = getTenantAndUser(req);
     const { id: leadId } = req.params;
+    const storage = require('../utils/storage');
 
     const result = await pool.query(
       `SELECT f.id, f.file_name, f.file_size, f.mime_type, f.storage_key, f.created_at, u.name AS uploaded_by_name
@@ -369,7 +408,17 @@ exports.getFilesHandler = async function getFilesHandler(req, res) {
       [tenantId, leadId]
     );
 
-    res.json({ success: true, data: result.rows });
+    const files = await Promise.all(result.rows.map(async (f) => {
+      // Keep backwards compatibility for legacy base64 strings
+      if (f.storage_key && f.storage_key.startsWith('data:')) {
+        f.download_url = f.storage_key;
+      } else if (f.storage_key) {
+        f.download_url = await storage.getDownloadUrl(f.storage_key);
+      }
+      return f;
+    }));
+
+    res.json({ success: true, data: files });
   } catch (err) {
     res.status(500).json({ success: false, error: { message: 'Failed to fetch files' } });
   }
@@ -379,13 +428,26 @@ exports.deleteFileHandler = async function deleteFileHandler(req, res) {
   try {
     const { tenantId } = getTenantAndUser(req);
     const { id: leadId, fileId } = req.params;
+    const storage = require('../utils/storage');
+
+    const fileRes = await pool.query(
+      'SELECT storage_key FROM lead_files WHERE id = $1 AND lead_id = $2 AND tenant_id = $3',
+      [fileId, leadId, tenantId]
+    );
+    
+    if (fileRes.rows.length > 0) {
+      const { storage_key } = fileRes.rows[0];
+      if (storage_key && !storage_key.startsWith('data:')) {
+        await storage.deleteFile(storage_key);
+      }
+    }
 
     await pool.query(
       'DELETE FROM lead_files WHERE id = $1 AND lead_id = $2 AND tenant_id = $3',
       [fileId, leadId, tenantId]
     );
-
-    res.json({ success: true });
+    
+    res.json({ success: true, data: { deleted: fileId } });
   } catch (err) {
     res.status(500).json({ success: false, error: { message: 'Delete failed' } });
   }
@@ -1271,21 +1333,50 @@ exports.knowledgeAssistantHandler = async (req, res, next) => {
   } catch(e) { next(e); }
 };
 
-exports.generateProposalHandler = async (req, res, next) => {
+exports.getProposalsHandler = async (req, res, next) => {
   try {
     const { tenantId } = getTenantAndUser(req);
+    const leadId = req.params.id;
+    const { rows } = await pool.query(
+      `SELECT id, target_budget, proposal_text, created_at, created_by 
+       FROM lead_proposals 
+       WHERE tenant_id = $1 AND lead_id = $2 
+       ORDER BY created_at DESC`,
+      [tenantId, leadId]
+    );
+    res.json({ success: true, data: rows });
+  } catch(e) { next(e); }
+};
+
+
+exports.generateProposalHandler = async (req, res, next) => {
+  try {
+    const { tenantId, userId } = getTenantAndUser(req);
     const leadId = req.params.id;
     const { requirements, targetBudget } = req.body;
     const lead = await leadRepository.findLeadById(tenantId, leadId);
     if (!lead) return res.status(404).json({ success: false, error: { message: 'Lead not found' } });
+    
     const proposal = await aiService.generateExecutiveProposal(tenantId, leadId, lead, requirements, targetBudget);
+    
+    // Save to database
+    if (proposal && proposal.proposal_text) {
+      const { rows } = await pool.query(
+        `INSERT INTO lead_proposals (tenant_id, lead_id, target_budget, proposal_text, created_by)
+         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        [tenantId, leadId, targetBudget || lead.budget_max || null, proposal.proposal_text, userId]
+      );
+      proposal.id = rows[0].id;
+      proposal.created_at = rows[0].created_at;
+    }
+
     res.json({ success: true, data: proposal });
   } catch(e) { next(e); }
 };
 
 exports.updateNegotiationHandler = async (req, res, next) => {
   try {
-    const { tenantId } = getTenantAndUser(req);
+    const { tenantId, userId } = getTenantAndUser(req);
     const leadId = req.params.id;
     const { target_price, quoted_price, notes } = req.body;
 

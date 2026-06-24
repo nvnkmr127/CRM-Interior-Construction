@@ -3,12 +3,52 @@ const stageRepository = require('../../repositories/stageRepository');
 const { logAction } = require('../auditLog');
 const { enqueueAutomation } = require('../../queues/automationQueue');
 const { dispatchEvent } = require('../webhooks/webhookDispatcher');
+const pool = require('../../db/pool');
 
 async function updateLead({ tenantId, userId, leadId, data }) {
-  // 1. Fetch current lead
+  // 1. Validate email format if provided
+  if (data.email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(data.email)) {
+      console.error('[updateLead] FAIL validation: invalid email format', { email: data.email });
+      throw new Error('VALIDATION_ERROR: Invalid email format');
+    }
+  }
+
+  if (data.source) {
+    const tenantRes = await pool.query('SELECT config FROM tenants WHERE id = $1', [tenantId]);
+    const config = typeof tenantRes.rows[0].config === 'string' ? JSON.parse(tenantRes.rows[0].config || '{}') : (tenantRes.rows[0].config || {});
+    const validSources = config.lead_sources || ['Facebook', 'IndiaMART', 'Referral', 'Website', 'Direct', 'Other'];
+    if (!validSources.includes(data.source)) {
+      console.error('[updateLead] FAIL validation: invalid source', { source: data.source });
+      throw new Error('VALIDATION_ERROR: Invalid lead source');
+    }
+  }
+
+  if (data.phone) {
+    const digitsOnly = data.phone.replace(/\D/g, '');
+    if (digitsOnly.length < 10) {
+      console.error('[updateLead] FAIL validation: phone is too short', { phone: data.phone });
+      throw new Error('VALIDATION_ERROR: Phone number must contain at least 10 digits');
+    }
+  }
+
+  // 2. Fetch current lead
   const currentLead = await leadRepository.findLeadById(tenantId, leadId);
   if (!currentLead) {
     throw new Error('NOT_FOUND');
+  }
+
+  // OPTIMISTIC LOCK CHECK
+  if (data.updated_at) {
+    const currentUpdatedAt = new Date(currentLead.updated_at).getTime();
+    const providedUpdatedAt = new Date(data.updated_at).getTime();
+    
+    // Check if the current timestamp is significantly newer than the client's provided timestamp
+    if (Math.abs(currentUpdatedAt - providedUpdatedAt) > 1000) {
+      console.error('[updateLead] FAIL optimistic lock:', { currentUpdatedAt, providedUpdatedAt });
+      throw new Error('OPTIMISTIC_LOCK_FAILED');
+    }
   }
 
   // Handle naming conventions (stageId vs stage_id)
@@ -81,10 +121,23 @@ async function updateLead({ tenantId, userId, leadId, data }) {
 
   // 5. Recalculate rules-based score
   const { getAndScoreLead } = require('./scoreLeadService');
-  const newScore = await getAndScoreLead(tenantId, updatedLead);
+  const scoreResultObj = await getAndScoreLead(tenantId, updatedLead);
+  const newScore = scoreResultObj.score;
+  const newBreakdown = scoreResultObj.breakdown;
+  
   let finalLead = updatedLead;
-  if (newScore !== updatedLead.score) {
-    finalLead = await leadRepository.updateLead(tenantId, leadId, { score: newScore });
+  // If score changed OR breakdown changed, we can update custom_fields.score_breakdown
+  const currentCustomFields = typeof updatedLead.custom_fields === 'string' ? JSON.parse(updatedLead.custom_fields || '{}') : (updatedLead.custom_fields || {});
+  
+  // We'll update if score changed OR if we just want to ensure breakdown is saved
+  const needsUpdate = newScore !== updatedLead.score || JSON.stringify(currentCustomFields.score_breakdown) !== JSON.stringify(newBreakdown);
+  
+  if (needsUpdate) {
+    const updatedCustomFields = { ...currentCustomFields, score_breakdown: newBreakdown };
+    finalLead = await leadRepository.updateLead(tenantId, leadId, { 
+      score: newScore,
+      custom_fields: updatedCustomFields
+    });
   }
 
   // 4. logAction
@@ -111,6 +164,21 @@ async function updateLead({ tenantId, userId, leadId, data }) {
           new: newStageId
         }
       }
+    });
+  }
+
+  // 6. If assignee changed -> Notify new assignee
+  const newAssigneeId = updateData.assignee_id;
+  const currentAssigneeId = currentLead.assignee_id;
+  if (newAssigneeId && newAssigneeId !== currentAssigneeId) {
+    const { notifyUser } = require('../notificationService');
+    notifyUser({
+      tenantId,
+      userId: newAssigneeId,
+      type: 'LEAD_ASSIGNED',
+      message: `You have been assigned a new lead: ${finalLead.name || 'Unknown'}`,
+      referenceUrl: `/leads/${leadId}`,
+      actorId: userId
     });
   }
 

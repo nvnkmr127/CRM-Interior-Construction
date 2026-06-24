@@ -9,6 +9,7 @@ class StorageProvider {
   async getDownloadUrl(key) { return `https://mock-s3.local/${key}?download=true`; }
   async deleteFile(key) { return true; }
   async validateMagicNumber(key, expectedMime) { return true; } // Mock local validation passing
+  async uploadBuffer(key, buffer, mimeType) { return key; }
 }
 
 class S3StorageProvider extends StorageProvider {
@@ -77,6 +78,17 @@ class S3StorageProvider extends StorageProvider {
     }
   }
 
+  async uploadBuffer(key, buffer, mimeType) {
+    const command = new PutObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+      Body: buffer,
+      ContentType: mimeType
+    });
+    await this.s3Client.send(command);
+    return key;
+  }
+
   _checkMagic(buffer, expectedMime) {
     const hex = buffer.toString('hex').toUpperCase();
     if (expectedMime === 'application/pdf' && !hex.startsWith('25504446')) return false;
@@ -136,6 +148,16 @@ class LocalStorageProvider extends StorageProvider {
       console.warn('Failed to read local file magic number:', e);
       return false;
     }
+  }
+
+  async uploadBuffer(key, buffer, mimeType) {
+    const filePath = path.join(this.uploadDir, key);
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(filePath, buffer);
+    return key;
   }
 }
 

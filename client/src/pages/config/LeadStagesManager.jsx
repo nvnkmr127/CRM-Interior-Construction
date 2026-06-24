@@ -31,6 +31,7 @@ function SortableStage({ stage, updateStage, deleteStage }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: stage.id });
   const [showPicker, setShowPicker] = useState(false)
   const [name, setName] = useState(stage.name)
+  const [wipLimit, setWipLimit] = useState(stage.wipLimit ?? '')
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -40,8 +41,15 @@ function SortableStage({ stage, updateStage, deleteStage }) {
   };
 
   const handleBlur = () => {
-    if (name !== stage.name) {
-      updateStage(stage.id, { name })
+    const updates = {}
+    if (name !== stage.name) updates.name = name
+    
+    let parsedLimit = wipLimit === '' ? null : parseInt(wipLimit, 10)
+    if (isNaN(parsedLimit)) parsedLimit = null
+    if (parsedLimit !== stage.wipLimit) updates.wip_limit = parsedLimit
+    
+    if (Object.keys(updates).length > 0) {
+      updateStage(stage.id, updates)
     }
   }
 
@@ -87,6 +95,20 @@ function SortableStage({ stage, updateStage, deleteStage }) {
         onBlur={handleBlur}
       />
 
+      <div style={{display:'flex', alignItems:'center', gap:'4px', marginLeft:'8px'}}>
+        <span style={{fontSize:'12px', color:'var(--color-text-secondary)'}}>WIP:</span>
+        <input 
+          type="number"
+          className={styles.nameInput}
+          style={{ width: '60px', padding: '2px 4px', fontSize: '12px' }}
+          value={wipLimit}
+          onChange={e => setWipLimit(e.target.value)}
+          onBlur={handleBlur}
+          placeholder="∞"
+          min="0"
+        />
+      </div>
+
       {stage.requiredFields > 0 && (
         <span className={styles.chip}>{stage.requiredFields} required fields</span>
       )}
@@ -122,6 +144,7 @@ export default function LeadStagesManager() {
         requiredFields: s.mandatory_fields ? s.mandatory_fields.length : 0,
         isWon: s.is_won,
         isLost: s.is_lost,
+        wipLimit: s.wip_limit,
         leadCount: s.lead_count || 0 // Assuming backend might return this later, default 0
       }))
       setStages(formatted)
