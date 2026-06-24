@@ -3,7 +3,7 @@ import { getCommunications, createCommunication, draftCommunication } from '../.
 import { Button, Input, ContentLoader, EmptyState } from '../ui';
 import { useToast } from '../../store/toastContext';
 
-export default function CommunicationsTab({ leadId }) {
+export default function CommunicationsTab({ leadId, lead }) {
   const toast = useToast();
   const [comms, setComms] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -63,6 +63,10 @@ export default function CommunicationsTab({ leadId }) {
 
   if (loading) return <ContentLoader type="list" rows={3} />;
 
+  const isEmailMissing = channel === 'email' && !lead?.email;
+  const isSmsOrWhatsappMissing = (channel === 'sms' || channel === 'whatsapp') && !lead?.phone;
+  const isSendDisabled = !message.trim() || isEmailMissing || isSmsOrWhatsappMissing;
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto space-y-4 mb-4">
@@ -97,15 +101,20 @@ export default function CommunicationsTab({ leadId }) {
             {isDrafting ? 'Drafting...' : '✨ Draft with AI'}
           </Button>
         </div>
+        
+        {isEmailMissing && <div className="text-xs text-red-500 mb-2">Lead must have an email address to send emails.</div>}
+        {isSmsOrWhatsappMissing && <div className="text-xs text-red-500 mb-2">Lead must have a phone number to send {channel}.</div>}
+        
         <div className="flex gap-2">
           <Input 
             value={message}
             onChange={e => setMessage(e.target.value)}
             placeholder={`Type a ${channel} message or AI instruction...`}
             className="flex-1"
-            onKeyDown={e => e.key === 'Enter' && handleSend()}
+            onKeyDown={e => e.key === 'Enter' && !isSendDisabled && handleSend()}
+            disabled={isEmailMissing || isSmsOrWhatsappMissing}
           />
-          <Button onClick={handleSend} disabled={!message.trim()}>Send</Button>
+          <Button onClick={handleSend} disabled={isSendDisabled}>Send</Button>
         </div>
       </div>
     </div>

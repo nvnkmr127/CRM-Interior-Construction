@@ -812,7 +812,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
             )}
 
             {activeTab === 'communications' && (
-              <CommunicationsTab leadId={leadId} />
+              <CommunicationsTab leadId={leadId} lead={lead} />
             )}
 
             {activeTab === 'preferences' && (
