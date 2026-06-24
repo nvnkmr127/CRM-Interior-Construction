@@ -56,6 +56,20 @@ export default function LeadFilterBar({ filters, setFilters, reps }) {
       </div>
 
       <div className="min-w-[120px]">
+        <select 
+          name="intent" 
+          value={filters.intent || ''} 
+          onChange={handleChange}
+          className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        >
+          <option value="">All Intents</option>
+          <option value="High">High</option>
+          <option value="Medium">Medium</option>
+          <option value="Low">Low</option>
+        </select>
+      </div>
+
+      <div className="min-w-[120px]">
         <Input 
           type="text" 
           name="source" 
@@ -75,7 +89,7 @@ export default function LeadFilterBar({ filters, setFilters, reps }) {
         />
       </div>
 
-      <Button variant="outline" onClick={() => setFilters({ search: '', reps: [], scoreTier: '', source: '', locality: '' })}>
+      <Button variant="outline" onClick={() => setFilters({ search: '', reps: [], scoreTier: '', source: '', locality: '', intent: '' })}>
         Clear
       </Button>
     </div>

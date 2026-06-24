@@ -217,3 +217,8 @@ export const getEstimates = async (leadId) => {
   const response = await api.get(`/leads/${leadId}/estimates`);
   return response.data;
 };
+
+export const getAutomationEvents = async (leadId) => {
+  const response = await api.get(/leads//automation-events);
+  return response.data.data;
+};

@@ -52,7 +52,7 @@ export function useLeads(filters = {}) {
     } finally {
       setLoading(false);
     }
-  }, [filters.stageId, filters.assigneeId, filters.source, filters.search, filters.sortBy, filters.sortDesc, filters.page, filters.limit]);
+  }, [filters.stageId, filters.assigneeId, filters.source, filters.search, filters.intent, filters.sortBy, filters.sortDesc, filters.page, filters.limit]);
 
   useEffect(() => {
     fetchLeadsAndStages();

@@ -26,6 +26,8 @@ export default function LeadImportModal({ isOpen, onClose, onImportSuccess }) {
   const [parsedRows, setParsedRows] = useState([]);
   const [totalRows, setTotalRows] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [importErrors, setImportErrors] = useState([]);
+  const [importStats, setImportStats] = useState(null);
 
   // Reset state when opened/closed
   React.useEffect(() => {
@@ -37,6 +39,8 @@ export default function LeadImportModal({ isOpen, onClose, onImportSuccess }) {
       setMapping({});
       setParsedRows([]);
       setTotalRows(0);
+      setImportErrors([]);
+      setImportStats(null);
     }
   }, [isOpen]);
 
@@ -131,10 +135,18 @@ export default function LeadImportModal({ isOpen, onClose, onImportSuccess }) {
       
       const res = await api.post('/leads/import', payload);
       if (res.data?.success) {
-        const { created = 0, skipped = 0 } = res.data.data || {};
-        toast.success(`Imported ${created} leads ${skipped > 0 ? `(${skipped} skipped)` : ''}`);
-        onImportSuccess?.();
-        onClose();
+        const { created = 0, skipped = 0, errors = [] } = res.data.data || {};
+        setImportStats({ created, skipped });
+
+        if (created > 0) onImportSuccess?.();
+
+        if (skipped > 0 && errors.length > 0) {
+          setImportErrors(errors);
+          setStep(3);
+        } else {
+          toast.success(`Imported ${created} leads successfully.`);
+          onClose();
+        }
       } else {
         toast.error('Import failed to process');
       }
@@ -154,10 +166,15 @@ export default function LeadImportModal({ isOpen, onClose, onImportSuccess }) {
       size="2xl"
       footer={
         <div className="flex justify-end gap-3 w-full">
-          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
+          {step !== 3 && <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Cancel</Button>}
           {step === 2 && (
             <Button variant="primary" onClick={handleSubmit} disabled={isSubmitting}>
               {isSubmitting ? 'Importing...' : 'Start Import'}
+            </Button>
+          )}
+          {step === 3 && (
+            <Button variant="primary" onClick={onClose}>
+              Done
             </Button>
           )}
         </div>
@@ -235,7 +252,7 @@ export default function LeadImportModal({ isOpen, onClose, onImportSuccess }) {
             </a>
           </div>
         </div>
-      ) : (
+      ) : step === 2 ? (
         <div className="p-4 flex flex-col h-full overflow-hidden">
           <div className="mb-4 flex items-center justify-between shrink-0">
             <div>
@@ -325,7 +342,33 @@ export default function LeadImportModal({ isOpen, onClose, onImportSuccess }) {
             <div className="font-medium text-gray-700">Total parsed rows: {totalRows}</div>
           </div>
         </div>
-      )}
+      ) : step === 3 ? (
+        <div className="p-4 space-y-4">
+          <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded-lg">
+            <h3 className="text-lg font-semibold mb-1">Import Partially Successful</h3>
+            <p className="text-sm">Successfully imported {importStats?.created} leads, but {importStats?.skipped} rows failed validation.</p>
+          </div>
+          
+          <div className="bg-white border rounded-lg overflow-hidden flex-1 shadow-sm mt-4 max-h-[300px] overflow-y-auto">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-[#fcfbf9] border-b text-gray-700 sticky top-0 z-10">
+                <tr>
+                  <th className="px-4 py-2 font-semibold text-xs text-gray-700 border-r w-20">Row</th>
+                  <th className="px-4 py-2 font-semibold text-xs text-gray-700">Error Reason</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {importErrors.map((err, idx) => (
+                  <tr key={idx} className="hover:bg-red-50">
+                    <td className="px-4 py-2 text-sm text-gray-600 border-r font-mono">Row {err.row}</td>
+                    <td className="px-4 py-2 text-sm text-red-600">{err.error}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
     </Modal>
   );
 }

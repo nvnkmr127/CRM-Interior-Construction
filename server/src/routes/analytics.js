@@ -37,7 +37,7 @@ router.get('/leads/summary', async (req, res) => {
       SELECT 
         COUNT(l.id) as total_leads,
         COUNT(l.id) FILTER (WHERE ls.name ILIKE '%new%') as new_this_period,
-        0 as pipeline_value_total,
+        COALESCE(SUM(l.budget_max), 0) as pipeline_value_total,
         COUNT(l.id) FILTER (WHERE ls.is_won = true) as won_count,
         COUNT(l.id) FILTER (WHERE l.score >= 80) as tier_hot,
         COUNT(l.id) FILTER (WHERE l.score >= 50 AND l.score < 80) as tier_warm,
@@ -179,6 +179,19 @@ router.get('/leads/rep_performance', async (req, res) => {
       if (r.type === 'site_visit') activitiesMap[r.rep_id].site_visit = parseInt(r.act_count, 10);
     });
 
+    const quotesQuery = `
+      SELECT created_by as rep_id, COUNT(id) as quote_count
+      FROM quotations
+      WHERE tenant_id = $1 AND created_at BETWEEN $2 AND $3
+      GROUP BY created_by
+    `;
+    const quotesResult = await pool.query(quotesQuery, [tenantId, from.toISOString(), to.toISOString()]);
+    
+    const quotesMap = {};
+    quotesResult.rows.forEach(r => {
+      quotesMap[r.rep_id] = parseInt(r.quote_count, 10);
+    });
+
     const data = result.rows.map(r => {
       const assigned = parseInt(r.leads_assigned, 10);
       const won = parseInt(r.won, 10);
@@ -190,7 +203,7 @@ router.get('/leads/rep_performance', async (req, res) => {
         leads_assigned: assigned,
         contacted_within_sla: parseInt(r.contacted_within_sla, 10),
         visits_done: acts.site_visit || 0,
-        proposals_sent: Math.round(assigned * 0.3),
+        proposals_sent: quotesMap[r.rep_id] || 0,
         won,
         conversion_rate: assigned > 0 ? parseFloat(((won / assigned) * 100).toFixed(1)) : 0
       };
@@ -208,10 +221,11 @@ router.get('/leads/lost_reasons', async (req, res) => {
     const { from, to } = getDates(req);
     const tenantId = req.tenantId;
     const query = `
-      SELECT 'No Reason Given' as reason, COUNT(l.id) as count
+      SELECT COALESCE(NULLIF(TRIM(l.custom_fields->>'lost_reason'), ''), 'No Reason Given') as reason, COUNT(l.id) as count
       FROM leads l
       LEFT JOIN lead_stages ls ON l.stage_id = ls.id
       WHERE l.tenant_id = $1 AND ls.is_lost = true AND l.created_at BETWEEN $2 AND $3
+      GROUP BY COALESCE(NULLIF(TRIM(l.custom_fields->>'lost_reason'), ''), 'No Reason Given')
       HAVING COUNT(l.id) > 0
     `;
     const result = await pool.query(query, [tenantId, from.toISOString(), to.toISOString()]);

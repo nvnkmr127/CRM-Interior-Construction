@@ -20,7 +20,7 @@ import styles from './LeadsPage.module.css';
 export default function LeadsPage() {
   const toast = useToast();
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin' || user?.role?.name === 'admin' || user?.role === 'superadmin' || user?.role?.name === 'superadmin';
   const [search, setSearch] = useState('');
   const [assigneeFilter, setAssigneeFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('All Sources');
@@ -196,12 +196,13 @@ export default function LeadsPage() {
             )}
           </div>
 
-          <Button 
-            variant="outline" 
-            onClick={handleExport}
-            disabled={!isAdmin}
-            title={!isAdmin ? "Exporting leads is restricted to administrators (DLP Policy)" : "Export Leads to CSV"}
-          >&#8593; Export</Button>
+          {isAdmin && (
+            <Button 
+              variant="outline" 
+              onClick={handleExport}
+              title="Export Leads to CSV"
+            >&#8593; Export</Button>
+          )}
           <Button variant="outline" onClick={() => setIsImportModalOpen(true)}>&#8595; Import</Button>
           <Button variant="primary" onClick={() => setIsFormOpen(true)}>+ New Lead</Button>
         </div>

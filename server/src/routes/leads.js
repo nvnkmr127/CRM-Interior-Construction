@@ -45,6 +45,7 @@ router.post('/:id/convert-to-project', authenticate, authorize('leads:update'), 
 router.post('/:id/activities', authenticate, leadController.logActivityHandler);
 router.get('/:id/activities', authenticate, leadController.getActivitiesHandler);
 router.get('/:id/timeline', authenticate, leadController.getTimelineHandler);
+router.get('/:id/automation-events', authenticate, authorize('leads:read'), leadController.getAutomationEventsHandler);
 
 router.post('/:id/files', authenticate, authorize('leads:update'), upload.single('file'), leadController.uploadFileHandler);
 router.get('/:id/files', authenticate, authorize('leads:read'), leadController.getFilesHandler);
@@ -60,6 +61,7 @@ router.delete('/:id/followups/:fid', authenticate, authorize('leads:update'), le
 router.post('/:id/estimates', authenticate, authorize('leads:update'), leadController.createNativeEstimateHandler);
 router.get('/:id/estimates', authenticate, authorize('leads:read'), leadController.getEstimatesHandler);
 router.post('/:id/estimates/sync', authenticate, authorize('leads:update'), leadController.syncEstimatesHandler);
+router.post('/:id/estimates/webhook', leadController.estimatorWebhookHandler);
 
 // Multi-Contact Management
 router.get('/:id/contacts', authenticate, authorize('leads:read'), leadController.getContactsHandler);

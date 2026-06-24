@@ -1,11 +1,14 @@
 -- Migration: 052_materialized_views.sql
 
-CREATE MATERIALIZED VIEW IF NOT EXISTS pipeline_summary AS
+DROP MATERIALIZED VIEW IF EXISTS pipeline_summary CASCADE;
+
+CREATE MATERIALIZED VIEW pipeline_summary AS
 SELECT 
     tenant_id,
     stage_id,
     COUNT(id) as total_leads,
-    AVG(score) as average_score
+    AVG(score) as average_score,
+    COALESCE(SUM(budget_max), 0) as total_pipeline_value
 FROM leads
 WHERE deleted_at IS NULL
 GROUP BY tenant_id, stage_id;

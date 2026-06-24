@@ -5,7 +5,8 @@ const { enqueueAutomation } = require('../../queues/automationQueue');
 const { dispatchEvent } = require('../webhooks/webhookDispatcher');
 const { scoreLead, calculateAIScore } = require('./scoreLeadService');
 
-async function createLead({ tenantId, userId, data }) {
+async function createLead({ tenantId, userId, data, txClient = null, skipSideEffects = false }) {
+  const queryFn = txClient ? txClient.query.bind(txClient) : pool.query.bind(pool);
   const { name, phone, email, stageId, assigneeId } = data;
   console.log('[createLead] START', { tenantId, userId, name, phone, email, stageId, assigneeId });
 
@@ -16,7 +17,7 @@ async function createLead({ tenantId, userId, data }) {
   }
 
   if (data.source) {
-    const tenantRes = await pool.query('SELECT config FROM tenants WHERE id = $1', [tenantId]);
+    const tenantRes = await queryFn('SELECT config FROM tenants WHERE id = $1', [tenantId]);
     const config = typeof tenantRes.rows[0].config === 'string' ? JSON.parse(tenantRes.rows[0].config || '{}') : (tenantRes.rows[0].config || {});
     const validSources = config.lead_sources || ['Facebook', 'IndiaMART', 'Referral', 'Website', 'Direct', 'Other'];
     if (!validSources.includes(data.source)) {
@@ -58,7 +59,7 @@ async function createLead({ tenantId, userId, data }) {
   duplicateQuery += ') LIMIT 1';
 
   console.log('[createLead] Checking duplicates...', { phone, email, name, addressVal });
-  const duplicateCheck = await pool.query(duplicateQuery, duplicateCheckValues);
+  const duplicateCheck = await queryFn(duplicateQuery, duplicateCheckValues);
   if (duplicateCheck.rows.length > 0) {
     console.error('[createLead] FAIL duplicate: lead already exists with phone/email or name+address', { phone, email, name, addressVal, existingId: duplicateCheck.rows[0].id });
     throw new Error('VALIDATION_ERROR: A lead with this phone, email, or identical name and address already exists');
@@ -69,7 +70,7 @@ async function createLead({ tenantId, userId, data }) {
   let finalStageId = stageId;
   if (finalStageId) {
     console.log('[createLead] Verifying stageId...', { finalStageId, tenantId });
-    const stageCheck = await pool.query(
+    const stageCheck = await queryFn(
       'SELECT id FROM lead_stages WHERE id = $1 AND tenant_id = $2',
       [finalStageId, tenantId]
     );
@@ -83,7 +84,7 @@ async function createLead({ tenantId, userId, data }) {
     // Assuming lead_stages has a 'sequence' or similar ordering column, fallback to ordering by created_at or id.
     // Try sequence first, then fallback.
     try {
-      const defaultStageCheck = await pool.query(
+      const defaultStageCheck = await queryFn(
         'SELECT id FROM lead_stages WHERE tenant_id = $1 ORDER BY sequence ASC, created_at ASC LIMIT 1',
         [tenantId]
       );
@@ -93,7 +94,7 @@ async function createLead({ tenantId, userId, data }) {
       }
     } catch (e) {
       // If 'sequence' doesn't exist, fallback to created_at
-      const defaultStageCheckFallback = await pool.query(
+      const defaultStageCheckFallback = await queryFn(
         'SELECT id FROM lead_stages WHERE tenant_id = $1 ORDER BY created_at ASC LIMIT 1',
         [tenantId]
       );
@@ -106,7 +107,7 @@ async function createLead({ tenantId, userId, data }) {
 
   // 3. Fetch scoring rules and calculate score.
   console.log('[createLead] Fetching scoring rules...');
-  const rulesResult = await pool.query(
+  const rulesResult = await queryFn(
     'SELECT * FROM lead_scoring_rules WHERE tenant_id = $1 AND is_active = true',
     [tenantId]
   );
@@ -166,43 +167,45 @@ async function createLead({ tenantId, userId, data }) {
 
   let lead;
   try {
-    lead = await leadRepository.createLead(tenantId, leadDataForRepo);
+    lead = await leadRepository.createLead(tenantId, leadDataForRepo, txClient);
     console.log('[createLead] Lead inserted OK, id:', lead?.id);
   } catch (dbErr) {
     console.error('[createLead] FAIL DB insert:', dbErr.message, { code: dbErr.code, detail: dbErr.detail, constraint: dbErr.constraint });
     throw dbErr;
   }
 
-  // 5. logAction
-  console.log('[createLead] Logging audit action...');
-  try {
-    await logAction({
-      tenantId,
-      userId,
-      action: 'lead.created',
-      entity: 'lead',
-      entityId: lead.id,
-      newValue: lead
-    });
-  } catch (auditErr) {
-    console.error('[createLead] WARN audit log failed (non-fatal):', auditErr.message);
-  }
+  if (!skipSideEffects) {
+    // 5. logAction
+    console.log('[createLead] Logging audit action...');
+    try {
+      await logAction({
+        tenantId,
+        userId,
+        action: 'lead.created',
+        entity: 'lead',
+        entityId: lead.id,
+        newValue: lead
+      });
+    } catch (auditErr) {
+      console.error('[createLead] WARN audit log failed (non-fatal):', auditErr.message);
+    }
 
-  // 6. enqueueAutomation
-  console.log('[createLead] Enqueuing automation...');
-  try {
-    await enqueueAutomation({
-      tenantId,
-      eventType: 'record.created',
-      entity: 'lead',
-      record: lead
-    });
-  } catch (queueErr) {
-    console.error('[createLead] WARN automation enqueue failed (non-fatal):', queueErr.message);
-  }
+    // 6. enqueueAutomation
+    console.log('[createLead] Enqueuing automation...');
+    try {
+      await enqueueAutomation({
+        tenantId,
+        eventType: 'record.created',
+        entity: 'lead',
+        record: lead
+      });
+    } catch (queueErr) {
+      console.error('[createLead] WARN automation enqueue failed (non-fatal):', queueErr.message);
+    }
 
-  // 7. Dispatch Webhooks
-  dispatchEvent(tenantId, 'lead.created', lead);
+    // 7. Dispatch Webhooks
+    dispatchEvent(tenantId, 'lead.created', lead);
+  }
 
   console.log('[createLead] DONE, returning lead id:', lead.id);
   return lead;

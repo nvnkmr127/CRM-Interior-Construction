@@ -358,12 +358,54 @@ exports.getHeatMapData = async (req, res) => {
 exports.getBenchmarks = async (req, res, next) => {
   try {
     const { tenantId } = getTenantAndUser(req);
+
+    // Get company average and cycle days
+    const overallQuery = `
+      SELECT 
+        COUNT(l.id) as total_leads,
+        COUNT(l.id) FILTER (WHERE ls.is_won = true) as total_won,
+        AVG(EXTRACT(EPOCH FROM (l.updated_at - l.created_at))/86400) FILTER (WHERE ls.is_won = true) as avg_cycle_days
+      FROM leads l
+      LEFT JOIN lead_stages ls ON l.stage_id = ls.id
+      WHERE l.tenant_id = $1
+    `;
+    const overallRes = await pool.query(overallQuery, [tenantId]);
+    const overall = overallRes.rows[0];
+    const totalLeads = parseInt(overall.total_leads, 10) || 0;
+    const totalWon = parseInt(overall.total_won, 10) || 0;
+    const companyAvg = totalLeads > 0 ? (totalWon / totalLeads) * 100 : 0;
+    const avgCycleDays = overall.avg_cycle_days ? parseFloat(overall.avg_cycle_days) : 0;
+
+    // Get top performer conversion rate
+    const topPerformerQuery = `
+      SELECT 
+        COUNT(l.id) as rep_total,
+        COUNT(l.id) FILTER (WHERE ls.is_won = true) as rep_won
+      FROM leads l
+      LEFT JOIN lead_stages ls ON l.stage_id = ls.id
+      WHERE l.tenant_id = $1 AND l.assignee_id IS NOT NULL
+      GROUP BY l.assignee_id
+      HAVING COUNT(l.id) > 0
+    `;
+    const topRes = await pool.query(topPerformerQuery, [tenantId]);
+    let topPerformerConversion = 0;
+    topRes.rows.forEach(r => {
+      const repTotal = parseInt(r.rep_total, 10) || 0;
+      const repWon = parseInt(r.rep_won, 10) || 0;
+      if (repTotal > 0) {
+        const rate = (repWon / repTotal) * 100;
+        if (rate > topPerformerConversion) {
+          topPerformerConversion = rate;
+        }
+      }
+    });
+
     res.json({
       success: true,
       data: {
-        companyAverageConversion: 12.5,
-        topPerformerConversion: 18.2,
-        averageCycleDays: 45,
+        companyAverageConversion: parseFloat(companyAvg.toFixed(1)),
+        topPerformerConversion: parseFloat(topPerformerConversion.toFixed(1)),
+        averageCycleDays: Math.round(avgCycleDays),
         recommendation: "Increase site visits in week 1 to match top performers."
       }
     });

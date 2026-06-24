@@ -105,6 +105,15 @@ class TimelineWriter {
       entityId = payload.id;
       eventType = `activity.${payload.type}`;
       summary = payload.notes || 'Activity logged';
+    } else if (eventName.startsWith('automation.')) {
+      leadId = payload.lead_id || (payload.lead && payload.lead.id) || payload.record?.lead_id;
+      entity = 'automation';
+      entityId = payload.id || payload.automation_id || null;
+      if (eventName === 'automation.executed') {
+        summary = `Automation executed: ${payload.automation_name || payload.name || 'Workflow'}`;
+      } else {
+        summary = `Automation event: ${eventName}`;
+      }
     }
 
     if (!leadId) {

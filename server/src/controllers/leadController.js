@@ -27,22 +27,38 @@ exports.convertToProjectHandler = async (req, res, next) => {
   try {
     const { tenantId, userId } = getTenantAndUser(req);
     const leadId = req.params.id;
-const { 
+    const { 
       booking_received, floor_plan, scope_finalized,
       projectName, projectType, clientName, clientPhone, clientEmail, pm, contractValue 
     } = req.body;
 
-    if (!booking_received || !floor_plan || !scope_finalized) {
-      return fail(res, 'VALIDATION_ERROR', 'All checklist items must be verified to convert.', 400);
-    }
-    if (!projectName || !projectType) {
-      return fail(res, 'VALIDATION_ERROR', 'Project name and type are required.', 400);
+    // L-069: Comprehensive mandatory field validation
+    const missingFields = [];
+    if (!booking_received) missingFields.push('booking_received');
+    if (!floor_plan) missingFields.push('floor_plan');
+    if (!scope_finalized) missingFields.push('scope_finalized');
+    if (!projectName || !projectName.trim()) missingFields.push('projectName');
+    if (!projectType) missingFields.push('projectType');
+
+    if (missingFields.length > 0) {
+      return fail(res, 'VALIDATION_ERROR', `Missing required fields: ${missingFields.join(', ')}`, 400, { missingFields });
     }
 
     // 1. Get the lead
     const leadRes = await pool.query('SELECT * FROM leads WHERE id = $1 AND tenant_id = $2', [leadId, tenantId]);
     if (leadRes.rows.length === 0) return fail(res, 'NOT_FOUND', 'Lead not found', 404);
     const lead = leadRes.rows[0];
+
+    // L-070: Duplicate conversion guard — reject if lead is already converted
+    if (lead.status === 'converted' && lead.converted_to_project_id) {
+      return fail(
+        res,
+        'CONFLICT',
+        `This lead has already been converted to project ${lead.converted_to_project_id}.`,
+        409,
+        { existingProjectId: lead.converted_to_project_id }
+      );
+    }
 
         // 2. Create project using the service to ensure all fields and automations are triggered
     const { createProject } = require('../services/projects/createProject');
@@ -72,13 +88,57 @@ const {
     
     const newProjectId = newProject.id;
 
-    // 3. Mark lead as converted (status field) if not already won
-    if (lead.status !== 'converted') {
-      await pool.query(
-        'UPDATE leads SET status = $1, converted_to_project_id = $2, updated_at = NOW() WHERE id = $3',
-        ['converted', newProjectId, leadId]
-      );
+    // 3. Mark lead as converted: update status AND move to a terminal "Converted" stage (L-067)
+    // Find a dedicated converted/won stage for this tenant
+    const convertedStageRes = await pool.query(
+      `SELECT id FROM lead_stages WHERE tenant_id = $1 AND (is_won = true) ORDER BY sort_order DESC LIMIT 1`,
+      [tenantId]
+    );
+    const convertedStageId = convertedStageRes.rows.length > 0 ? convertedStageRes.rows[0].id : lead.stage_id;
+
+    await pool.query(
+      `UPDATE leads 
+       SET status = 'converted', 
+           converted_to_project_id = $1, 
+           stage_id = $2,
+           stage_updated_at = NOW(),
+           updated_at = NOW() 
+       WHERE id = $3`,
+      [newProjectId, convertedStageId, leadId]
+    );
+
+    // 4. Copy lead estimates to the new project (L-068)
+    const estimatesRes = await pool.query(
+      `SELECT * FROM lead_estimates WHERE tenant_id = $1 AND lead_id = $2 ORDER BY created_at ASC`,
+      [tenantId, leadId]
+    );
+    if (estimatesRes.rows.length > 0) {
+      for (const est of estimatesRes.rows) {
+        // Link the estimate to the new project and also create a quotation record
+        await pool.query(
+          `UPDATE lead_estimates SET project_id = $1, updated_at = NOW() WHERE id = $2`,
+          [newProjectId, est.id]
+        );
+        // Mirror as a quotation attached to the project if one doesn't already exist
+        const existingQuote = await pool.query(
+          `SELECT id FROM quotations WHERE tenant_id = $1 AND lead_id = $2 AND project_id = $3 LIMIT 1`,
+          [tenantId, leadId, newProjectId]
+        );
+        if (existingQuote.rows.length === 0) {
+          await pool.query(
+            `INSERT INTO quotations (tenant_id, lead_id, project_id, total_amount, subtotal, status, created_by, notes)
+             VALUES ($1, $2, $3, $4, $4, 'draft', $5, $6)`,
+            [tenantId, leadId, newProjectId, est.total_amount || 0, userId, `Migrated from lead estimate on conversion. Estimator Ref: ${est.estimator_reference_id || 'N/A'}`]
+          );
+        }
+      }
     }
+
+    // 5. Log timeline event
+    await pool.query(
+      `INSERT INTO lead_timeline (tenant_id, lead_id, event_type, summary) VALUES ($1, $2, 'lead.converted', $3)`,
+      [tenantId, leadId, `Lead converted to project "${projectName}" (ID: ${newProjectId}). ${estimatesRes.rows.length} estimate(s) transferred.`]
+    );
 
     return success(res, { project_id: newProjectId, message: 'Project created successfully' }, {}, 201);
   } catch (error) {
@@ -238,7 +298,16 @@ exports.checkDuplicateHandler = async (req, res, next) => {
     const result = await pool.query(query, values);
 
     if (result.rows.length > 0) {
-      return res.json({ success: true, data: { exists: true, matches: result.rows } });
+      const { maskSensitiveFields } = require('../utils/fieldMasker');
+      const userPermissions = req.user && req.user.role === 'superadmin' ? ['*'] : (req.user && req.user.permissions ? req.user.permissions : []);
+      const LEAD_FIELD_PERMISSIONS = {
+        phone: 'leads:read_sensitive',
+        email: 'leads:read_sensitive',
+        budget: 'leads:read_sensitive',
+        budget_max: 'leads:read_sensitive'
+      };
+      const maskedMatches = maskSensitiveFields(result.rows, userPermissions, LEAD_FIELD_PERMISSIONS);
+      return res.json({ success: true, data: { exists: true, matches: maskedMatches } });
     }
 
     return res.json({ success: true, data: { exists: false } });
@@ -302,15 +371,26 @@ exports.exportLeadsHandler = async function exportLeadsHandler(req, res) {
       'priority', 'notes', 'custom_fields', 'value', 'expected_close_date',
       'score', 'project_type', 'scope', 'budget_max', 'budget_min', 'locality', 'carpet_area_sqft', 'city', 'dnc_flag', 'consent_whatsapp', 'competitor_mentioned', 'latitude', 'longitude'
     ];
-    const fields = ['name', 'phone', 'email', 'source', 'stage_name', 'assignee_name', 'score', 'notes', 'created_at'];
+    const fields = [
+      'name', 'phone', 'email', 'source', 'stage_name', 'assignee_name', 'score', 'notes', 'created_at',
+      'win_probability', 'budget', 'address', 'lost_reason', 'follow_up_date'
+    ];
     const header = fields.join(',');
-    const rows = result.data.map(lead =>
-      fields.map(f => {
-        const val = lead[f] ?? '';
+    const rows = result.data.map(lead => {
+      const customFields = typeof lead.custom_fields === 'string' ? JSON.parse(lead.custom_fields || '{}') : (lead.custom_fields || {});
+      return fields.map(f => {
+        let val = lead[f];
+        if (val === undefined || val === null) {
+          // Check standard mappings or custom_fields
+          if (f === 'budget') val = lead.budget_max || customFields.budget || '';
+          else if (f === 'address') val = lead.locality || customFields.address || '';
+          else val = customFields[f] ?? '';
+        }
+        val = val ?? '';
         const str = String(val).replace(/"/g, '""');
         return str.includes(',') || str.includes('"') || str.includes('\n') ? `"${str}"` : str;
-      }).join(',')
-    );
+      }).join(',');
+    });
 
     const csv = [header, ...rows].join('\n');
     res.setHeader('Content-Type', 'text/csv');
@@ -328,35 +408,91 @@ exports.importLeadsHandler = async function importLeadsHandler(req, res) {
     const csvText = req.body.csv || '';
     if (!csvText) return res.status(400).json({ success: false, error: { message: 'No CSV data provided' } });
 
-    const lines = csvText.trim().split('\n');
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
+    const parseCSV = (text) => {
+      const rows = [];
+      let currentRow = [];
+      let currentVal = '';
+      let inQuotes = false;
+      
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const nextChar = text[i + 1];
+
+        if (char === '"') {
+          if (inQuotes && nextChar === '"') {
+            currentVal += '"';
+            i++; // skip escaped quote
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          currentRow.push(currentVal);
+          currentVal = '';
+        } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
+          if (char === '\r') i++; // skip \n
+          currentRow.push(currentVal);
+          rows.push(currentRow);
+          currentRow = [];
+          currentVal = '';
+        } else {
+          currentVal += char;
+        }
+      }
+      if (currentVal || currentRow.length > 0) {
+        currentRow.push(currentVal);
+        rows.push(currentRow);
+      }
+      return rows.map(r => r.map(c => c.trim().replace(/^"|"$/g, '')));
+    };
+
+    const rows = parseCSV(csvText.trim());
+    if (rows.length < 2) return res.status(400).json({ success: false, error: { message: 'Invalid or empty CSV' } });
+
+    const headers = rows[0].map(h => h.toLowerCase().replace(/\s+/g, '_'));
 
     const results = { created: 0, skipped: 0, errors: [] };
     const { createLead: createLeadService } = require('../services/leads/createLead');
+    const pool = require('../db/pool');
+    const txClient = await pool.connect();
 
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-      const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
-      const row = {};
-      headers.forEach((h, idx) => { row[h] = cols[idx] || ''; });
+    try {
+      await txClient.query('BEGIN');
 
-      if (!row.name || !row.phone) {
-        results.errors.push({ row: i + 1, error: 'Missing name or phone' });
-        results.skipped++;
-        continue;
+      for (let i = 1; i < rows.length; i++) {
+        const cols = rows[i];
+        if (!cols || cols.length === 0 || (cols.length === 1 && !cols[0])) continue;
+        const row = {};
+        headers.forEach((h, idx) => { row[h] = cols[idx] || ''; });
+
+        if (!row.name || !row.phone) {
+          results.errors.push({ row: i + 1, error: 'Missing name or phone' });
+          results.skipped++;
+          continue;
+        }
+
+        try {
+          await createLeadService({ tenantId, userId, data: row, txClient, skipSideEffects: true });
+          results.created++;
+        } catch (err) {
+          results.errors.push({ row: i + 1, error: err.message });
+          results.skipped++;
+        }
       }
 
-      try {
-        await createLeadService({ tenantId, userId, ...row });
-        results.created++;
-      } catch (err) {
-        results.errors.push({ row: i + 1, error: err.message });
-        results.skipped++;
+      if (results.errors.length > 0) {
+        await txClient.query('ROLLBACK');
+        results.created = 0; // Everything rolled back
+      } else {
+        await txClient.query('COMMIT');
       }
+
+      res.json({ success: true, data: results });
+    } catch (err) {
+      await txClient.query('ROLLBACK');
+      throw err;
+    } finally {
+      txClient.release();
     }
-
-    res.json({ success: true, data: results });
   } catch (err) {
     console.error('importLeadsHandler error:', err);
     res.status(500).json({ success: false, error: { message: 'Import failed' } });
@@ -631,7 +767,21 @@ exports.getEstimatesHandler = async function getEstimatesHandler(req, res) {
 
 exports.estimatorWebhookHandler = async function estimatorWebhookHandler(req, res) {
   try {
-    // This endpoint should ideally be protected by a webhook secret
+    const secret = process.env.ESTIMATOR_WEBHOOK_SECRET;
+    if (secret) {
+      const signature = req.headers['x-estimator-signature'];
+      if (!signature) {
+        return res.status(401).json({ success: false, error: { message: 'Missing signature' } });
+      }
+      const crypto = require('crypto');
+      // Recompute signature from raw body if possible, else from JSON stringified body
+      const payloadString = JSON.stringify(req.body);
+      const expectedSignature = crypto.createHmac('sha256', secret).update(payloadString).digest('hex');
+      if (signature !== expectedSignature) {
+        return res.status(401).json({ success: false, error: { message: 'Invalid signature' } });
+      }
+    }
+
     const { id: leadId } = req.params;
     const { estimator_reference_id, status, total_amount, pdf_url, payload } = req.body;
 
@@ -1157,9 +1307,15 @@ exports.analyzeSentimentHandler = async (req, res, next) => {
 
 exports.getLeadStatsHandler = async (req, res, next) => {
   try {
-    const { tenantId } = getTenantAndUser(req);
+    const { tenantId, userId } = getTenantAndUser(req);
+    const role = req.user && req.user.role ? req.user.role : '';
     const { getLeadStats } = require('../repositories/leadRepository');
-    const stats = await getLeadStats(tenantId);
+    
+    let assigneeId = null;
+    if (role !== 'superadmin' && role !== 'admin' && role !== 'manager' && role !== 'gm') {
+      assigneeId = userId;
+    }
+    const stats = await getLeadStats(tenantId, assigneeId);
     return success(res, stats);
   } catch (error) {
     next(error);
@@ -1789,13 +1945,24 @@ exports.getSiteVisitChecklists = async (req, res, next) => {
 
 exports.bulkDeleteLeadsHandler = async (req, res, next) => {
   try {
-    const { tenantId } = getTenantAndUser(req);
+    const { tenantId, userId } = getTenantAndUser(req);
+    const role = req.user && req.user.role ? req.user.role : '';
     const { leadIds } = req.body;
     if (!leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
       return res.status(400).json({ success: false, error: { message: 'leadIds array is required' } });
     }
-    const query = `UPDATE leads SET deleted_at = NOW() WHERE tenant_id = $1 AND id = ANY($2) RETURNING id`;
-    const result = await pool.query(query, [tenantId, leadIds]);
+    
+    let query = `UPDATE leads SET deleted_at = NOW() WHERE tenant_id = $1 AND id = ANY($2)`;
+    const values = [tenantId, leadIds];
+
+    if (role !== 'superadmin' && role !== 'admin') {
+      query += ` AND assignee_id = $3`;
+      values.push(userId);
+    }
+    
+    query += ` RETURNING id`;
+    
+    const result = await pool.query(query, values);
     res.json({ success: true, data: { deletedCount: result.rowCount, leadIds: result.rows.map(r => r.id) } });
   } catch (error) {
     next(error);
@@ -1805,6 +1972,7 @@ exports.bulkDeleteLeadsHandler = async (req, res, next) => {
 exports.bulkAssignLeadsHandler = async (req, res, next) => {
   try {
     const { tenantId, userId } = getTenantAndUser(req);
+    const role = req.user && req.user.role ? req.user.role : '';
     const { leadIds, assigneeId } = req.body;
     if (!leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
       return res.status(400).json({ success: false, error: { message: 'leadIds array is required' } });
@@ -1812,12 +1980,22 @@ exports.bulkAssignLeadsHandler = async (req, res, next) => {
     if (!assigneeId) {
       return res.status(400).json({ success: false, error: { message: 'assigneeId is required' } });
     }
-    const query = `UPDATE leads SET assignee_id = $1, updated_at = NOW() WHERE tenant_id = $2 AND id = ANY($3) RETURNING id`;
-    const result = await pool.query(query, [assigneeId, tenantId, leadIds]);
     
-    // Log timeline for bulk assignment
-    for (const leadId of leadIds) {
-       await pool.query(`INSERT INTO lead_timeline (tenant_id, lead_id, event_type, summary) VALUES ($1, $2, 'lead.assigned', $3)`, [tenantId, leadId, `Bulk assigned to user ${assigneeId}`]);
+    let query = `UPDATE leads SET assignee_id = $1, updated_at = NOW() WHERE tenant_id = $2 AND id = ANY($3)`;
+    const values = [assigneeId, tenantId, leadIds];
+
+    if (role !== 'superadmin' && role !== 'admin') {
+      query += ` AND assignee_id = $4`;
+      values.push(userId);
+    }
+    
+    query += ` RETURNING id`;
+    
+    const result = await pool.query(query, values);
+    
+    // Log timeline for bulk assignment (only for successfully updated leads)
+    for (const row of result.rows) {
+       await pool.query(`INSERT INTO lead_timeline (tenant_id, lead_id, event_type, summary) VALUES ($1, $2, 'lead.assigned', $3)`, [tenantId, row.id, `Bulk assigned to user ${assigneeId}`]);
     }
     
     res.json({ success: true, data: { updatedCount: result.rowCount, leadIds: result.rows.map(r => r.id) } });
@@ -2036,9 +2214,96 @@ exports.updateBudgetHandler = async (req, res, next) => { res.json({success: tru
 exports.bulkChangeStageHandler = async (req, res, next) => { res.json({success: true}) };
 exports.checkDuplicateHandler = async (req, res, next) => { res.json({success: true}) };
 
+exports.getAutomationEventsHandler = async (req, res, next) => {
+  try {
+    const { tenantId, userId } = getTenantAndUser(req);
+    const { id } = req.params;
+    const role = req.user && req.user.role ? req.user.role : '';
+
+    const { findLeadById } = require('../repositories/leadRepository');
+    const lead = await findLeadById(tenantId, id);
+    if (!lead) return res.status(404).json({ success: false, error: 'Lead not found' });
+    
+    if (role !== 'superadmin' && role !== 'admin' && role !== 'manager' && role !== 'gm') {
+      if (lead.assignee_id !== userId) {
+        return res.status(403).json({ success: false, error: 'Access denied to this lead.' });
+      }
+    }
+
+    const query = `
+      SELECT id, workflow, trigger_type, action_type, status, error_message, executed_at, duration_ms
+      FROM automation_events
+      WHERE tenant_id = $1 AND lead_id = $2
+      ORDER BY executed_at DESC
+    `;
+    const result = await pool.query(query, [tenantId, id]);
+    
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    next(error);
+  }
+};
 exports.createLeadHandler = async (req, res, next) => { res.json({success: true}) };
-exports.getLeadsHandler = async (req, res, next) => { res.json({success: true}) };
-exports.getLeadByIdHandler = async (req, res, next) => { res.json({success: true}) };
+exports.getLeadsHandler = async function getLeadsHandler(req, res, next) {
+  try {
+    const { tenantId, userId } = getTenantAndUser(req);
+    const role = req.user && req.user.role ? req.user.role : '';
+    const { findLeads } = require('../repositories/leadRepository');
+    const { maskSensitiveFields } = require('../utils/fieldMasker');
+    
+    if (role !== 'superadmin' && role !== 'admin' && role !== 'manager' && role !== 'gm') {
+      req.query.assigneeId = userId;
+    }
+    const result = await findLeads(tenantId, req.query);
+
+    const userPermissions = req.user && req.user.role === 'superadmin' ? ['*'] : (req.user && req.user.permissions ? req.user.permissions : []);
+    const LEAD_FIELD_PERMISSIONS = {
+      phone: 'leads:read_sensitive',
+      email: 'leads:read_sensitive',
+      budget: 'leads:read_sensitive',
+      budget_max: 'leads:read_sensitive'
+    };
+
+    const maskedData = maskSensitiveFields(result.data, userPermissions, LEAD_FIELD_PERMISSIONS);
+
+    res.json({ success: true, data: maskedData, meta: { total: result.total, page: result.page, limit: result.limit } });
+  } catch (error) {
+    next(error);
+  }
+};
+exports.getLeadByIdHandler = async (req, res, next) => {
+  try {
+    const { tenantId, userId } = getTenantAndUser(req);
+    const role = req.user && req.user.role ? req.user.role : '';
+    const { id } = req.params;
+    const { findLeadById } = require('../repositories/leadRepository');
+    const { maskSensitiveFields } = require('../utils/fieldMasker');
+    
+    const lead = await findLeadById(tenantId, id);
+    if (!lead) {
+      return res.status(404).json({ success: false, error: 'Lead not found' });
+    }
+
+    if (role !== 'superadmin' && role !== 'admin' && role !== 'manager' && role !== 'gm') {
+      if (lead.assignee_id !== userId) {
+        return res.status(403).json({ success: false, error: 'Access denied to this lead.' });
+      }
+    }
+
+    const userPermissions = req.user && req.user.role === 'superadmin' ? ['*'] : (req.user && req.user.permissions ? req.user.permissions : []);
+    const LEAD_FIELD_PERMISSIONS = {
+      phone: 'leads:read_sensitive',
+      email: 'leads:read_sensitive',
+      budget: 'leads:read_sensitive',
+      budget_max: 'leads:read_sensitive'
+    };
+
+    const maskedLead = maskSensitiveFields(lead, userPermissions, LEAD_FIELD_PERMISSIONS);
+    res.json({ success: true, data: maskedLead });
+  } catch (error) {
+    next(error);
+  }
+};
 exports.updateLeadHandler = async (req, res, next) => { res.json({success: true}) };
 exports.deleteLeadHandler = async (req, res, next) => { res.json({success: true}) };
 exports.syncEstimatesHandler = async function syncEstimatesHandler(req, res) {

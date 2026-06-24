@@ -27,7 +27,7 @@ export default function AITwinTab({ leadId, lead }) {
       }
     } catch (err) {
       toast.error('Failed to communicate with Digital Twin.');
-      setMessages(prev => [...prev, { role: 'system', content: 'Connection interrupted. Please try again.' }]);
+      setMessages(prev => [...prev, { role: 'twin', content: "I'm currently unable to access my notes. Should we schedule a brief meeting instead to discuss your requirements?" }]);
     } finally {
       setLoading(false);
     }

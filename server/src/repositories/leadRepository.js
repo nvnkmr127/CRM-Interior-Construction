@@ -1,6 +1,6 @@
 const pool = require('../db/pool');
 
-async function createLead(tenantId, data) {
+async function createLead(tenantId, data, txClient = null) {
   const { 
     name, email, phone, source, stage_id, assignee_id, score, custom_fields, notes, status, created_by,
     builder_name, possession_date, house_status, loan_approved, interior_style, material_preference, 
@@ -9,10 +9,10 @@ async function createLead(tenantId, data) {
     property_type, scope, locality, budget_max, carpet_area_sqft, dnc_flag, consent_whatsapp, competitor_mentioned, lead_number
   } = data;
   
-  const client = await pool.connect();
+  const client = txClient || await pool.connect();
   
   try {
-    await client.query('BEGIN');
+    if (!txClient) await client.query('BEGIN');
 
     // 1. Insert core lead
     // Pack unknown columns into custom_fields
@@ -60,7 +60,7 @@ async function createLead(tenantId, data) {
     `;
     await client.query(prefQuery, [tenantId, lead.id, interior_style || null, material_preference || null]);
 
-    await client.query('COMMIT');
+    if (!txClient) await client.query('COMMIT');
     
     // Attach details for frontend
     lead.builder_name = builder_name;
@@ -71,10 +71,10 @@ async function createLead(tenantId, data) {
     
     return lead;
   } catch (err) {
-    await client.query('ROLLBACK');
+    if (!txClient) await client.query('ROLLBACK');
     throw err;
   } finally {
-    client.release();
+    if (!txClient) client.release();
   }
 }
 
@@ -333,8 +333,8 @@ async function convertLeadToProject(tenantId, leadId, projectId) {
   await pool.query(query, [projectId, tenantId, leadId]);
 }
 
-async function getLeadStats(tenantId) {
-  const query = `
+async function getLeadStats(tenantId, assigneeId = null) {
+  let query = `
     SELECT
       COUNT(*) AS total_leads,
       COUNT(*) FILTER (
@@ -347,7 +347,12 @@ async function getLeadStats(tenantId) {
     LEFT JOIN lead_stages s ON l.stage_id = s.id
     WHERE l.tenant_id = $1 AND l.deleted_at IS NULL
   `;
-  const result = await pool.query(query, [tenantId]);
+  const values = [tenantId];
+  if (assigneeId) {
+    query += ` AND l.assignee_id = $2`;
+    values.push(assigneeId);
+  }
+  const result = await pool.query(query, values);
   const row = result.rows[0];
   
   const totalLeads = parseInt(row.total_leads, 10) || 0;

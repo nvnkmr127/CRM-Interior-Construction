@@ -19,6 +19,9 @@ setInterval(() => {
   slaEngine.checkSLABreaches();
 }, 60 * 60 * 1000);
 
+// Start Estimates Reconciliation Job
+require('./jobs/reconcileEstimatesJob').start();
+
 app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true }));
