@@ -1277,16 +1277,16 @@ exports.createCommunicationHandler = async (req, res, next) => {
   try {
     const { tenantId, userId } = getTenantAndUser(req);
     const leadId = req.params.id;
-    const { type, notes } = req.body;
+    const { type, notes, metadata } = req.body;
     
     if (!['email', 'whatsapp', 'call', 'sms'].includes(type)) {
       return res.status(400).json({ success: false, error: { message: 'Invalid communication type' } });
     }
 
     const { rows } = await pool.query(
-      `INSERT INTO activities (tenant_id, lead_id, type, notes, user_id)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [tenantId, leadId, type, notes, userId]
+      `INSERT INTO activities (tenant_id, lead_id, type, notes, user_id, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [tenantId, leadId, type, notes, userId, metadata || {}]
     );
     
     res.json({ success: true, data: rows[0] });
