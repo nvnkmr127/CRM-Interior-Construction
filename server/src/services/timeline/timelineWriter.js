@@ -44,6 +44,9 @@ class TimelineWriter {
       } else if (eventName === 'lead.file_uploaded') {
         const fileName = payload.file?.file_name || 'A file';
         summary = `Uploaded file: ${fileName}`;
+      } else if (eventName === 'lead.estimates_synced') {
+        summary = `Estimates synced via ${payload.source === 'webhook' ? 'webhook' : 'manual pull'}`;
+        if (payload.referenceId) summary += ` (Ref: ${payload.referenceId})`;
       } else if (eventName === 'lead.updated') {
         // Timeline event is handled in updateLead for stages, but we can capture other updates if needed
         // We'll skip generic updates to avoid spam

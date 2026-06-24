@@ -658,6 +658,9 @@ exports.estimatorWebhookHandler = async function estimatorWebhookHandler(req, re
       );
     }
 
+    const eventBus = require('../utils/eventBus');
+    eventBus.emit('lead.estimates_synced', { tenantId, leadId, source: 'webhook', referenceId: estimator_reference_id });
+
     res.json({ success: true });
   } catch (err) {
     console.error('estimatorWebhookHandler error:', err);
@@ -2038,5 +2041,21 @@ exports.getLeadsHandler = async (req, res, next) => { res.json({success: true}) 
 exports.getLeadByIdHandler = async (req, res, next) => { res.json({success: true}) };
 exports.updateLeadHandler = async (req, res, next) => { res.json({success: true}) };
 exports.deleteLeadHandler = async (req, res, next) => { res.json({success: true}) };
-exports.syncEstimatesHandler = async (req, res, next) => { res.json({success: true}) };
+exports.syncEstimatesHandler = async function syncEstimatesHandler(req, res) {
+  try {
+    const { tenantId, userId } = getTenantAndUser(req);
+    const { id: leadId } = req.params;
+
+    const estimatorService = require('../services/estimatorService');
+    const updatedEstimates = await estimatorService.reconcileEstimates(tenantId, leadId);
+
+    const eventBus = require('../utils/eventBus');
+    eventBus.emit('lead.estimates_synced', { tenantId, userId, leadId, source: 'manual', count: updatedEstimates.length });
+
+    res.json({ success: true, data: updatedEstimates });
+  } catch (err) {
+    console.error('syncEstimatesHandler error:', err);
+    res.status(500).json({ success: false, error: { message: err.message || 'Sync failed' } });
+  }
+};
 exports.aiTwinHandler = async (req, res, next) => { res.json({success: true}) };
