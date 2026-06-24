@@ -416,6 +416,9 @@ exports.uploadFileHandler = async function uploadFileHandler(req, res) {
       [tenantId, leadId, userId, req.file.originalname, req.file.size, req.file.mimetype, storageKey]
     );
 
+    const eventBus = require('../utils/eventBus');
+    eventBus.emit('lead.file_uploaded', { tenantId, userId, leadId, file: result.rows[0] });
+
     res.json({ success: true, data: result.rows[0] });
   } catch (err) {
     console.error('uploadFileHandler error:', err);

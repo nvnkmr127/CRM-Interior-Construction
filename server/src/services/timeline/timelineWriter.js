@@ -41,6 +41,9 @@ class TimelineWriter {
         summary = `Stage changed from ${oldStage} to ${newStage}${payload.mandatoryFieldsText || ''}`;
       } else if (eventName === 'lead.created') {
         summary = 'Lead created';
+      } else if (eventName === 'lead.file_uploaded') {
+        const fileName = payload.file?.file_name || 'A file';
+        summary = `Uploaded file: ${fileName}`;
       } else if (eventName === 'lead.updated') {
         // Timeline event is handled in updateLead for stages, but we can capture other updates if needed
         // We'll skip generic updates to avoid spam
