@@ -59,6 +59,14 @@ if (useRedis) {
       try {
         await pool.query(updateQuery, values);
         console.log(`[aiWorker] Auto-updated Lead ${leadId} with AI insights.`);
+
+        // Log sentiment history if updated
+        if (intel.sentiment) {
+          await pool.query(`
+            INSERT INTO lead_sentiment_history (tenant_id, lead_id, sentiment, created_at)
+            VALUES ($1, $2, $3, NOW())
+          `, [tenantId, leadId, intel.sentiment]);
+        }
       } catch (err) {
         console.error(`[aiWorker] Failed to update lead AI fields:`, err);
       }

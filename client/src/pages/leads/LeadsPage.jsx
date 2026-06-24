@@ -25,6 +25,7 @@ export default function LeadsPage() {
   const [assigneeFilter, setAssigneeFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('All Sources');
   const [scoreRange, setScoreRange] = useState('all');
+  const [intentFilter, setIntentFilter] = useState('all');
   const [sortBy, setSortBy] = useState(() => localStorage.getItem('crm_leads_sortBy') || 'latest');
 
   React.useEffect(() => {
@@ -48,6 +49,7 @@ export default function LeadsPage() {
     if (sourceFilter && sourceFilter !== 'All Sources') f.source = sourceFilter;
     if (assigneeFilter) f.assigneeId = assigneeFilter;
     if (scoreRange && scoreRange !== 'all') f.scoreRange = scoreRange;
+    if (intentFilter && intentFilter !== 'all') f.intent = intentFilter;
     if (createdFrom) f.createdFrom = createdFrom;
     if (createdTo) f.createdTo = createdTo;
     if (sortBy) {
@@ -56,7 +58,7 @@ export default function LeadsPage() {
       else if (sortBy === 'name') { f.sortBy = 'name'; f.sortDesc = false; }
     }
     return f;
-  }, [search, sourceFilter, assigneeFilter, scoreRange, sortBy, createdFrom, createdTo, page, limit]);
+  }, [search, sourceFilter, assigneeFilter, scoreRange, intentFilter, sortBy, createdFrom, createdTo, page, limit]);
 
   const { leads, stages, stats, total, loading, optimisticStageChange, bulkChangeStage, bulkDelete, refetch } = useLeads(filters);
 
@@ -96,6 +98,7 @@ export default function LeadsPage() {
     setSourceFilter('All Sources');
     setAssigneeFilter('');
     setScoreRange('all');
+    setIntentFilter('all');
     setCreatedFrom('');
     setCreatedTo('');
   };
@@ -211,6 +214,7 @@ export default function LeadsPage() {
         assigneeFilter={assigneeFilter} setAssigneeFilter={setAssigneeFilter}
         sourceFilter={sourceFilter} setSourceFilter={setSourceFilter}
         scoreRange={scoreRange} setScoreRange={setScoreRange}
+        intentFilter={intentFilter} setIntentFilter={setIntentFilter}
         sortBy={sortBy} setSortBy={setSortBy}
         view={view} setView={setView}
         assignees={assignees}

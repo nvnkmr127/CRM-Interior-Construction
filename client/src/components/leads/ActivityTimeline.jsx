@@ -177,7 +177,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
 
   const hasMore = meta.total > meta.page * meta.limit;
 
-  const systemActivityKeywords = ['stage_change', 'automation', 'score_tier_change', 'sla_breach', 'duplicate', 'task_completed'];
+  const systemActivityKeywords = ['automation', 'score_tier_change', 'sla_breach', 'duplicate', 'task_completed'];
 
   const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
 

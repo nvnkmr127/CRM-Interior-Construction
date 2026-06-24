@@ -99,13 +99,14 @@ async function findLeadById(tenantId, leadId) {
   return result.rows[0] || null;
 }
 
-async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy, sortDesc, page = 1, limit = 20, createdFrom, createdTo, scoreMin, scoreMax, cursor }) {
+async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy, sortDesc, page = 1, limit = 20, createdFrom, createdTo, scoreMin, scoreMax, intent, cursor }) {
   let query = `
     SELECT l.*,
            u.name AS assignee_name, u.avatar_url AS assignee_avatar,
            s.name AS stage_name, s.color AS stage_color,
            lp.builder AS builder_name, lp.possession_date, lp.house_status,
            lpref.interior_style, lpref.material AS material_preference,
+           ai.buying_intent, ai.sentiment,
            COALESCE(EXTRACT(DAY FROM CURRENT_TIMESTAMP - l.updated_at), 0) AS days_in_stage,
            0 AS follow_up_overdue_days
     FROM leads l
@@ -113,6 +114,7 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
     LEFT JOIN lead_stages s ON l.stage_id = s.id
     LEFT JOIN lead_properties lp ON l.id = lp.lead_id
     LEFT JOIN lead_preferences lpref ON l.id = lpref.lead_id
+    LEFT JOIN lead_ai_insights ai ON l.id = ai.lead_id
     WHERE l.tenant_id = $1 AND l.deleted_at IS NULL
   `;
   
@@ -155,6 +157,10 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
   if (scoreMax !== undefined && scoreMax !== null && scoreMax !== '') {
     query += ` AND l.score <= $${paramIndex++}`;
     values.push(parseInt(scoreMax, 10));
+  }
+  if (intent && intent !== 'all') {
+    query += ` AND ai.buying_intent = $${paramIndex++}`;
+    values.push(intent);
   }
 
   const countQuery = `SELECT COUNT(*) FROM (${query}) AS count_q`;
@@ -358,30 +364,44 @@ async function getLeadStats(tenantId) {
 }
 
 async function getLeadTimeline(tenantId, leadId, { type, page = 1, limit = 20 } = {}) {
-  let query = `
-    SELECT lt.*, u.name AS user_name, u.avatar_url AS user_avatar
+  let timelineQuery = `
+    SELECT lt.id::text, lt.event_type, lt.summary, lt.created_at, u.name AS user_name, u.avatar_url AS user_avatar
     FROM lead_timeline lt
     LEFT JOIN users u ON lt.user_id = u.id
     WHERE lt.tenant_id = $1 AND lt.lead_id = $2
   `;
+  
+  let automationQuery = `
+    SELECT ae.id::text, 'automation.' || ae.workflow AS event_type, 'Executed action: ' || ae.action_type || ' (' || ae.status || ')' AS summary, ae.created_at, 'System Automation' AS user_name, NULL AS user_avatar
+    FROM automation_events ae
+    WHERE ae.tenant_id = $1 AND ae.lead_id = $2
+  `;
+
   const values = [tenantId, leadId];
   let paramIndex = 3;
 
   if (type && type !== 'all') {
     if (type === 'system') {
-      query += ` AND lt.event_type NOT LIKE 'activity.%'`;
+      timelineQuery += ` AND lt.event_type NOT LIKE 'activity.%'`;
+      // automation events are always system
     } else {
-      query += ` AND lt.event_type = $${paramIndex++}`;
+      timelineQuery += ` AND lt.event_type = $${paramIndex}`;
+      automationQuery += ` AND ('automation.' || ae.workflow) = $${paramIndex}`;
       values.push(`activity.${type}`);
+      paramIndex++;
     }
+  } else if (type === 'system') {
+    timelineQuery += ` AND lt.event_type NOT LIKE 'activity.%'`;
   }
+
+  let query = `SELECT * FROM (${timelineQuery} UNION ALL ${automationQuery}) as combined`;
 
   const countQuery = `SELECT COUNT(*) FROM (${query}) as t`;
   const countResult = await pool.query(countQuery, values);
   const total = parseInt(countResult.rows[0].count, 10);
 
   const offset = (page - 1) * limit;
-  query += ` ORDER BY lt.created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
+  query += ` ORDER BY created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
   values.push(limit, offset);
 
   const result = await pool.query(query, values);

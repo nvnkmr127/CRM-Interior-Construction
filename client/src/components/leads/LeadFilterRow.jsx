@@ -19,6 +19,7 @@ export default function LeadFilterRow({
   assigneeFilter, setAssigneeFilter,
   sourceFilter, setSourceFilter,
   scoreRange, setScoreRange,
+  intentFilter, setIntentFilter,
   sortBy, setSortBy,
   view, setView,
   assignees,
@@ -42,7 +43,7 @@ export default function LeadFilterRow({
       id: Date.now().toString(),
       name,
       config: {
-        search, assigneeFilter, sourceFilter, scoreRange, sortBy, createdFrom, createdTo
+        search, assigneeFilter, sourceFilter, scoreRange, intentFilter, sortBy, createdFrom, createdTo
       }
     };
     
@@ -63,6 +64,7 @@ export default function LeadFilterRow({
     setAssigneeFilter(filter.config.assigneeFilter || '');
     setSourceFilter(filter.config.sourceFilter || 'All Sources');
     setScoreRange(filter.config.scoreRange || 'all');
+    if (typeof setIntentFilter === 'function') setIntentFilter(filter.config.intentFilter || 'all');
     setSortBy(filter.config.sortBy || 'latest');
     setCreatedFrom(filter.config.createdFrom || '');
     setCreatedTo(filter.config.createdTo || '');
@@ -102,6 +104,19 @@ export default function LeadFilterRow({
         onChange={e => setScoreRange(e.target.value)}
       >
         {SCORE_RANGES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+      </select>
+
+      <select
+        className={styles.filterSelect}
+        value={intentFilter || 'all'}
+        onChange={e => {
+          if (typeof setIntentFilter === 'function') setIntentFilter(e.target.value);
+        }}
+      >
+        <option value="all">All Intents</option>
+        <option value="Hot">Hot Intent</option>
+        <option value="Warm">Warm Intent</option>
+        <option value="Cold">Cold Intent</option>
       </select>
 
       <input
@@ -148,7 +163,7 @@ export default function LeadFilterRow({
           Save
         </button>
 
-        {(search || assigneeFilter || sourceFilter !== 'All Sources' || scoreRange !== 'all' || createdFrom || createdTo) && (
+        {(search || assigneeFilter || sourceFilter !== 'All Sources' || scoreRange !== 'all' || (intentFilter && intentFilter !== 'all') || createdFrom || createdTo) && (
           <button className={styles.clearBtn} onClick={onClearFilters}>✕ Clear</button>
         )}
       </div>

@@ -117,6 +117,7 @@ export default function LeadTable({
             <th className={styles.listTh}>Source</th>
             <th className={styles.listTh}>Stage</th>
             <th className={styles.listTh}>Score</th>
+            <th className={styles.listTh}>Intent</th>
             <th className={styles.listTh}>AI Recommendation</th>
             <th className={styles.listTh}>Assignee</th>
             <th className={styles.listTh}>Last Activity</th>
@@ -186,6 +187,23 @@ export default function LeadTable({
                       }
                     >
                       {lead.score}
+                    </span>
+                  ) : (
+                    <span className={styles.noScore}>—</span>
+                  )}
+                </td>
+                <td className={styles.listTd}>
+                  {lead.buying_intent ? (
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      lead.buying_intent === 'Hot' ? 'bg-red-50 text-red-700 border border-red-200' :
+                      lead.buying_intent === 'Warm' ? 'bg-orange-50 text-orange-700 border border-orange-200' :
+                      lead.buying_intent === 'Cold' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                      'bg-gray-50 text-gray-700 border border-gray-200'
+                    }`}>
+                      {lead.buying_intent === 'Hot' && '🔥 '}
+                      {lead.buying_intent === 'Warm' && '☀️ '}
+                      {lead.buying_intent === 'Cold' && '❄️ '}
+                      {lead.buying_intent}
                     </span>
                   ) : (
                     <span className={styles.noScore}>—</span>

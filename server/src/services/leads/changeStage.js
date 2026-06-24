@@ -52,13 +52,31 @@ async function changeStage({ tenantId, userId, leadId, newStageId }) {
   // 6. Return the updated lead with fully joined properties (stage_name, assignee_name)
   const updatedLeadFull = await leadRepository.findLeadById(tenantId, leadId);
 
+  const mandatoryFields = newStage.mandatory_fields || [];
+  let mandatoryFieldsText = "";
+  if (mandatoryFields.length > 0) {
+    const filledFields = [];
+    const customFields = typeof updatedLeadFull.custom_fields === "string" ? JSON.parse(updatedLeadFull.custom_fields) : (updatedLeadFull.custom_fields || {});
+    mandatoryFields.forEach(f => {
+      let val;
+      if (f.startsWith("custom_fields.")) {
+        val = customFields[f.split(".")[1]];
+      } else {
+        val = updatedLeadFull[f];
+      }
+      filledFields.push(`${f}: ${val}`);
+    });
+    mandatoryFieldsText = " (Filled: " + filledFields.join(", ") + ")";
+  }
+
   // Emit domain event for Decoupled architecture (AI, Notifications, Workflows will listen)
   eventBus.emit('lead.stage_changed', {
     tenantId,
     userId,
     lead: updatedLeadFull,
     oldStage: { id: oldLead.stage_id, name: oldLead.stage_name },
-    newStage: { id: newStage.id, name: newStage.name }
+    newStage: { id: newStage.id, name: newStage.name },
+    mandatoryFieldsText
   });
 
   // 7. Dispatch webhook

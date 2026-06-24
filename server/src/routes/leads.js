@@ -2,6 +2,7 @@ const express = require('express');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const leadController = require('../controllers/leadController');
+const aiRateLimiter = require('../middleware/aiRateLimiter');
 
 const router = express.Router();
 
@@ -58,6 +59,7 @@ router.delete('/:id/followups/:fid', authenticate, authorize('leads:update'), le
 // Native Estimator Integration
 router.post('/:id/estimates', authenticate, authorize('leads:update'), leadController.createNativeEstimateHandler);
 router.get('/:id/estimates', authenticate, authorize('leads:read'), leadController.getEstimatesHandler);
+router.post('/:id/estimates/sync', authenticate, authorize('leads:update'), leadController.syncEstimatesHandler);
 
 // Multi-Contact Management
 router.get('/:id/contacts', authenticate, authorize('leads:read'), leadController.getContactsHandler);
@@ -76,14 +78,14 @@ router.delete('/:id/inspirations/:iid', authenticate, authorize('leads:update'),
 
 // AI Copilot & Planning
 router.get('/:id/ai-insights', authenticate, authorize('leads:read'), leadController.getAiInsightsHandler);
-router.post('/:id/ai-design-proposal', authenticate, authorize('leads:update'), leadController.generateDesignProposalHandler);
-router.post('/:id/meeting-summary', authenticate, authorize('leads:update'), leadController.summarizeMeetingHandler);
+router.post('/:id/ai-design-proposal', authenticate, authorize('leads:update'), aiRateLimiter, leadController.generateDesignProposalHandler);
+router.post('/:id/meeting-summary', authenticate, authorize('leads:update'), aiRateLimiter, leadController.summarizeMeetingHandler);
 router.patch('/:id/requirements', authenticate, authorize('leads:update'), leadController.updateRequirementsHandler);
-router.post('/:id/budget-planner', authenticate, authorize('leads:read'), leadController.getBudgetPlannerHandler);
-router.post('/:id/sales-coach', authenticate, authorize('leads:update'), leadController.salesCoachHandler);
-router.post('/:id/knowledge-assistant', authenticate, authorize('leads:read'), leadController.knowledgeAssistantHandler);
-router.post('/:id/buying-intent', authenticate, authorize('leads:read'), leadController.analyzeBuyingIntentHandler);
-router.post('/:id/sentiment', authenticate, authorize('leads:read'), leadController.analyzeSentimentHandler);
+router.post('/:id/budget-planner', authenticate, authorize('leads:read'), aiRateLimiter, leadController.getBudgetPlannerHandler);
+router.post('/:id/sales-coach', authenticate, authorize('leads:update'), aiRateLimiter, leadController.salesCoachHandler);
+router.post('/:id/knowledge-assistant', authenticate, authorize('leads:read'), aiRateLimiter, leadController.knowledgeAssistantHandler);
+router.post('/:id/buying-intent', authenticate, authorize('leads:read'), aiRateLimiter, leadController.analyzeBuyingIntentHandler);
+router.post('/:id/sentiment', authenticate, authorize('leads:read'), aiRateLimiter, leadController.analyzeSentimentHandler);
 
 // Bottom of Funnel (Proposal & Negotiation)
 router.post('/:id/generate-proposal', authenticate, authorize('leads:read'), leadController.generateProposalHandler);
@@ -92,18 +94,6 @@ router.patch('/:id/negotiation', authenticate, authorize('leads:update'), leadCo
 router.patch('/:id/budget', authenticate, authorize('leads:update'), leadController.updateBudgetHandler);
 
 // Add AI Persona Twin route
-router.post('/:id/ai-twin', authenticate, async (req, res, next) => {
-  try {
-    const { tenantId } = req.user;
-    const { prompt } = req.body;
-    if (!prompt) return res.status(400).json({ success: false, error: 'Prompt is required' });
-    
-    const { simulateLeadPersona } = require('../services/aiService');
-    const responseText = await simulateLeadPersona(tenantId, req.params.id, prompt);
-    return res.status(200).json({ success: true, data: { text: responseText } });
-  } catch (error) {
-    next(error);
-  }
-});
+router.post('/:id/ai-twin', authenticate, aiRateLimiter, leadController.aiTwinHandler);
 
 module.exports = router;

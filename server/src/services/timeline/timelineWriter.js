@@ -38,7 +38,7 @@ class TimelineWriter {
       if (eventName === 'lead.stage_changed') {
         const oldStage = payload.oldStage?.name || 'Unknown';
         const newStage = payload.newStage?.name || 'Unknown';
-        summary = `Stage changed from ${oldStage} to ${newStage}`;
+        summary = `Stage changed from ${oldStage} to ${newStage}${payload.mandatoryFieldsText || ''}`;
       } else if (eventName === 'lead.created') {
         summary = 'Lead created';
       } else if (eventName === 'lead.updated') {

@@ -275,6 +275,20 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
     if (estRes.data.success) setEstimates(estRes.data.data);
   };
 
+  const syncEstimates = async () => {
+    toast.info('Syncing estimates with external system...');
+    try {
+      const estRes = await api.post(`/leads/${leadId}/estimates/sync`);
+      if (estRes.data.success) {
+        setEstimates(estRes.data.data);
+        toast.success('Estimates synced');
+      }
+    } catch (err) {
+      const errorMsg = err.response?.data?.error?.message || err.message || 'Failed to sync estimates';
+      toast.error(errorMsg);
+    }
+  };
+
   const handleCreateEstimate = () => {
     setIsBuildingEstimate(true);
   };
@@ -916,9 +930,14 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-semibold text-gray-900">Quotes & Estimates</h3>
-                  <Button variant="outline" size="sm" onClick={handleCreateEstimate}>
-                    Generate Estimate
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={syncEstimates} title="Refresh estimates">
+                      &#8635; Sync
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleCreateEstimate}>
+                      Generate Estimate
+                    </Button>
+                  </div>
                 </div>
                 {estimates.length === 0 ? (
                   <div className="text-center py-8 text-gray-500 bg-gray-50 rounded border border-dashed border-gray-300">
@@ -935,7 +954,9 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                             <Badge variant={est.status === 'accepted' ? 'success' : est.status === 'sent' ? 'primary' : 'secondary'}>
                               {est.status}
                             </Badge>
-                            <span className="text-xs text-gray-500">{new Date(est.created_at).toLocaleDateString()}</span>
+                            <span className="text-xs text-gray-500">Created: {new Date(est.created_at).toLocaleDateString()}</span>
+                            <span className="text-xs text-gray-400">&bull;</span>
+                            <span className="text-xs text-blue-600 font-medium">Last Synced: {new Date(est.updated_at || est.created_at).toLocaleString()}</span>
                           </div>
                         </div>
                         <div className="text-right">
