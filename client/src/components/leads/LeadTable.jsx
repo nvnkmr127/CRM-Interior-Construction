@@ -27,6 +27,19 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
 }
 
+function formatMeetingSchedule(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr;
+  return d.toLocaleString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+}
+
 function getAgingBadge(lastActivityAt, createdAt) {
   const date = new Date(lastActivityAt || createdAt);
   if (isNaN(date)) return null;
@@ -39,11 +52,118 @@ function getAgingBadge(lastActivityAt, createdAt) {
 export default function LeadTable({
   filteredLeads, loading, page, limit, total, setPage,
   setSelectedLeadId, stageMenuLeadId, setStageMenuLeadId,
-  stages, handleMoveStage, bulkChangeStage, bulkDelete, clearFilters
+  stages, handleMoveStage, bulkChangeStage, bulkDelete, clearFilters,
+  refetch, search
 }) {
   const [selectedIds, setSelectedIds] = React.useState(new Set());
   const [showBulkStageMenu, setShowBulkStageMenu] = React.useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+  const [syncingLeadIds, setSyncingLeadIds] = React.useState(new Set());
+
+  const handleSyncWhatsApp = async (e, leadId) => {
+    e.stopPropagation();
+    const newSyncing = new Set(syncingLeadIds);
+    newSyncing.add(leadId);
+    setSyncingLeadIds(newSyncing);
+    try {
+      const { syncCommunications } = await import('../../api/leads');
+      await syncCommunications(leadId);
+      if (refetch) await refetch();
+    } catch (err) {
+      console.error('Failed to sync WhatsApp status:', err);
+    } finally {
+      setSyncingLeadIds(prev => {
+        const next = new Set(prev);
+        next.delete(leadId);
+        return next;
+      });
+    }
+  };
+
+  const renderWhatsAppStatus = (lead) => {
+    const status = lead.last_whatsapp_status;
+    const direction = lead.last_whatsapp_direction;
+    const reaction = lead.last_whatsapp_reaction;
+    const isSyncing = syncingLeadIds.has(lead.id);
+
+    if (!status) return <span className="text-gray-400">—</span>;
+
+    let icon = null;
+    let statusText = '';
+    let colorClass = '';
+
+    if (direction === 'inbound') {
+      icon = '📥';
+      statusText = 'Received';
+      colorClass = 'text-green-600 bg-green-50 border-green-200';
+    } else {
+      switch (status) {
+        case 'sent':
+          icon = '✓';
+          statusText = 'Sent';
+          colorClass = 'text-gray-500 bg-gray-50 border-gray-200';
+          break;
+        case 'delivered':
+          icon = '✓✓';
+          statusText = 'Delivered';
+          colorClass = 'text-gray-600 bg-gray-100 border-gray-300';
+          break;
+        case 'read':
+        case 'seen':
+          icon = '✓✓';
+          statusText = 'Seen';
+          colorClass = 'text-blue-600 bg-blue-50 border-blue-200';
+          break;
+        case 'reacted':
+          icon = reaction || '❤️';
+          statusText = 'Reacted';
+          colorClass = 'text-purple-600 bg-purple-50 border-purple-200';
+          break;
+        case 'replied':
+          icon = '💬';
+          statusText = 'Replied';
+          colorClass = 'text-indigo-600 bg-indigo-50 border-indigo-200';
+          break;
+        case 'failed':
+          icon = '⚠️';
+          statusText = 'Failed';
+          colorClass = 'text-red-600 bg-red-50 border-red-200';
+          break;
+        default:
+          icon = '✓';
+          statusText = status;
+          colorClass = 'text-gray-500 bg-gray-50 border-gray-200';
+      }
+    }
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={e => e.stopPropagation()}>
+        <span className={`px-2 py-0.5 rounded border text-xs font-semibold flex items-center gap-1 ${colorClass}`}>
+          <span style={{ fontSize: '10px' }}>{icon}</span> {statusText}
+        </span>
+        {lead.phone && (
+          <button
+            onClick={(e) => handleSyncWhatsApp(e, lead.id)}
+            disabled={isSyncing}
+            className={`${styles.actionIconBtn} p-0.5 hover:bg-gray-100 rounded`}
+            title="Sync WhatsApp chat status"
+            style={{ width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            {isSyncing ? (
+              <svg className="animate-spin h-3 w-3 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style={{ animation: 'spin 1s linear infinite' }}>
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+              </svg>
+            )}
+          </button>
+        )}
+      </div>
+    );
+  };
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
@@ -120,6 +240,8 @@ export default function LeadTable({
             <th className={styles.listTh}>Intent</th>
             <th className={styles.listTh}>AI Recommendation</th>
             <th className={styles.listTh}>Assignee</th>
+            <th className={styles.listTh}>Communication</th>
+            <th className={styles.listTh}>Meeting Schedule</th>
             <th className={styles.listTh}>Last Activity</th>
             <th className={styles.listTh} style={{ textAlign: 'right' }}>Actions</th>
           </tr>
@@ -127,10 +249,10 @@ export default function LeadTable({
         <tbody>
           {filteredLeads.length === 0 ? (
             <tr>
-              <td colSpan={9} style={{ padding: '40px 0' }}>
+              <td colSpan={13} style={{ padding: '40px 0' }}>
                 <EmptyState 
                   icon="🔍"
-                  title="No leads found"
+                  title={search ? `No leads found matching "${search}"` : "No leads found"}
                   description="Try adjusting your search or filters to find what you're looking for."
                   action={{ label: 'Clear Filters', onClick: clearFilters }}
                 />
@@ -222,6 +344,18 @@ export default function LeadTable({
                     </div>
                   ) : (
                     <span className={styles.unassigned}>Unassigned</span>
+                  )}
+                </td>
+                 <td className={styles.listTd}>
+                  {renderWhatsAppStatus(lead)}
+                </td>
+                <td className={styles.listTd}>
+                  {lead.next_meeting_schedule ? (
+                    <span className="font-semibold text-xs text-orange-700 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded flex items-center gap-1 w-max">
+                      📅 {formatMeetingSchedule(lead.next_meeting_schedule)}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">—</span>
                   )}
                 </td>
                 <td className={styles.listTd}>

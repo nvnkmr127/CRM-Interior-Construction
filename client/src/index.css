@@ -54,6 +54,21 @@
   }
 }
 
+/* ── MANUAL DARK MODE VARIABLES OVERRIDE ── */
+.dark {
+  --text: #9ca3af;
+  --text-h: #f3f4f6;
+  --bg: #16171d;
+  --border: #2e303a;
+  --code-bg: #1f2028;
+  --accent: #c084fc;
+  --accent-bg: rgba(192, 132, 252, 0.15);
+  --accent-border: rgba(192, 132, 252, 0.5);
+  --social-bg: rgba(47, 48, 58, 0.5);
+  --shadow:
+    rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+}
+
 body {
   margin: 0;
 }
@@ -119,9 +134,9 @@ code {
 }
 
 :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), textarea, select) {
-  background-color: #ffffff;
-  color: #000000;
-  border-color: var(--border);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
 }
 
 /* Glassmorphism UI Refresh */
@@ -153,4 +168,122 @@ code {
 @keyframes toast-slide-in {
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
+}
+
+/* ── DARK MODE GLOBAL OVERRIDES FOR TAILWIND & THIRD PARTY ── */
+.dark .bg-white {
+  background-color: var(--color-surface) !important;
+}
+.dark .bg-gray-50 {
+  background-color: var(--color-surface-2) !important;
+}
+.dark .bg-gray-100 {
+  background-color: var(--color-surface-3) !important;
+}
+.dark .bg-gray-200 {
+  background-color: var(--color-border) !important;
+}
+.dark .bg-blue-50 {
+  background-color: var(--color-info-bg) !important;
+}
+.dark .bg-green-50 {
+  background-color: var(--color-success-bg) !important;
+}
+.dark .bg-red-50 {
+  background-color: var(--color-danger-bg) !important;
+}
+.dark .bg-orange-50 {
+  background-color: var(--color-warning-bg) !important;
+}
+.dark .bg-amber-50 {
+  background-color: var(--color-warning-bg) !important;
+}
+
+.dark .text-gray-900,
+.dark .text-gray-800 {
+  color: var(--color-text) !important;
+}
+.dark .text-gray-700,
+.dark .text-gray-600 {
+  color: var(--color-text-secondary) !important;
+}
+.dark .text-gray-500 {
+  color: var(--color-text-muted) !important;
+}
+.dark .text-gray-400 {
+  color: var(--color-text-muted) !important;
+}
+.dark .text-blue-700 {
+  color: var(--color-info) !important;
+}
+.dark .text-blue-600 {
+  color: var(--color-accent) !important;
+}
+.dark .text-green-700 {
+  color: var(--color-success) !important;
+}
+.dark .text-red-700,
+.dark .text-red-600 {
+  color: var(--color-danger) !important;
+}
+.dark .text-orange-700,
+.dark .text-orange-800 {
+  color: var(--color-warning) !important;
+}
+
+.dark .border-gray-100,
+.dark .border-gray-200 {
+  border-color: var(--color-border) !important;
+}
+.dark .border-gray-300 {
+  border-color: var(--color-border-strong) !important;
+}
+.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--color-border) !important;
+}
+
+.dark .hover\:bg-gray-50:hover {
+  background-color: var(--color-surface-2) !important;
+}
+.dark .hover\:bg-gray-100:hover {
+  background-color: var(--color-surface-3) !important;
+}
+
+/* ── REACT DATEPICKER DARK THEME OVERRIDES ── */
+.dark .react-datepicker {
+  background-color: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+.dark .react-datepicker__header {
+  background-color: var(--color-surface-2) !important;
+  border-bottom-color: var(--color-border) !important;
+}
+.dark .react-datepicker__current-month,
+.dark .react-datepicker__day-name,
+.dark .react-datepicker-time__header,
+.dark .react-datepicker__day {
+  color: var(--color-text) !important;
+}
+.dark .react-datepicker__day:hover {
+  background-color: var(--color-surface-3) !important;
+}
+.dark .react-datepicker__day--selected {
+  background-color: var(--color-accent) !important;
+  color: var(--color-text-inverse) !important;
+}
+.dark .react-datepicker__time-container {
+  border-left-color: var(--color-border) !important;
+}
+.dark .react-datepicker__time-list-item {
+  color: var(--color-text) !important;
+  background-color: var(--color-surface) !important;
+}
+.dark .react-datepicker__time-list-item:hover {
+  background-color: var(--color-surface-3) !important;
+}
+.dark .react-datepicker__time-list-item--selected {
+  background-color: var(--color-accent) !important;
+  color: var(--color-text-inverse) !important;
 }

@@ -177,7 +177,7 @@ router.delete('/:tid', authorize('projects:manage'), async (req, res, next) => {
 router.get('/:tid/comments', authorize('projects:read'), async (req, res, next) => {
   try {
     const { rows } = await pool.query(`
-      SELECT c.*, u.first_name || ' ' || u.last_name as user_name
+      SELECT c.*, u.name as user_name
       FROM task_comments c
       LEFT JOIN users u ON c.user_id = u.id
       WHERE c.task_id = $1

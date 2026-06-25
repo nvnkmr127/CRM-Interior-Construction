@@ -57,7 +57,10 @@ export default function LeadForm({ lead, onSave, onClose }) {
     material_preference: lead?.material_preference || '',
     preferred_communication: lead?.preferred_communication || '',
     preferred_language: lead?.preferred_language || '',
-    referral_source: lead?.referral_source || ''
+    referral_source: lead?.referral_source || '',
+    dnc_flag: lead?.dnc_flag || false,
+    consent_whatsapp: lead?.consent_whatsapp || false,
+    competitor_mentioned: lead?.competitor_mentioned || ''
   }, rules);
 
   // ── 4. isReq is safe here — declared after `values` exists ───────────
@@ -218,6 +221,17 @@ export default function LeadForm({ lead, onSave, onClose }) {
               <Input label={`Material Preference${isReq('material_preference') ? ' *' : ''}`} required={isReq('material_preference')} error={touched.material_preference && errors.material_preference} name="material_preference" placeholder="e.g. Modular, Wood" value={values.material_preference} onChange={onChange} onBlur={onBlur} />
               <Input label={`Preferred Communication${isReq('preferred_communication') ? ' *' : ''}`} required={isReq('preferred_communication')} error={touched.preferred_communication && errors.preferred_communication} name="preferred_communication" placeholder="Call / WhatsApp" value={values.preferred_communication} onChange={onChange} onBlur={onBlur} />
               <Input label={`Preferred Language${isReq('preferred_language') ? ' *' : ''}`} required={isReq('preferred_language')} error={touched.preferred_language && errors.preferred_language} name="preferred_language" value={values.preferred_language} onChange={onChange} onBlur={onBlur} />
+              <Input label="Competitor Mentioned" name="competitor_mentioned" placeholder="e.g. Livspace, HomeLane" value={values.competitor_mentioned} onChange={onChange} onBlur={onBlur} />
+              <div className="flex flex-col gap-2 mt-4">
+                <label className={styles.checkboxWrap}>
+                  <input type="checkbox" name="dnc_flag" checked={values.dnc_flag} onChange={onChange} className={styles.checkboxInput} />
+                  Do Not Contact (DNC)
+                </label>
+                <label className={styles.checkboxWrap}>
+                  <input type="checkbox" name="consent_whatsapp" checked={values.consent_whatsapp} onChange={onChange} className={styles.checkboxInput} />
+                  WhatsApp Consent Given
+                </label>
+              </div>
             </div>
           </div>
 

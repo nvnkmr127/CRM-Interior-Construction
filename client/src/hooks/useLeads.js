@@ -30,6 +30,8 @@ export function useLeads(filters = {}) {
         let fetchedLeads = Array.isArray(leadsRes.data) ? leadsRes.data : Array.isArray(leadsRes.results) ? leadsRes.results : [];
         if (leadsRes.pagination) {
           setTotal(leadsRes.pagination.total || 0);
+        } else if (leadsRes.meta?.total !== undefined) {
+          setTotal(leadsRes.meta.total);
         } else if (leadsRes.total !== undefined) {
           setTotal(leadsRes.total);
         } else {
@@ -52,7 +54,20 @@ export function useLeads(filters = {}) {
     } finally {
       setLoading(false);
     }
-  }, [filters.stageId, filters.assigneeId, filters.source, filters.search, filters.intent, filters.sortBy, filters.sortDesc, filters.page, filters.limit]);
+  }, [
+    filters.stageId,
+    filters.assigneeId,
+    filters.source,
+    filters.search,
+    filters.intent,
+    filters.sortBy,
+    filters.sortDesc,
+    filters.page,
+    filters.limit,
+    filters.scoreRange,
+    filters.createdFrom,
+    filters.createdTo
+  ]);
 
   useEffect(() => {
     fetchLeadsAndStages();

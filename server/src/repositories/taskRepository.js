@@ -5,23 +5,24 @@ class TaskRepository {
     const {
       project_id, milestone_id, parent_task_id, title, description,
       assignee_id, due_date, priority = 'medium', status = 'todo',
-      sort_order = 0, tags = [], custom_fields = {}, created_by
+      sort_order = 0, tags = [], custom_fields = {}, created_by,
+      lead_id
     } = data;
 
     const query = `
       INSERT INTO tasks (
         tenant_id, project_id, milestone_id, parent_task_id,
         title, description, assignee_id, due_date, priority, status,
-        sort_order, tags, custom_fields, created_by
+        sort_order, tags, custom_fields, created_by, lead_id
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
       ) RETURNING *
     `;
     const values = [
-      tenantId, project_id, milestone_id || null, parent_task_id || null,
+      tenantId, project_id || null, milestone_id || null, parent_task_id || null,
       title, description || null, assignee_id || null, due_date || null,
       priority, status, sort_order, JSON.stringify(tags),
-      custom_fields, created_by || null
+      custom_fields, created_by || null, lead_id || null
     ];
 
     const { rows } = await pool.query(query, values);
@@ -65,7 +66,7 @@ class TaskRepository {
     return task;
   }
 
-  async findTasks(tenantId, { projectId, milestoneId, assigneeId, status, priority, dueWithin, page = 1, limit = 20 }) {
+  async findTasks(tenantId, { projectId, milestoneId, assigneeId, status, priority, dueWithin, page = 1, limit = 20, leadId }) {
     const offset = (page - 1) * limit;
     const values = [tenantId];
     let whereClause = `t.tenant_id = $1 AND t.deleted_at IS NULL`;
@@ -74,6 +75,10 @@ class TaskRepository {
     if (projectId) {
       whereClause += ` AND t.project_id = $${idx++}`;
       values.push(projectId);
+    }
+    if (leadId) {
+      whereClause += ` AND t.lead_id = $${idx++}`;
+      values.push(leadId);
     }
     if (assigneeId) {
       whereClause += ` AND t.assignee_id = $${idx++}`;

@@ -42,6 +42,39 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
   const [activeForm, setActiveForm] = useState(null); // 'note', 'email', 'task', 'site_visit'
   const [filter, setFilter] = useState('all'); // 'all', 'note', 'email', 'site_visit', 'task', 'system'
 
+  // Activity Edit State
+  const [editingActivityId, setEditingActivityId] = useState(null);
+  const [editNotes, setEditNotes] = useState('');
+  const [editTitle, setEditTitle] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const handleEditClick = (activity) => {
+    setEditingActivityId(activity.id);
+    setEditNotes(activity.notes || '');
+    setEditTitle(activity.title || activity.type || '');
+  };
+
+  const handleUpdateActivity = async (e, activityId) => {
+    e.preventDefault();
+    if (!editNotes.trim()) return;
+    setIsUpdating(true);
+    try {
+      const res = await api.patch(`/leads/${leadId}/activities/${activityId}`, {
+        notes: editNotes,
+        title: editTitle
+      });
+      if (res.data?.success || res.status === 200) {
+        const updatedActivity = res.data?.data || res.data || { notes: editNotes, title: editTitle };
+        setActivities(prev => prev.map(a => a.id === activityId ? { ...a, ...updatedActivity } : a));
+        setEditingActivityId(null);
+      }
+    } catch (err) {
+      alert('Failed to update activity.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   // Generic form data
   const [formData, setFormData] = useState({
     notes: '',
@@ -53,7 +86,16 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
     // Site Visit specific
     site_address: '',
     client_feedback: '',
-    measurements_taken: false
+    measurements_taken: false,
+    // Meeting specific
+    meeting_title: '',
+    meeting_type: 'Google Meet',
+    meeting_date: '',
+    meeting_time: '',
+    meeting_duration: '30',
+    meeting_link: '',
+    meeting_host: '',
+    meeting_reminders: false
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -128,7 +170,25 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      if (activeForm === 'task') {
+      if (activeForm === 'meeting') {
+        if (!formData.meeting_title || !formData.meeting_date || !formData.meeting_time) return;
+        const scheduledAt = new Date(`${formData.meeting_date}T${formData.meeting_time}`).toISOString();
+        const metadata = {
+          title: formData.meeting_title,
+          meeting_type: formData.meeting_type,
+          duration: parseInt(formData.meeting_duration || '30', 10),
+          meeting_link: formData.meeting_link || (formData.meeting_type === 'Google Meet' ? `https://meet.google.com/${Math.random().toString(36).substr(2, 3)}-${Math.random().toString(36).substr(2, 4)}-${Math.random().toString(36).substr(2, 3)}` : ''),
+          meeting_host: formData.meeting_host || null,
+          reminders_enabled: !!formData.meeting_reminders
+        };
+        await logActivity(leadId, {
+          type: 'meeting',
+          notes: formData.notes || `Scheduled meeting: ${formData.meeting_title}`,
+          title: formData.meeting_title,
+          scheduledAt,
+          metadata
+        });
+      } else if (activeForm === 'task') {
         if (!formData.title || !formData.due_date) return;
         await api.post('/tasks', {
           lead_id: leadId,
@@ -139,7 +199,6 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
           status: 'open'
         });
         if (onTaskAdded) onTaskAdded();
-        // Also log a system activity that a task was scheduled
         await logActivity(leadId, { type: 'note', notes: `Scheduled task: ${formData.title} due on ${formData.due_date}` });
       } else if (activeForm === 'site_visit') {
         if (!formData.notes.trim()) return;
@@ -155,7 +214,12 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
       }
       
       await fetchActivities(1, false);
-      setFormData({ notes: '', title: '', due_date: '', assigned_to: '', priority: 'medium', site_address: '', client_feedback: '', measurements_taken: false });
+      setFormData({
+        notes: '', title: '', due_date: '', assigned_to: '', priority: 'medium',
+        site_address: '', client_feedback: '', measurements_taken: false,
+        meeting_title: '', meeting_type: 'Google Meet', meeting_date: '', meeting_time: '',
+        meeting_duration: '30', meeting_link: '', meeting_host: '', meeting_reminders: false
+      });
       setActiveForm(null);
     } catch (err) {
       alert('Failed to save.');
@@ -210,6 +274,12 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
             >
               <Icons.site_visit /> Site Visit
             </button>
+            <button 
+              onClick={() => setActiveForm(activeForm === 'meeting' ? null : 'meeting')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm ${activeForm === 'meeting' ? 'bg-orange-100 text-orange-700 border-orange-300' : 'bg-white border text-gray-700 hover:bg-gray-100'}`}
+            >
+              <Icons.meeting /> Schedule Meeting
+            </button>
           </div>
           <div>
             <button
@@ -239,7 +309,121 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
         {activeForm && (
           <form onSubmit={handleSubmit} className="p-4 space-y-4">
             
-            {activeForm === 'task' ? (
+            {activeForm === 'meeting' ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-500">Meeting Title *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Design Proposal Review"
+                      value={formData.meeting_title}
+                      onChange={(e) => setFormData(prev => ({ ...prev, meeting_title: e.target.value }))}
+                      className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none shadow-inner"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-500">Meeting Type *</label>
+                    <select
+                      required
+                      value={formData.meeting_type}
+                      onChange={(e) => setFormData(prev => ({ ...prev, meeting_type: e.target.value }))}
+                      className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                    >
+                      <option value="Google Meet">📹 Google Meet</option>
+                      <option value="WhatsApp Call">📞 WhatsApp Call</option>
+                      <option value="In-Person Site Visit">🏢 In-Person Site Visit</option>
+                      <option value="Phone Call">☎️ Phone Call</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-500">Date *</label>
+                    <input
+                      type="date"
+                      required
+                      value={formData.meeting_date}
+                      onChange={(e) => setFormData(prev => ({ ...prev, meeting_date: e.target.value }))}
+                      className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-500">Time *</label>
+                    <input
+                      type="time"
+                      required
+                      value={formData.meeting_time}
+                      onChange={(e) => setFormData(prev => ({ ...prev, meeting_time: e.target.value }))}
+                      className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-500">Duration *</label>
+                    <select
+                      required
+                      value={formData.meeting_duration}
+                      onChange={(e) => setFormData(prev => ({ ...prev, meeting_duration: e.target.value }))}
+                      className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                    >
+                      <option value="15">15 mins</option>
+                      <option value="30">30 mins</option>
+                      <option value="45">45 mins</option>
+                      <option value="60">1 hour</option>
+                      <option value="90">1.5 hours</option>
+                      <option value="120">2 hours</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-500">Video Call Link</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Google Meet link"
+                      value={formData.meeting_link}
+                      onChange={(e) => setFormData(prev => ({ ...prev, meeting_link: e.target.value }))}
+                      className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none shadow-inner"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-500">Meeting Host</label>
+                    <select
+                      value={formData.meeting_host}
+                      onChange={(e) => setFormData(prev => ({ ...prev, meeting_host: e.target.value }))}
+                      className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                    >
+                      <option value="">Select Host</option>
+                      {reps.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-gray-500">Description / Agenda</label>
+                  <textarea
+                    rows="2"
+                    placeholder="Enter meeting agenda..."
+                    value={formData.notes}
+                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                    className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none shadow-inner"
+                  ></textarea>
+                </div>
+
+                <label className="flex items-center gap-2 text-sm text-gray-700 select-none">
+                  <input
+                    type="checkbox"
+                    checked={formData.meeting_reminders}
+                    onChange={(e) => setFormData(prev => ({ ...prev, meeting_reminders: e.target.checked }))}
+                    className="rounded text-blue-600"
+                  />
+                  Send Client Reminders (WhatsApp & Email)
+                </label>
+              </div>
+            ) : activeForm === 'task' ? (
               <div className="space-y-3">
                 <input
                   type="text"
@@ -387,19 +571,72 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
                         )}
                         <span className="text-gray-400 text-xs ml-1 font-medium cursor-help" title={exactDate}>· {timeAgo}</span>
                       </div>
+                      {!isSystem && editingActivityId !== activity.id && (
+                        <button
+                          onClick={() => handleEditClick(activity)}
+                          className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-blue-600 transition-colors ml-2 shrink-0"
+                          title="Edit Activity"
+                        >
+                          <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                          </svg>
+                        </button>
+                      )}
                     </div>
                     
-                    {activity.notes && (
-                      <ExpandableText text={activity.notes} />
-                    )}
-
-                    {activity.ai_summary && (
-                      <div className="mt-3 bg-indigo-50 p-3 rounded border border-indigo-100 flex gap-2">
-                        <svg className="w-5 h-5 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                        <div className="text-sm text-indigo-900 leading-relaxed font-medium">
-                          {activity.ai_summary}
+                    {editingActivityId === activity.id ? (
+                      <form onSubmit={(e) => handleUpdateActivity(e, activity.id)} className="space-y-3 mt-2">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Title</label>
+                          <input
+                            type="text"
+                            value={editTitle}
+                            onChange={(e) => setEditTitle(e.target.value)}
+                            className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none"
+                          />
                         </div>
-                      </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Notes</label>
+                          <textarea
+                            required
+                            rows="3"
+                            value={editNotes}
+                            onChange={(e) => setEditNotes(e.target.value)}
+                            className="w-full rounded-md border border-gray-300 p-2.5 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none"
+                          ></textarea>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditingActivityId(null)}
+                            className="px-3 py-1.5 text-xs font-semibold text-gray-600 hover:text-gray-800 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={isUpdating || !editNotes.trim()}
+                            className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded shadow hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                          >
+                            {isUpdating ? 'Saving...' : 'Save'}
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <>
+                        {activity.notes && (
+                          <ExpandableText text={activity.notes} />
+                        )}
+
+                        {activity.ai_summary && (
+                          <div className="mt-3 bg-indigo-50 p-3 rounded border border-indigo-100 flex gap-2">
+                            <svg className="w-5 h-5 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                            <div className="text-sm text-indigo-900 leading-relaxed font-medium">
+                              {activity.ai_summary}
+                            </div>
+                          </div>
+                        )}
+                      </>
                     )}
                     
                     {activity.metadata?.suggested_tasks && activity.metadata.suggested_tasks.length > 0 && (

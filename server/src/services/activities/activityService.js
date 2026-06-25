@@ -16,9 +16,9 @@ async function logActivity({ tenantId, userId, leadId, type, title, notes, outco
 
   const query = `
     INSERT INTO activities (
-      tenant_id, lead_id, user_id, type, title, notes, outcome, scheduled_at, completed_at
+      tenant_id, lead_id, user_id, type, title, notes, outcome, scheduled_at, completed_at, metadata
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, NOW()
+      $1, $2, $3, $4, $5, $6, $7, $8, NOW(), $9
     ) RETURNING *
   `;
   
@@ -30,7 +30,8 @@ async function logActivity({ tenantId, userId, leadId, type, title, notes, outco
     title || null,
     notes || null,
     outcome || null,
-    scheduledAt || null
+    scheduledAt || null,
+    metadata ? (typeof metadata === 'string' ? metadata : JSON.stringify(metadata)) : '{}'
   ];
 
   const result = await pool.query(query, values);
@@ -104,8 +105,33 @@ async function getLastActivity(tenantId, leadId) {
   return result.rows[0] || null;
 }
 
+async function updateActivity({ tenantId, activityId, leadId, title, notes, outcome, scheduledAt, metadata }) {
+  const query = `
+    UPDATE activities 
+    SET title = COALESCE($1, title),
+        notes = COALESCE($2, notes),
+        outcome = COALESCE($3, outcome),
+        scheduled_at = COALESCE($4, scheduled_at),
+        metadata = COALESCE($5, metadata)
+    WHERE id = $6 AND lead_id = $7 AND tenant_id = $8
+    RETURNING *
+  `;
+  const result = await pool.query(query, [
+    title || null,
+    notes || null,
+    outcome || null,
+    scheduledAt || null,
+    metadata ? (typeof metadata === 'string' ? metadata : JSON.stringify(metadata)) : null,
+    activityId,
+    leadId,
+    tenantId
+  ]);
+  return result.rows[0];
+}
+
 module.exports = {
   logActivity,
   listActivities,
-  getLastActivity
+  getLastActivity,
+  updateActivity
 };

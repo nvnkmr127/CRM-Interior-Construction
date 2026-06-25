@@ -30,8 +30,17 @@ export default function InspirationBoard({ leadId }) {
   const handleAdd = async (e) => {
     e.preventDefault();
     if (!newInspiration.image_url) return toast.error('Image URL is required');
+
+    let imageUrl = newInspiration.image_url.trim();
+    if (!/^https?:\/\//i.test(imageUrl) && !imageUrl.startsWith('/')) {
+      imageUrl = `https://${imageUrl}`;
+    }
+
     try {
-      const res = await api.post(`/leads/${leadId}/inspirations`, newInspiration);
+      const res = await api.post(`/leads/${leadId}/inspirations`, {
+        ...newInspiration,
+        image_url: imageUrl
+      });
       if (res.data.success) {
         setInspirations([res.data.data, ...inspirations]);
         setIsAdding(false);
@@ -77,7 +86,7 @@ export default function InspirationBoard({ leadId }) {
         <form onSubmit={handleAdd} className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg flex flex-col gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Image URL</label>
-            <input type="url" placeholder="https://example.com/image.jpg" className="w-full border rounded p-2 text-sm" value={newInspiration.image_url} onChange={e => setNewInspiration({...newInspiration, image_url: e.target.value})} required />
+            <input type="text" placeholder="e.g. unsplash.com/photo-xxx or https://example.com/image.jpg" className="w-full border rounded p-2 text-sm" value={newInspiration.image_url} onChange={e => setNewInspiration({...newInspiration, image_url: e.target.value})} required />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -111,7 +120,11 @@ export default function InspirationBoard({ leadId }) {
               >&times;</button>
               
               <div className="aspect-auto relative group-hover:brightness-90 transition-all">
-                <img src={insp.image_url} alt={insp.room_type || 'Inspiration'} className="w-full h-auto object-cover" />
+                <img 
+                  src={insp.image_url} 
+                  alt={insp.room_type || 'Inspiration'} 
+                  className="w-full h-auto object-cover" 
+                />
                 
                 {/* AI Extracted Metadata Overlay */}
                 <div className="absolute bottom-2 left-2 right-2 bg-white/90 backdrop-blur-sm p-2 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1.5">

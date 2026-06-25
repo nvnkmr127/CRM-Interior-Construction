@@ -122,6 +122,14 @@ export const draftCommunication = async (id, data) => {
 };
 
 /**
+ * Sync WhatsApp communications / status updates for a lead.
+ */
+export const syncCommunications = async (id) => {
+  const response = await api.post(`/leads/${id}/communications/sync`);
+  return response.data;
+};
+
+/**
  * Bulk change the stage of multiple leads.
  * @param {Array<string>} leadIds - UUIDs of the leads.
  * @param {string} stageId - The UUID of the new stage.
@@ -221,4 +229,16 @@ export const getEstimates = async (leadId) => {
 export const getAutomationEvents = async (leadId) => {
   const response = await api.get(/leads//automation-events);
   return response.data.data;
+};
+
+/**
+ * Update an existing activity for a lead.
+ * @param {string} leadId - The UUID of the lead.
+ * @param {string} activityId - The UUID of the activity.
+ * @param {Object} data - The updated activity data.
+ * @returns {Promise<{ success: boolean, data: Object }>} The updated activity.
+ */
+export const updateActivity = async (leadId, activityId, data) => {
+  const response = await api.patch(`/leads/${leadId}/activities/${activityId}`, data);
+  return response.data;
 };

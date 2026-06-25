@@ -9,6 +9,40 @@ export default function FollowupsTab({ leadId }) {
   const [followups, setFollowups] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: '', due_at: '', notes: '' });
+  const [editingFollowupId, setEditingFollowupId] = useState(null);
+  const [editForm, setEditForm] = useState({ title: '', due_at: '', notes: '' });
+
+  const handleEditClick = (f) => {
+    setEditingFollowupId(f.id);
+    let formattedDueAt = '';
+    if (f.due_at) {
+      const date = new Date(f.due_at);
+      const tzoffset = date.getTimezoneOffset() * 60000;
+      formattedDueAt = (new Date(date - tzoffset)).toISOString().slice(0, 16);
+    }
+    setEditForm({
+      title: f.title,
+      due_at: formattedDueAt,
+      notes: f.notes || ''
+    });
+  };
+
+  const update = async (id) => {
+    if (!editForm.title || !editForm.due_at) {
+      toast.error('Title and due date required');
+      return;
+    }
+    try {
+      const res = await api.patch(`/leads/${leadId}/followups/${id}`, editForm);
+      if (res.data.success) {
+        setFollowups(prev => prev.map(x => x.id === id ? res.data.data : x));
+        setEditingFollowupId(null);
+        toast.success('Follow-up updated');
+      }
+    } catch {
+      toast.error('Failed to update follow-up');
+    }
+  };
 
   useEffect(() => {
     api.get(`/leads/${leadId}/followups`)
@@ -109,6 +143,59 @@ export default function FollowupsTab({ leadId }) {
         {followups.map(f => {
           const due = new Date(f.due_at);
           const isOverdue = !f.is_done && due < now;
+
+          if (editingFollowupId === f.id) {
+            return (
+              <li key={f.id} className="bg-white border border-blue-300 rounded-lg p-4 space-y-3 shadow-sm list-none">
+                <input
+                  type="text"
+                  placeholder="Title (e.g. Call back, Site visit follow-up)"
+                  value={editForm.title}
+                  onChange={e => setEditForm(prev => ({ ...prev, title: e.target.value }))}
+                  className="w-full text-sm border border-gray-300 rounded p-2 focus:ring-blue-500 focus:border-blue-500 font-sans"
+                />
+                <div className="relative">
+                  <DatePicker
+                    selected={editForm.due_at ? new Date(editForm.due_at) : null}
+                    onChange={(date) => {
+                      if (date) {
+                        const tzoffset = date.getTimezoneOffset() * 60000;
+                        const localISOTime = (new Date(date - tzoffset)).toISOString().slice(0, 16);
+                        setEditForm(prev => ({ ...prev, due_at: localISOTime }));
+                      } else {
+                        setEditForm(prev => ({ ...prev, due_at: '' }));
+                      }
+                    }}
+                    showTimeSelect
+                    timeFormat="HH:mm"
+                    timeIntervals={15}
+                    dateFormat="MMMM d, yyyy h:mm aa"
+                    placeholderText="Select Date and Time"
+                    className="w-full text-sm border border-gray-300 rounded-lg p-2 pr-10 focus:ring-blue-500 focus:border-blue-500 cursor-pointer hover:border-blue-400 shadow-sm transition-colors font-sans"
+                    wrapperClassName="w-full"
+                    popperPlacement="bottom-start"
+                    calendarClassName="shadow-xl rounded-xl border-gray-200 font-sans text-sm"
+                    popperProps={{ strategy: "fixed" }}
+                  />
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-blue-500">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                  </div>
+                </div>
+                <textarea
+                  placeholder="Notes (optional)"
+                  value={editForm.notes}
+                  onChange={e => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
+                  className="w-full text-sm border border-gray-300 rounded p-2 focus:ring-blue-500 focus:border-blue-500 font-sans"
+                  rows={2}
+                />
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => update(f.id)} className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 font-medium">Save</button>
+                  <button onClick={() => setEditingFollowupId(null)} className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
+                </div>
+              </li>
+            );
+          }
+
           return (
             <li key={f.id} className={`bg-white border rounded-lg p-3 flex items-start gap-3 ${isOverdue ? 'border-red-200 bg-red-50' : 'border-gray-200'}`}>
               <input
@@ -117,14 +204,25 @@ export default function FollowupsTab({ leadId }) {
                 onChange={() => toggle(f)}
                 className="mt-0.5 w-4 h-4 text-blue-600 rounded border-gray-300"
               />
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 font-sans">
                 <p className={`text-sm font-medium ${f.is_done ? 'line-through text-gray-400' : 'text-gray-800'}`}>{f.title}</p>
                 <p className={`text-xs mt-0.5 ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
-                  {isOverdue ? '&#9888; Overdue · ' : ''}{due.toLocaleString()}
+                  {isOverdue ? '⚠️ Overdue · ' : ''}{due.toLocaleString()}
                 </p>
                 {f.notes && <p className="text-xs text-gray-500 mt-1">{f.notes}</p>}
               </div>
-              <button onClick={() => remove(f.id)} className="text-gray-300 hover:text-red-500 shrink-0 text-lg leading-none">&times;</button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button 
+                  onClick={() => handleEditClick(f)}
+                  className="text-gray-400 hover:text-blue-600 focus:outline-none"
+                  title="Edit"
+                >
+                  <svg style={{ width: '18px', height: '18px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </button>
+                <button onClick={() => remove(f.id)} className="text-gray-300 hover:text-red-500 text-lg leading-none">&times;</button>
+              </div>
             </li>
           );
         })}

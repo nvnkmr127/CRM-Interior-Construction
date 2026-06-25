@@ -194,7 +194,7 @@ const TaskForm = ({ projectId, milestoneId: initialMilestoneId, task, onSave, on
                 >
                   <option value="">Unassigned Floating Task</option>
                   {users.map(u => (
-                    <option key={u.id} value={u.id}>{u.first_name} {u.last_name}</option>
+                    <option key={u.id} value={u.id}>{u.name}</option>
                   ))}
                 </select>
               </div>

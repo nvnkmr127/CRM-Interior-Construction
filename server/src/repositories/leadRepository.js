@@ -86,7 +86,138 @@ async function findLeadById(tenantId, leadId) {
            lp.builder AS builder_name, lp.possession_date, lp.house_status,
            lpref.interior_style, lpref.material AS material_preference,
            COALESCE(EXTRACT(DAY FROM CURRENT_TIMESTAMP - l.updated_at), 0) AS days_in_stage,
-           0 AS follow_up_overdue_days
+           0 AS follow_up_overdue_days,
+           (
+             SELECT a.metadata->>'status'
+             FROM activities a
+             WHERE a.lead_id = l.id AND a.type = 'whatsapp'
+             ORDER BY a.created_at DESC
+             LIMIT 1
+           ) AS last_whatsapp_status,
+           (
+             SELECT a.notes
+             FROM activities a
+             WHERE a.lead_id = l.id AND a.type = 'whatsapp'
+             ORDER BY a.created_at DESC
+             LIMIT 1
+           ) AS last_whatsapp_message,
+           (
+             SELECT a.metadata->>'direction'
+             FROM activities a
+             WHERE a.lead_id = l.id AND a.type = 'whatsapp'
+             ORDER BY a.created_at DESC
+             LIMIT 1
+           ) AS last_whatsapp_direction,
+           (
+             SELECT a.metadata->>'reaction'
+             FROM activities a
+             WHERE a.lead_id = l.id AND a.type = 'whatsapp'
+             ORDER BY a.created_at DESC
+             LIMIT 1
+           ) AS last_whatsapp_reaction,
+           (
+             SELECT a.created_at
+             FROM activities a
+             WHERE a.lead_id = l.id AND a.type = 'whatsapp'
+             ORDER BY a.created_at DESC
+             LIMIT 1
+           ) AS last_whatsapp_created_at,
+           (
+             SELECT a.id
+             FROM activities a
+             WHERE a.lead_id = l.id 
+               AND a.type = 'meeting' 
+               AND a.scheduled_at IS NOT NULL 
+               AND a.scheduled_at != ''
+               AND a.scheduled_at::timestamp >= NOW()
+               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
+             ORDER BY a.scheduled_at ASC
+             LIMIT 1
+           ) AS next_meeting_id,
+           (
+             SELECT a.scheduled_at
+             FROM activities a
+             WHERE a.lead_id = l.id 
+               AND a.type = 'meeting' 
+               AND a.scheduled_at IS NOT NULL 
+               AND a.scheduled_at != ''
+               AND a.scheduled_at::timestamp >= NOW()
+               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
+             ORDER BY a.scheduled_at ASC
+             LIMIT 1
+           ) AS next_meeting_schedule,
+           (
+             SELECT a.title
+             FROM activities a
+             WHERE a.lead_id = l.id 
+               AND a.type = 'meeting' 
+               AND a.scheduled_at IS NOT NULL 
+               AND a.scheduled_at != ''
+               AND a.scheduled_at::timestamp >= NOW()
+               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
+             ORDER BY a.scheduled_at ASC
+             LIMIT 1
+           ) AS next_meeting_title,
+           (
+             SELECT a.metadata->>'meeting_type'
+             FROM activities a
+             WHERE a.lead_id = l.id 
+               AND a.type = 'meeting' 
+               AND a.scheduled_at IS NOT NULL 
+               AND a.scheduled_at != ''
+               AND a.scheduled_at::timestamp >= NOW()
+               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
+             ORDER BY a.scheduled_at ASC
+             LIMIT 1
+           ) AS next_meeting_type,
+           (
+             SELECT a.metadata->>'meeting_link'
+             FROM activities a
+             WHERE a.lead_id = l.id 
+               AND a.type = 'meeting' 
+               AND a.scheduled_at IS NOT NULL 
+               AND a.scheduled_at != ''
+               AND a.scheduled_at::timestamp >= NOW()
+               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
+             ORDER BY a.scheduled_at ASC
+             LIMIT 1
+           ) AS next_meeting_link,
+           (
+             SELECT a.metadata->>'meeting_host'
+             FROM activities a
+             WHERE a.lead_id = l.id 
+               AND a.type = 'meeting' 
+               AND a.scheduled_at IS NOT NULL 
+               AND a.scheduled_at != ''
+               AND a.scheduled_at::timestamp >= NOW()
+               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
+             ORDER BY a.scheduled_at ASC
+             LIMIT 1
+           ) AS next_meeting_host,
+           (
+             SELECT a.metadata->>'duration'
+             FROM activities a
+             WHERE a.lead_id = l.id 
+               AND a.type = 'meeting' 
+               AND a.scheduled_at IS NOT NULL 
+               AND a.scheduled_at != ''
+               AND a.scheduled_at::timestamp >= NOW()
+               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
+             ORDER BY a.scheduled_at ASC
+             LIMIT 1
+           ) AS next_meeting_duration,
+           (
+             SELECT a.notes
+             FROM activities a
+             WHERE a.lead_id = l.id 
+               AND a.type = 'meeting' 
+               AND a.scheduled_at IS NOT NULL 
+               AND a.scheduled_at != ''
+               AND a.scheduled_at::timestamp >= NOW()
+               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
+             ORDER BY a.scheduled_at ASC
+             LIMIT 1
+           ) AS next_meeting_notes
     FROM leads l
     LEFT JOIN users u ON l.assignee_id = u.id
     LEFT JOIN lead_stages s ON l.stage_id = s.id
@@ -108,7 +239,138 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
            lpref.interior_style, lpref.material AS material_preference,
            ai.buying_intent, ai.sentiment,
            COALESCE(EXTRACT(DAY FROM CURRENT_TIMESTAMP - l.updated_at), 0) AS days_in_stage,
-           0 AS follow_up_overdue_days
+           0 AS follow_up_overdue_days,
+           (
+             SELECT a.metadata->>'status'
+             FROM activities a
+             WHERE a.lead_id = l.id AND a.type = 'whatsapp'
+             ORDER BY a.created_at DESC
+             LIMIT 1
+           ) AS last_whatsapp_status,
+           (
+             SELECT a.notes
+             FROM activities a
+             WHERE a.lead_id = l.id AND a.type = 'whatsapp'
+             ORDER BY a.created_at DESC
+             LIMIT 1
+           ) AS last_whatsapp_message,
+           (
+             SELECT a.metadata->>'direction'
+             FROM activities a
+             WHERE a.lead_id = l.id AND a.type = 'whatsapp'
+             ORDER BY a.created_at DESC
+             LIMIT 1
+           ) AS last_whatsapp_direction,
+           (
+             SELECT a.metadata->>'reaction'
+             FROM activities a
+             WHERE a.lead_id = l.id AND a.type = 'whatsapp'
+             ORDER BY a.created_at DESC
+             LIMIT 1
+           ) AS last_whatsapp_reaction,
+           (
+             SELECT a.created_at
+             FROM activities a
+             WHERE a.lead_id = l.id AND a.type = 'whatsapp'
+             ORDER BY a.created_at DESC
+             LIMIT 1
+           ) AS last_whatsapp_created_at,
+           (
+             SELECT a.id
+             FROM activities a
+             WHERE a.lead_id = l.id 
+               AND a.type = 'meeting' 
+               AND a.scheduled_at IS NOT NULL 
+               AND a.scheduled_at != ''
+               AND a.scheduled_at::timestamp >= NOW()
+               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
+             ORDER BY a.scheduled_at ASC
+             LIMIT 1
+           ) AS next_meeting_id,
+           (
+             SELECT a.scheduled_at
+             FROM activities a
+             WHERE a.lead_id = l.id 
+               AND a.type = 'meeting' 
+               AND a.scheduled_at IS NOT NULL 
+               AND a.scheduled_at != ''
+               AND a.scheduled_at::timestamp >= NOW()
+               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
+             ORDER BY a.scheduled_at ASC
+             LIMIT 1
+           ) AS next_meeting_schedule,
+           (
+             SELECT a.title
+             FROM activities a
+             WHERE a.lead_id = l.id 
+               AND a.type = 'meeting' 
+               AND a.scheduled_at IS NOT NULL 
+               AND a.scheduled_at != ''
+               AND a.scheduled_at::timestamp >= NOW()
+               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
+             ORDER BY a.scheduled_at ASC
+             LIMIT 1
+           ) AS next_meeting_title,
+           (
+             SELECT a.metadata->>'meeting_type'
+             FROM activities a
+             WHERE a.lead_id = l.id 
+               AND a.type = 'meeting' 
+               AND a.scheduled_at IS NOT NULL 
+               AND a.scheduled_at != ''
+               AND a.scheduled_at::timestamp >= NOW()
+               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
+             ORDER BY a.scheduled_at ASC
+             LIMIT 1
+           ) AS next_meeting_type,
+           (
+             SELECT a.metadata->>'meeting_link'
+             FROM activities a
+             WHERE a.lead_id = l.id 
+               AND a.type = 'meeting' 
+               AND a.scheduled_at IS NOT NULL 
+               AND a.scheduled_at != ''
+               AND a.scheduled_at::timestamp >= NOW()
+               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
+             ORDER BY a.scheduled_at ASC
+             LIMIT 1
+           ) AS next_meeting_link,
+           (
+             SELECT a.metadata->>'meeting_host'
+             FROM activities a
+             WHERE a.lead_id = l.id 
+               AND a.type = 'meeting' 
+               AND a.scheduled_at IS NOT NULL 
+               AND a.scheduled_at != ''
+               AND a.scheduled_at::timestamp >= NOW()
+               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
+             ORDER BY a.scheduled_at ASC
+             LIMIT 1
+           ) AS next_meeting_host,
+           (
+             SELECT a.metadata->>'duration'
+             FROM activities a
+             WHERE a.lead_id = l.id 
+               AND a.type = 'meeting' 
+               AND a.scheduled_at IS NOT NULL 
+               AND a.scheduled_at != ''
+               AND a.scheduled_at::timestamp >= NOW()
+               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
+             ORDER BY a.scheduled_at ASC
+             LIMIT 1
+           ) AS next_meeting_duration,
+           (
+             SELECT a.notes
+             FROM activities a
+             WHERE a.lead_id = l.id 
+               AND a.type = 'meeting' 
+               AND a.scheduled_at IS NOT NULL 
+               AND a.scheduled_at != ''
+               AND a.scheduled_at::timestamp >= NOW()
+               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
+             ORDER BY a.scheduled_at ASC
+             LIMIT 1
+           ) AS next_meeting_notes
     FROM leads l
     LEFT JOIN users u ON l.assignee_id = u.id
     LEFT JOIN lead_stages s ON l.stage_id = s.id

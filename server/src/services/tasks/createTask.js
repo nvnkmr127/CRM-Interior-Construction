@@ -7,6 +7,7 @@ async function createTask({ tenantId, userId, data }) {
   // Map incoming camelCase variables to snake_case for the repository if necessary
   const mappedData = {
     project_id: data.projectId || data.project_id,
+    lead_id: data.leadId || data.lead_id,
     milestone_id: data.milestoneId || data.milestone_id,
     parent_task_id: data.parentTaskId || data.parent_task_id,
     title: data.title,
@@ -18,8 +19,8 @@ async function createTask({ tenantId, userId, data }) {
     custom_fields: data.customFields || data.custom_fields
   };
 
-  if (!mappedData.project_id) {
-    const error = new Error('Project ID is required');
+  if (!mappedData.project_id && !mappedData.lead_id) {
+    const error = new Error('Project ID or Lead ID is required');
     error.status = 400;
     throw error;
   }
@@ -38,16 +39,26 @@ async function createTask({ tenantId, userId, data }) {
     }
   }
 
-  // 2. Verify parent task association securely against the project and tenant context
+  // 2. Verify parent task association securely against the project/lead and tenant context
   if (mappedData.parent_task_id) {
-    const { rows } = await pool.query(
-      'SELECT id FROM tasks WHERE id = $1 AND project_id = $2 AND tenant_id = $3 AND deleted_at IS NULL',
-      [mappedData.parent_task_id, mappedData.project_id, tenantId]
-    );
+    let parentCheckQuery = 'SELECT id FROM tasks WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL';
+    const parentCheckParams = [mappedData.parent_task_id, tenantId];
+    
+    if (mappedData.project_id) {
+      parentCheckQuery += ' AND project_id = $3';
+      parentCheckParams.push(mappedData.project_id);
+    } else if (mappedData.lead_id) {
+      parentCheckQuery += ' AND lead_id = $3';
+      parentCheckParams.push(mappedData.lead_id);
+    } else {
+      parentCheckQuery += ' AND project_id IS NULL AND lead_id IS NULL';
+    }
+
+    const { rows } = await pool.query(parentCheckQuery, parentCheckParams);
     if (rows.length === 0) {
       const err = new Error('INVALID_PARENT_TASK');
       err.status = 400;
-      err.details = 'Parent task does not exist or does not belong to this project.';
+      err.details = 'Parent task does not exist or does not belong to this project/lead.';
       throw err;
     }
   }

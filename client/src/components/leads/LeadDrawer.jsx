@@ -22,7 +22,7 @@ import NegotiationDesk from './NegotiationDesk';
 import DesignPresentationModal from './DesignPresentationModal';
 import EstimatorBuilder from './EstimatorBuilder';
 import AssignDesignerModal from './AssignDesignerModal';
-import { getLead, changeLeadStage, deleteLead } from '../../api/leads';
+import { getLead, changeLeadStage, deleteLead, updateActivity, logActivity } from '../../api/leads';
 import api from '../../api/axios';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -37,6 +37,19 @@ const formatDatetimeLocal = (dateStr) => {
   } catch {
     return dateStr;
   }
+};
+
+const formatMeetingSchedule = (dateStr) => {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr;
+  return d.toLocaleString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
 };
 
 export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, stages = [] }) {
@@ -63,6 +76,55 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   // Possession entry mode
   const [isPossessionManual, setIsPossessionManual] = useState(false);
 
+  // Meeting Schedule form states
+  const [isEditingMeeting, setIsEditingMeeting] = useState(false);
+  const [isConcludingMeeting, setIsConcludingMeeting] = useState(false);
+  const [meetingSummary, setMeetingSummary] = useState('');
+  const [meetingSubmitting, setMeetingSubmitting] = useState(false);
+  const [meetingForm, setMeetingForm] = useState({
+    title: '',
+    meeting_type: 'Google Meet',
+    date: '',
+    time: '',
+    duration: '30',
+    meeting_link: '',
+    meeting_host: '',
+    reminders: false,
+    notes: ''
+  });
+
+  useEffect(() => {
+    if (lead) {
+      if (lead.next_meeting_schedule) {
+        const localDT = formatDatetimeLocal(lead.next_meeting_schedule);
+        const [dPart, tPart] = localDT.split('T');
+        setMeetingForm({
+          title: lead.next_meeting_title || '',
+          meeting_type: lead.next_meeting_type || 'Google Meet',
+          date: dPart || '',
+          time: tPart || '',
+          duration: lead.next_meeting_duration || '30',
+          meeting_link: lead.next_meeting_link || '',
+          meeting_host: lead.next_meeting_host || '',
+          reminders: true,
+          notes: lead.next_meeting_notes || ''
+        });
+      } else {
+        setMeetingForm({
+          title: '',
+          meeting_type: 'Google Meet',
+          date: '',
+          time: '',
+          duration: '30',
+          meeting_link: '',
+          meeting_host: '',
+          reminders: false,
+          notes: ''
+        });
+      }
+    }
+  }, [lead, isEditingMeeting]);
+
   // Files state
   const [files, setFiles] = useState([]);
   
@@ -79,12 +141,18 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   const [mood, setMood] = useState(null);
   const [moodLoading, setMoodLoading] = useState(false);
 
+  // Team users list state
+  const [users, setUsers] = useState([]);
+
   useEffect(() => {
     if (isOpen && leadId) {
       fetchLead();
       setActiveTab('overview');
       setBuyingIntent(null);
       setMood(null);
+      api.get('/users?limit=50')
+        .then(res => { if (res.data.success) setUsers(res.data.data); })
+        .catch(err => console.error('Failed to load users list:', err));
     }
   }, [isOpen, leadId]);
 
@@ -116,6 +184,78 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
       toast.error('Failed to load lead details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleMeetingSubmit = async (e) => {
+    e.preventDefault();
+    if (!meetingForm.title || !meetingForm.date || !meetingForm.time) {
+      toast.error('Title, Date and Time are required');
+      return;
+    }
+    setMeetingSubmitting(true);
+    try {
+      const scheduledAt = new Date(`${meetingForm.date}T${meetingForm.time}`).toISOString();
+      const payload = {
+        title: meetingForm.title,
+        notes: meetingForm.notes || `Scheduled meeting: ${meetingForm.title}`,
+        scheduledAt,
+        metadata: {
+          meeting_type: meetingForm.meeting_type,
+          meeting_link: meetingForm.meeting_link || (meetingForm.meeting_type === 'Google Meet' ? `https://meet.google.com/${Math.random().toString(36).substr(2, 3)}-${Math.random().toString(36).substr(2, 4)}-${Math.random().toString(36).substr(2, 3)}` : ''),
+          meeting_host: meetingForm.meeting_host || null,
+          duration: parseInt(meetingForm.duration || '30', 10),
+          reminders_enabled: !!meetingForm.reminders
+        }
+      };
+
+      if (lead.next_meeting_id) {
+        // Update existing meeting
+        await updateActivity(leadId, lead.next_meeting_id, payload);
+        toast.success('Meeting updated successfully');
+      } else {
+        // Create new meeting
+        await logActivity(leadId, {
+          type: 'meeting',
+          ...payload
+        });
+        toast.success('Meeting scheduled successfully');
+      }
+      setIsEditingMeeting(false);
+      fetchLead();
+      if (onLeadUpdated) onLeadUpdated();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to save meeting details');
+    } finally {
+      setMeetingSubmitting(false);
+    }
+  };
+
+  const handleConcludeMeeting = async (e) => {
+    e.preventDefault();
+    if (!meetingSummary.trim()) {
+      toast.error('Meeting summary is required');
+      return;
+    }
+    setMeetingSubmitting(true);
+    try {
+      const payload = {
+        outcome: 'concluded',
+        notes: meetingSummary
+      };
+      await updateActivity(leadId, lead.next_meeting_id, payload);
+      
+      toast.success('Meeting marked as concluded and saved to AI Knowledge Base');
+      setIsConcludingMeeting(false);
+      setMeetingSummary('');
+      fetchLead();
+      if (onLeadUpdated) onLeadUpdated();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to conclude meeting');
+    } finally {
+      setMeetingSubmitting(false);
     }
   };
 
@@ -431,7 +571,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
           {/* TABS NAVIGATION */}
           <div className="bg-white px-6 border-b border-gray-200 shrink-0">
             <nav className="flex -mb-px px-6 gap-6 overflow-x-auto">
-              {['overview', 'negotiation', 'ai-copilot', 'knowledge-base', 'stakeholders', 'communications', 'preferences', 'activity', 'tasks', 'followups', 'files', 'estimates', 'inspirations', 'twin', 'automations'].map(tab => (
+              {['overview', 'negotiation', 'ai-copilot', 'knowledge-base', 'stakeholders', 'communications', 'preferences', 'activity', 'tasks', 'followups', 'meeting-schedule', 'files', 'estimates', 'inspirations', 'twin', 'automations'].map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -441,7 +581,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
-                  {tab === 'knowledge-base' ? 'AI Knowledge Base' : tab === 'automations' ? 'Automation History' : tab}
+                  {tab === 'knowledge-base' ? 'AI Knowledge Base' : tab === 'automations' ? 'Automation History' : tab === 'meeting-schedule' ? 'Meeting Schedule' : tab}
                 </button>
               ))}
             </nav>
@@ -453,9 +593,70 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* LEFT PANEL: Details */}
                 <div className="space-y-6 flex flex-col">
+                  {/* Upcoming Meeting */}
+                  {lead.next_meeting_schedule && (
+                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-4 rounded-lg shadow-sm border border-orange-200">
+                      <div className="flex justify-between items-center mb-3">
+                        <h4 className="text-xs font-bold text-orange-800 uppercase tracking-wider flex items-center gap-1">
+                          <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                          Upcoming Meeting
+                        </h4>
+                        <span className="text-[10px] font-bold text-orange-700 bg-orange-100 border border-orange-200 px-2 py-0.5 rounded uppercase tracking-wide">
+                          Scheduled
+                        </span>
+                      </div>
+                      <div className="space-y-2.5">
+                        <div className="text-sm font-semibold text-gray-800">
+                          {lead.next_meeting_title || 'Lead Consultation Meeting'}
+                        </div>
+                        <div className="flex flex-col gap-1.5 text-xs text-gray-600">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-gray-400">📅</span>
+                            <span className="font-medium text-gray-700">{formatMeetingSchedule(lead.next_meeting_schedule)}</span>
+                            {lead.next_meeting_duration && (
+                              <span className="text-gray-400">({lead.next_meeting_duration} mins)</span>
+                            )}
+                          </div>
+                          {lead.next_meeting_type && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-gray-400">📍</span>
+                              <span className="font-medium text-gray-700">{lead.next_meeting_type}</span>
+                            </div>
+                          )}
+                          {lead.next_meeting_host && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-gray-400">👤</span>
+                              <span className="font-medium text-gray-700">Host: {lead.next_meeting_host}</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {lead.next_meeting_link && (
+                          <div className="pt-2 border-t border-orange-100 mt-2">
+                            <a
+                              href={lead.next_meeting_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded shadow-sm transition-colors cursor-pointer"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                              Join Call / Open Link
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Contact Info */}
                   <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Contact Info</h4>
+                    <div className="flex justify-between items-center mb-3">
+                      <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Contact Info</h4>
+                      <button onClick={() => setIsLeadFormOpen(true)} className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                        Edit
+                      </button>
+                    </div>
                     <div className="space-y-3">
                       <div className="flex items-center justify-between group">
                         <span className="text-sm text-gray-500 w-24">Phone</span>
@@ -639,7 +840,13 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
                   {/* Preferences & Tracking */}
                   <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Preferences</h4>
+                    <div className="flex justify-between items-center mb-3">
+                      <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Preferences</h4>
+                      <button onClick={() => setIsLeadFormOpen(true)} className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                        Edit
+                      </button>
+                    </div>
                     <div className="space-y-4">
                       <label className="flex items-center justify-between">
                         <span className="text-sm font-medium text-gray-700">Do Not Contact (DNC)</span>
@@ -827,6 +1034,10 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               />
             )}
 
+            {activeTab === 'knowledge-base' && (
+              <AIKnowledgeAssistantTab leadId={leadId} lead={lead} />
+            )}
+
             {activeTab === 'activity' && (
               <div className="space-y-4">
                 {/* MOOD TRACKER WIDGET */}
@@ -873,6 +1084,337 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
             {activeTab === 'followups' && (
               <FollowupsTab leadId={leadId} />
+            )}
+
+            {activeTab === 'meeting-schedule' && (
+              <div className="space-y-6">
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                  <div className="flex items-center justify-between border-b pb-4 mb-6">
+                    <div>
+                      <h3 className="text-base font-bold text-gray-900">Upcoming Meeting Schedule</h3>
+                      <p className="text-xs text-gray-500 mt-1">Manage scheduled meetings and joining details for this lead.</p>
+                    </div>
+                    {lead.next_meeting_schedule && !isEditingMeeting && (
+                      <span className="px-3 py-1 bg-orange-100 border border-orange-200 text-orange-700 text-xs font-semibold rounded-full uppercase tracking-wider">
+                        📅 Scheduled
+                      </span>
+                    )}
+                  </div>
+
+                  {isEditingMeeting ? (
+                    <form onSubmit={handleMeetingSubmit} className="space-y-4 pt-2">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Meeting Title *</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. Initial Consultation, BOQ Review"
+                            value={meetingForm.title}
+                            onChange={e => setMeetingForm(prev => ({ ...prev, title: e.target.value }))}
+                            className="w-full text-sm border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Meeting Type</label>
+                          <select
+                            value={meetingForm.meeting_type}
+                            onChange={e => setMeetingForm(prev => ({ ...prev, meeting_type: e.target.value }))}
+                            className="w-full text-sm border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+                          >
+                            <option value="Google Meet">Google Meet</option>
+                            <option value="In-Person Site Visit">In-Person Site Visit</option>
+                            <option value="Phone Call">Phone Call</option>
+                            <option value="WhatsApp Call">WhatsApp Call</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Date *</label>
+                          <div className="relative">
+                            <DatePicker
+                              selected={meetingForm.date ? new Date(meetingForm.date) : null}
+                              onChange={(date) => {
+                                if (date) {
+                                  const tzoffset = date.getTimezoneOffset() * 60000;
+                                  const localDateStr = (new Date(date - tzoffset)).toISOString().slice(0, 10);
+                                  setMeetingForm(prev => ({ ...prev, date: localDateStr }));
+                                } else {
+                                  setMeetingForm(prev => ({ ...prev, date: '' }));
+                                }
+                              }}
+                              dateFormat="dd MMMM, yyyy"
+                              placeholderText="Select Date"
+                              className="w-full text-sm border border-gray-300 rounded-lg p-2 pr-10 focus:ring-blue-500 focus:border-blue-500 cursor-pointer hover:border-blue-400 shadow-sm transition-colors"
+                              wrapperClassName="w-full"
+                              popperPlacement="bottom-start"
+                              calendarClassName="shadow-xl rounded-xl border-gray-200 font-sans text-sm"
+                              popperProps={{ strategy: "fixed" }}
+                            />
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-blue-500">
+                              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Time *</label>
+                          <input
+                            type="time"
+                            required
+                            value={meetingForm.time}
+                            onChange={e => setMeetingForm(prev => ({ ...prev, time: e.target.value }))}
+                            className="w-full text-sm border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Duration</label>
+                          <select
+                            value={meetingForm.duration}
+                            onChange={e => setMeetingForm(prev => ({ ...prev, duration: e.target.value }))}
+                            className="w-full text-sm border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+                          >
+                            <option value="15">15 minutes</option>
+                            <option value="30">30 minutes</option>
+                            <option value="45">45 minutes</option>
+                            <option value="60">1 hour</option>
+                            <option value="90">1.5 hours</option>
+                            <option value="120">2 hours</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Host Assignee</label>
+                          <select
+                            value={meetingForm.meeting_host}
+                            onChange={e => setMeetingForm(prev => ({ ...prev, meeting_host: e.target.value }))}
+                            className="w-full text-sm border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                          >
+                            <option value="">Select Host / Assignee</option>
+                            {users.map(u => (
+                              <option key={u.id} value={u.name}>
+                                {u.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="col-span-2">
+                          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Video Call Link</label>
+                          <input
+                            type="url"
+                            placeholder="https://meet.google.com/..."
+                            value={meetingForm.meeting_link}
+                            onChange={e => setMeetingForm(prev => ({ ...prev, meeting_link: e.target.value }))}
+                            className="w-full text-sm border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                          <p className="text-[10px] text-gray-400 mt-1">Leave empty to auto-generate a Google Meet link when selected as the type.</p>
+                        </div>
+
+                        <div className="col-span-2">
+                          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Agenda / Description</label>
+                          <textarea
+                            rows={3}
+                            placeholder="Describe meeting agenda, files to bring, or client requirements..."
+                            value={meetingForm.notes}
+                            onChange={e => setMeetingForm(prev => ({ ...prev, notes: e.target.value }))}
+                            className="w-full text-sm border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+
+                        <div className="col-span-2">
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={meetingForm.reminders}
+                              onChange={e => setMeetingForm(prev => ({ ...prev, reminders: e.target.checked }))}
+                              className="w-4 h-4 text-orange-600 rounded border-gray-300 focus:ring-orange-500"
+                            />
+                            <span className="text-xs font-semibold text-gray-700">Send WhatsApp &amp; Email reminders to the client</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-3 pt-4 border-t">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setIsEditingMeeting(false);
+                          }}
+                          disabled={meetingSubmitting}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          variant="primary"
+                          disabled={meetingSubmitting}
+                          className="bg-orange-600 border-orange-600 hover:bg-orange-700 hover:border-orange-700 text-white"
+                        >
+                          {meetingSubmitting ? 'Saving...' : lead.next_meeting_schedule ? 'Update Meeting' : 'Schedule Meeting'}
+                        </Button>
+                      </div>
+                    </form>
+                  ) : isConcludingMeeting ? (
+                    <form onSubmit={handleConcludeMeeting} className="space-y-4 pt-2">
+                      <div className="bg-green-50/50 p-4 rounded-lg border border-green-200 mb-4">
+                        <h4 className="text-sm font-semibold text-green-800">Conclude "{lead.next_meeting_title || 'Lead Consultation Meeting'}"</h4>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Mark the meeting as completed and record the final summary/discussion details to be indexed in the AI Knowledge Base.
+                        </p>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Meeting Summary &amp; Key Decisions *</label>
+                        <textarea
+                          required
+                          rows={6}
+                          placeholder="Type meeting outcomes, notes, key choices the client made, next steps, and specific design requests..."
+                          value={meetingSummary}
+                          onChange={e => setMeetingSummary(e.target.value)}
+                          className="w-full text-sm border border-gray-300 rounded-lg p-3 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-3 pt-4 border-t">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setIsConcludingMeeting(false);
+                            setMeetingSummary('');
+                          }}
+                          disabled={meetingSubmitting}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          variant="primary"
+                          disabled={meetingSubmitting || !meetingSummary.trim()}
+                          className="bg-green-600 border-green-600 hover:bg-green-700 hover:border-green-700 text-white"
+                        >
+                          {meetingSubmitting ? 'Saving...' : 'Conclude & Save to Knowledge Base'}
+                        </Button>
+                      </div>
+                    </form>
+                  ) : lead.next_meeting_schedule ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="md:col-span-2 space-y-4">
+                        <div>
+                          <label className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Meeting Title</label>
+                          <h4 className="text-lg font-bold text-gray-800 mt-1">
+                            {lead.next_meeting_title || 'Lead Consultation Meeting'}
+                          </h4>
+                        </div>
+
+                        {lead.next_meeting_notes && (
+                          <div>
+                            <label className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Agenda / Notes</label>
+                            <p className="text-sm text-gray-600 mt-1 whitespace-pre-line bg-gray-50 p-3 rounded-lg border border-gray-100">
+                              {lead.next_meeting_notes}
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-4 pt-2">
+                          <div>
+                            <label className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Host</label>
+                            <div className="text-sm font-semibold text-gray-700 mt-1 flex items-center gap-2">
+                              <span className="text-base">👤</span>
+                              {lead.next_meeting_host || lead.assignee_name || 'Unassigned'}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Reminders</label>
+                            <div className="text-sm font-semibold text-gray-700 mt-1 flex items-center gap-1.5">
+                              <span className="text-green-600">✓</span> WhatsApp &amp; Email Enabled
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-gradient-to-br from-amber-50/50 to-orange-50/50 p-5 rounded-xl border border-orange-100 flex flex-col justify-between space-y-4">
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-[10px] text-orange-800 uppercase font-bold tracking-wider">Date &amp; Time</label>
+                            <div className="text-sm font-bold text-gray-800 mt-1 flex items-center gap-2">
+                              <span>📅</span>
+                              {formatMeetingSchedule(lead.next_meeting_schedule)}
+                            </div>
+                          </div>
+                          {lead.next_meeting_duration && (
+                            <div>
+                              <label className="text-[10px] text-orange-800 uppercase font-bold tracking-wider">Duration</label>
+                              <div className="text-sm font-semibold text-gray-700 mt-0.5 flex items-center gap-2">
+                                <span>⏱️</span>
+                                {lead.next_meeting_duration} minutes
+                              </div>
+                            </div>
+                          )}
+                          {lead.next_meeting_type && (
+                            <div>
+                              <label className="text-[10px] text-orange-800 uppercase font-bold tracking-wider">Type / Location</label>
+                              <div className="text-sm font-semibold text-gray-700 mt-0.5 flex items-center gap-2">
+                                <span>📍</span>
+                                {lead.next_meeting_type}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {lead.next_meeting_link && (
+                          <div className="pt-2">
+                            <a
+                              href={lead.next_meeting_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-lg shadow-md transition-colors hover:shadow-lg cursor-pointer"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                              Join Call
+                            </a>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="md:col-span-3 flex justify-end gap-3 pt-4 border-t">
+                        <Button
+                          variant="outline"
+                          onClick={() => setIsEditingMeeting(true)}
+                          className="flex items-center gap-1 text-xs"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                          Edit Meeting Details
+                        </Button>
+                        <Button
+                          variant="primary"
+                          onClick={() => setIsConcludingMeeting(true)}
+                          className="flex items-center gap-1 text-xs bg-green-600 border-green-600 hover:bg-green-700 hover:border-green-700 text-white"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                          Conclude Meeting
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                      <span className="text-4xl block mb-3">📅</span>
+                      <h4 className="text-base font-bold text-gray-700">No Meetings Scheduled</h4>
+                      <p className="text-sm text-gray-400 mt-1 max-w-sm mx-auto">There are no upcoming meetings scheduled for this lead at the moment.</p>
+                      <button
+                        onClick={() => setIsEditingMeeting(true)}
+                        className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors cursor-pointer"
+                      >
+                        Schedule a Meeting
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
 
             {activeTab === 'files' && (

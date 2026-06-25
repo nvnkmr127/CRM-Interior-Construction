@@ -44,6 +44,7 @@ router.post('/:id/stage', authenticate, authorize('leads:update'), leadControlle
 router.post('/:id/convert-to-project', authenticate, authorize('leads:update'), leadController.convertToProjectHandler);
 router.post('/:id/activities', authenticate, leadController.logActivityHandler);
 router.get('/:id/activities', authenticate, leadController.getActivitiesHandler);
+router.patch('/:id/activities/:aid', authenticate, leadController.updateActivityHandler);
 router.get('/:id/timeline', authenticate, leadController.getTimelineHandler);
 router.get('/:id/automation-events', authenticate, authorize('leads:read'), leadController.getAutomationEventsHandler);
 
@@ -66,12 +67,14 @@ router.post('/:id/estimates/webhook', leadController.estimatorWebhookHandler);
 // Multi-Contact Management
 router.get('/:id/contacts', authenticate, authorize('leads:read'), leadController.getContactsHandler);
 router.post('/:id/contacts', authenticate, authorize('leads:update'), leadController.createContactHandler);
+router.patch('/:id/contacts/:cid', authenticate, authorize('leads:update'), leadController.updateContactHandler);
 router.delete('/:id/contacts/:cid', authenticate, authorize('leads:update'), leadController.deleteContactHandler);
 
 // Communications Hub
 router.get('/:id/communications', authenticate, authorize('leads:read'), leadController.getCommunicationsHandler);
 router.post('/:id/communications', authenticate, authorize('leads:update'), leadController.createCommunicationHandler);
 router.post('/:id/communications/draft', authenticate, authorize('leads:update'), leadController.draftCommunicationHandler);
+router.post('/:id/communications/sync', authenticate, authorize('leads:update'), leadController.syncWhatsAppHandler);
 
 // Inspiration Board
 router.get('/:id/inspirations', authenticate, authorize('leads:read'), leadController.getInspirationsHandler);

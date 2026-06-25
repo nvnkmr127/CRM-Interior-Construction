@@ -22,6 +22,19 @@ export default function LeadsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin' || user?.role?.name === 'admin' || user?.role === 'superadmin' || user?.role?.name === 'superadmin';
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  React.useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
+
   const [assigneeFilter, setAssigneeFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('All Sources');
   const [scoreRange, setScoreRange] = useState('all');
@@ -45,7 +58,7 @@ export default function LeadsPage() {
 
   const filters = useMemo(() => {
     const f = { page, limit };
-    if (search) f.search = search;
+    if (debouncedSearch.trim()) f.search = debouncedSearch.trim();
     if (sourceFilter && sourceFilter !== 'All Sources') f.source = sourceFilter;
     if (assigneeFilter) f.assigneeId = assigneeFilter;
     if (scoreRange && scoreRange !== 'all') f.scoreRange = scoreRange;
@@ -58,7 +71,7 @@ export default function LeadsPage() {
       else if (sortBy === 'name') { f.sortBy = 'name'; f.sortDesc = false; }
     }
     return f;
-  }, [search, sourceFilter, assigneeFilter, scoreRange, intentFilter, sortBy, createdFrom, createdTo, page, limit]);
+  }, [debouncedSearch, sourceFilter, assigneeFilter, scoreRange, intentFilter, sortBy, createdFrom, createdTo, page, limit]);
 
   const { leads, stages, stats, total, loading, optimisticStageChange, bulkChangeStage, bulkDelete, refetch } = useLeads(filters);
 
@@ -95,12 +108,14 @@ export default function LeadsPage() {
 
   const clearFilters = () => {
     setSearch('');
+    setDebouncedSearch('');
     setSourceFilter('All Sources');
     setAssigneeFilter('');
     setScoreRange('all');
     setIntentFilter('all');
     setCreatedFrom('');
     setCreatedTo('');
+    setPage(1);
   };
 
   const handleExport = async () => {
@@ -137,17 +152,27 @@ export default function LeadsPage() {
         </div>
 
         {/* Universal Search */}
-        <div style={{ flex: 1, minWidth: '250px', maxWidth: '400px' }}>
-          <div className={styles.searchContainer}>
-            <input 
-              type="text" 
-              placeholder="Search leads by name, email, phone..." 
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className={styles.headerSearchInput}
-            />
-            <svg className={styles.searchIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-          </div>
+        <div style={{ flex: 1, minWidth: '250px', maxWidth: '480px' }}>
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              setDebouncedSearch(search);
+              setPage(1);
+            }} 
+            style={{ width: '100%' }}
+          >
+            <div className={styles.searchContainer} style={{ position: 'relative' }}>
+              <input 
+                type="text" 
+                placeholder="Search leads by name, email, phone..." 
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className={styles.headerSearchInput}
+                style={{ width: '100%', paddingRight: '36px' }}
+              />
+              <svg className={styles.searchIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </div>
+          </form>
         </div>
 
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -261,6 +286,8 @@ export default function LeadsPage() {
             bulkChangeStage={bulkChangeStage}
             bulkDelete={bulkDelete}
             clearFilters={clearFilters}
+            refetch={refetch}
+            search={search}
           />
         )}
       </div>

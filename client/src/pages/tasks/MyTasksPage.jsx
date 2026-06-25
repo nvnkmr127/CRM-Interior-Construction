@@ -5,7 +5,7 @@ import TaskDetail from '../../components/tasks/TaskDetail'
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import { useToast } from '../../store/toastContext'
-import { getGlobalTasks, updateTask } from '../../api/tasks'
+import { getGlobalTasks, updateTask, updateGlobalTask } from '../../api/tasks'
 
 const TABS = [
   { id: 'all', label: 'All' },
@@ -46,7 +46,10 @@ export default function MyTasksPage() {
           status: t.status,
           priority: t.priority || 'medium',
           dueDate: t.due_date || t.dueDate || null,
-          project: { id: t.project_id, name: t.project_name || 'Unknown Project' },
+          project: { 
+            id: t.project_id || (t.lead_id ? 'lead-tasks' : 'general-tasks'), 
+            name: t.project_name || (t.lead_id ? 'Lead Tasks' : 'General Tasks') 
+          },
           milestone: t.milestone_name || null,
         }))
         setTasks(normalized)
@@ -60,9 +63,14 @@ export default function MyTasksPage() {
     const newStatus = task.status === 'done' ? 'todo' : 'done'
     setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t))
     try {
-      await updateTask(task.project?.id, task.id, { status: newStatus })
+      if (task.project?.id && task.project.id !== 'lead-tasks' && task.project.id !== 'general-tasks') {
+        await updateTask(task.project.id, task.id, { status: newStatus })
+      } else {
+        await updateGlobalTask(task.id, { status: newStatus })
+      }
       toast.success(newStatus === 'done' ? 'Task completed!' : 'Task reopened')
-    } catch {
+    } catch (err) {
+      console.error('Failed to update task:', err)
       setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: task.status } : t))
       toast.error('Failed to update task')
     } finally {
@@ -93,7 +101,7 @@ export default function MyTasksPage() {
     let filtered = tasks.filter(t => {
       // Tab filter
       if (activeTab === 'completed' && t.status !== 'done') return false
-      if (activeTab !== 'completed' && t.status === 'done') return false // Hide done from other tabs by default unless we specifically want them. The spec implies done tasks are hidden or handled. Let's hide done unless 'completed' tab. Wait, if I mark done, it strikethroughs. If it immediately disappears, it's jarring. We'll leave it in memory but filter out if activeTab applies. Let's hide done from 'all' tab if we strictly follow standard UX, but the spec says "strikethrough + muted if done". So they stay visible. I'll show done tasks only in 'completed' or 'all'.
+      if (activeTab !== 'all' && activeTab !== 'completed' && t.status === 'done') return false // Show done tasks in completed or all tabs
       if (activeTab === 'today' && (!isToday(t.dueDate) || t.status === 'done')) return false
       if (activeTab === 'overdue' && (!isOverdue(t.dueDate) || t.status === 'done')) return false
       // For 'week', only show tasks due within the current week
