@@ -28,3 +28,19 @@
   background: var(--color-surface-2); flex-shrink: 0;
 }
 @media (max-width: 768px) { .panel { width: 100vw; } }
+
+/* ── DARK MODE DRAWER TEXT OVERRIDES ── */
+:global(.dark) .panel [class*="text-gray-"],
+:global(.dark) .panel [class*="text-slate-"],
+:global(.dark) .panel [class*="text-black"],
+:global(.dark) .panel label,
+:global(.dark) .panel input,
+:global(.dark) .panel select,
+:global(.dark) .panel textarea,
+:global(.dark) .panel span:not([class*="text-"]),
+:global(.dark) .panel p:not([class*="text-"]),
+:global(.dark) .panel div:not([class*="text-"]),
+:global(.dark) .panel li:not([class*="text-"]) {
+  color: #ffffff !important;
+}
+

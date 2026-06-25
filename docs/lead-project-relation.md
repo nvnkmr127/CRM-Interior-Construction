@@ -1,532 +1,230 @@
-﻿# Lead → Project Relationship
+# Lead & Project Relationship and Conversion Workflow
 
-> **Module**: CRM Interior Construction  
-> **Domain**: Sales Pipeline & Project Management  
-> **Last Updated**: June 2026
+This document explains the conceptual model, database schema references, and the execution workflow for how a **Lead** is related to a **Project** and converted in the CRM system.
 
 ---
 
-## Table of Contents
+## 1. Overview & Business Concept
 
-1. [Overview](#overview)
-2. [Entity Relationship Diagram](#entity-relationship-diagram)
-3. [Data Model](#data-model)
-4. [Conversion Lifecycle](#conversion-lifecycle)
-5. [API Endpoints](#api-endpoints)
-6. [Lead Sub-Entities](#lead-sub-entities)
-7. [Conversion Workflow (Code Flow)](#conversion-workflow-code-flow)
-8. [Business Rules & Guards](#business-rules--guards)
-9. [Data Transfer on Conversion](#data-transfer-on-conversion)
-10. [Events & Automations](#events--automations)
-11. [AI Scoring & Intelligence](#ai-scoring--intelligence)
-12. [Permissions](#permissions)
+A **Lead** represents a prospective client at the top of the sales funnel. As the lead is nurtured, it goes through several pipeline stages (e.g., *Contacted*, *Proposal Sent*, *Negotiation*). 
+
+Once a lead is won, it transitions from the sales pipeline into execution. This transition is represented by the **Lead-to-Project Conversion**, which is a **one-way, irreversible process**. 
+
+During conversion:
+- A new project record is created in the database.
+- The lead status is marked as `'converted'`.
+- All linked estimates and assets are synchronized or migrated.
+- The project becomes the active entity for scheduling phases, milestones, tasks, and payment tracking.
 
 ---
 
-## Overview
+## 2. Database Relationship Model
 
-A **Lead** represents a prospective interior design client captured at the top of the sales funnel. When a lead reaches a terminal "won" stage (booking received, floor plan shared, scope finalized, and contract signed), it can be **converted into a Project**.
+Leads and Projects share a strict **1-to-1 relationship** defined by dual foreign keys for fast lookup from both sides:
 
-The conversion is a **one-way, irreversible operation** that:
-- Creates a new `projects` record linked to the original `leads` record via `converted_to_project_id`
-- Marks the lead `status = 'converted'` and moves it to a `is_won = true` pipeline stage
-- Transfers all lead estimates to the new project
-- Mirrors estimates as draft `quotations` attached to the project
-- Logs a timeline event for full audit traceability
+- **`leads.converted_to_project_id`**: Links a lead to its corresponding project.
+- **`projects.lead_id`**: Links a project back to the originating lead.
 
----
-
-## Entity Relationship Diagram
+### Entity Relationship Diagram
 
 ```mermaid
 erDiagram
     TENANTS ||--o{ LEADS : "has many"
     TENANTS ||--o{ PROJECTS : "has many"
-
-    LEADS ||--o| PROJECTS : "converts to (converted_to_project_id)"
-    LEADS ||--o{ LEAD_PROPERTIES : "has one"
-    LEADS ||--o{ LEAD_PREFERENCES : "has one"
-    LEADS ||--o{ LEAD_STAGES : "belongs to (stage_id)"
+    
+    LEADS ||--o| PROJECTS : "converts to (converted_to_project_id / lead_id)"
     LEADS ||--o{ LEAD_ESTIMATES : "has many"
-    LEADS ||--o{ LEAD_FILES : "has many"
-    LEADS ||--o{ LEAD_FOLLOWUPS : "has many"
-    LEADS ||--o{ LEAD_CONTACTS : "has many"
-    LEADS ||--o{ LEAD_INSPIRATIONS : "has many"
     LEADS ||--o{ LEAD_TIMELINE : "has many"
-    LEADS ||--o{ LEAD_AI_INSIGHTS : "has one"
-    LEADS ||--o{ LEAD_SCORES_HISTORY : "has many"
-    LEADS ||--o{ QUOTATIONS : "has many"
-
-    PROJECTS ||--o{ LEAD_ESTIMATES : "linked after conversion (project_id)"
+    
+    PROJECTS ||--o{ LEAD_ESTIMATES : "associates estimates (project_id)"
     PROJECTS ||--o{ QUOTATIONS : "has many"
-    PROJECTS ||--o{ PROJECT_PHASES : "has many"
-    PROJECTS ||--o{ PAYMENT_MILESTONES : "has many"
-    PROJECTS ||--o{ TASKS : "has many"
-
-    USERS ||--o{ LEADS : "assigned to (assignee_id)"
-    USERS ||--o{ PROJECTS : "manages (pm_id / designer_id)"
 ```
 
----
+### Table Schemas & Foreign Keys
 
-## Data Model
+#### `leads` Table Schema Fragment
+Defined in [005_leads.sql](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/migrations/005_leads.sql):
+* `id` (UUID, Primary Key)
+* `tenant_id` (UUID, Foreign Key to `tenants`)
+* `name` (VARCHAR, Client Name)
+* `phone` (VARCHAR)
+* `email` (VARCHAR)
+* `status` (VARCHAR, defaults to `'active'`; updated to `'converted'` upon conversion)
+* `converted_to_project_id` (UUID, Foreign Key to `projects.id`)
 
-### `leads` Table (core columns)
+#### `projects` Table Schema Fragment
+Defined in [009_projects.sql](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/migrations/009_projects.sql):
+* `id` (UUID, Primary Key)
+* `tenant_id` (UUID, Foreign Key to `tenants`)
+* `lead_id` (UUID, Foreign Key to `leads.id`, nullable for projects created directly without a lead)
+* `client_name` (VARCHAR, client name copied from lead)
+* `client_phone` (VARCHAR, client phone copied from lead)
+* `client_email` (VARCHAR, client email copied from lead)
+* `name` (VARCHAR, project name)
+* `project_type` (VARCHAR)
+* `pm_id` (UUID, Foreign Key to `users` for Project Manager)
+* `designer_id` (UUID, Foreign Key to `users` for Designer)
+* `contract_value` (DECIMAL)
 
-| Column | Type | Description |
-|---|---|---|
-| `id` | UUID/int | Primary key |
-| `tenant_id` | UUID | Multi-tenant isolation |
-| `name` | TEXT | Client name |
-| `phone` | TEXT | Primary phone (required) |
-| `email` | TEXT | Email address |
-| `source` | TEXT | Lead source (Facebook, IndiaMART, Referral, etc.) |
-| `status` | TEXT | `active` \| `converted` \| `lost` |
-| `stage_id` | FK → `lead_stages` | Current pipeline stage |
-| `stage_updated_at` | TIMESTAMP | When stage last changed |
-| `assignee_id` | FK → `users` | Assigned sales rep |
-| `score` | INTEGER | Rules-based lead score (0–100) |
-| `win_probability` | INTEGER | AI-calculated win probability (%) |
-| `ai_score_breakdown` | JSONB | Breakdown of AI score dimensions |
-| `custom_fields` | JSONB | Flexible key-value extra fields |
-| `budget_min` | NUMERIC | Min budget |
-| `budget_max` | NUMERIC | Max budget |
-| `scope` | TEXT | Project scope description |
-| `project_type` | TEXT | Type of interior project |
-| `locality` | TEXT | Location/area |
-| `carpet_area_sqft` | NUMERIC | Carpet area in sq ft |
-| `competitor_mentioned` | BOOLEAN | Competitor risk flag |
-| `dnc_flag` | BOOLEAN | Do-not-contact flag |
-| `consent_whatsapp` | BOOLEAN | WhatsApp opt-in |
-| `converted_to_project_id` | FK → `projects` | Set on conversion |
-| `notes` | TEXT | Free-form notes |
-| `deleted_at` | TIMESTAMP | Soft delete timestamp |
-| `created_at` | TIMESTAMP | Creation timestamp |
-| `updated_at` | TIMESTAMP | Last update timestamp |
-
-### `projects` Table (core columns)
-
-| Column | Type | Description |
-|---|---|---|
-| `id` | UUID/int | Primary key |
-| `tenant_id` | UUID | Multi-tenant isolation |
-| `lead_id` | FK → `leads` | Source lead |
-| `name` | TEXT | Project name |
-| `project_type` | TEXT | Type of project |
-| `client_name` | TEXT | Inherited from lead on conversion |
-| `client_phone` | TEXT | Inherited from lead |
-| `client_email` | TEXT | Inherited from lead |
-| `pm_id` | FK → `users` | Project Manager |
-| `designer_id` | FK → `users` | Designer assigned |
-| `contract_value` | NUMERIC | Agreed contract amount |
-| `status` | TEXT | `active` \| `completed` \| `on_hold` |
-| `start_date` | DATE | Kickoff date |
-| `target_date` | DATE | Handover date |
-| `site_address` | TEXT | Physical site address |
-| `custom_fields` | JSONB | Pre-conversion checklist + extra data |
-| `created_by` | FK → `users` | User who created / triggered conversion |
-| `deleted_at` | TIMESTAMP | Soft delete timestamp |
+#### `lead_estimates` Table Schema Fragment
+Defined in [039_lead_estimates.sql](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/migrations/039_lead_estimates.sql) and modified by [05_lead_estimates_project_id.sql](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/db/migrations/05_lead_estimates_project_id.sql):
+* `project_id` (UUID, Foreign Key to `projects.id` with `ON DELETE SET NULL`, populated during conversion to link historical estimations to the new project)
 
 ---
 
-## Conversion Lifecycle
+## 3. Data Transfer & Field Mappings
 
-```mermaid
-flowchart TD
-    A([Lead Created]) --> B[Pipeline Stages]
-    B --> C{All Pre-Conversion Checklist Passed?}
-    C -- No --> B
-    C -- Yes --> D[POST /leads/:id/convert-to-project]
-    D --> E{Duplicate Conversion Guard L-070}
-    E -- Already Converted --> F[409 Conflict]
-    E -- Not Converted --> G[createProject Service]
-    G --> H[Mark Lead: status=converted\nconverted_to_project_id=newProjectId\nstage=Won Stage]
-    H --> I[Transfer Lead Estimates to project_id]
-    I --> J[Mirror as Draft Quotation]
-    J --> K[Log lead.converted Timeline Event]
-    K --> L([Project Active])
-```
+Upon conversion, fields from the originating Lead are mapped and copied to create the new Project record:
 
-### Pre-Conversion Checklist (L-069)
+| Source Field (`leads`) | Target Field (`projects`) | Notes / Fallbacks |
+| :--- | :--- | :--- |
+| `leads.id` | `projects.lead_id` | Hard reference to the source lead. |
+| `projectName` (from request body) | `projects.name` | Custom name input by the user during conversion. |
+| `projectType` (from request body) | `projects.project_type` | Custom project type input (e.g., `'residential'`, `'commercial'`). |
+| `clientName` (from body) or `leads.name` | `projects.client_name` | Uses custom input name or falls back to Lead client name. |
+| `clientPhone` (from body) or `leads.phone` | `projects.client_phone` | Uses custom input phone or falls back to Lead client phone. |
+| `clientEmail` (from body) or `leads.email` | `projects.client_email` | Uses custom input email or falls back to Lead client email. |
+| `pm` (from body) | `projects.pm_id` | User UUID representing the assigned Project Manager. |
+| `designer` (from body) | `projects.designer_id` | User UUID representing the assigned Interior Designer. |
+| `contractValue` (from body) or `leads.budget_max` | `projects.contract_value` | Contract value input, falling back to Lead's max budget if not specified. |
+| `startDate` (from body) | `projects.start_date` | Anticipated project start date. |
+| `handoverDate` (from body) | `projects.target_date` | Anticipated project handover date. |
 
-Before conversion is allowed, the following fields must be provided:
-
-| Field | Required | Description |
-|---|---|---|
-| `booking_received` | YES | Booking amount has been received |
-| `floor_plan` | YES | Floor plan shared with client |
-| `scope_finalized` | YES | Project scope has been agreed |
-| `projectName` | YES | Name for the new project |
-| `projectType` | YES | Type of interior project |
-| `contract_signed` | No | Contract signed (stored but not blocking) |
-| `site_address_confirmed` | No | Site address verified (stored but not blocking) |
-
----
-
-## API Endpoints
-
-### Lead CRUD
-
-| Method | Path | Permission | Description |
-|---|---|---|---|
-| `POST` | `/api/leads` | `leads:create` | Create a new lead |
-| `GET` | `/api/leads` | `leads:read` | List leads (filterable, paginated) |
-| `GET` | `/api/leads/stats` | `leads:read` | Lead statistics |
-| `GET` | `/api/leads/:id` | `leads:read` | Get single lead |
-| `PATCH` | `/api/leads/:id` | `leads:update` | Update lead fields |
-| `DELETE` | `/api/leads/:id` | `leads:delete` | Soft-delete lead |
-| `POST` | `/api/leads/public` | public | Public lead capture form |
-| `GET` | `/api/leads/check-duplicate` | public | Duplicate check by phone/email/name |
-
-### Lead → Project Conversion
-
-| Method | Path | Permission | Description |
-|---|---|---|---|
-| `POST` | `/api/leads/:id/convert-to-project` | `leads:update` | Convert lead to a project |
-
-**Request Body:**
+### Pre-Conversion Checklist & Extra Metadata
+The checklist parameters and additional contract details are serialized into `projects.custom_fields` as a JSONB payload:
 ```json
 {
+  "advance_amount": 300000,
+  "payment_terms": "30-30-40",
   "booking_received": true,
   "floor_plan": true,
   "scope_finalized": true,
   "contract_signed": true,
-  "site_address_confirmed": true,
-  "projectName": "Sharma Residence - 3BHK",
-  "projectType": "residential",
-  "clientName": "Rahul Sharma",
-  "clientPhone": "9876543210",
-  "clientEmail": "rahul@example.com",
-  "pm": "<user-id>",
-  "designer": "<user-id>",
-  "contractValue": 1500000,
-  "startDate": "2026-07-01",
-  "handoverDate": "2026-12-31",
-  "advanceAmount": 300000,
-  "paymentTerms": "30-30-40"
+  "site_address_confirmed": true
 }
 ```
 
-**Success Response (201):**
-```json
-{
-  "success": true,
-  "data": {
-    "project_id": "<new-project-id>",
-    "message": "Project created successfully"
+---
+
+## 4. Conversion Workflow (Backend Execution Plan)
+
+The API endpoint that orchestrates the conversion is `POST /api/leads/:id/convert-to-project`. 
+
+> [!NOTE]
+> The conversion process is defined in [convertToProjectHandler](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/controllers/leadController.js#L49) in [leadController.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/controllers/leadController.js).
+
+### Step-by-Step Execution Flowchart
+
+```mermaid
+flowchart TD
+    A[Client sends POST request to /convert-to-project] --> B{L-069 Check: Required Fields Present?}
+    B -- No --> C[Return 400 Bad Request]
+    B -- Yes --> D[Retrieve Lead by ID & Tenant ID]
+    D --> E{L-070 Check: Already Converted?}
+    E -- Yes --> F[Return 409 Conflict]
+    E -- No --> G[Call createProject Service]
+    
+    subgraph createProject.js [Project Creation Sub-workflow]
+        G1[Start Transaction] --> G2[Insert Project into DB]
+        G2 --> G3{Template ID Provided?}
+        G3 -- Yes --> G4[Hydrate Phases & Milestones from Template]
+        G3 -- No --> G5[Commit Transaction]
+        G4 --> G5
+        G5 --> G6[Log Action & Trigger Automations]
+    end
+    
+    G --> H[Update Lead: status='converted' & set stage_id to Won]
+    H --> I[Fetch Lead Estimates]
+    I --> J[Update Lead Estimates with new project_id]
+    J --> K[Insert Quotation record in 'draft' status]
+    K --> L[Log 'lead.converted' event to Lead Timeline]
+    L --> M[Return 201 Created with new project_id]
+```
+
+### Side-Effects & Actions Triggered
+
+1. **Pipeline Stage Transition**:
+   - The lead stage is updated to a dedicated `'is_won = true'` stage configured for the tenant. If no such stage is configured, the stage remains unchanged but the status shifts to `'converted'`.
+2. **Estimate Migrations**:
+   - All existing records in the `lead_estimates` table belonging to the lead are updated with the `project_id = newProjectId`.
+3. **Quotation (BOQ) Creation**:
+   - For every migrated estimate, a draft quotation (Bill of Quantities) record is automatically inserted into the `quotations` table.
+4. **Timeline Entry**:
+   - A timeline record of type `lead.converted` is created with a descriptive summary of the conversion, including the number of estimates synced.
+5. **Audit Logging**:
+   - The project creation service logs a `project.created` event in the audit logs.
+6. **Automation Rules Engine**:
+   - A `record.created` event is enqueued in the automation queue to run any configured workflows (such as sending notification emails or Slack notifications to the project execution team).
+
+---
+
+## 5. API Endpoints
+
+### Convert Lead to Project
+* **Route**: `POST /api/leads/:id/convert-to-project`
+* **Route Definition**: [leads.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/leads.js#L44)
+* **Access Control**: Requires authentication and the `leads:update` permission.
+* **Payload Structure**:
+  ```json
+  {
+    "booking_received": true,
+    "floor_plan": true,
+    "scope_finalized": true,
+    "projectName": "Residence - 3BHK Sharma",
+    "projectType": "residential",
+    "clientName": "Rahul Sharma",
+    "clientPhone": "9876543210",
+    "clientEmail": "rahul@example.com",
+    "pm": "e8386347-19e4-44df-be00-e7945d8b7762",
+    "designer": "a7398246-82f5-41df-9923-d648fd8b8344",
+    "contractValue": 1500000,
+    "startDate": "2026-07-01",
+    "handoverDate": "2026-11-30",
+    "advanceAmount": 300000,
+    "paymentTerms": "30-30-40",
+    "contract_signed": true,
+    "site_address_confirmed": true
   }
-}
-```
-
-**Error — Already Converted (409):**
-```json
-{
-  "success": false,
-  "error": {
-    "code": "CONFLICT",
-    "message": "This lead has already been converted to project <id>.",
-    "data": { "existingProjectId": "<id>" }
+  ```
+* **Success Response (201 Created)**:
+  ```json
+  {
+    "success": true,
+    "data": {
+      "project_id": "f5bbdf31-9218-498c-8433-87a31b46a1e3",
+      "message": "Project created successfully"
+    }
   }
-}
-```
-
-### Pipeline Stage Management
-
-| Method | Path | Permission | Description |
-|---|---|---|---|
-| `POST` | `/api/leads/:id/stage` | `leads:update` | Move lead to a new stage |
-| `POST` | `/api/leads/bulk/stage` | `leads:update` | Bulk stage change |
-
-### Bulk Operations
-
-| Method | Path | Permission | Description |
-|---|---|---|---|
-| `POST` | `/api/leads/bulk/delete` | `leads:delete` | Bulk soft-delete |
-| `POST` | `/api/leads/bulk/assign` | `leads:update` | Bulk reassign |
-| `POST` | `/api/leads/bulk/tag` | `leads:update` | Bulk tag |
-| `POST` | `/api/leads/merge` | `leads:update` | Merge duplicate leads |
-
-### Export / Import
-
-| Method | Path | Permission | Description |
-|---|---|---|---|
-| `GET` | `/api/leads/export` | `leads:read` | Export leads as CSV |
-| `POST` | `/api/leads/import` | `leads:create` | Bulk import via CSV |
+  ```
 
 ---
 
-## Lead Sub-Entities
+## 6. Business Rules & Integrity Guards
 
-### Activities & Timeline
+### L-069: Pre-Conversion Mandatory Fields Check
+Before the conversion endpoint accepts the request, it checks that the mandatory checklist indicators and descriptive variables are present:
+* `booking_received` must be `true`
+* `floor_plan` must be `true`
+* `scope_finalized` must be `true`
+* `projectName` must be non-empty
+* `projectType` must be non-empty
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/leads/:id/activities` | Log a sales activity (call, meeting, site visit, etc.) |
-| `GET` | `/api/leads/:id/activities` | List activities with pagination |
-| `GET` | `/api/leads/:id/timeline` | Combined system + user event timeline |
-| `GET` | `/api/leads/:id/automation-events` | View automation trigger history |
-
-### Files
-
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/leads/:id/files` | Upload file (JPEG/PNG/PDF, max 10MB per file, 50MB total) |
-| `GET` | `/api/leads/:id/files` | List files with signed download URLs |
-| `DELETE` | `/api/leads/:id/files/:fileId` | Delete a file |
-| `POST` | `/api/leads/:id/files/:fileId/parse` | AI parse document (Gemini) |
-
-### Follow-ups
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/leads/:id/followups` | List scheduled follow-ups |
-| `POST` | `/api/leads/:id/followups` | Create follow-up |
-| `PATCH` | `/api/leads/:id/followups/:fid` | Update / mark done |
-| `DELETE` | `/api/leads/:id/followups/:fid` | Delete follow-up |
-
-### Estimates (Native Estimator Integration)
-
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/leads/:id/estimates` | Create native estimate |
-| `GET` | `/api/leads/:id/estimates` | List estimates |
-| `POST` | `/api/leads/:id/estimates/sync` | Sync estimates from estimator |
-| `POST` | `/api/leads/:id/estimates/webhook` | Estimator webhook (HMAC-verified) |
-
-### Multi-Contact Management
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/leads/:id/contacts` | List additional contacts |
-| `POST` | `/api/leads/:id/contacts` | Add contact (spouse, co-owner, etc.) |
-| `DELETE` | `/api/leads/:id/contacts/:cid` | Remove a contact |
-
-### Communications Hub
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/leads/:id/communications` | List communications |
-| `POST` | `/api/leads/:id/communications` | Log communication |
-| `POST` | `/api/leads/:id/communications/draft` | AI-draft communication |
-
-### Inspiration Board
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/leads/:id/inspirations` | List inspiration images |
-| `POST` | `/api/leads/:id/inspirations` | Add inspiration |
-| `DELETE` | `/api/leads/:id/inspirations/:iid` | Remove inspiration |
-
-### Proposal & Negotiation
-
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/leads/:id/generate-proposal` | Generate formatted proposal |
-| `GET` | `/api/leads/:id/proposals` | List generated proposals |
-| `PATCH` | `/api/leads/:id/negotiation` | Update negotiation state |
-| `PATCH` | `/api/leads/:id/budget` | Update budget range |
-
----
-
-## Conversion Workflow (Code Flow)
-
-### Conversion Call Chain
-
-```
-POST /api/leads/:id/convert-to-project
-  └── leadController.convertToProjectHandler()
-        ├── 1. Validate checklist fields (L-069)
-        ├── 2. pool.query SELECT * FROM leads WHERE id=...
-        ├── 3. Duplicate conversion guard (L-070)
-        │     └── leads.status === 'converted' && leads.converted_to_project_id → 409
-        ├── 4. createProject({ lead_id, name, project_type, ... })
-        │     └── services/projects/createProject.js
-        │           └── ProjectRepository.createProject()
-        │                 └── INSERT INTO projects (...) RETURNING *
-        ├── 5. UPDATE leads SET status='converted', converted_to_project_id=..., stage_id=<won_stage>
-        ├── 6. SELECT * FROM lead_estimates WHERE lead_id=...
-        │     ├── UPDATE lead_estimates SET project_id=<newProjectId>
-        │     └── INSERT INTO quotations (lead_id, project_id, total_amount, status='draft')
-        └── 7. INSERT INTO lead_timeline (event_type='lead.converted', summary=...)
-```
-
-### Stage Change Call Chain
-
-```
-POST /api/leads/:id/stage
-  └── leadController.changeStageHandler()
-        └── services/leads/changeStage.changeStage()
-              ├── leadRepository.findLeadById()            -- get current lead
-              ├── stageRepository.getStageById()           -- fetch target stage config
-              ├── services/leads/updateLead.updateLead()   -- enforce mandatory_fields gate
-              │     └── missing fields → STAGE_GATE_FAILED (422)
-              ├── logAction('lead.stage_changed', ...)     -- audit log
-              ├── eventBus.emit('lead.stage_changed', ...) -- domain event (async)
-              ├── dispatchEvent(tenantId, ...)             -- outbound webhook
-              └── leadRepository.refreshPipelineSummary() -- refresh materialized view
-```
-
----
-
-## Business Rules & Guards
-
-### L-069: Pre-Conversion Mandatory Fields
-
-The following fields must be present and truthy in the request body:
-
-```
-booking_received  === true   (required)
-floor_plan        === true   (required)
-scope_finalized   === true   (required)
-projectName       not empty  (required)
-projectType       not empty  (required)
-```
-
-Returns `400 VALIDATION_ERROR` with the list of `missingFields` if any are absent.
+If any are missing, the server responds with a `400 VALIDATION_ERROR` detailing the list of missing fields.
 
 ### L-070: Duplicate Conversion Guard
-
-A lead can only be converted **once**. If `lead.status === 'converted'` and `lead.converted_to_project_id` is already set, the API returns HTTP **409 Conflict**.
-
-### Stage Gate Enforcement
-
-Each `lead_stages` record can define `mandatory_fields[]`. When a lead is moved to a stage, all mandatory fields must be populated in the lead data. If not, the API returns HTTP **422** with:
-```json
-{
-  "code": "STAGE_GATE_FAILED",
-  "message": "Missing mandatory fields",
-  "missing": ["budget_max", "locality"]
-}
-```
-
-### Optimistic Locking
-
-On `PATCH /api/leads/:id`, if the client sends `updated_at`, it is compared to the DB record. A discrepancy > 1 second raises `OPTIMISTIC_LOCK_FAILED` to prevent stale writes.
-
-### Duplicate Detection on Create
-
-New leads are rejected if an existing (non-deleted) lead matches:
-1. Same `phone`
-2. Same `email`
-3. Same `name` + `locality/address`
+To prevent duplicate project creation for the same lead, the system verifies the status of the lead:
+- If `lead.status` is already `'converted'` and `lead.converted_to_project_id` is set, the handler rejects the request with a `409 CONFLICT` status, returning the UUID of the already-created project.
 
 ---
 
-## Data Transfer on Conversion
+## 7. Relevant Code Files & Implementation References
 
-| Source (`leads`) | Destination (`projects`) | Fallback Behaviour |
-|---|---|---|
-| `name` | `client_name` | Used if not supplied in request |
-| `phone` | `client_phone` | Used if not supplied in request |
-| `email` | `client_email` | Used if not supplied in request |
-| `budget_max` | `contract_value` | Used if not supplied in request |
-| `id` | `lead_id` | Hard FK — always set |
-| Checklist booleans | `custom_fields.*` | Stored verbatim |
+Here are the key files that implement the Lead-Project relationship and conversion logic:
 
-**Estimate Transfer:**
-- Each `lead_estimates` row receives `project_id = <newProjectId>`
-- A `quotations` row is inserted with `status = 'draft'` if none exists for that `(lead_id, project_id)` pair
-
----
-
-## Events & Automations
-
-| Event Name | Trigger | Side Effects |
-|---|---|---|
-| `lead.created` | New lead created | Audit log, automation queue, webhooks |
-| `lead.updated` | Lead fields changed | Audit log, webhooks, assignee notification |
-| `lead.stage_changed` | Stage moved | Audit log, eventBus, webhooks, pipeline summary refresh |
-| `lead.converted` | Conversion complete | Timeline log, estimate + quotation transfer |
-| `lead.file_uploaded` | File attached | eventBus notification |
-| `lead.estimates_synced` | Estimator webhook received | eventBus notification |
-
-All major events call `dispatchEvent(tenantId, eventType, payload)` for outbound webhooks. Stage changes and lead creation also push to the **automation queue** which powers rule-based workflows (auto-assign, email sequences, follow-up scheduling).
-
----
-
-## AI Scoring & Intelligence
-
-### Rules-Based Score (0–100)
-
-Computed by `scoreLeadService.scoreLead()` using per-tenant `lead_scoring_rules` rows.
-
-Supported operators: `eq`, `neq`, `contains`, `is_not_empty`, `gt`, `lt`
-
-### AI Win Probability (0–99%)
-
-Computed by `calculateAIScore()`:
-
-| Dimension | Signal Used |
-|---|---|
-| Budget Fit | `budget_max > 0`, `loan_approved` |
-| Timeline | `possession_date` proximity (≤3 months = high urgency) |
-| Property Readiness | `house_status` (ready/possession_taken = high score) |
-| Decision Readiness | Filled: `interior_style`, `material_preference`, `property_type`, `carpet_area_sqft` |
-| Engagement | `days_in_stage` (< 3 days = active) |
-| Responsiveness | Same as Engagement |
-| Risk Level | `competitor_mentioned` → score penalty |
-
-### Async Intelligence Refresh
-
-After any activity is logged, an async job calls `analyzeLeadIntelligence()` and updates:
-- `leads.score` and `leads.win_probability`
-- `leads.ai_score_breakdown`
-- `leads.custom_fields.ai_recommendation` (next action, sentiment, objections, signals)
-- `lead_scores_history` (score history record)
-
-### AI Feature Endpoints
-
-| Endpoint | Feature |
-|---|---|
-| `GET /:id/ai-insights` | Overall intelligence analysis |
-| `POST /:id/ai-design-proposal` | Interior design proposal generation |
-| `POST /:id/meeting-summary` | AI meeting transcript summarization |
-| `POST /:id/budget-planner` | Budget breakdown recommendation |
-| `POST /:id/sales-coach` | Objection handling guidance |
-| `POST /:id/knowledge-assistant` | Q&A against lead context |
-| `POST /:id/buying-intent` | Buy-readiness classification |
-| `POST /:id/sentiment` | Communication sentiment analysis |
-| `POST /:id/ai-twin` | AI persona simulation |
-
----
-
-## Permissions
-
-| Permission | Operations Covered |
-|---|---|
-| `leads:create` | Create leads, bulk CSV import |
-| `leads:read` | List, view, export leads and sub-entities |
-| `leads:update` | Edit, stage change, convert, upload files, follow-ups, contacts |
-| `leads:delete` | Soft-delete, bulk delete |
-| `leads:read_sensitive` | View phone, email, budget (masked otherwise) |
-
-### Manager Role Routes
-
-Require role `manager` or `gm`:
-
-| Route | Description |
-|---|---|
-| `GET /leads/manager/sla-breaches` | Leads past SLA thresholds |
-| `GET /leads/manager/pipeline-movement` | Funnel velocity report |
-| `GET /leads/manager/rep-capacity` | Sales rep workload view |
-| `GET /leads/manager/score-distribution` | Score analytics |
-| `GET /leads/manager/pending-approvals` | Leads awaiting manager sign-off |
-| `GET /leads/manager/scheduled-visits` | Upcoming site visits |
-| `GET /leads/manager/predictive-revenue` | Forecasted revenue |
-| `GET /leads/manager/heat-map` | Geographic lead density map |
-| `POST /leads/manager/approvals/:id/decide` | Approve or reject a lead |
-
----
-
-## Related Source Files
-
-| File | Purpose |
-|---|---|
-| `server/src/controllers/leadController.js` | All HTTP handler functions |
-| `server/src/routes/leads.js` | Route definitions and middleware |
-| `server/src/repositories/leadRepository.js` | DB queries for leads |
-| `server/src/repositories/projectRepository.js` | DB queries for projects |
-| `server/src/services/leads/createLead.js` | Lead creation orchestration |
-| `server/src/services/leads/updateLead.js` | Lead update + stage gate enforcement |
-| `server/src/services/leads/changeStage.js` | Stage transition orchestration |
-| `server/src/services/leads/scoreLeadService.js` | Rules-based and AI scoring |
+* **Controller**: [leadController.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/controllers/leadController.js) (contains [convertToProjectHandler](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/controllers/leadController.js#L49))
+* **Routes**: [leads.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/leads.js) (defines conversion route at line 44)
+* **Services**: 
+  - [createProject.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/services/projects/createProject.js) (manages base project transaction and applies initial milestone templates)
+* **Repositories**:
+  - [projectRepository.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/repositories/projectRepository.js) (contains database queries for insert operations on projects)
+  - [leadRepository.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/repositories/leadRepository.js) (manages state updates for leads)
