@@ -80,8 +80,12 @@ exports.convertToProjectHandler = async (req, res, next) => {
         custom_fields: {
           advance_amount: req.body.advanceAmount,
           payment_terms: req.body.paymentTerms,
-          contract_signed: req.body.contract_signed,
-          site_address_confirmed: req.body.site_address_confirmed
+          // Pre-conversion checklist — all 5 items
+          booking_received: req.body.booking_received || false,
+          floor_plan: req.body.floor_plan || false,
+          scope_finalized: req.body.scope_finalized || false,
+          contract_signed: req.body.contract_signed || false,
+          site_address_confirmed: req.body.site_address_confirmed || false
         }
       }
     });

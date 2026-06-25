@@ -1,15 +1,150 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '../ui';
 import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
 
+const styles = {
+  wrapper: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    overflow: 'hidden',
+    background: 'var(--color-bg)',
+  },
+  header: {
+    padding: '16px 20px',
+    borderBottom: '1px solid var(--color-border)',
+    background: 'var(--color-surface)',
+    flexShrink: 0,
+  },
+  headerTitle: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontWeight: 600,
+    fontSize: '15px',
+    color: 'var(--color-text)',
+    margin: '0 0 4px 0',
+  },
+  pingDot: {
+    position: 'relative',
+    width: '10px',
+    height: '10px',
+    flexShrink: 0,
+  },
+  dot: {
+    width: '10px',
+    height: '10px',
+    borderRadius: '50%',
+    background: 'var(--color-accent)',
+    display: 'inline-block',
+  },
+  headerSubtext: {
+    fontSize: '12px',
+    color: 'var(--color-text-secondary)',
+    margin: 0,
+  },
+  messageList: {
+    flex: 1,
+    overflowY: 'auto',
+    padding: '16px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    background: 'var(--color-bg)',
+  },
+  rowUser: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+  },
+  rowOther: {
+    display: 'flex',
+    justifyContent: 'flex-start',
+  },
+  bubbleUser: {
+    maxWidth: '80%',
+    background: 'var(--color-accent)',
+    color: '#fff',
+    borderRadius: '12px 12px 2px 12px',
+    padding: '10px 14px',
+    fontSize: '14px',
+    lineHeight: 1.5,
+  },
+  bubbleAssistant: {
+    maxWidth: '80%',
+    background: 'var(--color-surface)',
+    border: '1px solid var(--color-border)',
+    color: 'var(--color-text)',
+    borderRadius: '12px 12px 12px 2px',
+    padding: '10px 14px',
+    fontSize: '14px',
+    lineHeight: 1.5,
+    boxShadow: 'var(--shadow-sm)',
+  },
+  bubbleSystem: {
+    width: '100%',
+    textAlign: 'center',
+    background: 'transparent',
+    color: 'var(--color-text-secondary)',
+    fontSize: '12px',
+    padding: '4px 0',
+  },
+  roleLabel: {
+    fontSize: '10px',
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
+    marginBottom: '4px',
+    opacity: 0.6,
+  },
+  typingBubble: {
+    maxWidth: '80%',
+    background: 'var(--color-surface)',
+    border: '1px solid var(--color-border)',
+    borderRadius: '12px 12px 12px 2px',
+    padding: '10px 14px',
+    fontSize: '14px',
+    color: 'var(--color-text-secondary)',
+    fontStyle: 'italic',
+  },
+  inputArea: {
+    padding: '12px 16px',
+    background: 'var(--color-surface)',
+    borderTop: '1px solid var(--color-border)',
+    flexShrink: 0,
+  },
+  form: {
+    display: 'flex',
+    gap: '8px',
+  },
+  input: {
+    flex: 1,
+    padding: '8px 12px',
+    border: '1px solid var(--color-border)',
+    borderRadius: 'var(--radius-md)',
+    fontSize: '14px',
+    background: 'var(--color-bg)',
+    color: 'var(--color-text)',
+    outline: 'none',
+  },
+};
+
 export default function AIKnowledgeAssistantTab({ leadId, lead }) {
   const [messages, setMessages] = useState([
-    { role: 'system', content: `AI Knowledge Assistant connected. Ask me anything about ${lead?.name || 'this lead'}'s history, interactions, or preferences.` }
+    {
+      role: 'system',
+      content: `AI Knowledge Assistant connected. Ask me anything about ${lead?.name || 'this lead'}'s history, interactions, or preferences.`,
+    },
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const toast = useToast();
+  const bottomRef = useRef(null);
+
+  // Auto-scroll to bottom on new messages
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
 
   const handleSend = async (e) => {
     e?.preventDefault();
@@ -34,51 +169,63 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-white">
-      <div className="p-4 border-b border-gray-200 bg-indigo-50/50">
-        <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-          <span className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
-          </span>
+    <div style={styles.wrapper}>
+      {/* Header */}
+      <div style={styles.header}>
+        <h3 style={styles.headerTitle}>
+          <span style={styles.dot} />
           AI Knowledge Assistant
         </h3>
-        <p className="text-xs text-gray-600 mt-1">
+        <p style={styles.headerSubtext}>
           Chat with the CRM. Instantly recall context, timelines, and action items for this specific lead.
         </p>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-        {messages.map((msg, idx) => (
-          <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[80%] rounded-lg p-3 text-sm ${
-              msg.role === 'user' 
-                ? 'bg-indigo-600 text-white rounded-br-none' 
-                : msg.role === 'system'
-                  ? 'bg-gray-200 text-gray-600 text-xs w-full text-center'
-                  : 'bg-white border border-gray-200 text-gray-800 shadow-sm rounded-bl-none'
-            }`}>
-              {msg.role === 'assistant' && <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">AI Assistant</div>}
-              {msg.role === 'user' && <div className="text-[10px] font-bold text-indigo-200 uppercase tracking-wider mb-1">You</div>}
-              {msg.content}
+      {/* Message list */}
+      <div style={styles.messageList}>
+        {messages.map((msg, idx) => {
+          if (msg.role === 'system') {
+            return (
+              <div key={idx} style={styles.rowOther}>
+                <div style={styles.bubbleSystem}>{msg.content}</div>
+              </div>
+            );
+          }
+          if (msg.role === 'user') {
+            return (
+              <div key={idx} style={styles.rowUser}>
+                <div style={styles.bubbleUser}>
+                  <div style={{ ...styles.roleLabel, color: 'rgba(255,255,255,0.7)' }}>You</div>
+                  {msg.content}
+                </div>
+              </div>
+            );
+          }
+          return (
+            <div key={idx} style={styles.rowOther}>
+              <div style={styles.bubbleAssistant}>
+                <div style={{ ...styles.roleLabel, color: 'var(--color-accent)' }}>AI Assistant</div>
+                {msg.content}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
+
         {loading && (
-          <div className="flex justify-start">
-            <div className="bg-white border border-gray-200 text-gray-500 rounded-lg rounded-bl-none p-3 shadow-sm text-sm italic animate-pulse">
-              Searching timeline...
-            </div>
+          <div style={styles.rowOther}>
+            <div style={styles.typingBubble}>Searching timeline…</div>
           </div>
         )}
+        <div ref={bottomRef} />
       </div>
 
-      <div className="p-4 bg-white border-t border-gray-200">
-        <form onSubmit={handleSend} className="flex gap-2">
+      {/* Input */}
+      <div style={styles.inputArea}>
+        <form onSubmit={handleSend} style={styles.form}>
           <input
             type="text"
-            className="flex-1 border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-            placeholder={`Ask about ${lead?.name || 'this lead'}'s history...`}
+            style={styles.input}
+            placeholder={`Ask about ${lead?.name || 'this lead'}'s history…`}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={loading}

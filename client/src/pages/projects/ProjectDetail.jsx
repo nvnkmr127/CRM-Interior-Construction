@@ -35,13 +35,21 @@ function daysRemaining(targetDate) {
 
 function OverviewTab({ project }) {
   const days = daysRemaining(project.target_date);
+
+  // custom_fields may hold advance_amount, payment_terms, etc from conversion form
+  const cf = project.custom_fields || {};
+
   const fields = [
-    { label: 'Project Type', value: project.type ? project.type.replace('_', ' ') : '—' },
-    { label: 'Site Address', value: project.site_address || '—' },
-    { label: 'Start Date', value: formatDate(project.start_date) },
-    { label: 'Target Date', value: formatDate(project.target_date) },
-    { label: 'Contract Value', value: formatValue(project.value) },
-    { label: 'Status', value: project.status || '—' },
+    { label: 'Project Type',    value: project.project_type ? project.project_type.replace(/_/g, ' ') : '—' },
+    { label: 'Site Address',    value: project.site_address || '—' },
+    { label: 'Start Date',      value: formatDate(project.start_date) },
+    { label: 'Target Date',     value: formatDate(project.target_date) },
+    { label: 'Contract Value',  value: formatValue(project.contract_value) },
+    { label: 'Status',          value: project.status || '—' },
+    { label: 'Client Phone',    value: project.client_phone || '—' },
+    { label: 'Client Email',    value: project.client_email || '—' },
+    { label: 'Advance Received', value: cf.advance_amount ? formatValue(cf.advance_amount) : '—' },
+    { label: 'Payment Terms',   value: cf.payment_terms ? cf.payment_terms.replace(/_/g, ' – ') : '—' },
   ];
 
   return (
@@ -115,6 +123,49 @@ function OverviewTab({ project }) {
         </div>
       </div>
 
+      {/* Pre-Conversion Checklist — only shown for converted leads */}
+      {project.lead_id && (
+        <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+            Pre-Conversion Checklist
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+            {[
+              { key: 'booking_received',      label: 'Booking amount received' },
+              { key: 'floor_plan',            label: 'Floor plan attached' },
+              { key: 'scope_finalized',       label: 'Scope finalized' },
+              { key: 'contract_signed',       label: 'Signed contract attached' },
+              { key: 'site_address_confirmed',label: 'Site address confirmed' },
+            ].map((item, i) => {
+              const checked = cf[item.key] === true || cf[item.key] === 'true';
+              return (
+                <div key={item.key} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '12px 20px',
+                  borderBottom: i < 4 ? '1px solid var(--color-border)' : 'none',
+                  borderRight: (i % 2 === 0) ? '1px solid var(--color-border)' : 'none',
+                }}>
+                  <span style={{
+                    width: 22, height: 22, borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: checked ? 'var(--color-success-bg)' : 'var(--color-danger-bg)',
+                    color: checked ? 'var(--color-success)' : 'var(--color-danger)',
+                    fontWeight: 700, fontSize: 13, flexShrink: 0,
+                  }}>
+                    {checked ? '✓' : '✗'}
+                  </span>
+                  <span style={{ fontSize: 'var(--text-sm)', color: checked ? 'var(--color-text)' : 'var(--color-text-secondary)' }}>
+                    {item.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Notes */}
       {project.notes && (
         <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', padding: '16px 20px' }}>
@@ -125,6 +176,7 @@ function OverviewTab({ project }) {
     </div>
   );
 }
+
 
 export default function ProjectDetail() {
   const { id: projectId } = useParams();
@@ -218,7 +270,7 @@ export default function ProjectDetail() {
             <div className={styles.clientName}>{project.client_name || '—'}</div>
           </div>
           <div className={styles.headerRight}>
-            <div className={styles.value}>{formatValue(project.value)}</div>
+            <div className={styles.value}>{formatValue(project.contract_value)}</div>
             <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>Edit</Button>
             <Button variant="outline" size="sm" style={{color: 'var(--color-danger)', borderColor: 'var(--color-danger)'}} onClick={handleDelete}>Delete</Button>
           </div>
@@ -271,7 +323,7 @@ export default function ProjectDetail() {
           <span className={styles.statValue}>
             {formatValue(project.stats?.collectedPayment)}
             {' of '}
-            {formatValue(project.value)}
+            {formatValue(project.contract_value)}
           </span>
         </div>
       </div>
