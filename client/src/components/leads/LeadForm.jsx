@@ -10,15 +10,16 @@ import styles from './LeadForm.module.css';
 export default function LeadForm({ lead, onSave, onClose }) {
   const isEdit = !!lead;
   const toast = useToast();
-  
-  const isReq = (field) => {
-    if (field === 'name' || field === 'phone') return true;
-    const stage = stages.find(s => s.id === values.stageId);
-    return stage?.mandatory_fields?.includes(field) || false;
-  };
 
+  // ── 1. Independent state (no circular deps) ──────────────────────────
+  const [stages, setStages] = useState([]);
+  const [users, setUsers] = useState([]);
+  // Separate stageId state so `rules` can depend on it without needing `values`
+  const [stageId, setStageId] = useState(lead?.stage_id || '');
+
+  // ── 2. Rules depend only on `stages` + `stageId` state (no `values`) ─
   const rules = React.useMemo(() => {
-    const stage = stages.find(s => s.id === values.stageId);
+    const stage = stages.find(s => s.id === stageId);
     const mFields = stage?.mandatory_fields || [];
     const baseRules = {
       name: run(validators.required('Name'), validators.minLen(2, 'Name')),
@@ -36,8 +37,9 @@ export default function LeadForm({ lead, onSave, onClose }) {
       }
     });
     return baseRules;
-  }, [stages, values.stageId]);
+  }, [stages, stageId]);
 
+  // ── 3. useForm is now safe — `rules` has no dep on `values` ──────────
   const { values, errors, touched, handleChange, handleBlur, validateAll, isValid } = useForm({
     name: lead?.name || '',
     phone: lead?.phone || '',
@@ -58,8 +60,12 @@ export default function LeadForm({ lead, onSave, onClose }) {
     referral_source: lead?.referral_source || ''
   }, rules);
 
-  const [stages, setStages] = useState([]);
-  const [users, setUsers] = useState([]);
+  // ── 4. isReq is safe here — declared after `values` exists ───────────
+  const isReq = (field) => {
+    if (field === 'name' || field === 'phone') return true;
+    const stage = stages.find(s => s.id === stageId);
+    return stage?.mandatory_fields?.includes(field) || false;
+  };
 
   useEffect(() => {
     Promise.all([
@@ -69,9 +75,11 @@ export default function LeadForm({ lead, onSave, onClose }) {
       const fetchedStages = sRes.data?.data || [];
       setStages(fetchedStages);
       setUsers(uRes.data?.data || []);
-      
+
       if (!isEdit && fetchedStages.length > 0 && !values.stageId) {
-        handleChange('stageId', fetchedStages[0].id);
+        const firstId = fetchedStages[0].id;
+        handleChange('stageId', firstId);
+        setStageId(firstId);
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -79,7 +87,10 @@ export default function LeadForm({ lead, onSave, onClose }) {
 
   const onChange = (e) => {
     const { name, value, type, checked } = e.target;
-    handleChange(name, type === 'checkbox' ? checked : value);
+    const newValue = type === 'checkbox' ? checked : value;
+    handleChange(name, newValue);
+    // Keep stageId state in sync so `rules` stays up-to-date
+    if (name === 'stageId') setStageId(newValue);
   };
   const onBlur = (e) => handleBlur(e.target.name);
 

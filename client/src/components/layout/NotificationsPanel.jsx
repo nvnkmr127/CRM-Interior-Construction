@@ -71,17 +71,23 @@ export default function NotificationsPanel() {
     try {
       const res = await api.get('/notifications?limit=20')
       if (res.data?.success) {
-        setNotifications(res.data.data || []);
+        const list = res.data.data || [];
+        setNotifications(list);
+        // Derive the real unread count directly from the fetched list
+        // so the badge always stays in sync with server data
+        setUnreadCount(list.filter(n => !n.is_read).length);
       }
     } catch (e) { console.error(e) }
   }
 
   const markAllRead = async () => {
-    if (unreadCount === 0) return
     try {
       await api.post('/notifications/mark-read', { all: true })
-      setNotifications(notifications.map(n => ({ ...n, is_read: true })))
+      // Optimistically clear all in UI
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
       setUnreadCount(0)
+      // Re-confirm with server to stay in sync
+      await fetchUnreadCount()
     } catch (e) { console.error(e) }
   }
 
@@ -89,12 +95,13 @@ export default function NotificationsPanel() {
     if (!n.is_read) {
       try {
         await api.post('/notifications/mark-read', { ids: [n.id] })
-        setNotifications(notifications.map(x => x.id === n.id ? { ...x, is_read: true } : x))
+        setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, is_read: true } : x))
         setUnreadCount(c => Math.max(0, c - 1))
+        // Re-confirm count with server after individual mark
+        await fetchUnreadCount()
       } catch (e) { console.error(e) }
     }
     if (n.lead_id) {
-      // Logic to navigate to lead or open drawer
       setIsOpen(false)
     }
   }

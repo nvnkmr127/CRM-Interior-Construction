@@ -28,6 +28,7 @@
 
 .chartWrapper {
   height: 256px;
+  overflow: hidden;
 }
 
 .tooltip {
