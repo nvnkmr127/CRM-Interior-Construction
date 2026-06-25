@@ -51,21 +51,8 @@ exports.convertToProjectHandler = async (req, res, next) => {
     const { tenantId, userId } = getTenantAndUser(req);
     const leadId = req.params.id;
     const { 
-      booking_received, floor_plan, scope_finalized,
       projectName, projectType, clientName, clientPhone, clientEmail, pm, contractValue 
     } = req.body;
-
-    // L-069: Comprehensive mandatory field validation
-    const missingFields = [];
-    if (!booking_received) missingFields.push('booking_received');
-    if (!floor_plan) missingFields.push('floor_plan');
-    if (!scope_finalized) missingFields.push('scope_finalized');
-    if (!projectName || !projectName.trim()) missingFields.push('projectName');
-    if (!projectType) missingFields.push('projectType');
-
-    if (missingFields.length > 0) {
-      return fail(res, 'VALIDATION_ERROR', `Missing required fields: ${missingFields.join(', ')}`, 400, { missingFields });
-    }
 
     // 1. Get the lead
     const leadRes = await pool.query('SELECT * FROM leads WHERE id = $1 AND tenant_id = $2', [leadId, tenantId]);
@@ -83,8 +70,53 @@ exports.convertToProjectHandler = async (req, res, next) => {
       );
     }
 
-        // 2. Create project using the service to ensure all fields and automations are triggered
+    // Get tenant config for dynamic checklist validation
+    const tenantRes = await pool.query('SELECT config FROM tenants WHERE id = $1', [tenantId]);
+    const configStr = tenantRes.rows[0]?.config;
+    const config = typeof configStr === 'string' ? JSON.parse(configStr || '{}') : (configStr || {});
+    const checklistConfig = config.pre_conversion_checklist || [
+      { key: 'contract_signed', label: 'Contract signed', required: true, active: true },
+      { key: 'booking_received', label: 'Booking amount received', required: true, active: true },
+      { key: 'scope_finalized', label: 'Scope frozen', required: true, active: true },
+      { key: 'site_visit_completed', label: 'Site visit completed', required: true, active: true },
+      { key: 'floor_plan', label: 'Floor plan attached', required: false, active: true },
+      { key: 'site_address_confirmed', label: 'Site address confirmed', required: false, active: true }
+    ];
+
+    // Validate active and required checklist items
+    const missingFields = [];
+    for (const item of checklistConfig) {
+      if (item.active && item.required && !req.body[item.key]) {
+        missingFields.push(item.key);
+      }
+    }
+    if (!projectName || !projectName.trim()) missingFields.push('projectName');
+    if (!projectType) missingFields.push('projectType');
+    if (!req.body.contract_file_key) missingFields.push('contract_file_key');
+    if (!req.body.contract_file_name) missingFields.push('contract_file_name');
+    if (!req.body.contract_file_size) missingFields.push('contract_file_size');
+    if (!req.body.contract_file_mime) missingFields.push('contract_file_mime');
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: `Missing required fields: ${missingFields.join(', ')}`,
+          missingFields
+        }
+      });
+    }
+
+    // 2. Create project using the service to ensure all fields and automations are triggered
     const { createProject } = require('../services/projects/createProject');
+    
+    // Dynamically build the checklist entries for custom_fields
+    const dynamicChecklist = {};
+    for (const item of checklistConfig) {
+      dynamicChecklist[item.key] = !!req.body[item.key];
+    }
+
     const newProject = await createProject({
       tenantId,
       userId,
@@ -98,17 +130,21 @@ exports.convertToProjectHandler = async (req, res, next) => {
         pm_id: pm,
         designer_id: req.body.designer,
         contract_value: contractValue || lead.budget_max || 0,
+        booking_amount: req.body.advanceAmount || 0,
         start_date: req.body.startDate,
         target_date: req.body.handoverDate,
+        contract_file_key: req.body.contract_file_key,
+        contract_file_name: req.body.contract_file_name,
+        contract_file_size: Number(req.body.contract_file_size) || 0,
+        contract_file_mime: req.body.contract_file_mime,
+        agreement_signed_by: req.body.agreement_signed_by,
+        agreement_signed_at: req.body.agreement_signed_at,
+        agreement_signature_method: req.body.agreement_signature_method,
+        payment_terms: req.body.paymentTerms,
         custom_fields: {
           advance_amount: req.body.advanceAmount,
           payment_terms: req.body.paymentTerms,
-          // Pre-conversion checklist — all 5 items
-          booking_received: req.body.booking_received || false,
-          floor_plan: req.body.floor_plan || false,
-          scope_finalized: req.body.scope_finalized || false,
-          contract_signed: req.body.contract_signed || false,
-          site_address_confirmed: req.body.site_address_confirmed || false
+          ...dynamicChecklist
         }
       }
     });
@@ -2535,7 +2571,23 @@ exports.getAutomationEventsHandler = async (req, res, next) => {
     next(error);
   }
 };
-exports.createLeadHandler = async (req, res, next) => { res.json({success: true}) };
+exports.createLeadHandler = async (req, res, next) => {
+  try {
+    const parsed = createLeadSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return fail(res, 'VALIDATION_ERROR', 'Validation failed', 400, parsed.error.issues);
+    }
+    const { tenantId, userId } = getTenantAndUser(req);
+    const { createLead } = require('../services/leads/createLead');
+    const lead = await createLead({ tenantId, userId, data: parsed.data });
+    return success(res, lead, {}, 201);
+  } catch (error) {
+    if (error.message && (error.message.includes('VALIDATION_ERROR') || error.message === 'INVALID_STAGE')) {
+      return fail(res, 'VALIDATION_ERROR', error.message, 400);
+    }
+    next(error);
+  }
+};
 exports.getLeadsHandler = async function getLeadsHandler(req, res, next) {
   try {
     const { tenantId, userId } = getTenantAndUser(req);

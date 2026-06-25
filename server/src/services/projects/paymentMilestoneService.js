@@ -69,16 +69,43 @@ async function updatePaymentMilestone({ tenantId, userId, milestoneId, data }) {
 
   if (updateFields.length === 0) return current;
 
+  const tenantIdx = paramIdx++;
+  const idIdx = paramIdx++;
   values.push(tenantId, milestoneId);
   const updateQuery = `
     UPDATE payment_milestones
     SET ${updateFields.join(', ')}
-    WHERE tenant_id = $${paramIdx - 2} AND id = $${paramIdx - 1}
+    WHERE tenant_id = $${tenantIdx} AND id = $${idIdx}
     RETURNING *
   `;
 
   const result = await pool.query(updateQuery, values);
   const updated = result.rows[0];
+
+  // Auto-activate project on booking advance payment confirmation
+  if (status === 'paid' && current.status !== 'paid' && current.name === 'Booking Advance') {
+    const projCheck = await pool.query(
+      "SELECT id, status FROM projects WHERE id = $1 AND tenant_id = $2",
+      [current.project_id, tenantId]
+    );
+    if (projCheck.rows.length > 0 && projCheck.rows[0].status === 'pending_payment') {
+      await pool.query(
+        "UPDATE projects SET status = 'active', updated_at = NOW() WHERE id = $1",
+        [current.project_id]
+      );
+      
+      // Log audit action for project status change
+      await logAction({
+        tenantId,
+        userId,
+        action: 'project.updated',
+        entity: 'project',
+        entityId: current.project_id,
+        oldValue: { status: 'pending_payment' },
+        newValue: { status: 'active' }
+      });
+    }
+  }
 
   await logAction({
     tenantId,

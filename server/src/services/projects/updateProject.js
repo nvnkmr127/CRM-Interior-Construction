@@ -11,6 +11,21 @@ async function updateProject({ tenantId, userId, projectId, data }) {
     throw error;
   }
 
+  // Enforce booking amount gate if project is transitioning to active
+  if (data.status === 'active' && currentProject.status !== 'active' && Number(currentProject.booking_amount) > 0) {
+    const pool = require('../../db/pool');
+    const paymentCheck = await pool.query(
+      "SELECT id FROM payment_milestones WHERE project_id = $1 AND tenant_id = $2 AND name = 'Booking Advance' AND status = 'paid' LIMIT 1",
+      [projectId, tenantId]
+    );
+    if (paymentCheck.rows.length === 0) {
+      const error = new Error('BOOKING_PAYMENT_REQUIRED');
+      error.message = 'Cannot activate project: Booking advance payment has not been received.';
+      error.status = 400;
+      throw error;
+    }
+  }
+
   // 2. Execute update
   const updatedProject = await projectRepository.updateProject(tenantId, projectId, data);
 

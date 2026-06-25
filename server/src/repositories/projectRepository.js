@@ -5,25 +5,31 @@ class ProjectRepository {
     const {
       lead_id, client_name, client_phone, client_email,
       name, project_type, pm_id, designer_id,
-      contract_value, status = 'active', start_date, target_date,
-      site_address, custom_fields = {}, created_by
+      contract_value, booking_amount = 0, status = 'active', start_date, target_date,
+      site_address, custom_fields = {}, created_by,
+      agreement_signed_by, agreement_signed_at, agreement_signature_method,
+      payment_terms
     } = data;
 
     const query = `
       INSERT INTO projects (
         tenant_id, lead_id, client_name, client_phone, client_email,
         name, project_type, pm_id, designer_id,
-        contract_value, status, start_date, target_date,
-        site_address, custom_fields, created_by
+        contract_value, booking_amount, status, start_date, target_date,
+        site_address, custom_fields, created_by,
+        agreement_signed_by, agreement_signed_at, agreement_signature_method,
+        payment_terms
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
       ) RETURNING *
     `;
     const values = [
       tenantId, lead_id || null, client_name, client_phone || null, client_email || null,
       name, project_type || null, pm_id || null, designer_id || null,
-      contract_value || null, status, start_date || null, target_date || null,
-      site_address || null, custom_fields, created_by || null
+      contract_value || null, booking_amount, status, start_date || null, target_date || null,
+      site_address || null, custom_fields, created_by || null,
+      agreement_signed_by || null, agreement_signed_at || null, agreement_signature_method || null,
+      payment_terms || null
     ];
 
     const { rows } = await dbClient.query(query, values);

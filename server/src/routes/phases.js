@@ -3,7 +3,7 @@ const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authorize = require('../middleware/authorize');
 const phaseRepository = require('../repositories/phaseRepository');
-const { completePhase } = require('../services/projects/completePhase');
+const { completePhase, checkScopeLock } = require('../services/projects/completePhase');
 
 // mergeParams: true allows access to :projectId from parent projectsRouter
 const router = express.Router({ mergeParams: true });
@@ -19,7 +19,8 @@ const createPhaseSchema = z.object({
 const updatePhaseSchema = z.object({
   name: z.string().optional(),
   sort_order: z.number().optional(),
-  duration_days: z.number().optional().nullable()
+  duration_days: z.number().optional().nullable(),
+  status: z.string().optional()
 });
 
 const reorderSchema = z.object({
@@ -67,11 +68,17 @@ router.patch('/reorder', authorize('projects:manage'), async (req, res, next) =>
 router.put('/:phaseId', authorize('projects:manage'), async (req, res, next) => {
   try {
     const data = updatePhaseSchema.parse(req.body);
+    if (data.status && (data.status === 'in_progress' || data.status === 'active')) {
+      await checkScopeLock(req.tenantId, req.params.projectId, req.params.phaseId);
+    }
     const phase = await phaseRepository.updatePhase(req.params.phaseId, req.tenantId, data);
     return success(res, phase);
   } catch (err) {
     if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     if (err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Phase not found', 404);
+    if (err.message.includes('Design scope must be locked') || err.message === 'SCOPE_LOCK_REQUIRED') {
+      return fail(res, 'SCOPE_LOCK_REQUIRED', err.message, 400);
+    }
     console.error('[Phases Router] Update error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update phase.', 500);
   }
@@ -103,7 +110,13 @@ router.post('/:phaseId/sign-off', authorize('projects:manage'), async (req, res,
       return fail(res, 'MILESTONES_INCOMPLETE', err.details, 422);
     }
     if (err.message === 'PHASE_ALREADY_COMPLETED' || err.status === 400) {
+      if (err.message.includes('Design scope must be locked') || err.message === 'SCOPE_LOCK_REQUIRED') {
+        return fail(res, 'SCOPE_LOCK_REQUIRED', err.message, 400);
+      }
       return fail(res, 'PHASE_ALREADY_COMPLETED', 'Phase is already completed', 400);
+    }
+    if (err.message.includes('Design scope must be locked') || err.message === 'SCOPE_LOCK_REQUIRED') {
+      return fail(res, 'SCOPE_LOCK_REQUIRED', err.message, 400);
     }
     if (err.message === 'NOT_FOUND' || err.status === 404) {
       return fail(res, 'NOT_FOUND', 'Phase not found', 404);

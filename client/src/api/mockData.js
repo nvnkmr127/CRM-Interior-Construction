@@ -307,6 +307,7 @@ export const initialMockDatabase = {
       target_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
       overdue: false,
       created_at: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString(),
+      is_scope_locked: true
     },
     {
       id: 'mock-proj-2',
@@ -323,7 +324,23 @@ export const initialMockDatabase = {
       target_date: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
       overdue: false,
       created_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
+      is_scope_locked: false
     }
+  ],
+  phases: [
+    { id: 'mock-phase-1', project_id: 'mock-proj-1', name: 'Design & Concept', status: 'completed', is_execution: false, sort_order: 1 },
+    { id: 'mock-phase-2', project_id: 'mock-proj-1', name: 'Procurement & Execution', status: 'in_progress', is_execution: true, sort_order: 2 },
+    { id: 'mock-phase-3', project_id: 'mock-proj-2', name: 'Design & Concept', status: 'in_progress', is_execution: false, sort_order: 1 },
+    { id: 'mock-phase-4', project_id: 'mock-proj-2', name: 'Procurement & Execution', status: 'pending', is_execution: true, sort_order: 2 }
+  ],
+  milestones: [
+    { id: 'mock-m-1', phase_id: 'mock-phase-1', status: 'completed', name: 'Concept Drawings Approved' },
+    { id: 'mock-m-2', phase_id: 'mock-phase-2', status: 'pending', name: 'Procurement List Approved' },
+    { id: 'mock-m-3', phase_id: 'mock-phase-3', status: 'completed', name: 'Client Feedback Incorporated' },
+    { id: 'mock-m-4', phase_id: 'mock-phase-4', status: 'pending', name: 'Site Handover' }
+  ],
+  documents: [
+    { id: 'mock-doc-1', project_id: 'mock-proj-1', doc_type: 'contract', status: 'approved', name: 'Signed Client Contract' }
   ],
   tasks: [
     {

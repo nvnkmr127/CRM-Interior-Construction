@@ -114,9 +114,19 @@ async function applyTemplate(projectId, templateId, tenantId) {
     for (let i = 0; i < phases.length; i++) {
       const phase = phases[i];
       
+      const status = i === 0 ? 'in_progress' : 'pending';
+      const nameLower = (phase.name || '').toLowerCase();
+      const isExecution = !(
+        nameLower.includes('design') ||
+        nameLower.includes('measurement') ||
+        nameLower.includes('plan') ||
+        nameLower.includes('draft') ||
+        nameLower.includes('concept')
+      );
+
       const phaseQuery = `
-        INSERT INTO project_phases (project_id, tenant_id, name, "order", duration_days)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO project_phases (project_id, tenant_id, name, sort_order, duration_days, status, is_execution)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING id
       `;
       const phaseRes = await client.query(phaseQuery, [
@@ -124,7 +134,9 @@ async function applyTemplate(projectId, templateId, tenantId) {
         tenantId, 
         phase.name, 
         i + 1, // Start order numbering sequentially at 1
-        phase.duration_days || 0
+        phase.duration_days || 0,
+        status,
+        isExecution
       ]);
       
       const phaseId = phaseRes.rows[0].id;

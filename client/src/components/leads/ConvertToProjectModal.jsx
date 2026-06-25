@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Button, Input, Select } from '../ui';
 import { useToast } from '../../store/toastContext';
 import api from '../../api/axios';
+import { useS3Upload } from '../../hooks/useS3Upload';
 
 const PROJECT_TYPES = [
   { id: 'full_interior', label: 'Full Interior' },
@@ -12,7 +13,9 @@ const PROJECT_TYPES = [
 
 export default function ConvertToProjectModal({ lead, isOpen, onClose, onConverted }) {
   const toast = useToast();
+  const { uploadContract, uploading, progress } = useS3Upload();
   const [loading, setLoading] = useState(false);
+  const [contractFile, setContractFile] = useState(null);
   const [formData, setFormData] = useState({
     projectType: '',
     clientName: '',
@@ -25,17 +28,16 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
     advanceAmount: '',
     startDate: '',
     handoverDate: '',
-    paymentTerms: ''
+    paymentTerms: '',
+    agreement_signed_by: '',
+    agreement_signed_at: '',
+    agreement_signature_method: ''
   });
   
-  // Strict checklist logic
-  const [checklist, setChecklist] = useState({
-    booking_received: false,
-    floor_plan: false,
-    scope_finalized: false,
-    contract_signed: false,
-    site_address_confirmed: false
-  });
+  // Dynamic checklist logic
+  const [checklistConfig, setChecklistConfig] = useState([]);
+  const [checklist, setChecklist] = useState({});
+  const [loadingConfig, setLoadingConfig] = useState(true);
 
   useEffect(() => {
     if (isOpen && lead) {
@@ -51,9 +53,56 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
         advanceAmount: '',
         startDate: '',
         handoverDate: '',
-        paymentTerms: ''
+        paymentTerms: '',
+        agreement_signed_by: lead.name || '',
+        agreement_signed_at: new Date().toISOString().slice(0, 10),
+        agreement_signature_method: 'digital'
       });
-      setChecklist({ booking_received: false, floor_plan: false, scope_finalized: false, contract_signed: false, site_address_confirmed: false });
+      setContractFile(null);
+
+      const loadChecklistConfig = async () => {
+        try {
+          setLoadingConfig(true);
+          const res = await api.get('/config/tenant-settings');
+          const defaultChecklist = [
+            { key: 'contract_signed', label: 'Contract signed', required: true, active: true },
+            { key: 'booking_received', label: 'Booking amount received', required: true, active: true },
+            { key: 'scope_finalized', label: 'Scope frozen', required: true, active: true },
+            { key: 'site_visit_completed', label: 'Site visit completed', required: true, active: true },
+            { key: 'floor_plan', label: 'Floor plan attached', required: false, active: true },
+            { key: 'site_address_confirmed', label: 'Site address confirmed', required: false, active: true }
+          ];
+          const config = res.data?.data?.pre_conversion_checklist || defaultChecklist;
+          const activeItems = config.filter(item => item.active);
+          setChecklistConfig(activeItems);
+
+          const initialChecklist = {};
+          activeItems.forEach(item => {
+            initialChecklist[item.key] = false;
+          });
+          setChecklist(initialChecklist);
+        } catch (err) {
+          console.error('Failed to load checklist config', err);
+          const fallback = [
+            { key: 'contract_signed', label: 'Contract signed', required: true, active: true },
+            { key: 'booking_received', label: 'Booking amount received', required: true, active: true },
+            { key: 'scope_finalized', label: 'Scope frozen', required: true, active: true },
+            { key: 'site_visit_completed', label: 'Site visit completed', required: true, active: true },
+            { key: 'floor_plan', label: 'Floor plan attached', required: false, active: true },
+            { key: 'site_address_confirmed', label: 'Site address confirmed', required: false, active: true }
+          ];
+          setChecklistConfig(fallback);
+          const initialChecklist = {};
+          fallback.forEach(item => {
+            initialChecklist[item.key] = false;
+          });
+          setChecklist(initialChecklist);
+        } finally {
+          setLoadingConfig(false);
+        }
+      };
+
+      loadChecklistConfig();
     }
   }, [isOpen, lead]);
 
@@ -70,18 +119,21 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
       advanceAmount: formData.advanceAmount || '150000',
       startDate: formData.startDate || new Date().toISOString().slice(0, 10),
       handoverDate: formData.handoverDate || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-      paymentTerms: formData.paymentTerms || '10_40_40_10'
+      paymentTerms: formData.paymentTerms || '10_40_40_10',
+      agreement_signed_by: formData.agreement_signed_by || lead?.name || 'Rahul Sharma',
+      agreement_signed_at: formData.agreement_signed_at || new Date().toISOString().slice(0, 10),
+      agreement_signature_method: formData.agreement_signature_method || 'digital'
     });
-    setChecklist({
-      booking_received: true,
-      floor_plan: true,
-      scope_finalized: true,
-      contract_signed: true,
-      site_address_confirmed: true
+    setContractFile(new File(['mock contract content'], 'signed_contract.pdf', { type: 'application/pdf' }));
+    
+    const mockedChecklist = {};
+    checklistConfig.forEach(item => {
+      mockedChecklist[item.key] = true;
     });
+    setChecklist(mockedChecklist);
   };
 
-  const allChecked = Object.values(checklist).every(v => v === true);
+  const allChecked = checklistConfig.every(item => !item.required || checklist[item.key] === true);
 
   const handleSubmit = async () => {
     if (!allChecked) {
@@ -90,12 +142,21 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
     if (!formData.projectType || !formData.projectName) {
       return toast.error("Please fill in the required project details.");
     }
+    if (!contractFile) {
+      return toast.error("Signed contract document is required.");
+    }
 
     try {
       setLoading(true);
+      const uploadedFile = await uploadContract({ file: contractFile });
+      
       const payload = {
         ...formData,
-        ...checklist
+        ...checklist,
+        contract_file_key: uploadedFile.storageKey,
+        contract_file_name: uploadedFile.fileName,
+        contract_file_size: uploadedFile.fileSize,
+        contract_file_mime: uploadedFile.mimeType
       };
       
       // Send the actual conversion request
@@ -169,53 +230,26 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
         {/* Checklist Section */}
         <div className="bg-blue-50 border border-blue-100 p-4 rounded-md">
           <h4 className="font-semibold text-blue-900 mb-3 text-sm">Pre-Conversion Checklist</h4>
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm text-blue-800 cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={checklist.booking_received} 
-                onChange={e => setChecklist(p => ({...p, booking_received: e.target.checked}))}
-                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-blue-300"
-              />
-              Booking amount received
-            </label>
-            <label className="flex items-center gap-2 text-sm text-blue-800 cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={checklist.floor_plan} 
-                onChange={e => setChecklist(p => ({...p, floor_plan: e.target.checked}))}
-                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-blue-300"
-              />
-              Floor plan attached
-            </label>
-            <label className="flex items-center gap-2 text-sm text-blue-800 cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={checklist.scope_finalized} 
-                onChange={e => setChecklist(p => ({...p, scope_finalized: e.target.checked}))}
-                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-blue-300"
-              />
-              Scope finalized
-            </label>
-            <label className="flex items-center gap-2 text-sm text-blue-800 cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={checklist.contract_signed} 
-                onChange={e => setChecklist(p => ({...p, contract_signed: e.target.checked}))}
-                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-blue-300"
-              />
-              Signed contract attached
-            </label>
-            <label className="flex items-center gap-2 text-sm text-blue-800 cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={checklist.site_address_confirmed} 
-                onChange={e => setChecklist(p => ({...p, site_address_confirmed: e.target.checked}))}
-                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-blue-300"
-              />
-              Site address confirmed
-            </label>
-          </div>
+          {loadingConfig ? (
+            <div className="text-sm text-blue-600">Loading checklist...</div>
+          ) : (
+            <div className="space-y-2">
+              {checklistConfig.map(item => (
+                <label key={item.key} className="flex items-center gap-2 text-sm text-blue-800 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={!!checklist[item.key]} 
+                    onChange={e => setChecklist(p => ({...p, [item.key]: e.target.checked}))}
+                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-blue-300"
+                  />
+                  <span>
+                    {item.label}
+                    {item.required && <span className="text-red-500 ml-1 font-bold" title="Mandatory requirement">*</span>}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Form Section */}
@@ -248,7 +282,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
             />
             <Select 
               label="Payment Terms" 
-              options={[{value:'',label:'Select Terms'}, {value:'10_40_40_10',label:'10% - 40% - 40% - 10%'}, {value:'50_50',label:'50% - 50%'}]}
+              options={[{value:'',label:'Select Terms'}, {value:'10_40_40_10',label:'10% - 40% - 40% - 10%'}, {value:'30_30_30_10',label:'30% - 30% - 30% - 10%'}, {value:'50_50',label:'50% - 50%'}]}
               value={formData.paymentTerms}
               onChange={v => setFormData({...formData, paymentTerms: v})}
             />
@@ -287,6 +321,44 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
               value={formData.handoverDate} 
               onChange={e => setFormData({...formData, handoverDate: e.target.value})} 
             />
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <Input 
+              label="Agreement Signed By" 
+              value={formData.agreement_signed_by} 
+              onChange={e => setFormData({...formData, agreement_signed_by: e.target.value})} 
+            />
+            <Input 
+              label="Agreement Signed Date" 
+              type="date"
+              value={formData.agreement_signed_at} 
+              onChange={e => setFormData({...formData, agreement_signed_at: e.target.value})} 
+            />
+            <Select 
+              label="Signature Method" 
+              options={[{value:'',label:'Select Method'}, {value:'digital',label:'Digital'}, {value:'physical',label:'Physical'}]}
+              value={formData.agreement_signature_method}
+              onChange={v => setFormData({...formData, agreement_signature_method: v})}
+            />
+          </div>
+          
+          {/* Contract File Section */}
+          <div className="space-y-2 mt-4 border-t border-gray-100 pt-4">
+            <label className="block text-sm font-semibold text-gray-700">Signed Contract Document *</label>
+            <div className="flex items-center gap-4">
+              <input 
+                type="file" 
+                accept=".pdf,.png,.jpg,.jpeg" 
+                onChange={e => setContractFile(e.target.files[0] || null)}
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+              />
+              {uploading && (
+                <span className="text-xs text-blue-600 font-medium whitespace-nowrap">Uploading ({progress}%)...</span>
+              )}
+            </div>
+            {contractFile && (
+              <p className="text-xs text-gray-500 mt-1">Selected file: <span className="font-semibold text-gray-700">{contractFile.name}</span> ({(contractFile.size / 1024).toFixed(1)} KB)</p>
+            )}
           </div>
         </div>
       </div>

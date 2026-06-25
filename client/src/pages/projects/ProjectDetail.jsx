@@ -2,7 +2,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Badge } from '../../components/ui';
 import styles from './ProjectDetail.module.css';
-import { getProject, deleteProject } from '../../api/projects';
+import { getProject, deleteProject, updateProject } from '../../api/projects';
 import ProjectForm from '../../components/projects/ProjectForm';
 
 // Lazy load tabs
@@ -45,11 +45,14 @@ function OverviewTab({ project }) {
     { label: 'Start Date',      value: formatDate(project.start_date) },
     { label: 'Target Date',     value: formatDate(project.target_date) },
     { label: 'Contract Value',  value: formatValue(project.contract_value) },
-    { label: 'Status',          value: project.status || '—' },
+    { label: 'Status',          value: project.status ? project.status.replace(/_/g, ' ') : '—' },
     { label: 'Client Phone',    value: project.client_phone || '—' },
     { label: 'Client Email',    value: project.client_email || '—' },
-    { label: 'Advance Received', value: cf.advance_amount ? formatValue(cf.advance_amount) : '—' },
-    { label: 'Payment Terms',   value: cf.payment_terms ? cf.payment_terms.replace(/_/g, ' – ') : '—' },
+    { label: 'Booking Amount',  value: project.booking_amount ? formatValue(project.booking_amount) : (cf.advance_amount ? formatValue(cf.advance_amount) : '—') },
+    { label: 'Payment Terms',   value: project.payment_terms ? project.payment_terms.replace(/_/g, ' – ') : (cf.payment_terms ? cf.payment_terms.replace(/_/g, ' – ') : '—') },
+    { label: 'Agreement Signed By', value: project.agreement_signed_by || '—' },
+    { label: 'Agreement Signed Date', value: formatDate(project.agreement_signed_at) },
+    { label: 'Signature Method', value: project.agreement_signature_method ? project.agreement_signature_method.replace(/_/g, ' ') : '—' },
   ];
 
   return (
@@ -197,6 +200,18 @@ export default function ProjectDetail() {
     }
   };
 
+  const handleLockScope = async () => {
+    if (window.confirm('Are you sure you want to lock the design scope? Once locked, execution can proceed.')) {
+      try {
+        await updateProject(projectId, { is_scope_locked: true });
+        setProject(prev => ({ ...prev, is_scope_locked: true }));
+      } catch (e) {
+        console.error('Failed to lock scope', e);
+        alert('Failed to lock scope. Please ensure all conditions are met.');
+      }
+    }
+  };
+
   const tabs = ['Overview', 'Phases', 'Tasks', 'Documents', 'Payments', 'Snags', 'Handover'];
 
   useEffect(() => {
@@ -265,12 +280,20 @@ export default function ProjectDetail() {
               {project.name}{' '}
               <Badge variant={project.status === 'active' ? 'info' : project.status === 'completed' ? 'success' : 'warning'} dot>
                 {project.status || 'Unknown'}
-              </Badge>
+              </Badge>{' '}
+              {project.is_scope_locked ? (
+                <Badge variant="success">🔒 Scope Locked</Badge>
+              ) : (
+                <Badge variant="warning">🔓 Scope Unlocked</Badge>
+              )}
             </div>
             <div className={styles.clientName}>{project.client_name || '—'}</div>
           </div>
           <div className={styles.headerRight}>
             <div className={styles.value}>{formatValue(project.contract_value)}</div>
+            {!project.is_scope_locked && (
+              <Button size="sm" onClick={handleLockScope}>Lock Scope</Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>Edit</Button>
             <Button variant="outline" size="sm" style={{color: 'var(--color-danger)', borderColor: 'var(--color-danger)'}} onClick={handleDelete}>Delete</Button>
           </div>

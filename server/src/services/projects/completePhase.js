@@ -37,11 +37,21 @@ async function completePhase({ tenantId, userId, phaseId }) {
   await phaseRepository.signOffPhase(phaseId, userId, tenantId);
 
   // 4. Try to find and auto-start the next phase based on sequential sort_order
-  await pool.query(`
-    UPDATE project_phases
-    SET status = 'in_progress', updated_at = NOW()
-    WHERE project_id = $1 AND tenant_id = $2 AND sort_order = $3
-  `, [phase.project_id, tenantId, phase.sort_order + 1]);
+  const nextSortOrder = phase.sort_order + 1;
+  const nextPhaseRes = await pool.query(
+    'SELECT * FROM project_phases WHERE project_id = $1 AND tenant_id = $2 AND sort_order = $3',
+    [phase.project_id, tenantId, nextSortOrder]
+  );
+  if (nextPhaseRes.rows.length > 0) {
+    const nextPhase = nextPhaseRes.rows[0];
+    await checkScopeLock(tenantId, phase.project_id, nextPhase.id);
+
+    await pool.query(`
+      UPDATE project_phases
+      SET status = 'in_progress', updated_at = NOW()
+      WHERE id = $1
+    `, [nextPhase.id]);
+  }
 
   // Refetch the signed off phase to return the latest state
   const updatedPhaseRes = await pool.query('SELECT * FROM project_phases WHERE id = $1 AND tenant_id = $2', [phaseId, tenantId]);
@@ -83,4 +93,34 @@ async function completePhase({ tenantId, userId, phaseId }) {
   return updatedPhase;
 }
 
-module.exports = { completePhase };
+async function checkScopeLock(tenantId, projectId, phaseId) {
+  const phaseRes = await pool.query(
+    'SELECT * FROM project_phases WHERE id = $1 AND tenant_id = $2',
+    [phaseId, tenantId]
+  );
+  if (phaseRes.rows.length === 0) return;
+  const phase = phaseRes.rows[0];
+
+  if (phase.is_execution) {
+    const projectRes = await pool.query(
+      'SELECT is_scope_locked FROM projects WHERE id = $1 AND tenant_id = $2',
+      [projectId, tenantId]
+    );
+    if (projectRes.rows.length === 0) return;
+    const project = projectRes.rows[0];
+
+    const docRes = await pool.query(
+      "SELECT id FROM documents WHERE project_id = $1 AND tenant_id = $2 AND doc_type = 'contract' AND status = 'approved' LIMIT 1",
+      [projectId, tenantId]
+    );
+
+    if (!project.is_scope_locked || docRes.rows.length === 0) {
+      const error = new Error('SCOPE_LOCK_REQUIRED');
+      error.status = 400;
+      error.message = 'Cannot start execution phase: Design scope must be locked and contract document approved.';
+      throw error;
+    }
+  }
+}
+
+module.exports = { completePhase, checkScopeLock };

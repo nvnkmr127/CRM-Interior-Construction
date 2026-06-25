@@ -40,6 +40,8 @@ export const getDocuments = (projectId, params) => api.get(`/projects/${projectI
 
 export const getUploadUrl = (projectId, data) => api.post(`/projects/${projectId}/documents/upload-url`, data);
 
+export const getContractUploadUrl = (data) => api.post('/projects/contract/upload-url', data);
+
 export const registerDocument = (projectId, data) => api.post(`/projects/${projectId}/documents/register`, data);
 
 export const approveDocument = (projectId, did) => api.post(`/projects/${projectId}/documents/${did}/approve`);

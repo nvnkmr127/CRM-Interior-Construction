@@ -283,17 +283,125 @@ export const setupMockInterceptor = (api) => {
             } else if (url.match(/\/leads\/[a-zA-Z0-9-]+\/convert-to-project$/)) {
               if (method === 'post') {
                 const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                
+                // Dynamic checklist validation in mock
+                const checklistConfig = (mockDatabase.tenantSettings || {}).pre_conversion_checklist || [
+                  { key: 'contract_signed', label: 'Contract signed', required: true, active: true },
+                  { key: 'booking_received', label: 'Booking amount received', required: true, active: true },
+                  { key: 'scope_finalized', label: 'Scope frozen', required: true, active: true },
+                  { key: 'site_visit_completed', label: 'Site visit completed', required: true, active: true },
+                  { key: 'floor_plan', label: 'Floor plan attached', required: false, active: true },
+                  { key: 'site_address_confirmed', label: 'Site address confirmed', required: false, active: true }
+                ];
+                
+                const missingFields = [];
+                for (const item of checklistConfig) {
+                  if (item.active && item.required && !payload[item.key]) {
+                    missingFields.push(item.key);
+                  }
+                }
+                if (!payload.projectName || !payload.projectName.trim()) missingFields.push('projectName');
+                if (!payload.projectType) missingFields.push('projectType');
+                if (!payload.contract_file_key) missingFields.push('contract_file_key');
+                
+                if (missingFields.length > 0) {
+                  return Promise.reject({
+                    response: {
+                      status: 400,
+                      statusText: 'Bad Request',
+                      data: {
+                        success: false,
+                        error: {
+                          code: 'VALIDATION_ERROR',
+                          message: `Missing required fields: ${missingFields.join(', ')}`,
+                          missingFields
+                        }
+                      }
+                    }
+                  });
+                }
+
+                const advanceAmount = Number(payload.advanceAmount) || 0;
+                const paymentTerms = payload.paymentTerms || null;
+                const status = (advanceAmount > 0 || paymentTerms) ? 'pending_payment' : 'active';
+
                 const newProj = {
                   id: `mock-proj-${Date.now()}`,
                   name: payload.projectName || 'Converted Project',
                   client_name: payload.clientName || 'Client',
-                  status: 'active',
+                  status,
+                  booking_amount: advanceAmount,
+                  payment_terms: paymentTerms,
                   progress: 0,
                   created_at: new Date().toISOString(),
                   value: payload.contractValue || 0,
                   target_date: payload.handoverDate || null,
-                  pm_id: payload.pm || null
+                  pm_id: payload.pm || null,
+                  agreement_signed_by: payload.agreement_signed_by || null,
+                  agreement_signed_at: payload.agreement_signed_at || null,
+                  agreement_signature_method: payload.agreement_signature_method || null
                 };
+
+                const contractVal = Number(payload.contractValue || 0);
+                const templates = {
+                  '10_40_40_10': [
+                    { name: 'Booking Advance', pct: 10 },
+                    { name: 'Design Sign-off', pct: 40 },
+                    { name: 'Production Commencement', pct: 40 },
+                    { name: 'Handover', pct: 10 }
+                  ],
+                  '30_30_30_10': [
+                    { name: 'Booking Advance', pct: 30 },
+                    { name: 'Material Procurement', pct: 30 },
+                    { name: 'Mid-Execution', pct: 30 },
+                    { name: 'Handover', pct: 10 }
+                  ],
+                  '50_50': [
+                    { name: 'Booking Advance', pct: 50 },
+                    { name: 'Final Handover', pct: 50 }
+                  ]
+                };
+
+                let milestoneDefinitions = templates[paymentTerms];
+                if (!milestoneDefinitions && paymentTerms) {
+                  const parts = paymentTerms.split('_').map(Number);
+                  const total = parts.reduce((a, b) => a + b, 0);
+                  if (total === 100) {
+                    milestoneDefinitions = parts.map((pct, idx) => ({
+                      name: idx === 0 ? 'Booking Advance' : (idx === parts.length - 1 ? 'Handover' : `Installment ${idx + 1}`),
+                      pct
+                    }));
+                  }
+                }
+
+                if (milestoneDefinitions && contractVal > 0) {
+                  if (!mockDatabase.paymentMilestones) mockDatabase.paymentMilestones = [];
+                  milestoneDefinitions.forEach((def, index) => {
+                    const amount = (contractVal * (def.pct / 100)).toFixed(2);
+                    mockDatabase.paymentMilestones.push({
+                      id: `mock-pmil-${Date.now()}-${index}`,
+                      project_id: newProj.id,
+                      name: def.name,
+                      amount: Number(amount),
+                      percentage: def.pct,
+                      status: 'scheduled',
+                      due_date: index === 0 ? new Date().toISOString() : new Date(Date.now() + (index * 30 * 24 * 60 * 60 * 1000)).toISOString()
+                    });
+                  });
+                  newProj.booking_amount = Number((contractVal * (milestoneDefinitions[0].pct / 100)).toFixed(2));
+                } else if (newProj.booking_amount && newProj.booking_amount > 0) {
+                  if (!mockDatabase.paymentMilestones) mockDatabase.paymentMilestones = [];
+                  mockDatabase.paymentMilestones.push({
+                    id: `mock-pmil-${Date.now()}`,
+                    project_id: newProj.id,
+                    name: 'Booking Advance',
+                    amount: newProj.booking_amount,
+                    percentage: contractVal > 0 ? Number(((newProj.booking_amount / contractVal) * 100).toFixed(2)) : 100,
+                    status: 'scheduled',
+                    due_date: new Date().toISOString()
+                  });
+                }
+
                 mockDatabase.projects.push(newProj);
                 
                 // Also mark lead as converted if possible
@@ -464,6 +572,174 @@ export const setupMockInterceptor = (api) => {
               }
             }
           }
+          // PROJECTS PHASES AND SIGN-OFF
+          else if (url.includes('/phases') && url.includes('/projects')) {
+            const parts = url.split('?')[0].split('/');
+            const projectId = parts[parts.indexOf('projects') + 1];
+            
+            if (url.includes('/sign-off')) {
+              const phaseId = parts[parts.indexOf('phases') + 1];
+              if (method === 'post') {
+                if (!mockDatabase.phases) mockDatabase.phases = [];
+                const phase = mockDatabase.phases.find(p => p.id === phaseId);
+                if (phase) {
+                  const nextSortOrder = phase.sort_order + 1;
+                  const nextPhase = mockDatabase.phases.find(p => p.project_id === projectId && p.sort_order === nextSortOrder);
+                  
+                  if (nextPhase && nextPhase.is_execution) {
+                    const project = mockDatabase.projects.find(p => p.id === projectId);
+                    const contractDoc = mockDatabase.documents?.find(d => d.project_id === projectId && d.doc_type === 'contract' && d.status === 'approved');
+                    
+                    if (!project?.is_scope_locked || !contractDoc) {
+                      return Promise.reject({
+                        response: {
+                          status: 400,
+                          statusText: 'Bad Request',
+                          data: {
+                            success: false,
+                            error: {
+                              code: 'SCOPE_LOCK_REQUIRED',
+                              message: 'Cannot start execution phase: Design scope must be locked and contract document approved.'
+                            }
+                          }
+                        }
+                      });
+                    }
+                  }
+                  
+                  phase.status = 'completed';
+                  if (nextPhase) {
+                    nextPhase.status = 'in_progress';
+                  }
+                  persistDb();
+                  responseData.data = phase;
+                }
+              }
+            } else {
+              const phaseId = parts[parts.indexOf('phases') + 1];
+              if (method === 'get') {
+                responseData.data = mockDatabase.phases?.filter(p => p.project_id === projectId) || [];
+              } else if (method === 'put') {
+                const updates = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                const idx = mockDatabase.phases?.findIndex(p => p.id === phaseId);
+                if (idx !== -1) {
+                  const phase = mockDatabase.phases[idx];
+                  if (updates.status && (updates.status === 'in_progress' || updates.status === 'active')) {
+                    if (phase.is_execution) {
+                      const project = mockDatabase.projects.find(p => p.id === projectId);
+                      const contractDoc = mockDatabase.documents?.find(d => d.project_id === projectId && d.doc_type === 'contract' && d.status === 'approved');
+                      
+                      if (!project?.is_scope_locked || !contractDoc) {
+                        return Promise.reject({
+                          response: {
+                            status: 400,
+                            statusText: 'Bad Request',
+                            data: {
+                              success: false,
+                              error: {
+                                code: 'SCOPE_LOCK_REQUIRED',
+                                message: 'Cannot start execution phase: Design scope must be locked and contract document approved.'
+                              }
+                            }
+                          }
+                        });
+                      }
+                    }
+                  }
+                  mockDatabase.phases[idx] = { ...phase, ...updates };
+                  persistDb();
+                  responseData.data = mockDatabase.phases[idx];
+                }
+              }
+            }
+          }
+          // MILESTONES
+          else if (url.includes('/milestones')) {
+            const parts = url.split('?')[0].split('/');
+            const phaseId = parts[parts.indexOf('phases') + 1];
+            if (method === 'get') {
+              responseData.data = mockDatabase.milestones?.filter(m => m.phase_id === phaseId) || [];
+            } else if (method === 'post' && url.includes('/complete')) {
+              const milestoneId = parts[parts.indexOf('milestones') + 1];
+              const idx = mockDatabase.milestones?.findIndex(m => m.id === milestoneId);
+              if (idx !== -1) {
+                mockDatabase.milestones[idx].status = 'completed';
+                persistDb();
+                responseData.data = mockDatabase.milestones[idx];
+              }
+            }
+          }
+          // DOCUMENTS
+          else if (url.includes('/documents') && url.includes('/projects')) {
+            const parts = url.split('?')[0].split('/');
+            const projectId = parts[parts.indexOf('projects') + 1];
+            if (method === 'get') {
+              responseData.data = mockDatabase.documents?.filter(d => d.project_id === projectId) || [];
+            } else if (method === 'post') {
+              if (url.includes('/register')) {
+                const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                const newDoc = {
+                  id: `mock-doc-${Date.now()}`,
+                  project_id: projectId,
+                  doc_type: payload.doc_type || 'contract',
+                  status: 'pending',
+                  name: payload.name || 'Uploaded Document',
+                  storage_key: payload.storage_key || 'mock-key.pdf'
+                };
+                if (!mockDatabase.documents) mockDatabase.documents = [];
+                mockDatabase.documents.push(newDoc);
+                persistDb();
+                responseData.data = newDoc;
+              } else if (url.includes('/approve')) {
+                const docId = parts[parts.indexOf('documents') + 1];
+                const idx = mockDatabase.documents?.findIndex(d => d.id === docId);
+                if (idx !== -1) {
+                  mockDatabase.documents[idx].status = 'approved';
+                  persistDb();
+                  responseData.data = mockDatabase.documents[idx];
+                }
+              }
+            }
+          }
+          // PROJECTS CONTRACT UPLOAD
+          else if (url.includes('/projects/contract/upload-url')) {
+            if (method === 'post') {
+              responseData.data = {
+                uploadUrl: 'https://mock-s3.local/temp-contract-upload-url',
+                storageKey: `mock-contract-${Date.now()}.pdf`
+              };
+            }
+          }
+          // PAYMENT MILESTONES
+          else if (url.includes('/payment-milestones')) {
+            if (url.includes('/projects')) {
+              const parts = url.split('?')[0].split('/');
+              const projectId = parts[parts.indexOf('projects') + 1];
+              responseData.data = mockDatabase.paymentMilestones?.filter(m => m.project_id === projectId) || [];
+            } else {
+              const parts = url.split('?')[0].split('/');
+              const milestoneId = parts[parts.length - 1];
+              if (method === 'patch' || method === 'put') {
+                const updates = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                if (!mockDatabase.paymentMilestones) mockDatabase.paymentMilestones = [];
+                const idx = mockDatabase.paymentMilestones.findIndex(m => m.id === milestoneId);
+                if (idx !== -1) {
+                  mockDatabase.paymentMilestones[idx] = { ...mockDatabase.paymentMilestones[idx], ...updates };
+                  
+                  if (updates.status === 'paid' && mockDatabase.paymentMilestones[idx].name === 'Booking Advance') {
+                    const projectId = mockDatabase.paymentMilestones[idx].project_id;
+                    const pIdx = mockDatabase.projects.findIndex(p => p.id === projectId);
+                    if (pIdx !== -1) {
+                      mockDatabase.projects[pIdx].status = 'active';
+                    }
+                  }
+                  
+                  persistDb();
+                  responseData.data = mockDatabase.paymentMilestones[idx];
+                }
+              }
+            }
+          }
           // PROJECTS
           else if (url.includes('/projects')) {
             const match = url.match(/\/projects\/([a-zA-Z0-9-]+)$/);
@@ -471,10 +747,92 @@ export const setupMockInterceptor = (api) => {
 
             if (method === 'post') {
               const newProj = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              if (!newProj.contract_file_key) {
+                return Promise.reject({
+                  response: {
+                    status: 400,
+                    statusText: 'Bad Request',
+                    data: {
+                      success: false,
+                      error: {
+                        code: 'VALIDATION_ERROR',
+                        message: 'Contract document attachment is required during project creation.'
+                      }
+                    }
+                  }
+                });
+              }
+              const bookingAmt = Number(newProj.booking_amount || newProj.bookingAmount || 0);
+              const paymentTerms = newProj.payment_terms || newProj.paymentTerms || null;
+              const status = (bookingAmt > 0 || paymentTerms) ? 'pending_payment' : (newProj.status || 'active');
+
               newProj.id = `mock-proj-${Date.now()}`;
               newProj.created_at = new Date().toISOString();
-              newProj.status = newProj.status || 'active';
+              newProj.status = status;
+              newProj.booking_amount = bookingAmt;
+              newProj.payment_terms = paymentTerms;
               newProj.progress = newProj.progress || 0;
+
+              const contractVal = Number(newProj.contract_value || newProj.contractValue || 0);
+              const templates = {
+                '10_40_40_10': [
+                  { name: 'Booking Advance', pct: 10 },
+                  { name: 'Design Sign-off', pct: 40 },
+                  { name: 'Production Commencement', pct: 40 },
+                  { name: 'Handover', pct: 10 }
+                ],
+                '30_30_30_10': [
+                  { name: 'Booking Advance', pct: 30 },
+                  { name: 'Material Procurement', pct: 30 },
+                  { name: 'Mid-Execution', pct: 30 },
+                  { name: 'Handover', pct: 10 }
+                ],
+                '50_50': [
+                  { name: 'Booking Advance', pct: 50 },
+                  { name: 'Final Handover', pct: 50 }
+                ]
+              };
+
+              let milestoneDefinitions = templates[paymentTerms];
+              if (!milestoneDefinitions && paymentTerms) {
+                const parts = paymentTerms.split('_').map(Number);
+                const total = parts.reduce((a, b) => a + b, 0);
+                if (total === 100) {
+                  milestoneDefinitions = parts.map((pct, idx) => ({
+                    name: idx === 0 ? 'Booking Advance' : (idx === parts.length - 1 ? 'Handover' : `Installment ${idx + 1}`),
+                    pct
+                  }));
+                }
+              }
+
+              if (milestoneDefinitions && contractVal > 0) {
+                if (!mockDatabase.paymentMilestones) mockDatabase.paymentMilestones = [];
+                milestoneDefinitions.forEach((def, index) => {
+                  const amount = (contractVal * (def.pct / 100)).toFixed(2);
+                  mockDatabase.paymentMilestones.push({
+                    id: `mock-pmil-${Date.now()}-${index}`,
+                    project_id: newProj.id,
+                    name: def.name,
+                    amount: Number(amount),
+                    percentage: def.pct,
+                    status: 'scheduled',
+                    due_date: index === 0 ? new Date().toISOString() : new Date(Date.now() + (index * 30 * 24 * 60 * 60 * 1000)).toISOString()
+                  });
+                });
+                newProj.booking_amount = Number((contractVal * (milestoneDefinitions[0].pct / 100)).toFixed(2));
+              } else if (newProj.booking_amount && newProj.booking_amount > 0) {
+                if (!mockDatabase.paymentMilestones) mockDatabase.paymentMilestones = [];
+                mockDatabase.paymentMilestones.push({
+                  id: `mock-pmil-${Date.now()}`,
+                  project_id: newProj.id,
+                  name: 'Booking Advance',
+                  amount: newProj.booking_amount,
+                  percentage: contractVal > 0 ? Number(((newProj.booking_amount / contractVal) * 100).toFixed(2)) : 100,
+                  status: 'scheduled',
+                  due_date: new Date().toISOString()
+                });
+              }
+
               mockDatabase.projects.push(newProj);
               persistDb();
               responseData.data = newProj;
@@ -489,7 +847,31 @@ export const setupMockInterceptor = (api) => {
                 const updates = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
                 const idx = mockDatabase.projects.findIndex(p => p.id === projId);
                 if (idx !== -1) {
-                  mockDatabase.projects[idx] = { ...mockDatabase.projects[idx], ...updates };
+                  const currentProj = mockDatabase.projects[idx];
+                  const newStatus = updates.status || currentProj.status;
+
+                  if (newStatus === 'active' && currentProj.status !== 'active' && Number(currentProj.booking_amount) > 0) {
+                    const advanceMilestone = mockDatabase.paymentMilestones?.find(
+                      m => m.project_id === projId && m.name === 'Booking Advance'
+                    );
+                    if (advanceMilestone && advanceMilestone.status !== 'paid') {
+                      return Promise.reject({
+                        response: {
+                          status: 400,
+                          statusText: 'Bad Request',
+                          data: {
+                            success: false,
+                            error: {
+                              code: 'BOOKING_PAYMENT_REQUIRED',
+                              message: 'Cannot activate project: Booking advance payment has not been received.'
+                            }
+                          }
+                        }
+                      });
+                    }
+                  }
+
+                  mockDatabase.projects[idx] = { ...currentProj, ...updates };
                   persistDb();
                   responseData.data = mockDatabase.projects[idx];
                 }
@@ -601,6 +983,39 @@ export const setupMockInterceptor = (api) => {
                 persistDb();
                 responseData.data = { success: true };
               }
+            }
+          }
+          // TENANT SETTINGS
+          else if (url.includes('/config/tenant-settings')) {
+            if (method === 'get') {
+              responseData.data = mockDatabase.tenantSettings || {
+                pre_conversion_checklist: [
+                  { key: 'contract_signed', label: 'Contract signed', required: true, active: true },
+                  { key: 'booking_received', label: 'Booking amount received', required: true, active: true },
+                  { key: 'scope_finalized', label: 'Scope frozen', required: true, active: true },
+                  { key: 'site_visit_completed', label: 'Site visit completed', required: true, active: true },
+                  { key: 'floor_plan', label: 'Floor plan attached', required: false, active: true },
+                  { key: 'site_address_confirmed', label: 'Site address confirmed', required: false, active: true }
+                ]
+              };
+            } else if (method === 'patch') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const currentSettings = mockDatabase.tenantSettings || {
+                pre_conversion_checklist: [
+                  { key: 'contract_signed', label: 'Contract signed', required: true, active: true },
+                  { key: 'booking_received', label: 'Booking amount received', required: true, active: true },
+                  { key: 'scope_finalized', label: 'Scope frozen', required: true, active: true },
+                  { key: 'site_visit_completed', label: 'Site visit completed', required: true, active: true },
+                  { key: 'floor_plan', label: 'Floor plan attached', required: false, active: true },
+                  { key: 'site_address_confirmed', label: 'Site address confirmed', required: false, active: true }
+                ]
+              };
+              mockDatabase.tenantSettings = {
+                ...currentSettings,
+                ...payload
+              };
+              persistDb();
+              responseData.data = mockDatabase.tenantSettings;
             }
           }
           else if (isMutation) {

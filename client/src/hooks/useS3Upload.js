@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import axios from 'axios'  // bare axios, NOT our intercepted instance
-import { getUploadUrl, registerDocument } from '../api/projects.js'
+import { getUploadUrl, registerDocument, getContractUploadUrl } from '../api/projects.js'
 
 // Generic S3 upload hook
 // Usage:
@@ -73,5 +73,33 @@ export function useS3Upload() {
     }
   }
 
-  return { upload, uploadRaw, uploading, progress, error }
+  const uploadContract = async ({ file }) => {
+    setUploading(true); setProgress(0); setError(null);
+    try {
+      const res = await getContractUploadUrl({
+        name: file.name,
+        mimeType: file.type
+      });
+      const { uploadUrl, storageKey } = res.data.data;
+
+      await axios.put(uploadUrl, file, {
+        headers: { 'Content-Type': file.type },
+        onUploadProgress: (e) => setProgress(Math.round(e.loaded * 100 / e.total)),
+      });
+
+      return {
+        storageKey,
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type
+      };
+    } catch (e) {
+      setError('Contract upload failed. Please try again.');
+      throw e;
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return { upload, uploadRaw, uploadContract, uploading, progress, error }
 }

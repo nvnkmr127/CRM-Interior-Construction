@@ -94,7 +94,7 @@ export default function PhaseTimeline({ projectId }) {
       await signOffPhase(projectId, phase.id);
       setPhases(prev => prev.map((p, i, arr) => {
         if (p.id === phase.id) return { ...p, status: 'completed', error: null };
-        if (arr[i - 1]?.id === phase.id && p.status === 'pending') return { ...p, status: 'active' };
+        if (arr[i - 1]?.id === phase.id && p.status === 'pending') return { ...p, status: 'in_progress' };
         return p;
       }));
       toast.success(`${phase.name} signed off`);
@@ -124,7 +124,7 @@ export default function PhaseTimeline({ projectId }) {
         const isLast = idx === phases.length - 1;
         const allDone = phase.milestones.length > 0 && phase.milestones.every(m => m.done);
         const isCompleted = phase.status === 'completed';
-        const isActive = phase.status === 'active';
+        const isActive = phase.status === 'active' || phase.status === 'in_progress';
 
         let dotClass = styles.dotPending;
         if (isActive) dotClass = styles.dotActive;

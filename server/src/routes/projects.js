@@ -31,16 +31,49 @@ const createProjectSchema = z.object({
   pm_id: z.string().uuid().optional().nullable(),
   designer_id: z.string().uuid().optional().nullable(),
   contract_value: z.number().optional().nullable(),
+  booking_amount: z.number().optional().nullable(),
   start_date: z.string().optional().nullable(),
   target_date: z.string().optional().nullable(),
   site_address: z.string().optional().nullable(),
   templateId: z.string().uuid().optional().nullable(),
   client_phone: z.string().optional().nullable(),
-  client_email: z.string().email().optional().nullable()
+  client_email: z.string().email().optional().nullable(),
+  contract_file_key: z.string({ required_error: 'Contract file key is required' }).min(1, 'Contract file key is required'),
+  contract_file_name: z.string({ required_error: 'Contract file name is required' }).min(1, 'Contract file name is required'),
+  contract_file_size: z.number({ required_error: 'Contract file size is required' }).positive('Contract file size must be positive'),
+  contract_file_mime: z.string({ required_error: 'Contract file mime type is required' }).min(1, 'Contract file mime type is required'),
+  is_scope_locked: z.boolean().optional(),
+  agreement_signed_by: z.string().optional().nullable(),
+  agreement_signed_at: z.string().optional().nullable(),
+  agreement_signature_method: z.string().optional().nullable(),
+  payment_terms: z.string().optional().nullable()
 });
 
 const updateProjectSchema = createProjectSchema.partial().extend({
   status: z.string().optional()
+});
+
+// Route to generate S3 pre-signed upload URL for contract document
+router.post('/contract/upload-url', authorize('projects:create'), async (req, res, next) => {
+  try {
+    const { name, mimeType } = z.object({
+      name: z.string().min(1, 'File name is required'),
+      mimeType: z.string().min(1, 'Mime type is required')
+    }).parse(req.body);
+
+    const { getUploadUrl } = require('../services/documents/documentService');
+    const result = await getUploadUrl({
+      tenantId: req.tenantId,
+      projectId: 'temp',
+      name,
+      mimeType
+    });
+    return success(res, result);
+  } catch (err) {
+    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    console.error('[Projects Router] contract upload-url error:', err);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to generate contract upload URL.', 500);
+  }
 });
 
 router.post('/', authorize('projects:create'), async (req, res, next) => {
@@ -116,6 +149,9 @@ router.patch('/:id', authorize('projects:update'), async (req, res, next) => {
   } catch (err) {
     if (err instanceof z.ZodError) {
       return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    }
+    if (err.message === 'BOOKING_PAYMENT_REQUIRED' || err.status === 400) {
+      return fail(res, 'BOOKING_PAYMENT_REQUIRED', err.message, 400);
     }
     if (err.message === 'NOT_FOUND' || err.status === 404) {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
