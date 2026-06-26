@@ -13,6 +13,11 @@ const PaymentsTab = React.lazy(() => import('./PaymentsTab'));
 const SnagsDashboard = React.lazy(() => import('./SnagsDashboard'));
 const HandoverChecklist = React.lazy(() => import('./HandoverChecklist'));
 const DesignRequirements = React.lazy(() => import('../../components/projects/DesignRequirements'));
+const DesignAssetsTab = React.lazy(() => import('../../components/projects/DesignAssetsTab'));
+const DesignReviewsTab = React.lazy(() => import('../../components/projects/DesignReviewsTab'));
+const MaterialPalettesTab = React.lazy(() => import('../../components/projects/MaterialPalettesTab'));
+const ChangeOrdersTab = React.lazy(() => import('../../components/projects/ChangeOrdersTab'));
+const ProjectQuotationsTab = React.lazy(() => import('../../components/projects/ProjectQuotationsTab'));
 
 function formatDate(dateStr) {
   if (!dateStr) return '—';
@@ -77,6 +82,8 @@ function OverviewTab({ project }) {
     { label: 'Agreement Signed By', value: project.agreement_signed_by || '—' },
     { label: 'Agreement Signed Date', value: formatDate(project.agreement_signed_at) },
     { label: 'Signature Method', value: project.agreement_signature_method ? project.agreement_signature_method.replace(/_/g, ' ') : '—' },
+    { label: 'Allowed Design Revisions', value: project.allowed_design_revisions !== undefined && project.allowed_design_revisions !== null ? project.allowed_design_revisions : 3 },
+    { label: 'Current Design Revisions', value: project.current_design_revisions !== undefined && project.current_design_revisions !== null ? project.current_design_revisions : 0 },
   ];
 
   return (
@@ -456,7 +463,7 @@ export default function ProjectDetail() {
     }
   };
 
-  const tabs = ['Overview', 'Design Brief', 'Phases', 'Tasks', 'Documents', 'Payments', 'Snags', 'Handover'];
+  const tabs = ['Overview', 'Design Brief', 'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 'Change Orders', 'Phases', 'Tasks', 'Documents', 'Payments', 'Snags', 'Handover'];
 
   useEffect(() => {
     if (!projectId) return;
@@ -471,6 +478,11 @@ export default function ProjectDetail() {
     switch (activeTab) {
       case 'Overview': return project ? <OverviewTab project={project} /> : null;
       case 'Design Brief': return <DesignRequirements projectId={projectId} />;
+      case 'Design Assets': return <DesignAssetsTab projectId={projectId} />;
+      case 'Design Reviews': return <DesignReviewsTab projectId={projectId} />;
+      case 'Material Palettes': return <MaterialPalettesTab projectId={projectId} />;
+      case 'Quotations & BOQ': return <ProjectQuotationsTab projectId={projectId} />;
+      case 'Change Orders': return <ChangeOrdersTab projectId={projectId} />;
       case 'Phases': return <PhaseTimeline projectId={projectId} />;
       case 'Tasks': return <TaskKanban projectId={projectId} />;
       case 'Documents': return <DocumentPanel projectId={projectId} />;

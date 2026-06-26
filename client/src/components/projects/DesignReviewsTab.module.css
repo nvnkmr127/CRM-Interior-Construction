@@ -1,0 +1,251 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 8px 0;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.headerInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #0f172a);
+}
+
+.description {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #64748b);
+}
+
+.lockCard {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius-lg, 12px);
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.lockCardLocked {
+  background: var(--color-background-elevation-2, #f8fafc);
+  border: 1px solid var(--color-border, #cbd5e1);
+  color: var(--color-text-primary, #0f172a);
+}
+
+.lockTitle {
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lockDesc {
+  font-size: 0.825rem;
+  color: var(--color-text-secondary, #475569);
+  margin-top: 4px;
+}
+
+.roundsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.roundsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  .roundsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .roundsGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.roundCard {
+  background: var(--color-background-elevation-1, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.roundCard:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+.roundCardActive {
+  border-color: var(--color-accent, #3b82f6);
+  background: rgba(59, 130, 246, 0.02);
+}
+
+.roundCardTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #0f172a);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.roundStats {
+  font-size: 0.825rem;
+  color: var(--color-text-secondary, #64748b);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detailView {
+  background: var(--color-background-elevation-1, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.backBtn {
+  background: none;
+  border: none;
+  color: var(--color-accent, #3b82f6);
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  width: fit-content;
+}
+
+.backBtn:hover {
+  text-decoration: underline;
+}
+
+.drawingsList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.drawingCard {
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.drawingInfo {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  flex-grow: 1;
+}
+
+.thumbnail {
+  width: 80px;
+  height: 60px;
+  background: var(--color-background-elevation-2, #f8fafc);
+  border-radius: 4px;
+  object-fit: cover;
+  border: 1px solid var(--color-border, #cbd5e1);
+  cursor: pointer;
+}
+
+.drawingText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.drawingTitle {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--color-text-primary, #0f172a);
+}
+
+.commentSection {
+  background: var(--color-background-elevation-2, #f8fafc);
+  border-radius: var(--radius-md, 8px);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  width: 100%;
+}
+
+.commentList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.commentBubble {
+  background: var(--color-background-elevation-1, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-sm, 6px);
+  padding: 8px 12px;
+  font-size: 0.825rem;
+  line-height: 1.4;
+}
+
+.commentMeta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--color-text-secondary, #94a3b8);
+  margin-top: 4px;
+}
+
+.commentInputGroup {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Association UI */
+.unassignedSection {
+  background: var(--color-background-elevation-2, #f8fafc);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  padding: 20px;
+}

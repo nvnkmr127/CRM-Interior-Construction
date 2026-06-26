@@ -5,6 +5,10 @@ import { usePortalAuth } from '../store/portalAuthContext'
 const NAV_ITEMS = [
   { path: '/portal/overview', label: 'Overview', icon: '🏠' },
   { path: '/portal/approvals', label: 'Approvals', icon: '📋' },
+  { path: '/portal/design-concepts', label: 'Design Concepts', icon: '🎨' },
+  { path: '/portal/design-reviews', label: 'Design Reviews', icon: '📐' },
+  { path: '/portal/material-palettes', label: 'Material Palettes', icon: '🧱' },
+  { path: '/portal/change-orders', label: 'Change Orders', icon: '📄' },
   { path: '/portal/documents', label: 'Documents', icon: '📁' },
   { path: '/portal/snags', label: 'Snags', icon: '🔧' },
   { path: '/portal/payments', label: 'Payments', icon: '💳' }

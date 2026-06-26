@@ -28,7 +28,10 @@ async function createTask({ tenantId, userId, data }) {
   // 1. Verify milestone association securely against the project and tenant context
   if (mappedData.milestone_id) {
     const { rows } = await pool.query(
-      'SELECT id FROM milestones WHERE id = $1 AND project_id = $2 AND tenant_id = $3',
+      `SELECT m.id, p.is_execution, p.project_id 
+       FROM milestones m 
+       JOIN project_phases p ON m.phase_id = p.id
+       WHERE m.id = $1 AND m.project_id = $2 AND m.tenant_id = $3`,
       [mappedData.milestone_id, mappedData.project_id, tenantId]
     );
     if (rows.length === 0) {
@@ -36,6 +39,21 @@ async function createTask({ tenantId, userId, data }) {
       err.status = 400;
       err.details = 'Milestone does not exist or does not belong to this project.';
       throw err;
+    }
+
+    const milestoneInfo = rows[0];
+    if (milestoneInfo.is_execution) {
+      const { rows: projRows } = await pool.query(
+        'SELECT is_scope_locked FROM projects WHERE id = $1 AND tenant_id = $2',
+        [mappedData.project_id, tenantId]
+      );
+      const isLocked = projRows[0]?.is_scope_locked;
+      if (!isLocked) {
+        const err = new Error('DESIGN_NOT_FROZEN');
+        err.status = 400;
+        err.details = 'Cannot create task in an execution phase (procurement/production) until the design is frozen.';
+        throw err;
+      }
     }
   }
 

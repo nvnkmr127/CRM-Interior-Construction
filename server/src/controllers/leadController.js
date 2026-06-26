@@ -216,11 +216,41 @@ exports.convertToProjectHandler = async (req, res, next) => {
           [tenantId, leadId, newProjectId]
         );
         if (existingQuote.rows.length === 0) {
-          await pool.query(
-            `INSERT INTO quotations (tenant_id, lead_id, project_id, total_amount, subtotal, status, created_by, notes)
-             VALUES ($1, $2, $3, $4, $4, 'draft', $5, $6)`,
-            [tenantId, leadId, newProjectId, est.total_amount || 0, userId, `Migrated from lead estimate on conversion. Estimator Ref: ${est.estimator_reference_id || 'N/A'}`]
+          const qNum = est.estimator_reference_id || `QT-${Date.now().toString().slice(-6)}`;
+          const insertQuoteRes = await pool.query(
+            `INSERT INTO quotations (tenant_id, lead_id, project_id, total_amount, subtotal, status, created_by, notes, quotation_number)
+             VALUES ($1, $2, $3, $4, $4, 'draft', $5, $6, $7)
+             RETURNING id`,
+            [tenantId, leadId, newProjectId, est.total_amount || 0, userId, `Migrated from lead estimate on conversion. Estimator Ref: ${est.estimator_reference_id || 'N/A'}`, qNum]
           );
+          const quotationId = insertQuoteRes.rows[0].id;
+
+          // Clone rooms & items from lead estimate payload
+          const payload = est.payload || {};
+          if (Array.isArray(payload.rooms)) {
+            let sortOrder = 0;
+            for (const room of payload.rooms) {
+              if (Array.isArray(room.items)) {
+                for (const item of room.items) {
+                  await pool.query(
+                    `INSERT INTO quotation_items 
+                     (tenant_id, quotation_id, room_or_area, item_name, description, quantity, unit_price, sort_order, item_key)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, gen_random_uuid())`,
+                    [
+                      tenantId,
+                      quotationId,
+                      room.name || 'General',
+                      (item.description || 'BOQ Item').substring(0, 255),
+                      item.description || '',
+                      parseFloat(item.qty || 1),
+                      parseFloat(item.rate || 0),
+                      sortOrder++
+                    ]
+                  );
+                }
+              }
+            }
+          }
         }
       }
     }

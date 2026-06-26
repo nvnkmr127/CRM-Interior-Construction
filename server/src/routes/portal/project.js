@@ -24,6 +24,7 @@ router.get('/', async (req, res, next) => {
         p.status, 
         p.start_date, 
         p.target_date,
+        p.is_scope_locked,
         pm_user.name AS pm_name,
         designer_user.name AS designer_name,
         (

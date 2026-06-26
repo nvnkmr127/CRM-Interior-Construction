@@ -12,6 +12,11 @@ const projectRepository = require('../repositories/projectRepository');
 const phasesRoutes = require('./phases');
 const tasksRoutes = require('./tasks');
 const documentsRoutes = require('./documents');
+const designAssetsRoutes = require('./designAssets');
+const designReviewsRoutes = require('./designReviews');
+const materialPalettesRoutes = require('./materialPalettes');
+const changeOrdersRoutes = require('./changeOrders');
+const quotationsRoutes = require('./quotations');
 
 const router = express.Router();
 
@@ -21,6 +26,11 @@ router.use(authenticate);
 router.use('/:projectId/phases', phasesRoutes);
 router.use('/:projectId/tasks', tasksRoutes);
 router.use('/:projectId/documents', documentsRoutes);
+router.use('/:projectId/design-assets', designAssetsRoutes);
+router.use('/:projectId/design-reviews', designReviewsRoutes);
+router.use('/:projectId/material-palettes', materialPalettesRoutes);
+router.use('/:projectId/change-orders', changeOrdersRoutes);
+router.use('/:projectId/quotations', quotationsRoutes);
 
 // Standard CRUD routes
 
@@ -79,6 +89,8 @@ const createProjectSchema = z.object({
   property_age: z.string().optional().nullable(),
   renovation_scope: z.string().optional().nullable(),
   segment: z.string().optional().nullable(),
+  allowed_design_revisions: z.number().int().nonnegative().optional().nullable(),
+  current_design_revisions: z.number().int().nonnegative().optional().nullable(),
   measurements: z.array(z.object({
     room_name: z.string().min(1, 'Room name is required'),
     length: z.number().optional().nullable(),

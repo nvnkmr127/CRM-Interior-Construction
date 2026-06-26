@@ -12,7 +12,8 @@ class ProjectRepository {
       flat_number, floor, building_name, street, city, pincode, landmark, latitude, longitude,
       builder_name, society_name, rera_id, noc_status, occupancy_certificate_status, property_handover_date,
       carpet_area, built_up_area, number_of_rooms,
-      project_category, project_sub_category, property_type, property_age, renovation_scope, segment
+      project_category, project_sub_category, property_type, property_age, renovation_scope, segment,
+      allowed_design_revisions = 3, current_design_revisions = 0
     } = data;
 
     const query = `
@@ -26,12 +27,13 @@ class ProjectRepository {
         flat_number, floor, building_name, street, city, pincode, landmark, latitude, longitude,
         builder_name, society_name, rera_id, noc_status, occupancy_certificate_status, property_handover_date,
         carpet_area, built_up_area, number_of_rooms,
-        project_category, project_sub_category, property_type, property_age, renovation_scope, segment
+        project_category, project_sub_category, property_type, property_age, renovation_scope, segment,
+        allowed_design_revisions, current_design_revisions
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36,
         $37, $38, $39,
-        $40, $41, $42, $43, $44, $45
+        $40, $41, $42, $43, $44, $45, $46, $47
       ) RETURNING *
     `;
     const values = [
@@ -64,7 +66,9 @@ class ProjectRepository {
       property_type || null,
       property_age || null,
       renovation_scope || null,
-      segment || null
+      segment || null,
+      allowed_design_revisions,
+      current_design_revisions
     ];
 
     const { rows } = await dbClient.query(query, values);

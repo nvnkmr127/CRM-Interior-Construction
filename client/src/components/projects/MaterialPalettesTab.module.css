@@ -1,0 +1,221 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 8px 0;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.headerInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #0f172a);
+}
+
+.description {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #64748b);
+}
+
+.roomSection {
+  background: var(--color-background-elevation-1, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.roomHeader {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text-primary, #0f172a);
+  border-bottom: 2px solid var(--color-accent, #3b82f6);
+  padding-bottom: 8px;
+  width: fit-content;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.card {
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-background-elevation-1, #ffffff);
+}
+
+.swatchWrapper {
+  height: 120px;
+  background: var(--color-background-elevation-2, #f8fafc);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  position: relative;
+}
+
+.swatch {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.swatchPlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-muted, #94a3b8);
+  font-size: 0.8rem;
+}
+
+.cardContent {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex-grow: 1;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.itemName {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--color-text-primary, #0f172a);
+}
+
+.specsList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+}
+
+.specRow {
+  display: flex;
+  justify-content: space-between;
+}
+
+.specLabel {
+  color: var(--color-text-secondary, #64748b);
+}
+
+.specVal {
+  font-weight: 600;
+  color: var(--color-text-primary, #0f172a);
+}
+
+.feedbackBox {
+  background: #fef2f2;
+  border: 1px solid #fee2e2;
+  color: #991b1b;
+  font-size: 0.775rem;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm, 6px);
+  margin-top: 4px;
+}
+
+.cardFooter {
+  border-top: 1px solid var(--color-border, #f1f5f9);
+  padding: 8px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.approvalMeta {
+  font-size: 0.7rem;
+  color: var(--color-text-muted, #94a3b8);
+}
+
+.actions {
+  display: flex;
+  gap: 4px;
+}
+
+/* Forms */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-primary, #0f172a);
+}
+
+.uploadTrigger {
+  border: 2px dashed var(--color-border, #cbd5e1);
+  border-radius: var(--radius-md, 8px);
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--color-background-elevation-2, #f8fafc);
+}
+
+.uploadIcon {
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+
+.uploadText {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary, #64748b);
+}
+
+.imgPreview {
+  width: 100%;
+  max-height: 120px;
+  object-fit: contain;
+  margin-top: 8px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border, #cbd5e1);
+}

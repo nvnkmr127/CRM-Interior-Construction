@@ -61,7 +61,9 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
     propertyType: '',
     propertyAge: '',
     renovationScope: '',
-    segment: ''
+    segment: '',
+    allowedDesignRevisions: 3,
+    currentDesignRevisions: 0
   })
   
   const [errors, setErrors] = useState({})
@@ -159,6 +161,8 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
         propertyAge: project.property_age || project.propertyAge || '',
         renovationScope: project.renovation_scope || project.renovationScope || '',
         segment: project.segment || '',
+        allowedDesignRevisions: project.allowed_design_revisions !== undefined && project.allowed_design_revisions !== null ? project.allowed_design_revisions : 3,
+        currentDesignRevisions: project.current_design_revisions !== undefined && project.current_design_revisions !== null ? project.current_design_revisions : 0,
         vendors: project.vendors || [],
         consultants: project.consultants || []
       })
@@ -178,6 +182,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
         contacts: [], measurements: [], carpetArea: '', builtUpArea: '', numberOfRooms: '',
         projectCategory: '', projectSubCategory: '', propertyType: '', propertyAge: '',
         renovationScope: '', segment: '',
+        allowedDesignRevisions: 3, currentDesignRevisions: 0,
         vendors: [], consultants: []
       })
       setContractFile(null)
@@ -255,6 +260,8 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
         property_age: formData.propertyAge || null,
         renovation_scope: formData.renovationScope || null,
         segment: formData.segment || null,
+        allowed_design_revisions: formData.allowedDesignRevisions !== '' && formData.allowedDesignRevisions !== undefined ? Number(formData.allowedDesignRevisions) : 3,
+        current_design_revisions: formData.currentDesignRevisions !== '' && formData.currentDesignRevisions !== undefined ? Number(formData.currentDesignRevisions) : 0,
         measurements: formData.measurements || [],
         vendors: formData.vendors || [],
         consultants: formData.consultants || [],
@@ -1223,6 +1230,29 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
               value={formData.bookingAmount} 
               onChange={e => setFormData({...formData, bookingAmount: e.target.value})} 
               disabled={!!project}
+            />
+          </div>
+        </div>
+
+        <div className={styles.fullWidth} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+          <div>
+            <Input 
+              label="Allowed Design Revisions" 
+              type="number"
+              placeholder="e.g. 3"
+              value={formData.allowedDesignRevisions} 
+              onChange={e => setFormData({...formData, allowedDesignRevisions: e.target.value})} 
+              error={errors.allowedDesignRevisions}
+            />
+          </div>
+          <div>
+            <Input 
+              label="Current Design Revisions" 
+              type="number"
+              placeholder="e.g. 0"
+              value={formData.currentDesignRevisions} 
+              onChange={e => setFormData({...formData, currentDesignRevisions: e.target.value})} 
+              error={errors.currentDesignRevisions}
             />
           </div>
         </div>

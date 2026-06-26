@@ -12,6 +12,32 @@ async function updateTask({ tenantId, userId, taskId, data }) {
     throw error;
   }
 
+  // 1.5. Validate design freeze for execution phase tasks when changing status from todo/pending/draft
+  if (data.status && data.status !== 'todo' && currentTask.status === 'todo') {
+    if (currentTask.milestone_id) {
+      const { rows } = await pool.query(
+        `SELECT p.is_execution 
+         FROM milestones m 
+         JOIN project_phases p ON m.phase_id = p.id
+         WHERE m.id = $1 AND m.tenant_id = $2`,
+        [currentTask.milestone_id, tenantId]
+      );
+      if (rows.length > 0 && rows[0].is_execution) {
+        const { rows: projRows } = await pool.query(
+          'SELECT is_scope_locked FROM projects WHERE id = $1 AND tenant_id = $2',
+          [currentTask.project_id, tenantId]
+        );
+        const isLocked = projRows[0]?.is_scope_locked;
+        if (!isLocked) {
+          const err = new Error('DESIGN_NOT_FROZEN');
+          err.status = 400;
+          err.message = 'Cannot trigger execution tasks: Design must be frozen before starting procurement or production.';
+          throw err;
+        }
+      }
+    }
+  }
+
   // 2. Validate structural integrity if user is marking task as 'done'
   if (data.status === 'done' && currentTask.status !== 'done') {
     const { rows: subtasks } = await pool.query(

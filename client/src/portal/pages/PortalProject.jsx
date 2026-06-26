@@ -29,7 +29,10 @@ export default function PortalProject() {
       const payments = payRes.data.data || [];
 
       setData({
-        project: { name: proj.client_name ? `${proj.client_name}'s Residence` : proj.name },
+        project: { 
+          name: proj.client_name ? `${proj.client_name}'s Residence` : proj.name,
+          is_scope_locked: proj.is_scope_locked 
+        },
         pm: { name: proj.pm_name || 'Assigned Soon', phone: 'Contact office' },
         progress: {
           percent: proj.task_completion_pct || 0,
@@ -87,6 +90,22 @@ export default function PortalProject() {
             <div style={{fontWeight:600}}>{data.pm.name}</div>
           </div>
           <a href={`tel:${data.pm.phone}`} className={styles.callBtn}>Call {data.pm.phone}</a>
+        </div>
+      </div>
+
+      <div className={`${styles.card} ${data.project.is_scope_locked ? styles.designFrozenCard : styles.designActiveCard}`}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <span style={{ fontSize: '28px' }}>{data.project.is_scope_locked ? '🔒' : '🎨'}</span>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+              Design Scope: {data.project.is_scope_locked ? 'Frozen (Locked)' : 'Active / Revisions Open'}
+            </h3>
+            <p style={{ margin: '6px 0 0', fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: '1.4' }}>
+              {data.project.is_scope_locked
+                ? 'Your design is frozen. Procurement of materials and production are now authorized to proceed. Any new changes will require a commercial Change Order.'
+                : 'Your design is currently open for feedback and adjustments. To avoid delays, review the drawings under Design Reviews and approve the design to freeze the scope.'}
+            </p>
+          </div>
         </div>
       </div>
 

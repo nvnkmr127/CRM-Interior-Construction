@@ -49,3 +49,14 @@
   .callBtn { width: 100%; text-align: center; }
   .paymentTable th:nth-child(3), .paymentTable td:nth-child(3) { display: none; }
 }
+
+.designFrozenCard {
+  border-left: 5px solid #059669;
+  background: #f0fdf4 !important;
+}
+
+.designActiveCard {
+  border-left: 5px solid #3b82f6;
+  background: #f0f9ff !important;
+}
+
