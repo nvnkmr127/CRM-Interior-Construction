@@ -64,6 +64,10 @@ router.get('/:id/estimates', authenticate, authorize('leads:read'), leadControll
 router.post('/:id/estimates/sync', authenticate, authorize('leads:update'), leadController.syncEstimatesHandler);
 router.post('/:id/estimates/webhook', leadController.estimatorWebhookHandler);
 
+// Lead Measurements Integration
+router.post('/:id/measurements', authenticate, authorize('leads:update'), leadController.captureMeasurementHandler);
+router.get('/:id/measurements', authenticate, authorize('leads:read'), leadController.getMeasurementsHandler);
+
 // Multi-Contact Management
 router.get('/:id/contacts', authenticate, authorize('leads:read'), leadController.getContactsHandler);
 router.post('/:id/contacts', authenticate, authorize('leads:update'), leadController.createContactHandler);

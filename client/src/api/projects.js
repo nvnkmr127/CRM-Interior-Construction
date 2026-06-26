@@ -51,3 +51,14 @@ export const getDocumentUrl = (projectId, did) => api.get(`/projects/${projectId
 export const requestRevision = (projectId, did, note) => api.post(`/projects/${projectId}/documents/${did}/revision`, { note });
 
 export const addVersion = (projectId, did, storageKey) => api.post(`/projects/${projectId}/documents/${did}/version`, { storageKey });
+
+// Design Requirements
+export const getDesignRequirements = (projectId) => api.get(`/projects/${projectId}/design-requirements`);
+export const updateDesignRequirements = (projectId, data) => api.put(`/projects/${projectId}/design-requirements`, data);
+
+export const createRoomRequirement = (projectId, data) => api.post(`/projects/${projectId}/room-requirements`, data);
+export const updateRoomRequirement = (projectId, id, data) => api.put(`/projects/${projectId}/room-requirements/${id}`, data);
+export const deleteRoomRequirement = (projectId, id) => api.delete(`/projects/${projectId}/room-requirements/${id}`);
+
+export const createProjectInspiration = (projectId, data) => api.post(`/projects/${projectId}/inspirations`, data);
+export const deleteProjectInspiration = (projectId, id) => api.delete(`/projects/${projectId}/inspirations/${id}`);

@@ -1,14 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../ui';
 import { useToast } from '../../store/toastContext';
 import { createEstimate } from '../../api/leads';
+import api from '../../api/axios';
 
 export default function EstimatorBuilder({ leadId, onSaved, onCancel }) {
   const toast = useToast();
   const [rooms, setRooms] = useState([
     { id: Date.now(), name: 'Master Bedroom', items: [] }
   ]);
+  const [measurements, setMeasurements] = useState([]);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (leadId) {
+      api.get(`/leads/${leadId}/measurements`)
+        .then(res => {
+          if (res.data && res.data.success && Array.isArray(res.data.data)) {
+            setMeasurements(res.data.data);
+          }
+        })
+        .catch(err => console.error('Failed to load lead measurements in EstimatorBuilder:', err));
+    }
+  }, [leadId]);
 
   const addRoom = () => {
     setRooms([...rooms, { id: Date.now(), name: 'New Room', items: [] }]);
@@ -104,14 +118,33 @@ export default function EstimatorBuilder({ leadId, onSaved, onCancel }) {
         <div className="max-w-4xl mx-auto space-y-6">
           {rooms.map((room, rIndex) => (
             <div key={room.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gray-100 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
-                <input
-                  type="text"
-                  value={room.name}
-                  onChange={(e) => updateRoomName(room.id, e.target.value)}
-                  className="bg-transparent font-bold text-gray-800 focus:outline-none focus:border-b border-blue-500"
-                  placeholder="Room Name"
-                />
+              <div className="bg-gray-100 px-4 py-3 border-b border-gray-200 flex justify-between items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={room.name}
+                    onChange={(e) => updateRoomName(room.id, e.target.value)}
+                    className="bg-transparent font-bold text-gray-800 focus:outline-none focus:border-b border-blue-500"
+                    placeholder="Room Name"
+                  />
+                  {measurements && measurements.length > 0 && (
+                    <select
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val) {
+                          updateRoomName(room.id, val);
+                        }
+                      }}
+                      value={measurements.some(m => m.room_name === room.name) ? room.name : ''}
+                      className="bg-white border border-gray-300 rounded px-2 py-0.5 text-xs text-gray-700 focus:outline-none"
+                    >
+                      <option value="">-- Match Room Measurement --</option>
+                      {measurements.map(m => (
+                        <option key={m.id} value={m.room_name}>{m.room_name}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
                 <button onClick={() => removeRoom(room.id)} className="text-red-500 hover:text-red-700 text-sm font-medium">Remove Room</button>
               </div>
 
@@ -144,13 +177,65 @@ export default function EstimatorBuilder({ leadId, onSaved, onCancel }) {
                               />
                             </td>
                             <td className="py-2 pr-2">
-                              <input
-                                type="number"
-                                min="1"
-                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
-                                value={item.qty}
-                                onChange={e => updateItem(room.id, item.id, 'qty', e.target.value)}
-                              />
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  className="w-20 border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
+                                  value={item.qty}
+                                  onChange={e => updateItem(room.id, item.id, 'qty', e.target.value)}
+                                />
+                                {(() => {
+                                  const matchingRoom = measurements.find(m => m.room_name.toLowerCase() === room.name.toLowerCase());
+                                  if (!matchingRoom) return null;
+                                  return (
+                                    <div className="relative group">
+                                      <button 
+                                        type="button"
+                                        className="px-1.5 py-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 rounded border border-blue-200 cursor-pointer font-medium"
+                                        title="Use room dimension"
+                                      >
+                                        📐
+                                      </button>
+                                      <div className="absolute left-0 mt-1 hidden group-hover:block bg-white border border-gray-200 rounded shadow-md z-10 py-1 min-w-[120px]">
+                                        <div className="px-2 py-1 text-[10px] text-gray-400 font-bold border-b border-gray-100">INSERT DIMENSION</div>
+                                        <button 
+                                          type="button"
+                                          onClick={() => updateItem(room.id, item.id, 'qty', matchingRoom.length)}
+                                          className="w-full text-left px-3 py-1 hover:bg-gray-100 text-xs text-gray-700 flex justify-between"
+                                        >
+                                          <span>Length</span>
+                                          <span className="font-semibold text-gray-500">{matchingRoom.length}</span>
+                                        </button>
+                                        <button 
+                                          type="button"
+                                          onClick={() => updateItem(room.id, item.id, 'qty', matchingRoom.width)}
+                                          className="w-full text-left px-3 py-1 hover:bg-gray-100 text-xs text-gray-700 flex justify-between"
+                                        >
+                                          <span>Width</span>
+                                          <span className="font-semibold text-gray-500">{matchingRoom.width}</span>
+                                        </button>
+                                        <button 
+                                          type="button"
+                                          onClick={() => updateItem(room.id, item.id, 'qty', matchingRoom.height)}
+                                          className="w-full text-left px-3 py-1 hover:bg-gray-100 text-xs text-gray-700 flex justify-between"
+                                        >
+                                          <span>Height</span>
+                                          <span className="font-semibold text-gray-500">{matchingRoom.height}</span>
+                                        </button>
+                                        <button 
+                                          type="button"
+                                          onClick={() => updateItem(room.id, item.id, 'qty', matchingRoom.area)}
+                                          className="w-full text-left px-3 py-1 hover:bg-gray-100 text-xs text-gray-700 flex justify-between border-t border-gray-100"
+                                        >
+                                          <span>Area</span>
+                                          <span className="font-semibold text-gray-500">{matchingRoom.area}</span>
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
                             </td>
                             <td className="py-2 pr-2">
                               <input

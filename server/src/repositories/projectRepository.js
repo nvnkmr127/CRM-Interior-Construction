@@ -8,7 +8,11 @@ class ProjectRepository {
       contract_value, booking_amount = 0, status = 'active', start_date, target_date,
       site_address, custom_fields = {}, created_by,
       agreement_signed_by, agreement_signed_at, agreement_signature_method,
-      payment_terms
+      payment_terms,
+      flat_number, floor, building_name, street, city, pincode, landmark, latitude, longitude,
+      builder_name, society_name, rera_id, noc_status, occupancy_certificate_status, property_handover_date,
+      carpet_area, built_up_area, number_of_rooms,
+      project_category, project_sub_category, property_type, property_age, renovation_scope, segment
     } = data;
 
     const query = `
@@ -18,9 +22,16 @@ class ProjectRepository {
         contract_value, booking_amount, status, start_date, target_date,
         site_address, custom_fields, created_by,
         agreement_signed_by, agreement_signed_at, agreement_signature_method,
-        payment_terms
+        payment_terms,
+        flat_number, floor, building_name, street, city, pincode, landmark, latitude, longitude,
+        builder_name, society_name, rera_id, noc_status, occupancy_certificate_status, property_handover_date,
+        carpet_area, built_up_area, number_of_rooms,
+        project_category, project_sub_category, property_type, property_age, renovation_scope, segment
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
+        $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36,
+        $37, $38, $39,
+        $40, $41, $42, $43, $44, $45
       ) RETURNING *
     `;
     const values = [
@@ -29,7 +40,31 @@ class ProjectRepository {
       contract_value || null, booking_amount, status, start_date || null, target_date || null,
       site_address || null, custom_fields, created_by || null,
       agreement_signed_by || null, agreement_signed_at || null, agreement_signature_method || null,
-      payment_terms || null
+      payment_terms || null,
+      flat_number || null,
+      floor || null,
+      building_name || null,
+      street || null,
+      city || null,
+      pincode || null,
+      landmark || null,
+      latitude !== undefined && latitude !== null ? Number(latitude) : null,
+      longitude !== undefined && longitude !== null ? Number(longitude) : null,
+      builder_name || null,
+      society_name || null,
+      rera_id || null,
+      noc_status || 'pending',
+      occupancy_certificate_status || 'pending',
+      property_handover_date || null,
+      carpet_area !== undefined && carpet_area !== null ? Number(carpet_area) : null,
+      built_up_area !== undefined && built_up_area !== null ? Number(built_up_area) : null,
+      number_of_rooms !== undefined && number_of_rooms !== null ? Number(number_of_rooms) : null,
+      project_category || null,
+      project_sub_category || null,
+      property_type || null,
+      property_age || null,
+      renovation_scope || null,
+      segment || null
     ];
 
     const { rows } = await dbClient.query(query, values);
@@ -75,6 +110,42 @@ class ProjectRepository {
     `;
     const paymentsRes = await pool.query(paymentsQuery, [tenantId, projectId]);
     project.payment_milestones = paymentsRes.rows;
+
+    // Fetch project contacts
+    const contactsQuery = `
+      SELECT * FROM project_contacts
+      WHERE tenant_id = $1 AND project_id = $2
+      ORDER BY created_at ASC
+    `;
+    const contactsRes = await pool.query(contactsQuery, [tenantId, projectId]);
+    project.contacts = contactsRes.rows;
+
+    // Fetch project measurements
+    const measurementsQuery = `
+      SELECT * FROM project_measurements
+      WHERE tenant_id = $1 AND project_id = $2
+      ORDER BY created_at ASC
+    `;
+    const measurementsRes = await pool.query(measurementsQuery, [tenantId, projectId]);
+    project.measurements = measurementsRes.rows;
+
+    // Fetch project vendors
+    const vendorsQuery = `
+      SELECT * FROM project_vendors
+      WHERE tenant_id = $1 AND project_id = $2
+      ORDER BY created_at ASC
+    `;
+    const vendorsRes = await pool.query(vendorsQuery, [tenantId, projectId]);
+    project.vendors = vendorsRes.rows;
+
+    // Fetch project consultants
+    const consultantsQuery = `
+      SELECT * FROM project_consultants
+      WHERE tenant_id = $1 AND project_id = $2
+      ORDER BY created_at ASC
+    `;
+    const consultantsRes = await pool.query(consultantsQuery, [tenantId, projectId]);
+    project.consultants = consultantsRes.rows;
 
     return project;
   }
@@ -134,7 +205,7 @@ class ProjectRepository {
     };
   }
 
-  async updateProject(tenantId, projectId, updates) {
+  async updateProject(tenantId, projectId, updates, dbClient = pool) {
     const fields = [];
     const values = [];
     let idx = 1;
@@ -158,7 +229,7 @@ class ProjectRepository {
       RETURNING *
     `;
 
-    const { rows } = await pool.query(query, values);
+    const { rows } = await dbClient.query(query, values);
     if (rows.length === 0) throw new Error('NOT_FOUND');
     return rows[0];
   }

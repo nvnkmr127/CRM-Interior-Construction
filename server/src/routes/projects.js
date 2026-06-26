@@ -46,7 +46,62 @@ const createProjectSchema = z.object({
   agreement_signed_by: z.string().optional().nullable(),
   agreement_signed_at: z.string().optional().nullable(),
   agreement_signature_method: z.string().optional().nullable(),
-  payment_terms: z.string().optional().nullable()
+  payment_terms: z.string().optional().nullable(),
+  flat_number: z.string().optional().nullable(),
+  floor: z.string().optional().nullable(),
+  building_name: z.string().optional().nullable(),
+  street: z.string().optional().nullable(),
+  city: z.string().optional().nullable(),
+  pincode: z.string().optional().nullable(),
+  landmark: z.string().optional().nullable(),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
+  builder_name: z.string().optional().nullable(),
+  society_name: z.string().optional().nullable(),
+  rera_id: z.string().optional().nullable(),
+  noc_status: z.string().optional().nullable(),
+  occupancy_certificate_status: z.string().optional().nullable(),
+  property_handover_date: z.string().optional().nullable(),
+  contacts: z.array(z.object({
+    name: z.string().min(1, 'Contact name is required'),
+    phone: z.string().optional().nullable(),
+    email: z.string().optional().nullable(),
+    role: z.string().optional().nullable(),
+    decision_authority: z.string().optional().nullable(),
+    relationship_notes: z.string().optional().nullable()
+  })).optional().nullable(),
+  carpet_area: z.number().optional().nullable(),
+  built_up_area: z.number().optional().nullable(),
+  number_of_rooms: z.number().int().optional().nullable(),
+  project_category: z.string().optional().nullable(),
+  project_sub_category: z.string().optional().nullable(),
+  property_type: z.string().optional().nullable(),
+  property_age: z.string().optional().nullable(),
+  renovation_scope: z.string().optional().nullable(),
+  segment: z.string().optional().nullable(),
+  measurements: z.array(z.object({
+    room_name: z.string().min(1, 'Room name is required'),
+    length: z.number().optional().nullable(),
+    width: z.number().optional().nullable(),
+    height: z.number().optional().nullable(),
+    area: z.number().optional().nullable(),
+    unit: z.string().optional().nullable(),
+    notes: z.string().optional().nullable()
+  })).optional().nullable(),
+  vendors: z.array(z.object({
+    vendor_name: z.string().min(1, 'Vendor name is required'),
+    scope_of_work: z.string().optional().nullable(),
+    agreed_rate: z.number().optional().nullable(),
+    payment_terms: z.string().optional().nullable(),
+    status: z.string().optional().nullable()
+  })).optional().nullable(),
+  consultants: z.array(z.object({
+    name: z.string().min(1, 'Consultant name is required'),
+    role: z.string().min(1, 'Consultant role is required'),
+    firm: z.string().optional().nullable(),
+    email: z.string().optional().nullable(),
+    phone: z.string().optional().nullable()
+  })).optional().nullable()
 });
 
 const updateProjectSchema = createProjectSchema.partial().extend({
@@ -251,6 +306,252 @@ router.post('/:id/apply-template', authorize('projects:manage'), async (req, res
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }
     next(error);
+  }
+});
+
+// --- Design Requirements, Room Requirements & Inspirations ---
+const pool = require('../config/db');
+
+const designRequirementsSchema = z.object({
+  interior_style: z.string().optional().nullable(),
+  color_theme: z.string().optional().nullable(),
+  material_preference: z.string().optional().nullable(),
+  kitchen_style: z.string().optional().nullable(),
+  wardrobe_style: z.string().optional().nullable(),
+  lighting_preference: z.string().optional().nullable(),
+  flooring_preference: z.string().optional().nullable(),
+  lifestyle_inputs: z.string().optional().nullable(),
+  must_haves: z.string().optional().nullable(),
+  nice_to_haves: z.string().optional().nullable()
+});
+
+const roomRequirementSchema = z.object({
+  room_name: z.string().min(1, 'Room name is required'),
+  budget_allocation: z.number().optional().nullable(),
+  priority: z.string().optional().nullable(),
+  functional_requirements: z.string().optional().nullable(),
+  remarks: z.string().optional().nullable()
+});
+
+const inspirationSchema = z.object({
+  image_url: z.string().min(1, 'Image URL is required'),
+  room_type: z.string().optional().nullable(),
+  notes: z.string().optional().nullable()
+});
+
+// GET /api/projects/:projectId/design-requirements
+router.get('/:projectId/design-requirements', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    
+    // 1. Fetch main design requirements
+    const reqsRes = await pool.query(
+      `SELECT * FROM project_design_requirements WHERE tenant_id = $1 AND project_id = $2`,
+      [req.tenantId, projectId]
+    );
+    
+    let designRequirements = reqsRes.rows[0];
+    if (!designRequirements) {
+      designRequirements = {
+        project_id: projectId,
+        interior_style: '',
+        color_theme: '',
+        material_preference: '',
+        kitchen_style: '',
+        wardrobe_style: '',
+        lighting_preference: '',
+        flooring_preference: '',
+        lifestyle_inputs: '',
+        must_haves: '',
+        nice_to_haves: ''
+      };
+    }
+    
+    // 2. Fetch room-by-room requirements
+    const roomsRes = await pool.query(
+      `SELECT * FROM project_room_requirements WHERE tenant_id = $1 AND project_id = $2 ORDER BY created_at ASC`,
+      [req.tenantId, projectId]
+    );
+    
+    // 3. Fetch inspirations
+    const inspirationsRes = await pool.query(
+      `SELECT * FROM project_inspirations WHERE tenant_id = $1 AND project_id = $2 ORDER BY created_at DESC`,
+      [req.tenantId, projectId]
+    );
+    
+    return success(res, {
+      designRequirements,
+      roomRequirements: roomsRes.rows,
+      inspirations: inspirationsRes.rows
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/projects/:projectId/design-requirements
+router.put('/:projectId/design-requirements', authorize('projects:update'), async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const data = designRequirementsSchema.parse(req.body);
+    
+    const query = `
+      INSERT INTO project_design_requirements (
+        tenant_id, project_id, interior_style, color_theme, material_preference,
+        kitchen_style, wardrobe_style, lighting_preference, flooring_preference,
+        lifestyle_inputs, must_haves, nice_to_haves
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      ON CONFLICT (project_id) DO UPDATE SET
+        interior_style = EXCLUDED.interior_style,
+        color_theme = EXCLUDED.color_theme,
+        material_preference = EXCLUDED.material_preference,
+        kitchen_style = EXCLUDED.kitchen_style,
+        wardrobe_style = EXCLUDED.wardrobe_style,
+        lighting_preference = EXCLUDED.lighting_preference,
+        flooring_preference = EXCLUDED.flooring_preference,
+        lifestyle_inputs = EXCLUDED.lifestyle_inputs,
+        must_haves = EXCLUDED.must_haves,
+        nice_to_haves = EXCLUDED.nice_to_haves,
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING *
+    `;
+    const values = [
+      req.tenantId, projectId,
+      data.interior_style || null,
+      data.color_theme || null,
+      data.material_preference || null,
+      data.kitchen_style || null,
+      data.wardrobe_style || null,
+      data.lighting_preference || null,
+      data.flooring_preference || null,
+      data.lifestyle_inputs || null,
+      data.must_haves || null,
+      data.nice_to_haves || null
+    ];
+    
+    const { rows } = await pool.query(query, values);
+    return success(res, rows[0]);
+  } catch (err) {
+    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    next(err);
+  }
+});
+
+// POST /api/projects/:projectId/room-requirements
+router.post('/:projectId/room-requirements', authorize('projects:update'), async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const data = roomRequirementSchema.parse(req.body);
+    
+    const query = `
+      INSERT INTO project_room_requirements (
+        tenant_id, project_id, room_name, budget_allocation, priority, functional_requirements, remarks
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *
+    `;
+    const values = [
+      req.tenantId, projectId,
+      data.room_name,
+      data.budget_allocation !== undefined && data.budget_allocation !== null ? Number(data.budget_allocation) : null,
+      data.priority || null,
+      data.functional_requirements || null,
+      data.remarks || null
+    ];
+    
+    const { rows } = await pool.query(query, values);
+    return success(res, rows[0], {}, 201);
+  } catch (err) {
+    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    next(err);
+  }
+});
+
+// PUT /api/projects/:projectId/room-requirements/:id
+router.put('/:projectId/room-requirements/:id', authorize('projects:update'), async (req, res, next) => {
+  try {
+    const { projectId, id } = req.params;
+    const data = roomRequirementSchema.parse(req.body);
+    
+    const query = `
+      UPDATE project_room_requirements SET
+        room_name = $1,
+        budget_allocation = $2,
+        priority = $3,
+        functional_requirements = $4,
+        remarks = $5,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $6 AND project_id = $7 AND tenant_id = $8 RETURNING *
+    `;
+    const values = [
+      data.room_name,
+      data.budget_allocation !== undefined && data.budget_allocation !== null ? Number(data.budget_allocation) : null,
+      data.priority || null,
+      data.functional_requirements || null,
+      data.remarks || null,
+      id, projectId, req.tenantId
+    ];
+    
+    const { rows } = await pool.query(query, values);
+    if (rows.length === 0) return fail(res, 'NOT_FOUND', 'Room requirement not found', 404);
+    return success(res, rows[0]);
+  } catch (err) {
+    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    next(err);
+  }
+});
+
+// DELETE /api/projects/:projectId/room-requirements/:id
+router.delete('/:projectId/room-requirements/:id', authorize('projects:update'), async (req, res, next) => {
+  try {
+    const { projectId, id } = req.params;
+    const { rows } = await pool.query(
+      `DELETE FROM project_room_requirements WHERE id = $1 AND project_id = $2 AND tenant_id = $3 RETURNING *`,
+      [id, projectId, req.tenantId]
+    );
+    if (rows.length === 0) return fail(res, 'NOT_FOUND', 'Room requirement not found', 404);
+    return res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/projects/:projectId/inspirations
+router.post('/:projectId/inspirations', authorize('projects:update'), async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const data = inspirationSchema.parse(req.body);
+    
+    const query = `
+      INSERT INTO project_inspirations (
+        tenant_id, project_id, image_url, room_type, notes
+      ) VALUES ($1, $2, $3, $4, $5) RETURNING *
+    `;
+    const values = [
+      req.tenantId, projectId,
+      data.image_url,
+      data.room_type || null,
+      data.notes || null
+    ];
+    
+    const { rows } = await pool.query(query, values);
+    return success(res, rows[0], {}, 201);
+  } catch (err) {
+    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    next(err);
+  }
+});
+
+// DELETE /api/projects/:projectId/inspirations/:id
+router.delete('/:projectId/inspirations/:id', authorize('projects:update'), async (req, res, next) => {
+  try {
+    const { projectId, id } = req.params;
+    const { rows } = await pool.query(
+      `DELETE FROM project_inspirations WHERE id = $1 AND project_id = $2 AND tenant_id = $3 RETURNING *`,
+      [id, projectId, req.tenantId]
+    );
+    if (rows.length === 0) return fail(res, 'NOT_FOUND', 'Inspiration not found', 404);
+    return res.status(204).send();
+  } catch (err) {
+    next(err);
   }
 });
 

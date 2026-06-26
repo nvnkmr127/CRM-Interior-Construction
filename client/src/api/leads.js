@@ -226,6 +226,27 @@ export const getEstimates = async (leadId) => {
   return response.data;
 };
 
+/**
+ * Fetch site measurements for a lead.
+ * @param {string} leadId - The UUID of the lead.
+ * @returns {Promise<{ success: boolean, data: Array }>} List of measurements.
+ */
+export const getLeadMeasurements = async (leadId) => {
+  const response = await api.get(`/leads/${leadId}/measurements`);
+  return response.data;
+};
+
+/**
+ * Capture a new measurement for a lead.
+ * @param {string} leadId - The UUID of the lead.
+ * @param {Object} data - Measurement details.
+ * @returns {Promise<{ success: boolean, data: Object }>} Created measurement.
+ */
+export const createLeadMeasurement = async (leadId, data) => {
+  const response = await api.post(`/leads/${leadId}/measurements`, data);
+  return response.data;
+};
+
 export const getAutomationEvents = async (leadId) => {
   const response = await api.get(/leads//automation-events);
   return response.data.data;

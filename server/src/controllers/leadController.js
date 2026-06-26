@@ -141,6 +141,34 @@ exports.convertToProjectHandler = async (req, res, next) => {
         agreement_signed_at: req.body.agreement_signed_at,
         agreement_signature_method: req.body.agreement_signature_method,
         payment_terms: req.body.paymentTerms,
+        flat_number: req.body.flat_number,
+        floor: req.body.floor,
+        building_name: req.body.building_name,
+        street: req.body.street,
+        city: req.body.city,
+        pincode: req.body.pincode,
+        landmark: req.body.landmark,
+        latitude: req.body.latitude !== undefined && req.body.latitude !== null ? Number(req.body.latitude) : null,
+        longitude: req.body.longitude !== undefined && req.body.longitude !== null ? Number(req.body.longitude) : null,
+        builder_name: req.body.builder_name,
+        society_name: req.body.society_name,
+        rera_id: req.body.rera_id,
+        noc_status: req.body.noc_status,
+        occupancy_certificate_status: req.body.occupancy_certificate_status,
+        property_handover_date: req.body.property_handover_date,
+        contacts: req.body.contacts,
+        carpet_area: req.body.carpet_area !== undefined && req.body.carpet_area !== null ? Number(req.body.carpet_area) : null,
+        built_up_area: req.body.built_up_area !== undefined && req.body.built_up_area !== null ? Number(req.body.built_up_area) : null,
+        number_of_rooms: req.body.number_of_rooms !== undefined && req.body.number_of_rooms !== null ? Number(req.body.number_of_rooms) : null,
+        project_category: req.body.project_category || null,
+        project_sub_category: req.body.project_sub_category || null,
+        property_type: req.body.property_type || null,
+        property_age: req.body.property_age || null,
+        renovation_scope: req.body.renovation_scope || null,
+        segment: req.body.segment || null,
+        measurements: req.body.measurements,
+        vendors: req.body.vendors,
+        consultants: req.body.consultants,
         custom_fields: {
           advance_amount: req.body.advanceAmount,
           payment_terms: req.body.paymentTerms,
@@ -2537,8 +2565,6 @@ exports.updateBudgetHandler = async (req, res, next) => {
 
 exports.bulkTagHandler = async (req, res, next) => { res.json({success: true}) };
 exports.mergeLeadsHandler = async (req, res, next) => { res.json({success: true}) };
-exports.createNativeEstimateHandler = async (req, res, next) => { res.json({success: true}) };
-exports.updateBudgetHandler = async (req, res, next) => { res.json({success: true}) };
 exports.bulkChangeStageHandler = async (req, res, next) => { res.json({success: true}) };
 exports.checkDuplicateHandler = async (req, res, next) => { res.json({success: true}) };
 

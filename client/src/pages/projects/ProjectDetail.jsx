@@ -12,6 +12,7 @@ const DocumentPanel = React.lazy(() => import('../../components/projects/Documen
 const PaymentsTab = React.lazy(() => import('./PaymentsTab'));
 const SnagsDashboard = React.lazy(() => import('./SnagsDashboard'));
 const HandoverChecklist = React.lazy(() => import('./HandoverChecklist'));
+const DesignRequirements = React.lazy(() => import('../../components/projects/DesignRequirements'));
 
 function formatDate(dateStr) {
   if (!dateStr) return '—';
@@ -42,6 +43,29 @@ function OverviewTab({ project }) {
   const fields = [
     { label: 'Project Type',    value: project.project_type ? project.project_type.replace(/_/g, ' ') : '—' },
     { label: 'Site Address',    value: project.site_address || '—' },
+    { label: 'Flat / Unit No',  value: project.flat_number || '—' },
+    { label: 'Floor',           value: project.floor || '—' },
+    { label: 'Building Name',   value: project.building_name || '—' },
+    { label: 'Street',          value: project.street || '—' },
+    { label: 'Landmark',        value: project.landmark || '—' },
+    { label: 'City',            value: project.city || '—' },
+    { label: 'Pincode',         value: project.pincode || '—' },
+    { label: 'GPS Coordinates', value: project.latitude && project.longitude ? `${project.latitude}, ${project.longitude}` : '—' },
+    { label: 'Builder Name',    value: project.builder_name || '—' },
+    { label: 'Society Name',    value: project.society_name || '—' },
+    { label: 'RERA ID',         value: project.rera_id || '—' },
+    { label: 'Builder NOC',     value: project.noc_status ? project.noc_status.replace(/_/g, ' ') : '—' },
+    { label: 'Occupancy Cert.', value: project.occupancy_certificate_status ? project.occupancy_certificate_status.replace(/_/g, ' ') : '—' },
+    { label: 'Property Handover Date', value: formatDate(project.property_handover_date) },
+    { label: 'Carpet Area',     value: project.carpet_area ? `${project.carpet_area} sq ft` : '—' },
+    { label: 'Built-up Area',   value: project.built_up_area ? `${project.built_up_area} sq ft` : '—' },
+    { label: 'Number of Rooms', value: project.number_of_rooms || '—' },
+    { label: 'Project Category', value: project.project_category ? project.project_category.replace(/_/g, ' ') : '—' },
+    { label: 'Sub-Category',    value: project.project_sub_category ? project.project_sub_category.replace(/_/g, ' ') : '—' },
+    { label: 'Ownership Type',  value: project.property_type ? project.property_type.replace(/_/g, ' ') : '—' },
+    { label: 'Property Age',    value: project.property_age ? project.property_age.replace(/_/g, ' ') : '—' },
+    { label: 'Renovation Scope', value: project.renovation_scope ? project.renovation_scope.replace(/_/g, ' ') : '—' },
+    { label: 'Market Segment',  value: project.segment ? project.segment.replace(/_/g, ' ') : '—' },
     { label: 'Start Date',      value: formatDate(project.start_date) },
     { label: 'Target Date',     value: formatDate(project.target_date) },
     { label: 'Contract Value',  value: formatValue(project.contract_value) },
@@ -169,6 +193,226 @@ function OverviewTab({ project }) {
         </div>
       )}
 
+      {/* Stakeholders & Contacts */}
+      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+          Project Stakeholders & Contacts
+        </div>
+        {project.contacts && project.contacts.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {project.contacts.map((contact, i) => (
+              <div key={contact.id || i} style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '14px 20px',
+                borderBottom: i < project.contacts.length - 1 ? '1px solid var(--color-border)' : 'none',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: '50%',
+                    background: 'var(--color-accent-bg, #eff6ff)', color: 'var(--color-accent, #3b82f6)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 700, fontSize: 'var(--text-xs)',
+                  }}>
+                    👤
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>{contact.name}</span>
+                      <span style={{
+                        padding: '1px 6px',
+                        fontSize: '10px',
+                        borderRadius: '4px',
+                        background: 'var(--color-accent-bg, #eff6ff)',
+                        color: 'var(--color-accent, #3b82f6)',
+                        fontWeight: 600,
+                        textTransform: 'capitalize'
+                      }}>
+                        {contact.role ? contact.role.replace(/_/g, ' ') : 'Stakeholder'}
+                      </span>
+                      <span style={{
+                        padding: '1px 6px',
+                        fontSize: '10px',
+                        borderRadius: '4px',
+                        background: 'var(--color-success-bg, #f0fdf4)',
+                        color: 'var(--color-success, #22c55e)',
+                        fontWeight: 600
+                      }}>
+                        {contact.decision_authority || 'Influencer'}
+                      </span>
+                    </div>
+                    {contact.relationship_notes && (
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                        📝 {contact.relationship_notes}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>
+                  {contact.phone && <div>📞 {contact.phone}</div>}
+                  {contact.email && <div>✉️ {contact.email}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
+            No additional stakeholders recorded for this project. Click "Edit" to add contacts.
+          </div>
+        )}
+      </div>
+
+      {/* Site Measurements & Room Dimensions */}
+      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+          Site Measurements & Room Dimensions
+        </div>
+        {project.measurements && project.measurements.length > 0 ? (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--text-sm)' }}>
+              <thead>
+                <tr style={{ background: 'var(--color-surface-hover, #f8fafc)', borderBottom: '1px solid var(--color-border)' }}>
+                  <th style={{ padding: '12px 20px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Room Name</th>
+                  <th style={{ padding: '12px 20px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Dimensions (L x W x H)</th>
+                  <th style={{ padding: '12px 20px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Computed Area</th>
+                  <th style={{ padding: '12px 20px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {project.measurements.map((room, i) => (
+                  <tr key={room.id || i} style={{ borderBottom: i < project.measurements.length - 1 ? '1px solid var(--color-border)' : 'none' }}>
+                    <td style={{ padding: '14px 20px', fontWeight: 500, color: 'var(--color-text)' }}>{room.room_name}</td>
+                    <td style={{ padding: '14px 20px', color: 'var(--color-text-secondary)' }}>
+                      {room.length} x {room.width} x {room.height} <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{room.unit}</span>
+                    </td>
+                    <td style={{ padding: '14px 20px', fontWeight: 600, color: 'var(--color-text)' }}>
+                      {room.area} <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 400 }}>sq {room.unit}</span>
+                    </td>
+                    <td style={{ padding: '14px 20px', color: 'var(--color-text-muted)', fontSize: 'var(--text-xs)' }}>{room.notes || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
+            No room-wise site measurements recorded for this project.
+          </div>
+        )}
+      </div>
+
+      {/* Project Vendors */}
+      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+          Project Vendors Engagement
+        </div>
+        {project.vendors && project.vendors.length > 0 ? (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--text-sm)' }}>
+              <thead>
+                <tr style={{ background: 'var(--color-surface-hover, #f8fafc)', borderBottom: '1px solid var(--color-border)' }}>
+                  <th style={{ padding: '12px 20px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Vendor Name</th>
+                  <th style={{ padding: '12px 20px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Scope of Work</th>
+                  <th style={{ padding: '12px 20px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Agreed Rate/Value</th>
+                  <th style={{ padding: '12px 20px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Payment Terms</th>
+                  <th style={{ padding: '12px 20px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {project.vendors.map((vendor, i) => (
+                  <tr key={vendor.id || i} style={{ borderBottom: i < project.vendors.length - 1 ? '1px solid var(--color-border)' : 'none' }}>
+                    <td style={{ padding: '14px 20px', fontWeight: 600, color: 'var(--color-text)' }}>{vendor.vendor_name}</td>
+                    <td style={{ padding: '14px 20px', color: 'var(--color-text-secondary)' }}>{vendor.scope_of_work || '—'}</td>
+                    <td style={{ padding: '14px 20px', fontWeight: 600, color: 'var(--color-text)' }}>
+                      ₹{Number(vendor.agreed_rate).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td style={{ padding: '14px 20px', color: 'var(--color-text-secondary)' }}>{vendor.payment_terms || '—'}</td>
+                    <td style={{ padding: '14px 20px' }}>
+                      <span style={{
+                        padding: '2px 8px',
+                        fontSize: '11px',
+                        borderRadius: '4px',
+                        fontWeight: 600,
+                        textTransform: 'capitalize',
+                        background: vendor.status === 'active' ? 'var(--color-success-bg, #f0fdf4)' : (vendor.status === 'completed' ? 'var(--color-accent-bg, #eff6ff)' : 'var(--color-warning-bg, #fef3c7)'),
+                        color: vendor.status === 'active' ? 'var(--color-success, #22c55e)' : (vendor.status === 'completed' ? 'var(--color-accent, #3b82f6)' : 'var(--color-warning, #d97706)')
+                      }}>
+                        {vendor.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
+            No vendors engaged for this project. Click "Edit" to add vendor commitments.
+          </div>
+        )}
+      </div>
+
+      {/* External Consultants Assigned */}
+      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+          External Consultants Assigned
+        </div>
+        {project.consultants && project.consultants.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {project.consultants.map((consultant, i) => (
+              <div key={consultant.id || i} style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '14px 20px',
+                borderBottom: i < project.consultants.length - 1 ? '1px solid var(--color-border)' : 'none',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: '50%',
+                    background: 'var(--color-warning-bg, #fffbeb)', color: 'var(--color-warning, #d97706)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 700, fontSize: 'var(--text-xs)',
+                  }}>
+                    📐
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>{consultant.name}</span>
+                      <span style={{
+                        padding: '1px 6px',
+                        fontSize: '10px',
+                        borderRadius: '4px',
+                        background: 'var(--color-accent-bg, #eff6ff)',
+                        color: 'var(--color-accent, #3b82f6)',
+                        fontWeight: 600,
+                        textTransform: 'capitalize'
+                      }}>
+                        {consultant.role ? consultant.role.replace(/_/g, ' ') : 'Consultant'}
+                      </span>
+                      {consultant.firm && (
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
+                          Firm: {consultant.firm}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>
+                  {consultant.phone && <div>📞 {consultant.phone}</div>}
+                  {consultant.email && <div>✉️ {consultant.email}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
+            No external consultants assigned to this project. Click "Edit" to assign consultants.
+          </div>
+        )}
+      </div>
+
       {/* Notes */}
       {project.notes && (
         <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', padding: '16px 20px' }}>
@@ -212,7 +456,7 @@ export default function ProjectDetail() {
     }
   };
 
-  const tabs = ['Overview', 'Phases', 'Tasks', 'Documents', 'Payments', 'Snags', 'Handover'];
+  const tabs = ['Overview', 'Design Brief', 'Phases', 'Tasks', 'Documents', 'Payments', 'Snags', 'Handover'];
 
   useEffect(() => {
     if (!projectId) return;
@@ -226,6 +470,7 @@ export default function ProjectDetail() {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'Overview': return project ? <OverviewTab project={project} /> : null;
+      case 'Design Brief': return <DesignRequirements projectId={projectId} />;
       case 'Phases': return <PhaseTimeline projectId={projectId} />;
       case 'Tasks': return <TaskKanban projectId={projectId} />;
       case 'Documents': return <DocumentPanel projectId={projectId} />;
@@ -314,7 +559,32 @@ export default function ProjectDetail() {
             <div className={styles.metaItem}>📅 {formatDate(project.start_date)} → {formatDate(project.target_date)}</div>
           )}
           {project.site_address && (
-            <div className={styles.metaItem}>📍 {project.site_address}</div>
+            <div className={styles.metaItem} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+              📍 {project.site_address}
+              {project.latitude && project.longitude && (
+                <a 
+                  href={`https://www.google.com/maps/search/?api=1&query=${project.latitude},${project.longitude}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    marginLeft: '8px',
+                    padding: '2px 8px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    borderRadius: '4px',
+                    background: 'var(--color-primary-bg, #e0f2fe)',
+                    color: 'var(--color-primary, #0284c7)',
+                    textDecoration: 'none'
+                  }}
+                  title="Navigate on Google Maps"
+                >
+                  🗺️ Navigate
+                </a>
+              )}
+            </div>
           )}
         </div>
       </div>
