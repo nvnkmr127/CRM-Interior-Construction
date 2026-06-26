@@ -37,12 +37,14 @@ async function createTask({ tenantId, userId, data }) {
     if (rows.length === 0) {
       const err = new Error('INVALID_MILESTONE');
       err.status = 400;
+      err.code = 'INVALID_MILESTONE';
       err.details = 'Milestone does not exist or does not belong to this project.';
       throw err;
     }
 
     const milestoneInfo = rows[0];
     if (milestoneInfo.is_execution) {
+      // 1. Verify design is frozen (scope lock)
       const { rows: projRows } = await pool.query(
         'SELECT is_scope_locked FROM projects WHERE id = $1 AND tenant_id = $2',
         [mappedData.project_id, tenantId]
@@ -51,7 +53,24 @@ async function createTask({ tenantId, userId, data }) {
       if (!isLocked) {
         const err = new Error('DESIGN_NOT_FROZEN');
         err.status = 400;
+        err.code = 'DESIGN_NOT_FROZEN';
         err.details = 'Cannot create task in an execution phase (procurement/production) until the design is frozen.';
+        throw err;
+      }
+
+      // 2. Verify quotation is accepted with client confirmation date recorded
+      const { rows: quoteRows } = await pool.query(
+        `SELECT id, accepted_at FROM quotations 
+         WHERE project_id = $1 AND tenant_id = $2 AND status = 'accepted'
+         ORDER BY version DESC, created_at DESC 
+         LIMIT 1`,
+        [mappedData.project_id, tenantId]
+      );
+      if (quoteRows.length === 0 || !quoteRows[0].accepted_at) {
+        const err = new Error('QUOTATION_NOT_ACCEPTED');
+        err.status = 400;
+        err.code = 'QUOTATION_NOT_ACCEPTED';
+        err.details = 'Cannot create task in an execution phase (procurement/production) until the BOQ quotation is accepted by the client.';
         throw err;
       }
     }
@@ -76,6 +95,7 @@ async function createTask({ tenantId, userId, data }) {
     if (rows.length === 0) {
       const err = new Error('INVALID_PARENT_TASK');
       err.status = 400;
+      err.code = 'INVALID_PARENT_TASK';
       err.details = 'Parent task does not exist or does not belong to this project/lead.';
       throw err;
     }

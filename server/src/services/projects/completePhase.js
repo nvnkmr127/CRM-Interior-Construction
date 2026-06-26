@@ -120,6 +120,19 @@ async function checkScopeLock(tenantId, projectId, phaseId) {
       error.message = 'Cannot start execution phase: Design scope must be locked and contract document approved.';
       throw error;
     }
+
+    // Site readiness validation
+    // Ensure checklist is seeded
+    const siteReadinessRepository = require('../../repositories/siteReadinessRepository');
+    const checklist = await siteReadinessRepository.findChecklist(tenantId, projectId);
+
+    const incomplete = checklist.filter(item => !item.is_completed);
+    if (incomplete.length > 0) {
+      const error = new Error('SITE_READINESS_REQUIRED');
+      error.status = 400;
+      error.message = `Cannot start execution phase: Site readiness checklist is incomplete. Pending items: ${incomplete.map(i => i.label).join(', ')}`;
+      throw error;
+    }
   }
 }
 

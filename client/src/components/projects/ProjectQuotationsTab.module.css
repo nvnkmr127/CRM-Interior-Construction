@@ -368,3 +368,41 @@
   text-align: center;
   color: var(--color-text-muted, #6b7280);
 }
+
+.totalsCard {
+  align-self: flex-end;
+  width: 320px;
+  background: var(--color-surface-hover, #f9fafb);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: var(--radius-md, 8px);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.totalsRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-sm, 14px);
+  color: var(--color-text-secondary, #4b5563);
+}
+
+.grandTotal {
+  font-weight: 700;
+  font-size: var(--text-base, 16px);
+  color: var(--color-text, #1f2937);
+  border-top: 1px solid var(--color-border, #e5e7eb);
+  padding-top: 10px;
+  margin-top: 4px;
+}
+
+.discountInput {
+  width: 120px;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 4px;
+  font-size: var(--text-sm, 14px);
+  text-align: right;
+}

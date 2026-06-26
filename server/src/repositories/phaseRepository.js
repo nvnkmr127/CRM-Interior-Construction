@@ -10,7 +10,15 @@ class PhaseRepository {
           FROM tasks t 
           JOIN milestones m ON t.milestone_id = m.id 
           WHERE m.phase_id = pp.id AND t.tenant_id = $1 AND t.deleted_at IS NULL
-        ) as task_count
+        ) as task_count,
+        COALESCE(
+          (
+            SELECT ROUND(COUNT(CASE WHEN pwa.status = 'completed' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 2)
+            FROM project_work_activities pwa
+            WHERE pwa.phase_id = pp.id AND pwa.tenant_id = $1
+          ),
+          CASE WHEN pp.status = 'completed' THEN 100.00 ELSE 0.00 END
+        )::numeric(5,2) as progress_percentage
       FROM project_phases pp
       WHERE pp.tenant_id = $1 AND pp.project_id = $2
       ORDER BY pp.sort_order ASC, pp.created_at ASC

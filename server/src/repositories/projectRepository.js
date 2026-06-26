@@ -98,7 +98,15 @@ class ProjectRepository {
           FROM tasks t 
           JOIN milestones m ON t.milestone_id = m.id 
           WHERE m.phase_id = pp.id AND t.tenant_id = $1 AND t.deleted_at IS NULL
-        ) as task_count
+        ) as task_count,
+        COALESCE(
+          (
+            SELECT ROUND(COUNT(CASE WHEN pwa.status = 'completed' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 2)
+            FROM project_work_activities pwa
+            WHERE pwa.phase_id = pp.id AND pwa.tenant_id = $1
+          ),
+          CASE WHEN pp.status = 'completed' THEN 100.00 ELSE 0.00 END
+        )::numeric(5,2) as progress_percentage
       FROM project_phases pp
       WHERE pp.tenant_id = $1 AND pp.project_id = $2
       ORDER BY pp.sort_order ASC, pp.created_at ASC
@@ -272,6 +280,38 @@ class ProjectRepository {
     const { rows: paymentRows } = await pool.query(paymentsQuery, [tenantId, projectId]);
     const payStats = paymentRows[0] || { total_payment: 0, collected_payment: 0 };
 
+    // BOQ values tracking
+    const boqStatsQuery = `
+      WITH latest_quotation AS (
+        SELECT id FROM quotations
+        WHERE tenant_id = $1 AND project_id = $2
+        ORDER BY version DESC, created_at DESC
+        LIMIT 1
+      )
+      SELECT 
+        COALESCE(SUM(total_price) FILTER (WHERE scope_type = 'original'), 0) as original_scope_total,
+        COALESCE(SUM(total_price) FILTER (WHERE scope_type = 'addition'), 0) as additions_total,
+        COALESCE(SUM(total_price) FILTER (WHERE scope_type = 'reduction'), 0) as reductions_total
+      FROM quotation_items
+      WHERE tenant_id = $1 AND quotation_id = (SELECT id FROM latest_quotation)
+    `;
+    const { rows: boqRows } = await pool.query(boqStatsQuery, [tenantId, projectId]);
+    const boqStats = boqRows[0] || { original_scope_total: 0, additions_total: 0, reductions_total: 0 };
+
+    const projectQuery = `SELECT contract_value FROM projects WHERE tenant_id = $1 AND id = $2`;
+    const { rows: projectRows } = await pool.query(projectQuery, [tenantId, projectId]);
+    const contractValue = projectRows[0]?.contract_value ? Number(projectRows[0].contract_value) : 0;
+
+    let originalScopeTotal = Number(boqStats.original_scope_total || 0);
+    let additionsTotal = Number(boqStats.additions_total || 0);
+    let reductionsTotal = Number(boqStats.reductions_total || 0);
+    let netContractValue = originalScopeTotal + additionsTotal - reductionsTotal;
+
+    if (originalScopeTotal === 0 && additionsTotal === 0 && reductionsTotal === 0) {
+      originalScopeTotal = contractValue;
+      netContractValue = contractValue;
+    }
+
     let taskCompletionPct = 0;
     if (taskStats.total_tasks > 0) {
       taskCompletionPct = Math.round((taskStats.completed_tasks / taskStats.total_tasks) * 100);
@@ -283,7 +323,11 @@ class ProjectRepository {
       taskCompletionPct,
       overdueTasks: taskStats.overdue_tasks,
       totalPayment: Number(payStats.total_payment),
-      collectedPayment: Number(payStats.collected_payment)
+      collectedPayment: Number(payStats.collected_payment),
+      originalScopeTotal,
+      additionsTotal,
+      reductionsTotal,
+      netContractValue
     };
   }
 }

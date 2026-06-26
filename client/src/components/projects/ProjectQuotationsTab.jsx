@@ -10,7 +10,12 @@ import {
   updateBOQItem,
   deleteBOQItem,
   reviseQuotation,
-  compareQuotations
+  compareQuotations,
+  getChangeOrders,
+  sendQuotation,
+  acceptQuotation,
+  rejectQuotation,
+  updateQuotation
 } from '../../api/projects';
 
 export default function ProjectQuotationsTab({ projectId }) {
@@ -28,6 +33,7 @@ export default function ProjectQuotationsTab({ projectId }) {
   // Revision state
   const [showReviseModal, setShowReviseModal] = useState(false);
   const [changeReason, setChangeReason] = useState('');
+  const [changeOrders, setChangeOrders] = useState([]);
   
   // Add item state
   const [showAddItem, setShowAddItem] = useState(false);
@@ -38,7 +44,11 @@ export default function ProjectQuotationsTab({ projectId }) {
     unit: 'SqFt',
     quantity: '1',
     unitPrice: '0',
-    markupPercentage: '0'
+    markupPercentage: '0',
+    scopeType: 'original',
+    changeOrderId: '',
+    hsnCode: '',
+    gstRate: '18'
   });
 
   // Compare state
@@ -51,8 +61,20 @@ export default function ProjectQuotationsTab({ projectId }) {
   useEffect(() => {
     if (projectId) {
       fetchQuotations();
+      fetchChangeOrders();
     }
   }, [projectId]);
+
+  const fetchChangeOrders = async () => {
+    try {
+      const res = await getChangeOrders(projectId);
+      if (res.data?.success) {
+        setChangeOrders(res.data.data || []);
+      }
+    } catch (e) {
+      console.error('Failed to load change orders', e);
+    }
+  };
 
   const fetchQuotations = async (selectId = null) => {
     setLoading(true);
@@ -133,6 +155,10 @@ export default function ProjectQuotationsTab({ projectId }) {
         quantity: Number(newItem.quantity),
         unitPrice: Number(newItem.unitPrice),
         markupPercentage: Number(newItem.markupPercentage),
+        scopeType: newItem.scopeType,
+        changeOrderId: newItem.changeOrderId || null,
+        hsnCode: newItem.hsnCode.trim() || null,
+        gstRate: Number(newItem.gstRate || 0),
         sortOrder: activeQuotation.items ? activeQuotation.items.length : 0
       });
       if (res.data?.success) {
@@ -144,7 +170,11 @@ export default function ProjectQuotationsTab({ projectId }) {
           unit: 'SqFt',
           quantity: '1',
           unitPrice: '0',
-          markupPercentage: '0'
+          markupPercentage: '0',
+          scopeType: 'original',
+          changeOrderId: '',
+          hsnCode: '',
+          gstRate: '18'
         });
         setShowAddItem(false);
         // Refresh quotation
@@ -172,7 +202,11 @@ export default function ProjectQuotationsTab({ projectId }) {
       unit: item.unit || '',
       quantity: String(item.quantity),
       unitPrice: String(item.unit_price),
-      markupPercentage: String(item.markup_percentage)
+      markupPercentage: String(item.markup_percentage),
+      scopeType: item.scope_type || 'original',
+      changeOrderId: item.change_order_id || '',
+      hsnCode: item.hsn_code || '',
+      gstRate: String(item.gst_rate || 0)
     });
   };
 
@@ -188,7 +222,11 @@ export default function ProjectQuotationsTab({ projectId }) {
         unit: editForm.unit,
         quantity: Number(editForm.quantity),
         unitPrice: Number(editForm.unitPrice),
-        markupPercentage: Number(editForm.markupPercentage)
+        markupPercentage: Number(editForm.markupPercentage),
+        scopeType: editForm.scopeType,
+        changeOrderId: editForm.changeOrderId || null,
+        hsnCode: editForm.hsnCode.trim() || null,
+        gstRate: Number(editForm.gstRate || 0)
       });
       if (res.data?.success) {
         toast.success('Item updated');
@@ -224,6 +262,33 @@ export default function ProjectQuotationsTab({ projectId }) {
     } catch (err) {
       console.error(err);
       toast.error('Failed to delete item');
+    } finally {
+      setItemsLoading(false);
+    }
+  };
+
+  const handleUpdateGstType = async (newGstType) => {
+    setItemsLoading(true);
+    try {
+      const res = await updateQuotation(projectId, activeQuotation.id, {
+        gstType: newGstType
+      });
+      if (res.data?.success) {
+        toast.success(`GST Type updated to ${newGstType === 'igst' ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'}`);
+        setActiveQuotation(res.data.data);
+        setQuotations(quotations.map(q => q.id === activeQuotation.id ? { 
+          ...q, 
+          gst_type: res.data.data.gst_type,
+          tax_amount: res.data.data.tax_amount,
+          total_amount: res.data.data.total_amount,
+          cgst_total: res.data.data.cgst_total,
+          sgst_total: res.data.data.sgst_total,
+          igst_total: res.data.data.igst_total
+        } : q));
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update GST Type');
     } finally {
       setItemsLoading(false);
     }
@@ -270,6 +335,54 @@ export default function ProjectQuotationsTab({ projectId }) {
       setCompareMode(false);
     } finally {
       setCompareLoading(false);
+    }
+  };
+
+  const handleSend = async () => {
+    setItemsLoading(true);
+    try {
+      const res = await sendQuotation(projectId, activeQuotation.id);
+      if (res.data?.success) {
+        toast.success('Quotation status marked as Sent.');
+        await fetchQuotations(activeQuotation.id);
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to update status to Sent.');
+    } finally {
+      setItemsLoading(false);
+    }
+  };
+
+  const handleAccept = async () => {
+    setItemsLoading(true);
+    try {
+      const res = await acceptQuotation(projectId, activeQuotation.id);
+      if (res.data?.success) {
+        toast.success('Quotation accepted successfully.');
+        await fetchQuotations(activeQuotation.id);
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to accept quotation.');
+    } finally {
+      setItemsLoading(false);
+    }
+  };
+
+  const handleReject = async () => {
+    setItemsLoading(true);
+    try {
+      const res = await rejectQuotation(projectId, activeQuotation.id);
+      if (res.data?.success) {
+        toast.success('Quotation status marked as Rejected.');
+        await fetchQuotations(activeQuotation.id);
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to reject quotation.');
+    } finally {
+      setItemsLoading(false);
     }
   };
 
@@ -509,6 +622,12 @@ export default function ProjectQuotationsTab({ projectId }) {
                                     {diff.changes.unit_price && (
                                       <span>Rate: ₹{Number(diff.changes.unit_price.old).toLocaleString('en-IN')} &rarr; ₹{Number(diff.changes.unit_price.new).toLocaleString('en-IN')}</span>
                                     )}
+                                    {diff.changes.hsn_code && (
+                                      <span>HSN: "{diff.changes.hsn_code.old || 'N/A'}" &rarr; "{diff.changes.hsn_code.new || 'N/A'}"</span>
+                                    )}
+                                    {diff.changes.gst_rate && (
+                                      <span>GST: {Number(diff.changes.gst_rate.old || 0)}% &rarr; {Number(diff.changes.gst_rate.new || 0)}%</span>
+                                    )}
                                   </div>
                                 )}
                                 {isAdded && (
@@ -542,19 +661,66 @@ export default function ProjectQuotationsTab({ projectId }) {
             <div className={styles.detailHeader}>
               <div className={styles.detailMeta}>
                 <h3>Quotation Number: {activeQuotation.quotation_number}</h3>
-                <p>
-                  Version {activeQuotation.version} &bull; Status: <strong className="text-capitalize">{activeQuotation.status}</strong> &bull; Subtotal: ₹{Number(activeQuotation.subtotal).toLocaleString('en-IN')}
-                </p>
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginTop: '4px' }}>
+                  <span className="text-xs text-gray-500">
+                    Version {activeQuotation.version} &bull; Status: <strong className="text-capitalize">{activeQuotation.status}</strong>
+                  </span>
+                  {activeQuotation.status === 'draft' ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span className="text-xs text-gray-500 font-medium">GST Type:</span>
+                      <select
+                        style={{ fontSize: '12px', border: '1px solid var(--color-border)', borderRadius: '4px', padding: '2px 8px', backgroundColor: 'white', cursor: 'pointer' }}
+                        value={activeQuotation.gst_type || 'cgst_sgst'}
+                        onChange={(e) => handleUpdateGstType(e.target.value)}
+                      >
+                        <option value="cgst_sgst">Intra-State (CGST + SGST)</option>
+                        <option value="igst">Inter-State (IGST)</option>
+                      </select>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-500">
+                      &bull; GST Type: <strong>{activeQuotation.gst_type === 'igst' ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'}</strong>
+                    </span>
+                  )}
+                </div>
               </div>
               <div className={styles.detailActions}>
                 {activeQuotation.status === 'draft' && (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setEditMode(!editMode)}
-                  >
-                    {editMode ? 'Finish Editing' : 'Edit BOQ Items'}
-                  </Button>
+                  <>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setEditMode(!editMode)}
+                    >
+                      {editMode ? 'Finish Editing' : 'Edit BOQ Items'}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleSend}
+                    >
+                      Mark as Sent
+                    </Button>
+                  </>
+                )}
+                {activeQuotation.status === 'sent' && (
+                  <>
+                    <Button 
+                      variant="primary" 
+                      size="sm" 
+                      onClick={handleAccept}
+                    >
+                      Client Accept
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleReject}
+                      style={{ color: 'red', borderColor: 'red' }}
+                    >
+                      Reject
+                    </Button>
+                  </>
                 )}
                 <Button 
                   variant="primary" 
@@ -565,6 +731,13 @@ export default function ProjectQuotationsTab({ projectId }) {
                 </Button>
               </div>
             </div>
+
+            {/* Confirmation Banner if exists */}
+            {activeQuotation.accepted_at && (
+              <div className="bg-green-50 border-l-4 border-green-500 p-3 rounded text-xs text-green-700 italic" style={{ marginTop: '8px', marginBottom: '8px' }}>
+                <strong>Client Approved On:</strong> {new Date(activeQuotation.accepted_at).toLocaleString('en-IN')}
+              </div>
+            )}
 
             {/* Change Reason Banner if exists */}
             {activeQuotation.change_reason && (
@@ -642,12 +815,77 @@ export default function ProjectQuotationsTab({ projectId }) {
                                       onChange={(e) => setEditForm({ ...editForm, roomOrArea: e.target.value })}
                                       placeholder="Room/Area Name"
                                     />
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                      <div style={{ flex: 1 }}>
+                                        <label style={{ fontSize: '10px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '2px' }}>HSN Code</label>
+                                        <input 
+                                          type="text" 
+                                          className={styles.itemInput} 
+                                          value={editForm.hsnCode}
+                                          onChange={(e) => setEditForm({ ...editForm, hsnCode: e.target.value })}
+                                          placeholder="HSN Code"
+                                        />
+                                      </div>
+                                      <div style={{ flex: 1 }}>
+                                        <label style={{ fontSize: '10px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '2px' }}>GST Rate (%)</label>
+                                        <input 
+                                          type="number" 
+                                          className={styles.itemInput} 
+                                          value={editForm.gstRate}
+                                          onChange={(e) => setEditForm({ ...editForm, gstRate: e.target.value })}
+                                          placeholder="GST Rate"
+                                          min="0"
+                                          max="100"
+                                          step="0.01"
+                                        />
+                                      </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <div style={{ flex: 1 }}>
+                                        <label style={{ fontSize: '10px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '2px' }}>Scope Type</label>
+                                        <select
+                                          className={styles.itemInput}
+                                          value={editForm.scopeType}
+                                          onChange={(e) => setEditForm({ ...editForm, scopeType: e.target.value, changeOrderId: e.target.value === 'original' ? '' : editForm.changeOrderId })}
+                                        >
+                                          <option value="original">Original Scope</option>
+                                          <option value="addition">Scope Addition</option>
+                                          <option value="reduction">Scope Reduction</option>
+                                        </select>
+                                      </div>
+                                      <div style={{ flex: 1 }}>
+                                        <label style={{ fontSize: '10px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '2px' }}>Change Order</label>
+                                        <select
+                                          className={styles.itemInput}
+                                          value={editForm.changeOrderId}
+                                          onChange={(e) => setEditForm({ ...editForm, changeOrderId: e.target.value })}
+                                          disabled={editForm.scopeType === 'original'}
+                                        >
+                                          <option value="">Select CO...</option>
+                                          {changeOrders.map(co => (
+                                            <option key={co.id} value={co.id}>{co.title} ({co.status})</option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                    </div>
                                   </div>
                                 ) : (
                                   <div>
                                     <strong>{item.item_name}</strong>
                                     {item.description && <div className="text-xs text-gray-500 mt-1">{item.description}</div>}
                                     {item.brand && <div className="text-[10px] text-gray-400 mt-0.5">Brand: {item.brand}</div>}
+                                    <div className="flex gap-2 items-center mt-1" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                      {item.scope_type === 'addition' && <span style={{ fontSize: '10px', background: '#dcfce7', color: '#166534', padding: '1px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Scope Addition</span>}
+                                      {item.scope_type === 'reduction' && <span style={{ fontSize: '10px', background: '#fee2e2', color: '#991b1b', padding: '1px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Scope Reduction</span>}
+                                      {item.scope_type === 'original' && <span style={{ fontSize: '10px', background: '#f3f4f6', color: '#374151', padding: '1px 6px', borderRadius: '4px' }}>Original Scope</span>}
+                                      {item.hsn_code && <span style={{ fontSize: '10px', background: '#eff6ff', color: '#1e40af', padding: '1px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>HSN: {item.hsn_code}</span>}
+                                      <span style={{ fontSize: '10px', background: '#f3f4f6', color: '#4b5563', padding: '1px 6px', borderRadius: '4px' }}>GST: {Number(item.gst_rate || 0)}%</span>
+                                      {item.change_order_title && (
+                                        <span style={{ fontSize: '10px', color: 'var(--color-text-secondary)' }}>
+                                          Authorized by: <strong>{item.change_order_title}</strong>
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 )}
                               </td>
@@ -699,8 +937,18 @@ export default function ProjectQuotationsTab({ projectId }) {
                                   `${Number(item.markup_percentage || 0)}%`
                                 )}
                               </td>
-                              <td className="text-right font-bold">
-                                ₹{Number(item.total_price).toLocaleString('en-IN')}
+                              <td className="text-right font-bold" style={{ verticalAlign: 'top' }}>
+                                <div>{item.scope_type === 'reduction' ? '-' : ''}₹{Number(item.total_price).toLocaleString('en-IN')}</div>
+                                {activeQuotation.gst_type === 'cgst_sgst' ? (
+                                  <div style={{ fontSize: '10px', color: '#6b7280', fontWeight: 'normal', marginTop: '4px', lineHeight: '1.2' }}>
+                                    CGST ({Number(item.gst_rate || 0) / 2}%): {item.scope_type === 'reduction' ? '-' : ''}₹{Number(item.cgst_amount || 0).toLocaleString('en-IN')}<br />
+                                    SGST ({Number(item.gst_rate || 0) / 2}%): {item.scope_type === 'reduction' ? '-' : ''}₹{Number(item.sgst_amount || 0).toLocaleString('en-IN')}
+                                  </div>
+                                ) : (
+                                  <div style={{ fontSize: '10px', color: '#6b7280', fontWeight: 'normal', marginTop: '4px', lineHeight: '1.2' }}>
+                                    IGST ({Number(item.gst_rate || 0)}%): {item.scope_type === 'reduction' ? '-' : ''}₹{Number(item.igst_amount || 0).toLocaleString('en-IN')}
+                                  </div>
+                                )}
                               </td>
                               {editMode && (
                                 <td>
@@ -724,6 +972,81 @@ export default function ProjectQuotationsTab({ projectId }) {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* Totals Card */}
+            {activeQuotation.items && activeQuotation.items.length > 0 && (
+              <div className={styles.totalsCard}>
+                <div className={styles.totalsRow}>
+                  <span>Subtotal:</span>
+                  <span>₹{Number(activeQuotation.subtotal || 0).toLocaleString('en-IN')}</span>
+                </div>
+                {activeQuotation.gst_type === 'cgst_sgst' ? (
+                  <>
+                    <div className={styles.totalsRow}>
+                      <span>CGST Total:</span>
+                      <span>₹{Number(activeQuotation.cgst_total || 0).toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className={styles.totalsRow}>
+                      <span>SGST Total:</span>
+                      <span>₹{Number(activeQuotation.sgst_total || 0).toLocaleString('en-IN')}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className={styles.totalsRow}>
+                    <span>IGST Total:</span>
+                    <span>₹{Number(activeQuotation.igst_total || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+                <div className={styles.totalsRow} style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '8px' }}>
+                  <span>Total GST Tax:</span>
+                  <span>₹{Number(activeQuotation.tax_amount || 0).toLocaleString('en-IN')}</span>
+                </div>
+                
+                {/* Discount field */}
+                {activeQuotation.status === 'draft' ? (
+                  <div className={styles.totalsRow} style={{ alignItems: 'center' }}>
+                    <span>Discount (₹):</span>
+                    <input
+                      type="number"
+                      className={styles.discountInput}
+                      value={activeQuotation.discount_amount || 0}
+                      onChange={async (e) => {
+                        const val = parseFloat(e.target.value || 0);
+                        try {
+                          const res = await updateQuotation(projectId, activeQuotation.id, {
+                            discountAmount: val
+                          });
+                          if (res.data?.success) {
+                            setActiveQuotation(res.data.data);
+                            setQuotations(quotations.map(q => q.id === activeQuotation.id ? { 
+                              ...q, 
+                              discount_amount: res.data.data.discount_amount,
+                              total_amount: res.data.data.total_amount 
+                            } : q));
+                          }
+                        } catch (err) {
+                          console.error(err);
+                        }
+                      }}
+                      min="0"
+                      step="1"
+                    />
+                  </div>
+                ) : (
+                  Number(activeQuotation.discount_amount || 0) > 0 && (
+                    <div className={styles.totalsRow}>
+                      <span>Discount:</span>
+                      <span>-₹{Number(activeQuotation.discount_amount).toLocaleString('en-IN')}</span>
+                    </div>
+                  )
+                )}
+
+                <div className={`${styles.totalsRow} ${styles.grandTotal}`}>
+                  <span>Grand Total:</span>
+                  <span>₹{Number(activeQuotation.total_amount || 0).toLocaleString('en-IN')}</span>
+                </div>
               </div>
             )}
 
@@ -752,6 +1075,29 @@ export default function ProjectQuotationsTab({ projectId }) {
                       onChange={(e) => setNewItem({ ...newItem, roomOrArea: e.target.value })}
                       placeholder="e.g. Master Bedroom"
                       required
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>HSN Code</label>
+                    <input 
+                      type="text" 
+                      className={styles.itemInput} 
+                      value={newItem.hsnCode || ''}
+                      onChange={(e) => setNewItem({ ...newItem, hsnCode: e.target.value })}
+                      placeholder="e.g. 9954"
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>GST Rate (%)</label>
+                    <input 
+                      type="number" 
+                      className={styles.itemInput} 
+                      value={newItem.gstRate || ''}
+                      onChange={(e) => setNewItem({ ...newItem, gstRate: e.target.value })}
+                      placeholder="e.g. 18"
+                      min="0"
+                      max="100"
+                      step="0.01"
                     />
                   </div>
                   <div className={styles.formGroup}>
@@ -800,15 +1146,30 @@ export default function ProjectQuotationsTab({ projectId }) {
                     />
                   </div>
                   <div className={styles.formGroup}>
-                    <label>Markup %</label>
-                    <input 
-                      type="number" 
+                    <label>Scope Type</label>
+                    <select 
                       className={styles.itemInput} 
-                      value={newItem.markupPercentage}
-                      onChange={(e) => setNewItem({ ...newItem, markupPercentage: e.target.value })}
-                      min="0"
-                      step="0.01"
-                    />
+                      value={newItem.scopeType}
+                      onChange={(e) => setNewItem({ ...newItem, scopeType: e.target.value, changeOrderId: e.target.value === 'original' ? '' : newItem.changeOrderId })}
+                    >
+                      <option value="original">Original Scope</option>
+                      <option value="addition">Scope Addition</option>
+                      <option value="reduction">Scope Reduction</option>
+                    </select>
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>Authorized Change Order</label>
+                    <select 
+                      className={styles.itemInput} 
+                      value={newItem.changeOrderId}
+                      onChange={(e) => setNewItem({ ...newItem, changeOrderId: e.target.value })}
+                      disabled={newItem.scopeType === 'original'}
+                    >
+                      <option value="">No Change Order (Base)</option>
+                      {changeOrders.map(co => (
+                        <option key={co.id} value={co.id}>{co.title} ({co.status})</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
                 <div className={styles.formGroup}>

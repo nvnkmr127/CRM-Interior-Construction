@@ -18,6 +18,13 @@ const DesignReviewsTab = React.lazy(() => import('../../components/projects/Desi
 const MaterialPalettesTab = React.lazy(() => import('../../components/projects/MaterialPalettesTab'));
 const ChangeOrdersTab = React.lazy(() => import('../../components/projects/ChangeOrdersTab'));
 const ProjectQuotationsTab = React.lazy(() => import('../../components/projects/ProjectQuotationsTab'));
+const BudgetTab = React.lazy(() => import('../../components/projects/BudgetTab'));
+const PurchaseOrdersTab = React.lazy(() => import('../../components/projects/PurchaseOrdersTab'));
+const MaterialDeliveriesTab = React.lazy(() => import('../../components/projects/MaterialDeliveriesTab'));
+const VendorPaymentsTab = React.lazy(() => import('../../components/projects/VendorPaymentsTab'));
+const MaterialSubstitutionsTab = React.lazy(() => import('../../components/projects/MaterialSubstitutionsTab'));
+const FactoryProductionTab = React.lazy(() => import('../../components/projects/FactoryProductionTab'));
+const WorkActivitiesTab = React.lazy(() => import('../../components/projects/WorkActivitiesTab'));
 
 function formatDate(dateStr) {
   if (!dateStr) return '—';
@@ -73,7 +80,10 @@ function OverviewTab({ project }) {
     { label: 'Market Segment',  value: project.segment ? project.segment.replace(/_/g, ' ') : '—' },
     { label: 'Start Date',      value: formatDate(project.start_date) },
     { label: 'Target Date',     value: formatDate(project.target_date) },
-    { label: 'Contract Value',  value: formatValue(project.contract_value) },
+    { label: 'Base Contract Value (Original Scope)', value: formatValue(project.stats?.originalScopeTotal || project.contract_value) },
+    { label: 'Scope Additions (Change Orders)', value: formatValue(project.stats?.additionsTotal || 0) },
+    { label: 'Scope Reductions (Change Orders)', value: formatValue(project.stats?.reductionsTotal || 0) },
+    { label: 'Net Contract Value', value: formatValue(project.stats?.netContractValue || project.contract_value) },
     { label: 'Status',          value: project.status ? project.status.replace(/_/g, ' ') : '—' },
     { label: 'Client Phone',    value: project.client_phone || '—' },
     { label: 'Client Email',    value: project.client_email || '—' },
@@ -463,7 +473,7 @@ export default function ProjectDetail() {
     }
   };
 
-  const tabs = ['Overview', 'Design Brief', 'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 'Change Orders', 'Phases', 'Tasks', 'Documents', 'Payments', 'Snags', 'Handover'];
+  const tabs = ['Overview', 'Design Brief', 'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 'Change Orders', 'Budget', 'Purchase Orders', 'Material Deliveries', 'Vendor Payments', 'Substitutions', 'Factory Production', 'Phases', 'Work Activities', 'Tasks', 'Documents', 'Payments', 'Snags', 'Handover'];
 
   useEffect(() => {
     if (!projectId) return;
@@ -483,7 +493,14 @@ export default function ProjectDetail() {
       case 'Material Palettes': return <MaterialPalettesTab projectId={projectId} />;
       case 'Quotations & BOQ': return <ProjectQuotationsTab projectId={projectId} />;
       case 'Change Orders': return <ChangeOrdersTab projectId={projectId} />;
+      case 'Budget': return <BudgetTab projectId={projectId} />;
+      case 'Purchase Orders': return <PurchaseOrdersTab projectId={projectId} />;
+      case 'Material Deliveries': return <MaterialDeliveriesTab projectId={projectId} />;
+      case 'Vendor Payments': return <VendorPaymentsTab projectId={projectId} />;
+      case 'Substitutions': return <MaterialSubstitutionsTab projectId={projectId} />;
+      case 'Factory Production': return <FactoryProductionTab projectId={projectId} />;
       case 'Phases': return <PhaseTimeline projectId={projectId} />;
+      case 'Work Activities': return <WorkActivitiesTab projectId={projectId} project={project} />;
       case 'Tasks': return <TaskKanban projectId={projectId} />;
       case 'Documents': return <DocumentPanel projectId={projectId} />;
       case 'Payments': return <PaymentsTab projectId={projectId} />;
@@ -628,7 +645,7 @@ export default function ProjectDetail() {
           <span className={styles.statValue}>
             {formatValue(project.stats?.collectedPayment)}
             {' of '}
-            {formatValue(project.contract_value)}
+            {formatValue(project.stats?.netContractValue || project.contract_value)}
           </span>
         </div>
       </div>

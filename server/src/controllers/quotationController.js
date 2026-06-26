@@ -105,3 +105,59 @@ exports.compareQuotations = async (req, res, next) => {
   }
 };
 
+exports.sendQuotation = async (req, res, next) => {
+  try {
+    const tenantId = getTenantId(req);
+    const { id } = req.params;
+    const quotation = await quotationService.sendQuotation(tenantId, id);
+    if (!quotation) {
+      return res.status(404).json({ success: false, message: 'Quotation not found or not in draft status' });
+    }
+    res.status(200).json({ success: true, data: quotation });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.acceptQuotation = async (req, res, next) => {
+  try {
+    const tenantId = getTenantId(req);
+    const { id } = req.params;
+    const quotation = await quotationService.acceptQuotation(tenantId, id);
+    if (!quotation) {
+      return res.status(404).json({ success: false, message: 'Quotation not found or cannot be accepted' });
+    }
+    res.status(200).json({ success: true, data: quotation });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.rejectQuotation = async (req, res, next) => {
+  try {
+    const tenantId = getTenantId(req);
+    const { id } = req.params;
+    const quotation = await quotationService.rejectQuotation(tenantId, id);
+    if (!quotation) {
+      return res.status(404).json({ success: false, message: 'Quotation not found or cannot be rejected' });
+    }
+    res.status(200).json({ success: true, data: quotation });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateQuotation = async (req, res, next) => {
+  try {
+    const tenantId = getTenantId(req);
+    const { id } = req.params;
+    const quotation = await quotationService.updateQuotation(tenantId, id, req.body);
+    if (!quotation) {
+      return res.status(404).json({ success: false, message: 'Quotation not found' });
+    }
+    res.status(200).json({ success: true, data: quotation });
+  } catch (error) {
+    next(error);
+  }
+};
+

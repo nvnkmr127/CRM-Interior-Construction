@@ -82,7 +82,7 @@ router.post('/', authorize('projects:manage'), async (req, res, next) => {
     return success(res, task, {}, 201);
   } catch (err) {
     if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    if (err.status === 400) return fail(res, 'BAD_REQUEST', err.details || err.message, 400);
+    if (err.status === 400) return fail(res, err.code || 'BAD_REQUEST', err.details || err.message, 400);
     console.error('[Tasks Router] Create error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create task.', 500);
   }
@@ -101,7 +101,7 @@ router.post('/bulk', authorize('projects:manage'), async (req, res, next) => {
     return success(res, { created: createdTasks, count: createdTasks.length }, {}, 201);
   } catch (err) {
     if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    if (err.status === 400) return fail(res, 'BAD_REQUEST', err.details || err.message, 400);
+    if (err.status === 400) return fail(res, err.code || 'BAD_REQUEST', err.details || err.message, 400);
     console.error('[Tasks Router] Bulk create error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to bulk create tasks.', 500);
   }
@@ -154,7 +154,7 @@ router.patch('/:tid', authorize('projects:manage'), async (req, res, next) => {
     return success(res, task);
   } catch (err) {
     if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    if (err.status === 400) return fail(res, 'BAD_REQUEST', err.details || err.message, 400);
+    if (err.status === 400) return fail(res, err.code || 'BAD_REQUEST', err.details || err.message, 400);
     if (err.status === 404 || err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Task not found', 404);
     console.error('[Tasks Router] Update error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update task.', 500);

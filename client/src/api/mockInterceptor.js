@@ -924,6 +924,185 @@ export const setupMockInterceptor = (api) => {
             }
           }
 
+          // SITE READINESS CHECKLIST
+          else if (url.includes('/site-readiness')) {
+            const urlParts = url.split('?');
+            const match = urlParts[0].match(/\/projects\/([a-zA-Z0-9-]+)\/site-readiness(?:\/([a-zA-Z0-9-]+))?$/);
+            const projectId = match ? match[1] : null;
+            const itemId = match ? match[2] : null;
+
+            if (!mockDatabase.siteReadiness) mockDatabase.siteReadiness = [];
+
+            const seedIfEmpty = () => {
+              const projectItems = mockDatabase.siteReadiness.filter(item => item.project_id === projectId);
+              if (projectItems.length === 0) {
+                const defaults = [
+                  { key: 'civil_handover', label: 'Civil Handover Completed' },
+                  { key: 'electrical_rough_in', label: 'Electrical Rough-In Ready' },
+                  { key: 'waterproofing', label: 'Wet Area Waterproofing Done' },
+                  { key: 'debris_cleared', label: 'Debris Cleared & Site Cleaned' }
+                ];
+                defaults.forEach(d => {
+                  mockDatabase.siteReadiness.push({
+                    id: `mock-sr-${Date.now()}-${Math.random()}`,
+                    project_id: projectId,
+                    item_key: d.key,
+                    label: d.label,
+                    is_completed: false,
+                    completed_at: null,
+                    completed_by: null,
+                    notes: ''
+                  });
+                });
+                persistDb();
+              }
+            };
+
+            if (method === 'get') {
+              seedIfEmpty();
+              responseData.data = mockDatabase.siteReadiness.filter(item => item.project_id === projectId);
+            } else if (method === 'post') {
+              if (url.includes('/sign-off')) {
+                seedIfEmpty();
+                mockDatabase.siteReadiness.forEach(item => {
+                  if (item.project_id === projectId) {
+                    item.is_completed = true;
+                    item.completed_at = new Date().toISOString();
+                    item.completed_by_name = 'PM (Mock)';
+                  }
+                });
+                persistDb();
+                responseData.data = mockDatabase.siteReadiness.filter(item => item.project_id === projectId);
+              }
+            } else if (method === 'patch' || method === 'put') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const idx = mockDatabase.siteReadiness.findIndex(item => item.id === itemId);
+              if (idx !== -1) {
+                const item = mockDatabase.siteReadiness[idx];
+                if (payload.is_completed === true) {
+                  item.is_completed = true;
+                  item.completed_at = new Date().toISOString();
+                  item.completed_by_name = 'Supervisor (Mock)';
+                } else if (payload.is_completed === false) {
+                  item.is_completed = false;
+                  item.completed_at = null;
+                  item.completed_by_name = null;
+                }
+                if (payload.notes !== undefined) item.notes = payload.notes;
+                if (payload.photo_key !== undefined) item.photo_key = payload.photo_key;
+
+                persistDb();
+                responseData.data = item;
+              }
+            }
+          }
+
+          // WORK ACTIVITIES
+          else if (url.includes('/work-activities')) {
+            const urlParts = url.split('?');
+            // match path: /projects/:projectId/work-activities or /projects/:projectId/work-activities/:id
+            const match = urlParts[0].match(/\/projects\/([a-zA-Z0-9-]+)\/work-activities(?:\/([a-zA-Z0-9-]+))?$/);
+            const projectId = match ? match[1] : null;
+            const activityId = match ? match[2] : null;
+
+            if (!mockDatabase.workActivities) mockDatabase.workActivities = [];
+
+            if (method === 'get') {
+              if (url.includes('/templates')) {
+                responseData.data = [
+                  { trade: 'civil', room_type: 'General', activity_name: 'Demolition and hacking', description: 'Demolition of existing structures, walls, or tiles.' },
+                  { trade: 'civil', room_type: 'General', activity_name: 'Debris removal & site cleaning', description: 'Clearing out debris and preparing the floor/walls.' },
+                  { trade: 'electrical', room_type: 'General', activity_name: 'Wall chasing and conduit pipe laying', description: 'Cutting grooves in walls and fitting PVC conduit pipes.' },
+                  { trade: 'plumbing', room_type: 'Bathroom', activity_name: 'Waterproofing base coat application', description: 'Applying waterproofing compounds on floors and wet walls.' }
+                ];
+              } else {
+                let filtered = mockDatabase.workActivities.filter(a => a.project_id === projectId);
+                const params = urlParts[1] ? new URLSearchParams(urlParts[1]) : null;
+                if (params) {
+                  const tradeParam = params.get('trade');
+                  const roomParam = params.get('roomName');
+                  const statusParam = params.get('status');
+                  const phaseParam = params.get('phaseId');
+
+                  if (tradeParam) filtered = filtered.filter(a => a.trade === tradeParam);
+                  if (roomParam) filtered = filtered.filter(a => a.room_name === roomParam);
+                  if (statusParam) filtered = filtered.filter(a => a.status === statusParam);
+                  if (phaseParam) filtered = filtered.filter(a => a.phase_id === phaseParam);
+                }
+                responseData.data = filtered;
+              }
+            } else if (method === 'post') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              if (url.includes('/generate')) {
+                const { phaseId, roomName, trade } = payload;
+                const templates = [
+                  { trade: 'civil', room_type: 'General', activity_name: 'Demolition and hacking', description: 'Demolition of existing structures, walls, or tiles.' },
+                  { trade: 'civil', room_type: 'General', activity_name: 'Debris removal & site cleaning', description: 'Clearing out debris and preparing the floor/walls.' },
+                  { trade: 'electrical', room_type: 'General', activity_name: 'Wall chasing and conduit pipe laying', description: 'Cutting grooves in walls and fitting PVC conduit pipes.' },
+                  { trade: 'plumbing', room_type: 'Bathroom', activity_name: 'Waterproofing base coat application', description: 'Applying waterproofing compounds on floors and wet walls.' }
+                ].filter(t => t.trade === trade);
+
+                const created = [];
+                for (const tpl of templates) {
+                  const newAct = {
+                    id: `mock-act-${Date.now()}-${Math.random()}`,
+                    project_id: projectId,
+                    phase_id: phaseId || null,
+                    room_name: roomName,
+                    trade,
+                    activity_name: tpl.activity_name,
+                    description: tpl.description,
+                    status: 'todo',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                  };
+                  mockDatabase.workActivities.push(newAct);
+                  created.push(newAct);
+                }
+                persistDb();
+                responseData.data = created;
+              } else {
+                const newAct = {
+                  id: `mock-act-${Date.now()}`,
+                  project_id: projectId,
+                  phase_id: payload.phase_id || null,
+                  room_name: payload.room_name,
+                  trade: payload.trade,
+                  activity_name: payload.activity_name,
+                  description: payload.description || '',
+                  status: payload.status || 'todo',
+                  assignee_id: payload.assignee_id || null,
+                  due_date: payload.due_date || null,
+                  notes: payload.notes || '',
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                };
+                mockDatabase.workActivities.push(newAct);
+                persistDb();
+                responseData.data = newAct;
+              }
+            } else if (method === 'patch' || method === 'put') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const idx = mockDatabase.workActivities.findIndex(a => a.id === activityId);
+              if (idx !== -1) {
+                mockDatabase.workActivities[idx] = { 
+                  ...mockDatabase.workActivities[idx], 
+                  ...payload, 
+                  updated_at: new Date().toISOString() 
+                };
+                persistDb();
+                responseData.data = mockDatabase.workActivities[idx];
+              }
+            } else if (method === 'delete') {
+              const idx = mockDatabase.workActivities.findIndex(a => a.id === activityId);
+              if (idx !== -1) {
+                mockDatabase.workActivities.splice(idx, 1);
+                persistDb();
+              }
+              responseData.data = { success: true };
+            }
+          }
+
           // TASKS (global or specific)
           else if (url.includes('/tasks')) {
             const urlParts = url.split('?');

@@ -3,6 +3,7 @@ import { Badge, Button } from '../ui';
 import styles from './PhaseTimeline.module.css';
 import { getPhases, signOffPhase, getMilestones, completeMilestone } from '../../api/projects';
 import { useToast } from '../../store/toastContext';
+import SiteReadinessCard from './SiteReadinessCard';
 
 function formatDate(d) {
   if (!d) return null;
@@ -15,10 +16,8 @@ export default function PhaseTimeline({ projectId }) {
   const [loading, setLoading] = useState(true);
   const [signingOff, setSigningOff] = useState(null);
 
-  useEffect(() => {
-    if (!projectId) return;
+  const loadPhases = () => {
     setLoading(true);
-
     getPhases(projectId)
       .then(async res => {
         const _r = res.data?.data || res.data; const rawPhases = Array.isArray(_r) ? _r : [];
@@ -44,6 +43,12 @@ export default function PhaseTimeline({ projectId }) {
       })
       .catch(() => setPhases([]))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    if (projectId) {
+      loadPhases();
+    }
   }, [projectId]);
 
   const toggleMilestone = async (phaseId, milestoneId) => {
@@ -118,8 +123,17 @@ export default function PhaseTimeline({ projectId }) {
     );
   }
 
+  const executionPhase = phases.find(p => p.is_execution);
+
   return (
     <div className={styles.timeline}>
+      {executionPhase && (
+        <SiteReadinessCard
+          projectId={projectId}
+          executionPhase={executionPhase}
+          onReadinessUpdate={loadPhases}
+        />
+      )}
       {phases.map((phase, idx) => {
         const isLast = idx === phases.length - 1;
         const allDone = phase.milestones.length > 0 && phase.milestones.every(m => m.done);
@@ -164,7 +178,30 @@ export default function PhaseTimeline({ projectId }) {
                 {phase.sign_off_by && `Sign-off: ${phase.sign_off_by}`}
                 {phase.duration_days && ` · ${phase.duration_days} days`}
                 {phase.starts_at && ` · ${formatDate(phase.starts_at)} → ${formatDate(phase.ends_at)}`}
+                {phase.progress_percentage !== undefined && phase.progress_percentage !== null && (
+                  <span style={{ marginLeft: 8, fontWeight: 600, color: 'var(--color-accent)' }}>
+                    · {Math.round(phase.progress_percentage)}% Complete
+                  </span>
+                )}
               </div>
+
+              {phase.progress_percentage !== undefined && phase.progress_percentage !== null && (
+                <div style={{
+                  background: 'var(--color-surface-hover, #f1f5f9)',
+                  height: 4,
+                  width: '100%',
+                  borderRadius: 2,
+                  marginTop: 4,
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    background: 'var(--color-success, #22c55e)',
+                    height: '100%',
+                    width: `${phase.progress_percentage}%`,
+                    transition: 'width 0.4s ease'
+                  }} />
+                </div>
+              )}
 
               <div className={styles.milestoneList}>
                 {phase.milestones.length === 0 && (

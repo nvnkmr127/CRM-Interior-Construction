@@ -13,6 +13,9 @@ router.post('/', authenticate, authorize('projects:update'), quotationController
 // Get a quotation with BOQ items
 router.get('/:id', authenticate, authorize('projects:read'), quotationController.getQuotation);
 
+// Update a quotation config/details
+router.put('/:id', authenticate, authorize('projects:update'), quotationController.updateQuotation);
+
 // Add a BOQ item to a quotation
 router.post('/:id/items', authenticate, authorize('projects:update'), quotationController.addBOQItem);
 
@@ -27,6 +30,11 @@ router.post('/:id/revise', authenticate, authorize('projects:update'), quotation
 
 // Compare two quotation versions
 router.get('/:id/compare/:targetId', authenticate, authorize('projects:read'), quotationController.compareQuotations);
+
+// Send, accept, and reject quotations
+router.post('/:id/send', authenticate, authorize('projects:update'), quotationController.sendQuotation);
+router.post('/:id/accept', authenticate, authorize('projects:update'), quotationController.acceptQuotation);
+router.post('/:id/reject', authenticate, authorize('projects:update'), quotationController.rejectQuotation);
 
 module.exports = router;
 

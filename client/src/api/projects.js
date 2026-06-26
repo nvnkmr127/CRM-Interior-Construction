@@ -103,7 +103,59 @@ export const updateBOQItem = (projectId, id, itemId, data) => api.put(`/projects
 export const deleteBOQItem = (projectId, id, itemId) => api.delete(`/projects/${projectId}/quotations/${id}/items/${itemId}`);
 export const reviseQuotation = (projectId, id, changeReason) => api.post(`/projects/${projectId}/quotations/${id}/revise`, { changeReason });
 export const compareQuotations = (projectId, id, targetId) => api.get(`/projects/${projectId}/quotations/${id}/compare/${targetId}`);
+export const sendQuotation = (projectId, id) => api.post(`/projects/${projectId}/quotations/${id}/send`);
+export const acceptQuotation = (projectId, id) => api.post(`/projects/${projectId}/quotations/${id}/accept`);
+export const rejectQuotation = (projectId, id) => api.post(`/projects/${projectId}/quotations/${id}/reject`);
+export const updateQuotation = (projectId, id, data) => api.put(`/projects/${projectId}/quotations/${id}`, data);
 
+// Budget Tracking
+export const getBudgetSummary = (projectId) => api.get(`/projects/${projectId}/budget`);
+export const updateBudgetAllocation = (projectId, data) => api.post(`/projects/${projectId}/budget`, data);
+export const getExpenses = (projectId) => api.get(`/projects/${projectId}/budget/expenses`);
+export const addExpense = (projectId, data) => api.post(`/projects/${projectId}/budget/expenses`, data);
+export const deleteExpense = (projectId, expenseId) => api.delete(`/projects/${projectId}/budget/expenses/${expenseId}`);
 
+// Purchase Orders
+export const getPurchaseOrders = (projectId) => api.get(`/projects/${projectId}/purchase-orders`);
+export const getPurchaseOrder = (projectId, id) => api.get(`/projects/${projectId}/purchase-orders/${id}`);
+export const createPurchaseOrder = (projectId, data) => api.post(`/projects/${projectId}/purchase-orders`, data);
+export const updatePurchaseOrder = (projectId, id, data) => api.put(`/projects/${projectId}/purchase-orders/${id}`, data);
+export const updatePOItemReceipt = (projectId, id, itemId, data) => api.put(`/projects/${projectId}/purchase-orders/${id}/items/${itemId}/receipt`, data);
 
+// Material Deliveries
+export const getMaterialDeliveries = (projectId) => api.get(`/projects/${projectId}/material-deliveries`);
+export const getMaterialDelivery = (projectId, id) => api.get(`/projects/${projectId}/material-deliveries/${id}`);
+export const createMaterialDelivery = (projectId, data) => api.post(`/projects/${projectId}/material-deliveries`, data);
+export const updateMaterialDelivery = (projectId, id, data) => api.put(`/projects/${projectId}/material-deliveries/${id}`, data);
 
+// Vendor Payments
+export const getVendorPayments = (projectId) => api.get(`/projects/${projectId}/vendor-payments`);
+export const getVendorPayment = (projectId, id) => api.get(`/projects/${projectId}/vendor-payments/${id}`);
+export const createVendorPayment = (projectId, data) => api.post(`/projects/${projectId}/vendor-payments`, data);
+export const updateVendorPayment = (projectId, id, data) => api.put(`/projects/${projectId}/vendor-payments/${id}`, data);
+export const deleteVendorPayment = (projectId, id) => api.delete(`/projects/${projectId}/vendor-payments/${id}`);
+
+// Material Substitutions
+export const getSubstitutions = (projectId) => api.get(`/projects/${projectId}/material-substitutions`);
+export const getSubstitution = (projectId, id) => api.get(`/projects/${projectId}/material-substitutions/${id}`);
+export const proposeSubstitution = (projectId, data) => api.post(`/projects/${projectId}/material-substitutions`, data);
+export const respondToSubstitution = (projectId, id, data) => api.put(`/projects/${projectId}/material-substitutions/${id}/respond`, data);
+
+// Production Orders
+export const getProductionOrders = (projectId) => api.get(`/projects/${projectId}/production-orders`);
+export const getProductionOrder = (projectId, id) => api.get(`/projects/${projectId}/production-orders/${id}`);
+export const createProductionOrder = (projectId, data) => api.post(`/projects/${projectId}/production-orders`, data);
+export const updateProductionOrder = (projectId, id, data) => api.put(`/projects/${projectId}/production-orders/${id}`, data);
+export const updateProductionOrderItem = (projectId, id, itemId, data) => api.put(`/projects/${projectId}/production-orders/${id}/items/${itemId}`, data);
+export const recordQCInspection = (projectId, orderId, itemId, data) => api.post(`/projects/${projectId}/production-orders/${orderId}/items/${itemId}/qc`, data);
+export const createReworkOrder = (projectId, orderId, itemId, data) => api.post(`/projects/${projectId}/production-orders/${orderId}/items/${itemId}/rework`, data);
+export const updateReworkOrderStatus = (projectId, orderId, reworkId, data) => api.put(`/projects/${projectId}/production-orders/${orderId}/rework/${reworkId}`, data);
+export const clearOrderForDispatch = (projectId, orderId) => api.post(`/projects/${projectId}/production-orders/${orderId}/clear-dispatch`);
+export const getQCAndReworkSummary = (projectId, orderId) => api.get(`/projects/${projectId}/production-orders/${orderId}/qc-rework-summary`);
+export const dispatchProductionOrder = (projectId, orderId, data) => api.post(`/projects/${projectId}/production-orders/${orderId}/dispatch`, data);
+export const confirmSiteDelivery = (projectId, orderId, dispatchId, data) => api.put(`/projects/${projectId}/production-orders/${orderId}/dispatch/${dispatchId}/receipt`, data);
+export const getDispatchRecords = (projectId, orderId) => api.get(`/projects/${projectId}/production-orders/${orderId}/dispatch`);
+export const createTransitDamageReport = (projectId, orderId, dispatchId, itemId, data) => api.post(`/projects/${projectId}/production-orders/${orderId}/dispatch/${dispatchId}/items/${itemId}/damage`, data);
+export const initiateReplacementOrder = (projectId, orderId, damageId) => api.post(`/projects/${projectId}/production-orders/${orderId}/damage/${damageId}/replacement`);
+export const updateTransitDamageStatus = (projectId, orderId, damageId, data) => api.put(`/projects/${projectId}/production-orders/${orderId}/damage/${damageId}`, data);
+export const getTransitDamageRecords = (projectId, orderId) => api.get(`/projects/${projectId}/production-orders/${orderId}/damage`);

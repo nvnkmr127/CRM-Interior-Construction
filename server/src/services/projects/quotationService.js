@@ -34,54 +34,80 @@ class QuotationService {
   }
 
   async addBOQItem(tenantId, quotationId, itemData) {
-    const { parentItemId, roomOrArea, itemName, description, unit, quantity, unitPrice, markupPercentage, materialSpecifications, brand, sortOrder, itemKey } = itemData;
+    const { parentItemId, roomOrArea, itemName, description, unit, quantity, unitPrice, markupPercentage, materialSpecifications, brand, sortOrder, itemKey, scopeType, changeOrderId, hsnCode, gstRate } = itemData;
 
     const query = `
       INSERT INTO quotation_items 
-      (tenant_id, quotation_id, parent_item_id, room_or_area, item_name, description, unit, quantity, unit_price, markup_percentage, material_specifications, brand, sort_order, item_key)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, COALESCE($14, gen_random_uuid()))
+      (tenant_id, quotation_id, parent_item_id, room_or_area, item_name, description, unit, quantity, unit_price, markup_percentage, material_specifications, brand, sort_order, item_key, scope_type, change_order_id, hsn_code, gst_rate)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, COALESCE($14, gen_random_uuid()), COALESCE($15, 'original'), $16, $17, $18)
       RETURNING *
     `;
     const values = [
       tenantId, quotationId, parentItemId || null, roomOrArea, itemName, description, 
-      unit, quantity, unitPrice, markupPercentage, materialSpecifications, brand, sortOrder, itemKey || null
+      unit, quantity, unitPrice, markupPercentage, materialSpecifications, brand, sortOrder, itemKey || null,
+      scopeType || 'original', changeOrderId || null, hsnCode || null, gstRate || 0.00
     ];
 
     const result = await pool.query(query, values);
     await this.updateQuotationTotals(tenantId, quotationId);
-    return result.rows[0];
+    
+    // Re-fetch updated item to get dynamically computed tax split columns
+    const finalRes = await pool.query('SELECT * FROM quotation_items WHERE id = $1 AND tenant_id = $2', [result.rows[0].id, tenantId]);
+    return finalRes.rows[0];
   }
 
   async updateBOQItem(tenantId, itemId, itemData) {
-    const { roomOrArea, itemName, description, unit, quantity, unitPrice, markupPercentage, materialSpecifications, brand, sortOrder } = itemData;
-    
+    const fields = [];
+    const values = [tenantId, itemId];
+    let index = 3;
+
+    const updateableFields = {
+      room_or_area: 'roomOrArea',
+      item_name: 'itemName',
+      description: 'description',
+      unit: 'unit',
+      quantity: 'quantity',
+      unit_price: 'unitPrice',
+      markup_percentage: 'markupPercentage',
+      material_specifications: 'materialSpecifications',
+      brand: 'brand',
+      sort_order: 'sortOrder',
+      scope_type: 'scopeType',
+      change_order_id: 'changeOrderId',
+      hsn_code: 'hsnCode',
+      gst_rate: 'gstRate'
+    };
+
+    for (const [colName, jsKey] of Object.entries(updateableFields)) {
+      if (itemData[jsKey] !== undefined) {
+        fields.push(`${colName} = $${index}`);
+        let val = itemData[jsKey];
+        if (val === '') val = null;
+        values.push(val);
+        index++;
+      }
+    }
+
+    if (fields.length === 0) {
+      const res = await pool.query('SELECT * FROM quotation_items WHERE id = $1 AND tenant_id = $2', [itemId, tenantId]);
+      return res.rows[0];
+    }
+
     const query = `
       UPDATE quotation_items
-      SET room_or_area = COALESCE($1, room_or_area),
-          item_name = COALESCE($2, item_name),
-          description = COALESCE($3, description),
-          unit = COALESCE($4, unit),
-          quantity = COALESCE($5, quantity),
-          unit_price = COALESCE($6, unit_price),
-          markup_percentage = COALESCE($7, markup_percentage),
-          material_specifications = COALESCE($8, material_specifications),
-          brand = COALESCE($9, brand),
-          sort_order = COALESCE($10, sort_order),
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = $11 AND tenant_id = $12
+      SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2 AND tenant_id = $1
       RETURNING *
     `;
-    const values = [
-      roomOrArea, itemName, description, unit, quantity, unitPrice, markupPercentage,
-      materialSpecifications, brand, sortOrder, itemId, tenantId
-    ];
-    
     const result = await pool.query(query, values);
     if (result.rowCount === 0) return null;
     
     const item = result.rows[0];
     await this.updateQuotationTotals(tenantId, item.quotation_id);
-    return item;
+    
+    // Re-fetch updated item to get dynamically computed tax split columns
+    const finalRes = await pool.query('SELECT * FROM quotation_items WHERE id = $1 AND tenant_id = $2', [itemId, tenantId]);
+    return finalRes.rows[0];
   }
 
   async deleteBOQItem(tenantId, itemId) {
@@ -96,26 +122,58 @@ class QuotationService {
     return true;
   }
 
-  async updateQuotationTotals(tenantId, quotationId) {
-    // Calculate the new total from quotation_items
+  async updateQuotationTotals(tenantId, quotationId, client = pool) {
+    // 1. Fetch current quotation configuration
+    const qQuery = 'SELECT gst_type, discount_amount FROM quotations WHERE id = $1 AND tenant_id = $2';
+    const qRes = await client.query(qQuery, [quotationId, tenantId]);
+    if (qRes.rowCount === 0) return null;
+    const { gst_type: gstType, discount_amount: discountAmountStr } = qRes.rows[0];
+    const discountAmount = parseFloat(discountAmountStr || 0);
+
+    // 2. Recompute CGST, SGST, IGST on each line item based on parent's gst_type and line-item's own gst_rate
+    const recomputeItemsQuery = `
+      UPDATE quotation_items
+      SET cgst_amount = CASE WHEN $1 = 'cgst_sgst' THEN (total_price * (gst_rate / 100.0) / 2.0) ELSE 0.00 END,
+          sgst_amount = CASE WHEN $1 = 'cgst_sgst' THEN (total_price * (gst_rate / 100.0) / 2.0) ELSE 0.00 END,
+          igst_amount = CASE WHEN $1 = 'igst' THEN (total_price * (gst_rate / 100.0)) ELSE 0.00 END
+      WHERE quotation_id = $2 AND tenant_id = $3
+    `;
+    await client.query(recomputeItemsQuery, [gstType, quotationId, tenantId]);
+
+    // 3. Sum up all BOQ items' subtotals and tax splits (negating reductions)
     const sumQuery = `
-      SELECT COALESCE(SUM(total_price), 0) as new_subtotal
+      SELECT 
+        COALESCE(SUM(CASE WHEN scope_type = 'reduction' THEN -total_price ELSE total_price END), 0) as new_subtotal,
+        COALESCE(SUM(CASE WHEN scope_type = 'reduction' THEN -cgst_amount ELSE cgst_amount END), 0) as new_cgst,
+        COALESCE(SUM(CASE WHEN scope_type = 'reduction' THEN -sgst_amount ELSE sgst_amount END), 0) as new_sgst,
+        COALESCE(SUM(CASE WHEN scope_type = 'reduction' THEN -igst_amount ELSE igst_amount END), 0) as new_igst
       FROM quotation_items
       WHERE quotation_id = $1 AND tenant_id = $2
     `;
-    const sumResult = await pool.query(sumQuery, [quotationId, tenantId]);
+    const sumResult = await client.query(sumQuery, [quotationId, tenantId]);
     const newSubtotal = parseFloat(sumResult.rows[0].new_subtotal);
+    const newCgst = parseFloat(sumResult.rows[0].new_cgst);
+    const newSgst = parseFloat(sumResult.rows[0].new_sgst);
+    const newIgst = parseFloat(sumResult.rows[0].new_igst);
+    const newTax = newCgst + newSgst + newIgst;
+    const newTotal = newSubtotal + newTax - discountAmount;
 
-    // Get current tax/discount to recalculate final total (simplified logic here)
+    // 4. Write back totals and splits to parent quotation
     const updateQuery = `
       UPDATE quotations
       SET subtotal = $1,
-          total_amount = $1 + tax_amount - discount_amount,
+          cgst_total = $2,
+          sgst_total = $3,
+          igst_total = $4,
+          tax_amount = $5,
+          total_amount = $6,
           updated_at = CURRENT_TIMESTAMP
-      WHERE id = $2 AND tenant_id = $3
+      WHERE id = $7 AND tenant_id = $8
       RETURNING *
     `;
-    const updateResult = await pool.query(updateQuery, [newSubtotal, quotationId, tenantId]);
+    const updateResult = await client.query(updateQuery, [
+      newSubtotal, newCgst, newSgst, newIgst, newTax, newTotal, quotationId, tenantId
+    ]);
     return updateResult.rows[0];
   }
 
@@ -124,9 +182,11 @@ class QuotationService {
     if (!quotation) return null;
 
     const itemsQuery = `
-      SELECT * FROM quotation_items 
-      WHERE quotation_id = $1 AND tenant_id = $2
-      ORDER BY sort_order ASC, created_at ASC
+      SELECT qi.*, pco.title as change_order_title 
+      FROM quotation_items qi
+      LEFT JOIN project_change_orders pco ON qi.change_order_id = pco.id
+      WHERE qi.quotation_id = $1 AND qi.tenant_id = $2
+      ORDER BY qi.sort_order ASC, qi.created_at ASC
     `;
     const itemsResult = await pool.query(itemsQuery, [quotationId, tenantId]);
     
@@ -159,14 +219,15 @@ class QuotationService {
       const nextVersion = base.version + 1;
       const insertQuoteQuery = `
         INSERT INTO quotations 
-        (tenant_id, lead_id, project_id, created_by, quotation_number, status, version, subtotal, tax_amount, discount_amount, total_amount, notes, terms_conditions, valid_until, change_reason)
-        VALUES ($1, $2, $3, $4, $5, 'draft', $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        (tenant_id, lead_id, project_id, created_by, quotation_number, status, version, subtotal, tax_amount, discount_amount, total_amount, notes, terms_conditions, valid_until, change_reason, gst_type, cgst_total, sgst_total, igst_total)
+        VALUES ($1, $2, $3, $4, $5, 'draft', $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
         RETURNING *
       `;
       const quoteValues = [
         tenantId, base.lead_id, base.project_id, userId, base.quotation_number,
         nextVersion, base.subtotal, base.tax_amount, base.discount_amount, base.total_amount,
-        base.notes, base.terms_conditions, base.valid_until, changeReason
+        base.notes, base.terms_conditions, base.valid_until, changeReason,
+        base.gst_type || 'cgst_sgst', base.cgst_total || 0, base.sgst_total || 0, base.igst_total || 0
       ];
       const newQuoteRes = await client.query(insertQuoteQuery, quoteValues);
       const newQuotation = newQuoteRes.rows[0];
@@ -182,14 +243,16 @@ class QuotationService {
       for (const item of oldItems) {
         const insertItemQuery = `
           INSERT INTO quotation_items 
-          (tenant_id, quotation_id, parent_item_id, room_or_area, item_name, description, unit, quantity, unit_price, markup_percentage, material_specifications, brand, sort_order, item_key)
-          VALUES ($1, $2, NULL, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          (tenant_id, quotation_id, parent_item_id, room_or_area, item_name, description, unit, quantity, unit_price, markup_percentage, material_specifications, brand, sort_order, item_key, scope_type, change_order_id, hsn_code, gst_rate, cgst_amount, sgst_amount, igst_amount)
+          VALUES ($1, $2, NULL, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
           RETURNING id
         `;
         const values = [
           tenantId, newQuotationId, item.room_or_area, item.item_name, item.description,
           item.unit, item.quantity, item.unit_price, item.markup_percentage,
-          item.material_specifications, item.brand, item.sort_order, item.item_key
+          item.material_specifications, item.brand, item.sort_order, item.item_key,
+          item.scope_type, item.change_order_id, item.hsn_code, item.gst_rate,
+          item.cgst_amount, item.sgst_amount, item.igst_amount
         ];
         const insertRes = await client.query(insertItemQuery, values);
         idMap[item.id] = insertRes.rows[0].id;
@@ -255,7 +318,12 @@ class QuotationService {
         const roomChanged = baseItem.room_or_area !== targetItem.room_or_area;
         const descChanged = (baseItem.description || '') !== (targetItem.description || '');
 
-        if (qtyChanged || priceChanged || nameChanged || roomChanged || descChanged) {
+        const scopeTypeChanged = baseItem.scope_type !== targetItem.scope_type;
+        const changeOrderChanged = baseItem.change_order_id !== targetItem.change_order_id;
+        const hsnChanged = baseItem.hsn_code !== targetItem.hsn_code;
+        const gstRateChanged = parseFloat(baseItem.gst_rate) !== parseFloat(targetItem.gst_rate);
+
+        if (qtyChanged || priceChanged || nameChanged || roomChanged || descChanged || scopeTypeChanged || changeOrderChanged || hsnChanged || gstRateChanged) {
           diffs.push({
             type: 'changed',
             item_key: key,
@@ -268,7 +336,11 @@ class QuotationService {
               unit_price: priceChanged ? { old: baseItem.unit_price, new: targetItem.unit_price } : null,
               total_price: { old: baseItem.total_price, new: targetItem.total_price },
               item_name: nameChanged ? { old: baseItem.item_name, new: targetItem.item_name } : null,
-              room_or_area: roomChanged ? { old: baseItem.room_or_area, new: targetItem.room_or_area } : null
+              room_or_area: roomChanged ? { old: baseItem.room_or_area, new: targetItem.room_or_area } : null,
+              scope_type: scopeTypeChanged ? { old: baseItem.scope_type, new: targetItem.scope_type } : null,
+              change_order_id: changeOrderChanged ? { old: baseItem.change_order_id, new: targetItem.change_order_id } : null,
+              hsn_code: hsnChanged ? { old: baseItem.hsn_code, new: targetItem.hsn_code } : null,
+              gst_rate: gstRateChanged ? { old: baseItem.gst_rate, new: targetItem.gst_rate } : null
             }
           });
         } else {
@@ -336,6 +408,83 @@ class QuotationService {
       },
       diffs
     };
+  }
+
+  async sendQuotation(tenantId, quotationId) {
+    const query = `
+      UPDATE quotations
+      SET status = 'sent',
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1 AND tenant_id = $2 AND status = 'draft'
+      RETURNING *
+    `;
+    const result = await pool.query(query, [quotationId, tenantId]);
+    return result.rows[0];
+  }
+
+  async acceptQuotation(tenantId, quotationId) {
+    const query = `
+      UPDATE quotations
+      SET status = 'accepted',
+          accepted_at = CURRENT_TIMESTAMP,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1 AND tenant_id = $2 AND (status = 'draft' OR status = 'sent')
+      RETURNING *
+    `;
+    const result = await pool.query(query, [quotationId, tenantId]);
+    return result.rows[0];
+  }
+
+  async rejectQuotation(tenantId, quotationId) {
+    const query = `
+      UPDATE quotations
+      SET status = 'rejected',
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1 AND tenant_id = $2 AND status = 'sent'
+      RETURNING *
+    `;
+    const result = await pool.query(query, [quotationId, tenantId]);
+    return result.rows[0];
+  }
+
+  async updateQuotation(tenantId, quotationId, data) {
+    const fields = [];
+    const values = [tenantId, quotationId];
+    let index = 3;
+
+    const updateableFields = {
+      notes: 'notes',
+      terms_conditions: 'termsConditions',
+      valid_until: 'validUntil',
+      discount_amount: 'discountAmount',
+      gst_type: 'gstType'
+    };
+
+    for (const [colName, jsKey] of Object.entries(updateableFields)) {
+      if (data[jsKey] !== undefined) {
+        fields.push(`${colName} = $${index}`);
+        let val = data[jsKey];
+        if (val === '') val = null;
+        values.push(val);
+        index++;
+      }
+    }
+
+    if (fields.length === 0) {
+      return this.getQuotationWithItems(tenantId, quotationId);
+    }
+
+    const query = `
+      UPDATE quotations
+      SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2 AND tenant_id = $1
+      RETURNING *
+    `;
+    const result = await pool.query(query, values);
+    if (result.rowCount === 0) return null;
+
+    await this.updateQuotationTotals(tenantId, quotationId);
+    return this.getQuotationWithItems(tenantId, quotationId);
   }
 }
 

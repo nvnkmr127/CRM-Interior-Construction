@@ -17,6 +17,14 @@ const designReviewsRoutes = require('./designReviews');
 const materialPalettesRoutes = require('./materialPalettes');
 const changeOrdersRoutes = require('./changeOrders');
 const quotationsRoutes = require('./quotations');
+const budgetRoutes = require('./budget');
+const purchaseOrdersRoutes = require('./purchaseOrders');
+const materialDeliveriesRoutes = require('./materialDeliveries');
+const vendorPaymentsRoutes = require('./vendorPayments');
+const materialSubstitutionsRoutes = require('./materialSubstitutions');
+const productionOrdersRoutes = require('./productionOrders');
+const workActivitiesRoutes = require('./workActivities');
+const siteReadinessRoutes = require('./siteReadiness');
 
 const router = express.Router();
 
@@ -31,6 +39,14 @@ router.use('/:projectId/design-reviews', designReviewsRoutes);
 router.use('/:projectId/material-palettes', materialPalettesRoutes);
 router.use('/:projectId/change-orders', changeOrdersRoutes);
 router.use('/:projectId/quotations', quotationsRoutes);
+router.use('/:projectId/budget', budgetRoutes);
+router.use('/:projectId/purchase-orders', purchaseOrdersRoutes);
+router.use('/:projectId/material-deliveries', materialDeliveriesRoutes);
+router.use('/:projectId/vendor-payments', vendorPaymentsRoutes);
+router.use('/:projectId/material-substitutions', materialSubstitutionsRoutes);
+router.use('/:projectId/production-orders', productionOrdersRoutes);
+router.use('/:projectId/work-activities', workActivitiesRoutes);
+router.use('/:projectId/site-readiness', siteReadinessRoutes);
 
 // Standard CRUD routes
 

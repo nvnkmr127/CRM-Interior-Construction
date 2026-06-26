@@ -12,7 +12,7 @@ async function updateTask({ tenantId, userId, taskId, data }) {
     throw error;
   }
 
-  // 1.5. Validate design freeze for execution phase tasks when changing status from todo/pending/draft
+  // 1.5. Validate design freeze and quotation acceptance for execution phase tasks when changing status from todo/pending/draft
   if (data.status && data.status !== 'todo' && currentTask.status === 'todo') {
     if (currentTask.milestone_id) {
       const { rows } = await pool.query(
@@ -23,6 +23,7 @@ async function updateTask({ tenantId, userId, taskId, data }) {
         [currentTask.milestone_id, tenantId]
       );
       if (rows.length > 0 && rows[0].is_execution) {
+        // 1. Verify design is frozen (scope lock)
         const { rows: projRows } = await pool.query(
           'SELECT is_scope_locked FROM projects WHERE id = $1 AND tenant_id = $2',
           [currentTask.project_id, tenantId]
@@ -31,7 +32,24 @@ async function updateTask({ tenantId, userId, taskId, data }) {
         if (!isLocked) {
           const err = new Error('DESIGN_NOT_FROZEN');
           err.status = 400;
+          err.code = 'DESIGN_NOT_FROZEN';
           err.message = 'Cannot trigger execution tasks: Design must be frozen before starting procurement or production.';
+          throw err;
+        }
+
+        // 2. Verify quotation is accepted with client confirmation date recorded
+        const { rows: quoteRows } = await pool.query(
+          `SELECT id, accepted_at FROM quotations 
+           WHERE project_id = $1 AND tenant_id = $2 AND status = 'accepted'
+           ORDER BY version DESC, created_at DESC 
+           LIMIT 1`,
+          [currentTask.project_id, tenantId]
+        );
+        if (quoteRows.length === 0 || !quoteRows[0].accepted_at) {
+          const err = new Error('QUOTATION_NOT_ACCEPTED');
+          err.status = 400;
+          err.code = 'QUOTATION_NOT_ACCEPTED';
+          err.message = 'Cannot trigger execution tasks: BOQ quotation must be accepted by the client before starting procurement or production.';
           throw err;
         }
       }
@@ -49,6 +67,7 @@ async function updateTask({ tenantId, userId, taskId, data }) {
     if (incompleteSubtasks.length > 0) {
       const error = new Error('SUBTASKS_INCOMPLETE');
       error.status = 400;
+      error.code = 'SUBTASKS_INCOMPLETE';
       error.details = `Cannot complete parent task. There are ${incompleteSubtasks.length} pending subtasks remaining.`;
       throw error;
     }

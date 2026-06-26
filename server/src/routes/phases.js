@@ -76,8 +76,14 @@ router.put('/:phaseId', authorize('projects:manage'), async (req, res, next) => 
   } catch (err) {
     if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     if (err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Phase not found', 404);
-    if (err.message.includes('Design scope must be locked') || err.message === 'SCOPE_LOCK_REQUIRED') {
-      return fail(res, 'SCOPE_LOCK_REQUIRED', err.message, 400);
+    if (
+      err.status === 400 ||
+      err.message === 'SCOPE_LOCK_REQUIRED' ||
+      err.message === 'SITE_READINESS_REQUIRED' ||
+      err.message.includes('Design scope must be locked') ||
+      err.message.includes('Site readiness checklist')
+    ) {
+      return fail(res, err.status === 400 ? 'SITE_READINESS_REQUIRED' : 'SCOPE_LOCK_REQUIRED', err.message, 400);
     }
     console.error('[Phases Router] Update error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update phase.', 500);
@@ -109,14 +115,17 @@ router.post('/:phaseId/sign-off', authorize('projects:manage'), async (req, res,
     if (err.message === 'MILESTONES_INCOMPLETE') {
       return fail(res, 'MILESTONES_INCOMPLETE', err.details, 422);
     }
-    if (err.message === 'PHASE_ALREADY_COMPLETED' || err.status === 400) {
-      if (err.message.includes('Design scope must be locked') || err.message === 'SCOPE_LOCK_REQUIRED') {
-        return fail(res, 'SCOPE_LOCK_REQUIRED', err.message, 400);
-      }
+    if (err.message === 'SITE_READINESS_REQUIRED' || err.message.includes('Site readiness checklist')) {
+      return fail(res, 'SITE_READINESS_REQUIRED', err.message, 400);
+    }
+    if (err.message === 'SCOPE_LOCK_REQUIRED' || err.message.includes('Design scope must be locked')) {
+      return fail(res, 'SCOPE_LOCK_REQUIRED', err.message, 400);
+    }
+    if (err.message === 'PHASE_ALREADY_COMPLETED') {
       return fail(res, 'PHASE_ALREADY_COMPLETED', 'Phase is already completed', 400);
     }
-    if (err.message.includes('Design scope must be locked') || err.message === 'SCOPE_LOCK_REQUIRED') {
-      return fail(res, 'SCOPE_LOCK_REQUIRED', err.message, 400);
+    if (err.status === 400) {
+      return fail(res, err.code || 'BAD_REQUEST', err.message, 400);
     }
     if (err.message === 'NOT_FOUND' || err.status === 404) {
       return fail(res, 'NOT_FOUND', 'Phase not found', 404);
