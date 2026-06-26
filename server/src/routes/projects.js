@@ -25,6 +25,11 @@ const materialSubstitutionsRoutes = require('./materialSubstitutions');
 const productionOrdersRoutes = require('./productionOrders');
 const workActivitiesRoutes = require('./workActivities');
 const siteReadinessRoutes = require('./siteReadiness');
+const taskDependenciesRoutes = require('./taskDependencies');
+const dailySiteReportsRoutes = require('./dailySiteReports');
+const roomProgressRoutes = require('./roomProgress');
+const meetingNotesRoutes = require('./meetingNotes');
+const delayNotificationsRoutes = require('./delayNotifications');
 
 const router = express.Router();
 
@@ -47,6 +52,11 @@ router.use('/:projectId/material-substitutions', materialSubstitutionsRoutes);
 router.use('/:projectId/production-orders', productionOrdersRoutes);
 router.use('/:projectId/work-activities', workActivitiesRoutes);
 router.use('/:projectId/site-readiness', siteReadinessRoutes);
+router.use('/:projectId/task-dependencies', taskDependenciesRoutes);
+router.use('/:projectId/daily-reports', dailySiteReportsRoutes);
+router.use('/:projectId/room-progress', roomProgressRoutes);
+router.use('/:projectId/meeting-notes', meetingNotesRoutes);
+router.use('/:projectId/delay-notifications', delayNotificationsRoutes);
 
 // Standard CRUD routes
 
@@ -69,6 +79,7 @@ const createProjectSchema = z.object({
   contract_file_size: z.number({ required_error: 'Contract file size is required' }).positive('Contract file size must be positive'),
   contract_file_mime: z.string({ required_error: 'Contract file mime type is required' }).min(1, 'Contract file mime type is required'),
   is_scope_locked: z.boolean().optional(),
+  enforce_dependencies: z.boolean().optional(),
   agreement_signed_by: z.string().optional().nullable(),
   agreement_signed_at: z.string().optional().nullable(),
   agreement_signature_method: z.string().optional().nullable(),
@@ -107,6 +118,8 @@ const createProjectSchema = z.object({
   segment: z.string().optional().nullable(),
   allowed_design_revisions: z.number().int().nonnegative().optional().nullable(),
   current_design_revisions: z.number().int().nonnegative().optional().nullable(),
+  pm_hours_allocated: z.number().int().nonnegative().optional().nullable(),
+  designer_hours_allocated: z.number().int().nonnegative().optional().nullable(),
   measurements: z.array(z.object({
     room_name: z.string().min(1, 'Room name is required'),
     length: z.number().optional().nullable(),
@@ -129,11 +142,20 @@ const createProjectSchema = z.object({
     firm: z.string().optional().nullable(),
     email: z.string().optional().nullable(),
     phone: z.string().optional().nullable()
+  })).optional().nullable(),
+  site_team: z.array(z.object({
+    vendor_id: z.string().uuid().optional().nullable(),
+    role: z.string().min(1, 'Role is required'),
+    name: z.string().min(1, 'Name is required'),
+    phone: z.string().optional().nullable(),
+    email: z.string().optional().nullable(),
+    status: z.string().optional().nullable()
   })).optional().nullable()
 });
 
 const updateProjectSchema = createProjectSchema.partial().extend({
-  status: z.string().optional()
+  status: z.string().optional(),
+  changeReason: z.string().optional()
 });
 
 // Route to generate S3 pre-signed upload URL for contract document
@@ -578,6 +600,80 @@ router.delete('/:projectId/inspirations/:id', authorize('projects:update'), asyn
     );
     if (rows.length === 0) return fail(res, 'NOT_FOUND', 'Inspiration not found', 404);
     return res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/projects/:projectId/schedule-revisions
+router.get('/:projectId/schedule-revisions', authorize('projects:read'), async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT r.*, u.name as revised_by_name
+       FROM project_schedule_revisions r
+       LEFT JOIN users u ON r.revised_by = u.id
+       WHERE r.tenant_id = $1 AND r.project_id = $2
+       ORDER BY r.revision_number DESC, r.revised_at DESC`,
+      [req.tenantId, req.params.projectId]
+    );
+    return success(res, rows);
+  } catch (err) {
+    console.error('[Projects Router] Fetch schedule revisions error:', err);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to fetch schedule revisions.', 500);
+  }
+});
+
+// POST /api/projects/:projectId/replace-resource
+router.post('/:projectId/replace-resource', authorize('projects:update'), async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const { replaceResource } = require('../services/projects/replaceResourceService');
+    
+    const schema = z.object({
+      role: z.enum(['pm', 'designer']),
+      newResourceId: z.string().uuid(),
+      handoverNotes: z.string().min(1, 'Handover notes are required'),
+      clientNotified: z.boolean().optional().default(false)
+    });
+    
+    const data = schema.parse(req.body);
+    
+    const handover = await replaceResource({
+      tenantId: req.tenantId,
+      userId: req.userId,
+      projectId,
+      role: data.role,
+      newResourceId: data.newResourceId,
+      handoverNotes: data.handoverNotes
+    });
+    
+    return success(res, handover, {}, 200);
+  } catch (err) {
+    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    if (err.status) return fail(res, err.message, err.message, err.status);
+    next(err);
+  }
+});
+
+// GET /api/projects/:projectId/handovers
+router.get('/:projectId/handovers', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const { rows } = await pool.query(
+      `SELECT 
+         prh.*,
+         ru.name as replaced_user_name,
+         au.name as assigned_user_name,
+         cu.name as creator_name
+       FROM project_resource_handovers prh
+       LEFT JOIN users ru ON prh.replaced_user_id = ru.id
+       LEFT JOIN users au ON prh.assigned_user_id = au.id
+       LEFT JOIN users cu ON prh.created_by = cu.id
+       WHERE prh.tenant_id = $1 AND prh.project_id = $2
+       ORDER BY prh.created_at DESC`,
+      [req.tenantId, projectId]
+    );
+    return success(res, rows);
   } catch (err) {
     next(err);
   }

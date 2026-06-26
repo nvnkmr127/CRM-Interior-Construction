@@ -73,6 +73,7 @@ router.get('/phases', async (req, res, next) => {
             SELECT json_agg(json_build_object(
               'id', m.id,
               'name', m.name, 
+              'description', m.description,
               'status', m.status, 
               'due_date', m.due_date,
               'sort_order', m.sort_order
@@ -167,6 +168,85 @@ router.post('/payments/:paymentId/pay', async (req, res, next) => {
     }
 
     res.json({ success: true, data: result.rows[0], message: 'Payment successful' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/portal/project/meeting-notes
+router.get('/meeting-notes', async (req, res, next) => {
+  try {
+    const { projectId, tenantId } = req.portalUser;
+
+    const query = `
+      SELECT 
+        mn.*,
+        COALESCE(
+          (
+            SELECT json_agg(json_build_object(
+              'id', mai.id,
+              'description', mai.description,
+              'owner_name', mai.owner_name,
+              'due_date', mai.due_date,
+              'status', mai.status
+            ) ORDER BY mai.due_date ASC NULLS LAST, mai.created_at ASC)
+            FROM meeting_action_items mai
+            WHERE mai.meeting_id = mn.id
+          ),
+          '[]'::json
+        ) as action_items
+      FROM meeting_notes mn
+      WHERE mn.project_id = $1 AND mn.tenant_id = $2
+      ORDER BY mn.meeting_date DESC, mn.created_at DESC
+    `;
+
+    const result = await pool.query(query, [projectId, tenantId]);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/portal/project/meeting-notes/:id/sign-off
+router.post('/meeting-notes/:id/sign-off', async (req, res, next) => {
+  try {
+    const { projectId, tenantId } = req.portalUser;
+    const { id } = req.params;
+
+    const query = `
+      UPDATE meeting_notes 
+      SET client_sign_off_status = 'signed_off', client_signed_off_at = NOW()
+      WHERE id = $1 AND project_id = $2 AND tenant_id = $3
+      RETURNING *
+    `;
+
+    const result = await pool.query(query, [id, projectId, tenantId]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Meeting note not found' });
+    }
+
+    res.json({ success: true, data: result.rows[0], message: 'Meeting notes signed off successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/portal/project/delay-notifications
+router.get('/delay-notifications', async (req, res, next) => {
+  try {
+    const { projectId, tenantId } = req.portalUser;
+
+    const query = `
+      SELECT dn.id, dn.type, dn.original_date, dn.revised_date, dn.reason, dn.message_draft as message, dn.sent_at, m.name as milestone_name
+      FROM delay_notifications dn
+      LEFT JOIN milestones m ON dn.milestone_id = m.id
+      WHERE dn.project_id = $1 AND dn.tenant_id = $2 AND dn.status = 'sent'
+      ORDER BY dn.sent_at DESC
+    `;
+
+    const result = await pool.query(query, [projectId, tenantId]);
+    res.json({ success: true, data: result.rows });
   } catch (error) {
     next(error);
   }

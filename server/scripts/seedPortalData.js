@@ -17,8 +17,8 @@ async function seed() {
     let projectId;
     if (projRes.rows.length === 0) {
       projRes = await pool.query(`
-        INSERT INTO projects (tenant_id, name, status, start_date, target_date, task_completion_pct) 
-        VALUES ($1, 'Villa Renovations', 'active', NOW(), NOW() + INTERVAL '30 days', 45) RETURNING id
+        INSERT INTO projects (tenant_id, name, status, start_date, target_date, client_name) 
+        VALUES ($1, 'Villa Renovations', 'active', NOW(), NOW() + INTERVAL '30 days', 'John Doe') RETURNING id
       `, [tenantId]);
     }
     projectId = projRes.rows[0].id;
@@ -35,11 +35,39 @@ async function seed() {
 
     // 4. Project Phases
     await pool.query(`DELETE FROM project_phases WHERE project_id = $1`, [projectId]);
-    await pool.query(`INSERT INTO project_phases (tenant_id, project_id, name, status, sequence_order) VALUES
-      ($1, $2, 'Design', 'completed', 1),
-      ($1, $2, 'Procurement', 'in_progress', 2),
-      ($1, $2, 'Execution', 'pending', 3)
+    const designPhaseRes = await pool.query(`
+      INSERT INTO project_phases (tenant_id, project_id, name, status, sort_order) 
+      VALUES ($1, $2, 'Design & 3D Modeling', 'completed', 1) RETURNING id
     `, [tenantId, projectId]);
+    const designPhaseId = designPhaseRes.rows[0].id;
+
+    const procurementPhaseRes = await pool.query(`
+      INSERT INTO project_phases (tenant_id, project_id, name, status, sort_order) 
+      VALUES ($1, $2, 'Material Procurement & Factory Production', 'in_progress', 2) RETURNING id
+    `, [tenantId, projectId]);
+    const procurementPhaseId = procurementPhaseRes.rows[0].id;
+
+    const executionPhaseRes = await pool.query(`
+      INSERT INTO project_phases (tenant_id, project_id, name, status, sort_order) 
+      VALUES ($1, $2, 'On-Site Execution & Handover', 'pending', 3) RETURNING id
+    `, [tenantId, projectId]);
+    const executionPhaseId = executionPhaseRes.rows[0].id;
+
+    // Seed Milestones
+    await pool.query(`DELETE FROM milestones WHERE project_id = $1`, [projectId]);
+    await pool.query(`INSERT INTO milestones (tenant_id, project_id, phase_id, name, description, status, due_date, sort_order) VALUES
+      ($1, $2, $3, 'Initial Layout & Moodboards', 'Finalizing spatial planning and core styling direction.', 'completed', NOW() - INTERVAL '25 days', 1),
+      ($1, $2, $3, '3D Visualizations & Walkthrough', 'Reviewing photorealistic renders of living, kitchen and bedrooms.', 'completed', NOW() - INTERVAL '15 days', 2),
+      ($1, $2, $3, 'Working Drawings Sign-off', 'Technical approval of electrical, plumbing and woodwork plans.', 'completed', NOW() - INTERVAL '8 days', 3),
+      
+      ($1, $2, $4, 'Core Raw Material Sourcing', 'Ordering plywood, veneer, laminates and primary hardware.', 'completed', NOW() - INTERVAL '4 days', 1),
+      ($1, $2, $4, 'Factory Woodwork Production', 'Precision cutting, edge banding, and carcass assembly in factory.', 'in_progress', NOW() + INTERVAL '2 days', 2),
+      ($1, $2, $4, 'Pre-Dispatch Quality Inspection', 'Checking dimensions, surface finish and pre-drill quality before dispatch.', 'pending', NOW() + INTERVAL '7 days', 3),
+
+      ($1, $2, $5, 'Site Demolition & Electrical Rough-ins', 'Chasing walls and laying plumbing/electrical conduits.', 'pending', NOW() + INTERVAL '12 days', 1),
+      ($1, $2, $5, 'Woodwork Assembly & Installation', 'Assembling modular cabinets and fixing wardrobes on site.', 'pending', NOW() + INTERVAL '20 days', 2),
+      ($1, $2, $5, 'Painting, Deep Cleaning & Handover', 'Final wall finishes, cleaning, snag resolution, and handing keys.', 'pending', NOW() + INTERVAL '30 days', 3)
+    `, [tenantId, projectId, designPhaseId, procurementPhaseId, executionPhaseId]);
 
     // 5. Payment Milestones
     await pool.query(`DELETE FROM payment_milestones WHERE project_id = $1`, [projectId]);

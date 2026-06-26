@@ -38,6 +38,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId }) {
           assignee: t.assignee_id ? { id: t.assignee_id, name: t.assignee_name || 'Unknown' } : null,
           project: { id: t.project_id || projectId, name: t.project_name || '—' },
           milestone: t.milestone_id ? { id: t.milestone_id, name: t.milestone_name || '—' } : null,
+          roomName: t.room_name || t.roomName || null,
           tags: t.tags || [],
           subtasks: (t.subtasks || []).map(s => ({
             id: s.id, title: s.title, done: s.status === 'done',
@@ -225,6 +226,13 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId }) {
                 <div className={styles.detailLabel}>Project</div>
                 <div className={styles.detailValue}>
                   <Link to={`/projects/${task.project.id}`} className={styles.link}>{task.project.name}</Link>
+                </div>
+              </div>
+
+              <div className={styles.detailRow}>
+                <div className={styles.detailLabel}>Room / Area</div>
+                <div className={styles.detailValue}>
+                  {task.roomName || 'General (No room tag)'}
                 </div>
               </div>
 

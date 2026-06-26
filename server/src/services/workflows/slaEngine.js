@@ -43,7 +43,7 @@ class SLAEngine {
       // 2. Check Project Milestones for SLA Breach (Past Due Date)
       const milestoneQuery = `
         SELECT m.id, m.tenant_id, m.name, m.due_date, p.id as project_id, p.pm_id
-        FROM project_milestones m
+        FROM milestones m
         JOIN project_phases ph ON m.phase_id = ph.id
         JOIN projects p ON ph.project_id = p.id
         WHERE m.status != 'completed' 
@@ -69,7 +69,35 @@ class SLAEngine {
         });
       }
 
-      console.log(`[SLA Engine] SLA check complete. Found ${leadRes.rows.length} lead breaches and ${milestoneRes.rows.length} milestone breaches.`);
+      // 3. Check Tasks for SLA Breach (Overdue Tasks)
+      const taskQuery = `
+        SELECT t.id, t.tenant_id, t.title, t.due_date, t.project_id, p.pm_id
+        FROM tasks t
+        JOIN projects p ON t.project_id = p.id
+        WHERE t.status != 'done' AND t.deleted_at IS NULL
+        AND t.due_date < NOW()
+        AND t.id NOT IN (
+          SELECT entity_id FROM audit_logs 
+          WHERE entity = 'task' AND action = 'sla_breach' AND created_at > NOW() - INTERVAL '24 hours'
+        )
+      `;
+      const taskRes = await pool.query(taskQuery);
+
+      for (const task of taskRes.rows) {
+        console.log(`[SLA Engine] Task ${task.id} breached SLA (Overdue).`);
+        await pool.query(`
+          INSERT INTO audit_logs (tenant_id, entity, entity_id, action, details)
+          VALUES ($1, 'task', $2, 'sla_breach', 'Task overdue past due date')
+        `, [task.tenant_id, task.id]);
+
+        eventBus.emit('project.task_overdue', {
+          tenantId: task.tenant_id,
+          task: task,
+          reason: 'Past Due Date'
+        });
+      }
+
+      console.log(`[SLA Engine] SLA check complete. Found ${leadRes.rows.length} lead breaches, ${milestoneRes.rows.length} milestone breaches, and ${taskRes.rows.length} task breaches.`);
     } catch (error) {
       console.error('[SLA Engine] Error checking SLA breaches:', error);
     }

@@ -7,6 +7,7 @@ const NAV_ITEMS = [
     { to: '/dashboard',  icon: '⊞', label: 'Dashboard' },
     { to: '/leads',      icon: '◎', label: 'Leads' },
     { to: '/projects',   icon: '◈', label: 'Projects' },
+    { to: '/projects/resources', icon: '👥', label: 'Resource Capacity' },
     { to: '/tasks',      icon: '◻', label: 'My Tasks' },
   ]},
   { group: 'ANALYTICS', items: [

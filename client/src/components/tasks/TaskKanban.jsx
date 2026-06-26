@@ -28,6 +28,7 @@ function formatDue(dateStr) {
 
 function normalizeTask(t) {
   return {
+    ...t,
     id: t.id,
     title: t.title,
     status: t.status || 'todo',
@@ -46,6 +47,7 @@ export default function TaskKanban({ projectId }) {
   const [loading, setLoading] = useState(true);
   const [toastMsg, setToastMsg] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
   const [defaultStatus, setDefaultStatus] = useState('todo');
 
   useEffect(() => {
@@ -78,11 +80,11 @@ export default function TaskKanban({ projectId }) {
 
     try {
       await updateTask(projectId, taskId, { status: targetStatus });
-    } catch {
+    } catch (err) {
       setTasks(prev => prev.map(t =>
         String(t.id) === taskId ? { ...t, status: task.status, blocked: task.blocked } : t
       ));
-      toast.error('Failed to update task status');
+      toast.error(err?.response?.data?.error?.message || 'Failed to update task status');
     }
   };
 
@@ -136,6 +138,8 @@ export default function TaskKanban({ projectId }) {
                     className={`${styles.taskCard} ${task.blocked ? styles.taskCardBlocked : ''}`}
                     draggable
                     onDragStart={(e) => handleDragStart(e, task)}
+                    onClick={() => setSelectedTask(task)}
+                    style={{ cursor: 'pointer' }}
                   >
                     <div className={styles.taskTitle}>{task.title}</div>
 
@@ -177,6 +181,14 @@ export default function TaskKanban({ projectId }) {
           defaultStatus={defaultStatus} 
           onClose={() => setIsFormOpen(false)} 
           onSave={() => { setIsFormOpen(false); window.location.reload(); }} 
+        />
+      )}
+      {selectedTask && (
+        <TaskForm 
+          projectId={projectId} 
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)} 
+          onSave={() => { setSelectedTask(null); window.location.reload(); }} 
         />
       )}
     </div>

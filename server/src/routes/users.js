@@ -60,10 +60,55 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/resource-capacity', async (req, res) => {
+  const tenantId = req.tenantId;
+  try {
+    const query = `
+      SELECT 
+        u.id, 
+        u.name, 
+        u.email, 
+        u.avatar_url, 
+        u.status,
+        r.name as role_name, 
+        u.weekly_capacity,
+        COALESCE(
+          (
+            SELECT json_agg(json_build_object(
+              'id', p.id,
+              'name', p.name,
+              'project_type', p.project_type,
+              'status', p.status,
+              'pm_hours_allocated', p.pm_hours_allocated,
+              'designer_hours_allocated', p.designer_hours_allocated,
+              'hours_allocated', CASE 
+                WHEN p.pm_id = u.id AND p.designer_id = u.id THEN (p.pm_hours_allocated + p.designer_hours_allocated)
+                WHEN p.pm_id = u.id THEN p.pm_hours_allocated 
+                ELSE p.designer_hours_allocated 
+              END
+            ))
+            FROM projects p
+            WHERE (p.pm_id = u.id OR p.designer_id = u.id) AND p.status = 'active' AND p.deleted_at IS NULL
+          ),
+          '[]'::json
+        ) as active_projects
+      FROM users u
+      LEFT JOIN roles r ON r.id = u.role_id
+      WHERE u.tenant_id = $1 AND u.deleted_at IS NULL AND u.status = 'active'
+      ORDER BY r.name, u.name;
+    `;
+    const { rows } = await pool.query(query, [tenantId]);
+    return success(res, rows);
+  } catch (error) {
+    console.error('[Users Router] resource-capacity fetch failed:', error);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to fetch resource capacity data', 500);
+  }
+});
+
 router.patch('/:id', authorize('users:manage'), async (req, res) => {
   const tenantId = req.tenantId;
   const userIdToUpdate = req.params.id;
-  const { name, roleId, status, avatar_url } = req.body;
+  const { name, roleId, status, avatar_url, weekly_capacity } = req.body;
 
   try {
     const updates = [];
@@ -84,6 +129,10 @@ router.patch('/:id', authorize('users:manage'), async (req, res) => {
     if (avatar_url !== undefined) {
       params.push(avatar_url);
       updates.push(`avatar_url = $${params.length}`);
+    }
+    if (weekly_capacity !== undefined) {
+      params.push(weekly_capacity === null ? null : Number(weekly_capacity));
+      updates.push(`weekly_capacity = $${params.length}`);
     }
 
     if (updates.length === 0) {

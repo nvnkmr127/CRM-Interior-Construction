@@ -26,12 +26,65 @@ async function updateProject({ tenantId, userId, projectId, data }) {
     }
   }
 
-  const { contacts, measurements, vendors, consultants, ...projectData } = data;
+  const { contacts, measurements, vendors, consultants, site_team, ...projectData } = data;
   const client = await pool.connect();
   let updatedProject;
 
+  const toIso = (d) => d ? new Date(d).toISOString().split('T')[0] : null;
+
   try {
     await client.query('BEGIN');
+
+    // Kickoff baseline commitment (status transition -> active)
+    if (data.status === 'active' && currentProject.status !== 'active') {
+      if (!currentProject.baseline_start_date) {
+        projectData.baseline_start_date = data.start_date || currentProject.start_date || toIso(new Date());
+      }
+      if (!currentProject.baseline_target_date) {
+        projectData.baseline_target_date = data.target_date || currentProject.target_date || toIso(new Date());
+      }
+
+      // Populate baselines for all tasks in the project
+      await client.query(
+        `UPDATE tasks 
+         SET baseline_start_date = COALESCE(start_date, due_date, CURRENT_DATE), 
+             baseline_due_date = COALESCE(due_date, start_date, CURRENT_DATE) 
+         WHERE project_id = $1 AND tenant_id = $2 AND baseline_start_date IS NULL`,
+        [projectId, tenantId]
+      );
+    }
+
+    // Schedule revision tracking for active projects
+    const startChanged = data.start_date && data.start_date !== toIso(currentProject.start_date);
+    const targetChanged = data.target_date && data.target_date !== toIso(currentProject.target_date);
+
+    if (currentProject.status === 'active' && (startChanged || targetChanged)) {
+      // Find last revision number
+      const { rows: revRows } = await client.query(
+        'SELECT MAX(revision_number) as max_rev FROM project_schedule_revisions WHERE project_id = $1 AND tenant_id = $2',
+        [projectId, tenantId]
+      );
+      const nextRev = (revRows[0]?.max_rev || 0) + 1;
+      const reason = data.changeReason || 'Schedule adjustment';
+
+      await client.query(`
+        INSERT INTO project_schedule_revisions (
+          tenant_id, project_id, revised_by, previous_start_date, previous_target_date, 
+          new_start_date, new_target_date, reason, revision_number
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `, [
+        tenantId,
+        projectId,
+        userId,
+        currentProject.start_date,
+        currentProject.target_date,
+        data.start_date || currentProject.start_date,
+        data.target_date || currentProject.target_date,
+        reason,
+        nextRev
+      ]);
+      console.log(`[UpdateProject] Logged schedule revision #${nextRev} for project ${projectId}. Reason: ${reason}`);
+    }
 
     // 2. Execute update
     updatedProject = await projectRepository.updateProject(tenantId, projectId, projectData, client);
@@ -89,15 +142,17 @@ async function updateProject({ tenantId, userId, projectId, data }) {
     }
 
     // Sync project vendors if passed
+    const vendorNameToIdMap = {};
     if (vendors !== undefined) {
       await client.query('DELETE FROM project_vendors WHERE tenant_id = $1 AND project_id = $2', [tenantId, projectId]);
       if (Array.isArray(vendors) && vendors.length > 0) {
         for (const v of vendors) {
           if (!v.vendor_name) continue;
-          await client.query(`
+          const vendorInsertRes = await client.query(`
             INSERT INTO project_vendors (
               tenant_id, project_id, vendor_name, scope_of_work, agreed_rate, payment_terms, status
             ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING id
           `, [
             tenantId,
             projectId,
@@ -107,7 +162,16 @@ async function updateProject({ tenantId, userId, projectId, data }) {
             v.payment_terms || null,
             v.status || 'pending'
           ]);
+          vendorNameToIdMap[v.vendor_name] = vendorInsertRes.rows[0].id;
         }
+      }
+    } else if (site_team !== undefined) {
+      const existingVendors = await client.query(
+        'SELECT id, vendor_name FROM project_vendors WHERE tenant_id = $1 AND project_id = $2',
+        [tenantId, projectId]
+      );
+      for (const ev of existingVendors.rows) {
+        vendorNameToIdMap[ev.vendor_name] = ev.id;
       }
     }
 
@@ -129,6 +193,38 @@ async function updateProject({ tenantId, userId, projectId, data }) {
             c.firm || null,
             c.email || null,
             c.phone || null
+          ]);
+        }
+      }
+    }
+
+    // Sync project site team if passed
+    if (site_team !== undefined) {
+      await client.query('DELETE FROM project_site_team WHERE tenant_id = $1 AND project_id = $2', [tenantId, projectId]);
+      if (Array.isArray(site_team) && site_team.length > 0) {
+        for (const member of site_team) {
+          if (!member.name || !member.role) continue;
+
+          let finalVendorId = null;
+          if (member.vendor_id) {
+            finalVendorId = member.vendor_id;
+          } else if (member.vendor_name && vendorNameToIdMap[member.vendor_name]) {
+            finalVendorId = vendorNameToIdMap[member.vendor_name];
+          }
+
+          await client.query(`
+            INSERT INTO project_site_team (
+              tenant_id, project_id, vendor_id, role, name, phone, email, status
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          `, [
+            tenantId,
+            projectId,
+            finalVendorId,
+            member.role,
+            member.name,
+            member.phone || null,
+            member.email || null,
+            member.status || 'active'
           ]);
         }
       }

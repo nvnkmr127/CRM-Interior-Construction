@@ -23,6 +23,7 @@ const MyTasksPage    = lazy(() => import('./pages/tasks/MyTasksPage'))
 const LeadAnalytics  = lazy(() => import('./pages/LeadAnalyticsDashboard'))
 const ManagerDashboard = lazy(() => import('./pages/leads/ManagerDashboard'))
 const ProjectAnalytics= lazy(() => import('./pages/analytics/ProjectAnalyticsPage'))
+const ResourceCapacityPage = lazy(() => import('./pages/projects/ResourceCapacityPage'))
 const ProfilePage    = lazy(() => import('./pages/settings/ProfilePage'))
 const PreferencesPage= lazy(() => import('./pages/settings/PreferencesPage'))
 const ConfigPage     = lazy(() => import('./pages/config/ConfigPage'))
@@ -49,6 +50,7 @@ export default function App() {
                     <Route path='/leads' element={<LeadsPage />} />
                     <Route path='/leads/manager' element={<ManagerDashboard />} />
                     <Route path='/projects' element={<ProjectsPage />} />
+                    <Route path='/projects/resources' element={<ResourceCapacityPage />} />
                     <Route path='/projects/:id' element={<ProjectDetail />} />
                     <Route path='/tasks' element={<MyTasksPage />} />
                     <Route path='/analytics/leads' element={<LeadAnalytics />} />

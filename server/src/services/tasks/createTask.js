@@ -14,9 +14,12 @@ async function createTask({ tenantId, userId, data }) {
     description: data.description,
     assignee_id: data.assigneeId || data.assignee_id,
     due_date: data.dueDate || data.due_date,
+    start_date: data.startDate || data.start_date,
+    duration_days: data.durationDays || data.duration_days,
     priority: data.priority,
     tags: data.tags,
-    custom_fields: data.customFields || data.custom_fields
+    custom_fields: data.customFields || data.custom_fields,
+    room_name: data.roomName || data.room_name
   };
 
   if (!mappedData.project_id && !mappedData.lead_id) {

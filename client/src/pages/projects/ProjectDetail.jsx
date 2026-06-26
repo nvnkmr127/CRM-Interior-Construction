@@ -7,6 +7,7 @@ import ProjectForm from '../../components/projects/ProjectForm';
 
 // Lazy load tabs
 const PhaseTimeline = React.lazy(() => import('../../components/projects/PhaseTimeline'));
+const GanttChart = React.lazy(() => import('../../components/projects/GanttChart'));
 const TaskKanban = React.lazy(() => import('../../components/tasks/TaskKanban'));
 const DocumentPanel = React.lazy(() => import('../../components/projects/DocumentPanel'));
 const PaymentsTab = React.lazy(() => import('./PaymentsTab'));
@@ -25,6 +26,14 @@ const VendorPaymentsTab = React.lazy(() => import('../../components/projects/Ven
 const MaterialSubstitutionsTab = React.lazy(() => import('../../components/projects/MaterialSubstitutionsTab'));
 const FactoryProductionTab = React.lazy(() => import('../../components/projects/FactoryProductionTab'));
 const WorkActivitiesTab = React.lazy(() => import('../../components/projects/WorkActivitiesTab'));
+const DailySiteReportsTab = React.lazy(() => import('../../components/projects/DailySiteReportsTab'));
+const WeeklyReportsTab = React.lazy(() => import('../../components/projects/WeeklyReportsTab'));
+const RoomProgressTab = React.lazy(() => import('../../components/projects/RoomProgressTab'));
+const HandoverHistoryTab = React.lazy(() => import('../../components/projects/HandoverHistoryTab'));
+const MeetingNotesTab = React.lazy(() => import('../../components/projects/MeetingNotesTab'));
+const SiteVisitsTab = React.lazy(() => import('../../components/projects/SiteVisitsTab'));
+const DelayNotificationsTab = React.lazy(() => import('../../components/projects/DelayNotificationsTab'));
+import HandoverModal from '../../components/projects/HandoverModal';
 
 function formatDate(dateStr) {
   if (!dateStr) return '—';
@@ -46,8 +55,14 @@ function daysRemaining(targetDate) {
   return diff;
 }
 
-function OverviewTab({ project }) {
+function OverviewTab({ project, onRefresh }) {
   const days = daysRemaining(project.target_date);
+  const [handoverState, setHandoverState] = useState({
+    isOpen: false,
+    role: 'pm',
+    currentResourceId: '',
+    currentResourceName: ''
+  });
 
   // custom_fields may hold advance_amount, payment_terms, etc from conversion form
   const cf = project.custom_fields || {};
@@ -146,20 +161,59 @@ function OverviewTab({ project }) {
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 0 }}>
           {[
-            { role: 'Project Manager', name: project.pm_name },
-            { role: 'Designer', name: project.designer_name },
-          ].filter(m => m.name).map(member => (
-            <div key={member.role} style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12, flex: '1 1 200px', borderRight: '1px solid var(--color-border)' }}>
+            { role: 'Project Manager', name: project.pm_name, key: 'pm', id: project.pm_id },
+            { role: 'Designer', name: project.designer_name, key: 'designer', id: project.designer_id },
+            ...(project.site_team || []).map(member => ({
+              role: `${member.role.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} ${member.vendor_name ? `(${member.vendor_name})` : ''}`,
+              name: member.name,
+              isSiteTeam: true
+            }))
+          ].filter(m => m.name).map((member, idx, arr) => (
+            <div key={`${member.role}-${idx}`} style={{ 
+              padding: '14px 20px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 12, 
+              flex: '1 1 220px', 
+              borderRight: idx === arr.length - 1 ? 'none' : '1px solid var(--color-border)',
+              borderBottom: '1px solid var(--color-border)'
+            }}>
               <div style={{
                 width: 36, height: 36, borderRadius: '50%',
-                background: 'var(--color-accent)', color: '#fff',
+                background: member.isSiteTeam ? 'var(--color-success, #22c55e)' : 'var(--color-accent, #3b82f6)', 
+                color: '#fff',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontWeight: 700, fontSize: 'var(--text-sm)', flexShrink: 0,
               }}>
                 {(member.name || '?').charAt(0)}
               </div>
               <div>
-                <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>{member.name}</div>
+                <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {member.name}
+                  {member.key && (
+                    <button
+                      onClick={() => setHandoverState({
+                        isOpen: true,
+                        role: member.key,
+                        currentResourceId: member.id,
+                        currentResourceName: member.name
+                      })}
+                      style={{
+                        background: 'var(--color-accent-bg, #eff6ff)',
+                        border: 'none',
+                        color: 'var(--color-accent, #3b82f6)',
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        padding: '2px 6px',
+                        borderRadius: '4px'
+                      }}
+                      title={`Replace ${member.role}`}
+                    >
+                      Replace
+                    </button>
+                  )}
+                </div>
                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{member.role}</div>
               </div>
             </div>
@@ -437,6 +491,18 @@ function OverviewTab({ project }) {
           <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>{project.notes}</div>
         </div>
       )}
+
+      {project && (
+        <HandoverModal
+          projectId={project.id}
+          role={handoverState.role}
+          currentResourceId={handoverState.currentResourceId}
+          currentResourceName={handoverState.currentResourceName}
+          isOpen={handoverState.isOpen}
+          onClose={() => setHandoverState(prev => ({ ...prev, isOpen: false }))}
+          onSuccess={onRefresh}
+        />
+      )}
     </div>
   );
 }
@@ -473,7 +539,14 @@ export default function ProjectDetail() {
     }
   };
 
-  const tabs = ['Overview', 'Design Brief', 'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 'Change Orders', 'Budget', 'Purchase Orders', 'Material Deliveries', 'Vendor Payments', 'Substitutions', 'Factory Production', 'Phases', 'Work Activities', 'Tasks', 'Documents', 'Payments', 'Snags', 'Handover'];
+  const tabs = ['Overview', 'Meeting Notes', 'Site Visits', 'Delay Notifications', 'Handovers', 'Design Brief', 'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 'Change Orders', 'Budget', 'Purchase Orders', 'Material Deliveries', 'Vendor Payments', 'Substitutions', 'Factory Production', 'Phases', 'Gantt Chart', 'Work Activities', 'Room Progress', 'Tasks', 'Daily Site Reports', 'Weekly Reports', 'Documents', 'Payments', 'Snags', 'Handover'];
+
+  const reloadProject = () => {
+    if (!projectId) return;
+    getProject(projectId)
+      .then(res => setProject(res.data?.data || res.data || null))
+      .catch(() => setProject(null));
+  };
 
   useEffect(() => {
     if (!projectId) return;
@@ -486,7 +559,11 @@ export default function ProjectDetail() {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'Overview': return project ? <OverviewTab project={project} /> : null;
+      case 'Overview': return project ? <OverviewTab project={project} onRefresh={reloadProject} /> : null;
+      case 'Meeting Notes': return <MeetingNotesTab projectId={projectId} />;
+      case 'Site Visits': return <SiteVisitsTab projectId={projectId} />;
+      case 'Delay Notifications': return <DelayNotificationsTab projectId={projectId} />;
+      case 'Handovers': return <HandoverHistoryTab projectId={projectId} />;
       case 'Design Brief': return <DesignRequirements projectId={projectId} />;
       case 'Design Assets': return <DesignAssetsTab projectId={projectId} />;
       case 'Design Reviews': return <DesignReviewsTab projectId={projectId} />;
@@ -500,8 +577,12 @@ export default function ProjectDetail() {
       case 'Substitutions': return <MaterialSubstitutionsTab projectId={projectId} />;
       case 'Factory Production': return <FactoryProductionTab projectId={projectId} />;
       case 'Phases': return <PhaseTimeline projectId={projectId} />;
+      case 'Gantt Chart': return <GanttChart projectId={projectId} project={project} />;
       case 'Work Activities': return <WorkActivitiesTab projectId={projectId} project={project} />;
+      case 'Room Progress': return <RoomProgressTab projectId={projectId} />;
       case 'Tasks': return <TaskKanban projectId={projectId} />;
+      case 'Daily Site Reports': return <DailySiteReportsTab projectId={projectId} />;
+      case 'Weekly Reports': return <WeeklyReportsTab projectId={projectId} />;
       case 'Documents': return <DocumentPanel projectId={projectId} />;
       case 'Payments': return <PaymentsTab projectId={projectId} />;
       case 'Snags': return <SnagsDashboard projectId={projectId} />;

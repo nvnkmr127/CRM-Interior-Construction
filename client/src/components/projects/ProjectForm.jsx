@@ -3,6 +3,7 @@ import styles from './ProjectForm.module.css'
 import { Modal, Input, Select, Button } from '../ui'
 import { useToast } from '../../store/toastContext'
 import { createProject, updateProject } from '../../api/projects'
+import api from '../../api/axios'
 import { useS3Upload } from '../../hooks/useS3Upload'
 
 const PROJECT_TYPES = [
@@ -63,7 +64,11 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
     renovationScope: '',
     segment: '',
     allowedDesignRevisions: 3,
-    currentDesignRevisions: 0
+    currentDesignRevisions: 0,
+    enforceDependencies: true,
+    pmHoursAllocated: 10,
+    designerHoursAllocated: 20,
+    site_team: []
   })
   
   const [errors, setErrors] = useState({})
@@ -100,6 +105,27 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
     email: '',
     phone: ''
   })
+
+  const [newSiteMember, setNewSiteMember] = useState({
+    name: '',
+    role: 'carpenter',
+    vendor_name: '',
+    phone: '',
+    email: '',
+    status: 'active'
+  })
+
+  const [teamMembers, setTeamMembers] = useState([])
+  useEffect(() => {
+    if (isOpen) {
+      api.get('/users?limit=100')
+        .then(res => {
+          const u = res.data?.data || res.data || []
+          setTeamMembers(Array.isArray(u) ? u : [])
+        })
+        .catch(err => console.error('Failed to fetch team members', err))
+    }
+  }, [isOpen])
 
   const handleNewRoomChange = (field, value) => {
     setNewRoomMeasurement(prev => {
@@ -163,8 +189,12 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
         segment: project.segment || '',
         allowedDesignRevisions: project.allowed_design_revisions !== undefined && project.allowed_design_revisions !== null ? project.allowed_design_revisions : 3,
         currentDesignRevisions: project.current_design_revisions !== undefined && project.current_design_revisions !== null ? project.current_design_revisions : 0,
+        enforceDependencies: project.enforce_dependencies !== undefined ? project.enforce_dependencies : (project.enforceDependencies !== undefined ? project.enforceDependencies : true),
         vendors: project.vendors || [],
-        consultants: project.consultants || []
+        consultants: project.consultants || [],
+        site_team: project.site_team || [],
+        pmHoursAllocated: project.pm_hours_allocated !== undefined && project.pm_hours_allocated !== null ? project.pm_hours_allocated : 10,
+        designerHoursAllocated: project.designer_hours_allocated !== undefined && project.designer_hours_allocated !== null ? project.designer_hours_allocated : 20
       })
       setContractFile(null)
       setErrors({})
@@ -183,7 +213,10 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
         projectCategory: '', projectSubCategory: '', propertyType: '', propertyAge: '',
         renovationScope: '', segment: '',
         allowedDesignRevisions: 3, currentDesignRevisions: 0,
-        vendors: [], consultants: []
+        enforceDependencies: true,
+        vendors: [], consultants: [], site_team: [],
+        pmHoursAllocated: 10,
+        designerHoursAllocated: 20
       })
       setContractFile(null)
       setErrors({})
@@ -226,6 +259,8 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
         site_address: formData.siteAddress,
         pm_id: formData.pm || null,
         designer_id: formData.designer || null,
+        pm_hours_allocated: formData.pm ? (formData.pmHoursAllocated ? Number(formData.pmHoursAllocated) : 10) : null,
+        designer_hours_allocated: formData.designer ? (formData.designerHoursAllocated ? Number(formData.designerHoursAllocated) : 20) : null,
         contract_value: formData.contractValue ? Number(formData.contractValue) : null,
         booking_amount: formData.bookingAmount ? Number(formData.bookingAmount) : null,
         start_date: formData.startDate || null,
@@ -262,12 +297,35 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
         segment: formData.segment || null,
         allowed_design_revisions: formData.allowedDesignRevisions !== '' && formData.allowedDesignRevisions !== undefined ? Number(formData.allowedDesignRevisions) : 3,
         current_design_revisions: formData.currentDesignRevisions !== '' && formData.currentDesignRevisions !== undefined ? Number(formData.currentDesignRevisions) : 0,
+        enforce_dependencies: formData.enforceDependencies,
         measurements: formData.measurements || [],
         vendors: formData.vendors || [],
         consultants: formData.consultants || [],
+        site_team: formData.site_team || [],
         ...contractFields
       }
       if (project) {
+        if (project.status === 'active') {
+          const origStart = project.start_date ? project.start_date.split('T')[0] : (project.startDate ? project.startDate.split('T')[0] : '');
+          const origTarget = project.target_date ? project.target_date.split('T')[0] : (project.targetDate ? project.targetDate.split('T')[0] : '');
+          const newStart = formData.startDate || '';
+          const newTarget = formData.targetDate || '';
+
+          if (newStart !== origStart || newTarget !== origTarget) {
+            const reason = window.prompt(
+              'The project schedule is being modified. Please provide a reason for this schedule revision:'
+            );
+            if (reason === null) {
+              return;
+            }
+            const trimmedReason = reason.trim();
+            if (!trimmedReason) {
+              toast.error('A schedule revision reason is required to update dates.');
+              return;
+            }
+            payload.changeReason = trimmedReason;
+          }
+        }
         await updateProject(project.id, payload)
         toast.success('Project updated')
       } else {
@@ -353,19 +411,51 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
           <div style={{ marginTop: 16 }}>
             <Select 
               label="Project Manager" 
-              options={[{value:'',label:'Select PM'}, {value:'u1',label:'Priya Sharma'}, {value:'u2',label:'Rahul Desai'}]}
+              options={[
+                { value: '', label: 'Select PM' },
+                ...teamMembers
+                  .filter(u => u.role_name === 'Project Manager' || u.role === 'pm' || u.role === 'project_manager')
+                  .map(u => ({ value: u.id, label: u.name }))
+              ]}
               value={formData.pm}
               onChange={v => setFormData({...formData, pm: v})}
             />
           </div>
+          {formData.pm && (
+            <div style={{ marginTop: 8 }}>
+              <Input 
+                type="number"
+                label="PM Weekly Commitment (Hours)" 
+                placeholder="Default: 10"
+                value={formData.pmHoursAllocated} 
+                onChange={e => setFormData({...formData, pmHoursAllocated: e.target.value})}
+              />
+            </div>
+          )}
           <div style={{ marginTop: 16 }}>
             <Select 
               label="Designer" 
-              options={[{value:'',label:'Select Designer'}, {value:'u1',label:'Priya Sharma'}, {value:'u2',label:'Rahul Desai'}]}
+              options={[
+                { value: '', label: 'Select Designer' },
+                ...teamMembers
+                  .filter(u => u.role_name === 'Designer' || u.role === 'designer')
+                  .map(u => ({ value: u.id, label: u.name }))
+              ]}
               value={formData.designer}
               onChange={v => setFormData({...formData, designer: v})}
             />
           </div>
+          {formData.designer && (
+            <div style={{ marginTop: 8 }}>
+              <Input 
+                type="number"
+                label="Designer Weekly Commitment (Hours)" 
+                placeholder="Default: 20"
+                value={formData.designerHoursAllocated} 
+                onChange={e => setFormData({...formData, designerHoursAllocated: e.target.value})}
+              />
+            </div>
+          )}
         </div>
 
         {/* Structured address fields */}
@@ -1211,6 +1301,181 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
           </div>
         </div>
 
+        {/* Project Site Execution Team */}
+        <div className={styles.fullWidth} style={{ marginTop: 8 }}>
+          <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Site Execution Team Assignment</div>
+          
+          {/* Render list of added site team members */}
+          {formData.site_team && formData.site_team.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+              {formData.site_team.map((member, idx) => (
+                <div key={idx} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'var(--color-surface-hover, #f8fafc)',
+                  border: '1px solid var(--color-border)'
+                }}>
+                  <div>
+                    <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)' }}>{member.name}</span>
+                    <span style={{
+                      marginLeft: '8px',
+                      padding: '2px 6px',
+                      fontSize: '11px',
+                      borderRadius: '4px',
+                      background: 'var(--color-accent-bg, #eff6ff)',
+                      color: 'var(--color-accent, #3b82f6)',
+                      fontWeight: 500,
+                      textTransform: 'capitalize'
+                    }}>
+                      Role: {member.role ? member.role.replace(/_/g, ' ') : ''}
+                    </span>
+                    {member.vendor_name && (
+                      <span style={{
+                        marginLeft: '6px',
+                        padding: '2px 6px',
+                        fontSize: '11px',
+                        borderRadius: '4px',
+                        background: 'var(--color-neutral-bg, #f1f5f9)',
+                        color: 'var(--color-neutral-text, #475569)',
+                        fontWeight: 500
+                      }}>
+                        Vendor: {member.vendor_name}
+                      </span>
+                    )}
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+                      {member.phone && `📞 ${member.phone}`} {member.email && ` | ✉️ ${member.email}`}
+                    </div>
+                  </div>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    onClick={() => {
+                      const updated = formData.site_team.filter((_, i) => i !== idx);
+                      setFormData({ ...formData, site_team: updated });
+                    }}
+                    style={{ color: 'var(--color-danger)', padding: '4px 8px' }}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ padding: '16px', border: '1px dashed var(--color-border)', borderRadius: 'var(--radius-md)', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: '16px' }}>
+              No site execution team members (carpenter, electrician, plumber, painter, supervisor) assigned yet.
+            </div>
+          )}
+
+          {/* Form to add a new site team member */}
+          <div style={{
+            background: 'var(--color-surface, #fff)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-md)',
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px'
+          }}>
+            <div style={{ fontWeight: 600, fontSize: 'var(--text-xs)', color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Add Site Team Member
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '12px' }}>
+              <Input 
+                label="Full Name" 
+                placeholder="e.g. Ramesh Kumar"
+                value={newSiteMember.name}
+                onChange={e => setNewSiteMember({...newSiteMember, name: e.target.value})}
+              />
+              <Input 
+                label="Phone Number" 
+                placeholder="e.g. 9876543210"
+                value={newSiteMember.phone}
+                onChange={e => setNewSiteMember({...newSiteMember, phone: e.target.value})}
+              />
+              <Input 
+                label="Email Address" 
+                type="email"
+                placeholder="e.g. ramesh@gmail.com"
+                value={newSiteMember.email}
+                onChange={e => setNewSiteMember({...newSiteMember, email: e.target.value})}
+              />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr auto', gap: '12px', alignItems: 'end' }}>
+              <Select 
+                label="Execution Role" 
+                options={[
+                  { value: 'carpenter', label: 'Carpenter' },
+                  { value: 'electrician', label: 'Electrician' },
+                  { value: 'plumber', label: 'Plumber' },
+                  { value: 'painter', label: 'Painter' },
+                  { value: 'supervisor', label: 'Supervisor' },
+                  { value: 'other', label: 'Other / Helper' }
+                ]}
+                value={newSiteMember.role}
+                onChange={v => setNewSiteMember({...newSiteMember, role: v})}
+              />
+              <Select 
+                label="Associated Vendor" 
+                options={[
+                  { value: '', label: 'Select Vendor (Optional)' },
+                  ...(formData.vendors || []).map(v => ({
+                    value: v.vendor_name,
+                    label: `${v.vendor_name} (${v.scope_of_work || 'General'})`
+                  }))
+                ]}
+                value={newSiteMember.vendor_name}
+                onChange={v => setNewSiteMember({...newSiteMember, vendor_name: v})}
+              />
+              <div style={{ flex: 1 }}>
+                <Select 
+                  label="Status" 
+                  options={[
+                    { value: 'active', label: 'Active' },
+                    { value: 'inactive', label: 'Inactive' }
+                  ]}
+                  value={newSiteMember.status}
+                  onChange={v => setNewSiteMember({...newSiteMember, status: v})}
+                />
+              </div>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => {
+                  if (!newSiteMember.name || newSiteMember.name.trim() === '') {
+                    toast.error('Site member name is required');
+                    return;
+                  }
+                  const matchedVendor = (formData.vendors || []).find(v => v.vendor_name === newSiteMember.vendor_name);
+                  const vendorId = matchedVendor ? (matchedVendor.id || matchedVendor.vendor_id || null) : null;
+
+                  setFormData(prev => ({
+                    ...prev,
+                    site_team: [...(prev.site_team || []), { 
+                      ...newSiteMember, 
+                      name: newSiteMember.name.trim(),
+                      vendor_id: vendorId
+                    }]
+                  }));
+                  setNewSiteMember({
+                    name: '',
+                    role: 'carpenter',
+                    vendor_name: '',
+                    phone: '',
+                    email: '',
+                    status: 'active'
+                  });
+                }}
+                style={{ height: '38px', padding: '0 16px' }}
+              >
+                Add Member
+              </Button>
+            </div>
+          </div>
+        </div>
+
         <div className={styles.fullWidth} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
           <div>
             <Input 
@@ -1312,6 +1577,21 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
             value={formData.paymentTerms}
             onChange={v => setFormData({...formData, paymentTerms: v})}
           />
+        </div>
+
+        <div className={styles.fullWidth} style={{ marginTop: 16 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+            <input 
+              type="checkbox" 
+              checked={formData.enforceDependencies}
+              onChange={e => setFormData({ ...formData, enforceDependencies: e.target.checked })}
+              style={{ width: 18, height: 18, cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-text)' }}>Enforce Task Execution Sequence</span>
+          </label>
+          <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginLeft: 28, marginTop: 4 }}>
+            When enabled, site supervisors are blocked from starting or completing tasks out of sequence based on configured dependencies.
+          </p>
         </div>
 
         {!project && (

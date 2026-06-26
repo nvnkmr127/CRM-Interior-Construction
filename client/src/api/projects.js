@@ -35,6 +35,22 @@ export const deleteTask = (projectId, tid) => api.delete(`/projects/${projectId}
 
 export const bulkCreateTasks = (projectId, tasks) => api.post(`/projects/${projectId}/tasks/bulk`, { tasks });
 
+// Task Dependencies
+export const getTaskDependencies = (projectId) => api.get(`/projects/${projectId}/task-dependencies`);
+
+export const createTaskDependency = (projectId, data) => api.post(`/projects/${projectId}/task-dependencies`, data);
+
+export const deleteTaskDependency = (projectId, id) => api.delete(`/projects/${projectId}/task-dependencies/${id}`);
+
+// Daily Site Reports
+export const getDailyReports = (projectId) => api.get(`/projects/${projectId}/daily-reports`);
+
+export const getDailyReport = (projectId, id) => api.get(`/projects/${projectId}/daily-reports/${id}`);
+
+export const submitDailyReport = (projectId, data) => api.post(`/projects/${projectId}/daily-reports`, data);
+
+export const getRoomProgress = (projectId) => api.get(`/projects/${projectId}/room-progress`);
+
 // Documents
 export const getDocuments = (projectId, params) => api.get(`/projects/${projectId}/documents`, { params });
 
@@ -159,3 +175,12 @@ export const createTransitDamageReport = (projectId, orderId, dispatchId, itemId
 export const initiateReplacementOrder = (projectId, orderId, damageId) => api.post(`/projects/${projectId}/production-orders/${orderId}/damage/${damageId}/replacement`);
 export const updateTransitDamageStatus = (projectId, orderId, damageId, data) => api.put(`/projects/${projectId}/production-orders/${orderId}/damage/${damageId}`, data);
 export const getTransitDamageRecords = (projectId, orderId) => api.get(`/projects/${projectId}/production-orders/${orderId}/damage`);
+
+export const bulkUpdateTasks = (projectId, tasks) => api.patch(`/projects/${projectId}/tasks/bulk-update`, { tasks });
+export const bulkUpdateTaskDependencies = (projectId, dependencies) => api.put(`/projects/${projectId}/task-dependencies/bulk`, { dependencies });
+
+export const getScheduleRevisions = (projectId) => api.get(`/projects/${projectId}/schedule-revisions`);
+
+// Resource Replacement
+export const replaceProjectResource = (projectId, data) => api.post(`/projects/${projectId}/replace-resource`, data);
+export const getProjectHandovers = (projectId) => api.get(`/projects/${projectId}/handovers`);

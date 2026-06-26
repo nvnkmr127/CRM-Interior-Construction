@@ -15,6 +15,7 @@ async function createProject({ tenantId, userId, data }) {
     measurements,
     vendors,
     consultants,
+    site_team,
     ...projectData 
   } = data;
   
@@ -173,13 +174,15 @@ async function createProject({ tenantId, userId, data }) {
     }
 
     // 1.4. Create project vendors
+    const vendorNameToIdMap = {};
     if (Array.isArray(vendors) && vendors.length > 0) {
       for (const v of vendors) {
         if (!v.vendor_name) continue;
-        await client.query(`
+        const vendorInsertRes = await client.query(`
           INSERT INTO project_vendors (
             tenant_id, project_id, vendor_name, scope_of_work, agreed_rate, payment_terms, status
           ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+          RETURNING id
         `, [
           tenantId,
           project.id,
@@ -189,6 +192,7 @@ async function createProject({ tenantId, userId, data }) {
           v.payment_terms || null,
           v.status || 'pending'
         ]);
+        vendorNameToIdMap[v.vendor_name] = vendorInsertRes.rows[0].id;
       }
     }
 
@@ -208,6 +212,35 @@ async function createProject({ tenantId, userId, data }) {
           c.firm || null,
           c.email || null,
           c.phone || null
+        ]);
+      }
+    }
+
+    // 1.6. Create project site team members
+    if (Array.isArray(site_team) && site_team.length > 0) {
+      for (const member of site_team) {
+        if (!member.name || !member.role) continue;
+
+        let finalVendorId = null;
+        if (member.vendor_id) {
+          finalVendorId = member.vendor_id;
+        } else if (member.vendor_name && vendorNameToIdMap[member.vendor_name]) {
+          finalVendorId = vendorNameToIdMap[member.vendor_name];
+        }
+
+        await client.query(`
+          INSERT INTO project_site_team (
+            tenant_id, project_id, vendor_id, role, name, phone, email, status
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `, [
+          tenantId,
+          project.id,
+          finalVendorId,
+          member.role,
+          member.name,
+          member.phone || null,
+          member.email || null,
+          member.status || 'active'
         ]);
       }
     }

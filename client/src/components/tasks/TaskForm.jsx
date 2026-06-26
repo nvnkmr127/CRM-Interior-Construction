@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/axios';
-import { createTask, updateTask, bulkCreateTasks, getProject, getTasks } from '../../api/projects';
+import { createTask, updateTask, bulkCreateTasks, getProject, getTasks, getTaskDependencies, createTaskDependency, deleteTaskDependency } from '../../api/projects';
 
 const TaskForm = ({ projectId, milestoneId: initialMilestoneId, task, onSave, onClose }) => {
   const [mode, setMode] = useState('single'); // 'single' | 'bulk'
@@ -14,16 +14,24 @@ const TaskForm = ({ projectId, milestoneId: initialMilestoneId, task, onSave, on
     dueDate: task?.due_date ? task.due_date.split('T')[0] : '',
     priority: task?.priority || 'low',
     tags: task?.tags ? task.tags.join(', ') : '',
-    parentTaskId: task?.parent_task_id || ''
+    parentTaskId: task?.parent_task_id || '',
+    roomName: task?.room_name || ''
   });
 
   // Bulk form state
   const [bulkText, setBulkText] = useState('');
+  const [showCustomRoomInput, setShowCustomRoomInput] = useState(false);
+  const [customRoomName, setCustomRoomName] = useState('');
 
   // Dropdown options
   const [users, setUsers] = useState([]);
   const [milestones, setMilestones] = useState([]);
   const [parentTasks, setParentTasks] = useState([]);
+  
+  // Dependencies state
+  const [dependencies, setDependencies] = useState([]);
+  const [projectRooms, setProjectRooms] = useState([]);
+  const [newDependency, setNewDependency] = useState({ dependsOnTaskId: '', dependencyType: 'finish-to-start' });
 
   // Errors
   const [errors, setErrors] = useState({});
@@ -36,14 +44,19 @@ const TaskForm = ({ projectId, milestoneId: initialMilestoneId, task, onSave, on
     // Dehydrate the project phases tree to extract isolated milestone endpoints
     getProject(projectId).then(res => {
       const p = res.data.data;
-      if (p && p.phases) {
-        const ms = [];
-        p.phases.forEach(phase => {
-          if (phase.milestones) {
-            phase.milestones.forEach(m => ms.push({ ...m, phaseName: phase.name }));
-          }
-        });
-        setMilestones(ms);
+      if (p) {
+        if (p.measurements) {
+          setProjectRooms(p.measurements.map(m => m.room_name));
+        }
+        if (p.phases) {
+          const ms = [];
+          p.phases.forEach(phase => {
+            if (phase.milestones) {
+              phase.milestones.forEach(m => ms.push({ ...m, phaseName: phase.name }));
+            }
+          });
+          setMilestones(ms);
+        }
       }
     }).catch(() => {});
 
@@ -51,7 +64,40 @@ const TaskForm = ({ projectId, milestoneId: initialMilestoneId, task, onSave, on
     getTasks(projectId, { limit: 100 }).then(res => {
       setParentTasks(res.data.data.filter(t => t.id !== task?.id));
     }).catch(() => {});
+
+    if (task) {
+      getTaskDependencies(projectId).then(res => {
+        const allDeps = res.data.data;
+        setDependencies(allDeps.filter(d => d.task_id === task.id));
+      }).catch(() => {});
+    }
   }, [projectId, task]);
+
+  const handleAddDependency = async (e) => {
+    e.preventDefault();
+    if (!newDependency.dependsOnTaskId) return;
+    try {
+      await createTaskDependency(projectId, {
+        taskId: task.id,
+        dependsOnTaskId: newDependency.dependsOnTaskId,
+        dependencyType: newDependency.dependencyType
+      });
+      const allDepsRes = await getTaskDependencies(projectId);
+      setDependencies(allDepsRes.data.data.filter(d => d.task_id === task.id));
+      setNewDependency({ dependsOnTaskId: '', dependencyType: 'finish-to-start' });
+    } catch (err) {
+      alert(err?.response?.data?.error?.message || 'Failed to add dependency');
+    }
+  };
+
+  const handleDeleteDependency = async (depId) => {
+    try {
+      await deleteTaskDependency(projectId, depId);
+      setDependencies(prev => prev.filter(d => d.id !== depId));
+    } catch (err) {
+      alert(err?.response?.data?.error?.message || 'Failed to delete dependency');
+    }
+  };
 
   const handleSingleSubmit = async (e) => {
     e.preventDefault();
@@ -70,6 +116,7 @@ const TaskForm = ({ projectId, milestoneId: initialMilestoneId, task, onSave, on
       if (formData.dueDate) payload.dueDate = formData.dueDate;
       if (formData.parentTaskId) payload.parentTaskId = formData.parentTaskId;
       if (formData.tags) payload.tags = formData.tags.split(',').map(t => t.trim()).filter(t => t);
+      payload.roomName = formData.roomName || null;
 
       let savedTask;
       if (task) {
@@ -117,6 +164,13 @@ const TaskForm = ({ projectId, milestoneId: initialMilestoneId, task, onSave, on
       setSubmitting(false);
     }
   };
+
+  const standardRooms = ['Living Room', 'Kitchen', 'Master Bedroom', 'Kids Bedroom', 'Guest Bedroom', 'Bathroom', 'Balcony', 'Dining Room', 'Foyer', 'Pooja Room'];
+  const allRooms = Array.from(new Set([
+    ...(projectRooms || []),
+    ...standardRooms,
+    ...(formData.roomName ? [formData.roomName] : [])
+  ])).filter(Boolean);
 
   return (
     <div className="bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-8 w-full max-w-2xl mx-auto shadow-black/50">
@@ -240,6 +294,53 @@ const TaskForm = ({ projectId, milestoneId: initialMilestoneId, task, onSave, on
               </div>
 
               <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Room / Area Location</label>
+                {!showCustomRoomInput ? (
+                  <select
+                    value={formData.roomName}
+                    onChange={e => {
+                      if (e.target.value === 'ADD_CUSTOM') {
+                        setShowCustomRoomInput(true);
+                      } else {
+                        setFormData({ ...formData, roomName: e.target.value });
+                      }
+                    }}
+                    className="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-all text-sm cursor-pointer"
+                  >
+                    <option value="">General (No Room Tag)</option>
+                    {allRooms.map(room => (
+                      <option key={room} value={room}>{room}</option>
+                    ))}
+                    <option value="ADD_CUSTOM">+ Add Custom Room Name...</option>
+                  </select>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Enter custom room name (e.g. Balcony)"
+                      value={customRoomName}
+                      onChange={e => {
+                        setCustomRoomName(e.target.value);
+                        setFormData({ ...formData, roomName: e.target.value });
+                      }}
+                      className="flex-1 bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCustomRoomInput(false);
+                        setCustomRoomName('');
+                        setFormData({ ...formData, roomName: '' });
+                      }}
+                      className="px-3 bg-slate-800 text-slate-400 hover:text-white rounded-lg border border-slate-700 text-xs font-bold"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Metadata Tags</label>
                 <input
                   type="text"
@@ -250,6 +351,86 @@ const TaskForm = ({ projectId, milestoneId: initialMilestoneId, task, onSave, on
                 />
               </div>
             </div>
+
+            {task && (
+              <div className="pt-6 border-t border-slate-800 mt-6">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Task Dependencies</label>
+                
+                {dependencies.length > 0 ? (
+                  <div className="mb-4 space-y-2 max-h-[150px] overflow-y-auto pr-2">
+                    {dependencies.map(dep => (
+                      <div key={dep.id} className="flex justify-between items-center bg-slate-900/85 border border-slate-800 rounded-lg p-3 text-xs">
+                        <div>
+                          <span className="text-slate-400">Depends on: </span>
+                          <span className="text-white font-semibold">{dep.depends_on_task_title}</span>
+                          <span className="ml-2 px-1.5 py-0.5 rounded bg-slate-800 text-[10px] text-slate-400 capitalize">
+                            {dep.dependency_type.replace(/-/g, ' ')}
+                          </span>
+                          <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                            dep.depends_on_task_status === 'done' ? 'bg-emerald-500/10 text-emerald-400' :
+                            dep.depends_on_task_status === 'in_progress' ? 'bg-blue-500/10 text-blue-400' :
+                            'bg-slate-800 text-slate-500'
+                          }`}>
+                            {dep.depends_on_task_status}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDependency(dep.id)}
+                          className="text-red-400 hover:text-red-300 font-bold px-2 py-1 text-[10px] uppercase tracking-wider transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-500 mb-4 italic">No dependencies configured for this task.</p>
+                )}
+
+                <div className="grid grid-cols-12 gap-3 items-end bg-slate-900/30 border border-slate-800/50 rounded-xl p-4">
+                  <div className="col-span-6">
+                    <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Prerequisite Task</label>
+                    <select
+                      value={newDependency.dependsOnTaskId}
+                      onChange={e => setNewDependency({ ...newDependency, dependsOnTaskId: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white text-xs focus:outline-none cursor-pointer"
+                    >
+                      <option value="">Select Task...</option>
+                      {parentTasks
+                        .filter(t => t.id !== task.id && t.parent_task_id !== task.id)
+                        .map(t => (
+                          <option key={t.id} value={t.id}>{t.title}</option>
+                        ))
+                      }
+                    </select>
+                  </div>
+                  
+                  <div className="col-span-4">
+                    <label className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Relationship Type</label>
+                    <select
+                      value={newDependency.dependencyType}
+                      onChange={e => setNewDependency({ ...newDependency, dependencyType: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white text-xs focus:outline-none cursor-pointer"
+                    >
+                      <option value="finish-to-start">Finish-to-Start (FS)</option>
+                      <option value="start-to-start">Start-to-Start (SS)</option>
+                    </select>
+                  </div>
+
+                  <div className="col-span-2">
+                    <button
+                      type="button"
+                      onClick={handleAddDependency}
+                      disabled={!newDependency.dependsOnTaskId}
+                      className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-850 disabled:text-slate-600 text-white font-bold rounded-lg text-[10px] uppercase tracking-wider transition-colors"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-end gap-3 pt-8 border-t border-slate-800 mt-8">
               <button type="button" onClick={onClose} className="px-6 py-3 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-slate-300 transition-colors">Abort</button>

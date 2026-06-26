@@ -11,6 +11,8 @@ import PortalSnags from './pages/PortalSnags'
 import PortalDocuments from './pages/PortalDocuments'
 import PortalPayments from './pages/PortalPayments'
 import PortalChangeOrders from './pages/PortalChangeOrders'
+import PortalTimeline from './pages/PortalTimeline'
+import PortalMeetingNotes from './pages/PortalMeetingNotes'
 
 function PortalProtectedRoute({ children }) {
   const { portalUser, loading } = usePortalAuth()
@@ -35,12 +37,14 @@ function PortalAppContent() {
           <PortalShell>
             <Routes>
               <Route path="overview" element={<PortalProject />} />
+              <Route path="timeline" element={<PortalTimeline />} />
               <Route path="approvals" element={<PortalApprovals />} />
               <Route path="design-concepts" element={<PortalDesignAssets />} />
               <Route path="design-reviews" element={<PortalDesignReviews />} />
               <Route path="material-palettes" element={<PortalMaterialPalettes />} />
               <Route path="change-orders" element={<PortalChangeOrders />} />
               <Route path="documents" element={<PortalDocuments />} />
+              <Route path="meeting-notes" element={<PortalMeetingNotes />} />
               <Route path="snags" element={<PortalSnags />} />
               <Route path="payments" element={<PortalPayments />} />
             </Routes>

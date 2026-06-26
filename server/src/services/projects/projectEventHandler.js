@@ -25,4 +25,32 @@ eventBus.on('lead.stage_changed', async ({ tenantId, userId, lead, oldStage, new
   }
 });
 
+eventBus.on('project.milestone_overdue', async ({ tenantId, milestone }) => {
+  try {
+    const { recalculateSchedule } = require('./scheduleRecalculator');
+    await recalculateSchedule({
+      tenantId,
+      projectId: milestone.project_id,
+      triggerType: 'milestone_overdue',
+      triggerName: milestone.name
+    });
+  } catch (error) {
+    console.error('[Project Event Handler] Error processing project.milestone_overdue:', error);
+  }
+});
+
+eventBus.on('project.task_overdue', async ({ tenantId, task }) => {
+  try {
+    const { recalculateSchedule } = require('./scheduleRecalculator');
+    await recalculateSchedule({
+      tenantId,
+      projectId: task.project_id,
+      triggerType: 'task_overdue',
+      triggerName: task.title
+    });
+  } catch (error) {
+    console.error('[Project Event Handler] Error processing project.task_overdue:', error);
+  }
+});
+
 module.exports = {};

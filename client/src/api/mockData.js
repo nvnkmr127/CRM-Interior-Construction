@@ -307,7 +307,15 @@ export const initialMockDatabase = {
       target_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
       overdue: false,
       created_at: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString(),
-      is_scope_locked: true
+      is_scope_locked: true,
+      vendors: [
+        { id: 'vendor-1', vendor_name: 'PowerFix Solutions', scope_of_work: 'Electrical Work', agreed_rate: 150000, status: 'approved' },
+        { id: 'vendor-2', vendor_name: 'WoodCraft Carpentry', scope_of_work: 'Woodwork & Cabinetry', agreed_rate: 850000, status: 'approved' }
+      ],
+      site_team: [
+        { id: 'st-1', vendor_id: 'vendor-1', vendor_name: 'PowerFix Solutions', role: 'electrician', name: 'John Doe', phone: '9876543210', email: 'john@powerfix.com', status: 'active' },
+        { id: 'st-2', vendor_id: 'vendor-2', vendor_name: 'WoodCraft Carpentry', role: 'carpenter', name: 'Bob Smith', phone: '9876543211', email: 'bob@woodcraft.com', status: 'active' }
+      ]
     },
     {
       id: 'mock-proj-2',
@@ -473,6 +481,20 @@ export const initialMockDatabase = {
     { stage: 'Qualified', count: 8 },
     { stage: 'Negotiation', count: 4 },
     { stage: 'Closed Won', count: 5 }
+  ],
+  handovers: [
+    {
+      id: 'mock-handover-1',
+      project_id: 'mock-proj-1',
+      role: 'designer',
+      replaced_user_id: 'mock-user-2',
+      replaced_user_name: 'Amit S.',
+      assigned_user_id: 'mock-user-3',
+      assigned_user_name: 'Priya M.',
+      handover_notes: 'Concept design completed. Client signed off on moodboard. Handing over for detailed 2D drawings and BOQ estimation.',
+      creator_name: 'Rahul K.',
+      created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+    }
   ]
 };
 

@@ -73,6 +73,41 @@ async function updateTask({ tenantId, userId, taskId, data }) {
     }
   }
 
+  // 2.5. Validate task dependencies if status changes to 'in_progress' or 'done'
+  if (data.status && (data.status === 'in_progress' || data.status === 'done') && data.status !== currentTask.status) {
+    const { rows: projRows } = await pool.query(
+      'SELECT enforce_dependencies FROM projects WHERE id = $1 AND tenant_id = $2',
+      [currentTask.project_id, tenantId]
+    );
+    const enforceDeps = projRows[0]?.enforce_dependencies;
+    
+    if (enforceDeps !== false) {
+      const taskDependencyRepository = require('../../repositories/taskDependencyRepository');
+      const dependencies = await taskDependencyRepository.findDependenciesForTask(tenantId, taskId);
+      
+      for (const dep of dependencies) {
+        const isFS = dep.dependency_type === 'finish-to-start';
+        const isSS = dep.dependency_type === 'start-to-start';
+        
+        if (isFS && dep.depends_on_task_status !== 'done') {
+          const err = new Error('DEPENDENCY_UNSATISFIED');
+          err.status = 400;
+          err.code = 'DEPENDENCY_UNSATISFIED';
+          err.message = `Cannot start/complete task: Prerequisite task '${dep.depends_on_task_title}' must be completed first.`;
+          throw err;
+        }
+        
+        if (isSS && dep.depends_on_task_status !== 'in_progress' && dep.depends_on_task_status !== 'done') {
+          const err = new Error('DEPENDENCY_UNSATISFIED');
+          err.status = 400;
+          err.code = 'DEPENDENCY_UNSATISFIED';
+          err.message = `Cannot start/complete task: Prerequisite task '${dep.depends_on_task_title}' must be started first.`;
+          throw err;
+        }
+      }
+    }
+  }
+
   // 3. Push data to database 
   const updatedTask = await taskRepository.updateTask(tenantId, taskId, data);
 
@@ -115,6 +150,18 @@ async function updateTask({ tenantId, userId, taskId, data }) {
   }
 
   // 6. Output fresh database row
+  if (data.due_date && data.due_date !== currentTask.due_date) {
+    const { recalculateSchedule } = require('../projects/scheduleRecalculator');
+    recalculateSchedule({
+      tenantId,
+      projectId: currentTask.project_id,
+      triggerType: 'task_date_changed',
+      triggerName: currentTask.title
+    }).catch(err => {
+      console.error('[UpdateTask] Error recalculating schedule:', err);
+    });
+  }
+
   return updatedTask;
 }
 

@@ -4,25 +4,25 @@ class TaskRepository {
   async createTask(tenantId, data) {
     const {
       project_id, milestone_id, parent_task_id, title, description,
-      assignee_id, due_date, priority = 'medium', status = 'todo',
+      assignee_id, due_date, start_date, duration_days = 1, priority = 'medium', status = 'todo',
       sort_order = 0, tags = [], custom_fields = {}, created_by,
-      lead_id
+      lead_id, room_name
     } = data;
 
     const query = `
       INSERT INTO tasks (
         tenant_id, project_id, milestone_id, parent_task_id,
-        title, description, assignee_id, due_date, priority, status,
-        sort_order, tags, custom_fields, created_by, lead_id
+        title, description, assignee_id, due_date, start_date, duration_days, priority, status,
+        sort_order, tags, custom_fields, created_by, lead_id, room_name
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
       ) RETURNING *
     `;
     const values = [
       tenantId, project_id || null, milestone_id || null, parent_task_id || null,
-      title, description || null, assignee_id || null, due_date || null,
+      title, description || null, assignee_id || null, due_date || null, start_date || null, duration_days,
       priority, status, sort_order, JSON.stringify(tags),
-      custom_fields, created_by || null, lead_id || null
+      custom_fields, created_by || null, lead_id || null, room_name || null
     ];
 
     const { rows } = await pool.query(query, values);
@@ -66,7 +66,7 @@ class TaskRepository {
     return task;
   }
 
-  async findTasks(tenantId, { projectId, milestoneId, assigneeId, status, priority, dueWithin, page = 1, limit = 20, leadId }) {
+  async findTasks(tenantId, { projectId, milestoneId, assigneeId, status, priority, dueWithin, page = 1, limit = 20, leadId, allTasks }) {
     const offset = (page - 1) * limit;
     const values = [tenantId];
     let whereClause = `t.tenant_id = $1 AND t.deleted_at IS NULL`;
@@ -96,7 +96,7 @@ class TaskRepository {
     if (milestoneId) {
       whereClause += ` AND t.milestone_id = $${idx++}`;
       values.push(milestoneId);
-    } else {
+    } else if (!allTasks) {
       whereClause += ` AND t.parent_task_id IS NULL`;
     }
 

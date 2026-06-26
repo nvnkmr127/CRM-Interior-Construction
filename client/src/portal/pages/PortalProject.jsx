@@ -21,12 +21,14 @@ export default function PortalProject() {
     Promise.all([
       api.get('/portal/project'),
       api.get('/portal/project/phases'),
-      api.get('/portal/project/payments')
+      api.get('/portal/project/payments'),
+      api.get('/portal/project/delay-notifications')
     ])
-    .then(([projRes, phasesRes, payRes]) => {
+    .then(([projRes, phasesRes, payRes, delayRes]) => {
       const proj = projRes.data.data;
       const phases = phasesRes.data.data || [];
       const payments = payRes.data.data || [];
+      const delays = delayRes.data.data || [];
 
       setData({
         project: { 
@@ -34,9 +36,10 @@ export default function PortalProject() {
           is_scope_locked: proj.is_scope_locked 
         },
         pm: { name: proj.pm_name || 'Assigned Soon', phone: 'Contact office' },
+        delays: delays,
         progress: {
           percent: proj.task_completion_pct || 0,
-          completedTasks: 0, // Could fetch tasks in the future
+          completedTasks: 0,
           totalTasks: 0,
           phases: phases.map(p => ({
             name: p.name,
@@ -92,6 +95,25 @@ export default function PortalProject() {
           <a href={`tel:${data.pm.phone}`} className={styles.callBtn}>Call {data.pm.phone}</a>
         </div>
       </div>
+
+      {data.delays && data.delays.length > 0 && data.delays.map(delay => (
+        <div key={delay.id} className={styles.delayAlertCard}>
+          <span style={{ fontSize: '28px' }}>⚠️</span>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, color: 'var(--color-danger)' }}>
+              Project Timeline Update: {delay.type === 'project_delay' ? 'Completion Date Revised' : `Milestone "${delay.milestone_name || 'Work'}" Delayed`}
+            </h3>
+            <p style={{ margin: '6px 0 0', fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: '1.4' }}>
+              {delay.message}
+            </p>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '8px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+              <span>Original Due: {new Date(delay.original_date).toLocaleDateString()}</span>
+              <span>•</span>
+              <span style={{ color: 'var(--color-danger)', fontWeight: 600 }}>Revised: {new Date(delay.revised_date).toLocaleDateString()}</span>
+            </div>
+          </div>
+        </div>
+      ))}
 
       <div className={`${styles.card} ${data.project.is_scope_locked ? styles.designFrozenCard : styles.designActiveCard}`}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>

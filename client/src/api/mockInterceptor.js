@@ -1164,6 +1164,275 @@ export const setupMockInterceptor = (api) => {
               }
             }
           }
+          // SITE VISITS
+          else if (url.includes('/site-visits')) {
+            const urlParts = url.split('?');
+            const matchProject = urlParts[0].match(/\/site-visits\/project\/([a-zA-Z0-9-]+)$/);
+            const matchLead = urlParts[0].match(/\/site-visits\/lead\/([a-zA-Z0-9-]+)$/);
+            const matchSingle = urlParts[0].match(/\/site-visits\/([a-zA-Z0-9-]+)$/);
+            const matchPhotos = urlParts[0].match(/\/site-visits\/([a-zA-Z0-9-]+)\/photos$/);
+            const matchSinglePhoto = urlParts[0].match(/\/site-visits\/([a-zA-Z0-9-]+)\/photos\/([a-zA-Z0-9-]+)$/);
+
+            if (!mockDatabase.siteVisits) mockDatabase.siteVisits = [];
+            if (!mockDatabase.siteVisitPhotos) mockDatabase.siteVisitPhotos = [];
+
+            if (matchProject) {
+              const projectId = matchProject[1];
+              if (method === 'get') {
+                responseData.data = mockDatabase.siteVisits.filter(sv => sv.project_id === projectId);
+              } else if (method === 'post') {
+                const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                const newVisit = {
+                  id: `mock-sv-${Date.now()}`,
+                  project_id: projectId,
+                  tenant_id: 'mock-tenant-123',
+                  assignee_id: payload.assignee_id || 'mock-user-1',
+                  assignee_name: payload.assignee_id === 'mock-user-2' ? 'Supervisor Ramesh' : 'PM Amit',
+                  scheduled_at: payload.scheduled_at,
+                  completed_at: null,
+                  status: 'scheduled',
+                  checklist: payload.checklist || [],
+                  notes: payload.notes || '',
+                  client_invited: payload.client_invited || false,
+                  client_feedback: '',
+                  gps_coordinates: {},
+                  measurements: {},
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                };
+                mockDatabase.siteVisits.push(newVisit);
+                persistDb();
+                responseData.data = newVisit;
+              }
+            } else if (matchLead) {
+              const leadId = matchLead[1];
+              if (method === 'get') {
+                responseData.data = mockDatabase.siteVisits.filter(sv => sv.lead_id === leadId);
+              } else if (method === 'post') {
+                const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                const newVisit = {
+                  id: `mock-sv-${Date.now()}`,
+                  lead_id: leadId,
+                  tenant_id: 'mock-tenant-123',
+                  assignee_id: payload.assignee_id || 'mock-user-1',
+                  assignee_name: 'PM Amit',
+                  scheduled_at: payload.scheduled_at,
+                  completed_at: null,
+                  status: 'scheduled',
+                  checklist: payload.checklist || [],
+                  notes: payload.notes || '',
+                  client_invited: payload.client_invited || false,
+                  client_feedback: '',
+                  gps_coordinates: {},
+                  measurements: {},
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                };
+                mockDatabase.siteVisits.push(newVisit);
+                persistDb();
+                responseData.data = newVisit;
+              }
+            } else if (matchPhotos) {
+              const siteVisitId = matchPhotos[1];
+              if (method === 'get') {
+                responseData.data = mockDatabase.siteVisitPhotos.filter(p => p.site_visit_id === siteVisitId);
+              } else if (method === 'post') {
+                let fileName = 'site_photo.jpg';
+                let caption = '';
+                if (config.data instanceof FormData) {
+                  const fileObj = config.data.get('file');
+                  if (fileObj) fileName = fileObj.name;
+                  caption = config.data.get('caption') || '';
+                } else if (config.data) {
+                  const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                  if (payload.file_name) fileName = payload.file_name;
+                  caption = payload.caption || '';
+                }
+                const newPhoto = {
+                  id: `mock-svp-${Date.now()}`,
+                  site_visit_id: siteVisitId,
+                  tenant_id: 'mock-tenant-123',
+                  file_url: 'mock-s3-key',
+                  url: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=800&auto=format&fit=crop', // default nice placeholder
+                  caption: caption,
+                  uploaded_at: new Date().toISOString()
+                };
+                mockDatabase.siteVisitPhotos.push(newPhoto);
+                persistDb();
+                responseData.data = newPhoto;
+              }
+            } else if (matchSinglePhoto) {
+              const siteVisitId = matchSinglePhoto[1];
+              const photoId = matchSinglePhoto[2];
+              if (method === 'delete') {
+                mockDatabase.siteVisitPhotos = mockDatabase.siteVisitPhotos.filter(p => p.id !== photoId);
+                persistDb();
+                responseData.data = { success: true };
+              }
+            } else if (matchSingle) {
+              const siteVisitId = matchSingle[1];
+              if (method === 'patch') {
+                const updates = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                const idx = mockDatabase.siteVisits.findIndex(sv => sv.id === siteVisitId);
+                if (idx !== -1) {
+                  mockDatabase.siteVisits[idx] = { 
+                    ...mockDatabase.siteVisits[idx], 
+                    ...updates,
+                    updated_at: new Date().toISOString()
+                  };
+                  if (updates.assignee_id) {
+                    mockDatabase.siteVisits[idx].assignee_name = updates.assignee_id === 'mock-user-2' ? 'Supervisor Ramesh' : 'PM Amit';
+                  }
+                  persistDb();
+                  responseData.data = mockDatabase.siteVisits[idx];
+                }
+              } else if (method === 'delete') {
+                mockDatabase.siteVisits = mockDatabase.siteVisits.filter(sv => sv.id !== siteVisitId);
+                persistDb();
+                responseData.data = { success: true };
+              }
+            }
+          }
+          // DELAY NOTIFICATIONS
+          else if (url.includes('/delay-notifications')) {
+            const urlParts = url.split('?');
+            const matchProject = urlParts[0].match(/\/projects\/([a-zA-Z0-9-]+)\/delay-notifications$/);
+            const matchSingle = urlParts[0].match(/\/projects\/([a-zA-Z0-9-]+)\/delay-notifications\/([a-zA-Z0-9-]+)$/);
+            const matchSend = urlParts[0].match(/\/projects\/([a-zA-Z0-9-]+)\/delay-notifications\/([a-zA-Z0-9-]+)\/send$/);
+            const matchPortal = url.includes('/portal/project/delay-notifications');
+
+            if (!mockDatabase.delayNotifications) mockDatabase.delayNotifications = [];
+
+            if (matchPortal) {
+              const projectId = mockDatabase.projects?.[0]?.id || 'mock-proj-1';
+              responseData.data = mockDatabase.delayNotifications.filter(dn => dn.project_id === projectId && dn.status === 'sent');
+            } else if (matchProject) {
+              const projectId = matchProject[1];
+              if (method === 'get') {
+                if (!mockDatabase.phases) mockDatabase.phases = [];
+                if (!mockDatabase.milestones) mockDatabase.milestones = [];
+
+                const projectPhases = mockDatabase.phases.filter(p => p.project_id === projectId);
+                const phaseIds = projectPhases.map(p => p.id);
+
+                mockDatabase.milestones.forEach(m => {
+                  if (phaseIds.includes(m.phase_id) && m.status !== 'completed' && !m.due_date) {
+                    const yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    m.due_date = yesterday.toISOString().split('T')[0];
+                  }
+                });
+
+                const overdueMilestones = mockDatabase.milestones.filter(m => phaseIds.includes(m.phase_id) && m.status !== 'completed' && new Date(m.due_date) < new Date());
+                overdueMilestones.forEach(m => {
+                  const check = mockDatabase.delayNotifications.find(dn => dn.project_id === projectId && dn.milestone_id === m.id && dn.original_date === m.due_date);
+                  if (!check) {
+                    const revisedDate = new Date();
+                    revisedDate.setDate(revisedDate.getDate() + 7);
+                    const revisedDateStr = revisedDate.toISOString().split('T')[0];
+                    const draftText = `Dear Client, we would like to inform you that the milestone "${m.name}" originally scheduled for completion on ${m.due_date} has been delayed. The revised expected completion date is now ${revisedDateStr}. Reason for delay: [Please specify the reason]. We apologize for the delay and appreciate your patience.`;
+
+                    mockDatabase.delayNotifications.push({
+                      id: `mock-dn-${Date.now()}-${m.id}`,
+                      project_id: projectId,
+                      tenant_id: 'mock-tenant-123',
+                      milestone_id: m.id,
+                      milestone_name: m.name,
+                      type: 'milestone_delay',
+                      original_date: m.due_date,
+                      revised_date: revisedDateStr,
+                      reason: 'Awaiting details',
+                      message_draft: draftText,
+                      status: 'draft',
+                      created_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString()
+                    });
+                  }
+                });
+
+                const project = mockDatabase.projects?.find(p => p.id === projectId);
+                if (project && project.target_date && new Date(project.target_date) < new Date() && project.status === 'active') {
+                  const check = mockDatabase.delayNotifications.find(dn => dn.project_id === projectId && dn.milestone_id === null && dn.original_date === project.target_date);
+                  if (!check) {
+                    const revisedDate = new Date();
+                    revisedDate.setDate(revisedDate.getDate() + 7);
+                    const revisedDateStr = revisedDate.toISOString().split('T')[0];
+                    const draftText = `Dear Client, we would like to inform you that the final completion date for your project "${project.name}" originally scheduled for ${project.target_date} has been delayed. The revised expected completion date is now ${revisedDateStr}. Reason for delay: [Please specify the reason]. We apologize for the delay and appreciate your patience.`;
+
+                    mockDatabase.delayNotifications.push({
+                      id: `mock-dn-${Date.now()}-proj`,
+                      project_id: projectId,
+                      tenant_id: 'mock-tenant-123',
+                      milestone_id: null,
+                      milestone_name: null,
+                      type: 'project_delay',
+                      original_date: project.target_date,
+                      revised_date: revisedDateStr,
+                      reason: 'Awaiting details',
+                      message_draft: draftText,
+                      status: 'draft',
+                      created_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString()
+                    });
+                  }
+                }
+
+                persistDb();
+                responseData.data = mockDatabase.delayNotifications
+                  .filter(dn => dn.project_id === projectId)
+                  .map(dn => {
+                    const m = mockDatabase.milestones.find(ms => ms.id === dn.milestone_id);
+                    return { ...dn, milestone_name: m ? m.name : null };
+                  });
+              }
+            } else if (matchSend) {
+              const projectId = matchSend[1];
+              const notificationId = matchSend[2];
+              if (method === 'post') {
+                const idx = mockDatabase.delayNotifications.findIndex(dn => dn.id === notificationId);
+                if (idx !== -1) {
+                  mockDatabase.delayNotifications[idx].status = 'sent';
+                  mockDatabase.delayNotifications[idx].sent_at = new Date().toISOString();
+                  mockDatabase.delayNotifications[idx].updated_at = new Date().toISOString();
+                  persistDb();
+                  responseData.data = mockDatabase.delayNotifications[idx];
+
+                  if (!mockDatabase.communications) mockDatabase.communications = [];
+                  mockDatabase.communications.push({
+                    id: `mock-comm-${Date.now()}`,
+                    tenant_id: 'mock-tenant-123',
+                    channel: 'email',
+                    direction: 'outbound',
+                    status: 'sent',
+                    subject: 'Project Timeline Delay Update',
+                    body: mockDatabase.delayNotifications[idx].message_draft,
+                    sent_at: new Date().toISOString(),
+                    created_at: new Date().toISOString()
+                  });
+                }
+              }
+            } else if (matchSingle) {
+              const projectId = matchSingle[1];
+              const notificationId = matchSingle[2];
+              if (method === 'patch') {
+                const updates = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                const idx = mockDatabase.delayNotifications.findIndex(dn => dn.id === notificationId);
+                if (idx !== -1) {
+                  mockDatabase.delayNotifications[idx] = {
+                    ...mockDatabase.delayNotifications[idx],
+                    ...updates,
+                    updated_at: new Date().toISOString()
+                  };
+                  persistDb();
+                  responseData.data = mockDatabase.delayNotifications[idx];
+                }
+              } else if (method === 'delete') {
+                mockDatabase.delayNotifications = mockDatabase.delayNotifications.filter(dn => dn.id !== notificationId);
+                persistDb();
+                responseData.data = { success: true };
+              }
+            }
+          }
           // TENANT SETTINGS
           else if (url.includes('/config/tenant-settings')) {
             if (method === 'get') {

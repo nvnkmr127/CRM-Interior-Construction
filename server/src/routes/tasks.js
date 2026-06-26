@@ -17,16 +17,22 @@ const createTaskSchema = z.object({
   milestoneId: z.string().uuid().optional().nullable(),
   assigneeId: z.string().uuid().optional().nullable(),
   dueDate: z.string().optional().nullable(),
+  startDate: z.string().optional().nullable(),
+  durationDays: z.number().int().min(1).optional().nullable(),
   priority: z.string().optional(),
-  parentTaskId: z.string().uuid().optional().nullable()
+  parentTaskId: z.string().uuid().optional().nullable(),
+  roomName: z.string().optional().nullable()
 });
 
 const updateTaskSchema = z.object({
   status: z.string().optional(),
   assigneeId: z.string().uuid().optional().nullable(),
   dueDate: z.string().optional().nullable(),
+  startDate: z.string().optional().nullable(),
+  durationDays: z.number().int().min(1).optional().nullable(),
   priority: z.string().optional(),
-  title: z.string().optional()
+  title: z.string().optional(),
+  roomName: z.string().optional().nullable()
 });
 
 const bulkSchema = z.object({
@@ -50,10 +56,11 @@ const commentSchema = z.object({
 // GET /api/projects/:projectId/tasks
 router.get('/', authorize('projects:read'), async (req, res, next) => {
   try {
-    const { milestoneId, assigneeId, status, priority, page, limit } = req.query;
+    const { milestoneId, assigneeId, status, priority, page, limit, allTasks } = req.query;
     
     const parsedPage = parseInt(page, 10) || 1;
-    const parsedLimit = parseInt(limit, 10) || 20;
+    const isAll = limit === 'all' || allTasks === 'true';
+    const parsedLimit = isAll ? 10000 : (parseInt(limit, 10) || 20);
 
     const result = await taskRepository.findTasks(req.tenantId, {
       projectId: req.params.projectId,
@@ -62,7 +69,8 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
       status,
       priority,
       page: parsedPage,
-      limit: parsedLimit
+      limit: parsedLimit,
+      allTasks: allTasks === 'true'
     });
 
     return paginate(res, result.data, result.total, result.page, result.limit);
@@ -120,6 +128,54 @@ router.patch('/reorder', authorize('projects:manage'), async (req, res, next) =>
   }
 });
 
+// PATCH /api/projects/:projectId/tasks/bulk-update
+router.patch('/bulk-update', authorize('projects:manage'), async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    const { tasks } = req.body;
+    if (!Array.isArray(tasks)) {
+      return fail(res, 'VALIDATION_ERROR', 'tasks must be an array', 400);
+    }
+
+    await client.query('BEGIN');
+    for (const t of tasks) {
+      const updates = {};
+      if (t.startDate !== undefined) updates.start_date = t.startDate;
+      if (t.dueDate !== undefined) updates.due_date = t.dueDate;
+      if (t.durationDays !== undefined) updates.duration_days = t.durationDays;
+      if (t.milestoneId !== undefined) updates.milestone_id = t.milestoneId;
+      if (t.status !== undefined) updates.status = t.status;
+      if (t.title !== undefined) updates.title = t.title;
+
+      const fields = [];
+      const values = [];
+      let idx = 1;
+      for (const [key, value] of Object.entries(updates)) {
+        fields.push(`${key} = $${idx++}`);
+        values.push(value);
+      }
+      if (fields.length > 0) {
+        fields.push(`updated_at = NOW()`);
+        values.push(t.id, req.tenantId, req.params.projectId);
+        const query = `
+          UPDATE tasks
+          SET ${fields.join(', ')}
+          WHERE id = $${idx} AND tenant_id = $${idx + 1} AND project_id = $${idx + 2} AND deleted_at IS NULL
+        `;
+        await client.query(query, values);
+      }
+    }
+    await client.query('COMMIT');
+    return success(res, { message: 'Tasks updated successfully' });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[Tasks Router] Bulk update error:', err);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to bulk update tasks.', 500);
+  } finally {
+    client.release();
+  }
+});
+
 // GET /api/projects/:projectId/tasks/:tid
 router.get('/:tid', authorize('projects:read'), async (req, res, next) => {
   try {
@@ -142,8 +198,11 @@ router.patch('/:tid', authorize('projects:manage'), async (req, res, next) => {
     if (data.status) mappedData.status = data.status;
     if (data.assigneeId !== undefined) mappedData.assignee_id = data.assigneeId;
     if (data.dueDate !== undefined) mappedData.due_date = data.dueDate;
+    if (data.startDate !== undefined) mappedData.start_date = data.startDate;
+    if (data.durationDays !== undefined) mappedData.duration_days = data.durationDays;
     if (data.priority) mappedData.priority = data.priority;
     if (data.title) mappedData.title = data.title;
+    if (data.roomName !== undefined) mappedData.room_name = data.roomName;
 
     const task = await updateTask({
       tenantId: req.tenantId,

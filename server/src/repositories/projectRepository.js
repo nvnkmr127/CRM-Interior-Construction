@@ -13,7 +13,8 @@ class ProjectRepository {
       builder_name, society_name, rera_id, noc_status, occupancy_certificate_status, property_handover_date,
       carpet_area, built_up_area, number_of_rooms,
       project_category, project_sub_category, property_type, property_age, renovation_scope, segment,
-      allowed_design_revisions = 3, current_design_revisions = 0
+      allowed_design_revisions = 3, current_design_revisions = 0,
+      pm_hours_allocated = 10, designer_hours_allocated = 20
     } = data;
 
     const query = `
@@ -28,12 +29,13 @@ class ProjectRepository {
         builder_name, society_name, rera_id, noc_status, occupancy_certificate_status, property_handover_date,
         carpet_area, built_up_area, number_of_rooms,
         project_category, project_sub_category, property_type, property_age, renovation_scope, segment,
-        allowed_design_revisions, current_design_revisions
+        allowed_design_revisions, current_design_revisions,
+        pm_hours_allocated, designer_hours_allocated
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36,
         $37, $38, $39,
-        $40, $41, $42, $43, $44, $45, $46, $47
+        $40, $41, $42, $43, $44, $45, $46, $47, $48, $49
       ) RETURNING *
     `;
     const values = [
@@ -68,7 +70,9 @@ class ProjectRepository {
       renovation_scope || null,
       segment || null,
       allowed_design_revisions,
-      current_design_revisions
+      current_design_revisions,
+      pm_hours_allocated !== undefined && pm_hours_allocated !== null ? Number(pm_hours_allocated) : 10,
+      designer_hours_allocated !== undefined && designer_hours_allocated !== null ? Number(designer_hours_allocated) : 20
     ];
 
     const { rows } = await dbClient.query(query, values);
@@ -158,6 +162,17 @@ class ProjectRepository {
     `;
     const consultantsRes = await pool.query(consultantsQuery, [tenantId, projectId]);
     project.consultants = consultantsRes.rows;
+
+    // Fetch project site team
+    const siteTeamQuery = `
+      SELECT pst.*, pv.vendor_name
+      FROM project_site_team pst
+      LEFT JOIN project_vendors pv ON pst.vendor_id = pv.id
+      WHERE pst.tenant_id = $1 AND pst.project_id = $2
+      ORDER BY pst.created_at ASC
+    `;
+    const siteTeamRes = await pool.query(siteTeamQuery, [tenantId, projectId]);
+    project.site_team = siteTeamRes.rows;
 
     return project;
   }
