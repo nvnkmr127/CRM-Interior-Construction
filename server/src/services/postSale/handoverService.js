@@ -25,7 +25,14 @@ async function createChecklist({ tenantId, projectId, items = [] }) {
           itemsToInsert = [
             { room: 'Kitchen', description: 'All cabinets and drawers open/close smoothly' },
             { room: 'Kitchen', description: 'Countertop installed without scratches or chips' },
-            { room: 'Kitchen', description: 'Sink and faucet installed, no leaks' }
+            { room: 'Kitchen', description: 'Sink and faucet installed, no leaks' },
+            { room: 'Product Documentation', description: 'Hob (Cooktop) Manual & Warranty', item_type: 'document' },
+            { room: 'Product Documentation', description: 'Chimney Manual & Warranty', item_type: 'document' },
+            { room: 'Product Documentation', description: 'Water Purifier Manual & Warranty', item_type: 'document' },
+            { room: 'Keys & Access Handovers', description: 'Main Door Keys', item_type: 'key_access' },
+            { room: 'Keys & Access Handovers', description: 'Service Door Keys', item_type: 'key_access' },
+            { room: 'Keys & Access Handovers', description: 'Digital Lock Access Code', item_type: 'key_access' },
+            { room: 'Keys & Access Handovers', description: 'Parking Access Cards / RFID Tags', item_type: 'key_access' }
           ];
           break;
         case 'full_home':
@@ -34,13 +41,28 @@ async function createChecklist({ tenantId, projectId, items = [] }) {
             { room: 'Living Room', description: 'TV unit installed properly' },
             { room: 'Master Bedroom', description: 'Wardrobe sliding mechanism works smoothly' },
             { room: 'General', description: 'All switchboards aligned and working' },
-            { room: 'General', description: 'Paint finish uniform with no patches' }
+            { room: 'General', description: 'Paint finish uniform with no patches' },
+            { room: 'Product Documentation', description: 'Hob (Cooktop) Manual & Warranty', item_type: 'document' },
+            { room: 'Product Documentation', description: 'Chimney Manual & Warranty', item_type: 'document' },
+            { room: 'Product Documentation', description: 'Water Purifier Manual & Warranty', item_type: 'document' },
+            { room: 'Product Documentation', description: 'Geyser (Master Bathroom) Manual & Warranty', item_type: 'document' },
+            { room: 'Product Documentation', description: 'Air Conditioner (Living Room) Manual & Warranty', item_type: 'document' },
+            { room: 'Keys & Access Handovers', description: 'Main Door Keys', item_type: 'key_access' },
+            { room: 'Keys & Access Handovers', description: 'Service Door Keys', item_type: 'key_access' },
+            { room: 'Keys & Access Handovers', description: 'Digital Lock Access Code', item_type: 'key_access' },
+            { room: 'Keys & Access Handovers', description: 'Parking Access Cards / RFID Tags', item_type: 'key_access' }
           ];
           break;
         default:
           itemsToInsert = [
             { room: 'General', description: 'Installation completed as per design' },
-            { room: 'General', description: 'Site cleaned and debris removed' }
+            { room: 'General', description: 'Site cleaned and debris removed' },
+            { room: 'Product Documentation', description: 'Appliances Manual & Warranty', item_type: 'document' },
+            { room: 'Product Documentation', description: 'Hardware & Fittings Warranties', item_type: 'document' },
+            { room: 'Keys & Access Handovers', description: 'Main Door Keys', item_type: 'key_access' },
+            { room: 'Keys & Access Handovers', description: 'Service Door Keys', item_type: 'key_access' },
+            { room: 'Keys & Access Handovers', description: 'Digital Lock Access Code', item_type: 'key_access' },
+            { room: 'Keys & Access Handovers', description: 'Parking Access Cards / RFID Tags', item_type: 'key_access' }
           ];
       }
     }
@@ -48,10 +70,10 @@ async function createChecklist({ tenantId, projectId, items = [] }) {
     const insertedItems = [];
     for (const item of itemsToInsert) {
       const itemResult = await client.query(
-        `INSERT INTO handover_items (checklist_id, room, description)
-         VALUES ($1, $2, $3)
+        `INSERT INTO handover_items (checklist_id, room, description, item_type)
+         VALUES ($1, $2, $3, $4)
          RETURNING *`,
-        [checklist.id, item.room, item.description]
+        [checklist.id, item.room, item.description, item.item_type || 'inspection']
       );
       insertedItems.push(itemResult.rows[0]);
     }
@@ -74,7 +96,14 @@ async function addDefaultItems(checklistId, projectType) {
       defaultItems = [
         { room: 'Kitchen', description: 'All cabinets and drawers open/close smoothly' },
         { room: 'Kitchen', description: 'Countertop installed without scratches or chips' },
-        { room: 'Kitchen', description: 'Sink and faucet installed, no leaks' }
+        { room: 'Kitchen', description: 'Sink and faucet installed, no leaks' },
+        { room: 'Product Documentation', description: 'Hob (Cooktop) Manual & Warranty', item_type: 'document' },
+        { room: 'Product Documentation', description: 'Chimney Manual & Warranty', item_type: 'document' },
+        { room: 'Product Documentation', description: 'Water Purifier Manual & Warranty', item_type: 'document' },
+        { room: 'Keys & Access Handovers', description: 'Main Door Keys', item_type: 'key_access' },
+        { room: 'Keys & Access Handovers', description: 'Service Door Keys', item_type: 'key_access' },
+        { room: 'Keys & Access Handovers', description: 'Digital Lock Access Code', item_type: 'key_access' },
+        { room: 'Keys & Access Handovers', description: 'Parking Access Cards / RFID Tags', item_type: 'key_access' }
       ];
       break;
     case 'full_home':
@@ -83,23 +112,38 @@ async function addDefaultItems(checklistId, projectType) {
         { room: 'Living Room', description: 'TV unit installed properly' },
         { room: 'Master Bedroom', description: 'Wardrobe sliding mechanism works smoothly' },
         { room: 'General', description: 'All switchboards aligned and working' },
-        { room: 'General', description: 'Paint finish uniform with no patches' }
+        { room: 'General', description: 'Paint finish uniform with no patches' },
+        { room: 'Product Documentation', description: 'Hob (Cooktop) Manual & Warranty', item_type: 'document' },
+        { room: 'Product Documentation', description: 'Chimney Manual & Warranty', item_type: 'document' },
+        { room: 'Product Documentation', description: 'Water Purifier Manual & Warranty', item_type: 'document' },
+        { room: 'Product Documentation', description: 'Geyser (Master Bathroom) Manual & Warranty', item_type: 'document' },
+        { room: 'Product Documentation', description: 'Air Conditioner (Living Room) Manual & Warranty', item_type: 'document' },
+        { room: 'Keys & Access Handovers', description: 'Main Door Keys', item_type: 'key_access' },
+        { room: 'Keys & Access Handovers', description: 'Service Door Keys', item_type: 'key_access' },
+        { room: 'Keys & Access Handovers', description: 'Digital Lock Access Code', item_type: 'key_access' },
+        { room: 'Keys & Access Handovers', description: 'Parking Access Cards / RFID Tags', item_type: 'key_access' }
       ];
       break;
     default:
       defaultItems = [
         { room: 'General', description: 'Installation completed as per design' },
-        { room: 'General', description: 'Site cleaned and debris removed' }
+        { room: 'General', description: 'Site cleaned and debris removed' },
+        { room: 'Product Documentation', description: 'Appliances Manual & Warranty', item_type: 'document' },
+        { room: 'Product Documentation', description: 'Hardware & Fittings Warranties', item_type: 'document' },
+        { room: 'Keys & Access Handovers', description: 'Main Door Keys', item_type: 'key_access' },
+        { room: 'Keys & Access Handovers', description: 'Service Door Keys', item_type: 'key_access' },
+        { room: 'Keys & Access Handovers', description: 'Digital Lock Access Code', item_type: 'key_access' },
+        { room: 'Keys & Access Handovers', description: 'Parking Access Cards / RFID Tags', item_type: 'key_access' }
       ];
   }
 
   const insertedItems = [];
   for (const item of defaultItems) {
     const result = await pool.query(
-      `INSERT INTO handover_items (checklist_id, room, description)
-       VALUES ($1, $2, $3)
+      `INSERT INTO handover_items (checklist_id, room, description, item_type)
+       VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [checklistId, item.room, item.description]
+      [checklistId, item.room, item.description, item.item_type || 'inspection']
     );
     insertedItems.push(result.rows[0]);
   }
@@ -107,16 +151,43 @@ async function addDefaultItems(checklistId, projectType) {
   return insertedItems;
 }
 
-async function updateItem({ checklistId, itemId, isChecked, photoKey, userId }) {
+async function updateItem({ 
+  checklistId, 
+  itemId, 
+  isChecked, 
+  photoKey, 
+  userId,
+  serialNumber,
+  warrantyExpiryDate,
+  hasManual,
+  hasWarrantyCard,
+  keyDetails
+}) {
   const result = await pool.query(
     `UPDATE handover_items
      SET is_checked = COALESCE($1, is_checked),
          photo_key = COALESCE($2, photo_key),
-         checked_at = CASE WHEN $1 = true THEN NOW() ELSE checked_at END,
-         checked_by = CASE WHEN $1 = true THEN $3 ELSE checked_by END
+         checked_at = CASE WHEN $1 = true THEN NOW()::text ELSE checked_at END,
+         checked_by = CASE WHEN $1 = true THEN $3 ELSE checked_by END,
+         serial_number = COALESCE($6, serial_number),
+         warranty_expiry_date = COALESCE(NULLIF($7, '')::DATE, warranty_expiry_date),
+         has_manual = COALESCE($8, has_manual),
+         has_warranty_card = COALESCE($9, has_warranty_card),
+         key_details = COALESCE($10, key_details)
      WHERE id = $4 AND checklist_id = $5
      RETURNING *`,
-    [isChecked, photoKey, userId, itemId, checklistId]
+    [
+      isChecked, 
+      photoKey, 
+      userId, 
+      itemId, 
+      checklistId, 
+      serialNumber, 
+      warrantyExpiryDate, 
+      hasManual, 
+      hasWarrantyCard,
+      keyDetails
+    ]
   );
 
   if (result.rows.length === 0) {
@@ -126,12 +197,12 @@ async function updateItem({ checklistId, itemId, isChecked, photoKey, userId }) 
   return result.rows[0];
 }
 
-async function addItem({ checklistId, room, description }) {
+async function addItem({ checklistId, room, description, itemType = 'inspection' }) {
   const result = await pool.query(
-    `INSERT INTO handover_items (checklist_id, room, description)
-     VALUES ($1, $2, $3)
+    `INSERT INTO handover_items (checklist_id, room, description, item_type)
+     VALUES ($1, $2, $3, $4)
      RETURNING *`,
-    [checklistId, room, description]
+    [checklistId, room, description, itemType]
   );
   return result.rows[0];
 }
@@ -165,14 +236,14 @@ async function getChecklistByProjectId(projectId, tenantId) {
   }
 
   const itemsResult = await pool.query(
-    `SELECT * FROM handover_items WHERE checklist_id = $1 ORDER BY room, created_at ASC`,
+    `SELECT * FROM handover_items WHERE checklist_id = $1 ORDER BY room, description`,
     [checklist.id]
   );
 
   return { ...checklist, items: itemsResult.rows };
 }
 
-async function clientSignOff({ checklistId, tenantId, clientPortalUserId }) {
+async function clientSignOff({ checklistId, tenantId, clientPortalUserId, clientName }) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -188,13 +259,34 @@ async function clientSignOff({ checklistId, tenantId, clientPortalUserId }) {
       throw new Error('ITEMS_INCOMPLETE');
     }
 
+    // 1b. Check financial clearance
+    const checklistInfo = await client.query(
+      `SELECT project_id FROM handover_checklists WHERE id = $1 AND tenant_id = $2`,
+      [checklistId, tenantId]
+    );
+    const projectId = checklistInfo.rows[0]?.project_id;
+    if (projectId) {
+      const unpaidMilestones = await client.query(
+        `SELECT COUNT(*) FROM payment_milestones 
+         WHERE project_id = $1 AND tenant_id = $2 
+         AND status != 'paid' AND is_deferred = false`,
+        [projectId, tenantId]
+      );
+      if (parseInt(unpaidMilestones.rows[0].count) > 0) {
+        throw new Error('FINANCIAL_CLEARANCE_PENDING');
+      }
+    }
+
     // 2. UPDATE handover_checklists
     const checklistResult = await client.query(
       `UPDATE handover_checklists
-       SET status = 'signed_off', signed_by_client_at = NOW()
+       SET status = 'signed_off', 
+           signed_by_client_at = NOW(),
+           client_name = COALESCE($3, client_name),
+           client_otp_verified = true
        WHERE id = $1 AND tenant_id = $2
        RETURNING *`,
-      [checklistId, tenantId]
+      [checklistId, tenantId, clientName]
     );
 
     const checklist = checklistResult.rows[0];

@@ -51,3 +51,15 @@ exports.updateMaterialDelivery = async (req, res, next) => {
     next(error);
   }
 };
+
+exports.inspectMaterialDelivery = async (req, res, next) => {
+  try {
+    const tenantId = getTenantId(req);
+    const userId = getUserId(req);
+    const { projectId, id } = req.params;
+    const delivery = await materialDeliveryService.inspectMaterialDelivery(tenantId, userId, projectId, id, req.body);
+    res.status(200).json({ success: true, data: delivery });
+  } catch (error) {
+    next(error);
+  }
+};

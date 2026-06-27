@@ -60,7 +60,18 @@ async function assignSnag({ tenantId, snagId, assigneeId, userId }) {
   return snag;
 }
 
-async function updateSnagStatus({ tenantId, snagId, status, resolutionNote, userId }) {
+async function updateSnagStatus({ 
+  tenantId, 
+  snagId, 
+  status, 
+  resolutionNote, 
+  userId,
+  reworkRequired,
+  reworkRootCauseCategory,
+  reworkEstimatedHours,
+  reworkActualHours,
+  reworkCost 
+}) {
   // get current snag to check valid transitions and SLA
   const snagResult = await pool.query(
     `SELECT * FROM snags WHERE tenant_id = $1 AND id = $2`,
@@ -81,10 +92,35 @@ async function updateSnagStatus({ tenantId, snagId, status, resolutionNote, user
 
   let updateQuery = `UPDATE snags SET status = $3`;
   const params = [tenantId, snagId, status];
+  let index = 4;
   
   if (status === 'resolved') {
-    updateQuery += `, resolved_at = NOW(), resolution_note = $4`;
+    updateQuery += `, resolved_at = NOW(), resolution_note = $${index++}`;
     params.push(resolutionNote);
+  }
+
+  if (reworkRequired !== undefined) {
+    updateQuery += `, rework_required = $${index++}`;
+    params.push(reworkRequired);
+  }
+  if (reworkRootCauseCategory !== undefined) {
+    updateQuery += `, rework_root_cause_category = $${index++}`;
+    params.push(reworkRootCauseCategory);
+  }
+  if (reworkEstimatedHours !== undefined) {
+    updateQuery += `, rework_estimated_hours = $${index++}`;
+    params.push(reworkEstimatedHours);
+  }
+  if (reworkActualHours !== undefined) {
+    updateQuery += `, rework_actual_hours = $${index++}`;
+    params.push(reworkActualHours);
+  }
+  if (reworkCost !== undefined) {
+    updateQuery += `, rework_cost = $${index++}`;
+    params.push(reworkCost);
+  }
+  if (status === 'resolved' && (reworkRequired || snag.rework_required)) {
+    updateQuery += `, rework_completed_at = NOW()`;
   }
 
   updateQuery += ` WHERE tenant_id = $1 AND id = $2 RETURNING *`;
@@ -98,7 +134,7 @@ async function updateSnagStatus({ tenantId, snagId, status, resolutionNote, user
     action: 'update_snag_status',
     entity: 'snag',
     entityId: snagId,
-    newValue: { status, resolutionNote }
+    newValue: { status, resolutionNote, reworkRequired }
   });
 
   dispatchEvent(tenantId, 'snag.status_changed', {

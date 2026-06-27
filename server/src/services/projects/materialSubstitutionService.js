@@ -9,22 +9,26 @@ class MaterialSubstitutionService {
     try {
       await client.query('BEGIN');
 
-      // 1. Fetch original BOQ item details to compute price difference
+      // 1. Fetch original BOQ item details to compute price difference and capture original spec audit trail
       const boqRes = await client.query(
-        'SELECT unit_price FROM quotation_items WHERE id = $1 AND tenant_id = $2',
+        'SELECT item_name, brand, material_specifications, unit_price FROM quotation_items WHERE id = $1 AND tenant_id = $2',
         [boqItemId, tenantId]
       );
       if (boqRes.rows.length === 0) {
         throw new Error('BOQ item not found');
       }
-      const originalPrice = parseFloat(boqRes.rows[0].unit_price);
+      const originalItem = boqRes.rows[0];
+      const originalPrice = parseFloat(originalItem.unit_price);
       const priceDifference = Number(replacementUnitPrice) - originalPrice;
 
-      // 2. Insert substitution request
+      // 2. Insert substitution request with original specs audit trail
       const insertQuery = `
         INSERT INTO material_substitutions
-        (tenant_id, project_id, boq_item_id, status, reason_shortage, replacement_item_name, replacement_brand, replacement_material_specifications, replacement_unit_price, price_difference, client_approval_status)
-        VALUES ($1, $2, $3, 'pending', $4, $5, $6, $7, $8, $9, 'pending')
+        (tenant_id, project_id, boq_item_id, status, reason_shortage, 
+         replacement_item_name, replacement_brand, replacement_material_specifications, replacement_unit_price, 
+         price_difference, client_approval_status,
+         original_item_name, original_brand, original_material_specifications, original_unit_price)
+        VALUES ($1, $2, $3, 'pending', $4, $5, $6, $7, $8, $9, 'pending', $10, $11, $12, $13)
         RETURNING *
       `;
       const res = await client.query(insertQuery, [
@@ -36,7 +40,11 @@ class MaterialSubstitutionService {
         replacementBrand || null,
         replacementMaterialSpecifications || null,
         Number(replacementUnitPrice) || 0.00,
-        priceDifference
+        priceDifference,
+        originalItem.item_name,
+        originalItem.brand || null,
+        originalItem.material_specifications || null,
+        originalPrice
       ]);
 
       await client.query('COMMIT');
@@ -90,7 +98,7 @@ class MaterialSubstitutionService {
   }
 
   async respondToSubstitution(tenantId, userId, projectId, subId, responseData) {
-    const { clientApprovalStatus, clientFeedback } = responseData;
+    const { clientApprovalStatus, clientFeedback, clientSignoffName, clientSignatureData } = responseData;
     
     if (!['approved', 'rejected'].includes(clientApprovalStatus)) {
       throw new Error('Invalid response status. Must be approved or rejected.');
@@ -108,18 +116,27 @@ class MaterialSubstitutionService {
       if (checkRes.rows.length === 0) throw new Error('Material substitution request not found');
       const sub = checkRes.rows[0];
 
-      // 2. Update substitution status
+      // 2. Update substitution status and signature details
       const updateSubQuery = `
         UPDATE material_substitutions
         SET status = $1,
             client_approval_status = $1,
             client_approved_at = CURRENT_TIMESTAMP,
             client_feedback = $2,
+            client_signoff_name = $3,
+            client_signature_data = $4,
             updated_at = CURRENT_TIMESTAMP
-        WHERE id = $3 AND tenant_id = $4
+        WHERE id = $5 AND tenant_id = $6
         RETURNING *
       `;
-      const updateSubRes = await client.query(updateSubQuery, [clientApprovalStatus, clientFeedback || null, subId, tenantId]);
+      const updateSubRes = await client.query(updateSubQuery, [
+        clientApprovalStatus,
+        clientFeedback || null,
+        clientSignoffName || null,
+        clientSignatureData || null,
+        subId,
+        tenantId
+      ]);
       const updatedSub = updateSubRes.rows[0];
 
       // 3. If approved, overwrite original BOQ item with replacement details

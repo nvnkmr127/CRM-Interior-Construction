@@ -3,6 +3,7 @@ import { Button, Modal, Input, Textarea, EmptyState, Spinner } from '../ui';
 import { useToast } from '../../store/toastContext';
 import { useS3Upload } from '../../hooks/useS3Upload';
 import styles from './MaterialDeliveriesTab.module.css';
+import MaterialInspectionWizard from './MaterialInspectionWizard';
 import {
   getMaterialDeliveries,
   getMaterialDelivery,
@@ -29,6 +30,7 @@ export default function MaterialDeliveriesTab({ projectId }) {
   // Modal / Lightbox States
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState(null);
+  const [isInspectionActive, setIsInspectionActive] = useState(false);
 
   // Form States
   const [form, setForm] = useState({
@@ -74,6 +76,7 @@ export default function MaterialDeliveriesTab({ projectId }) {
 
   const handleSelectDelivery = async (delId) => {
     setItemsLoading(true);
+    setIsInspectionActive(false);
     try {
       const res = await getMaterialDelivery(projectId, delId);
       if (res.data?.success) {
@@ -318,7 +321,18 @@ export default function MaterialDeliveriesTab({ projectId }) {
 
           {/* Right Column: Detailed View */}
           <div className={styles.detailPane}>
-            {itemsLoading ? (
+            {isInspectionActive ? (
+              <MaterialInspectionWizard
+                projectId={projectId}
+                delivery={selectedDelivery}
+                onCancel={() => setIsInspectionActive(false)}
+                onSave={(updated) => {
+                  setIsInspectionActive(false);
+                  setSelectedDelivery(updated);
+                  fetchData();
+                }}
+              />
+            ) : itemsLoading ? (
               <div style={{ textAlign: 'center', padding: '40px' }}>
                 <Spinner size="md" />
                 <p style={{ marginTop: '12px', fontSize: '13px', color: 'var(--color-text-muted)' }}>
@@ -334,7 +348,19 @@ export default function MaterialDeliveriesTab({ projectId }) {
                       PO: {selectedDelivery.po_number || 'Direct Delivery'}
                     </span>
                   </div>
-                  <div>{getStatusBadge(selectedDelivery.status)}</div>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    {getStatusBadge(selectedDelivery.status)}
+                    {(selectedDelivery.status === 'pending' || selectedDelivery.status === 'delivered') && (
+                      <Button
+                        size="xs"
+                        variant="primary"
+                        style={{ marginLeft: '12px' }}
+                        onClick={() => setIsInspectionActive(true)}
+                      >
+                        Inspect Delivery
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 <div className={styles.detailMeta}>

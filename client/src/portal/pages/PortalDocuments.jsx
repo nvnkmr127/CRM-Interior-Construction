@@ -2,29 +2,61 @@ import { useState, useEffect } from 'react'
 import api from '../../api/axios'
 import styles from './PortalDocuments.module.css'
 
-const FILTERS = ['All', 'Drawings', 'BOQ', 'Renders', 'Contracts', 'Photos']
+const FILTERS = ['All', 'Drawings', 'BOQ', 'Renders', 'Contracts', 'Photos', 'Daily Site Reports']
+
+const mapCategory = (type) => {
+  if (type === 'drawing') return 'Drawings';
+  if (type === 'boq') return 'BOQ';
+  if (type === 'render') return 'Renders';
+  if (type === 'contract') return 'Contracts';
+  if (type === 'photo') return 'Photos';
+  if (type === 'daily_site_report') return 'Daily Site Reports';
+  
+  // Try mapping capitalized names
+  if (type === 'Drawing') return 'Drawings';
+  if (type === 'BOQ') return 'BOQ';
+  if (type === 'Render') return 'Renders';
+  if (type === 'Contract') return 'Contracts';
+  if (type === 'Photo') return 'Photos';
+  if (type === 'Daily Site Report') return 'Daily Site Reports';
+
+  return type || 'Other';
+};
 
 export default function PortalDocuments() {
   const [documents, setDocuments] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState('All')
 
-  useEffect(() => {
+  // Comments state
+  const [selectedDoc, setSelectedDoc] = useState(null)
+  const [comments, setComments] = useState([])
+  const [newComment, setNewComment] = useState('')
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+
+  const fetchDocs = () => {
+    setLoading(true)
     api.get('/portal/project/documents')
       .then(res => {
         const raw = res.data?.data || []
         setDocuments(raw.map(d => ({
           id: d.id,
           name: d.name,
-          category: d.docType || 'Other',
+          category: mapCategory(d.docType),
           type: d.mimeType?.includes('pdf') ? 'pdf' : d.mimeType?.includes('image') ? 'image' : d.mimeType?.includes('sheet') ? 'sheet' : 'doc',
-          version: 'v1',
+          version: `v${d.version || 1}`,
           addedAt: d.createdAt,
+          clientAcknowledgedAt: d.clientAcknowledgedAt,
+          clientAcknowledgedBy: d.clientAcknowledgedBy,
           downloadUrl: d.downloadUrl
         })))
       })
       .catch(err => console.error(err))
       .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    fetchDocs()
   }, [])
 
   const filteredDocs = activeFilter === 'All' 
@@ -34,6 +66,41 @@ export default function PortalDocuments() {
   const handleDownload = (url) => {
     if (url) window.open(url, '_blank')
     else alert('Download link unavailable')
+  }
+
+  const handleAcknowledge = async (docId) => {
+    try {
+      await api.post(`/portal/project/documents/${docId}/acknowledge`)
+      // Refresh documents
+      fetchDocs()
+    } catch (err) {
+      console.error(err)
+      alert('Failed to acknowledge document.')
+    }
+  }
+
+  const handleOpenComments = async (doc) => {
+    setSelectedDoc(doc)
+    setIsDrawerOpen(true)
+    try {
+      const res = await api.get(`/portal/project/documents/${doc.id}/comments`)
+      setComments(res.data?.data || [])
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const handlePostComment = async (e) => {
+    e.preventDefault()
+    if (!newComment.trim()) return
+    try {
+      const res = await api.post(`/portal/project/documents/${selectedDoc.id}/comments`, { comment: newComment })
+      setComments(prev => [...prev, res.data.data])
+      setNewComment('')
+    } catch (err) {
+      console.error(err)
+      alert('Failed to submit comment.')
+    }
   }
 
   const getIconClass = (type) => {
@@ -88,16 +155,84 @@ export default function PortalDocuments() {
                   {getIconChar(doc.type)}
                 </div>
                 <div className={styles.docInfo}>
-                  <div className={styles.versionBadge}>{doc.version}</div>
+                  <div style={{display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 4}}>
+                    <span className={styles.versionBadge}>{doc.version}</span>
+                    {doc.clientAcknowledgedAt ? (
+                      <span className={styles.ackBadge}>✓ Acknowledged</span>
+                    ) : (
+                      <span className={styles.pendingBadge}>Pending Review</span>
+                    )}
+                  </div>
                   <div className={styles.docName} title={doc.name}>{doc.name}</div>
-                  <div className={styles.metaText}>Added {new Date(doc.addedAt).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'})}</div>
+                  <div className={styles.metaText}>
+                    Shared on {new Date(doc.addedAt).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'})}
+                  </div>
+                  {doc.clientAcknowledgedAt && (
+                    <div className={styles.ackDetails}>
+                      Acknowledged by {doc.clientAcknowledgedBy} on {new Date(doc.clientAcknowledgedAt).toLocaleDateString('en-IN')}
+                    </div>
+                  )}
                 </div>
               </div>
-              <button className={styles.dlBtn} onClick={() => handleDownload(doc.downloadUrl)}>
-                ⬇ Download
-              </button>
+              
+              <div className={styles.cardActions}>
+                <button className={styles.dlBtn} onClick={() => handleDownload(doc.downloadUrl)}>
+                  ⬇ Download
+                </button>
+                <button className={styles.commentsBtn} onClick={() => handleOpenComments(doc)}>
+                  💬 Comments
+                </button>
+                {!doc.clientAcknowledgedAt && (
+                  <button className={styles.ackBtn} onClick={() => handleAcknowledge(doc.id)}>
+                    ☑ Acknowledge Receipt
+                  </button>
+                )}
+              </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Comments Sidebar/Drawer */}
+      {selectedDoc && (
+        <div className={`${styles.drawerOverlay} ${isDrawerOpen ? styles.show : ''}`} onClick={() => setIsDrawerOpen(false)}>
+          <div className={`${styles.drawer} ${isDrawerOpen ? styles.open : ''}`} onClick={e => e.stopPropagation()}>
+            <div className={styles.drawerHeader}>
+              <div className={styles.drawerTitle}>Document Comments</div>
+              <button className={styles.closeBtn} onClick={() => setIsDrawerOpen(false)}>×</button>
+            </div>
+            <div className={styles.drawerDocInfo}>
+              <div className={styles.drawerDocName}>{selectedDoc.name}</div>
+              <span className={styles.metaText}>Category: {selectedDoc.category}</span>
+            </div>
+            <div className={styles.commentList}>
+              {comments.length === 0 ? (
+                <div className={styles.emptyComments}>No comments yet. Start the conversation below!</div>
+              ) : (
+                comments.map(c => (
+                  <div key={c.id} className={`${styles.commentWrapper} ${c.created_by_client ? styles.client : styles.staff}`}>
+                    <div className={styles.commentHeader}>
+                      <span className={styles.commentAuthor}>{c.created_by_name}</span>
+                      <span className={styles.commentTime}>
+                        {new Date(c.created_at).toLocaleTimeString('en-IN', {hour: '2-digit', minute: '2-digit'})} on {new Date(c.created_at).toLocaleDateString('en-IN')}
+                      </span>
+                    </div>
+                    <div className={styles.commentBody}>{c.comment}</div>
+                  </div>
+                ))
+              )}
+            </div>
+            <form className={styles.commentForm} onSubmit={handlePostComment}>
+              <textarea 
+                className={styles.commentInput}
+                placeholder="Type a comment or request revision..."
+                value={newComment}
+                onChange={e => setNewComment(e.target.value)}
+                required
+              />
+              <button type="submit" className={styles.submitBtn}>Send Comment</button>
+            </form>
+          </div>
         </div>
       )}
     </div>

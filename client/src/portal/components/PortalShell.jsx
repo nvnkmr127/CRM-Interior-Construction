@@ -9,11 +9,17 @@ const NAV_ITEMS = [
   { path: '/portal/design-concepts', label: 'Design Concepts', icon: '🎨' },
   { path: '/portal/design-reviews', label: 'Design Reviews', icon: '📐' },
   { path: '/portal/material-palettes', label: 'Material Palettes', icon: '🧱' },
+  { path: '/portal/material-approvals', label: 'Material Approvals', icon: '🔄' },
   { path: '/portal/change-orders', label: 'Change Orders', icon: '📄' },
   { path: '/portal/documents', label: 'Documents', icon: '📁' },
   { path: '/portal/meeting-notes', label: 'Meeting Notes', icon: '📝' },
   { path: '/portal/snags', label: 'Snags', icon: '🔧' },
-  { path: '/portal/payments', label: 'Payments', icon: '💳' }
+  { path: '/portal/punch-list', label: 'Punch List', icon: '📋' },
+  { path: '/portal/handover', label: 'Handover & Certificate', icon: '🏆' },
+  { path: '/portal/payments', label: 'Payments', icon: '💳' },
+  { path: '/portal/warranties', label: 'Warranties', icon: '🛡️' },
+  { path: '/portal/amcs', label: 'Maintenance (AMC)', icon: '🛠️' },
+  { path: '/portal/claims', label: 'Warranty Claims', icon: '🔧' }
 ]
 
 export default function PortalShell({ children }) {

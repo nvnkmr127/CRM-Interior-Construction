@@ -13,7 +13,12 @@ router.use(authenticate);
 const updateItemSchema = z.object({
   checklistId: z.string().uuid(),
   is_checked: z.boolean().optional(),
-  photo_key: z.string().optional().nullable()
+  photo_key: z.string().optional().nullable(),
+  serial_number: z.string().optional().nullable(),
+  warranty_expiry_date: z.string().optional().nullable(),
+  has_manual: z.boolean().optional(),
+  has_warranty_card: z.boolean().optional(),
+  key_details: z.string().optional().nullable()
 });
 
 router.patch('/items/:itemId', authorize('projects:manage'), async (req, res, next) => {
@@ -24,7 +29,12 @@ router.patch('/items/:itemId', authorize('projects:manage'), async (req, res, ne
       itemId: req.params.itemId,
       isChecked: data.is_checked,
       photoKey: data.photo_key,
-      userId: req.user.userId
+      userId: req.user.userId,
+      serialNumber: data.serial_number,
+      warrantyExpiryDate: data.warranty_expiry_date,
+      hasManual: data.has_manual,
+      hasWarrantyCard: data.has_warranty_card,
+      keyDetails: data.key_details
     });
     return success(res, item);
   } catch (err) {

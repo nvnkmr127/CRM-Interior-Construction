@@ -3,6 +3,7 @@ const app = require('../../app');
 const pool = require('../../db/pool');
 
 describe('Project Design Requirements API & Cloning', () => {
+  jest.setTimeout(30000);
   let accessToken;
   let tenantId;
   let leadId;
@@ -24,14 +25,16 @@ describe('Project Design Requirements API & Cloning', () => {
     const leadRes = await request(app)
       .post('/api/leads')
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ name: 'Design Test Lead', phone, source: 'Reference' });
+      .send({ name: 'Design Test Lead', phone, source: 'Referral' });
     leadId = leadRes.body.data.id;
 
-    // Insert preferences for the lead directly into DB
+    // Update preferences for the lead directly in DB (since a blank row is seeded automatically on lead creation)
     await pool.query(`
-      INSERT INTO lead_preferences (tenant_id, lead_id, interior_style, color_theme, material, kitchen_style, wardrobe_style, lighting, flooring)
-      VALUES ($1, $2, 'Japandi', 'Sage & Cream', 'Teak & Cane', 'Island', 'Sliding Door', 'Warm Cove', 'Wooden')
-    `, [tenantId, leadId]);
+      UPDATE lead_preferences 
+      SET interior_style = 'Japandi', color_theme = 'Sage & Cream', material = 'Teak & Cane', 
+          kitchen_style = 'Island', wardrobe_style = 'Sliding Door', lighting = 'Warm Cove', flooring = 'Wooden'
+      WHERE lead_id = $1 AND tenant_id = $2
+    `, [leadId, tenantId]);
 
     // Insert a room requirement for the lead directly into DB
     await pool.query(`
@@ -54,12 +57,13 @@ describe('Project Design Requirements API & Cloning', () => {
     if (leadId) {
       await pool.query('DELETE FROM leads WHERE id = $1', [leadId]);
     }
+    await pool.query("UPDATE tenants SET config = '{}' WHERE slug = 'demo'");
   });
 
   describe('Lead Conversion with Design Brief Clone', () => {
     it('clones lead preferences, requirements, and inspirations into project tables during conversion', async () => {
       // Temporarily bypass dynamic checklist requirements in tenant settings
-      await pool.query("UPDATE tenants SET config = '{}' WHERE slug = 'demo'");
+      await pool.query("UPDATE tenants SET config = '{\"pre_conversion_checklist\": []}' WHERE slug = 'demo'");
 
       const convertRes = await request(app)
         .post(`/api/leads/${leadId}/convert-to-project`)

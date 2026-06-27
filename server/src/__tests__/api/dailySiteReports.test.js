@@ -1,3 +1,4 @@
+process.env.STORAGE_PROVIDER = 'local';
 const request = require('supertest');
 const app = require('../../app');
 const pool = require('../../db/pool');
@@ -138,5 +139,21 @@ describe('Daily Site Reports (DSR) API', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data.work_done).toContain('MDF');
+  });
+
+  it('should verify that a PDF document archive has been automatically generated and registered', async () => {
+    const res = await request(app)
+      .get(`/api/projects/${projectId}/documents?docType=daily_site_report`)
+      .set('Authorization', `Bearer ${accessToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.length).toBeGreaterThanOrEqual(1);
+
+    const doc = res.body.data.find(d => d.doc_type === 'daily_site_report');
+    expect(doc).toBeDefined();
+    expect(doc.is_visible_to_client).toBe(true);
+    expect(doc.storage_key).toContain('/dsr/DSR_');
+    expect(doc.mime_type).toBe('application/pdf');
   });
 });

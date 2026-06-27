@@ -1,5 +1,93 @@
 const pool = require('../config/db');
 
+const DEFAULT_QC_CHECKLISTS = {
+  carpentry: [
+    { label: 'Verify dimensions match approved design drawing', required: true },
+    { label: 'Check veneer/laminate grains alignment and color matching', required: true },
+    { label: 'Check drawer runners and soft-close hinges function smoothly', required: true },
+    { label: 'Ensure edge banding is smooth and free of sharp edges', required: true },
+    { label: 'Verify handle alignment and installation height', required: true }
+  ],
+  painting: [
+    { label: 'Check wall surface is sanded smooth and clean of dust', required: true },
+    { label: 'Verify application of wall primer coat', required: true },
+    { label: 'Ensure putty levels are checked under light to find imperfections', required: true },
+    { label: 'Check final paint coat color uniformity and edge alignments', required: true },
+    { label: 'Ensure no paint stains on flooring, switch plates, or windows', required: true }
+  ],
+  electrical: [
+    { label: 'Verify conduit pipe layout matches layout drawing', required: true },
+    { label: 'Check continuity and insulation resistance test of cables', required: true },
+    { label: 'Ensure correct rating of MCBs and correct labeling in DB', required: true },
+    { label: 'Verify all modular switch plates are level and securely fixed', required: true },
+    { label: 'Test all light points, sockets, and appliance outlets', required: true }
+  ],
+  plumbing: [
+    { label: 'Pressure test water supply pipes for 24 hours at 10 bar', required: true },
+    { label: 'Check drainage slope/alignment to ensure no water stagnation', required: true },
+    { label: 'Conduct waterproofing pond test in bathroom for 48 hours', required: true },
+    { label: 'Verify fitment of WCs and washbasin without wobble', required: true },
+    { label: 'Check all CP fittings (faucets, showers) for leakage and flow rate', required: true }
+  ],
+  flooring: [
+    { label: 'Verify subfloor cleaning and level markings before laying tiles/marble', required: true },
+    { label: 'Check tile spacers are used and joint lines are perfectly aligned', required: true },
+    { label: 'Verify hollow-sound check by tapping laid tiles/stones', required: true },
+    { label: 'Check slope towards drain point in dry/wet areas', required: true },
+    { label: 'Ensure grout filling is complete and uniform', required: true }
+  ],
+  civil: [
+    { label: 'Check brickwork alignment and verticality', required: true },
+    { label: 'Verify concrete/mortar mix ratio', required: true }
+  ],
+  false_ceiling: [
+    { label: 'Check level of ceiling frame grid', required: true },
+    { label: 'Verify spacing of hangers/anchors', required: true }
+  ],
+  glass: [
+    { label: 'Check glass thickness and specifications', required: true },
+    { label: 'Verify glass alignment and silicone sealing', required: true }
+  ],
+  soft_furnishing: [
+    { label: 'Verify curtain tracks are securely anchored', required: true },
+    { label: 'Check wallpaper seams and glue stains', required: true }
+  ]
+};
+
+async function resolveQcChecklist(tenantId, trade, customQcList = null) {
+  if (customQcList && Array.isArray(customQcList)) {
+    return customQcList;
+  }
+  
+  try {
+    const result = await pool.query('SELECT config FROM tenants WHERE id = $1', [tenantId]);
+    if (result.rows.length > 0) {
+      const configStr = result.rows[0].config;
+      const config = typeof configStr === 'string' ? JSON.parse(configStr || '{}') : (configStr || {});
+      const tenantQcList = config.qc_checklists?.[trade];
+      if (Array.isArray(tenantQcList) && tenantQcList.length > 0) {
+        return tenantQcList.map((item, index) => ({
+          id: item.id || `qc_${trade}_${index}_${Date.now()}`,
+          label: item.label,
+          required: item.required !== false,
+          is_checked: false
+        }));
+      }
+    }
+  } catch (err) {
+    console.error('[resolveQcChecklist] Error reading tenant settings:', err);
+  }
+
+  const defaultList = DEFAULT_QC_CHECKLISTS[trade] || [];
+  return defaultList.map((item, index) => ({
+    id: `qc_${trade}_${index}_${Date.now()}`,
+    label: item.label,
+    required: item.required !== false,
+    is_checked: false
+  }));
+}
+
+
 class WorkActivityRepository {
   async findActivities(tenantId, projectId, filters = {}) {
     const { phaseId, trade, roomName, status } = filters;
@@ -55,20 +143,23 @@ class WorkActivityRepository {
   async createActivity(tenantId, data) {
     const {
       project_id, phase_id, room_name, trade, activity_name,
-      description, assignee_id, due_date, status = 'todo', notes
+      description, assignee_id, due_date, status = 'todo', notes, qc_checklist
     } = data;
+
+    const resolvedChecklist = await resolveQcChecklist(tenantId, trade, qc_checklist);
 
     const query = `
       INSERT INTO project_work_activities (
         tenant_id, project_id, phase_id, room_name, trade, activity_name,
-        description, assignee_id, due_date, status, notes
+        description, assignee_id, due_date, status, notes, qc_checklist
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
       ) RETURNING *
     `;
     const values = [
       tenantId, project_id, phase_id || null, room_name, trade, activity_name,
-      description || null, assignee_id || null, due_date || null, status, notes || null
+      description || null, assignee_id || null, due_date || null, status, notes || null,
+      JSON.stringify(resolvedChecklist)
     ];
 
     const { rows } = await pool.query(query, values);
@@ -82,6 +173,21 @@ class WorkActivityRepository {
 
     // Auto-update completed_at / completed_by when status changes to completed
     if (updates.status === 'completed') {
+      const currentActivity = await this.findActivityById(id, tenantId);
+      if (!currentActivity) throw new Error('NOT_FOUND');
+
+      const qcChecklist = updates.qc_checklist !== undefined ? updates.qc_checklist : currentActivity.qc_checklist;
+      const parsedChecklist = typeof qcChecklist === 'string' ? JSON.parse(qcChecklist) : (qcChecklist || []);
+
+      const incomplete = parsedChecklist.filter(item => item.required && !item.is_checked);
+      if (incomplete.length > 0) {
+        const error = new Error('QC_CHECKLIST_INCOMPLETE');
+        error.status = 400;
+        error.code = 'QC_CHECKLIST_INCOMPLETE';
+        error.message = `Cannot complete work activity: There are ${incomplete.length} unchecked required QC checklist items.`;
+        throw error;
+      }
+
       updates.completed_at = new Date().toISOString();
       if (userId) {
         updates.completed_by = userId;
@@ -96,7 +202,11 @@ class WorkActivityRepository {
     for (const [key, value] of Object.entries(updates)) {
       if (['id', 'project_id', 'tenant_id', 'created_at', 'completed_by_name', 'assignee_name'].includes(key)) continue;
       fields.push(`${key} = $${idx}`);
-      values.push(value);
+      if (key === 'qc_checklist') {
+        values.push(JSON.stringify(value));
+      } else {
+        values.push(value);
+      }
       idx++;
     }
 
@@ -175,6 +285,7 @@ class WorkActivityRepository {
     try {
       await client.query('BEGIN');
       const created = [];
+      const qcList = await resolveQcChecklist(tenantId, trade);
       for (const tpl of templates) {
         // Check if this activity already exists in this project, room, and trade to prevent duplicates
         const dupRes = await client.query(`
@@ -189,10 +300,10 @@ class WorkActivityRepository {
 
         const res = await client.query(`
           INSERT INTO project_work_activities (
-            tenant_id, project_id, phase_id, room_name, trade, activity_name, description, status
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'todo')
+            tenant_id, project_id, phase_id, room_name, trade, activity_name, description, status, qc_checklist
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'todo', $8)
           RETURNING *
-        `, [tenantId, projectId, phaseId, roomName, trade, tpl.activity_name, tpl.description]);
+        `, [tenantId, projectId, phaseId, roomName, trade, tpl.activity_name, tpl.description, JSON.stringify(qcList)]);
         
         created.push(res.rows[0]);
       }

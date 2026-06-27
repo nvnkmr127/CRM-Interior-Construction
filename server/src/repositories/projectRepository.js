@@ -295,6 +295,42 @@ class ProjectRepository {
     const { rows: paymentRows } = await pool.query(paymentsQuery, [tenantId, projectId]);
     const payStats = paymentRows[0] || { total_payment: 0, collected_payment: 0 };
 
+    // Credit Notes Total
+    const creditsQuery = `
+      SELECT COALESCE(SUM(total_amount), 0) as total_credits
+      FROM credit_notes
+      WHERE tenant_id = $1 AND project_id = $2 AND status = 'issued'
+    `;
+    const { rows: creditRows } = await pool.query(creditsQuery, [tenantId, projectId]);
+    const totalCredits = Number(creditRows[0]?.total_credits || 0);
+
+    // Refunds Total
+    const refundsQuery = `
+      SELECT COALESCE(SUM(amount), 0) as total_refunds
+      FROM refunds
+      WHERE tenant_id = $1 AND project_id = $2 AND status = 'processed'
+    `;
+    const { rows: refundRows } = await pool.query(refundsQuery, [tenantId, projectId]);
+    const totalRefunds = Number(refundRows[0]?.total_refunds || 0);
+
+    // Overdue payments total
+    const overdueQuery = `
+      SELECT COALESCE(SUM(amount), 0) as overdue_payments
+      FROM payment_milestones
+      WHERE tenant_id = $1 AND project_id = $2 AND status != 'paid' AND due_date < CURRENT_DATE
+    `;
+    const { rows: overdueRows } = await pool.query(overdueQuery, [tenantId, projectId]);
+    const overduePayments = Number(overdueRows[0]?.overdue_payments || 0);
+
+    // Pending invoices total
+    const pendingInvoicesQuery = `
+      SELECT COALESCE(SUM(amount), 0) as pending_invoices
+      FROM payment_milestones
+      WHERE tenant_id = $1 AND project_id = $2 AND status = 'invoice_raised'
+    `;
+    const { rows: pendingInvoicesRows } = await pool.query(pendingInvoicesQuery, [tenantId, projectId]);
+    const pendingInvoices = Number(pendingInvoicesRows[0]?.pending_invoices || 0);
+
     // BOQ values tracking
     const boqStatsQuery = `
       WITH latest_quotation AS (
@@ -327,6 +363,32 @@ class ProjectRepository {
       netContractValue = contractValue;
     }
 
+    // Expenses Tracking query
+    const expensesQuery = `
+      SELECT 
+        COALESCE(SUM(amount), 0) as total_cost,
+        COALESCE(SUM(amount) FILTER (WHERE category = 'material'), 0) as material_cost,
+        COALESCE(SUM(amount) FILTER (WHERE category = 'labour'), 0) as labour_cost,
+        COALESCE(SUM(amount) FILTER (WHERE category = 'vendor'), 0) as vendor_cost,
+        COALESCE(SUM(amount) FILTER (WHERE category = 'overhead'), 0) as overhead_cost
+      FROM project_expenses
+      WHERE tenant_id = $1 AND project_id = $2 AND type = 'actual'
+    `;
+    const { rows: expenseRows } = await pool.query(expensesQuery, [tenantId, projectId]);
+    const expStats = expenseRows[0] || { total_cost: 0, material_cost: 0, labour_cost: 0, vendor_cost: 0, overhead_cost: 0 };
+    
+    const totalActualCost = Number(expStats.total_cost);
+
+    const totalPayment = Number(payStats.total_payment);
+    const collectedPayment = Number(payStats.collected_payment);
+
+    const netBilled = Math.max(0, totalPayment - totalCredits);
+    const netCollections = Math.max(0, collectedPayment - totalRefunds);
+    const outstandingBalance = Math.max(0, netBilled - netCollections);
+
+    const grossProfit = netContractValue - totalActualCost;
+    const grossMarginPct = netContractValue > 0 ? Math.round((grossProfit / netContractValue) * 100) : 0;
+
     let taskCompletionPct = 0;
     if (taskStats.total_tasks > 0) {
       taskCompletionPct = Math.round((taskStats.completed_tasks / taskStats.total_tasks) * 100);
@@ -337,8 +399,24 @@ class ProjectRepository {
       completedTasks: taskStats.completed_tasks,
       taskCompletionPct,
       overdueTasks: taskStats.overdue_tasks,
-      totalPayment: Number(payStats.total_payment),
-      collectedPayment: Number(payStats.collected_payment),
+      totalPayment,
+      collectedPayment,
+      totalCredits,
+      totalRefunds,
+      overduePayments,
+      pendingInvoices,
+      netBilled,
+      netCollections,
+      outstandingBalance,
+      totalActualCost,
+      grossProfit,
+      grossMarginPct,
+      costBreakdown: {
+        material: Number(expStats.material_cost),
+        labour: Number(expStats.labour_cost),
+        vendor: Number(expStats.vendor_cost),
+        overhead: Number(expStats.overhead_cost)
+      },
       originalScopeTotal,
       additionsTotal,
       reductionsTotal,

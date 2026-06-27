@@ -1,0 +1,236 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-2);
+}
+
+.metricCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metricCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-border-strong);
+}
+
+.metricLabel {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.metricValue {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.actionBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.filters {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.filters::-webkit-scrollbar {
+  display: none;
+}
+
+.pill {
+  padding: 6px 16px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.pill:hover {
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+.pillActive {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.tableContainer {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  font-weight: 600;
+}
+
+.table td {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  vertical-align: middle;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tr:hover td {
+  background: var(--color-surface-2);
+}
+
+.productCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.productName {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.serialNumber {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  font-family: var(--mono);
+}
+
+.dateCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.dateValue {
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  text-transform: capitalize;
+}
+
+.badgeActive {
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--color-success);
+}
+
+.badgeExpired {
+  background: rgba(107, 114, 128, 0.1);
+  color: var(--color-text-secondary);
+}
+
+.badgeVoided {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--color-danger);
+}
+
+.actionCell {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  text-align: center;
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.emptyIcon {
+  font-size: 48px;
+  margin-bottom: var(--space-4);
+  opacity: 0.7;
+}
+
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-2);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+@media (max-width: 640px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-4);
+}

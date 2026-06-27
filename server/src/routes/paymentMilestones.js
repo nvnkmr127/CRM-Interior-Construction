@@ -41,7 +41,9 @@ const createSchema = z.object({
   percent: z.number().optional().nullable(),
   dueDate: z.string().optional().nullable(),
   milestoneId: z.string().uuid().optional().nullable(),
-  notes: z.string().optional().nullable()
+  notes: z.string().optional().nullable(),
+  tdsRate: z.number().optional().nullable(),
+  tdsAmount: z.number().optional().nullable()
 });
 
 // POST /api/payment-milestones
@@ -49,7 +51,12 @@ router.post('/', authorize('projects:manage'), async (req, res, next) => {
   try {
     const data = createSchema.parse(req.body);
     // map percent -> percentage for service layer
-    const mappedData = { ...data, percentage: data.percent };
+    const mappedData = { 
+      ...data, 
+      percentage: data.percent,
+      tdsRate: data.tdsRate,
+      tdsAmount: data.tdsAmount
+    };
     
     const milestone = await createPaymentMilestone({
       tenantId: req.tenantId,
@@ -69,7 +76,11 @@ const updateSchema = z.object({
   status: z.string().optional(),
   invoice_reference: z.string().optional().nullable(),
   paid_at: z.string().optional().nullable(),
-  paid_amount: z.number().optional().nullable()
+  paid_amount: z.number().optional().nullable(),
+  tds_rate: z.number().optional().nullable(),
+  tds_amount: z.number().optional().nullable(),
+  is_deferred: z.boolean().optional(),
+  deferral_reference: z.string().optional().nullable()
 });
 
 // PATCH /api/payment-milestones/:id

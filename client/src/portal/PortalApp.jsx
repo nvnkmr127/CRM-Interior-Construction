@@ -11,8 +11,16 @@ import PortalSnags from './pages/PortalSnags'
 import PortalDocuments from './pages/PortalDocuments'
 import PortalPayments from './pages/PortalPayments'
 import PortalChangeOrders from './pages/PortalChangeOrders'
+import PortalMaterialApprovals from './pages/PortalMaterialApprovals'
 import PortalTimeline from './pages/PortalTimeline'
 import PortalMeetingNotes from './pages/PortalMeetingNotes'
+import PortalPunchList from './pages/PortalPunchList'
+import PortalHandover from './pages/PortalHandover'
+import PortalWarranties from './pages/PortalWarranties'
+import PortalAmcs from './pages/PortalAmcs'
+import PortalClaims from './pages/PortalClaims'
+
+
 
 function PortalProtectedRoute({ children }) {
   const { portalUser, loading } = usePortalAuth()
@@ -42,11 +50,19 @@ function PortalAppContent() {
               <Route path="design-concepts" element={<PortalDesignAssets />} />
               <Route path="design-reviews" element={<PortalDesignReviews />} />
               <Route path="material-palettes" element={<PortalMaterialPalettes />} />
+              <Route path="material-approvals" element={<PortalMaterialApprovals />} />
               <Route path="change-orders" element={<PortalChangeOrders />} />
               <Route path="documents" element={<PortalDocuments />} />
               <Route path="meeting-notes" element={<PortalMeetingNotes />} />
               <Route path="snags" element={<PortalSnags />} />
+              <Route path="punch-list" element={<PortalPunchList />} />
+              <Route path="handover" element={<PortalHandover />} />
               <Route path="payments" element={<PortalPayments />} />
+              <Route path="warranties" element={<PortalWarranties />} />
+              <Route path="amcs" element={<PortalAmcs />} />
+              <Route path="claims" element={<PortalClaims />} />
+
+
             </Routes>
           </PortalShell>
         </PortalProtectedRoute>

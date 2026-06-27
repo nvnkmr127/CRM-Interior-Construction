@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Badge, Button, Modal, Spinner } from '../ui';
 import styles from './DocumentPanel.module.css';
-import { getDocuments } from '../../api/projects';
+import { getDocuments, updateDocumentVisibility, getDocumentComments, addDocumentComment } from '../../api/projects';
 import { useToast } from '../../store/toastContext';
 import { useS3Upload } from '../../hooks/useS3Upload';
 
@@ -17,6 +17,7 @@ const TYPE_META = {
   'Delivery Challan':       { icon: '🚚' },
   'Inspection Certificate': { icon: '🛡️' },
   'Vendor Warranty Card':   { icon: '🎫' },
+  'Daily Site Report':      { icon: '📅' },
 };
 
 const NORMALIZE_TYPE = {
@@ -30,7 +31,8 @@ const NORMALIZE_TYPE = {
   purchase_order:           'Purchase Order',
   delivery_challan:         'Delivery Challan',
   inspection_certificate:   'Inspection Certificate',
-  vendor_warranty_card:     'Vendor Warranty Card'
+  vendor_warranty_card:     'Vendor Warranty Card',
+  daily_site_report:        'Daily Site Report'
 };
 
 const DB_TYPE_MAP = {
@@ -44,19 +46,26 @@ const DB_TYPE_MAP = {
   'Purchase Order':           'purchase_order',
   'Delivery Challan':         'delivery_challan',
   'Inspection Certificate':   'inspection_certificate',
-  'Vendor Warranty Card':     'vendor_warranty_card'
+  'Vendor Warranty Card':     'vendor_warranty_card',
+  'Daily Site Report':        'daily_site_report'
 };
 
 function timeAgo(dateStr) {
-  if (!dateStr) return '';
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  if (!dateStr) return 'some time ago';
+  const val = new Date(dateStr).getTime();
+  if (isNaN(val)) return 'some time ago';
+  const seconds = Math.floor((Date.now() - val) / 1000);
+  let interval = Math.floor(seconds / 31536000);
+  if (interval >= 1) return `${interval}y ago`;
+  interval = Math.floor(seconds / 2592000);
+  if (interval >= 1) return `${interval}mo ago`;
+  interval = Math.floor(seconds / 86400);
+  if (interval >= 1) return `${interval}d ago`;
+  interval = Math.floor(seconds / 3600);
+  if (interval >= 1) return `${interval}h ago`;
+  interval = Math.floor(seconds / 60);
+  if (interval >= 1) return `${interval}m ago`;
+  return 'just now';
 }
 
 function getStatusVariant(st) {
@@ -79,6 +88,11 @@ export default function DocumentPanel({ projectId }) {
     docType: 'Drawing'
   });
 
+  const [selectedDocComments, setSelectedDocComments] = useState(null);
+  const [commentsList, setCommentsList] = useState([]);
+  const [newCommentText, setNewCommentText] = useState('');
+  const [isCommentsModalOpen, setIsCommentsModalOpen] = useState(false);
+
   const fetchDocs = () => {
     setLoading(true);
     getDocuments(projectId)
@@ -98,11 +112,51 @@ export default function DocumentPanel({ projectId }) {
             timeAgo: timeAgo(d.created_at || d.uploadedAt),
             revReq: d.revision_note || null,
             url: d.url || null,
+            isVisibleToClient: d.is_visible_to_client || false,
+            clientAcknowledgedAt: d.client_acknowledged_at || null,
+            clientAcknowledgedBy: d.client_acknowledged_by || null,
           };
         }));
       })
       .catch(() => setDocs([]))
       .finally(() => setLoading(false));
+  };
+
+  const handleToggleVisibility = async (docId, currentVisibility) => {
+    try {
+      await updateDocumentVisibility(projectId, docId, !currentVisibility);
+      toast.success('Document visibility updated successfully.');
+      fetchDocs();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update visibility.');
+    }
+  };
+
+  const handleOpenComments = async (doc) => {
+    setSelectedDocComments(doc);
+    setIsCommentsModalOpen(true);
+    try {
+      const res = await getDocumentComments(projectId, doc.id);
+      setCommentsList(res.data?.data || res.data || []);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to fetch comments.');
+    }
+  };
+
+  const handlePostComment = async (e) => {
+    e.preventDefault();
+    if (!newCommentText.trim()) return;
+    try {
+      const res = await addDocumentComment(projectId, selectedDocComments.id, newCommentText);
+      const newComment = res.data?.data || res.data;
+      setCommentsList(prev => [...prev, newComment]);
+      setNewCommentText('');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to add comment.');
+    }
   };
 
   useEffect(() => {
@@ -213,6 +267,38 @@ export default function DocumentPanel({ projectId }) {
             {doc.revReq && (
               <div className={styles.revisionBanner}>{doc.revReq}</div>
             )}
+            
+            <div className={styles.cardFooter}>
+              <div className={styles.ackSection}>
+                {doc.clientAcknowledgedAt ? (
+                  <span className={styles.ackText} title={`Acknowledged by ${doc.clientAcknowledgedBy} on ${new Date(doc.clientAcknowledgedAt).toLocaleString()}`}>
+                    ✓ Acknowledged
+                  </span>
+                ) : (
+                  <span className={styles.pendingAckText}>
+                    Pending Review
+                  </span>
+                )}
+              </div>
+              <div className={styles.actionRow}>
+                <button 
+                  type="button"
+                  className={`${styles.visibilityBtn} ${doc.isVisibleToClient ? styles.visible : styles.private}`}
+                  onClick={() => handleToggleVisibility(doc.id, doc.isVisibleToClient)}
+                  title="Toggle Client Visibility"
+                >
+                  {doc.isVisibleToClient ? '👁 Shared' : '🔒 Private'}
+                </button>
+                <button 
+                  type="button"
+                  className={styles.cardCommentsBtn} 
+                  onClick={() => handleOpenComments(doc)}
+                  title="View / Add Comments"
+                >
+                  💬 Comments
+                </button>
+              </div>
+            </div>
           </div>
         ))}
       </div>
@@ -269,6 +355,49 @@ export default function DocumentPanel({ projectId }) {
             </select>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={isCommentsModalOpen}
+        onClose={() => setIsCommentsModalOpen(false)}
+        title={selectedDocComments ? `Comments: ${selectedDocComments.name}` : 'Document Comments'}
+        footer={
+          <Button variant="ghost" onClick={() => setIsCommentsModalOpen(false)}>
+            Close
+          </Button>
+        }
+      >
+        <div className={styles.commentsContainer}>
+          <div className={styles.commentsListContainer}>
+            {commentsList.length === 0 ? (
+              <div className={styles.noComments}>No comments on this document yet.</div>
+            ) : (
+              commentsList.map(c => (
+                <div key={c.id} className={`${styles.commentBubble} ${c.created_by_client ? styles.clientComment : styles.staffComment}`}>
+                  <div className={styles.commentHeader}>
+                    <strong>{c.created_by_name}</strong>
+                    <span className={styles.commentDate}>
+                      {new Date(c.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} on {new Date(c.created_at).toLocaleDateString('en-IN')}
+                    </span>
+                  </div>
+                  <div className={styles.commentText}>{c.comment}</div>
+                </div>
+              ))
+            )}
+          </div>
+          <form onSubmit={handlePostComment} className={styles.commentForm}>
+            <textarea
+              className={styles.commentArea}
+              placeholder="Type your response/feedback here..."
+              value={newCommentText}
+              onChange={(e) => setNewCommentText(e.target.value)}
+              required
+            />
+            <Button variant="primary" type="submit" size="sm">
+              Send Comment
+            </Button>
+          </form>
+        </div>
       </Modal>
     </div>
   );

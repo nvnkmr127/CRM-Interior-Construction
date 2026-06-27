@@ -30,6 +30,12 @@ const dailySiteReportsRoutes = require('./dailySiteReports');
 const roomProgressRoutes = require('./roomProgress');
 const meetingNotesRoutes = require('./meetingNotes');
 const delayNotificationsRoutes = require('./delayNotifications');
+const drawingRegisterRoutes = require('./drawingRegister');
+const punchListsRoutes = require('./punchLists');
+const warrantiesRoutes = require('./warranties');
+const amcsRoutes = require('./amcs');
+const warrantyClaimsRoutes = require('./warrantyClaims');
+
 
 const router = express.Router();
 
@@ -57,6 +63,13 @@ router.use('/:projectId/daily-reports', dailySiteReportsRoutes);
 router.use('/:projectId/room-progress', roomProgressRoutes);
 router.use('/:projectId/meeting-notes', meetingNotesRoutes);
 router.use('/:projectId/delay-notifications', delayNotificationsRoutes);
+router.use('/:projectId/drawing-register', drawingRegisterRoutes);
+router.use('/:projectId/punch-lists', punchListsRoutes);
+router.use('/:projectId/warranties', warrantiesRoutes);
+router.use('/:projectId/amcs', amcsRoutes);
+router.use('/:projectId/warranty-claims', warrantyClaimsRoutes);
+
+
 
 // Standard CRUD routes
 
@@ -323,9 +336,9 @@ router.post('/:id/handover/checklists', authorize('projects:manage'), async (req
 // POST /api/projects/:id/handover/items
 router.post('/:id/handover/items', authorize('projects:manage'), async (req, res, next) => {
   try {
-    const { checklistId, room, description } = req.body;
+    const { checklistId, room, description, itemType } = req.body;
     if (!checklistId || !room || !description) return fail(res, 'BAD_REQUEST', 'Missing fields', 400);
-    const item = await addItem({ checklistId, room, description });
+    const item = await addItem({ checklistId, room, description, itemType });
     return success(res, item, {}, 201);
   } catch (err) {
     next(err);

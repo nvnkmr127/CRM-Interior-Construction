@@ -14,14 +14,14 @@ async function getPaymentMilestones({ tenantId, projectId }) {
 }
 
 async function createPaymentMilestone({ tenantId, userId, data }) {
-  const { projectId, name, amount, percentage, dueDate, milestoneId, notes } = data;
+  const { projectId, name, amount, percentage, dueDate, milestoneId, notes, tdsRate, tdsAmount } = data;
   
   const query = `
-    INSERT INTO payment_milestones (tenant_id, project_id, name, amount, percentage, due_date, milestone_id, notes, status)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'scheduled')
+    INSERT INTO payment_milestones (tenant_id, project_id, name, amount, percentage, due_date, milestone_id, notes, status, tds_rate, tds_amount)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'scheduled', $9, $10)
     RETURNING *
   `;
-  const values = [tenantId, projectId, name, amount || null, percentage || null, dueDate || null, milestoneId || null, notes || null];
+  const values = [tenantId, projectId, name, amount || null, percentage || null, dueDate || null, milestoneId || null, notes || null, tdsRate || 0.00, tdsAmount || 0.00];
   
   const result = await pool.query(query, values);
   const milestone = result.rows[0];
@@ -32,14 +32,14 @@ async function createPaymentMilestone({ tenantId, userId, data }) {
     action: 'create_payment_milestone',
     entity: 'payment_milestone',
     entityId: milestone.id,
-    newValue: { name, amount, percentage, dueDate }
+    newValue: { name, amount, percentage, dueDate, tdsRate, tdsAmount }
   });
 
   return milestone;
 }
 
 async function updatePaymentMilestone({ tenantId, userId, milestoneId, data }) {
-  const { status, invoice_reference, paid_at, paid_amount } = data;
+  const { status, invoice_reference, paid_at, paid_amount, tds_rate, tds_amount, is_deferred, deferral_reference } = data;
 
   // Retrieve current to check transition
   const currentResult = await pool.query(`SELECT * FROM payment_milestones WHERE id = $1 AND tenant_id = $2`, [milestoneId, tenantId]);
@@ -65,6 +65,22 @@ async function updatePaymentMilestone({ tenantId, userId, milestoneId, data }) {
   if (paid_amount !== undefined) {
     updateFields.push(`paid_amount = $${paramIdx++}`);
     values.push(paid_amount);
+  }
+  if (tds_rate !== undefined) {
+    updateFields.push(`tds_rate = $${paramIdx++}`);
+    values.push(tds_rate);
+  }
+  if (tds_amount !== undefined) {
+    updateFields.push(`tds_amount = $${paramIdx++}`);
+    values.push(tds_amount);
+  }
+  if (is_deferred !== undefined) {
+    updateFields.push(`is_deferred = $${paramIdx++}`);
+    values.push(is_deferred);
+  }
+  if (deferral_reference !== undefined) {
+    updateFields.push(`deferral_reference = $${paramIdx++}`);
+    values.push(deferral_reference);
   }
 
   if (updateFields.length === 0) return current;

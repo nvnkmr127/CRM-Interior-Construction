@@ -77,7 +77,42 @@ async function verifyOtp(tenantId, phone, submittedOtp) {
   };
 }
 
+async function verifyOtpOnly(tenantId, phone, submittedOtp) {
+  // 1. Lookup portal user
+  const userResult = await pool.query(
+    'SELECT id, otp_hash, otp_expires_at FROM client_portal_users WHERE tenant_id = $1 AND phone = $2',
+    [tenantId, phone]
+  );
+
+  const user = userResult.rows[0];
+  if (!user) {
+    throw new Error('CLIENT_NOT_FOUND');
+  }
+
+  // 2. Check expiry
+  if (!user.otp_expires_at || new Date(user.otp_expires_at) < new Date()) {
+    throw new Error('OTP_EXPIRED');
+  }
+
+  // 3. Hash submitted OTP and compare
+  const submittedOtpHash = crypto.createHash('sha256').update(submittedOtp).digest('hex');
+  if (submittedOtpHash !== user.otp_hash) {
+    throw new Error('OTP_INVALID');
+  }
+
+  // 4. Clear OTP
+  await pool.query(
+    `UPDATE client_portal_users
+     SET otp_hash = NULL, otp_expires_at = NULL
+     WHERE id = $1`,
+    [user.id]
+  );
+
+  return true;
+}
+
 module.exports = {
   sendOtp,
-  verifyOtp
+  verifyOtp,
+  verifyOtpOnly
 };

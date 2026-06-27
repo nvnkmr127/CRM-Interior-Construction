@@ -85,6 +85,14 @@ router.post('/', authorize('projects:manage'), async (req, res) => {
       mappedData
     );
 
+    // Automatically compile and archive Daily Site Report PDF (runs in try/catch to protect API response)
+    try {
+      const pdfService = require('../services/projects/dailySiteReportPdfService');
+      await pdfService.archiveDailySiteReport(req.tenantId, report.id, req.user?.userId);
+    } catch (pdfErr) {
+      console.error('[DailySiteReports Router] PDF Archiving failed:', pdfErr);
+    }
+
     return success(res, report, {}, 201);
   } catch (err) {
     if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors || err.issues, 400);

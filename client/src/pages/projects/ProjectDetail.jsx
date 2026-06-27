@@ -10,9 +10,13 @@ const PhaseTimeline = React.lazy(() => import('../../components/projects/PhaseTi
 const GanttChart = React.lazy(() => import('../../components/projects/GanttChart'));
 const TaskKanban = React.lazy(() => import('../../components/tasks/TaskKanban'));
 const DocumentPanel = React.lazy(() => import('../../components/projects/DocumentPanel'));
+const DrawingRegisterTab = React.lazy(() => import('../../components/projects/DrawingRegisterTab'));
 const PaymentsTab = React.lazy(() => import('./PaymentsTab'));
 const SnagsDashboard = React.lazy(() => import('./SnagsDashboard'));
 const HandoverChecklist = React.lazy(() => import('./HandoverChecklist'));
+const WarrantiesTab = React.lazy(() => import('./WarrantiesTab'));
+const AmcsTab = React.lazy(() => import('./AmcsTab'));
+
 const DesignRequirements = React.lazy(() => import('../../components/projects/DesignRequirements'));
 const DesignAssetsTab = React.lazy(() => import('../../components/projects/DesignAssetsTab'));
 const DesignReviewsTab = React.lazy(() => import('../../components/projects/DesignReviewsTab'));
@@ -33,6 +37,7 @@ const HandoverHistoryTab = React.lazy(() => import('../../components/projects/Ha
 const MeetingNotesTab = React.lazy(() => import('../../components/projects/MeetingNotesTab'));
 const SiteVisitsTab = React.lazy(() => import('../../components/projects/SiteVisitsTab'));
 const DelayNotificationsTab = React.lazy(() => import('../../components/projects/DelayNotificationsTab'));
+const PunchListTab = React.lazy(() => import('../../components/projects/PunchListTab'));
 import HandoverModal from '../../components/projects/HandoverModal';
 
 function formatDate(dateStr) {
@@ -539,7 +544,7 @@ export default function ProjectDetail() {
     }
   };
 
-  const tabs = ['Overview', 'Meeting Notes', 'Site Visits', 'Delay Notifications', 'Handovers', 'Design Brief', 'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 'Change Orders', 'Budget', 'Purchase Orders', 'Material Deliveries', 'Vendor Payments', 'Substitutions', 'Factory Production', 'Phases', 'Gantt Chart', 'Work Activities', 'Room Progress', 'Tasks', 'Daily Site Reports', 'Weekly Reports', 'Documents', 'Payments', 'Snags', 'Handover'];
+  const tabs = ['Overview', 'Meeting Notes', 'Site Visits', 'Delay Notifications', 'Handovers', 'Design Brief', 'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 'Change Orders', 'Budget', 'Purchase Orders', 'Material Deliveries', 'Vendor Payments', 'Substitutions', 'Factory Production', 'Phases', 'Gantt Chart', 'Work Activities', 'Room Progress', 'Tasks', 'Daily Site Reports', 'Weekly Reports', 'Documents', 'Drawing Register', 'Payments', 'Snags', 'Punch List', 'Handover', 'Warranties', 'AMCs'];
 
   const reloadProject = () => {
     if (!projectId) return;
@@ -584,9 +589,13 @@ export default function ProjectDetail() {
       case 'Daily Site Reports': return <DailySiteReportsTab projectId={projectId} />;
       case 'Weekly Reports': return <WeeklyReportsTab projectId={projectId} />;
       case 'Documents': return <DocumentPanel projectId={projectId} />;
+      case 'Drawing Register': return <DrawingRegisterTab projectId={projectId} />;
       case 'Payments': return <PaymentsTab projectId={projectId} />;
       case 'Snags': return <SnagsDashboard projectId={projectId} />;
       case 'Handover': return <HandoverChecklist projectId={projectId} />;
+      case 'Punch List': return <PunchListTab projectId={projectId} />;
+      case 'Warranties': return <WarrantiesTab projectId={projectId} />;
+      case 'AMCs': return <AmcsTab projectId={projectId} />;
       default: return <div>{activeTab} Content (Coming Soon)</div>;
     }
   };
@@ -728,6 +737,67 @@ export default function ProjectDetail() {
             {' of '}
             {formatValue(project.stats?.netContractValue || project.contract_value)}
           </span>
+        </div>
+      </div>
+
+      {/* Project Financial Summary Dashboard Panel */}
+      <div className={styles.financialPanel}>
+        <div className={styles.financialPanelHeader}>Financial Overview</div>
+        <div className={styles.financialGrid}>
+          <div className={styles.financialCard}>
+            <span className={styles.financialLabel}>Contract Value (Net)</span>
+            <span className={styles.financialValue}>
+              {formatValue(project.stats?.netContractValue || project.contract_value)}
+            </span>
+          </div>
+          <div className={styles.financialCard}>
+            <span className={styles.financialLabel}>Billed (Net)</span>
+            <span className={styles.financialValue}>
+              {formatValue(project.stats?.netBilled !== undefined ? project.stats.netBilled : project.stats?.totalPayment)}
+            </span>
+          </div>
+          <div className={styles.financialCard}>
+            <span className={styles.financialLabel}>Collected (Net)</span>
+            <span className={styles.financialValue} style={{ color: 'var(--color-success, #22c55e)' }}>
+              {formatValue(project.stats?.netCollections !== undefined ? project.stats.netCollections : project.stats?.collectedPayment)}
+            </span>
+          </div>
+          <div className={styles.financialCard}>
+            <span className={styles.financialLabel}>Outstanding Balance</span>
+            <span className={styles.financialValue} style={{ color: 'var(--color-accent, #3b82f6)' }}>
+              {formatValue(project.stats?.outstandingBalance !== undefined ? project.stats.outstandingBalance : (project.stats?.totalPayment - project.stats?.collectedPayment))}
+            </span>
+          </div>
+          <div className={styles.financialCard}>
+            <span className={styles.financialLabel}>Overdue Amount</span>
+            <span className={`${styles.financialValue} ${project.stats?.overduePayments > 0 ? styles.financialDanger : ''}`}>
+              {formatValue(project.stats?.overduePayments || 0)}
+            </span>
+          </div>
+          <div className={styles.financialCard}>
+            <span className={styles.financialLabel}>Pending Invoices</span>
+            <span className={styles.financialValue} style={{ color: 'var(--color-info, #0ea5e9)' }}>
+              {formatValue(project.stats?.pendingInvoices || 0)}
+            </span>
+          </div>
+          <div className={styles.financialCard}>
+            <span className={styles.financialLabel}>Total Cost</span>
+            <span className={styles.financialValue} style={{ color: 'var(--color-danger, #ef4444)' }}>
+              {formatValue(project.stats?.totalActualCost || 0)}
+            </span>
+          </div>
+          <div className={styles.financialCard}>
+            <span className={styles.financialLabel}>Gross Profit</span>
+            <span className={styles.financialValue} style={{ color: (project.stats?.grossProfit || 0) >= 0 ? 'var(--color-success, #22c55e)' : 'var(--color-danger, #ef4444)' }}>
+              {formatValue(project.stats?.grossProfit !== undefined ? project.stats.grossProfit : (project.stats?.netContractValue || project.contract_value))}
+            </span>
+          </div>
+          <div className={styles.financialCard}>
+            <span className={styles.financialLabel}>Gross Margin</span>
+            <span className={styles.financialValue} style={{ color: (project.stats?.grossMarginPct || 0) >= 20 ? 'var(--color-success, #22c55e)' : (project.stats?.grossMarginPct || 0) >= 0 ? 'var(--color-warning, #eab308)' : 'var(--color-danger, #ef4444)' }}>
+              {project.stats?.grossMarginPct !== undefined ? `${project.stats.grossMarginPct}%` : '100%'}
+            </span>
+          </div>
         </div>
       </div>
 

@@ -7,12 +7,12 @@ const authorize = require('../middleware/authorize');
 const router = express.Router({ mergeParams: true });
 
 const budgetAllocationSchema = z.object({
-  category: z.enum(['labour', 'material', 'vendor']),
+  category: z.enum(['labour', 'material', 'vendor', 'overhead']),
   budgetedCost: z.number().nonnegative('Budgeted cost must be a non-negative number')
 });
 
 const expenseSchema = z.object({
-  category: z.enum(['labour', 'material', 'vendor']),
+  category: z.enum(['labour', 'material', 'vendor', 'overhead']),
   type: z.enum(['committed', 'actual']),
   description: z.string().min(1, 'Description is required'),
   amount: z.number().positive('Amount must be a positive number'),
@@ -37,6 +37,8 @@ router.get('/', authorize('projects:read'), async (req, res) => {
         SELECT 'material'
         UNION ALL
         SELECT 'vendor'
+        UNION ALL
+        SELECT 'overhead'
       ) c
       LEFT JOIN project_budgets pb ON pb.category = c.category AND pb.project_id = $1 AND pb.tenant_id = $2
       LEFT JOIN (

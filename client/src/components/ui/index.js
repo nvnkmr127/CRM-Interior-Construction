@@ -15,3 +15,5 @@ export { default as DataTable } from './DataTable';
 
 export { default as Pagination } from './Pagination';
 export { default as Textarea } from './Textarea';
+export { default as FormField } from './FormField';
+

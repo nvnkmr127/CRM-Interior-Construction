@@ -22,6 +22,14 @@ setInterval(() => {
 // Start Estimates Reconciliation Job
 require('./jobs/reconcileEstimatesJob').start();
 
+// Start AMC Alert Scheduler (Runs every 12 hours)
+const amcService = require('./services/postSale/amcService');
+setInterval(() => {
+  amcService.checkAndNotifyExpiredOrExpiringAMCs().catch(err => {
+    console.error('Failed to run periodic AMC renewal checks:', err);
+  });
+}, 12 * 60 * 60 * 1000);
+
 app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true }));
@@ -112,6 +120,8 @@ const configRoutes = require('./routes/config');
 const projectsRoutes = require('./routes/projects');
 const snagsRoutes = require('./routes/snags');
 const paymentMilestonesRoutes = require('./routes/paymentMilestones');
+const invoicesRoutes = require('./routes/invoices');
+const financialsRoutes = require('./routes/financials');
 const handoverRoutes = require('./routes/handover');
 const milestonesRoutes = require('./routes/milestones');
 const globalTasksRoutes = require('./routes/globalTasks');
@@ -123,12 +133,21 @@ const webhooksInboundRoutes = require('./routes/webhooks/inbound');
 const portalAuthRoutes = require('./routes/portal/auth');
 const portalProjectRoutes = require('./routes/portal/project');
 const portalSnagsRoutes = require('./routes/portal/snags');
+const portalHandoverRoutes = require('./routes/portal/handover');
 const portalApprovalsRoutes = require('./routes/portal/approvals');
 const portalBrandingRoutes = require('./routes/portal/branding');
 const portalDesignAssetsRoutes = require('./routes/portal/designAssets');
 const portalDesignReviewsRoutes = require('./routes/portal/designReviews');
 const portalMaterialPalettesRoutes = require('./routes/portal/materialPalettes');
 const portalChangeOrdersRoutes = require('./routes/portal/changeOrders');
+const portalMaterialSubstitutionsRoutes = require('./routes/portal/materialSubstitutions');
+const portalPunchListsRoutes = require('./routes/portal/punchLists');
+const portalWarrantiesRoutes = require('./routes/portal/warranties');
+const portalAmcsRoutes = require('./routes/portal/amcs');
+const portalWarrantyClaimsRoutes = require('./routes/portal/warrantyClaims');
+const serviceTicketsRoutes = require('./routes/serviceTickets');
+const portalServiceTicketsRoutes = require('./routes/portal/serviceTickets');
+
 const usersRoutes = require('./routes/users');
 const dashboardRoutes = require('./routes/dashboard');
 const errorHandler = require('./middleware/errorHandler');
@@ -161,7 +180,31 @@ app.use('/api/projects', projectsRoutes);
 app.use('/api/snags', snagsRoutes);
 app.use('/api/projects/:id/snags', snagsRoutes);
 app.use('/api/payment-milestones', paymentMilestonesRoutes);
+app.use('/api/invoices', invoicesRoutes);
+app.use('/api/financials', financialsRoutes);
 app.use('/api/handover', handoverRoutes);
+
+// Safe fallback for local file downloads
+app.get('/api/local-download', (req, res) => {
+  const key = req.query.key;
+  if (!key) return res.status(400).send('Missing key');
+  if (key.includes('..')) {
+    return res.status(403).send('Invalid key');
+  }
+  const path = require('path');
+  const fs = require('fs');
+  const filePath = path.join(__dirname, '../uploads', key);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).send('File not found');
+  }
+  const ext = path.extname(key).toLowerCase();
+  let contentType = 'application/octet-stream';
+  if (ext === '.pdf') contentType = 'application/pdf';
+  else if (ext === '.png') contentType = 'image/png';
+  else if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
+  res.setHeader('Content-Type', contentType);
+  return res.download(filePath);
+});
 app.use('/api/projects/:id/handover', handoverRoutes);
 app.use('/api/phases/:phaseId/milestones', milestonesRoutes);
 app.use('/api/tasks', globalTasksRoutes);
@@ -175,12 +218,21 @@ app.use('/api/webhooks/inbound', webhooksInboundRoutes);
 app.use('/api/portal/auth', portalAuthRoutes);
 app.use('/api/portal/project', portalProjectRoutes);
 app.use('/api/portal/snags', portalSnagsRoutes);
+app.use('/api/portal/handover', portalHandoverRoutes);
 app.use('/api/portal/approvals', portalApprovalsRoutes);
 app.use('/api/portal/branding', portalBrandingRoutes);
 app.use('/api/portal/design-assets', portalDesignAssetsRoutes);
 app.use('/api/portal/design-reviews', portalDesignReviewsRoutes);
 app.use('/api/portal/material-palettes', portalMaterialPalettesRoutes);
 app.use('/api/portal/change-orders', portalChangeOrdersRoutes);
+app.use('/api/portal/material-substitutions', portalMaterialSubstitutionsRoutes);
+app.use('/api/portal/punch-lists', portalPunchListsRoutes);
+app.use('/api/portal/warranties', portalWarrantiesRoutes);
+app.use('/api/portal/amcs', portalAmcsRoutes);
+app.use('/api/portal/warranty-claims', portalWarrantyClaimsRoutes);
+app.use('/api/projects/:projectId/service-tickets', serviceTicketsRoutes);
+app.use('/api/portal/service-tickets', portalServiceTicketsRoutes);
+
 
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/search', searchRouter);

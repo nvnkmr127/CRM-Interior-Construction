@@ -16,4 +16,7 @@ router.get('/:id', authenticate, authorize('projects:read'), materialDeliveryCon
 // Update material delivery details/status
 router.put('/:id', authenticate, authorize('projects:update'), materialDeliveryController.updateMaterialDelivery);
 
+// Log incoming material inspection record
+router.post('/:id/inspect', authenticate, authorize('projects:update'), materialDeliveryController.inspectMaterialDelivery);
+
 module.exports = router;

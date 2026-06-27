@@ -414,6 +414,39 @@ export default function MaterialSubstitutionsTab({ projectId }) {
                   </div>
                 )}
 
+                {selectedSub.status === 'approved' && selectedSub.client_signoff_name && (
+                  <div className={styles.signatureBlock}>
+                    <div className={styles.signatureHeader}>Approved via client digital sign-off:</div>
+                    <div className={styles.signatureRow}>
+                      <div>
+                        <span className={styles.signatureLabel}>Signed by:</span>
+                        <strong className={styles.signatureVal}>{selectedSub.client_signoff_name}</strong>
+                      </div>
+                      {selectedSub.client_approved_at && (
+                        <div>
+                          <span className={styles.signatureLabel}>Signed on:</span>
+                           <span className={styles.signatureVal}>
+                            {new Date(selectedSub.client_approved_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    {selectedSub.client_signature_data && (
+                      <div className={styles.signatureCanvasContainer}>
+                        {selectedSub.client_signature_data.startsWith('data:image/') ? (
+                          <img 
+                            src={selectedSub.client_signature_data} 
+                            alt="Client Digital Signature" 
+                            className={styles.signatureImg} 
+                          />
+                        ) : (
+                          <span className={styles.signatureTextDraw}>{selectedSub.client_signature_data}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {selectedSub.status === 'pending' && (
                   <div className={styles.actionsBlock}>
                     <Button variant="primary" onClick={openRespondModal}>

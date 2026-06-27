@@ -68,6 +68,12 @@ export const requestRevision = (projectId, did, note) => api.post(`/projects/${p
 
 export const addVersion = (projectId, did, storageKey) => api.post(`/projects/${projectId}/documents/${did}/version`, { storageKey });
 
+export const updateDocumentVisibility = (projectId, did, isVisibleToClient) => api.patch(`/projects/${projectId}/documents/${did}/visibility`, { isVisibleToClient });
+
+export const getDocumentComments = (projectId, did) => api.get(`/projects/${projectId}/documents/${did}/comments`);
+
+export const addDocumentComment = (projectId, did, comment) => api.post(`/projects/${projectId}/documents/${did}/comments`, { comment });
+
 // Design Requirements
 export const getDesignRequirements = (projectId) => api.get(`/projects/${projectId}/design-requirements`);
 export const updateDesignRequirements = (projectId, data) => api.put(`/projects/${projectId}/design-requirements`, data);
@@ -184,3 +190,10 @@ export const getScheduleRevisions = (projectId) => api.get(`/projects/${projectI
 // Resource Replacement
 export const replaceProjectResource = (projectId, data) => api.post(`/projects/${projectId}/replace-resource`, data);
 export const getProjectHandovers = (projectId) => api.get(`/projects/${projectId}/handovers`);
+
+// Drawing Register
+export const getDrawingRegister = (projectId) => api.get(`/projects/${projectId}/drawing-register`);
+export const createDrawingRegisterEntry = (projectId, data) => api.post(`/projects/${projectId}/drawing-register`, data);
+export const updateDrawingRegisterEntry = (projectId, id, data) => api.put(`/projects/${projectId}/drawing-register/${id}`, data);
+export const deleteDrawingRegisterEntry = (projectId, id) => api.delete(`/projects/${projectId}/drawing-register/${id}`);
+

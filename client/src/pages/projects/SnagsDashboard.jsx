@@ -12,6 +12,11 @@ export default function SnagsDashboard({ projectId }) {
   const [loading, setLoading] = useState(true)
   const [resolveTarget, setResolveTarget] = useState(null)
   const [resolutionNote, setResolutionNote] = useState('')
+  const [reworkRequired, setReworkRequired] = useState(false)
+  const [reworkRootCauseCategory, setReworkRootCauseCategory] = useState('workmanship_error')
+  const [reworkEstimatedHours, setReworkEstimatedHours] = useState('0')
+  const [reworkActualHours, setReworkActualHours] = useState('0')
+  const [reworkCost, setReworkCost] = useState('0')
   const toast = useToast()
 
   useEffect(() => {
@@ -87,15 +92,42 @@ export default function SnagsDashboard({ projectId }) {
 
   const confirmResolve = async () => {
     if (!resolutionNote.trim()) return toast.error('Resolution notes required')
+    if (reworkRequired) {
+      if (parseFloat(reworkEstimatedHours) < 0 || parseFloat(reworkActualHours) < 0 || parseFloat(reworkCost) < 0) {
+        return toast.error('Rework numbers cannot be negative')
+      }
+    }
     try {
-      await updateSnag(resolveTarget.id, { status: 'resolved', resolution_note: resolutionNote })
-      setSnags(prev => prev.map(s => s.id === resolveTarget.id ? { ...s, status: 'resolved', resolutionNote } : s))
-      toast.success('Snag marked as resolved. Client will be notified to verify.')
+      await updateSnag(resolveTarget.id, { 
+        status: 'resolved', 
+        resolutionNote,
+        reworkRequired,
+        reworkRootCauseCategory: reworkRequired ? reworkRootCauseCategory : null,
+        reworkEstimatedHours: reworkRequired ? parseFloat(reworkEstimatedHours) : 0,
+        reworkActualHours: reworkRequired ? parseFloat(reworkActualHours) : 0,
+        reworkCost: reworkRequired ? parseFloat(reworkCost) : 0
+      })
+      setSnags(prev => prev.map(s => s.id === resolveTarget.id ? { 
+        ...s, 
+        status: 'resolved', 
+        resolutionNote,
+        reworkRequired,
+        reworkRootCauseCategory,
+        reworkEstimatedHours,
+        reworkActualHours,
+        reworkCost
+      } : s))
+      toast.success('Snag resolved and rework logged.')
     } catch {
       toast.error('Failed to resolve snag')
     }
     setResolveTarget(null)
     setResolutionNote('')
+    setReworkRequired(false)
+    setReworkRootCauseCategory('workmanship_error')
+    setReworkEstimatedHours('0')
+    setReworkActualHours('0')
+    setReworkCost('0')
   }
 
   return (
@@ -199,19 +231,93 @@ export default function SnagsDashboard({ projectId }) {
         title="Mark Snag as Resolved"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setResolveTarget(null)}>Cancel</Button>
+            <Button variant="ghost" onClick={() => {
+              setResolveTarget(null)
+              setReworkRequired(false)
+            }}>Cancel</Button>
             <Button variant="primary" onClick={confirmResolve}>Mark Resolved</Button>
           </>
         }
       >
-        <div style={{display:'flex', flexDirection:'column', gap:8}}>
-          <label style={{fontSize:'var(--text-sm)', fontWeight:500, color:'var(--color-text)'}}>Resolution notes *</label>
-          <textarea 
-            style={{width:'100%', minHeight:100, padding:12, borderRadius:8, border:'1px solid var(--color-border)', outline:'none', fontFamily:'inherit'}}
-            placeholder="Describe what was done to fix this issue..."
-            value={resolutionNote}
-            onChange={e => setResolutionNote(e.target.value)}
-          />
+        <div style={{display:'flex', flexDirection:'column', gap:16}}>
+          <div style={{display:'flex', flexDirection:'column', gap:8}}>
+            <label style={{fontSize:'var(--text-sm)', fontWeight:600, color:'var(--color-text)'}}>Resolution notes *</label>
+            <textarea 
+              style={{width:'100%', minHeight:80, padding:12, borderRadius:8, border:'1px solid var(--color-border)', outline:'none', fontFamily:'inherit', fontSize:'var(--text-xs)'}}
+              placeholder="Describe what was done to fix this issue..."
+              value={resolutionNote}
+              onChange={e => setResolutionNote(e.target.value)}
+              required
+            />
+          </div>
+
+          <div style={{display:'flex', alignItems:'center', gap:8, borderTop:'1px solid var(--color-border)', paddingTop:12}}>
+            <input 
+              type="checkbox" 
+              id="reworkCheckbox"
+              checked={reworkRequired} 
+              onChange={e => setReworkRequired(e.target.checked)} 
+              style={{cursor:'pointer'}}
+            />
+            <label htmlFor="reworkCheckbox" style={{fontSize:'var(--text-sm)', fontWeight:600, color:'var(--color-text)', cursor:'pointer'}}>
+              Defect required rework (materials replaced or correction hours spent)
+            </label>
+          </div>
+
+          {reworkRequired && (
+            <div style={{display:'flex', flexDirection:'column', gap:12, padding:12, borderRadius:8, background:'var(--color-bg-subtle, #f9fafb)', border:'1px solid var(--color-border)'}}>
+              <div style={{display:'flex', flexDirection:'column', gap:4}}>
+                <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Root Cause Category</label>
+                <select 
+                  style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-xs)'}}
+                  value={reworkRootCauseCategory}
+                  onChange={e => setReworkRootCauseCategory(e.target.value)}
+                >
+                  <option value="workmanship_error">Workmanship Error</option>
+                  <option value="material_defect">Material Defect</option>
+                  <option value="design_flaw">Design Flaw</option>
+                  <option value="site_damage">Site / Transit Damage</option>
+                  <option value="vendor_fault">Vendor Fault</option>
+                  <option value="other">Other / General</option>
+                </select>
+              </div>
+
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
+                <div style={{display:'flex', flexDirection:'column', gap:4}}>
+                  <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Est. Rework Hours</label>
+                  <input 
+                    type="number" 
+                    step="0.1"
+                    style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-xs)'}}
+                    value={reworkEstimatedHours}
+                    onChange={e => setReworkEstimatedHours(e.target.value)}
+                  />
+                </div>
+
+                <div style={{display:'flex', flexDirection:'column', gap:4}}>
+                  <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Actual Rework Hours</label>
+                  <input 
+                    type="number" 
+                    step="0.1"
+                    style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-xs)'}}
+                    value={reworkActualHours}
+                    onChange={e => setReworkActualHours(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div style={{display:'flex', flexDirection:'column', gap:4}}>
+                <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Total Rework Cost (₹)</label>
+                <input 
+                  type="number" 
+                  step="1"
+                  style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-xs)'}}
+                  value={reworkCost}
+                  onChange={e => setReworkCost(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
     </div>

@@ -1033,6 +1033,45 @@ export const setupMockInterceptor = (api) => {
               }
             } else if (method === 'post') {
               const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              
+              const MOCK_QC_CHECKLISTS = {
+                carpentry: [
+                  { id: `c1_${Date.now()}`, label: 'Verify dimensions match approved design drawing', required: true, is_checked: false },
+                  { id: `c2_${Date.now()}`, label: 'Check veneer/laminate grains alignment and color matching', required: true, is_checked: false },
+                  { id: `c3_${Date.now()}`, label: 'Check drawer runners and soft-close hinges function smoothly', required: true, is_checked: false },
+                  { id: `c4_${Date.now()}`, label: 'Ensure edge banding is smooth and free of sharp edges', required: true, is_checked: false },
+                  { id: `c5_${Date.now()}`, label: 'Verify handle alignment and installation height', required: true, is_checked: false }
+                ],
+                painting: [
+                  { id: `p1_${Date.now()}`, label: 'Check wall surface is sanded smooth and clean of dust', required: true, is_checked: false },
+                  { id: `p2_${Date.now()}`, label: 'Verify application of wall primer coat', required: true, is_checked: false },
+                  { id: `p3_${Date.now()}`, label: 'Ensure putty levels are checked under light to find imperfections', required: true, is_checked: false },
+                  { id: `p4_${Date.now()}`, label: 'Check final paint coat color uniformity and edge alignments', required: true, is_checked: false },
+                  { id: `p5_${Date.now()}`, label: 'Ensure no paint stains on flooring, switch plates, or windows', required: true, is_checked: false }
+                ],
+                electrical: [
+                  { id: `e1_${Date.now()}`, label: 'Verify conduit pipe layout matches layout drawing', required: true, is_checked: false },
+                  { id: `e2_${Date.now()}`, label: 'Check continuity and insulation resistance test of cables', required: true, is_checked: false },
+                  { id: `e3_${Date.now()}`, label: 'Ensure correct rating of MCBs and correct labeling in DB', required: true, is_checked: false },
+                  { id: `e4_${Date.now()}`, label: 'Verify all modular switch plates are level and securely fixed', required: true, is_checked: false },
+                  { id: `e5_${Date.now()}`, label: 'Test all light points, sockets, and appliance outlets', required: true, is_checked: false }
+                ],
+                plumbing: [
+                  { id: `pl1_${Date.now()}`, label: 'Pressure test water supply pipes for 24 hours at 10 bar', required: true, is_checked: false },
+                  { id: `pl2_${Date.now()}`, label: 'Check drainage slope/alignment to ensure no water stagnation', required: true, is_checked: false },
+                  { id: `pl3_${Date.now()}`, label: 'Conduct waterproofing pond test in bathroom for 48 hours', required: true, is_checked: false },
+                  { id: `pl4_${Date.now()}`, label: 'Verify fitment of WCs and washbasin without wobble', required: true, is_checked: false },
+                  { id: `pl5_${Date.now()}`, label: 'Check all CP fittings (faucets, showers) for leakage and flow rate', required: true, is_checked: false }
+                ],
+                flooring: [
+                  { id: `f1_${Date.now()}`, label: 'Verify subfloor cleaning and level markings before laying tiles/marble', required: true, is_checked: false },
+                  { id: `f2_${Date.now()}`, label: 'Check tile spacers are used and joint lines are perfectly aligned', required: true, is_checked: false },
+                  { id: `f3_${Date.now()}`, label: 'Verify hollow-sound check by tapping laid tiles/stones', required: true, is_checked: false },
+                  { id: `f4_${Date.now()}`, label: 'Check slope towards drain point in dry/wet areas', required: true, is_checked: false },
+                  { id: `f5_${Date.now()}`, label: 'Ensure grout filling is complete and uniform', required: true, is_checked: false }
+                ]
+              };
+
               if (url.includes('/generate')) {
                 const { phaseId, roomName, trade } = payload;
                 const templates = [
@@ -1053,6 +1092,7 @@ export const setupMockInterceptor = (api) => {
                     activity_name: tpl.activity_name,
                     description: tpl.description,
                     status: 'todo',
+                    qc_checklist: MOCK_QC_CHECKLISTS[trade] || [],
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
                   };
@@ -1074,6 +1114,7 @@ export const setupMockInterceptor = (api) => {
                   assignee_id: payload.assignee_id || null,
                   due_date: payload.due_date || null,
                   notes: payload.notes || '',
+                  qc_checklist: payload.qc_checklist || MOCK_QC_CHECKLISTS[payload.trade] || [],
                   created_at: new Date().toISOString(),
                   updated_at: new Date().toISOString()
                 };
@@ -1085,8 +1126,30 @@ export const setupMockInterceptor = (api) => {
               const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
               const idx = mockDatabase.workActivities.findIndex(a => a.id === activityId);
               if (idx !== -1) {
+                const current = mockDatabase.workActivities[idx];
+                const targetStatus = payload.status || current.status;
+                const targetChecklist = payload.qc_checklist !== undefined ? payload.qc_checklist : (current.qc_checklist || []);
+
+                if (targetStatus === 'completed') {
+                  const incomplete = targetChecklist.filter(item => item.required && !item.is_checked);
+                  if (incomplete.length > 0) {
+                    return Promise.reject({
+                      response: {
+                        status: 400,
+                        data: {
+                          success: false,
+                          error: {
+                            code: 'QC_CHECKLIST_INCOMPLETE',
+                            message: `Cannot complete work activity: There are ${incomplete.length} unchecked required QC checklist items.`
+                          }
+                        }
+                      }
+                    });
+                  }
+                }
+
                 mockDatabase.workActivities[idx] = { 
-                  ...mockDatabase.workActivities[idx], 
+                  ...current, 
                   ...payload, 
                   updated_at: new Date().toISOString() 
                 };
@@ -1430,6 +1493,441 @@ export const setupMockInterceptor = (api) => {
                 mockDatabase.delayNotifications = mockDatabase.delayNotifications.filter(dn => dn.id !== notificationId);
                 persistDb();
                 responseData.data = { success: true };
+              }
+            }
+          }
+          // PUNCH LISTS
+          else if (url.includes('/punch-lists')) {
+            const urlParts = url.split('?');
+            const pathPart = urlParts[0];
+
+            if (!mockDatabase.punchLists) {
+              mockDatabase.punchLists = [
+                {
+                  id: 'mock-pl-1',
+                  project_id: 'mock-project-123',
+                  title: 'Pre-Handover Walkthrough',
+                  walkthrough_date: '2026-06-25',
+                  status: 'active',
+                  created_by: 'mock-user-123',
+                  creator_name: 'System Admin',
+                  signed_off_by_client: false,
+                  client_signed_off_at: null,
+                  created_at: new Date().toISOString()
+                }
+              ];
+            }
+            if (!mockDatabase.punchListItems) {
+              mockDatabase.punchListItems = [
+                {
+                  id: 'mock-pli-1',
+                  punch_list_id: 'mock-pl-1',
+                  room_name: 'Living Room',
+                  trade: 'carpentry',
+                  item_description: 'Slight gap in the main wardrobe handle alignment',
+                  photo_key: null,
+                  assignee_id: 'mock-user-123',
+                  assignee_name: 'System Admin',
+                  status: 'open',
+                  closed_by_qc: null,
+                  closed_at: null,
+                  qc_notes: null,
+                  client_verified: false,
+                  client_verified_at: null,
+                  created_at: new Date().toISOString()
+                },
+                {
+                  id: 'mock-pli-2',
+                  punch_list_id: 'mock-pl-1',
+                  room_name: 'Kitchen',
+                  trade: 'plumbing',
+                  item_description: 'Sink inlet pipe slow leakage',
+                  photo_key: null,
+                  assignee_id: 'mock-user-123',
+                  assignee_name: 'System Admin',
+                  status: 'resolved',
+                  closed_by_qc: 'mock-user-123',
+                  closed_by_qc_name: 'QC Manager',
+                  closed_at: new Date().toISOString(),
+                  qc_notes: 'Replaced Teflon tape and re-tightened the coupling joint. Leakage stopped.',
+                  client_verified: false,
+                  client_verified_at: null,
+                  created_at: new Date().toISOString()
+                }
+              ];
+            }
+
+            const matchItemVerify = pathPart.match(/\/portal\/punch-lists\/items\/([a-zA-Z0-9-]+)\/verify$/);
+            const matchPortalSignOff = pathPart.match(/\/portal\/punch-lists\/([a-zA-Z0-9-]+)\/sign-off$/);
+            const matchPortalSingle = pathPart.match(/\/portal\/punch-lists\/([a-zA-Z0-9-]+)$/);
+            const matchPortalList = pathPart.endsWith('/portal/punch-lists');
+            
+            const matchItemAction = pathPart.match(/\/projects\/[a-zA-Z0-9-]+\/punch-lists\/([a-zA-Z0-9-]+)\/items(?:\/([a-zA-Z0-9-]+))?$/);
+            const matchPlAction = pathPart.match(/\/projects\/[a-zA-Z0-9-]+\/punch-lists(?:\/([a-zA-Z0-9-]+))?$/);
+
+            if (matchItemVerify) {
+              const itemId = matchItemVerify[1];
+              const idx = mockDatabase.punchListItems.findIndex(i => i.id === itemId);
+              if (idx !== -1) {
+                mockDatabase.punchListItems[idx].status = 'verified';
+                mockDatabase.punchListItems[idx].client_verified = true;
+                mockDatabase.punchListItems[idx].client_verified_at = new Date().toISOString();
+                
+                const plId = mockDatabase.punchListItems[idx].punch_list_id;
+                const siblings = mockDatabase.punchListItems.filter(i => i.punch_list_id === plId);
+                const allVerified = siblings.every(i => i.status === 'verified');
+                const plIdx = mockDatabase.punchLists.findIndex(p => p.id === plId);
+                if (plIdx !== -1) {
+                  if (allVerified) {
+                    mockDatabase.punchLists[plIdx].status = 'client_verified';
+                    mockDatabase.punchLists[plIdx].signed_off_by_client = true;
+                    mockDatabase.punchLists[plIdx].client_signed_off_at = new Date().toISOString();
+                  } else if (siblings.every(i => i.status === 'resolved' || i.status === 'verified')) {
+                    mockDatabase.punchLists[plIdx].status = 'resolved';
+                  }
+                }
+                persistDb();
+                responseData.data = mockDatabase.punchListItems[idx];
+              }
+            }
+            else if (matchPortalSignOff) {
+              const plId = matchPortalSignOff[1];
+              const idx = mockDatabase.punchLists.findIndex(p => p.id === plId);
+              if (idx !== -1) {
+                mockDatabase.punchLists[idx].status = 'client_verified';
+                mockDatabase.punchLists[idx].signed_off_by_client = true;
+                mockDatabase.punchLists[idx].client_signed_off_at = new Date().toISOString();
+                persistDb();
+                responseData.data = mockDatabase.punchLists[idx];
+              }
+            }
+            else if (matchPortalSingle) {
+              const plId = matchPortalSingle[1];
+              const pl = mockDatabase.punchLists.find(p => p.id === plId);
+              if (pl) {
+                const items = mockDatabase.punchListItems.filter(i => i.punch_list_id === plId);
+                responseData.data = { ...pl, items };
+              } else {
+                responseData.success = false;
+              }
+            }
+            else if (matchPortalList) {
+              responseData.data = mockDatabase.punchLists;
+            }
+            else if (matchItemAction) {
+              const plId = matchItemAction[1];
+              const itemId = matchItemAction[2];
+
+              if (method === 'post') {
+                const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                const newItem = {
+                  id: `mock-pli-${Date.now()}`,
+                  punch_list_id: plId,
+                  room_name: payload.room_name,
+                  trade: payload.trade,
+                  item_description: payload.item_description,
+                  photo_key: payload.photo_key || null,
+                  assignee_id: payload.assignee_id || null,
+                  assignee_name: payload.assignee_id ? 'Assigned Trade' : null,
+                  status: 'open',
+                  closed_by_qc: null,
+                  closed_at: null,
+                  qc_notes: null,
+                  client_verified: false,
+                  client_verified_at: null,
+                  created_at: new Date().toISOString()
+                };
+                mockDatabase.punchListItems.push(newItem);
+                
+                const plIdx = mockDatabase.punchLists.findIndex(p => p.id === plId);
+                if (plIdx !== -1 && mockDatabase.punchLists[plIdx].status === 'draft') {
+                  mockDatabase.punchLists[plIdx].status = 'active';
+                }
+                
+                persistDb();
+                responseData.data = newItem;
+              }
+              else if (method === 'patch' && itemId) {
+                const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                const idx = mockDatabase.punchListItems.findIndex(i => i.id === itemId);
+                if (idx !== -1) {
+                  if (payload.status === 'resolved') {
+                    if (!payload.qc_notes) {
+                      return Promise.reject({ response: { status: 400, data: { message: 'QC notes required' } } });
+                    }
+                    payload.closed_by_qc = 'mock-user-123';
+                    payload.closed_by_qc_name = 'System Admin';
+                    payload.closed_at = new Date().toISOString();
+                  } else if (payload.status === 'verified') {
+                    payload.client_verified = true;
+                    payload.client_verified_at = new Date().toISOString();
+                  } else if (payload.status === 'open') {
+                    payload.closed_by_qc = null;
+                    payload.closed_at = null;
+                    payload.qc_notes = null;
+                    payload.client_verified = false;
+                    payload.client_verified_at = null;
+                  }
+                  mockDatabase.punchListItems[idx] = { ...mockDatabase.punchListItems[idx], ...payload };
+                  
+                  const siblings = mockDatabase.punchListItems.filter(i => i.punch_list_id === plId);
+                  const allVerified = siblings.every(i => i.status === 'verified');
+                  const allResolved = siblings.every(i => i.status === 'resolved' || i.status === 'verified');
+                  const plIdx = mockDatabase.punchLists.findIndex(p => p.id === plId);
+                  if (plIdx !== -1) {
+                    if (allVerified) {
+                      mockDatabase.punchLists[plIdx].status = 'client_verified';
+                      mockDatabase.punchLists[plIdx].signed_off_by_client = true;
+                      mockDatabase.punchLists[plIdx].client_signed_off_at = new Date().toISOString();
+                    } else if (allResolved) {
+                      mockDatabase.punchLists[plIdx].status = 'resolved';
+                    } else {
+                      mockDatabase.punchLists[plIdx].status = 'active';
+                    }
+                  }
+
+                  persistDb();
+                  responseData.data = mockDatabase.punchListItems[idx];
+                }
+              }
+              else if (method === 'delete' && itemId) {
+                mockDatabase.punchListItems = mockDatabase.punchListItems.filter(i => i.id !== itemId);
+                
+                const siblings = mockDatabase.punchListItems.filter(i => i.punch_list_id === plId);
+                const plIdx = mockDatabase.punchLists.findIndex(p => p.id === plId);
+                if (plIdx !== -1 && siblings.length > 0) {
+                  const allVerified = siblings.every(i => i.status === 'verified');
+                  const allResolved = siblings.every(i => i.status === 'resolved' || i.status === 'verified');
+                  if (allVerified) {
+                    mockDatabase.punchLists[plIdx].status = 'client_verified';
+                    mockDatabase.punchLists[plIdx].signed_off_by_client = true;
+                    mockDatabase.punchLists[plIdx].client_signed_off_at = new Date().toISOString();
+                  } else if (allResolved) {
+                    mockDatabase.punchLists[plIdx].status = 'resolved';
+                  } else {
+                    mockDatabase.punchLists[plIdx].status = 'active';
+                  }
+                }
+                persistDb();
+                responseData.data = { success: true };
+              }
+            }
+            else if (matchPlAction) {
+              const plId = matchPlAction[1];
+              if (method === 'get') {
+                if (plId) {
+                  const pl = mockDatabase.punchLists.find(p => p.id === plId);
+                  if (pl) {
+                    const items = mockDatabase.punchListItems.filter(i => i.punch_list_id === plId);
+                    responseData.data = { ...pl, items };
+                  }
+                } else {
+                  responseData.data = mockDatabase.punchLists;
+                }
+              }
+              else if (method === 'post') {
+                const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                const newPl = {
+                  id: `mock-pl-${Date.now()}`,
+                  project_id: 'mock-project-123',
+                  title: payload.title,
+                  walkthrough_date: payload.walkthrough_date || null,
+                  status: 'draft',
+                  created_by: 'mock-user-123',
+                  creator_name: 'System Admin',
+                  signed_off_by_client: false,
+                  client_signed_off_at: null,
+                  created_at: new Date().toISOString()
+                };
+                mockDatabase.punchLists.push(newPl);
+                persistDb();
+                responseData.data = newPl;
+              }
+              else if (method === 'patch' && plId) {
+                const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                const idx = mockDatabase.punchLists.findIndex(p => p.id === plId);
+                if (idx !== -1) {
+                  mockDatabase.punchLists[idx] = { ...mockDatabase.punchLists[idx], ...payload };
+                  persistDb();
+                  responseData.data = mockDatabase.punchLists[idx];
+                }
+              }
+              else if (method === 'delete' && plId) {
+                mockDatabase.punchLists = mockDatabase.punchLists.filter(p => p.id !== plId);
+                mockDatabase.punchListItems = mockDatabase.punchListItems.filter(i => i.punch_list_id !== plId);
+                persistDb();
+                responseData.data = { success: true };
+              }
+            }
+          }
+          // MATERIAL DELIVERIES
+          else if (url.includes('/material-deliveries')) {
+            const urlParts = url.split('?');
+            const pathPart = urlParts[0];
+
+            if (!mockDatabase.materialDeliveries) {
+              mockDatabase.materialDeliveries = [
+                {
+                  id: 'mock-md-1',
+                  project_id: 'mock-project-123',
+                  purchase_order_id: 'mock-po-123',
+                  po_number: 'PO-2026-001',
+                  delivery_number: 'DN-20260627-999',
+                  status: 'pending',
+                  expected_delivery_date: '2026-06-28T12:00:00Z',
+                  actual_receipt_date: null,
+                  received_by: null,
+                  receiver_name: null,
+                  notes: 'Delivery expected directly at client site storage area.',
+                  created_at: new Date().toISOString()
+                }
+              ];
+            }
+
+            if (!mockDatabase.materialDeliveryItems) {
+              mockDatabase.materialDeliveryItems = [
+                {
+                  id: 'mock-mdi-1',
+                  material_delivery_id: 'mock-md-1',
+                  po_item_id: 'mock-poi-1',
+                  item_name: 'Premium 18mm Plywood',
+                  brand: 'CenturyPly',
+                  material_specifications: 'IS 710 BWR grade waterproof plywood',
+                  quantity_expected: 50.00,
+                  quantity_received: 0.00,
+                  is_damaged: false,
+                  damage_description: null,
+                  condition_notes: null,
+                  photo_key: null,
+                  specification_conformance_status: 'conforming',
+                  specification_variance_details: null,
+                  inspection_status: 'pending',
+                  rejected_quantity: 0.00,
+                  rejection_reason: null,
+                  created_at: new Date().toISOString()
+                },
+                {
+                  id: 'mock-mdi-2',
+                  material_delivery_id: 'mock-md-1',
+                  po_item_id: 'mock-poi-2',
+                  item_name: 'Multi-color LED COB Spotlights',
+                  brand: 'Philips',
+                  material_specifications: '12W warm white focus spotlights',
+                  quantity_expected: 20.00,
+                  quantity_received: 0.00,
+                  is_damaged: false,
+                  damage_description: null,
+                  condition_notes: null,
+                  photo_key: null,
+                  specification_conformance_status: 'conforming',
+                  specification_variance_details: null,
+                  inspection_status: 'pending',
+                  rejected_quantity: 0.00,
+                  rejection_reason: null,
+                  created_at: new Date().toISOString()
+                }
+              ];
+            }
+
+            const matchInspect = pathPart.match(/\/projects\/[a-zA-Z0-9-]+\/material-deliveries\/([a-zA-Z0-9-]+)\/inspect$/);
+            const matchSingle = pathPart.match(/\/projects\/[a-zA-Z0-9-]+\/material-deliveries\/([a-zA-Z0-9-]+)$/);
+            const matchQuery = pathPart.includes('/material-deliveries');
+
+            if (matchInspect && method === 'post') {
+              const deliveryId = matchInspect[1];
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const { inspectionNotes, items } = payload;
+              
+              const mdIdx = mockDatabase.materialDeliveries.findIndex(d => d.id === deliveryId);
+              if (mdIdx !== -1) {
+                let anyRejected = false;
+                let allAcceptedConforming = true;
+
+                if (Array.isArray(items)) {
+                  items.forEach(itemUpdate => {
+                    const idx = mockDatabase.materialDeliveryItems.findIndex(i => i.id === itemUpdate.itemId);
+                    if (idx !== -1) {
+                      const {
+                        quantityReceived,
+                        specificationConformanceStatus,
+                        specificationVarianceDetails,
+                        inspectionStatus,
+                        rejectedQuantity,
+                        rejectionReason
+                      } = itemUpdate;
+
+                      if (inspectionStatus === 'rejected') {
+                        anyRejected = true;
+                      }
+                      if (specificationConformanceStatus === 'non-conforming' || inspectionStatus === 'rejected') {
+                        allAcceptedConforming = false;
+                      }
+
+                      mockDatabase.materialDeliveryItems[idx] = {
+                        ...mockDatabase.materialDeliveryItems[idx],
+                        quantity_received: quantityReceived,
+                        specification_conformance_status: specificationConformanceStatus,
+                        specification_variance_details: specificationVarianceDetails,
+                        inspection_status: inspectionStatus,
+                        rejected_quantity: rejectedQuantity,
+                        rejection_reason: rejectionReason,
+                        updated_at: new Date().toISOString()
+                      };
+                    }
+                  });
+                }
+
+                let finalStatus = 'inspected';
+                if (anyRejected) {
+                  finalStatus = 'rejected';
+                } else if (!allAcceptedConforming) {
+                  finalStatus = 'partially received';
+                }
+
+                let vendorNotificationSent = false;
+                let vendorNotificationSentAt = null;
+                if (anyRejected) {
+                  vendorNotificationSent = true;
+                  vendorNotificationSentAt = new Date().toISOString();
+                }
+
+                mockDatabase.materialDeliveries[mdIdx] = {
+                  ...mockDatabase.materialDeliveries[mdIdx],
+                  status: finalStatus,
+                  inspection_date: new Date().toISOString(),
+                  inspected_by: 'mock-user-123',
+                  receiver_name: 'System Admin',
+                  inspection_notes: inspectionNotes || null,
+                  vendor_notification_sent: vendorNotificationSent,
+                  vendor_notification_sent_at: vendorNotificationSentAt,
+                  actual_receipt_date: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                };
+
+                persistDb();
+                
+                const responseObj = { ...mockDatabase.materialDeliveries[mdIdx] };
+                responseObj.items = mockDatabase.materialDeliveryItems.filter(i => i.material_delivery_id === deliveryId);
+                responseData.data = responseObj;
+              } else {
+                responseData.success = false;
+              }
+            }
+            else if (matchSingle) {
+              const deliveryId = matchSingle[1];
+              if (method === 'get') {
+                const delivery = mockDatabase.materialDeliveries.find(d => d.id === deliveryId);
+                if (delivery) {
+                  const items = mockDatabase.materialDeliveryItems.filter(i => i.material_delivery_id === deliveryId);
+                  responseData.data = { ...delivery, items };
+                } else {
+                  responseData.success = false;
+                }
+              }
+            }
+            else if (matchQuery) {
+              if (method === 'get') {
+                responseData.data = mockDatabase.materialDeliveries;
               }
             }
           }

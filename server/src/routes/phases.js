@@ -83,7 +83,10 @@ router.put('/:phaseId', authorize('projects:manage'), async (req, res, next) => 
       err.message.includes('Design scope must be locked') ||
       err.message.includes('Site readiness checklist')
     ) {
-      return fail(res, err.status === 400 ? 'SITE_READINESS_REQUIRED' : 'SCOPE_LOCK_REQUIRED', err.message, 400);
+      const code = (err.message.includes('Design scope must be locked') || err.message === 'SCOPE_LOCK_REQUIRED')
+        ? 'SCOPE_LOCK_REQUIRED'
+        : 'SITE_READINESS_REQUIRED';
+      return fail(res, code, err.message, 400);
     }
     console.error('[Phases Router] Update error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update phase.', 500);

@@ -220,7 +220,8 @@ describe('Quotation Versioning and Comparison API', () => {
         .send({
           title: 'Client Reductions',
           description: 'Reduction of items requested by client',
-          amount: 5000
+          amount: 5000,
+          timeline_impact_days: 0
         });
       expect(coRes.status).toBe(201);
       const coId = coRes.body.data.id;

@@ -7,6 +7,9 @@ describe('Lead-to-Project Conversion Checklist API', () => {
   let leadId;
 
   beforeAll(async () => {
+    // Reset tenant config to empty before starting tests
+    await pool.query("UPDATE tenants SET config = '{}' WHERE slug = 'demo'");
+
     // Clean database connections and seed if needed
     const loginRes = await request(app)
       .post('/api/auth/login')
@@ -367,6 +370,16 @@ describe('Lead-to-Project Conversion Checklist API', () => {
         INSERT INTO documents (tenant_id, project_id, name, doc_type, version, storage_key, status, uploaded_by)
         VALUES ($1, $2, 'contract.pdf', 'contract', 1, 'key-pdf', 'approved', $3)
       `, [tenantId, projectId, userId]);
+
+      // 2.5 Seed completed site readiness checklist items
+      await pool.query(`
+        INSERT INTO project_site_readiness (tenant_id, project_id, item_key, label, is_completed)
+        VALUES 
+          ($1, $2, 'civil_handover', 'Civil Handover Completed', true),
+          ($1, $2, 'electrical_rough_in', 'Electrical Rough-In Ready', true),
+          ($1, $2, 'waterproofing', 'Wet Area Waterproofing Done', true),
+          ($1, $2, 'debris_cleared', 'Debris Cleared & Site Cleaned', true)
+      `, [tenantId, projectId]);
 
       // 3. Create execution phase
       const phaseRes = await pool.query(`

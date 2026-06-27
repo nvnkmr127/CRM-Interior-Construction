@@ -22,24 +22,39 @@ export default function HandoverChecklist({ projectId }) {
       .then(res => {
         const raw = res.data?.data || res.data
         if (!raw) { setChecklist(null); return }
-        // Normalize server data to component's expected shape
-        const rooms = (raw.rooms || raw.items || [])
+        
+        const rawItems = raw.items || []
+        const roomMap = {}
+        rawItems.forEach(i => {
+          const roomName = i.room || 'General'
+          if (!roomMap[roomName]) {
+            roomMap[roomName] = {
+              id: roomName,
+              name: roomName,
+              items: []
+            }
+          }
+          roomMap[roomName].items.push({
+            id: i.id,
+            desc: i.description || i.desc,
+            isChecked: i.is_checked || i.isChecked || false,
+            checkedBy: i.checked_by || i.checkedBy || null,
+            checkedAt: i.checked_at || i.checkedAt || null,
+            photoKey: i.photo_key || i.photoKey || null,
+            itemType: i.item_type || 'inspection',
+            serialNumber: i.serial_number || '',
+            warrantyExpiryDate: i.warranty_expiry_date || '',
+            hasManual: i.has_manual || false,
+            hasWarrantyCard: i.has_warranty_card || false,
+            keyDetails: i.key_details || ''
+          })
+        })
+
         const normalized = {
           id: raw.id,
           status: raw.status || 'in_progress',
           signedOffAt: raw.signed_off_at || raw.signedOffAt || null,
-          rooms: Array.isArray(rooms) ? rooms.map(r => ({
-            id: r.id,
-            name: r.room || r.name,
-            items: (r.items || []).map(i => ({
-              id: i.id,
-              desc: i.description || i.desc,
-              isChecked: i.is_checked || i.isChecked || false,
-              checkedBy: i.checked_by || i.checkedBy || null,
-              checkedAt: i.checked_at || i.checkedAt || null,
-              photoKey: i.photo_key || i.photoKey || null,
-            }))
-          })) : [],
+          rooms: Object.values(roomMap)
         }
         setChecklist(normalized)
       })
@@ -68,6 +83,30 @@ export default function HandoverChecklist({ projectId }) {
     if (next.has(roomId)) next.delete(roomId)
     else next.add(roomId)
     setCollapsedRooms(next)
+  }
+
+  const handleUpdateDocFields = async (itemId, fields) => {
+    const newRooms = checklist.rooms.map(r => ({
+      ...r,
+      items: r.items.map(i => {
+        if (i.id !== itemId) return i
+        return {
+          ...i,
+          serialNumber: fields.serial_number !== undefined ? fields.serial_number : i.serialNumber,
+          warrantyExpiryDate: fields.warranty_expiry_date !== undefined ? fields.warranty_expiry_date : i.warrantyExpiryDate,
+          hasManual: fields.has_manual !== undefined ? fields.has_manual : i.hasManual,
+          hasWarrantyCard: fields.has_warranty_card !== undefined ? fields.has_warranty_card : i.hasWarrantyCard,
+          keyDetails: fields.key_details !== undefined ? fields.key_details : i.keyDetails
+        }
+      })
+    }))
+    setChecklist({ ...checklist, rooms: newRooms })
+
+    try {
+      await updateHandoverItem(itemId, { checklistId: checklist.id, ...fields })
+    } catch {
+      toast.error('Failed to update product details')
+    }
   }
 
   const toggleItem = async (roomId, itemId) => {
@@ -251,6 +290,64 @@ export default function HandoverChecklist({ projectId }) {
                       {item.isChecked && item.checkedBy && (
                         <div className={styles.itemMeta}>
                           ✓ Checked by {item.checkedBy} · {new Date(item.checkedAt).toLocaleDateString()}
+                        </div>
+                      )}
+                      {item.itemType === 'document' && (
+                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '8px', padding: '8px', background: 'var(--color-surface-hover)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <label style={{ fontSize: '10px', fontWeight: 600, color: 'var(--color-text-muted)' }}>SERIAL NUMBER</label>
+                            <input 
+                              type="text" 
+                              placeholder="e.g. SN12345" 
+                              value={item.serialNumber || ''} 
+                              disabled={isReadOnly}
+                              onChange={(e) => handleUpdateDocFields(item.id, { serial_number: e.target.value })}
+                              style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', width: '120px' }}
+                            />
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <label style={{ fontSize: '10px', fontWeight: 600, color: 'var(--color-text-muted)' }}>WARRANTY EXPIRY</label>
+                            <input 
+                              type="date" 
+                              value={item.warrantyExpiryDate ? item.warrantyExpiryDate.split('T')[0] : ''} 
+                              disabled={isReadOnly}
+                              onChange={(e) => handleUpdateDocFields(item.id, { warranty_expiry_date: e.target.value })}
+                              style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', height: '22px' }}
+                            />
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600, marginTop: '12px' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={item.hasManual} 
+                              disabled={isReadOnly}
+                              onChange={(e) => handleUpdateDocFields(item.id, { has_manual: e.target.checked })}
+                            />
+                            <span>Manual</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600, marginTop: '12px' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={item.hasWarrantyCard} 
+                              disabled={isReadOnly}
+                              onChange={(e) => handleUpdateDocFields(item.id, { has_warranty_card: e.target.checked })}
+                            />
+                            <span>Warranty Card</span>
+                          </div>
+                        </div>
+                      )}
+                      {item.itemType === 'key_access' && (
+                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '8px', padding: '8px', background: 'var(--color-surface-hover)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', width: '100%' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%' }}>
+                            <label style={{ fontSize: '10px', fontWeight: 600, color: 'var(--color-text-muted)' }}>HANDOVER DETAILS / QUANTITY / ACCESS CODES</label>
+                            <input 
+                              type="text" 
+                              placeholder="e.g. 3 physical keys / Temporary code: 1234 / Card #402" 
+                              value={item.keyDetails || ''} 
+                              disabled={isReadOnly}
+                              onChange={(e) => handleUpdateDocFields(item.id, { key_details: e.target.value })}
+                              style={{ fontSize: '11px', padding: '6px 10px', borderRadius: '4px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', width: '100%' }}
+                            />
+                          </div>
                         </div>
                       )}
                     </div>

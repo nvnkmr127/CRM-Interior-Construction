@@ -215,3 +215,158 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* Added Styles for Portal Change Orders */
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  background: #f8fafc;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-top: 4px;
+}
+
+.metaItem {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.metaItem strong {
+  color: #0f172a;
+  display: block;
+  font-size: 0.875rem;
+  margin-top: 2px;
+}
+
+.deltaSection {
+  border-top: 1px dashed #e2e8f0;
+  padding-top: 12px;
+  margin-top: 4px;
+}
+
+.deltaTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.deltaTableWrapper {
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.deltaTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+  text-align: left;
+}
+
+.deltaTable th {
+  background: #f8fafc;
+  color: #64748b;
+  padding: 8px 10px;
+  font-weight: 600;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.deltaTable td {
+  padding: 8px 10px;
+  color: #334155;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.deltaTable tr:last-child td {
+  border-bottom: none;
+}
+
+.badgeAddition {
+  color: #047857;
+  background-color: #ecfdf5;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.badgeReduction {
+  color: #b91c1c;
+  background-color: #fef2f2;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.signatureSection {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-top: 4px;
+}
+
+.signatureIcon {
+  font-size: 1.25rem;
+  color: #16a34a;
+}
+
+.signatureDetails {
+  font-size: 0.75rem;
+  color: #14532d;
+  line-height: 1.4;
+}
+
+.signatureDetails strong {
+  display: block;
+  font-size: 0.875rem;
+  color: #15803d;
+}
+
+.revisedCostHighlight {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: #475569;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.revisedCostHighlight strong {
+  color: #0f172a;
+}
+
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modalLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #334155;
+}
+
+.modalInput {
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: #0f172a;
+  outline: none;
+}
+
+.modalInput:focus {
+  border-color: #3b82f6;
+}

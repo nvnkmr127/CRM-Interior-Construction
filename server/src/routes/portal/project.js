@@ -25,6 +25,7 @@ router.get('/', async (req, res, next) => {
         p.start_date, 
         p.target_date,
         p.is_scope_locked,
+        COALESCE(p.contract_value, 0) AS contract_value,
         pm_user.name AS pm_name,
         designer_user.name AS designer_name,
         (
@@ -101,7 +102,7 @@ router.get('/documents', async (req, res, next) => {
     const { projectId, tenantId } = req.portalUser;
 
     const query = `
-      SELECT id, name, doc_type, storage_key, file_size_bytes, mime_type, created_at
+      SELECT id, name, doc_type, storage_key, file_size_bytes, mime_type, created_at, client_acknowledged_at, client_acknowledged_by
       FROM documents
       WHERE project_id = $1 AND tenant_id = $2 AND is_visible_to_client = true
       ORDER BY created_at DESC
@@ -118,6 +119,8 @@ router.get('/documents', async (req, res, next) => {
         fileSizeBytes: doc.file_size_bytes,
         mimeType: doc.mime_type,
         createdAt: doc.created_at,
+        clientAcknowledgedAt: doc.client_acknowledged_at,
+        clientAcknowledgedBy: doc.client_acknowledged_by,
         downloadUrl
       };
     }));
@@ -247,6 +250,89 @@ router.get('/delay-notifications', async (req, res, next) => {
 
     const result = await pool.query(query, [projectId, tenantId]);
     res.json({ success: true, data: result.rows });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/portal/project/documents/:documentId/acknowledge
+router.post('/documents/:documentId/acknowledge', async (req, res, next) => {
+  try {
+    const { projectId, tenantId, name: clientName } = req.portalUser;
+    const { documentId } = req.params;
+
+    const query = `
+      UPDATE documents
+      SET client_acknowledged_at = NOW(), client_acknowledged_by = $1
+      WHERE id = $2 AND project_id = $3 AND tenant_id = $4 AND is_visible_to_client = true
+      RETURNING *
+    `;
+    const { rows } = await pool.query(query, [clientName, documentId, projectId, tenantId]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Document not found or not visible' });
+    }
+
+    res.json({ success: true, data: rows[0], message: 'Document acknowledged successfully.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/portal/project/documents/:documentId/comments
+router.get('/documents/:documentId/comments', async (req, res, next) => {
+  try {
+    const { projectId, tenantId } = req.portalUser;
+    const { documentId } = req.params;
+
+    const check = await pool.query(
+      `SELECT id FROM documents WHERE id = $1 AND project_id = $2 AND tenant_id = $3 AND is_visible_to_client = true`,
+      [documentId, projectId, tenantId]
+    );
+    if (check.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Document not found or not visible' });
+    }
+
+    const query = `
+      SELECT id, comment, created_by_client, created_by_name, created_at
+      FROM design_item_comments
+      WHERE document_id = $1 AND tenant_id = $2
+      ORDER BY created_at ASC
+    `;
+    const { rows } = await pool.query(query, [documentId, tenantId]);
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/portal/project/documents/:documentId/comments
+router.post('/documents/:documentId/comments', async (req, res, next) => {
+  try {
+    const { projectId, tenantId, name: clientName } = req.portalUser;
+    const { documentId } = req.params;
+    const { comment } = req.body;
+
+    if (!comment || !comment.trim()) {
+      return res.status(400).json({ success: false, message: 'Comment cannot be empty' });
+    }
+
+    const check = await pool.query(
+      `SELECT id FROM documents WHERE id = $1 AND project_id = $2 AND tenant_id = $3 AND is_visible_to_client = true`,
+      [documentId, projectId, tenantId]
+    );
+    if (check.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Document not found or not visible' });
+    }
+
+    const query = `
+      INSERT INTO design_item_comments (
+        tenant_id, document_id, comment, created_by_client, created_by_name
+      ) VALUES ($1, $2, $3, true, $4)
+      RETURNING *
+    `;
+    const { rows } = await pool.query(query, [tenantId, documentId, comment.trim(), clientName]);
+    res.status(201).json({ success: true, data: rows[0] });
   } catch (error) {
     next(error);
   }

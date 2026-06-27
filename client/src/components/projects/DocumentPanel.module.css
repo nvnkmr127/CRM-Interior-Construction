@@ -67,3 +67,181 @@
   background: var(--color-surface-3);
 }
 
+.cardFooter {
+  margin-top: auto;
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ackSection {
+  font-size: 11px;
+  min-height: 18px;
+}
+
+.ackText {
+  color: #15803d;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pendingAckText {
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.actionRow {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.visibilityBtn, .cardCommentsBtn {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  transition: 0.2s;
+}
+
+.visibilityBtn:hover {
+  background: var(--color-border);
+}
+
+.visibilityBtn.visible {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.visibilityBtn.visible:hover {
+  background: #dcfce7;
+}
+
+.visibilityBtn.private {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.visibilityBtn.private:hover {
+  background: #fee2e2;
+}
+
+.cardCommentsBtn {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1e40af;
+}
+
+.cardCommentsBtn:hover {
+  background: #dbeafe;
+}
+
+/* Comments Modal styles */
+.commentsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-height: 480px;
+}
+
+.commentsListContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  overflow-y: auto;
+  max-height: 320px;
+  padding: var(--space-3);
+  background: var(--color-surface-2);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.noComments {
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  padding: var(--space-4) 0;
+  font-style: italic;
+}
+
+.commentBubble {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  max-width: 85%;
+  line-height: 1.4;
+}
+
+.commentBubble.clientComment {
+  align-self: flex-start;
+  background: #e0f2fe;
+  color: #0369a1;
+  border-bottom-left-radius: 2px;
+}
+
+.commentBubble.staffComment {
+  align-self: flex-end;
+  background: white;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-bottom-right-radius: 2px;
+  box-shadow: var(--shadow-sm);
+}
+
+.commentHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  font-size: 10px;
+  opacity: 0.8;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  padding-bottom: 2px;
+  margin-bottom: 2px;
+}
+
+.commentDate {
+  white-space: nowrap;
+}
+
+.commentText {
+  word-break: break-word;
+}
+
+.commentForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.commentArea {
+  width: 100%;
+  height: 60px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  resize: none;
+  outline: none;
+}
+
+.commentArea:focus {
+  border-color: var(--color-primary);
+}
+

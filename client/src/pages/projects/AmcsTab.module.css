@@ -1,0 +1,270 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-2);
+}
+
+.metricCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metricCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-border-strong);
+}
+
+.metricLabel {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.metricValue {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.actionBar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.amcList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.amcCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s ease;
+}
+
+.amcCard:hover {
+  border-color: var(--color-border-strong);
+}
+
+.amcHeader {
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-surface-2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.amcTitleArea {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.contractNumber {
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--color-text);
+  font-family: var(--mono);
+}
+
+.contractValue {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.amcDates {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.amcBody {
+  padding: var(--space-5);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  background: var(--color-surface);
+}
+
+.scopeSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.sectionTitle {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.scopeText {
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.visitsSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.visitsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.visitsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+}
+
+@media (min-width: 768px) {
+  .visitsGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.visitCard {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  position: relative;
+}
+
+.visitHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.visitDate {
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+}
+
+.badgeActive { background: rgba(34, 197, 94, 0.1); color: var(--color-success); }
+.badgeExpired { background: rgba(107, 114, 128, 0.1); color: var(--color-text-secondary); }
+.badgeCancelled { background: rgba(239, 68, 68, 0.1); color: var(--color-danger); }
+.badgeScheduled { background: rgba(59, 130, 246, 0.1); color: var(--color-accent); }
+.badgeCompleted { background: rgba(34, 197, 94, 0.1); color: var(--color-success); }
+.badgeMissed { background: rgba(239, 68, 68, 0.1); color: var(--color-danger); }
+
+.visitRemarks {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+  background: var(--color-surface);
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+.visitActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  text-align: center;
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.emptyIcon {
+  font-size: 48px;
+  margin-bottom: var(--space-4);
+  opacity: 0.7;
+}
+
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-2);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+@media (max-width: 640px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-4);
+}
+
+.techSelect {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}

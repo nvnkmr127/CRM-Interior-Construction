@@ -59,7 +59,8 @@ describe('Project Work Activities API & Progress Rollup', () => {
           trade: 'civil',
           activity_name: 'Test Demolition & Sanding',
           description: 'Custom activity description',
-          status: 'todo'
+          status: 'todo',
+          qc_checklist: []
         });
 
       expect(res.status).toBe(201);
@@ -118,6 +119,58 @@ describe('Project Work Activities API & Progress Rollup', () => {
       expect(res.body.data.notes).toBe('Completed successfully.');
       expect(res.body.data.completed_at).toBeDefined();
     });
+
+    it('enforces QC checklist items completion before marking activity completed', async () => {
+      // 1. Generate activities for Carpentry trade in a room (e.g. Living Room)
+      // This will automatically populate carpentry default checklist
+      const genRes = await request(app)
+        .post(`/api/projects/${projectId}/work-activities/generate`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          phaseId: phaseId,
+          roomName: 'Living Room',
+          trade: 'carpentry'
+        });
+
+      expect(genRes.status).toBe(201);
+      const generatedAct = genRes.body.data[0];
+      expect(generatedAct.qc_checklist).toBeDefined();
+      expect(generatedAct.qc_checklist.length).toBeGreaterThan(0);
+
+      // 2. Try to mark it complete immediately - should FAIL with 400
+      const failRes = await request(app)
+        .patch(`/api/projects/${projectId}/work-activities/${generatedAct.id}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          status: 'completed'
+        });
+      
+      expect(failRes.status).toBe(400);
+      expect(failRes.body.success).toBe(false);
+      expect(failRes.body.error.code).toBe('QC_CHECKLIST_INCOMPLETE');
+
+      // 3. Check all QC checklist items
+      const checkedChecklist = generatedAct.qc_checklist.map(item => ({
+        ...item,
+        is_checked: true
+      }));
+
+      // 4. Update the activity with checked checklist and status 'completed' - should SUCCEED
+      const successRes = await request(app)
+        .patch(`/api/projects/${projectId}/work-activities/${generatedAct.id}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          status: 'completed',
+          qc_checklist: checkedChecklist
+        });
+
+      expect(successRes.status).toBe(200);
+      expect(successRes.body.success).toBe(true);
+      expect(successRes.body.data.status).toBe('completed');
+
+      // Cleanup generated carpentry activities to prevent test contamination
+      await pool.query("DELETE FROM project_work_activities WHERE project_id = $1 AND trade = 'carpentry'", [projectId]);
+    }, 15000);
 
     it('calculates the dynamic phase completion percentage rollup correctly', async () => {
       // We have:

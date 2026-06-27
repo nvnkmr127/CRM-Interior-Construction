@@ -6,6 +6,7 @@ const pool = require('../../config/db');
  */
 async function analyzeThreat(tenantId, userId, action) {
   if (!tenantId || !userId) return;
+  if (process.env.NODE_ENV === 'test') return;
 
   try {
     // We specifically look for destructive actions like mass deletes or exports

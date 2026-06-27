@@ -183,4 +183,87 @@ router.post('/:did/version', authorize('projects:manage'), async (req, res, next
   }
 });
 
+// PATCH /api/projects/:projectId/documents/:documentId/visibility
+router.patch('/:documentId/visibility', authorize('projects:manage'), async (req, res, next) => {
+  try {
+    const { projectId, documentId } = req.params;
+    const { isVisibleToClient } = req.body;
+    const tenantId = req.tenantId;
+
+    if (typeof isVisibleToClient !== 'boolean') {
+      return fail(res, 'VALIDATION_ERROR', 'isVisibleToClient must be a boolean', 400);
+    }
+
+    const query = `
+      UPDATE documents
+      SET is_visible_to_client = $1
+      WHERE id = $2 AND project_id = $3 AND tenant_id = $4
+      RETURNING *
+    `;
+    const { rows } = await pool.query(query, [isVisibleToClient, documentId, projectId, tenantId]);
+    if (rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Document not found.', 404);
+    }
+    return success(res, rows[0]);
+  } catch (err) {
+    console.error('[Documents Router] Patch visibility error:', err);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to update visibility.', 500);
+  }
+});
+
+// GET /api/projects/:projectId/documents/:documentId/comments
+router.get('/:documentId/comments', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const { documentId } = req.params;
+    const tenantId = req.tenantId;
+
+    const query = `
+      SELECT id, comment, created_by_client, created_by_name, created_at
+      FROM design_item_comments
+      WHERE document_id = $1 AND tenant_id = $2
+      ORDER BY created_at ASC
+    `;
+    const { rows } = await pool.query(query, [documentId, tenantId]);
+    return success(res, rows);
+  } catch (err) {
+    console.error('[Documents Router] Get comments error:', err);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to fetch comments.', 500);
+  }
+});
+
+// POST /api/projects/:projectId/documents/:documentId/comments
+router.post('/:documentId/comments', authorize('projects:manage'), async (req, res, next) => {
+  try {
+    const { projectId, documentId } = req.params;
+    const { comment } = req.body;
+    const tenantId = req.tenantId;
+    const creatorName = req.user?.name || req.user?.username || 'Project Team';
+
+    if (!comment || !comment.trim()) {
+      return fail(res, 'VALIDATION_ERROR', 'Comment cannot be empty', 400);
+    }
+
+    // Verify the document exists in this project
+    const check = await pool.query(
+      `SELECT id FROM documents WHERE id = $1 AND project_id = $2 AND tenant_id = $3`,
+      [documentId, projectId, tenantId]
+    );
+    if (check.rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Document not found.', 404);
+    }
+
+    const query = `
+      INSERT INTO design_item_comments (
+        tenant_id, document_id, comment, created_by_client, created_by_name
+      ) VALUES ($1, $2, $3, false, $4)
+      RETURNING *
+    `;
+    const { rows } = await pool.query(query, [tenantId, documentId, comment.trim(), creatorName]);
+    return success(res, rows[0], {}, 201);
+  } catch (err) {
+    console.error('[Documents Router] Create comment error:', err);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to add comment.', 500);
+  }
+});
+
 module.exports = router;

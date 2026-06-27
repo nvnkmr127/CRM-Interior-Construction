@@ -109,6 +109,14 @@ export default function WorkActivitiesTab({ projectId, project }) {
     const nextStatus = act.status === 'completed' ? 'todo' : 'completed';
     const oldStatus = act.status;
 
+    if (nextStatus === 'completed') {
+      const incomplete = act.qc_checklist?.filter(item => item.required && !item.is_checked) || [];
+      if (incomplete.length > 0) {
+        toast.error(`Cannot complete activity: Please check all required QC checklist items first.`);
+        return;
+      }
+    }
+
     // Optimistic update
     setActivities(prev =>
       prev.map(a =>
@@ -136,6 +144,14 @@ export default function WorkActivitiesTab({ projectId, project }) {
 
   // Handle inline changes (assignee, status dropdown, due date, notes)
   const handleUpdateActivity = async (id, field, value) => {
+    if (field === 'status' && value === 'completed') {
+      const act = activities.find(a => a.id === id);
+      const incomplete = act?.qc_checklist?.filter(item => item.required && !item.is_checked) || [];
+      if (incomplete.length > 0) {
+        toast.error(`Cannot complete activity: Please check all required QC checklist items first.`);
+        return;
+      }
+    }
     try {
       const payload = { [field]: value === '' ? null : value };
       const res = await updateWorkActivity(projectId, id, payload);
@@ -145,6 +161,41 @@ export default function WorkActivitiesTab({ projectId, project }) {
       }
     } catch {
       toast.error('Failed to update activity');
+    }
+  };
+
+  const handleToggleQcItem = async (act, itemIndex, isChecked) => {
+    const updatedChecklist = act.qc_checklist.map((item, idx) => 
+      idx === itemIndex ? { ...item, is_checked: isChecked } : item
+    );
+
+    // Optimistic update
+    setActivities(prev =>
+      prev.map(a =>
+        a.id === act.id
+          ? {
+              ...a,
+              qc_checklist: updatedChecklist
+            }
+          : a
+      )
+    );
+
+    try {
+      await updateWorkActivity(projectId, act.id, { qc_checklist: updatedChecklist });
+    } catch {
+      // Revert on error
+      setActivities(prev =>
+        prev.map(a =>
+          a.id === act.id
+            ? {
+                ...a,
+                qc_checklist: act.qc_checklist
+              }
+            : a
+        )
+      );
+      toast.error('Failed to update QC checklist item');
     }
   };
 
@@ -703,8 +754,31 @@ export default function WorkActivitiesTab({ projectId, project }) {
                         </div>
                       </div>
 
+                      {/* QC Pre-Installation Checklist */}
+                      {act.qc_checklist && act.qc_checklist.length > 0 && (
+                        <div className={styles.qcChecklistContainer}>
+                          <div className={styles.qcChecklistTitle}>QC Pre-Installation Checklist:</div>
+                          {act.qc_checklist.map((item, idx) => (
+                            <label key={item.id || idx} className={styles.qcChecklistItem}>
+                              <input
+                                type="checkbox"
+                                checked={!!item.is_checked}
+                                disabled={act.status === 'completed'}
+                                onChange={(e) => handleToggleQcItem(act, idx, e.target.checked)}
+                              />
+                              <span className={item.is_checked ? styles.completedText : ''} style={{ fontSize: 'var(--text-sm)', display: 'inline-flex', alignItems: 'center' }}>
+                                {item.label}
+                                {item.required && (
+                                  <span className={styles.requiredTag}>* required</span>
+                                )}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+
                       {/* Supervisor Notes input */}
-                      <div style={{ marginTop: 6 }}>
+                      <div style={{ marginTop: 12 }}>
                         <input
                           type="text"
                           className={styles.notesInput}

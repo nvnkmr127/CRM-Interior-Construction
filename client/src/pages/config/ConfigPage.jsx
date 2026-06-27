@@ -15,6 +15,7 @@ const WebhooksManager     = lazy(() => import('./WebhooksManager'))
 const LogsViewer          = lazy(() => import('./LogsViewer'))
 const UsersManager        = lazy(() => import('./UsersManager'))
 const ConversionChecklistManager = lazy(() => import('./ConversionChecklistManager'))
+const QcChecklistsManager = lazy(() => import('./QcChecklistsManager'))
 
 const CONFIG_NAV = [
   { group: 'PIPELINE', items: [
@@ -25,6 +26,7 @@ const CONFIG_NAV = [
     { to: 'templates',     icon: '◈', label: 'Project Templates', desc: 'Phase & milestone blueprints' },
     { to: 'automations',   icon: '⚙', label: 'Automations',       desc: 'Trigger-based rules' },
     { to: 'conversion-checklist', icon: '☑', label: 'Conversion Checklist', desc: 'Pre-conversion requirements' },
+    { to: 'qc-checklists', icon: '☑', label: 'Trade QC Checklists', desc: 'Pre-installation checklists' },
   ]},
   { group: 'INTEGRATIONS', items: [
     { to: 'api-keys',      icon: '⊙', label: 'API Keys',    desc: 'Connect external tools' },
@@ -84,6 +86,7 @@ export default function ConfigPage() {
             <Route path='templates'     element={<TemplateBuilder />} />
             <Route path='automations'   element={<AutomationBuilder />} />
             <Route path='conversion-checklist' element={<ConversionChecklistManager />} />
+            <Route path='qc-checklists' element={<QcChecklistsManager />} />
             <Route path='api-keys'      element={<ApiKeysManager />} />
             <Route path='webhooks'      element={<WebhooksManager />} />
             <Route path='logs'          element={<LogsViewer />} />

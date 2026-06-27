@@ -57,6 +57,44 @@ class QuotationService {
   }
 
   async updateBOQItem(tenantId, itemId, itemData) {
+    // 1. Fetch current item details to compare spec changes
+    const currentRes = await pool.query(
+      `SELECT qi.*, q.project_id, q.status as quotation_status 
+       FROM quotation_items qi
+       JOIN quotations q ON qi.quotation_id = q.id
+       WHERE qi.id = $1 AND qi.tenant_id = $2`,
+      [itemId, tenantId]
+    );
+    if (currentRes.rows.length > 0) {
+      const currentItem = currentRes.rows[0];
+      
+      if (currentItem.quotation_status === 'accepted') {
+        // Check if brand, material_specifications, or unit_price are changing
+        const isBrandChanging = itemData.brand !== undefined && (itemData.brand || null) !== (currentItem.brand || null);
+        const isSpecChanging = itemData.materialSpecifications !== undefined && (itemData.materialSpecifications || null) !== (currentItem.material_specifications || null);
+        const isPriceChanging = itemData.unitPrice !== undefined && Number(itemData.unitPrice) !== Number(currentItem.unit_price);
+
+        if (isBrandChanging || isSpecChanging || isPriceChanging) {
+          // Automatically generate a material substitution request for client approval
+          const materialSubstitutionService = require('./materialSubstitutionService');
+          await materialSubstitutionService.createMaterialSubstitution(tenantId, currentItem.project_id, {
+            boqItemId: itemId,
+            reasonShortage: 'Material specification/brand/cost update in BOQ',
+            replacementItemName: itemData.itemName !== undefined ? itemData.itemName : currentItem.item_name,
+            replacementBrand: itemData.brand !== undefined ? itemData.brand : currentItem.brand,
+            replacementMaterialSpecifications: itemData.materialSpecifications !== undefined ? itemData.materialSpecifications : currentItem.material_specifications,
+            replacementUnitPrice: itemData.unitPrice !== undefined ? Number(itemData.unitPrice) : Number(currentItem.unit_price)
+          });
+
+          // Strip these fields from itemData so they are NOT directly updated without client sign-off
+          delete itemData.brand;
+          delete itemData.materialSpecifications;
+          delete itemData.unitPrice;
+          delete itemData.itemName;
+        }
+      }
+    }
+
     const fields = [];
     const values = [tenantId, itemId];
     let index = 3;
@@ -124,10 +162,10 @@ class QuotationService {
 
   async updateQuotationTotals(tenantId, quotationId, client = pool) {
     // 1. Fetch current quotation configuration
-    const qQuery = 'SELECT gst_type, discount_amount FROM quotations WHERE id = $1 AND tenant_id = $2';
+    const qQuery = 'SELECT status, gst_type, discount_amount FROM quotations WHERE id = $1 AND tenant_id = $2';
     const qRes = await client.query(qQuery, [quotationId, tenantId]);
     if (qRes.rowCount === 0) return null;
-    const { gst_type: gstType, discount_amount: discountAmountStr } = qRes.rows[0];
+    const { status, gst_type: gstType, discount_amount: discountAmountStr } = qRes.rows[0];
     const discountAmount = parseFloat(discountAmountStr || 0);
 
     // 2. Recompute CGST, SGST, IGST on each line item based on parent's gst_type and line-item's own gst_rate
@@ -143,14 +181,43 @@ class QuotationService {
     // 3. Sum up all BOQ items' subtotals and tax splits (negating reductions)
     const sumQuery = `
       SELECT 
-        COALESCE(SUM(CASE WHEN scope_type = 'reduction' THEN -total_price ELSE total_price END), 0) as new_subtotal,
-        COALESCE(SUM(CASE WHEN scope_type = 'reduction' THEN -cgst_amount ELSE cgst_amount END), 0) as new_cgst,
-        COALESCE(SUM(CASE WHEN scope_type = 'reduction' THEN -sgst_amount ELSE sgst_amount END), 0) as new_sgst,
-        COALESCE(SUM(CASE WHEN scope_type = 'reduction' THEN -igst_amount ELSE igst_amount END), 0) as new_igst
-      FROM quotation_items
-      WHERE quotation_id = $1 AND tenant_id = $2
+        COALESCE(SUM(
+          CASE 
+            WHEN scope_type = 'original' THEN total_price
+            WHEN scope_type = 'addition' AND ($1 != 'accepted' OR pco.status = 'approved') THEN total_price
+            WHEN scope_type = 'reduction' AND ($1 != 'accepted' OR pco.status = 'approved') THEN -total_price
+            ELSE 0 
+          END
+        ), 0) as new_subtotal,
+        COALESCE(SUM(
+          CASE 
+            WHEN scope_type = 'original' THEN cgst_amount
+            WHEN scope_type = 'addition' AND ($1 != 'accepted' OR pco.status = 'approved') THEN cgst_amount
+            WHEN scope_type = 'reduction' AND ($1 != 'accepted' OR pco.status = 'approved') THEN -cgst_amount
+            ELSE 0 
+          END
+        ), 0) as new_cgst,
+        COALESCE(SUM(
+          CASE 
+            WHEN scope_type = 'original' THEN sgst_amount
+            WHEN scope_type = 'addition' AND ($1 != 'accepted' OR pco.status = 'approved') THEN sgst_amount
+            WHEN scope_type = 'reduction' AND ($1 != 'accepted' OR pco.status = 'approved') THEN -sgst_amount
+            ELSE 0 
+          END
+        ), 0) as new_sgst,
+        COALESCE(SUM(
+          CASE 
+            WHEN scope_type = 'original' THEN igst_amount
+            WHEN scope_type = 'addition' AND ($1 != 'accepted' OR pco.status = 'approved') THEN igst_amount
+            WHEN scope_type = 'reduction' AND ($1 != 'accepted' OR pco.status = 'approved') THEN -igst_amount
+            ELSE 0 
+          END
+        ), 0) as new_igst
+      FROM quotation_items qi
+      LEFT JOIN project_change_orders pco ON qi.change_order_id = pco.id
+      WHERE qi.quotation_id = $2 AND qi.tenant_id = $3
     `;
-    const sumResult = await client.query(sumQuery, [quotationId, tenantId]);
+    const sumResult = await client.query(sumQuery, [status, quotationId, tenantId]);
     const newSubtotal = parseFloat(sumResult.rows[0].new_subtotal);
     const newCgst = parseFloat(sumResult.rows[0].new_cgst);
     const newSgst = parseFloat(sumResult.rows[0].new_sgst);

@@ -30,7 +30,16 @@ router.get('/', async (req, res, next) => {
 router.patch('/:id', async (req, res, next) => {
   try {
     const snagId = req.params.id;
-    const { status, assigneeId, resolutionNote } = req.body;
+    const { 
+      status, 
+      assigneeId, 
+      resolutionNote,
+      reworkRequired,
+      reworkRootCauseCategory,
+      reworkEstimatedHours,
+      reworkActualHours,
+      reworkCost
+    } = req.body;
     const tenantId = req.user.tenantId;
     const userId = req.user.userId;
 
@@ -41,7 +50,18 @@ router.patch('/:id', async (req, res, next) => {
     }
 
     if (status) {
-      updatedSnag = await updateSnagStatus({ tenantId, snagId, status, resolutionNote, userId });
+      updatedSnag = await updateSnagStatus({ 
+        tenantId, 
+        snagId, 
+        status, 
+        resolutionNote, 
+        userId,
+        reworkRequired,
+        reworkRootCauseCategory,
+        reworkEstimatedHours,
+        reworkActualHours,
+        reworkCost
+      });
     }
 
     if (!updatedSnag) {

@@ -296,3 +296,61 @@
   background-color: #fee2e2;
   color: #b91c1c;
 }
+
+.signatureBlock {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--color-bg-subtle, #f9fafb);
+  border: 1px dashed var(--color-border, #e5e7eb);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.signatureHeader {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  padding-bottom: 6px;
+}
+
+.signatureRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: var(--text-xs);
+}
+
+.signatureLabel {
+  color: var(--color-text-muted);
+  margin-right: 4px;
+}
+
+.signatureVal {
+  color: var(--color-text);
+}
+
+.signatureCanvasContainer {
+  background: #ffffff;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+}
+
+.signatureImg {
+  max-height: 50px;
+  object-fit: contain;
+}
+
+.signatureTextDraw {
+  font-family: 'Brush Script MT', cursive, sans-serif;
+  font-size: 24px;
+  color: var(--color-primary, #2563eb);
+}
+

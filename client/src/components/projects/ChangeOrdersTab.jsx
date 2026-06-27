@@ -5,6 +5,7 @@ import styles from './ChangeOrdersTab.module.css';
 import {
   getChangeOrders,
   createChangeOrder,
+  updateChangeOrder,
   deleteChangeOrder,
   getProject
 } from '../../api/projects';
@@ -15,10 +16,13 @@ export default function ChangeOrdersTab({ projectId }) {
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editId, setEditId] = useState(null);
   
   const [form, setForm] = useState({
     title: '',
     description: '',
+    reason: '',
+    timeline_impact_days: '',
     amount: ''
   });
 
@@ -52,30 +56,87 @@ export default function ChangeOrdersTab({ projectId }) {
     }
   };
 
-  const handleCreate = async (e) => {
-    e.preventDefault();
+  const handleOpenCreateModal = () => {
+    setEditId(null);
+    setForm({
+      title: '',
+      description: '',
+      reason: '',
+      timeline_impact_days: '0',
+      amount: ''
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (co) => {
+    setEditId(co.id);
+    setForm({
+      title: co.title,
+      description: co.description || '',
+      reason: co.reason || '',
+      timeline_impact_days: String(co.timeline_impact_days ?? 0),
+      amount: String(co.amount)
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
     if (!form.title.trim()) return toast.error('Title is required');
     if (!form.amount || isNaN(Number(form.amount)) || Number(form.amount) < 0) {
       return toast.error('Valid positive amount is required');
     }
+    if (form.timeline_impact_days === '' || isNaN(Number(form.timeline_impact_days))) {
+      return toast.error('Timeline impact is required and must be an integer (days added or removed)');
+    }
+
+    const payload = {
+      title: form.title.trim(),
+      description: form.description.trim() || null,
+      reason: form.reason.trim() || null,
+      timeline_impact_days: Number(form.timeline_impact_days),
+      amount: Number(form.amount)
+    };
 
     try {
-      const res = await createChangeOrder(projectId, {
-        title: form.title.trim(),
-        description: form.description.trim() || null,
-        amount: Number(form.amount),
-        status: 'pending'
-      });
+      if (editId) {
+        // Edit Change Order
+        const res = await updateChangeOrder(projectId, editId, payload);
+        if (res.data?.success) {
+          toast.success('Change order updated.');
+          fetchData(); // Refresh list to get items re-fetched and totals updated
+          setIsModalOpen(false);
+        }
+      } else {
+        // Create Change Order
+        const res = await createChangeOrder(projectId, {
+          ...payload,
+          status: 'draft' // Raised as draft by default
+        });
 
-      if (res.data?.success) {
-        setChangeOrders([res.data.data, ...changeOrders]);
-        setIsModalOpen(false);
-        setForm({ title: '', description: '', amount: '' });
-        toast.success('Change order raised successfully.');
+        if (res.data?.success) {
+          setChangeOrders([res.data.data, ...changeOrders]);
+          setIsModalOpen(false);
+          toast.success('Change order raised as draft.');
+        }
       }
     } catch (err) {
       console.error(err);
-      toast.error('Failed to raise change order.');
+      toast.error(editId ? 'Failed to update change order.' : 'Failed to raise change order.');
+    }
+  };
+
+  const handlePublish = async (id) => {
+    if (!window.confirm('Are you sure you want to submit this change order to the client for approval?')) return;
+    try {
+      const res = await updateChangeOrder(projectId, id, { status: 'submitted' });
+      if (res.data?.success) {
+        setChangeOrders(changeOrders.map(co => co.id === id ? { ...co, status: 'submitted' } : co));
+        toast.success('Change order submitted to client.');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to submit change order.');
     }
   };
 
@@ -99,8 +160,11 @@ export default function ChangeOrdersTab({ projectId }) {
         return <Badge variant="success">Approved</Badge>;
       case 'rejected':
         return <Badge variant="danger">Rejected</Badge>;
+      case 'submitted':
+        return <Badge variant="info">Submitted / Awaiting Client</Badge>;
+      case 'draft':
       default:
-        return <Badge variant="warning">Pending Client Approval</Badge>;
+        return <Badge variant="warning">Draft</Badge>;
     }
   };
 
@@ -124,6 +188,7 @@ export default function ChangeOrdersTab({ projectId }) {
   const allowedRevisions = project?.allowed_design_revisions ?? 3;
   const currentRevisions = project?.current_design_revisions ?? 0;
   const limitExceeded = currentRevisions >= allowedRevisions;
+  const baseContractValue = Number(project?.contract_value || project?.total_amount || 0);
 
   return (
     <div className={styles.container}>
@@ -146,7 +211,7 @@ export default function ChangeOrdersTab({ projectId }) {
         </p>
         {limitExceeded && (
           <div className={styles.bannerActions}>
-            <Button variant="danger" onClick={() => setIsModalOpen(true)}>
+            <Button variant="danger" onClick={handleOpenCreateModal}>
               Raise Change Order
             </Button>
           </div>
@@ -155,7 +220,7 @@ export default function ChangeOrdersTab({ projectId }) {
 
       <div className={styles.header}>
         <h2>Change Orders</h2>
-        <Button variant="primary" onClick={() => setIsModalOpen(true)}>
+        <Button variant="primary" onClick={handleOpenCreateModal}>
           + Raise Change Order
         </Button>
       </div>
@@ -165,7 +230,7 @@ export default function ChangeOrdersTab({ projectId }) {
           title="No Change Orders"
           description="Raise a change order when revision limits are exceeded or scope has expanded to authorize commercial recovery."
           actionLabel="Raise Change Order"
-          onAction={() => setIsModalOpen(true)}
+          onAction={handleOpenCreateModal}
         />
       ) : (
         <div className={styles.list}>
@@ -188,7 +253,97 @@ export default function ChangeOrdersTab({ projectId }) {
                 <p className={styles.cardDescription}>{co.description}</p>
               )}
 
-              {co.status === 'pending' && (
+              {/* Reason & Timeline Grid */}
+              <div className={styles.metaGrid}>
+                {co.reason && (
+                  <div className={styles.metaItem}>
+                    Reason for Change
+                    <strong>{co.reason}</strong>
+                  </div>
+                )}
+                <div className={styles.metaItem}>
+                  Timeline Impact
+                  <strong>{co.timeline_impact_days > 0 ? `+${co.timeline_impact_days} Days` : 'No Timeline Impact'}</strong>
+                </div>
+              </div>
+
+              {/* Revised Cost Highlights */}
+              <div className={styles.revisedCostHighlight}>
+                <span>Projected Revised Contract Value:</span>
+                <strong>{formatCurrency(baseContractValue + (co.status === 'approved' ? 0 : Number(co.amount)))}</strong>
+              </div>
+
+              {/* BOQ Delta Items */}
+              <div className={styles.deltaSection}>
+                <h5 className={styles.deltaTitle}>BOQ Scope Delta</h5>
+                {!co.items || co.items.length === 0 ? (
+                  <p className={styles.cardDescription} style={{ fontStyle: 'italic' }}>
+                    No BOQ items linked to this change order. You can link addition/reduction items to this change order under the Quotations tab.
+                  </p>
+                ) : (
+                  <div className={styles.deltaTableWrapper}>
+                    <table className={styles.deltaTable}>
+                      <thead>
+                        <tr>
+                          <th>Area/Room</th>
+                          <th>Item Name</th>
+                          <th>Qty</th>
+                          <th>Unit</th>
+                          <th>Unit Price</th>
+                          <th>Total</th>
+                          <th>Scope Type</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {co.items.map((item) => (
+                          <tr key={item.id}>
+                            <td>{item.room_or_area || 'N/A'}</td>
+                            <td>{item.item_name}</td>
+                            <td>{Number(item.quantity).toFixed(2)}</td>
+                            <td>{item.unit || 'Nos'}</td>
+                            <td>{formatCurrency(item.unit_price)}</td>
+                            <td>{formatCurrency(item.total_price)}</td>
+                            <td>
+                              <span className={item.scope_type === 'addition' ? styles.badgeAddition : styles.badgeReduction}>
+                                {item.scope_type === 'addition' ? '+ Addition' : '- Reduction'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Client Signature details */}
+              {co.status === 'approved' && co.client_signature && (
+                <div className={styles.signatureSection}>
+                  <span className={styles.signatureIcon}>✍️</span>
+                  <div className={styles.signatureDetails}>
+                    Approved via digital sign-off
+                    <strong>Digitally Signed by: {co.client_signature}</strong>
+                    <span>on {new Date(co.client_signed_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Staff Actions */}
+              {co.status === 'draft' && (
+                <div className={styles.cardActions}>
+                  <Button variant="ghost" size="sm" onClick={() => handleDelete(co.id)}>
+                    Cancel
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleOpenEditModal(co)}>
+                    Edit Details
+                  </Button>
+                  <Button variant="primary" size="sm" onClick={() => handlePublish(co.id)}>
+                    Submit to Client
+                  </Button>
+                </div>
+              )}
+
+              {co.status === 'submitted' && (
                 <div className={styles.cardActions}>
                   <Button variant="ghost" size="sm" onClick={() => handleDelete(co.id)}>
                     Cancel Change Order
@@ -200,19 +355,19 @@ export default function ChangeOrdersTab({ projectId }) {
         </div>
       )}
 
-      {/* Raise Change Order Modal */}
+      {/* Raise / Edit Change Order Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Raise Change Order"
+        title={editId ? "Edit Change Order" : "Raise Change Order"}
         footer={
           <>
             <Button variant="ghost" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button variant="primary" onClick={handleCreate}>Raise Change Order</Button>
+            <Button variant="primary" onClick={handleSubmit}>{editId ? "Save Changes" : "Raise Change Order"}</Button>
           </>
         }
       >
-        <form onSubmit={handleCreate} className={styles.modalForm}>
+        <form onSubmit={handleSubmit} className={styles.modalForm}>
           <Input
             label="Title"
             placeholder="e.g. Additional Revision Fee - Kitchen Layout"
@@ -228,12 +383,27 @@ export default function ChangeOrdersTab({ projectId }) {
             onChange={e => setForm({ ...form, amount: e.target.value })}
             required
           />
+          <Input
+            label="Timeline Impact (Days added/removed) *"
+            type="number"
+            placeholder="e.g. 5 or -2 (Use 0 for no impact)"
+            value={form.timeline_impact_days}
+            onChange={e => setForm({ ...form, timeline_impact_days: e.target.value })}
+            required
+          />
           <Textarea
-            label="Description"
-            placeholder="Describe the reason for the change order (e.g. client requested 4th design revision on drawings, exceeding contract terms)."
+            label="Reason for Change"
+            placeholder="e.g. Client requested revisions after architectural layout sign-off."
+            value={form.reason}
+            onChange={e => setForm({ ...form, reason: e.target.value })}
+            rows={2}
+          />
+          <Textarea
+            label="Description / Scope Details"
+            placeholder="Describe the specific modifications and additions to be performed."
             value={form.description}
             onChange={e => setForm({ ...form, description: e.target.value })}
-            rows={4}
+            rows={3}
           />
         </form>
       </Modal>

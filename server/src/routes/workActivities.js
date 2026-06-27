@@ -17,7 +17,13 @@ const createActivitySchema = z.object({
   assignee_id: z.string().uuid().optional().nullable(),
   due_date: z.string().optional().nullable(),
   status: z.string().optional(),
-  notes: z.string().optional().nullable()
+  notes: z.string().optional().nullable(),
+  qc_checklist: z.array(z.object({
+    id: z.string(),
+    label: z.string(),
+    required: z.boolean().optional(),
+    is_checked: z.boolean().optional()
+  })).optional()
 });
 
 const updateActivitySchema = z.object({
@@ -29,7 +35,13 @@ const updateActivitySchema = z.object({
   assignee_id: z.string().uuid().optional().nullable(),
   due_date: z.string().optional().nullable(),
   status: z.enum(['todo', 'in_progress', 'completed']).optional(),
-  notes: z.string().optional().nullable()
+  notes: z.string().optional().nullable(),
+  qc_checklist: z.array(z.object({
+    id: z.string(),
+    label: z.string(),
+    required: z.boolean().optional(),
+    is_checked: z.boolean().optional()
+  })).optional()
 });
 
 const generateSchema = z.object({
@@ -114,6 +126,7 @@ router.patch('/:id', authorize('projects:manage'), async (req, res) => {
     return success(res, activity);
   } catch (err) {
     if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    if (err.status === 400) return fail(res, err.code || 'BAD_REQUEST', err.message, 400);
     if (err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Work activity not found.', 404);
     console.error('[WorkActivities Router] Update error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update work activity.', 500);
