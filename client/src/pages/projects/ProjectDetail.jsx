@@ -2,8 +2,9 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Badge } from '../../components/ui';
 import styles from './ProjectDetail.module.css';
-import { getProject, deleteProject, updateProject } from '../../api/projects';
+import { getProject, deleteProject, updateProject, archiveProject } from '../../api/projects';
 import ProjectForm from '../../components/projects/ProjectForm';
+import ReopenProjectModal from '../../components/projects/ReopenProjectModal';
 
 // Lazy load tabs
 const PhaseTimeline = React.lazy(() => import('../../components/projects/PhaseTimeline'));
@@ -16,12 +17,15 @@ const SnagsDashboard = React.lazy(() => import('./SnagsDashboard'));
 const HandoverChecklist = React.lazy(() => import('./HandoverChecklist'));
 const WarrantiesTab = React.lazy(() => import('./WarrantiesTab'));
 const AmcsTab = React.lazy(() => import('./AmcsTab'));
+const ProjectClosureTab = React.lazy(() => import('./ProjectClosureTab'));
+const ProjectRetrospectiveTab = React.lazy(() => import('./ProjectRetrospectiveTab'));
 
 const DesignRequirements = React.lazy(() => import('../../components/projects/DesignRequirements'));
 const DesignAssetsTab = React.lazy(() => import('../../components/projects/DesignAssetsTab'));
 const DesignReviewsTab = React.lazy(() => import('../../components/projects/DesignReviewsTab'));
 const MaterialPalettesTab = React.lazy(() => import('../../components/projects/MaterialPalettesTab'));
 const ChangeOrdersTab = React.lazy(() => import('../../components/projects/ChangeOrdersTab'));
+const BOQVarianceTab = React.lazy(() => import('../../components/projects/BOQVarianceTab'));
 const ProjectQuotationsTab = React.lazy(() => import('../../components/projects/ProjectQuotationsTab'));
 const BudgetTab = React.lazy(() => import('../../components/projects/BudgetTab'));
 const PurchaseOrdersTab = React.lazy(() => import('../../components/projects/PurchaseOrdersTab'));
@@ -520,6 +524,23 @@ export default function ProjectDetail() {
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [isReopenModalOpen, setIsReopenModalOpen] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+
+  const handleArchive = async () => {
+    if (window.confirm('Are you sure you want to formally archive this project? The data will remain accessible for reference.')) {
+      try {
+        setArchiving(true);
+        await archiveProject(projectId);
+        reloadProject();
+      } catch (e) {
+        console.error('Failed to archive project', e);
+        alert('Failed to archive project.');
+      } finally {
+        setArchiving(false);
+      }
+    }
+  };
 
   const handleDelete = async () => {
     if (window.confirm('Are you sure you want to delete this project?')) {
@@ -544,7 +565,7 @@ export default function ProjectDetail() {
     }
   };
 
-  const tabs = ['Overview', 'Meeting Notes', 'Site Visits', 'Delay Notifications', 'Handovers', 'Design Brief', 'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 'Change Orders', 'Budget', 'Purchase Orders', 'Material Deliveries', 'Vendor Payments', 'Substitutions', 'Factory Production', 'Phases', 'Gantt Chart', 'Work Activities', 'Room Progress', 'Tasks', 'Daily Site Reports', 'Weekly Reports', 'Documents', 'Drawing Register', 'Payments', 'Snags', 'Punch List', 'Handover', 'Warranties', 'AMCs'];
+  const tabs = ['Overview', 'Meeting Notes', 'Site Visits', 'Delay Notifications', 'Handovers', 'Design Brief', 'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 'Change Orders', 'BOQ Variance', 'Budget', 'Purchase Orders', 'Material Deliveries', 'Vendor Payments', 'Substitutions', 'Factory Production', 'Phases', 'Gantt Chart', 'Work Activities', 'Room Progress', 'Tasks', 'Daily Site Reports', 'Weekly Reports', 'Documents', 'Drawing Register', 'Payments', 'Snags', 'Punch List', 'Handover', 'Warranties', 'AMCs', 'Project Closure', 'Retrospective'];
 
   const reloadProject = () => {
     if (!projectId) return;
@@ -575,6 +596,7 @@ export default function ProjectDetail() {
       case 'Material Palettes': return <MaterialPalettesTab projectId={projectId} />;
       case 'Quotations & BOQ': return <ProjectQuotationsTab projectId={projectId} />;
       case 'Change Orders': return <ChangeOrdersTab projectId={projectId} />;
+      case 'BOQ Variance': return <BOQVarianceTab projectId={projectId} />;
       case 'Budget': return <BudgetTab projectId={projectId} />;
       case 'Purchase Orders': return <PurchaseOrdersTab projectId={projectId} />;
       case 'Material Deliveries': return <MaterialDeliveriesTab projectId={projectId} />;
@@ -596,6 +618,8 @@ export default function ProjectDetail() {
       case 'Punch List': return <PunchListTab projectId={projectId} />;
       case 'Warranties': return <WarrantiesTab projectId={projectId} />;
       case 'AMCs': return <AmcsTab projectId={projectId} />;
+      case 'Project Closure': return <ProjectClosureTab projectId={projectId} projectStatus={project.status} onProjectUpdated={reloadProject} />;
+      case 'Retrospective': return <ProjectRetrospectiveTab projectId={projectId} projectStatus={project.status} />;
       default: return <div>{activeTab} Content (Coming Soon)</div>;
     }
   };
@@ -655,8 +679,18 @@ export default function ProjectDetail() {
           </div>
           <div className={styles.headerRight}>
             <div className={styles.value}>{formatValue(project.contract_value)}</div>
-            {!project.is_scope_locked && (
+            {!project.is_scope_locked && project.status === 'active' && (
               <Button size="sm" onClick={handleLockScope}>Lock Scope</Button>
+            )}
+            {(project.status === 'completed' || project.status === 'cancelled') && (
+              <Button variant="outline" size="sm" onClick={handleArchive} disabled={archiving}>
+                {archiving ? 'Archiving...' : 'Archive'}
+              </Button>
+            )}
+            {(project.status === 'completed' || project.status === 'cancelled' || project.status === 'archived') && (
+              <Button variant="primary" size="sm" onClick={() => setIsReopenModalOpen(true)}>
+                Reopen Project
+              </Button>
             )}
             <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>Edit</Button>
             <Button variant="outline" size="sm" style={{color: 'var(--color-danger)', borderColor: 'var(--color-danger)'}} onClick={handleDelete}>Delete</Button>
@@ -827,6 +861,17 @@ export default function ProjectDetail() {
             setProject({...project, ...updatedProject});
             setIsEditing(false);
           }} 
+        />
+      )}
+
+      {isReopenModalOpen && (
+        <ReopenProjectModal
+          projectId={project.id}
+          currentStartDate={project.start_date}
+          currentTargetDate={project.target_date}
+          isOpen={isReopenModalOpen}
+          onClose={() => setIsReopenModalOpen(false)}
+          onSuccess={reloadProject}
         />
       )}
     </div>

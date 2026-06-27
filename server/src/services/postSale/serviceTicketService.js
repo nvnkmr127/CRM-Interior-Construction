@@ -1,5 +1,6 @@
 const pool = require('../../db/pool');
 const { logAction } = require('../auditLog');
+const { notifyUser } = require('../notificationService');
 
 /**
  * Generates a unique service ticket number for a tenant (format: ST-YYYY-0001)
@@ -48,18 +49,28 @@ async function createTicket({
 
     const ticketNumber = await generateTicketNumber(client, tenantId);
 
+    const prioritySlaMap = {
+      critical: 4,
+      high: 24,
+      medium: 72,
+      low: 168
+    };
+    const slaHours = prioritySlaMap[priority.toLowerCase()] || 72;
+    const dueDate = new Date(Date.now() + slaHours * 60 * 60 * 1000).toISOString();
+
     const ticketQuery = `
       INSERT INTO service_tickets (
         tenant_id, project_id, client_portal_user_id, ticket_number,
         title, description, category, priority, status,
-        warranty_eligibility, assigned_engineer_id
+        warranty_eligibility, assigned_engineer_id, sla_hours, due_date
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', $9, $10)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', $9, $10, $11, $12)
       RETURNING *
     `;
     const ticketValues = [
       tenantId, projectId, clientPortalUserId, ticketNumber,
-      title, description, category, priority, warrantyEligibility, assignedEngineerId
+      title, description, category, priority, warrantyEligibility, assignedEngineerId,
+      slaHours, dueDate
     ];
 
     const { rows } = await client.query(ticketQuery, ticketValues);
@@ -98,10 +109,28 @@ async function updateTicket(ticketId, tenantId, updateData, userId = null) {
   }
   const oldValue = existingRes.rows[0];
 
+  const prioritySlaMap = {
+    critical: 4,
+    high: 24,
+    medium: 72,
+    low: 168
+  };
+
+  const newPriority = updateData.priority || oldValue.priority;
+  if (updateData.priority && updateData.priority !== oldValue.priority) {
+    const slaHours = prioritySlaMap[newPriority.toLowerCase()] || 72;
+    updateData.sla_hours = slaHours;
+    
+    const createdAt = new Date(oldValue.created_at);
+    const dueDate = new Date(createdAt.getTime() + slaHours * 60 * 60 * 1000);
+    updateData.due_date = dueDate.toISOString();
+  }
+
   const allowedKeys = [
     'title', 'description', 'category', 'priority', 'status',
     'warranty_eligibility', 'assigned_engineer_id', 'resolution_details',
-    'resolved_at', 'client_feedback_rating', 'client_feedback_comments'
+    'resolved_at', 'client_feedback_rating', 'client_feedback_comments',
+    'sla_hours', 'due_date'
   ];
 
   const updateFields = [];
@@ -117,10 +146,30 @@ async function updateTicket(ticketId, tenantId, updateData, userId = null) {
   }
 
   // Auto-set resolved_at if status becomes resolved
-  if (updateData.status === 'resolved' && oldValue.status !== 'resolved' && !updateData.resolved_at) {
-    updateFields.push(`resolved_at = $${idx}`);
-    values.push(new Date().toISOString());
-    idx++;
+  if (updateData.status === 'resolved' && oldValue.status !== 'resolved') {
+    const resolvedAt = updateData.resolved_at || new Date().toISOString();
+    if (updateData.resolved_at === undefined) {
+      updateFields.push(`resolved_at = $${idx}`);
+      values.push(resolvedAt);
+      idx++;
+    }
+
+    const dueDateVal = updateData.due_date || oldValue.due_date;
+    if (dueDateVal && new Date(resolvedAt) > new Date(dueDateVal)) {
+      await logAction({
+        tenantId,
+        userId,
+        action: 'service_ticket.sla_breached',
+        entity: 'service_ticket',
+        entityId: ticketId,
+        newValue: {
+          resolvedAt,
+          dueDate: dueDateVal,
+          hoursTaken: (new Date(resolvedAt) - new Date(oldValue.created_at)) / (3600 * 1000),
+          slaHours: updateData.sla_hours || oldValue.sla_hours || 72
+        }
+      });
+    }
   }
 
   if (updateFields.length === 0) {
@@ -185,7 +234,7 @@ async function deleteTicket(ticketId, tenantId, userId = null) {
 }
 
 /**
- * Gets a service ticket by ID (including visits).
+ * Gets a service ticket by ID (including visits and escalation history).
  */
 async function getTicketById(ticketId, tenantId) {
   const ticketRes = await pool.query(
@@ -211,7 +260,15 @@ async function getTicketById(ticketId, tenantId) {
     [ticketId, tenantId]
   );
 
+  const escalationsRes = await pool.query(
+    `SELECT * FROM service_ticket_escalations 
+     WHERE ticket_id = $1 AND tenant_id = $2
+     ORDER BY escalated_at ASC`,
+    [ticketId, tenantId]
+  );
+
   ticket.visits = visitsRes.rows;
+  ticket.escalations = escalationsRes.rows;
   return ticket;
 }
 
@@ -243,12 +300,13 @@ async function scheduleVisit({
 }) {
   // Verify ticket exists
   const ticketRes = await pool.query(
-    'SELECT id, status FROM service_tickets WHERE id = $1 AND tenant_id = $2',
+    'SELECT id, status, ticket_number, project_id FROM service_tickets WHERE id = $1 AND tenant_id = $2',
     [ticketId, tenantId]
   );
   if (ticketRes.rows.length === 0) {
     throw new Error('TICKET_NOT_FOUND');
   }
+  const ticketInfo = ticketRes.rows[0];
 
   const client = await pool.connect();
   try {
@@ -266,7 +324,7 @@ async function scheduleVisit({
     const visit = visitRes.rows[0];
 
     // If ticket was 'open', auto-update it to 'scheduled' or 'assigned' if an engineer is assigned
-    const currentTicketStatus = ticketRes.rows[0].status;
+    const currentTicketStatus = ticketInfo.status;
     let nextStatus = currentTicketStatus;
     if (currentTicketStatus === 'open') {
       nextStatus = 'scheduled';
@@ -286,6 +344,17 @@ async function scheduleVisit({
        WHERE id = $3 AND tenant_id = $4`,
       [ticketUpdateData.status, engineerId, ticketId, tenantId]
     );
+
+    // Notify assigned engineer
+    if (engineerId) {
+      notifyUser({
+        tenantId,
+        userId: engineerId,
+        type: 'visit_assigned',
+        message: `You have been assigned to service visit for ticket ${ticketInfo.ticket_number}.`,
+        referenceUrl: `/projects/${ticketInfo.project_id}/service-tickets/${ticketId}`
+      });
+    }
 
     // Log audit action
     await logAction({
@@ -312,7 +381,7 @@ async function scheduleVisit({
  */
 async function updateVisit(visitId, ticketId, tenantId, updateData, userId = null) {
   const existingRes = await pool.query(
-    'SELECT * FROM service_visits WHERE id = $1 AND ticket_id = $2 AND tenant_id = $3',
+    'SELECT v.*, t.project_id FROM service_visits v JOIN service_tickets t ON v.ticket_id = t.id WHERE v.id = $1 AND v.ticket_id = $2 AND v.tenant_id = $3',
     [visitId, ticketId, tenantId]
   );
   if (existingRes.rows.length === 0) {
@@ -320,7 +389,10 @@ async function updateVisit(visitId, ticketId, tenantId, updateData, userId = nul
   }
   const oldValue = existingRes.rows[0];
 
-  const allowedKeys = ['scheduled_date', 'status', 'completed_date', 'engineer_id', 'visit_summary'];
+  const allowedKeys = [
+    'scheduled_date', 'status', 'completed_date', 'engineer_id', 'visit_summary',
+    'client_confirmed', 'client_confirmed_at', 'reminder_sent', 'visit_outcome'
+  ];
   const updateFields = [];
   const values = [];
   let idx = 1;
@@ -342,6 +414,17 @@ async function updateVisit(visitId, ticketId, tenantId, updateData, userId = nul
 
   if (updateFields.length === 0) {
     return oldValue;
+  }
+
+  // Notify new engineer if assigned/changed
+  if (updateData.engineer_id && updateData.engineer_id !== oldValue.engineer_id) {
+    notifyUser({
+      tenantId,
+      userId: updateData.engineer_id,
+      type: 'visit_assigned',
+      message: `You have been assigned to service visit for ticket.`,
+      referenceUrl: `/projects/${oldValue.project_id}/service-tickets/${ticketId}`
+    });
   }
 
   values.push(visitId);
@@ -369,6 +452,79 @@ async function updateVisit(visitId, ticketId, tenantId, updateData, userId = nul
   });
 
   return newValue;
+}
+
+/**
+ * Confirms a service visit from client portal.
+ */
+async function confirmVisit(visitId, ticketId, tenantId, clientPortalUserId) {
+  const visitRes = await pool.query(
+    'SELECT * FROM service_visits WHERE id = $1 AND ticket_id = $2 AND tenant_id = $3',
+    [visitId, ticketId, tenantId]
+  );
+  if (visitRes.rows.length === 0) {
+    throw new Error('VISIT_NOT_FOUND');
+  }
+
+  const query = `
+    UPDATE service_visits
+    SET client_confirmed = true,
+        client_confirmed_at = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = $1 AND ticket_id = $2 AND tenant_id = $3
+    RETURNING *
+  `;
+  const { rows } = await pool.query(query, [visitId, ticketId, tenantId]);
+  const visit = rows[0];
+
+  // Log audit action
+  await logAction({
+    tenantId,
+    userId: clientPortalUserId,
+    action: 'service_visit.client_confirmed',
+    entity: 'service_visit',
+    entityId: visitId,
+    newValue: visit
+  });
+
+  return visit;
+}
+
+/**
+ * Sends pre-visit reminders for visits scheduled in the next 24 hours.
+ */
+async function sendPreVisitReminders() {
+  const query = `
+    SELECT v.*, t.ticket_number, t.project_id
+    FROM service_visits v
+    JOIN service_tickets t ON v.ticket_id = t.id
+    WHERE v.status = 'scheduled'
+    AND v.reminder_sent = false
+    AND v.scheduled_date BETWEEN NOW() AND NOW() + INTERVAL '24 hours'
+  `;
+  const { rows } = await pool.query(query);
+
+  for (const visit of rows) {
+    console.log(`[Reminder] Sending pre-visit reminder for visit ${visit.id} (Ticket ${visit.ticket_number})`);
+    
+    if (visit.engineer_id) {
+      notifyUser({
+        tenantId: visit.tenant_id,
+        userId: visit.engineer_id,
+        type: 'visit_reminder',
+        message: `Reminder: You have a scheduled service visit for ticket ${visit.ticket_number} in the next 24 hours.`,
+        referenceUrl: `/projects/${visit.project_id}/service-tickets/${visit.ticket_id}`
+      });
+    }
+
+    console.log(`[Reminder] Mock SMS sent to project client for service visit ${visit.id}`);
+
+    await pool.query(
+      `UPDATE service_visits SET reminder_sent = true, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+      [visit.id]
+    );
+  }
+  return rows.length;
 }
 
 /**
@@ -459,6 +615,235 @@ async function submitClientFeedback(ticketId, tenantId, { rating, comments }, cl
   return updatedTicket;
 }
 
+/**
+ * Submits CSAT feedback for a project handover or service visit.
+ */
+async function submitCsat({
+  tenantId,
+  projectId,
+  referenceType,
+  referenceId,
+  score,
+  comments = null,
+  clientPortalUserId
+}) {
+  // Fetch PM and designer from project
+  const projectRes = await pool.query(
+    'SELECT pm_id, designer_id FROM projects WHERE id = $1 AND tenant_id = $2',
+    [projectId, tenantId]
+  );
+  if (projectRes.rows.length === 0) {
+    throw new Error('PROJECT_NOT_FOUND');
+  }
+  const { pm_id, designer_id } = projectRes.rows[0];
+
+  const query = `
+    INSERT INTO csat_feedback (
+      tenant_id, project_id, reference_type, reference_id, score, comments, pm_id, designer_id
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    RETURNING *
+  `;
+  const values = [tenantId, projectId, referenceType, referenceId, score, comments, pm_id, designer_id];
+  const { rows } = await pool.query(query, values);
+  const csat = rows[0];
+
+  // Log audit action
+  await logAction({
+    tenantId,
+    userId: clientPortalUserId,
+    action: 'csat.submitted',
+    entity: referenceType === 'handover' ? 'handover_checklist' : 'service_visit',
+    entityId: referenceId,
+    newValue: csat
+  });
+
+  return csat;
+}
+
+/**
+ * Escalates a service ticket to a specific role.
+ */
+async function escalateTicket({
+  tenantId,
+  ticketId,
+  escalatedToRole,
+  previousLevel,
+  newLevel,
+  reason
+}) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Update ticket level
+    await client.query(
+      `UPDATE service_tickets 
+       SET escalation_level = $1, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2 AND tenant_id = $3`,
+      [newLevel, ticketId, tenantId]
+    );
+
+    // Insert escalation record
+    const escQuery = `
+      INSERT INTO service_ticket_escalations (
+        tenant_id, ticket_id, escalated_to_role, previous_level, new_level, reason
+      )
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `;
+    const escValues = [tenantId, ticketId, escalatedToRole, previousLevel, newLevel, reason];
+    const escRes = await client.query(escQuery, escValues);
+    const escalation = escRes.rows[0];
+
+    // Log audit action
+    await logAction({
+      tenantId,
+      action: 'service_ticket.escalated',
+      entity: 'service_ticket',
+      entityId: ticketId,
+      newValue: escalation
+    });
+
+    // Notify PM or Director
+    const ticketRes = await client.query(
+      `SELECT t.ticket_number, t.project_id, p.pm_id
+       FROM service_tickets t
+       JOIN projects p ON t.project_id = p.id
+       WHERE t.id = $1`,
+      [ticketId]
+    );
+    const ticketInfo = ticketRes.rows[0];
+
+    let notifyUserId = null;
+    if (escalatedToRole === 'pm' && ticketInfo?.pm_id) {
+      notifyUserId = ticketInfo.pm_id;
+    } else {
+      const adminRes = await client.query(
+        `SELECT id FROM users WHERE tenant_id = $1 AND role_id IN (
+           SELECT id FROM roles WHERE name = 'superadmin' OR name = 'admin'
+         ) LIMIT 1`,
+        [tenantId]
+      );
+      notifyUserId = adminRes.rows[0]?.id;
+    }
+
+    if (notifyUserId) {
+      notifyUser({
+        tenantId,
+        userId: notifyUserId,
+        type: 'ticket_escalation',
+        message: `Service ticket ${ticketInfo?.ticket_number || ''} has been escalated to ${escalatedToRole.toUpperCase()} (Level ${newLevel}): ${reason}.`,
+        referenceUrl: `/projects/${ticketInfo?.project_id || ''}/service-tickets/${ticketId}`
+      });
+    }
+
+    await client.query('COMMIT');
+    return escalation;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Scans unresolved tickets for automatic SLA breaches and executes escalations.
+ */
+async function checkAutomaticEscalations() {
+  const query = `
+    SELECT t.*, p.pm_id,
+           EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - t.created_at)) / 3600 as hours_elapsed
+    FROM service_tickets t
+    JOIN projects p ON t.project_id = p.id
+    WHERE t.status NOT IN ('resolved', 'closed')
+    AND t.due_date IS NOT NULL
+  `;
+  const { rows } = await pool.query(query);
+
+  let escalationCount = 0;
+  for (const ticket of rows) {
+    const hoursElapsed = parseFloat(ticket.hours_elapsed);
+    const slaHours = ticket.sla_hours || 72;
+
+    if (hoursElapsed > slaHours * 3 && ticket.escalation_level < 2) {
+      await escalateTicket({
+        tenantId: ticket.tenant_id,
+        ticketId: ticket.id,
+        escalatedToRole: 'director',
+        previousLevel: ticket.escalation_level,
+        newLevel: 2,
+        reason: `Ticket unresolved past 3x SLA (${slaHours * 3} hours)`
+      });
+      escalationCount++;
+    }
+    else if (hoursElapsed > slaHours * 2 && ticket.escalation_level < 1) {
+      await escalateTicket({
+        tenantId: ticket.tenant_id,
+        ticketId: ticket.id,
+        escalatedToRole: 'pm',
+        previousLevel: ticket.escalation_level,
+        newLevel: 1,
+        reason: `Ticket unresolved past 2x SLA (${slaHours * 2} hours)`
+      });
+      escalationCount++;
+    }
+  }
+
+  return escalationCount;
+}
+
+/**
+ * Gets CSAT metrics for a tenant.
+ */
+async function getCsatMetrics(tenantId) {
+  const projectQuery = `
+    SELECT c.project_id, p.name as project_name, AVG(c.score)::NUMERIC(3,2) as avg_score, COUNT(*)::INT as count
+    FROM csat_feedback c
+    JOIN projects p ON c.project_id = p.id
+    WHERE c.tenant_id = $1
+    GROUP BY c.project_id, p.name
+    ORDER BY avg_score DESC
+  `;
+  const projectRes = await pool.query(projectQuery, [tenantId]);
+
+  const pmQuery = `
+    SELECT c.pm_id, u.name as pm_name, AVG(c.score)::NUMERIC(3,2) as avg_score, COUNT(*)::INT as count
+    FROM csat_feedback c
+    JOIN users u ON c.pm_id = u.id
+    WHERE c.tenant_id = $1
+    GROUP BY c.pm_id, u.name
+    ORDER BY avg_score DESC
+  `;
+  const pmRes = await pool.query(pmQuery, [tenantId]);
+
+  const designerQuery = `
+    SELECT c.designer_id, u.name as designer_name, AVG(c.score)::NUMERIC(3,2) as avg_score, COUNT(*)::INT as count
+    FROM csat_feedback c
+    JOIN users u ON c.designer_id = u.id
+    WHERE c.tenant_id = $1
+    GROUP BY c.designer_id, u.name
+    ORDER BY avg_score DESC
+  `;
+  const designerRes = await pool.query(designerQuery, [tenantId]);
+
+  const overallQuery = `
+    SELECT reference_type, AVG(score)::NUMERIC(3,2) as avg_score, COUNT(*)::INT as count
+    FROM csat_feedback
+    WHERE tenant_id = $1
+    GROUP BY reference_type
+  `;
+  const overallRes = await pool.query(overallQuery, [tenantId]);
+
+  return {
+    byProject: projectRes.rows,
+    byPM: pmRes.rows,
+    byDesigner: designerRes.rows,
+    overall: overallRes.rows
+  };
+}
+
 module.exports = {
   createTicket,
   updateTicket,
@@ -469,5 +854,11 @@ module.exports = {
   updateVisit,
   deleteVisit,
   getVisitsByTicket,
-  submitClientFeedback
+  submitClientFeedback,
+  confirmVisit,
+  sendPreVisitReminders,
+  submitCsat,
+  escalateTicket,
+  checkAutomaticEscalations,
+  getCsatMetrics
 };

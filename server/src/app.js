@@ -122,6 +122,7 @@ const snagsRoutes = require('./routes/snags');
 const paymentMilestonesRoutes = require('./routes/paymentMilestones');
 const invoicesRoutes = require('./routes/invoices');
 const financialsRoutes = require('./routes/financials');
+const financialApprovalsRoutes = require('./routes/financialApprovals');
 const handoverRoutes = require('./routes/handover');
 const milestonesRoutes = require('./routes/milestones');
 const globalTasksRoutes = require('./routes/globalTasks');
@@ -182,6 +183,7 @@ app.use('/api/projects/:id/snags', snagsRoutes);
 app.use('/api/payment-milestones', paymentMilestonesRoutes);
 app.use('/api/invoices', invoicesRoutes);
 app.use('/api/financials', financialsRoutes);
+app.use('/api/financial-approvals', financialApprovalsRoutes);
 app.use('/api/handover', handoverRoutes);
 
 // Safe fallback for local file downloads

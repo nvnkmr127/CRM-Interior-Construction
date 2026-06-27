@@ -1,4 +1,5 @@
 const pool = require('../../db/pool');
+const { getTenantThreshold, isUserSuperadmin } = require('../../utils/finance');
 const { logAction } = require('../auditLog');
 
 async function getCreditNotes(tenantId, projectId) {
@@ -73,7 +74,7 @@ async function generateRefundNumber(tenantId) {
   return `REF-${year}-${String(nextSeq).padStart(4, '0')}`;
 }
 
-async function createCreditNote({ tenantId, userId, data }) {
+async function createCreditNote({ tenantId, userId, data, bypassApproval = false }) {
   const { projectId, invoiceId, subtotal, gstType, gstRate, reason, notes, creditNoteDate } = data;
   
   // Calculate tax components
@@ -96,23 +97,37 @@ async function createCreditNote({ tenantId, userId, data }) {
   const creditNoteNumber = await generateCreditNoteNumber(tenantId);
   const cnDate = creditNoteDate || new Date().toISOString().split('T')[0];
 
+  const threshold = await getTenantThreshold(tenantId, 'finance_credit_threshold', 50000.00);
+  const isSuperadmin = await isUserSuperadmin(userId);
+  const requiresApproval = !bypassApproval && !isSuperadmin && totalAmount > threshold;
+  const initialStatus = requiresApproval ? 'pending_approval' : 'issued';
+
   const query = `
     INSERT INTO credit_notes (
       tenant_id, project_id, invoice_id, credit_note_number, credit_note_date,
       subtotal, gst_type, gst_rate, cgst_amount, sgst_amount, igst_amount, total_amount,
       reason, notes, status, created_by
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'issued', $15
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
     ) RETURNING *
   `;
   const values = [
     tenantId, projectId, invoiceId || null, creditNoteNumber, cnDate,
     amount, type, rate, cgst, sgst, igst, totalAmount,
-    reason, notes || null, userId
+    reason, notes || null, initialStatus, userId
   ];
 
   const result = await pool.query(query, values);
   const creditNote = result.rows[0];
+
+  if (requiresApproval) {
+    await pool.query(
+      `INSERT INTO financial_approvals (
+         tenant_id, transaction_type, target_id, amount, requested_by, requested_changes, status, threshold_limit
+       ) VALUES ($1, 'credit', $2, $3, $4, $5, 'pending', $6)`,
+      [tenantId, creditNote.id, totalAmount, userId, JSON.stringify({ type: 'credit' }), threshold]
+    );
+  }
 
   await logAction({
     tenantId,
@@ -120,33 +135,47 @@ async function createCreditNote({ tenantId, userId, data }) {
     action: 'create_credit_note',
     entity: 'credit_note',
     entityId: creditNote.id,
-    newValue: { creditNoteNumber, projectId, totalAmount }
+    newValue: { creditNoteNumber, projectId, totalAmount, requiresApproval }
   });
 
   return creditNote;
 }
 
-async function createRefund({ tenantId, userId, data }) {
+async function createRefund({ tenantId, userId, data, bypassApproval = false }) {
   const { projectId, paymentMilestoneId, amount, paymentMethod, referenceNumber, reason, notes, refundDate } = data;
   
   const refundNumber = await generateRefundNumber(tenantId);
   const refDate = refundDate || new Date().toISOString().split('T')[0];
+
+  const threshold = await getTenantThreshold(tenantId, 'finance_credit_threshold', 50000.00);
+  const isSuperadmin = await isUserSuperadmin(userId);
+  const requiresApproval = !bypassApproval && !isSuperadmin && amount > threshold;
+  const initialStatus = requiresApproval ? 'pending_approval' : 'processed';
 
   const query = `
     INSERT INTO refunds (
       tenant_id, project_id, payment_milestone_id, refund_number, refund_date,
       amount, payment_method, reference_number, reason, notes, status, created_by
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'processed', $11
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
     ) RETURNING *
   `;
   const values = [
     tenantId, projectId, paymentMilestoneId || null, refundNumber, refDate,
-    amount, paymentMethod || 'Bank Transfer', referenceNumber || null, reason, notes || null, userId
+    amount, paymentMethod || 'Bank Transfer', referenceNumber || null, reason, notes || null, initialStatus, userId
   ];
 
   const result = await pool.query(query, values);
   const refund = result.rows[0];
+
+  if (requiresApproval) {
+    await pool.query(
+      `INSERT INTO financial_approvals (
+         tenant_id, transaction_type, target_id, amount, requested_by, requested_changes, status, threshold_limit
+       ) VALUES ($1, 'refund', $2, $3, $4, $5, 'pending', $6)`,
+      [tenantId, refund.id, amount, userId, JSON.stringify({ type: 'refund' }), threshold]
+    );
+  }
 
   await logAction({
     tenantId,
@@ -154,7 +183,7 @@ async function createRefund({ tenantId, userId, data }) {
     action: 'create_refund',
     entity: 'refund',
     entityId: refund.id,
-    newValue: { refundNumber, projectId, amount }
+    newValue: { refundNumber, projectId, amount, requiresApproval }
   });
 
   return refund;

@@ -152,6 +152,8 @@ router.post('/expenses', authorize('projects:update'), async (req, res) => {
       data.incurredDate || null
     ]);
 
+    await checkBudgetThresholds(tenantId, projectId);
+
     return success(res, rows[0], {}, 201);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -178,11 +180,136 @@ router.delete('/expenses/:expenseId', authorize('projects:update'), async (req, 
       return fail(res, 'NOT_FOUND', 'Cost item not found or does not belong to this project.', 404);
     }
 
+    await checkBudgetThresholds(tenantId, projectId);
+
     return success(res, { message: 'Cost item deleted' });
   } catch (err) {
     console.error('[Budget Router] Delete expense error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete cost item.', 500);
   }
 });
+
+async function checkBudgetThresholds(tenantId, projectId) {
+  try {
+    // 1. Fetch project details
+    const projRes = await pool.query(
+      'SELECT id, name, pm_id, contract_value, alert_80_sent, alert_90_sent, alert_100_sent FROM projects WHERE id = $1 AND tenant_id = $2',
+      [projectId, tenantId]
+    );
+    if (projRes.rows.length === 0) return;
+    const project = projRes.rows[0];
+    const contractValue = parseFloat(project.contract_value || 0);
+    if (contractValue <= 0) return;
+
+    // 2. Fetch total actual costs
+    const costRes = await pool.query(
+      "SELECT COALESCE(SUM(amount), 0)::numeric as total_actual FROM project_expenses WHERE project_id = $1 AND tenant_id = $2 AND type = 'actual'",
+      [projectId, tenantId]
+    );
+    const totalActual = parseFloat(costRes.rows[0].total_actual);
+    const ratio = totalActual / contractValue;
+
+    // 3. Determine threshold crossings
+    let alert80 = project.alert_80_sent;
+    let alert90 = project.alert_90_sent;
+    let alert100 = project.alert_100_sent;
+
+    const triggeredThresholds = [];
+
+    // Check 100% threshold
+    if (ratio >= 1.0) {
+      if (!alert100) {
+        alert100 = true;
+        triggeredThresholds.push(100);
+      }
+      alert90 = true;
+      alert80 = true;
+    } 
+    // Check 90% threshold
+    else if (ratio >= 0.9) {
+      if (!alert90) {
+        alert90 = true;
+        triggeredThresholds.push(90);
+      }
+      alert80 = true;
+      alert100 = false; // Reset if dropped below
+    } 
+    // Check 80% threshold
+    else if (ratio >= 0.8) {
+      if (!alert80) {
+        alert80 = true;
+        triggeredThresholds.push(80);
+      }
+      alert90 = false;
+      alert100 = false; // Reset if dropped below
+    } 
+    // Below 80% - reset all flags
+    else {
+      alert80 = false;
+      alert90 = false;
+      alert100 = false;
+    }
+
+    // 4. Update project alert flags in database if changed
+    if (alert80 !== project.alert_80_sent || alert90 !== project.alert_90_sent || alert100 !== project.alert_100_sent) {
+      await pool.query(
+        `UPDATE projects 
+         SET alert_80_sent = $1, alert_90_sent = $2, alert_100_sent = $3, updated_at = NOW() 
+         WHERE id = $4 AND tenant_id = $5`,
+        [alert80, alert90, alert100, projectId, tenantId]
+      );
+    }
+
+    // 5. Send notifications for any newly triggered thresholds
+    if (triggeredThresholds.length > 0) {
+      const notifyUsers = [];
+      if (project.pm_id) {
+        notifyUsers.push(project.pm_id);
+      }
+
+      // Notify superadmins/admins/finance
+      const adminUsersRes = await pool.query(
+        `SELECT u.id FROM users u
+         JOIN roles r ON u.role_id = r.id
+         WHERE u.tenant_id = $1 AND (r.name IN ('superadmin', 'admin', 'finance'))`,
+        [tenantId]
+      );
+      adminUsersRes.rows.forEach(row => {
+        if (!notifyUsers.includes(row.id)) notifyUsers.push(row.id);
+      });
+
+      const { logAction } = require('../services/auditLog');
+
+      for (const threshold of triggeredThresholds) {
+        const message = `Warning: Project '${project.name}' costs have reached ${threshold}% of contract value (Cost: ${totalActual.toFixed(2)}, Contract Value: ${contractValue.toFixed(2)}).`;
+        
+        for (const recipientId of notifyUsers) {
+          await pool.query(
+            `INSERT INTO notifications (tenant_id, user_id, type, message, reference_url)
+             VALUES ($1, $2, 'budget_warning', $3, $4)`,
+            [
+              tenantId,
+              recipientId,
+              message,
+              `/projects/${projectId}/budget`
+            ]
+          );
+        }
+
+        // Log audit event
+        await logAction({
+          tenantId,
+          userId: null,
+          action: threshold === 100 ? 'project.budget_overrun' : 'project.budget_warning',
+          entity: 'project',
+          entityId: projectId,
+          newValue: { cost: totalActual, contractValue, threshold }
+        });
+      }
+    }
+  } catch (err) {
+    console.error('[Budget Check] Failed to verify budget thresholds:', err.message);
+  }
+}
 
 module.exports = router;

@@ -1,5 +1,9 @@
 const pool = require('../../config/db');
 const eventBus = require('../../utils/eventBus');
+const serviceTicketService = require('../postSale/serviceTicketService');
+const paymentReminderService = require('../projects/paymentReminderService');
+const warrantyReminderService = require('../postSale/warrantyReminderService');
+const documentReminderService = require('../projects/documentReminderService');
 
 class SLAEngine {
   /**
@@ -29,7 +33,7 @@ class SLAEngine {
         console.log(`[SLA Engine] Lead ${lead.id} breached SLA.`);
         // Log the breach
         await pool.query(`
-          INSERT INTO audit_logs (tenant_id, entity, entity_id, action, details)
+          INSERT INTO audit_logs (tenant_id, entity, entity_id, action, new_value)
           VALUES ($1, 'lead', $2, 'sla_breach', 'Lead untouched for 48 hours')
         `, [lead.tenant_id, lead.id]);
         
@@ -58,7 +62,7 @@ class SLAEngine {
       for (const milestone of milestoneRes.rows) {
         console.log(`[SLA Engine] Milestone ${milestone.id} breached SLA (Overdue).`);
         await pool.query(`
-          INSERT INTO audit_logs (tenant_id, entity, entity_id, action, details)
+          INSERT INTO audit_logs (tenant_id, entity, entity_id, action, new_value)
           VALUES ($1, 'milestone', $2, 'sla_breach', 'Milestone overdue past due date')
         `, [milestone.tenant_id, milestone.id]);
 
@@ -86,7 +90,7 @@ class SLAEngine {
       for (const task of taskRes.rows) {
         console.log(`[SLA Engine] Task ${task.id} breached SLA (Overdue).`);
         await pool.query(`
-          INSERT INTO audit_logs (tenant_id, entity, entity_id, action, details)
+          INSERT INTO audit_logs (tenant_id, entity, entity_id, action, new_value)
           VALUES ($1, 'task', $2, 'sla_breach', 'Task overdue past due date')
         `, [task.tenant_id, task.id]);
 
@@ -97,7 +101,49 @@ class SLAEngine {
         });
       }
 
-      console.log(`[SLA Engine] SLA check complete. Found ${leadRes.rows.length} lead breaches, ${milestoneRes.rows.length} milestone breaches, and ${taskRes.rows.length} task breaches.`);
+      // 4. Check Service Tickets for SLA Breach (due_date passed and status is not resolved or closed)
+      const ticketQuery = `
+        SELECT t.id, t.tenant_id, t.ticket_number, t.title, t.due_date, t.project_id
+        FROM service_tickets t
+        WHERE t.status NOT IN ('resolved', 'closed')
+        AND t.due_date < NOW()
+        AND t.id NOT IN (
+          SELECT entity_id FROM audit_logs 
+          WHERE entity = 'service_ticket' AND action = 'sla_breach' AND created_at > NOW() - INTERVAL '24 hours'
+        )
+      `;
+      const ticketRes = await pool.query(ticketQuery);
+
+      for (const ticket of ticketRes.rows) {
+        console.log(`[SLA Engine] Service Ticket ${ticket.ticket_number} (${ticket.id}) breached SLA.`);
+        await pool.query(`
+          INSERT INTO audit_logs (tenant_id, entity, entity_id, action, new_value)
+          VALUES ($1, 'service_ticket', $2, 'sla_breach', 'Service ticket overdue past due date')
+        `, [ticket.tenant_id, ticket.id]);
+
+        eventBus.emit('service_ticket.sla_breached', {
+          tenantId: ticket.tenant_id,
+          ticket: ticket,
+          reason: 'Overdue past due date'
+        });
+      }
+
+      // 5. Send Pre-visit Reminder Notifications for service visits scheduled in the next 24 hours
+      const remindersSent = await serviceTicketService.sendPreVisitReminders();
+
+      // 6. Run service ticket automatic SLA escalations
+      const escalationsApplied = await serviceTicketService.checkAutomaticEscalations();
+
+      // 7. Send payment reminders to clients (7d before, on due date, 3d/7d/14d overdue)
+      const paymentRemindersSent = await paymentReminderService.checkAndSendPaymentReminders();
+
+      // 8. Send warranty expiry reminders to clients (60d and 30d before expiry)
+      const warrantyRemindersSent = await warrantyReminderService.checkAndSendWarrantyExpiryReminders();
+
+      // 9. Send document/design approval reminders to clients (48h and 72h pending)
+      const documentRemindersSent = await documentReminderService.checkAndSendDocumentApprovalReminders();
+
+      console.log(`[SLA Engine] SLA check complete. Found ${leadRes.rows.length} lead breaches, ${milestoneRes.rows.length} milestone breaches, ${taskRes.rows.length} task breaches, ${ticketRes.rows.length} service ticket breaches, applied ${escalationsApplied} escalations, sent ${remindersSent} visit reminders, sent ${paymentRemindersSent} payment reminders, sent ${warrantyRemindersSent} warranty expiry reminders, and sent ${documentRemindersSent} document reminders.`);
     } catch (error) {
       console.error('[SLA Engine] Error checking SLA breaches:', error);
     }

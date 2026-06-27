@@ -40,7 +40,15 @@ router.get('/', async (req, res, next) => {
 // POST /api/portal/handover/send-otp
 router.post('/send-otp', async (req, res, next) => {
   try {
-    const { phone, tenantId } = req.portalUser;
+    const { phone, tenantId, projectId } = req.portalUser;
+
+    const checklist = await getChecklistByProjectId(projectId, tenantId);
+    if (!checklist) {
+      return fail(res, 'NOT_FOUND', 'Handover checklist not found', 404);
+    }
+    if (!checklist.is_internally_authorized) {
+      return fail(res, 'FORBIDDEN', 'Internal Authorization Pending: Operations head or senior PM must authorize the handover before client sign-off is triggered.', 403);
+    }
 
     // Rate limit check: max 3 OTP requests per phone per 10 minutes
     if (process.env.NODE_ENV !== 'test') {
@@ -81,7 +89,16 @@ router.post('/sign-off', async (req, res, next) => {
     const { otp } = signOffSchema.parse(req.body);
     const { projectId, tenantId, phone, name: clientName, id: portalUserId } = req.portalUser;
 
-    // 1. Verify OTP first
+    // 1. Fetch active checklist and verify internal authorization first
+    const checklist = await getChecklistByProjectId(projectId, tenantId);
+    if (!checklist) {
+      return fail(res, 'NOT_FOUND', 'Handover checklist not found', 404);
+    }
+    if (!checklist.is_internally_authorized) {
+      return fail(res, 'BAD_REQUEST', 'Internal Authorization Pending: Operations head or senior PM must authorize the handover before client sign-off.', 400);
+    }
+
+    // 2. Verify OTP
     try {
       await portalAuthService.verifyOtpOnly(tenantId, phone, otp);
     } catch (err) {
@@ -92,12 +109,6 @@ router.post('/sign-off', async (req, res, next) => {
         return fail(res, 'UNAUTHORIZED', 'Invalid OTP', 401);
       }
       throw err;
-    }
-
-    // 2. Fetch active checklist
-    const checklist = await getChecklistByProjectId(projectId, tenantId);
-    if (!checklist) {
-      return fail(res, 'NOT_FOUND', 'Handover checklist not found', 404);
     }
 
     // 3. Complete sign off
@@ -115,6 +126,9 @@ router.post('/sign-off', async (req, res, next) => {
     }
     if (error.message === 'ITEMS_INCOMPLETE') {
       return fail(res, 'BAD_REQUEST', 'All checklist items must be checked before sign-off', 400);
+    }
+    if (error.message === 'INTERNAL_AUTHORIZATION_PENDING') {
+      return fail(res, 'BAD_REQUEST', 'Internal Authorization Pending: Operations head or senior PM must authorize the handover before client sign-off.', 400);
     }
     if (error.message === 'FINANCIAL_CLEARANCE_PENDING') {
       return fail(res, 'BAD_REQUEST', 'Financial Clearance Pending: Please clear all outstanding payment milestones or contact finance for written deferral.', 400);

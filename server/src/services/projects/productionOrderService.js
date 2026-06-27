@@ -542,7 +542,92 @@ class ProductionOrderService {
       );
 
       await client.query('COMMIT');
-      return dispatchRes.rows[0];
+      const dispatch = dispatchRes.rows[0];
+
+      // Send notifications (async / non-blocking)
+      setImmediate(async () => {
+        try {
+          const { notifyUser } = require('../notificationService');
+          const { sendWhatsAppMessage } = require('../whatsappService');
+          const { notificationQueue } = require('../../queues/queueSetup');
+
+          // Fetch Project and PM details
+          const projQuery = `
+            SELECT p.name, p.pm_id, u.name as pm_name, u.email as pm_email
+            FROM projects p
+            LEFT JOIN users u ON p.pm_id = u.id
+            WHERE p.id = $1 AND p.tenant_id = $2
+          `;
+          const projRes = await pool.query(projQuery, [projectId, tenantId]);
+          const project = projRes.rows[0];
+
+          if (project) {
+            const expectedDateStr = expectedDeliveryDate 
+              ? new Date(expectedDeliveryDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+              : 'N/A';
+            const vehicle = vehicleNumber || 'N/A';
+            const driver = driverName ? `${driverName} (${driverContact || 'N/A'})` : 'N/A';
+
+            // Fetch active supervisors
+            const supQuery = `
+              SELECT name, email, phone 
+              FROM project_site_team
+              WHERE project_id = $1 AND tenant_id = $2 AND role = 'supervisor' AND status = 'active'
+            `;
+            const supRes = await pool.query(supQuery, [projectId, tenantId]);
+            const supervisors = supRes.rows;
+
+            // PM messages
+            const pmInAppMsg = `Production order ${dispatch.dispatch_number} for project "${project.name}" has been dispatched. Status: In Transit.`;
+            const pmEmailMsg = `Dear ${project.pm_name || 'Project Manager'},\n\nPlease note that the materials under dispatch number ${dispatch.dispatch_number} for project "${project.name}" have been dispatched.\nExpected Delivery: ${expectedDateStr}\nVehicle: ${vehicle}\nDriver: ${driver}\n\nBest regards,\nCRM Logistics Team`;
+
+            // Notify PM In-App
+            if (project.pm_id) {
+              notifyUser({
+                tenantId,
+                userId: project.pm_id,
+                type: 'material_dispatch',
+                message: pmInAppMsg,
+                referenceUrl: `/projects/${projectId}/production-orders/${orderId}`
+              });
+            }
+
+            // Notify PM Email
+            if (project.pm_email) {
+              await notificationQueue.add('dispatchNotification', {
+                type: 'email',
+                recipientId: project.pm_name || 'Project Manager',
+                email: project.pm_email,
+                message: pmEmailMsg
+              });
+            }
+
+            // Notify Supervisors
+            for (const supervisor of supervisors) {
+              // Supervisor Email
+              if (supervisor.email) {
+                const supEmailMsg = `Dear ${supervisor.name},\n\nPlease note that modular materials for project "${project.name}" are dispatched and in transit.\nExpected Delivery: ${expectedDateStr}\nVehicle: ${vehicle}\nDriver: ${driver}\n\nPlease ensure site readiness and labor availability for unloading.\n\nBest regards,\nCRM Logistics Team`;
+                await notificationQueue.add('dispatchNotification', {
+                  type: 'email',
+                  recipientId: supervisor.name,
+                  email: supervisor.email,
+                  message: supEmailMsg
+                });
+              }
+
+              // Supervisor WhatsApp
+              if (supervisor.phone) {
+                const supWaMsg = `Material dispatch alert: Production order ${dispatch.dispatch_number} for project "${project.name}" is in transit. Vehicle: ${vehicle}. Driver: ${driver}. Expected: ${expectedDateStr}. Please prepare site.`;
+                await sendWhatsAppMessage(supervisor.phone, supWaMsg);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[ProductionOrderService] Error sending dispatch notifications:', err.message);
+        }
+      });
+
+      return dispatch;
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
@@ -578,7 +663,89 @@ class ProductionOrderService {
     if (res.rows.length === 0) {
       throw new AppError('Dispatch record not found', 404);
     }
-    return res.rows[0];
+    
+    // Send notifications (async / non-blocking)
+    const dispatch = res.rows[0];
+    setImmediate(async () => {
+      try {
+        const { notifyUser } = require('../notificationService');
+        const { sendWhatsAppMessage } = require('../whatsappService');
+        const { notificationQueue } = require('../../queues/queueSetup');
+
+        // Fetch Project and PM details
+        const projQuery = `
+          SELECT p.name, p.pm_id, u.name as pm_name, u.email as pm_email
+          FROM projects p
+          LEFT JOIN users u ON p.pm_id = u.id
+          WHERE p.id = $1 AND p.tenant_id = $2
+        `;
+        const projRes = await pool.query(projQuery, [projectId, tenantId]);
+        const project = projRes.rows[0];
+
+        if (project && dispatch) {
+          const recName = receivedByName || 'Site Supervisor';
+          const notesStr = receiptNotes || 'No notes provided';
+
+          // Fetch active supervisors
+          const supQuery = `
+            SELECT name, email, phone 
+            FROM project_site_team
+            WHERE project_id = $1 AND tenant_id = $2 AND role = 'supervisor' AND status = 'active'
+          `;
+          const supRes = await pool.query(supQuery, [projectId, tenantId]);
+          const supervisors = supRes.rows;
+
+          // PM messages
+          const pmInAppMsg = `Production order ${dispatch.dispatch_number} for project "${project.name}" has arrived and delivery is confirmed.`;
+          const pmEmailMsg = `Dear ${project.pm_name || 'Project Manager'},\n\nWe are pleased to inform you that the materials under dispatch number ${dispatch.dispatch_number} for project "${project.name}" have arrived on site and delivery has been confirmed.\nReceived By: ${recName}\nReceipt Notes: ${notesStr}\n\nBest regards,\nCRM Logistics Team`;
+
+          // Notify PM In-App
+          if (project.pm_id) {
+            notifyUser({
+              tenantId,
+              userId: project.pm_id,
+              type: 'material_delivery',
+              message: pmInAppMsg,
+              referenceUrl: `/projects/${projectId}/production-orders/${orderId}`
+            });
+          }
+
+          // Notify PM Email
+          if (project.pm_email) {
+            await notificationQueue.add('deliveryNotification', {
+              type: 'email',
+              recipientId: project.pm_name || 'Project Manager',
+              email: project.pm_email,
+              message: pmEmailMsg
+            });
+          }
+
+          // Notify Supervisors
+          for (const supervisor of supervisors) {
+            // Supervisor Email
+            if (supervisor.email) {
+              const supEmailMsg = `Dear ${supervisor.name},\n\nDelivery of materials under dispatch number ${dispatch.dispatch_number} for project "${project.name}" has been confirmed.\nReceived By: ${recName}\nNotes: ${notesStr}\n\nBest regards,\nCRM Logistics Team`;
+              await notificationQueue.add('deliveryNotification', {
+                type: 'email',
+                recipientId: supervisor.name,
+                email: supervisor.email,
+                message: supEmailMsg
+              });
+            }
+
+            // Supervisor WhatsApp
+            if (supervisor.phone) {
+              const supWaMsg = `Delivery confirmed: Materials under dispatch ${dispatch.dispatch_number} for project "${project.name}" have been delivered and received. Received by: ${recName}. Notes: ${notesStr}.`;
+              await sendWhatsAppMessage(supervisor.phone, supWaMsg);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[ProductionOrderService] Error sending delivery notifications:', err.message);
+      }
+    });
+
+    return dispatch;
   }
 
   async getDispatchRecords(tenantId, projectId, orderId) {

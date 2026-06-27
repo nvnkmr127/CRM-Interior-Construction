@@ -26,6 +26,12 @@ async function updateProject({ tenantId, userId, projectId, data }) {
     }
   }
 
+  // Enforce project closure gates if project is transitioning to completed
+  if (data.status === 'completed' && currentProject.status !== 'completed') {
+    const { verifyProjectClosureReady } = require('../postSale/projectClosureService');
+    await verifyProjectClosureReady(projectId, tenantId);
+  }
+
   const { contacts, measurements, vendors, consultants, site_team, ...projectData } = data;
   const client = await pool.connect();
   let updatedProject;
@@ -228,6 +234,38 @@ async function updateProject({ tenantId, userId, projectId, data }) {
           ]);
         }
       }
+    }
+
+    if (data.status === 'completed' && currentProject.status !== 'completed') {
+      const completedAt = new Date();
+      const anniversaryDate = new Date();
+      anniversaryDate.setFullYear(completedAt.getFullYear() + 1);
+
+      const nextFollowupDate = new Date();
+      nextFollowupDate.setMonth(completedAt.getMonth() + 6); // 6-month follow-up schedule
+
+      const rand = Math.floor(1000 + Math.random() * 9000);
+      const cleanName = currentProject.client_name ? currentProject.client_name.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6).toUpperCase() : 'CUST';
+      const referralCode = `REF-${cleanName}-${rand}`;
+
+      await client.query(
+        `INSERT INTO client_relationship_records (
+          tenant_id, project_id, client_name, client_email, client_phone,
+          project_completed_at, anniversary_date, next_followup_schedule_date, referral_code
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         ON CONFLICT (project_id) DO NOTHING`,
+        [
+          tenantId,
+          projectId,
+          currentProject.client_name || 'Valued Customer',
+          currentProject.client_email || null,
+          currentProject.client_phone || null,
+          completedAt,
+          anniversaryDate,
+          nextFollowupDate,
+          referralCode
+        ]
+      );
     }
 
     await client.query('COMMIT');

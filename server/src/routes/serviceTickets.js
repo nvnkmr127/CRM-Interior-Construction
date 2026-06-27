@@ -41,6 +41,10 @@ const updateVisitSchema = z.object({
   completedDate: z.string().refine(val => !isNaN(Date.parse(val)), { message: 'Invalid completed date format' }).optional().nullable(),
   engineerId: z.string().uuid().optional().nullable(),
   visitSummary: z.string().optional().nullable(),
+  clientConfirmed: z.boolean().optional(),
+  clientConfirmedAt: z.string().refine(val => !isNaN(Date.parse(val)), { message: 'Invalid date format' }).optional().nullable(),
+  reminderSent: z.boolean().optional(),
+  visitOutcome: z.string().optional().nullable(),
 });
 
 // GET /api/projects/:projectId/service-tickets
@@ -80,6 +84,17 @@ router.post('/', authorize('projects:manage'), async (req, res, next) => {
     if (err instanceof z.ZodError) {
       return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     }
+    next(err);
+  }
+});
+
+// GET /api/projects/:projectId/service-tickets/csat-metrics
+router.get('/csat-metrics', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId;
+    const metrics = await serviceTicketService.getCsatMetrics(tenantId);
+    return success(res, metrics);
+  } catch (err) {
     next(err);
   }
 });
@@ -193,6 +208,10 @@ router.put('/:id/visits/:visitId', authorize('projects:manage'), async (req, res
     if (data.completedDate !== undefined) updateData.completed_date = data.completedDate;
     if (data.engineerId !== undefined) updateData.engineer_id = data.engineerId;
     if (data.visitSummary !== undefined) updateData.visit_summary = data.visitSummary;
+    if (data.clientConfirmed !== undefined) updateData.client_confirmed = data.clientConfirmed;
+    if (data.clientConfirmedAt !== undefined) updateData.client_confirmed_at = data.clientConfirmedAt;
+    if (data.reminderSent !== undefined) updateData.reminder_sent = data.reminderSent;
+    if (data.visitOutcome !== undefined) updateData.visit_outcome = data.visitOutcome;
 
     const visit = await serviceTicketService.updateVisit(visitId, id, tenantId, updateData, userId);
     return success(res, visit);

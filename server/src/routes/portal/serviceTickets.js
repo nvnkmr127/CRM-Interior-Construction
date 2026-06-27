@@ -111,4 +111,68 @@ router.post('/:id/feedback', async (req, res, next) => {
   }
 });
 
+// POST /api/portal/service-tickets/:id/visits/:visitId/confirm
+router.post('/:id/visits/:visitId/confirm', async (req, res, next) => {
+  try {
+    const { id, visitId } = req.params;
+    const { tenantId, projectId, id: portalUserId } = req.portalUser;
+
+    // Security check: ensure ticket belongs to client's project
+    const ticket = await serviceTicketService.getTicketById(id, tenantId);
+    if (!ticket) {
+      return fail(res, 'NOT_FOUND', 'Service ticket not found.', 404);
+    }
+    if (ticket.project_id !== projectId) {
+      return fail(res, 'FORBIDDEN', 'Access denied to this service ticket.', 403);
+    }
+
+    try {
+      const visit = await serviceTicketService.confirmVisit(visitId, id, tenantId, portalUserId);
+      return success(res, visit);
+    } catch (err) {
+      if (err.message === 'VISIT_NOT_FOUND') {
+        return fail(res, 'NOT_FOUND', 'Service visit not found.', 404);
+      }
+      throw err;
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+const csatSchema = z.object({
+  referenceType: z.enum(['handover', 'service_visit']),
+  referenceId: z.string().uuid(),
+  score: z.number().int().min(1).max(5),
+  comments: z.string().optional().nullable()
+});
+
+// POST /api/portal/service-tickets/csat
+router.post('/csat', async (req, res, next) => {
+  try {
+    const { projectId, tenantId, id: portalUserId } = req.portalUser;
+    const data = csatSchema.parse(req.body);
+
+    const csat = await serviceTicketService.submitCsat({
+      tenantId,
+      projectId,
+      referenceType: data.referenceType,
+      referenceId: data.referenceId,
+      score: data.score,
+      comments: data.comments,
+      clientPortalUserId: portalUserId
+    });
+
+    return success(res, csat, {}, 201);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    }
+    if (err.message === 'PROJECT_NOT_FOUND') {
+      return fail(res, 'NOT_FOUND', 'Project not found.', 404);
+    }
+    next(err);
+  }
+});
+
 module.exports = router;

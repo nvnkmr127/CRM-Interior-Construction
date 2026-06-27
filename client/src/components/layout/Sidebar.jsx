@@ -13,15 +13,31 @@ const NAV_ITEMS = [
   { group: 'ANALYTICS', items: [
     { to: '/analytics/leads',    icon: '▲', label: 'Lead Analytics' },
     { to: '/analytics/projects', icon: '◉', label: 'Project Health' },
+    { to: '/analytics/boq-variance', icon: '📊', label: 'BOQ Variance' },
+    { to: '/analytics/vendors', icon: '🤝', label: 'Vendor Performance' },
+    { to: '/analytics/collection-forecast', icon: '📈', label: 'Collection Forecast' },
+    { to: '/analytics/profitability', icon: '💎', label: 'Project Profitability' },
+    { to: '/analytics/resources', icon: '👤', label: 'Resource Utilisation' },
+    { to: '/analytics/csat', icon: '⭐', label: 'Client Satisfaction' },
   ]},
   { group: 'ADMIN', adminOnly: true, items: [
     { to: '/config',     icon: '⊙', label: 'Config Centre' },
+    { to: '/settings/audit-trail', icon: '📋', label: 'Audit Trail' }
   ]},
+  { group: 'FINANCE', financeOnly: true, items: [
+    { to: '/financial-approvals', icon: '📝', label: 'Financial Approvals' }
+  ]}
 ]
 
 export default function Sidebar({ collapsed, mobileOpen, onClose }) {
   const { user } = useAuth()
   const isAdmin = user?.role?.name === 'superadmin'
+  const hasFinancePermission = isAdmin || (user?.role?.permissions && (
+    user.role.permissions.includes('finance:invoices') ||
+    user.role.permissions.includes('finance:payments') ||
+    user.role.permissions.includes('finance:discounts') ||
+    user.role.permissions.includes('finance:credits')
+  ))
 
   return (
     <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''} ${mobileOpen ? styles.mobileOpen : ''}`}>
@@ -35,6 +51,7 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
       <nav className={styles.nav}>
         {NAV_ITEMS.map(group => {
           if (group.adminOnly && !isAdmin) return null
+          if (group.financeOnly && !hasFinancePermission) return null
           return (
             <div key={group.group} className={styles.navGroup}>
               {!collapsed && <span className={styles.groupLabel}>{group.group}</span>}

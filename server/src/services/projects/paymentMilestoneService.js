@@ -1,4 +1,5 @@
 const pool = require('../../db/pool');
+const { getTenantThreshold, isUserSuperadmin } = require('../../utils/finance');
 const { logAction } = require('../auditLog');
 
 async function getPaymentMilestones({ tenantId, projectId }) {
@@ -13,18 +14,32 @@ async function getPaymentMilestones({ tenantId, projectId }) {
   return result.rows;
 }
 
-async function createPaymentMilestone({ tenantId, userId, data }) {
+async function createPaymentMilestone({ tenantId, userId, data, bypassApproval = false }) {
   const { projectId, name, amount, percentage, dueDate, milestoneId, notes, tdsRate, tdsAmount } = data;
   
+  const threshold = await getTenantThreshold(tenantId, 'finance_payment_threshold', 100000.00);
+  const isSuperadmin = await isUserSuperadmin(userId);
+  const requiresApproval = !bypassApproval && !isSuperadmin && amount && amount > threshold;
+  const initialStatus = requiresApproval ? 'pending_approval' : 'scheduled';
+
   const query = `
     INSERT INTO payment_milestones (tenant_id, project_id, name, amount, percentage, due_date, milestone_id, notes, status, tds_rate, tds_amount)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'scheduled', $9, $10)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     RETURNING *
   `;
-  const values = [tenantId, projectId, name, amount || null, percentage || null, dueDate || null, milestoneId || null, notes || null, tdsRate || 0.00, tdsAmount || 0.00];
+  const values = [tenantId, projectId, name, amount || null, percentage || null, dueDate || null, milestoneId || null, notes || null, initialStatus, tdsRate || 0.00, tdsAmount || 0.00];
   
   const result = await pool.query(query, values);
   const milestone = result.rows[0];
+
+  if (requiresApproval) {
+    await pool.query(
+      `INSERT INTO financial_approvals (
+         tenant_id, transaction_type, target_id, amount, requested_by, requested_changes, status, threshold_limit
+       ) VALUES ($1, 'payment', $2, $3, $4, $5, 'pending', $6)`,
+      [tenantId, milestone.id, amount, userId, JSON.stringify({ type: 'create', data }), threshold]
+    );
+  }
 
   await logAction({
     tenantId,
@@ -32,19 +47,58 @@ async function createPaymentMilestone({ tenantId, userId, data }) {
     action: 'create_payment_milestone',
     entity: 'payment_milestone',
     entityId: milestone.id,
-    newValue: { name, amount, percentage, dueDate, tdsRate, tdsAmount }
+    newValue: { name, amount, percentage, dueDate, tdsRate, tdsAmount, requiresApproval }
   });
 
   return milestone;
 }
 
-async function updatePaymentMilestone({ tenantId, userId, milestoneId, data }) {
+async function updatePaymentMilestone({ tenantId, userId, milestoneId, data, bypassApproval = false }) {
   const { status, invoice_reference, paid_at, paid_amount, tds_rate, tds_amount, is_deferred, deferral_reference } = data;
 
   // Retrieve current to check transition
   const currentResult = await pool.query(`SELECT * FROM payment_milestones WHERE id = $1 AND tenant_id = $2`, [milestoneId, tenantId]);
   if (currentResult.rowCount === 0) throw new Error('NOT_FOUND');
   const current = currentResult.rows[0];
+
+  const threshold = await getTenantThreshold(tenantId, 'finance_payment_threshold', 100000.00);
+  const isSuperadmin = await isUserSuperadmin(userId);
+  const targetAmount = paid_amount !== undefined ? paid_amount : (current.amount || 0);
+  const isUpdatingPaidAmount = paid_amount !== undefined && Number(paid_amount) !== Number(current.paid_amount);
+  const isMarkingPaid = status === 'paid' && current.status !== 'paid';
+
+  const requiresApproval = !bypassApproval && !isSuperadmin && (
+    (isUpdatingPaidAmount && Number(paid_amount) > threshold) ||
+    (isMarkingPaid && Number(targetAmount) > threshold)
+  );
+
+  if (requiresApproval) {
+    // Keep it as pending_approval but do not apply the updates yet
+    const updateRes = await pool.query(
+      `UPDATE payment_milestones SET status = 'pending_approval' WHERE id = $1 AND tenant_id = $2 RETURNING *`,
+      [milestoneId, tenantId]
+    );
+    const updated = updateRes.rows[0];
+
+    await pool.query(
+      `INSERT INTO financial_approvals (
+         tenant_id, transaction_type, target_id, amount, requested_by, requested_changes, status, threshold_limit
+       ) VALUES ($1, 'payment_update', $2, $3, $4, $5, 'pending', $6)`,
+      [tenantId, milestoneId, targetAmount, userId, JSON.stringify({ type: 'update', original_status: current.status, data }), threshold]
+    );
+
+    await logAction({
+      tenantId,
+      userId,
+      action: 'update_payment_milestone',
+      entity: 'payment_milestone',
+      entityId: milestoneId,
+      newValue: { status: 'pending_approval' },
+      oldValue: current
+    });
+
+    return updated;
+  }
 
   let updateFields = [];
   let values = [];

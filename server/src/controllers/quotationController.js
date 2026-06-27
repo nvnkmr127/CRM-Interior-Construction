@@ -150,8 +150,22 @@ exports.rejectQuotation = async (req, res, next) => {
 exports.updateQuotation = async (req, res, next) => {
   try {
     const tenantId = getTenantId(req);
+    const userId = getUserId(req);
     const { id } = req.params;
-    const quotation = await quotationService.updateQuotation(tenantId, id, req.body);
+
+    // Check if trying to update discount amount
+    if (req.body.discountAmount !== undefined) {
+      const permissions = req.user.permissions || [];
+      if (req.user.role !== 'superadmin' && !permissions.includes('finance:discounts')) {
+        return res.status(403).json({
+          success: false,
+          error: 'FORBIDDEN',
+          required: 'finance:discounts'
+        });
+      }
+    }
+
+    const quotation = await quotationService.updateQuotation(tenantId, id, req.body, userId);
     if (!quotation) {
       return res.status(404).json({ success: false, message: 'Quotation not found' });
     }

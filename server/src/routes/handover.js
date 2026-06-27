@@ -3,6 +3,7 @@ const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
+const pool = require('../db/pool');
 const { updateItem, clientSignOff } = require('../services/postSale/handoverService');
 
 const router = express.Router({ mergeParams: true });
@@ -45,18 +46,52 @@ router.patch('/items/:itemId', authorize('projects:manage'), async (req, res, ne
   }
 });
 
+// POST /api/handover/checklists/:id/authorize
+router.post('/checklists/:id/authorize', authorize('handover:authorize'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.tenantId;
+    const userId = req.user.userId;
+
+    const checkRes = await pool.query(
+      'SELECT id FROM handover_checklists WHERE id = $1 AND tenant_id = $2',
+      [id, tenantId]
+    );
+    if (checkRes.rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Handover checklist not found', 404);
+    }
+
+    const { rows } = await pool.query(
+      `UPDATE handover_checklists 
+       SET is_internally_authorized = TRUE,
+           internally_authorized_by = $1,
+           internally_authorized_at = CURRENT_TIMESTAMP
+       WHERE id = $2 AND tenant_id = $3
+       RETURNING *`,
+      [userId, id, tenantId]
+    );
+
+    return success(res, rows[0], { message: 'Handover internally authorized successfully.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /api/handover/checklists/:id/sign-off
 router.post('/checklists/:id/sign-off', authorize('projects:manage'), async (req, res, next) => {
   try {
     const checklist = await clientSignOff({
       checklistId: req.params.id,
       tenantId: req.tenantId,
-      clientPortalUserId: req.user.userId // Typically client sign off is done by client portal user, but for now staff can trigger it or we use their userId.
+      clientPortalUserId: req.user.userId
     });
     return success(res, checklist);
   } catch (err) {
     if (err.message === 'ITEMS_INCOMPLETE') {
       return fail(res, 'BAD_REQUEST', 'All items must be checked before sign-off', 400);
+    }
+    if (err.message === 'INTERNAL_AUTHORIZATION_PENDING') {
+      return fail(res, 'BAD_REQUEST', 'Internal Authorization Pending: Operations head or senior PM must authorize the handover before client sign-off.', 400);
     }
     next(err);
   }

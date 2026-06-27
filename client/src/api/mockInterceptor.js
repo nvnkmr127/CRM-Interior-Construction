@@ -1964,6 +1964,270 @@ export const setupMockInterceptor = (api) => {
               responseData.data = mockDatabase.tenantSettings;
             }
           }
+          // CLOSURE CHECKLIST
+          else if (url.includes('/closure-checklist')) {
+            const urlParts = url.split('?');
+            const pathPart = urlParts[0];
+            const match = pathPart.match(/\/projects\/([a-zA-Z0-9-]+)\/closure-checklist$/);
+            const projectId = match ? match[1] : 'mock-project-123';
+
+            if (!mockDatabase.closureChecklists) {
+              mockDatabase.closureChecklists = {};
+            }
+
+            if (!mockDatabase.closureChecklists[projectId]) {
+              mockDatabase.closureChecklists[projectId] = {
+                id: `mock-cc-${projectId}`,
+                project_id: projectId,
+                tenant_id: 'mock-tenant-123',
+                financial_clearance_completed: false,
+                financial_clearance_notes: '',
+                financial_clearance_verified_by: null,
+                financial_clearance_verified_at: null,
+                task_completion_completed: false,
+                task_completion_notes: '',
+                task_completion_verified_by: null,
+                task_completion_verified_at: null,
+                snag_closure_completed: false,
+                snag_closure_notes: '',
+                snag_closure_verified_by: null,
+                snag_closure_verified_at: null,
+                document_archive_completed: false,
+                document_archive_notes: '',
+                document_archive_verified_by: null,
+                document_archive_verified_at: null,
+                warranty_activation_completed: false,
+                warranty_activation_notes: '',
+                warranty_activation_verified_by: null,
+                warranty_activation_verified_at: null,
+                status: 'in_progress',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              };
+            }
+
+            if (method === 'get') {
+              responseData.data = {
+                checklist: mockDatabase.closureChecklists[projectId],
+                autoVerification: {
+                  financialClearance: { passed: true, message: 'All milestones paid or deferred' },
+                  taskCompletion: { passed: true, message: 'All project tasks completed' },
+                  snagClosure: { passed: true, message: 'No open snags or defects' },
+                  documentArchive: { passed: true, message: 'All documents approved' },
+                  warrantyActivation: { passed: true, message: 'Warranties registered and active' }
+                }
+              };
+            } else if (method === 'patch') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const current = mockDatabase.closureChecklists[projectId];
+              const updated = {
+                ...current,
+                ...payload,
+                updated_at: new Date().toISOString()
+              };
+              
+              if (
+                updated.financial_clearance_completed &&
+                updated.task_completion_completed &&
+                updated.snag_closure_completed &&
+                updated.document_archive_completed &&
+                updated.warranty_activation_completed
+              ) {
+                updated.status = 'completed';
+              } else {
+                updated.status = 'in_progress';
+              }
+
+              mockDatabase.closureChecklists[projectId] = updated;
+              persistDb();
+              
+              responseData.data = {
+                checklist: updated,
+                autoVerification: {
+                  financialClearance: { passed: true, message: 'All milestones paid or deferred' },
+                  taskCompletion: { passed: true, message: 'All project tasks completed' },
+                  snagClosure: { passed: true, message: 'No open snags or defects' },
+                  documentArchive: { passed: true, message: 'All documents approved' },
+                  warrantyActivation: { passed: true, message: 'Warranties registered and active' }
+                }
+              };
+            }
+          }
+          // RETROSPECTIVE
+          else if (url.includes('/retrospective')) {
+            const urlParts = url.split('?');
+            const pathPart = urlParts[0];
+            const match = pathPart.match(/\/projects\/([a-zA-Z0-9-]+)\/retrospective$/);
+            const projectId = match ? match[1] : 'mock-project-123';
+
+            if (!mockDatabase.retrospectives) {
+              mockDatabase.retrospectives = {};
+            }
+
+            if (!mockDatabase.retrospectives[projectId]) {
+              mockDatabase.retrospectives[projectId] = {
+                id: `mock-retro-${projectId}`,
+                project_id: projectId,
+                tenant_id: 'mock-tenant-123',
+                what_went_well: '',
+                what_went_wrong: '',
+                design_feedback: '',
+                process_changes: '',
+                created_by: 'mock-user-123',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              };
+            }
+
+            if (!mockDatabase.retroVendors) {
+              mockDatabase.retroVendors = {};
+            }
+
+            if (!mockDatabase.retroVendors[projectId]) {
+              mockDatabase.retroVendors[projectId] = [];
+            }
+
+            const allProjectVendors = mockDatabase.projectVendors || [
+              { project_vendor_id: 'mock-pv-1', vendor_name: 'Decora Carpets', scope_of_work: 'Flooring & carpet installation' },
+              { project_vendor_id: 'mock-pv-2', vendor_name: 'Apex Electricals', scope_of_work: 'Wiring & electrical fitting' }
+            ];
+
+            if (method === 'get') {
+              const combinedRatings = allProjectVendors.map(v => {
+                const found = mockDatabase.retroVendors[projectId].find(r => r.project_vendor_id === v.project_vendor_id);
+                return {
+                  project_vendor_id: v.project_vendor_id,
+                  vendor_name: v.vendor_name,
+                  scope_of_work: v.scope_of_work,
+                  rating: found ? found.rating : null,
+                  feedback: found ? found.feedback : ''
+                };
+              });
+
+              responseData.data = {
+                retrospective: mockDatabase.retrospectives[projectId],
+                vendorRatings: combinedRatings,
+                projectVendors: allProjectVendors
+              };
+            } else if (method === 'post') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const { what_went_well, what_went_wrong, design_feedback, process_changes, vendor_ratings = [] } = payload;
+              
+              mockDatabase.retrospectives[projectId] = {
+                ...mockDatabase.retrospectives[projectId],
+                what_went_well,
+                what_went_wrong,
+                design_feedback,
+                process_changes,
+                updated_at: new Date().toISOString()
+              };
+
+              mockDatabase.retroVendors[projectId] = vendor_ratings;
+              persistDb();
+
+              const combinedRatings = allProjectVendors.map(v => {
+                const found = mockDatabase.retroVendors[projectId].find(r => r.project_vendor_id === v.project_vendor_id);
+                return {
+                  project_vendor_id: v.project_vendor_id,
+                  vendor_name: v.vendor_name,
+                  scope_of_work: v.scope_of_work,
+                  rating: found ? found.rating : null,
+                  feedback: found ? found.feedback : ''
+                };
+              });
+
+              responseData.data = {
+                retrospective: mockDatabase.retrospectives[projectId],
+                vendorRatings: combinedRatings,
+                projectVendors: allProjectVendors
+              };
+            }
+          }
+          // ARCHIVE
+          else if (url.includes('/archive')) {
+            const urlParts = url.split('?');
+            const pathPart = urlParts[0];
+            const match = pathPart.match(/\/projects\/([a-zA-Z0-9-]+)\/archive$/);
+            if (match && method === 'post') {
+              const projectId = match[1];
+              const idx = mockDatabase.projects?.findIndex(p => p.id === projectId);
+              if (idx !== -1 && mockDatabase.projects) {
+                mockDatabase.projects[idx].status = 'archived';
+                persistDb();
+                responseData.data = mockDatabase.projects[idx];
+              }
+            }
+          }
+          // REOPEN
+          else if (url.includes('/reopen')) {
+            const urlParts = url.split('?');
+            const pathPart = urlParts[0];
+            const match = pathPart.match(/\/projects\/([a-zA-Z0-9-]+)\/reopen$/);
+            if (match && method === 'post') {
+              const projectId = match[1];
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const { newStartDate, newTargetDate } = payload;
+              
+              const idx = mockDatabase.projects?.findIndex(p => p.id === projectId);
+              if (idx !== -1 && mockDatabase.projects) {
+                mockDatabase.projects[idx].status = 'active';
+                mockDatabase.projects[idx].start_date = newStartDate;
+                if (newTargetDate) {
+                  mockDatabase.projects[idx].target_date = newTargetDate;
+                }
+                persistDb();
+                responseData.data = mockDatabase.projects[idx];
+            }
+          }
+          // EVENTS (AUDIT TRAIL)
+          else if (url.includes('/events')) {
+            if (method === 'get') {
+              if (url.includes('export=csv')) {
+                return Promise.resolve({
+                  data: "Timestamp,User Name,User Email,Action,Entity,Entity ID,Old Value,New Value,IP Address\n2026-06-27T10:00:00Z,Mock Admin,admin@mock.com,project.updated,project,mock-proj-1,{},{},127.0.0.1",
+                  status: 200,
+                  statusText: 'OK',
+                  headers: { 'content-type': 'text/csv' },
+                  config,
+                  request: {}
+                });
+              } else {
+                responseData.data = [
+                  {
+                    id: 'mock-audit-1',
+                    created_at: new Date(Date.now() - 3600000).toISOString(),
+                    user_name: 'Mock Admin',
+                    user_email: 'admin@mock.com',
+                    action: 'project.updated',
+                    entity: 'project',
+                    entity_id: 'mock-proj-1',
+                    old_value: '{"name": "Old Project Name"}',
+                    new_value: '{"name": "New Project Name"}',
+                    ip_address: '127.0.0.1'
+                  },
+                  {
+                    id: 'mock-audit-2',
+                    created_at: new Date(Date.now() - 7200000).toISOString(),
+                    user_name: 'Mock Designer',
+                    user_email: 'designer@mock.com',
+                    action: 'document.approved',
+                    entity: 'document',
+                    entity_id: 'mock-doc-1',
+                    old_value: '{"status": "pending"}',
+                    new_value: '{"status": "approved"}',
+                    ip_address: '127.0.0.1'
+                  }
+                ];
+                responseData.meta = {
+                  total: 2,
+                  count: 2,
+                  offset: 0,
+                  limit: 50,
+                  hasMore: false
+                };
+              }
+            }
+          }
           else if (isMutation) {
             console.warn(
               `[MockSession] ${method.toUpperCase()} ${config.url} intercepted — request NOT sent to server.`

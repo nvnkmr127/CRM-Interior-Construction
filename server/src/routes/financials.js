@@ -47,7 +47,7 @@ router.get('/projects/:projectId/credit-notes', authorize('projects:read'), asyn
 });
 
 // POST /api/financials/credit-notes
-router.post('/credit-notes', authorize('projects:manage'), async (req, res, next) => {
+router.post('/credit-notes', authorize('finance:credits'), async (req, res, next) => {
   try {
     const data = createCreditNoteSchema.parse(req.body);
     const creditNote = await createCreditNote({
@@ -75,7 +75,7 @@ router.get('/projects/:projectId/refunds', authorize('projects:read'), async (re
 });
 
 // POST /api/financials/refunds
-router.post('/refunds', authorize('projects:manage'), async (req, res, next) => {
+router.post('/refunds', authorize('finance:credits'), async (req, res, next) => {
   try {
     const data = createRefundSchema.parse(req.body);
     const refund = await createRefund({

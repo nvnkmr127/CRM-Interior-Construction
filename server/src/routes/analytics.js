@@ -414,5 +414,11 @@ router.get('/revenue', authenticate, authorize('analytics:read'), analyticsContr
 router.get('/pipeline', authenticate, authorize('analytics:read'), analyticsController.getPipelineAnalytics);
 router.get('/conversion', authenticate, authorize('analytics:read'), analyticsController.getConversionAnalytics);
 router.get('/forecast', authenticate, authorize('analytics:read'), analyticsController.getForecastAnalytics);
+router.get('/vendors', authenticate, authorize('analytics:read'), analyticsController.getVendorPerformanceReport);
+router.get('/vendors/:vendorName', authenticate, authorize('analytics:read'), analyticsController.getVendorPerformanceDetail);
+router.get('/collection-forecast', authenticate, authorize('analytics:read'), analyticsController.getCollectionForecast);
+router.get('/profitability', authenticate, authorize('analytics:read'), analyticsController.getProfitabilityAnalytics);
+router.get('/resource-utilisation', authenticate, authorize('analytics:read'), analyticsController.getResourceUtilisation);
+router.get('/csat', authenticate, authorize('analytics:read'), analyticsController.getCSATAnalytics);
 
 module.exports = router;

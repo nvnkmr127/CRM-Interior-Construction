@@ -341,6 +341,41 @@ async function createProject({ tenantId, userId, data }) {
       }
     }
 
+    // 2.5. Seed compliance checklist based on category
+    const category = project.project_category || projectData.project_category || 'residential';
+    let complianceItems = [];
+    if (category === 'commercial') {
+      complianceItems = [
+        'Fire NOC Approval',
+        'Occupancy Permit',
+        'Liquidated Damages (LD) Review',
+        'Stakeholder Signoff Protocol',
+        'Retention Money Clause Verification'
+      ];
+    } else if (category === 'hospitality') {
+      complianceItems = [
+        'Fire Safety Certification',
+        'Occupancy Permit',
+        'Pollution Control Board NOC',
+        'Health & Safety Clearances'
+      ];
+    } else {
+      complianceItems = [
+        'Client Design Signoff',
+        'Society NOC',
+        'Material Inward Clearance'
+      ];
+    }
+
+    for (const item of complianceItems) {
+      await client.query(
+        `INSERT INTO project_compliance_checklists (tenant_id, project_id, item_name, status)
+         VALUES ($1, $2, $3, 'pending')
+         ON CONFLICT (project_id, item_name) DO NOTHING`,
+        [tenantId, project.id, item]
+      );
+    }
+
     await client.query('COMMIT');
 
     // 3. Log the action (after commit)

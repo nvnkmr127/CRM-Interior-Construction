@@ -13,21 +13,75 @@ async function createClaim({
   natureOfDefect,
   userId = null
 }) {
+  let isRepeat = false;
+  let repeatCount = 0;
+  
+  if (warrantyId) {
+    const countRes = await pool.query(
+      `SELECT COUNT(*)::int as count FROM warranty_claims 
+       WHERE warranty_id = $1 AND tenant_id = $2`,
+      [warrantyId, tenantId]
+    );
+    repeatCount = countRes.rows[0].count;
+    isRepeat = repeatCount > 0;
+  }
+
   const query = `
     INSERT INTO warranty_claims (
       tenant_id, project_id, warranty_id, claim_number, 
-      claim_date, nature_of_defect, status, eligibility_decision
+      claim_date, nature_of_defect, status, eligibility_decision,
+      is_repeat_claim, repeat_claim_count
     )
-    VALUES ($1, $2, $3, $4, $5, $6, 'open', 'pending')
+    VALUES ($1, $2, $3, $4, $5, $6, 'open', 'pending', $7, $8)
     RETURNING *
   `;
   const values = [
     tenantId, projectId, warrantyId, claimNumber,
-    claimDate, natureOfDefect
+    claimDate, natureOfDefect, isRepeat, repeatCount
   ];
 
   const { rows } = await pool.query(query, values);
   const claim = rows[0];
+
+  // Send notifications for repeat claims
+  if (isRepeat) {
+    try {
+      const projRes = await pool.query('SELECT name, pm_id FROM projects WHERE id = $1', [projectId]);
+      const project = projRes.rows[0];
+      const prodRes = await pool.query('SELECT product_name FROM warranties WHERE id = $1', [warrantyId]);
+      const productName = prodRes.rows[0]?.product_name || 'Product';
+
+      const notifyUsers = [];
+      if (project?.pm_id) {
+        notifyUsers.push(project.pm_id);
+      }
+      
+      const adminUsersRes = await pool.query(
+        `SELECT u.id FROM users u
+         JOIN roles r ON u.role_id = r.id
+         WHERE u.tenant_id = $1 AND (r.name IN ('superadmin', 'admin', 'finance'))`,
+        [tenantId]
+      );
+      adminUsersRes.rows.forEach(row => {
+        if (!notifyUsers.includes(row.id)) notifyUsers.push(row.id);
+      });
+
+      for (const recipientId of notifyUsers) {
+        await pool.query(
+          `INSERT INTO notifications (tenant_id, user_id, type, message, reference_url)
+           VALUES ($1, $2, 'repeat_warranty_claim', $3, $4)`,
+          [
+            tenantId,
+            recipientId,
+            `Alert: Repeat warranty claim on product '${productName}' (Claim #${claimNumber}). This item has been claimed ${repeatCount + 1} times.`,
+            `/projects/${projectId}/warranty-claims`
+          ]
+        );
+      }
+    } catch (err) {
+      console.error('[Warranty Claim Service] Failed to send repeat claim notifications:', err.message);
+    }
+  }
 
   // Log audit action
   await logAction({

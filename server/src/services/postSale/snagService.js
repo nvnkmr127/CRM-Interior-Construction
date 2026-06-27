@@ -137,6 +137,18 @@ async function updateSnagStatus({
     newValue: { status, resolutionNote, reworkRequired }
   });
 
+  // Trigger handover readiness check asynchronously if status is resolved
+  if (status === 'resolved') {
+    setImmediate(async () => {
+      try {
+        const { checkAndNotifyHandoverReadiness } = require('./handoverService');
+        await checkAndNotifyHandoverReadiness(tenantId, snag.project_id);
+      } catch (err) {
+        console.error('[Snag Service] Error checking handover readiness on resolution:', err.message);
+      }
+    });
+  }
+
   dispatchEvent(tenantId, 'snag.status_changed', {
     snagId,
     projectId: snag.project_id,
@@ -181,6 +193,16 @@ async function clientVerifySnag({ tenantId, snagId, clientPortalUserId }) {
     entity: 'snag',
     entityId: snagId,
     newValue: { status: 'client_verified' }
+  });
+
+  // Trigger handover readiness check asynchronously on client verification
+  setImmediate(async () => {
+    try {
+      const { checkAndNotifyHandoverReadiness } = require('./handoverService');
+      await checkAndNotifyHandoverReadiness(tenantId, snag.project_id);
+    } catch (err) {
+      console.error('[Snag Service] Error checking handover readiness on verification:', err.message);
+    }
   });
 
   return snag;

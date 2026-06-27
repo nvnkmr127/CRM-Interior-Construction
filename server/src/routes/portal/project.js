@@ -338,4 +338,83 @@ router.post('/documents/:documentId/comments', async (req, res, next) => {
   }
 });
 
+// GET /api/portal/project/relationship
+router.get('/relationship', async (req, res, next) => {
+  try {
+    const { projectId, tenantId, name: clientName } = req.portalUser;
+
+    // Check if relationship record exists
+    let recordRes = await pool.query(
+      'SELECT * FROM client_relationship_records WHERE project_id = $1 AND tenant_id = $2',
+      [projectId, tenantId]
+    );
+
+    if (recordRes.rows.length === 0) {
+      // Lazy create
+      const completedAt = new Date();
+      const anniversaryDate = new Date();
+      anniversaryDate.setFullYear(completedAt.getFullYear() + 1);
+
+      const nextFollowupDate = new Date();
+      nextFollowupDate.setMonth(completedAt.getMonth() + 6);
+
+      const rand = Math.floor(1000 + Math.random() * 9000);
+      const cleanName = clientName ? clientName.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6).toUpperCase() : 'CUST';
+      const referralCode = `REF-${cleanName}-${rand}`;
+
+      // Fetch client details
+      const projRes = await pool.query('SELECT client_email, client_phone FROM projects WHERE id = $1', [projectId]);
+      const proj = projRes.rows[0] || {};
+
+      recordRes = await pool.query(
+        `INSERT INTO client_relationship_records (
+          tenant_id, project_id, client_name, client_email, client_phone,
+          project_completed_at, anniversary_date, next_followup_schedule_date, referral_code
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         ON CONFLICT (project_id) DO UPDATE SET updated_at = NOW()
+         RETURNING *`,
+        [
+          tenantId,
+          projectId,
+          clientName || 'Valued Customer',
+          proj.client_email || null,
+          proj.client_phone || null,
+          completedAt,
+          anniversaryDate,
+          nextFollowupDate,
+          referralCode
+        ]
+      );
+    }
+
+    res.json({ success: true, data: recordRes.rows[0] });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/portal/project/referrals
+router.post('/referrals', async (req, res, next) => {
+  try {
+    const { projectId, tenantId } = req.portalUser;
+    const { refereeName, refereePhone, refereeEmail, notes } = req.body;
+
+    if (!refereeName) {
+      return res.status(400).json({ success: false, message: 'Referee name is required.' });
+    }
+
+    const { rows } = await pool.query(
+      `INSERT INTO client_referrals (
+        tenant_id, referrer_project_id, referee_name, referee_phone, referee_email, notes
+      ) VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [tenantId, projectId, refereeName, refereePhone || null, refereeEmail || null, notes || null]
+    );
+
+    res.status(201).json({ success: true, data: rows[0], message: 'Referral submitted successfully!' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

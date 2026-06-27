@@ -116,6 +116,10 @@ export const createChangeOrder = (projectId, data) => api.post(`/projects/${proj
 export const updateChangeOrder = (projectId, id, data) => api.patch(`/projects/${projectId}/change-orders/${id}`, data);
 export const deleteChangeOrder = (projectId, id) => api.delete(`/projects/${projectId}/change-orders/${id}`);
 
+// BOQ Variance Reports
+export const getBOQVarianceReport = (projectId) => api.get(`/projects/${projectId}/boq-variance`);
+export const getPortfolioBOQVarianceReport = () => api.get('/projects/boq-variance');
+
 // Quotations / BOQ
 export const getQuotations = (projectId) => api.get(`/projects/${projectId}/quotations`);
 export const getQuotation = (projectId, id) => api.get(`/projects/${projectId}/quotations/${id}`);
@@ -196,4 +200,19 @@ export const getDrawingRegister = (projectId) => api.get(`/projects/${projectId}
 export const createDrawingRegisterEntry = (projectId, data) => api.post(`/projects/${projectId}/drawing-register`, data);
 export const updateDrawingRegisterEntry = (projectId, id, data) => api.put(`/projects/${projectId}/drawing-register/${id}`, data);
 export const deleteDrawingRegisterEntry = (projectId, id) => api.delete(`/projects/${projectId}/drawing-register/${id}`);
+
+// Project Closure Checklist
+export const getClosureChecklist = (projectId) => api.get(`/projects/${projectId}/closure-checklist`);
+export const updateClosureChecklist = (projectId, data) => api.patch(`/projects/${projectId}/closure-checklist`, data);
+
+// Project Retrospective
+export const getRetrospective = (projectId) => api.get(`/projects/${projectId}/retrospective`);
+export const saveRetrospective = (projectId, data) => api.post(`/projects/${projectId}/retrospective`, data);
+
+// Project Archive & Reopen
+export const archiveProject = (projectId) => api.post(`/projects/${projectId}/archive`);
+export const reopenProject = (projectId, data) => api.post(`/projects/${projectId}/reopen`, data);
+
+
+
 

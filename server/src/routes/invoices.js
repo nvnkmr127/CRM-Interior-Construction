@@ -94,7 +94,7 @@ router.get('/milestone/:milestoneId/draft', authorize('projects:read'), async (r
 });
 
 // POST /api/invoices
-router.post('/', authorize('projects:manage'), async (req, res, next) => {
+router.post('/', authorize('finance:invoices'), async (req, res, next) => {
   try {
     const data = createInvoiceSchema.parse(req.body);
     

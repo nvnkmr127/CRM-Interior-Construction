@@ -147,6 +147,7 @@ class MaterialSubstitutionService {
               brand = $2,
               material_specifications = $3,
               unit_price = $4,
+              is_discontinued = FALSE,
               updated_at = CURRENT_TIMESTAMP
           WHERE id = $5 AND tenant_id = $6
           RETURNING quotation_id

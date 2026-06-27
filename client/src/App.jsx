@@ -23,11 +23,20 @@ const MyTasksPage    = lazy(() => import('./pages/tasks/MyTasksPage'))
 const LeadAnalytics  = lazy(() => import('./pages/LeadAnalyticsDashboard'))
 const ManagerDashboard = lazy(() => import('./pages/leads/ManagerDashboard'))
 const ProjectAnalytics= lazy(() => import('./pages/analytics/ProjectAnalyticsPage'))
+const BOQVarianceReportPage = lazy(() => import('./pages/analytics/BOQVarianceReportPage'))
+const VendorPerformanceReportPage = lazy(() => import('./pages/analytics/VendorPerformanceReportPage'))
+const VendorPerformanceDetailPage = lazy(() => import('./pages/analytics/VendorPerformanceDetailPage'))
+const CollectionForecastReportPage = lazy(() => import('./pages/analytics/CollectionForecastReportPage'))
+const ProjectProfitabilityReportPage = lazy(() => import('./pages/analytics/ProjectProfitabilityReportPage'))
+const ResourceUtilisationReportPage = lazy(() => import('./pages/analytics/ResourceUtilisationReportPage'))
+const CSATReportPage = lazy(() => import('./pages/analytics/CSATReportPage'))
 const ResourceCapacityPage = lazy(() => import('./pages/projects/ResourceCapacityPage'))
 const ProfilePage    = lazy(() => import('./pages/settings/ProfilePage'))
 const PreferencesPage= lazy(() => import('./pages/settings/PreferencesPage'))
+const AuditTrailPage  = lazy(() => import('./pages/settings/AuditTrailPage'))
 const ConfigPage     = lazy(() => import('./pages/config/ConfigPage'))
 const PortalApp      = lazy(() => import('./portal/PortalApp'))
+const FinancialApprovalsPage = lazy(() => import('./pages/dashboard/FinancialApprovalsPage'))
 
 export default function App() {
   return (
@@ -55,9 +64,18 @@ export default function App() {
                     <Route path='/tasks' element={<MyTasksPage />} />
                     <Route path='/analytics/leads' element={<LeadAnalytics />} />
                     <Route path='/analytics/projects' element={<ProjectAnalytics />} />
+                    <Route path='/analytics/boq-variance' element={<BOQVarianceReportPage />} />
+                    <Route path='/analytics/vendors' element={<VendorPerformanceReportPage />} />
+                    <Route path='/analytics/vendors/:vendorName' element={<VendorPerformanceDetailPage />} />
+                    <Route path='/analytics/collection-forecast' element={<CollectionForecastReportPage />} />
+                    <Route path='/analytics/profitability' element={<ProjectProfitabilityReportPage />} />
+                    <Route path='/analytics/resources' element={<ResourceUtilisationReportPage />} />
+                    <Route path='/analytics/csat' element={<CSATReportPage />} />
                     <Route path='/settings/profile' element={<ProfilePage />} />
                     <Route path='/settings/preferences' element={<PreferencesPage />} />
+                    <Route path='/settings/audit-trail' element={<AuditTrailPage />} />
                     <Route path='/config/*' element={<ConfigPage />} />
+                    <Route path='/financial-approvals' element={<FinancialApprovalsPage />} />
                   </Route>
                   <Route path='*' element={<NotFound />} />
                 </Routes>

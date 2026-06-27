@@ -117,6 +117,14 @@ router.post('/generate', authorize('projects:manage'), async (req, res) => {
 router.patch('/:id', authorize('projects:manage'), async (req, res) => {
   try {
     const updates = updateActivitySchema.parse(req.body);
+
+    if (updates.status === 'completed' && req.user?.role !== 'superadmin') {
+      const perms = req.user?.permissions || [];
+      if (!perms.includes('qc:approve')) {
+        return fail(res, 'FORBIDDEN', 'Forbidden: only QC officers with qc:approve permission can close QC inspections.', 403);
+      }
+    }
+
     const activity = await workActivityRepository.updateActivity(
       req.params.id,
       req.tenantId,

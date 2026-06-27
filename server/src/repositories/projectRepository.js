@@ -14,7 +14,9 @@ class ProjectRepository {
       carpet_area, built_up_area, number_of_rooms,
       project_category, project_sub_category, property_type, property_age, renovation_scope, segment,
       allowed_design_revisions = 3, current_design_revisions = 0,
-      pm_hours_allocated = 10, designer_hours_allocated = 20
+      pm_hours_allocated = 10, designer_hours_allocated = 20,
+      fire_noc_status = 'pending', occupancy_permit_status = 'pending',
+      retention_money_percentage = 0.00, ld_clause_details = null, stakeholder_complexity = 'low'
     } = data;
 
     const query = `
@@ -30,12 +32,15 @@ class ProjectRepository {
         carpet_area, built_up_area, number_of_rooms,
         project_category, project_sub_category, property_type, property_age, renovation_scope, segment,
         allowed_design_revisions, current_design_revisions,
-        pm_hours_allocated, designer_hours_allocated
+        pm_hours_allocated, designer_hours_allocated,
+        fire_noc_status, occupancy_permit_status,
+        retention_money_percentage, ld_clause_details, stakeholder_complexity
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36,
         $37, $38, $39,
-        $40, $41, $42, $43, $44, $45, $46, $47, $48, $49
+        $40, $41, $42, $43, $44, $45, $46, $47, $48, $49,
+        $50, $51, $52, $53, $54
       ) RETURNING *
     `;
     const values = [
@@ -72,7 +77,12 @@ class ProjectRepository {
       allowed_design_revisions,
       current_design_revisions,
       pm_hours_allocated !== undefined && pm_hours_allocated !== null ? Number(pm_hours_allocated) : 10,
-      designer_hours_allocated !== undefined && designer_hours_allocated !== null ? Number(designer_hours_allocated) : 20
+      designer_hours_allocated !== undefined && designer_hours_allocated !== null ? Number(designer_hours_allocated) : 20,
+      fire_noc_status,
+      occupancy_permit_status,
+      retention_money_percentage !== undefined && retention_money_percentage !== null ? Number(retention_money_percentage) : 0.00,
+      ld_clause_details,
+      stakeholder_complexity
     ];
 
     const { rows } = await dbClient.query(query, values);

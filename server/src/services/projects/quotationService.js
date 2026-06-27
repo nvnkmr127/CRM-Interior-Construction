@@ -1,4 +1,5 @@
 const pool = require('../../db/pool');
+const { getTenantThreshold, isUserSuperadmin } = require('../../utils/finance');
 
 class QuotationService {
   async createQuotation(tenantId, data) {
@@ -514,7 +515,27 @@ class QuotationService {
     return result.rows[0];
   }
 
-  async updateQuotation(tenantId, quotationId, data) {
+  async updateQuotation(tenantId, quotationId, data, userId = null, bypassApproval = false) {
+    if (data.discountAmount !== undefined && !bypassApproval) {
+      const discountVal = Number(data.discountAmount);
+      const threshold = await getTenantThreshold(tenantId, 'finance_discount_threshold', 50000.00);
+      const isSuperadmin = await isUserSuperadmin(userId);
+      if (!isSuperadmin && discountVal > threshold) {
+        // Create financial approval record
+        await pool.query(
+          `INSERT INTO financial_approvals (
+             tenant_id, transaction_type, target_id, amount, requested_by, requested_changes, status, threshold_limit
+           ) VALUES ($1, 'discount', $2, $3, $4, $5, 'pending', $6)`,
+          [tenantId, quotationId, discountVal, userId, JSON.stringify({ discountAmount: discountVal }), threshold]
+        );
+        
+        // Remove discountAmount from data and update everything else
+        const dataCopy = { ...data };
+        delete dataCopy.discountAmount;
+        return this.updateQuotation(tenantId, quotationId, dataCopy, userId, true);
+      }
+    }
+
     const fields = [];
     const values = [tenantId, quotationId];
     let index = 3;

@@ -47,7 +47,7 @@ const createSchema = z.object({
 });
 
 // POST /api/payment-milestones
-router.post('/', authorize('projects:manage'), async (req, res, next) => {
+router.post('/', authorize('finance:payments'), async (req, res, next) => {
   try {
     const data = createSchema.parse(req.body);
     // map percent -> percentage for service layer
@@ -84,7 +84,7 @@ const updateSchema = z.object({
 });
 
 // PATCH /api/payment-milestones/:id
-router.patch('/:id', authorize('projects:manage'), async (req, res, next) => {
+router.patch('/:id', authorize('finance:payments'), async (req, res, next) => {
   try {
     const data = updateSchema.parse(req.body);
     

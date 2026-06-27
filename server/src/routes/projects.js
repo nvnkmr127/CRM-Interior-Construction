@@ -35,6 +35,8 @@ const punchListsRoutes = require('./punchLists');
 const warrantiesRoutes = require('./warranties');
 const amcsRoutes = require('./amcs');
 const warrantyClaimsRoutes = require('./warrantyClaims');
+const projectClosuresRoutes = require('./projectClosures');
+const projectRetrospectivesRoutes = require('./projectRetrospectives');
 
 
 const router = express.Router();
@@ -68,6 +70,8 @@ router.use('/:projectId/punch-lists', punchListsRoutes);
 router.use('/:projectId/warranties', warrantiesRoutes);
 router.use('/:projectId/amcs', amcsRoutes);
 router.use('/:projectId/warranty-claims', warrantyClaimsRoutes);
+router.use('/:projectId/closure-checklist', projectClosuresRoutes);
+router.use('/:projectId/retrospective', projectRetrospectivesRoutes);
 
 
 
@@ -125,6 +129,11 @@ const createProjectSchema = z.object({
   number_of_rooms: z.number().int().optional().nullable(),
   project_category: z.string().optional().nullable(),
   project_sub_category: z.string().optional().nullable(),
+  fire_noc_status: z.string().optional().nullable(),
+  occupancy_permit_status: z.string().optional().nullable(),
+  retention_money_percentage: z.number().optional().nullable(),
+  ld_clause_details: z.string().optional().nullable(),
+  stakeholder_complexity: z.string().optional().nullable(),
   property_type: z.string().optional().nullable(),
   property_age: z.string().optional().nullable(),
   renovation_scope: z.string().optional().nullable(),
@@ -236,6 +245,127 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
   }
 });
 
+// GET /api/projects/boq-variance
+router.get('/boq-variance', authorize('projects:read'), require('../controllers/boqVarianceController').getPortfolioBOQVarianceReport);
+
+// GET /api/projects/relationship-records
+router.get('/relationship-records', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT cr.*, p.name as project_name 
+       FROM client_relationship_records cr
+       JOIN projects p ON cr.project_id = p.id
+       WHERE cr.tenant_id = $1
+       ORDER BY cr.next_followup_schedule_date ASC`,
+      [req.tenantId]
+    );
+    return success(res, rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/projects/relationship-records/:id/followups
+router.post('/relationship-records/:id/followups', authorize('projects:update'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+
+    const check = await pool.query(
+      'SELECT id, followup_notes FROM client_relationship_records WHERE id = $1 AND tenant_id = $2',
+      [id, req.tenantId]
+    );
+    if (check.rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Relationship record not found.', 404);
+    }
+
+    const currentNotes = check.rows[0].followup_notes || '';
+    const newNotes = `${currentNotes}\n[${new Date().toISOString().split('T')[0]}] ${notes}`.trim();
+
+    const { rows } = await pool.query(
+      `UPDATE client_relationship_records
+       SET last_followup_date = CURRENT_DATE,
+           next_followup_schedule_date = CURRENT_DATE + interval '6 months',
+           followup_notes = $1,
+           updated_at = NOW()
+       WHERE id = $2 AND tenant_id = $3
+       RETURNING *`,
+      [newNotes, id, req.tenantId]
+    );
+
+    return success(res, rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/projects/referrals
+router.get('/referrals', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT r.*, p.name as referrer_project_name, p.client_name as referrer_client_name
+       FROM client_referrals r
+       JOIN projects p ON r.referrer_project_id = p.id
+       WHERE r.tenant_id = $1
+       ORDER BY r.created_at DESC`,
+      [req.tenantId]
+    );
+    return success(res, rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/projects/referrals/:id
+router.patch('/referrals/:id', authorize('projects:update'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const schema = z.object({
+      referralStatus: z.enum(['pending', 'converted', 'closed']).optional(),
+      rewardStatus: z.enum(['unpaid', 'paid', 'not_eligible']).optional(),
+      rewardAmount: z.number().optional(),
+      notes: z.string().optional().nullable()
+    });
+
+    const data = schema.parse(req.body);
+
+    const check = await pool.query(
+      'SELECT id FROM client_referrals WHERE id = $1 AND tenant_id = $2',
+      [id, req.tenantId]
+    );
+    if (check.rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Referral record not found.', 404);
+    }
+
+    const { rows } = await pool.query(
+      `UPDATE client_referrals
+       SET referral_status = COALESCE($1, referral_status),
+           reward_status = COALESCE($2, reward_status),
+           reward_amount = COALESCE($3, reward_amount),
+           notes = COALESCE($4, notes),
+           updated_at = NOW()
+       WHERE id = $5 AND tenant_id = $6
+       RETURNING *`,
+      [
+        data.referralStatus || null,
+        data.rewardStatus || null,
+        data.rewardAmount !== undefined ? data.rewardAmount : null,
+        data.notes || null,
+        id,
+        req.tenantId
+      ]
+    );
+
+    return success(res, rows[0]);
+  } catch (err) {
+    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    next(err);
+  }
+});
+
+// GET /api/projects/:projectId/boq-variance
+router.get('/:projectId/boq-variance', authorize('projects:read'), require('../controllers/boqVarianceController').getProjectBOQVarianceReport);
+
 // GET /api/projects/:id
 router.get('/:id', authorize('projects:read'), async (req, res, next) => {
   try {
@@ -290,6 +420,57 @@ router.delete('/:id', authorize('projects:delete'), async (req, res, next) => {
     }
     console.error('[Projects Router] Delete error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete project.', 500);
+  }
+});
+
+// POST /api/projects/:id/archive
+router.post('/:id/archive', authorize('projects:update'), async (req, res, next) => {
+  try {
+    const { archiveProject } = require('../services/projects/archiveProject');
+    const project = await archiveProject({
+      projectId: req.params.id,
+      tenantId: req.tenantId,
+      userId: req.user.userId
+    });
+    return success(res, project, { message: 'Project archived successfully.' });
+  } catch (err) {
+    if (err.message === 'PROJECT_NOT_FOUND' || err.status === 404) {
+      return fail(res, 'NOT_FOUND', 'Project not found', 404);
+    }
+    console.error('[Projects Router] Archive error:', err);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to archive project.', 500);
+  }
+});
+
+// POST /api/projects/:id/reopen
+router.post('/:id/reopen', authorize('projects:update'), async (req, res, next) => {
+  try {
+    const { newStartDate, newTargetDate } = z.object({
+      newStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be in YYYY-MM-DD format'),
+      newTargetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Target date must be in YYYY-MM-DD format').optional().nullable()
+    }).parse(req.body);
+
+    const { reopenProject } = require('../services/projects/reopenProject');
+    const project = await reopenProject({
+      projectId: req.params.id,
+      tenantId: req.tenantId,
+      userId: req.user.userId,
+      newStartDate,
+      newTargetDate
+    });
+    return success(res, project, { message: 'Project reopened successfully.' });
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    }
+    if (err.message === 'PROJECT_NOT_FOUND' || err.status === 404) {
+      return fail(res, 'NOT_FOUND', 'Project not found', 404);
+    }
+    if (err.message === 'PROJECT_ALREADY_ACTIVE' || err.status === 400) {
+      return fail(res, 'BAD_REQUEST', err.message, 400);
+    }
+    console.error('[Projects Router] Reopen error:', err);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to reopen project.', 500);
   }
 });
 
@@ -688,6 +869,455 @@ router.get('/:projectId/handovers', authorize('projects:read'), async (req, res,
     );
     return success(res, rows);
   } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/projects/:id/pause
+router.post('/:id/pause', authorize('projects:update'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const schema = z.object({
+      reason: z.string().min(1, 'Reason is required'),
+      expectedResumeDate: z.string().optional().nullable(),
+      clientCommunication: z.object({
+        channel: z.enum(['whatsapp', 'email', 'sms', 'call']),
+        direction: z.enum(['inbound', 'outbound']).optional(),
+        subject: z.string().optional().nullable(),
+        body: z.string().min(1, 'Body is required')
+      }).optional().nullable()
+    });
+
+    const { reason, expectedResumeDate, clientCommunication } = schema.parse(req.body);
+    const { pauseProject } = require('../services/projects/pauseProject');
+
+    const project = await pauseProject({
+      projectId: id,
+      tenantId: req.tenantId,
+      userId: req.user.userId,
+      reason,
+      expectedResumeDate,
+      clientCommunication
+    });
+
+    return success(res, project, { message: 'Project paused successfully.' });
+  } catch (err) {
+    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    if (err.status) return fail(res, err.message, err.message, err.status);
+    next(err);
+  }
+});
+
+// POST /api/projects/:id/resume
+router.post('/:id/resume', authorize('projects:update'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { resumeProject } = require('../services/projects/pauseProject');
+
+    const project = await resumeProject({
+      projectId: id,
+      tenantId: req.tenantId,
+      userId: req.user.userId
+    });
+
+    return success(res, project, { message: 'Project resumed successfully.' });
+  } catch (err) {
+    if (err.status) return fail(res, err.message, err.message, err.status);
+    next(err);
+  }
+});
+
+// POST /api/projects/:id/cancel
+router.post('/:id/cancel', authorize('projects:update'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const schema = z.object({
+      reason: z.string().min(1, 'Reason is required'),
+      settlementNotes: z.string().optional().nullable(),
+      refundOverride: z.number().optional().nullable(),
+      recoverOverride: z.number().optional().nullable()
+    });
+
+    const { reason, settlementNotes, refundOverride, recoverOverride } = schema.parse(req.body);
+    const { cancelProject } = require('../services/projects/cancelProject');
+
+    const project = await cancelProject({
+      projectId: id,
+      tenantId: req.tenantId,
+      userId: req.user.userId,
+      reason,
+      settlementNotes,
+      refundOverride,
+      recoverOverride
+    });
+
+    return success(res, project, { message: 'Project cancelled successfully and settlement calculated.' });
+  } catch (err) {
+    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    if (err.status) return fail(res, err.message, err.message, err.status);
+    next(err);
+  }
+});
+
+// POST /api/projects/:id/cancel/acknowledge
+router.post('/:id/cancel/acknowledge', authorize('projects:update'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { acknowledgeCancellation } = require('../services/projects/cancelProject');
+
+    const project = await acknowledgeCancellation({
+      projectId: id,
+      tenantId: req.tenantId,
+      userId: req.user.userId
+    });
+
+    return success(res, project, { message: 'Project cancellation settlement acknowledged successfully.' });
+  } catch (err) {
+    if (err.status) return fail(res, err.message, err.message, err.status);
+    next(err);
+  }
+});
+
+// POST /api/projects/:projectId/boq-items/:itemId/discontinue
+router.post('/:projectId/boq-items/:itemId/discontinue', authorize('projects:update'), async (req, res, next) => {
+  try {
+    const { projectId, itemId } = req.params;
+    
+    // Check if the item belongs to the tenant and exists
+    const checkRes = await pool.query(
+      'SELECT id FROM quotation_items WHERE id = $1 AND tenant_id = $2',
+      [itemId, req.tenantId]
+    );
+    if (checkRes.rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'BOQ item not found', 404);
+    }
+
+    // Set is_discontinued = true
+    const updateRes = await pool.query(
+      `UPDATE quotation_items 
+       SET is_discontinued = TRUE, 
+           updated_at = NOW() 
+       WHERE id = $1 AND tenant_id = $2 
+       RETURNING *`,
+      [itemId, req.tenantId]
+    );
+
+    const { logAction } = require('../services/auditLog');
+    await logAction({
+      tenantId: req.tenantId,
+      userId: req.user.userId,
+      action: 'boq_item.discontinued',
+      entity: 'quotation_item',
+      entityId: itemId,
+      oldValue: { is_discontinued: false },
+      newValue: { is_discontinued: true }
+    });
+
+    return success(res, updateRes.rows[0], { message: 'BOQ item flagged as discontinued.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/projects/:projectId/room-handovers
+router.get('/:projectId/room-handovers', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+
+    // 1. Fetch distinct rooms from handover items for this project
+    const roomsRes = await pool.query(
+      `SELECT DISTINCT hi.room 
+       FROM handover_items hi
+       JOIN handover_checklists hc ON hi.checklist_id = hc.id
+       WHERE hc.project_id = $1 AND hc.tenant_id = $2`,
+      [projectId, req.tenantId]
+    );
+    const rooms = roomsRes.rows.map(r => r.room);
+
+    // 2. Fetch existing room handovers
+    const handoversRes = await pool.query(
+      `SELECT room_name, status, signed_off_at, client_name 
+       FROM project_room_handovers 
+       WHERE project_id = $1 AND tenant_id = $2`,
+      [projectId, req.tenantId]
+    );
+    const handoversMap = {};
+    handoversRes.rows.forEach(h => {
+      handoversMap[h.room_name] = h;
+    });
+
+    // 3. Construct response mapping each room
+    const result = rooms.map(room => {
+      const match = handoversMap[room];
+      return {
+        room,
+        status: match ? match.status : 'pending',
+        signedOffAt: match ? match.signed_off_at : null,
+        clientName: match ? match.client_name : null
+      };
+    });
+
+    return success(res, result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/projects/:projectId/room-handovers/sign-off
+router.post('/:projectId/room-handovers/sign-off', authorize('projects:update'), async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    const { projectId } = req.params;
+    const schema = z.object({
+      checklistId: z.string().uuid(),
+      roomName: z.string().min(1),
+      clientName: z.string().min(1),
+      clientSignatureData: z.string().optional().nullable(),
+      otp: z.string().min(4)
+    });
+
+    const { checklistId, roomName, clientName, clientSignatureData, otp } = schema.parse(req.body);
+
+    await client.query('BEGIN');
+
+    // 1. Check checklist authorization status
+    const checklistRes = await client.query(
+      `SELECT is_internally_authorized FROM handover_checklists 
+       WHERE id = $1 AND project_id = $2 AND tenant_id = $3`,
+      [checklistId, projectId, req.tenantId]
+    );
+    if (checklistRes.rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Handover checklist not found', 404);
+    }
+    if (!checklistRes.rows[0].is_internally_authorized) {
+      return fail(res, 'INTERNAL_AUTHORIZATION_PENDING', 'Handover checklist is not internally authorized by a senior PM.', 400);
+    }
+
+    // 2. Validate all items for this room are checked
+    const itemsRes = await client.query(
+      `SELECT COUNT(*)::int as total, SUM(CASE WHEN is_checked THEN 1 ELSE 0 END)::int as checked 
+       FROM handover_items 
+       WHERE checklist_id = $1 AND room = $2`,
+      [checklistId, roomName]
+    );
+    const { total, checked } = itemsRes.rows[0];
+    if (total === 0) {
+      return fail(res, 'NOT_FOUND', `No handover items found for room: ${roomName}`, 404);
+    }
+    if (checked < total) {
+      return fail(res, 'ROOM_ITEMS_INCOMPLETE', `Cannot sign off room ${roomName} because ${total - checked} items are pending.`, 400);
+    }
+
+    // 3. Perform OTP Verification (Mock implementation or validation)
+    if (otp !== '1234' && otp !== '4321') {
+      return fail(res, 'INVALID_OTP', 'The OTP code is invalid.', 400);
+    }
+
+    // 4. Update or Insert project_room_handovers
+    const handoverRes = await client.query(
+      `INSERT INTO project_room_handovers 
+       (project_id, tenant_id, room_name, status, signed_off_at, signed_off_by_user_id, client_otp_verified, client_name, client_signature_data)
+       VALUES ($1, $2, $3, 'signed_off', NOW(), $4, TRUE, $5, $6)
+       ON CONFLICT (project_id, room_name) DO UPDATE 
+       SET status = 'signed_off', 
+           signed_off_at = NOW(), 
+           signed_off_by_user_id = $4, 
+           client_otp_verified = TRUE, 
+           client_name = $5, 
+           client_signature_data = $6, 
+           updated_at = NOW()
+       RETURNING *`,
+      [projectId, req.tenantId, roomName, req.user.userId, clientName, clientSignatureData || null]
+    );
+
+    // 5. Enqueue automated PDF generation job
+    await client.query(
+      `INSERT INTO automation_jobs (tenant_id, event_type, entity, record)
+       VALUES ($1, 'generate_room_handover_pdf', 'project_room_handovers', $2)`,
+      [req.tenantId, JSON.stringify({ projectId, roomName, clientName })]
+    );
+
+    // 6. Log audit action
+    const { logAction } = require('../services/auditLog');
+    await logAction({
+      tenantId: req.tenantId,
+      userId: req.user.userId,
+      action: 'project.room_handed_over',
+      entity: 'project',
+      entityId: projectId,
+      oldValue: { room: roomName, status: 'pending' },
+      newValue: { room: roomName, status: 'signed_off', clientName }
+    }, client);
+
+    await client.query('COMMIT');
+    return success(res, handoverRes.rows[0], { message: `Room ${roomName} successfully handed over.` });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    next(err);
+  } finally {
+    client.release();
+  }
+});
+
+// GET /api/projects/:projectId/compliance
+router.get('/:projectId/compliance', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const { rows } = await pool.query(
+      `SELECT * FROM project_compliance_checklists 
+       WHERE project_id = $1 AND tenant_id = $2
+       ORDER BY created_at ASC`,
+      [projectId, req.tenantId]
+    );
+    return success(res, rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/projects/:projectId/compliance/:itemId
+router.patch('/:projectId/compliance/:itemId', authorize('projects:update'), async (req, res, next) => {
+  try {
+    const { projectId, itemId } = req.params;
+    const schema = z.object({
+      status: z.enum(['pending', 'in_progress', 'approved', 'not_applicable']),
+      notes: z.string().optional().nullable()
+    });
+
+    const { status, notes } = schema.parse(req.body);
+
+    const checkRes = await pool.query(
+      'SELECT id, status, notes FROM project_compliance_checklists WHERE id = $1 AND project_id = $2 AND tenant_id = $3',
+      [itemId, projectId, req.tenantId]
+    );
+    if (checkRes.rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Compliance item not found.', 404);
+    }
+    const oldValue = checkRes.rows[0];
+
+    const approvedAt = status === 'approved' ? 'NOW()' : 'NULL';
+    const approvedBy = status === 'approved' ? `$1` : 'NULL';
+
+    const updateQuery = `
+      UPDATE project_compliance_checklists 
+      SET status = $2, 
+          notes = $3, 
+          approved_by = ${approvedBy}, 
+          approved_at = ${approvedAt}, 
+          updated_at = NOW()
+      WHERE id = $4 AND project_id = $5 AND tenant_id = $6
+      RETURNING *
+    `;
+
+    const { rows } = await pool.query(updateQuery, [
+      status === 'approved' ? req.user.userId : null,
+      status,
+      notes || null,
+      itemId,
+      projectId,
+      req.tenantId
+    ]);
+
+    const { logAction } = require('../services/auditLog');
+    await logAction({
+      tenantId: req.tenantId,
+      userId: req.user.userId,
+      action: 'project.compliance_updated',
+      entity: 'project_compliance',
+      entityId: itemId,
+      oldValue,
+      newValue: rows[0]
+    });
+
+    return success(res, rows[0]);
+  } catch (err) {
+    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    next(err);
+  }
+});
+
+// GET /api/projects/:projectId/vendor-coordination
+router.get('/:projectId/vendor-coordination', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const { rows } = await pool.query(
+      `SELECT 
+         id, 
+         vendor_name, 
+         scope_of_work, 
+         scheduled_start_date, 
+         scheduled_finish_date, 
+         blocker_description, 
+         current_status 
+       FROM project_vendors 
+       WHERE project_id = $1 AND tenant_id = $2
+       ORDER BY scheduled_start_date ASC, created_at ASC`,
+      [projectId, req.tenantId]
+    );
+    return success(res, rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/projects/:projectId/vendor-coordination/:vendorId
+router.patch('/:projectId/vendor-coordination/:vendorId', authorize('projects:update'), async (req, res, next) => {
+  try {
+    const { projectId, vendorId } = req.params;
+    const schema = z.object({
+      scheduledStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+      scheduledFinishDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+      blockerDescription: z.string().optional().nullable(),
+      currentStatus: z.enum(['pending', 'active', 'blocked', 'completed']).optional()
+    });
+
+    const data = schema.parse(req.body);
+
+    const checkRes = await pool.query(
+      `SELECT id, scheduled_start_date, scheduled_finish_date, blocker_description, current_status 
+       FROM project_vendors WHERE id = $1 AND project_id = $2 AND tenant_id = $3`,
+      [vendorId, projectId, req.tenantId]
+    );
+    if (checkRes.rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Project vendor not found.', 404);
+    }
+    const oldValue = checkRes.rows[0];
+
+    const { rows } = await pool.query(
+      `UPDATE project_vendors
+       SET scheduled_start_date = COALESCE($1, scheduled_start_date),
+           scheduled_finish_date = COALESCE($2, scheduled_finish_date),
+           blocker_description = COALESCE($3, blocker_description),
+           current_status = COALESCE($4, current_status),
+           updated_at = NOW()
+       WHERE id = $5 AND project_id = $6 AND tenant_id = $7
+       RETURNING *`,
+      [
+        data.scheduledStartDate || null,
+        data.scheduledFinishDate || null,
+        data.blockerDescription || null,
+        data.currentStatus || null,
+        vendorId,
+        projectId,
+        req.tenantId
+      ]
+    );
+
+    const { logAction } = require('../services/auditLog');
+    await logAction({
+      tenantId: req.tenantId,
+      userId: req.user.userId,
+      action: 'project.vendor_coordination_updated',
+      entity: 'project_vendor',
+      entityId: vendorId,
+      oldValue,
+      newValue: rows[0]
+    });
+
+    return success(res, rows[0]);
+  } catch (err) {
+    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     next(err);
   }
 });

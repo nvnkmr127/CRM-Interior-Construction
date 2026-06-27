@@ -141,8 +141,22 @@ router.get('/:did/url', authorize('projects:read'), async (req, res, next) => {
 // POST /api/projects/:projectId/documents/:did/approve
 router.post('/:did/approve', authorize('projects:manage'), async (req, res, next) => {
   try {
-    const doc = await approveDocument(req.tenantId, req.params.did, req.user.userId);
-    return success(res, doc);
+    const docRes = await pool.query(
+      'SELECT doc_type FROM documents WHERE id = $1 AND tenant_id = $2',
+      [req.params.did, req.tenantId]
+    );
+    if (docRes.rows.length === 0) return fail(res, 'NOT_FOUND', 'Document not found.', 404);
+    const doc = docRes.rows[0];
+
+    if ((doc.doc_type === 'drawing' || doc.doc_type === 'render') && req.user?.role !== 'superadmin') {
+      const perms = req.user?.permissions || [];
+      if (!perms.includes('design:approve')) {
+        return fail(res, 'FORBIDDEN', 'Forbidden: only designers with design:approve permission can approve design documents.', 403);
+      }
+    }
+
+    const approvedDoc = await approveDocument(req.tenantId, req.params.did, req.user.userId);
+    return success(res, approvedDoc);
   } catch (err) {
     if (err.message === 'NOT_FOUND' || err.status === 404) return fail(res, 'NOT_FOUND', 'Document not found.', 404);
     console.error('[Documents Router] approve error:', err);

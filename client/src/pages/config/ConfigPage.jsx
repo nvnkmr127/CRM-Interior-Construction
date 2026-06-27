@@ -16,6 +16,7 @@ const LogsViewer          = lazy(() => import('./LogsViewer'))
 const UsersManager        = lazy(() => import('./UsersManager'))
 const ConversionChecklistManager = lazy(() => import('./ConversionChecklistManager'))
 const QcChecklistsManager = lazy(() => import('./QcChecklistsManager'))
+const FinancialSettings = lazy(() => import('./FinancialSettings'))
 
 const CONFIG_NAV = [
   { group: 'PIPELINE', items: [
@@ -35,6 +36,9 @@ const CONFIG_NAV = [
   ]},
   { group: 'TEAM', items: [
     { to: 'users',         icon: '◉', label: 'Team Members', desc: 'Invite and manage access' },
+  ]},
+  { group: 'FINANCE', items: [
+    { to: 'financial-settings', icon: '💰', label: 'Financial Thresholds', desc: 'Configurable approval thresholds' },
   ]},
 ]
 
@@ -91,6 +95,7 @@ export default function ConfigPage() {
             <Route path='webhooks'      element={<WebhooksManager />} />
             <Route path='logs'          element={<LogsViewer />} />
             <Route path='users'         element={<UsersManager />} />
+            <Route path='financial-settings' element={<FinancialSettings />} />
             <Route path='*'             element={<Navigate to='/config/lead-stages' replace />} />
           </Routes>
         </Suspense>

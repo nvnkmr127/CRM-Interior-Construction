@@ -194,7 +194,25 @@ async function updateItem({
     throw new Error('Handover item not found or could not be updated');
   }
 
-  return result.rows[0];
+  const updatedItem = result.rows[0];
+
+  // Run handover readiness check asynchronously
+  setImmediate(async () => {
+    try {
+      const checklistInfo = await pool.query(
+        'SELECT project_id, tenant_id FROM handover_checklists WHERE id = $1',
+        [checklistId]
+      );
+      if (checklistInfo.rows.length > 0) {
+        const { project_id, tenant_id } = checklistInfo.rows[0];
+        await checkAndNotifyHandoverReadiness(tenant_id, project_id);
+      }
+    } catch (err) {
+      console.error('[Handover Service] Error triggering handover readiness check:', err.message);
+    }
+  });
+
+  return updatedItem;
 }
 
 async function addItem({ checklistId, room, description, itemType = 'inspection' }) {
@@ -259,12 +277,18 @@ async function clientSignOff({ checklistId, tenantId, clientPortalUserId, client
       throw new Error('ITEMS_INCOMPLETE');
     }
 
-    // 1b. Check financial clearance
+    // 1b. Check financial clearance and internal authorization
     const checklistInfo = await client.query(
-      `SELECT project_id FROM handover_checklists WHERE id = $1 AND tenant_id = $2`,
+      `SELECT project_id, is_internally_authorized FROM handover_checklists WHERE id = $1 AND tenant_id = $2`,
       [checklistId, tenantId]
     );
-    const projectId = checklistInfo.rows[0]?.project_id;
+    if (checklistInfo.rows.length === 0) {
+      throw new Error('Checklist not found');
+    }
+    const { project_id: projectId, is_internally_authorized: isAuth } = checklistInfo.rows[0];
+    if (!isAuth) {
+      throw new Error('INTERNAL_AUTHORIZATION_PENDING');
+    }
     if (projectId) {
       const unpaidMilestones = await client.query(
         `SELECT COUNT(*) FROM payment_milestones 
@@ -321,6 +345,136 @@ async function clientSignOff({ checklistId, tenantId, clientPortalUserId, client
   }
 }
 
+async function checkAndNotifyHandoverReadiness(tenantId, projectId) {
+  try {
+    // 1. Fetch the active handover checklist for this project
+    const checklistRes = await pool.query(
+      `SELECT id FROM handover_checklists WHERE project_id = $1 AND tenant_id = $2`,
+      [projectId, tenantId]
+    );
+    if (checklistRes.rows.length === 0) return;
+    const checklistId = checklistRes.rows[0].id;
+
+    // 2. Count unchecked items
+    const uncheckedRes = await pool.query(
+      `SELECT COUNT(*) FROM handover_items WHERE checklist_id = $1 AND is_checked = false`,
+      [checklistId]
+    );
+    const uncheckedCount = parseInt(uncheckedRes.rows[0].count, 10);
+    if (uncheckedCount > 0) return;
+
+    // 3. Count unresolved snags
+    const unresolvedSnagsRes = await pool.query(
+      `SELECT COUNT(*) FROM snags WHERE project_id = $1 AND status NOT IN ('resolved', 'closed', 'client_verified')`,
+      [projectId]
+    );
+    const unresolvedCount = parseInt(unresolvedSnagsRes.rows[0].count, 10);
+    if (unresolvedCount > 0) return;
+
+    // 4. Check if readiness alert has already been sent to prevent duplicates
+    const checkLog = await pool.query(
+      `SELECT 1 FROM audit_logs 
+       WHERE entity = 'project' AND entity_id = $1 AND action = 'handover_readiness_notification'`,
+      [projectId]
+    );
+    if (checkLog.rows.length > 0) return;
+
+    // 5. Fetch project, client, PM details
+    const projRes = await pool.query(
+      `SELECT p.name, p.client_name, p.client_email, p.client_phone, p.pm_id,
+              u.name as pm_name, u.email as pm_email
+       FROM projects p
+       LEFT JOIN users u ON p.pm_id = u.id
+       WHERE p.id = $1 AND p.tenant_id = $2`,
+      [projectId, tenantId]
+    );
+    const project = projRes.rows[0];
+    if (!project) return;
+
+    const { notifyUser } = require('../notificationService');
+    const { sendWhatsAppMessage } = require('../whatsappService');
+    const { notificationQueue } = require('../../queues/queueSetup');
+
+    const pmMsg = `Handover readiness alert: Project "${project.name}" is ready for client handover. All checklist items are complete and snags are resolved.`;
+    
+    // Notify PM In-App
+    if (project.pm_id) {
+      notifyUser({
+        tenantId,
+        userId: project.pm_id,
+        type: 'handover_readiness',
+        message: pmMsg,
+        referenceUrl: `/projects/${projectId}?tab=Handover`
+      });
+    }
+
+    // Notify PM Email
+    if (project.pm_email) {
+      await notificationQueue.add('handoverReadinessNotification', {
+        type: 'email',
+        recipientId: project.pm_name || 'Project Manager',
+        email: project.pm_email,
+        message: pmMsg
+      });
+    }
+
+    // Notify Finance Users (Email only)
+    const financeRes = await pool.query(
+      `SELECT u.id, u.email, u.name 
+       FROM users u
+       JOIN roles r ON u.role_id = r.id
+       WHERE u.tenant_id = $1 
+         AND (r.name = 'finance' OR r.name = 'superadmin' OR r.name = 'admin')
+         AND u.status = 'active'`,
+      [tenantId]
+    );
+    for (const financeUser of financeRes.rows) {
+      const financeMsg = `Dear ${financeUser.name},\n\nPlease note that project "${project.name}" (Client: ${project.client_name}) is now ready for client handover. All checklist items and snags are resolved.\n\nBest regards,\nCRM Logistics Team`;
+      await notificationQueue.add('handoverReadinessNotification', {
+        type: 'email',
+        recipientId: financeUser.name,
+        email: financeUser.email,
+        message: financeMsg
+      });
+    }
+
+    // Notify Client (Email + WhatsApp)
+    if (project.client_email) {
+      const clientEmailMsg = `Dear ${project.client_name},\n\nWe are pleased to inform you that all checklist items and snags for your project "${project.name}" have been fully completed and resolved. Your home is now ready for client handover!\n\nOur team will be in touch shortly to schedule the key handover.\n\nBest regards,\nCRM After-Sales Team`;
+      await notificationQueue.add('handoverReadinessNotification', {
+        type: 'email',
+        recipientId: project.client_name,
+        email: project.client_email,
+        message: clientEmailMsg
+      });
+    }
+
+    if (project.client_phone) {
+      const clientWaMsg = `Handover Readiness Alert: All checklist items and snags for your project "${project.name}" have been completed/resolved. Your home is ready for handover!`;
+      await sendWhatsAppMessage(project.client_phone, clientWaMsg);
+    }
+
+    // Log action to audit_logs
+    await pool.query(
+      `INSERT INTO audit_logs (tenant_id, action, entity, entity_id, new_value)
+       VALUES ($1, 'handover_readiness_notification', 'project', $2, 'ready')`,
+      [tenantId, projectId]
+    );
+
+    // Emit EventBus
+    const eventBus = require('../../utils/eventBus');
+    eventBus.emit('project.handover_ready', {
+      tenantId,
+      projectId,
+      projectName: project.name,
+      clientName: project.client_name
+    });
+
+  } catch (error) {
+    console.error('[Handover Service] Error in checkAndNotifyHandoverReadiness:', error);
+  }
+}
+
 module.exports = {
   createChecklist,
   addDefaultItems,
@@ -328,5 +482,6 @@ module.exports = {
   addItem,
   getChecklist,
   getChecklistByProjectId,
-  clientSignOff
+  clientSignOff,
+  checkAndNotifyHandoverReadiness
 };

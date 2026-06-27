@@ -1,4 +1,5 @@
 const pool = require('../../db/pool');
+const { getTenantThreshold, isUserSuperadmin } = require('../../utils/finance');
 const { logAction } = require('../auditLog');
 const storage = require('../../utils/storage');
 const PDFDocument = require('pdfkit');
@@ -136,6 +137,11 @@ async function createInvoice({ tenantId, userId, milestoneId, data }) {
   const invoiceDate = data.invoiceDate || new Date().toISOString().split('T')[0];
   const dueDate = data.dueDate || milestone.due_date;
 
+  const threshold = await getTenantThreshold(tenantId, 'finance_invoice_threshold', 100000.00);
+  const isSuperadmin = await isUserSuperadmin(userId);
+  const requiresApproval = !isSuperadmin && totalAmount > threshold;
+  const initialStatus = requiresApproval ? 'pending_approval' : 'sent';
+
   // Insert into DB
   const insertQuery = `
     INSERT INTO invoices (
@@ -145,7 +151,7 @@ async function createInvoice({ tenantId, userId, milestoneId, data }) {
       subtotal, gst_type, gst_rate, cgst_amount, sgst_amount, igst_amount, total_amount,
       payment_terms, status, created_by
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, 'sent', $21
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22
     ) RETURNING *
   `;
   const insertValues = [
@@ -153,7 +159,7 @@ async function createInvoice({ tenantId, userId, milestoneId, data }) {
     billingName, billingAddress, billingGstin,
     companyName, companyAddress, companyGstin,
     subtotal, gstType, gstRate, cgst, sgst, igst, totalAmount,
-    paymentTerms, userId
+    paymentTerms, initialStatus, userId
   ];
 
   const { rows } = await pool.query(insertQuery, insertValues);
@@ -173,13 +179,23 @@ async function createInvoice({ tenantId, userId, milestoneId, data }) {
   );
   invoice.pdf_storage_key = storageKey;
 
-  // Update Milestone Status
-  await pool.query(
-    `UPDATE payment_milestones 
-     SET invoice_reference = $1, status = 'invoice_raised' 
-     WHERE id = $2 AND tenant_id = $3`,
-    [invoiceNumber, milestoneId, tenantId]
-  );
+  if (requiresApproval) {
+    // Log approval request
+    await pool.query(
+      `INSERT INTO financial_approvals (
+         tenant_id, transaction_type, target_id, amount, requested_by, requested_changes, status, threshold_limit
+       ) VALUES ($1, 'invoice', $2, $3, $4, $5, 'pending', $6)`,
+      [tenantId, invoice.id, totalAmount, userId, JSON.stringify({ milestoneId, invoiceNumber }), threshold]
+    );
+  } else {
+    // Update Milestone Status
+    await pool.query(
+      `UPDATE payment_milestones 
+       SET invoice_reference = $1, status = 'invoice_raised' 
+       WHERE id = $2 AND tenant_id = $3`,
+      [invoiceNumber, milestoneId, tenantId]
+    );
+  }
 
   // Log action
   await logAction({
@@ -188,7 +204,7 @@ async function createInvoice({ tenantId, userId, milestoneId, data }) {
     action: 'generate_invoice',
     entity: 'invoice',
     entityId: invoice.id,
-    newValue: { invoiceNumber, milestoneId, totalAmount }
+    newValue: { invoiceNumber, milestoneId, totalAmount, requiresApproval }
   });
 
   return invoice;

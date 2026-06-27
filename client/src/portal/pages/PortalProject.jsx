@@ -1,7 +1,95 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import styles from './PortalProject.module.css'
 import { usePortalAuth } from '../store/portalAuthContext'
 import api from '../../api/axios'
+
+function ReferralForm() {
+  const [refereeName, setRefereeName] = useState('');
+  const [refereePhone, setRefereePhone] = useState('');
+  const [refereeEmail, setRefereeEmail] = useState('');
+  const [notes, setNotes] = useState('');
+  const [statusMsg, setStatusMsg] = useState(null);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!refereeName) return;
+    try {
+      await api.post('/portal/project/referrals', {
+        refereeName,
+        refereePhone,
+        refereeEmail,
+        notes
+      });
+      setStatusMsg({ success: true, text: 'Referral submitted! Thank you!' });
+      setRefereeName('');
+      setRefereePhone('');
+      setRefereeEmail('');
+      setNotes('');
+    } catch (err) {
+      setStatusMsg({ success: false, text: 'Failed to submit referral.' });
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <input 
+        type="text" 
+        placeholder="Friend's Name" 
+        value={refereeName} 
+        onChange={e => setRefereeName(e.target.value)} 
+        required 
+        style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '13px' }}
+      />
+      <input 
+        type="tel" 
+        placeholder="Phone Number" 
+        value={refereePhone} 
+        onChange={e => setRefereePhone(e.target.value)} 
+        style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '13px' }}
+      />
+      <input 
+        type="email" 
+        placeholder="Email Address" 
+        value={refereeEmail} 
+        onChange={e => setRefereeEmail(e.target.value)} 
+        style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '13px' }}
+      />
+      <textarea 
+        placeholder="Notes (optional)" 
+        value={notes} 
+        onChange={e => setNotes(e.target.value)} 
+        style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '13px', resize: 'vertical', minHeight: '40px' }}
+      />
+      <button 
+        type="submit" 
+        style={{ 
+          background: 'var(--color-accent)', 
+          color: 'white', 
+          border: 'none', 
+          padding: '8px', 
+          borderRadius: '6px', 
+          fontWeight: 600, 
+          fontSize: '13px', 
+          cursor: 'pointer',
+          transition: 'background 0.2s'
+        }}
+      >
+        Submit Referral
+      </button>
+      {statusMsg && (
+        <div style={{ 
+          fontSize: '12px', 
+          fontWeight: 500, 
+          color: statusMsg.success ? 'var(--color-success)' : 'var(--color-danger)',
+          marginTop: '4px'
+        }}>
+          {statusMsg.text}
+        </div>
+      )}
+    </form>
+  );
+}
 
 export default function PortalProject() {
   const { portalUser } = usePortalAuth()
@@ -22,13 +110,15 @@ export default function PortalProject() {
       api.get('/portal/project'),
       api.get('/portal/project/phases'),
       api.get('/portal/project/payments'),
-      api.get('/portal/project/delay-notifications')
+      api.get('/portal/project/delay-notifications'),
+      api.get('/portal/project/relationship').catch(() => null)
     ])
-    .then(([projRes, phasesRes, payRes, delayRes]) => {
+    .then(([projRes, phasesRes, payRes, delayRes, relRes]) => {
       const proj = projRes.data.data;
       const phases = phasesRes.data.data || [];
       const payments = payRes.data.data || [];
       const delays = delayRes.data.data || [];
+      const relationship = relRes && relRes.data ? relRes.data.data : null;
 
       setData({
         project: { 
@@ -60,7 +150,8 @@ export default function PortalProject() {
           amount: parseFloat(p.amount) || 0,
           date: p.due_date || 'TBD',
           status: p.status.charAt(0).toUpperCase() + p.status.slice(1)
-        }))
+        })),
+        relationship
       });
     })
     .catch(err => {
@@ -198,7 +289,7 @@ export default function PortalProject() {
               <tr key={i} className={p.status === 'Overdue' ? styles.overdue : ''}>
                 <td>{p.name}</td>
                 <td style={{fontWeight: 600}}>₹{(p.amount/100000).toFixed(2)}L</td>
-                <td>{new Date(p.date).toLocaleDateString('en-GB', {day:'numeric', month:'short'})}</td>
+                <td>{p.date !== 'TBD' ? new Date(p.date).toLocaleDateString('en-GB', {day:'numeric', month:'short'}) : 'TBD'}</td>
                 <td>
                   <span style={{
                     color: p.status === 'Paid' ? 'var(--color-success)' : p.status === 'Overdue' ? 'var(--color-danger)' : 'var(--color-text-secondary)',
@@ -216,6 +307,69 @@ export default function PortalProject() {
           Total: ₹{(totalCollected/100000).toFixed(2)}L of ₹{(totalValue/100000).toFixed(2)}L collected
         </div>
         <div className={styles.paymentNote}>Please contact your project manager to make payments.</div>
+      </div>
+
+      <h3 className={styles.sectionTitle}>Quick Access Portal Dashboard</h3>
+      <div className={styles.portalGrid}>
+        <div className={styles.portalCard}>
+          <div className={styles.cardHeader}>
+            <span className={styles.cardIcon}>📅</span>
+            <h4 className={styles.cardTitle}>Project Timeline</h4>
+          </div>
+          <p className={styles.cardBody}>
+            View milestones, phase completions, and schedule details.
+          </p>
+          <Link to="/portal/timeline" className={styles.cardActionBtn}>Open Timeline</Link>
+        </div>
+
+        <div className={styles.portalCard}>
+          <div className={styles.cardHeader}>
+            <span className={styles.cardIcon}>📁</span>
+            <h4 className={styles.cardTitle}>Approved Designs & Docs</h4>
+          </div>
+          <p className={styles.cardBody}>
+            Browse, view, and download all design blueprints and shared project documents.
+          </p>
+          <Link to="/portal/documents" className={styles.cardActionBtn}>Open Documents</Link>
+        </div>
+
+        <div className={styles.portalCard}>
+          <div className={styles.cardHeader}>
+            <span className={styles.cardIcon}>💳</span>
+            <h4 className={styles.cardTitle}>Payments & Invoices</h4>
+          </div>
+          <p className={styles.cardBody}>
+            Track paid installments, upcoming milestones, and transaction receipts.
+          </p>
+          <Link to="/portal/payments" className={styles.cardActionBtn}>Open Payments</Link>
+        </div>
+
+        <div className={styles.portalCard}>
+          <div className={styles.cardHeader}>
+            <span className={styles.cardIcon}>🛡️</span>
+            <h4 className={styles.cardTitle}>Warranties & AMC</h4>
+          </div>
+          <p className={styles.cardBody}>
+            Access active warranty documents, check AMC contract status, or submit service claims.
+          </p>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Link to="/portal/warranties" className={styles.cardActionBtn} style={{ flex: 1 }}>Warranties</Link>
+            <Link to="/portal/claims" className={styles.cardActionBtn} style={{ flex: 1 }}>Submit Claim</Link>
+          </div>
+        </div>
+
+        {data.relationship && (
+          <div className={styles.portalCard} style={{ gridColumn: 'span 1' }}>
+            <div className={styles.cardHeader}>
+              <span className={styles.cardIcon}>🎁</span>
+              <h4 className={styles.cardTitle}>Refer & Earn</h4>
+            </div>
+            <p className={styles.cardBody}>
+              Share your referral code <strong style={{ color: 'var(--color-accent)' }}>{data.relationship.referral_code}</strong> with friends. Receive rewards when they sign up!
+            </p>
+            <ReferralForm />
+          </div>
+        )}
       </div>
     </div>
   )

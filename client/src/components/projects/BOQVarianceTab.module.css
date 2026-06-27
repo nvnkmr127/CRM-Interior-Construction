@@ -1,0 +1,309 @@
+.tabContent {
+  padding-top: var(--space-4);
+}
+
+.loaderWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12);
+  color: var(--color-text-secondary);
+}
+
+.loaderWrap p {
+  margin-top: var(--space-4);
+  font-weight: 500;
+}
+
+/* Metrics Grid */
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.metricCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.metricCard::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--color-border);
+}
+
+.metricCard:nth-child(4)::after {
+  background: var(--color-success);
+}
+
+.metricCard:nth-child(5)::after {
+  background: var(--color-accent);
+}
+
+.metricLabel {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.metricValue {
+  font-size: var(--text-lg);
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.metricSub {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+.positiveText {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+.negativeText {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+/* Sub Tab Header */
+.subTabHeader {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.subTabButton {
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all var(--transition-fast);
+}
+
+.subTabButton:hover {
+  color: var(--color-text);
+}
+
+.subTabActive {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+.subTabBody {
+  min-height: 200px;
+}
+
+.emptyView {
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-2);
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--color-border);
+}
+
+/* Change Order Cards */
+.coCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  margin-bottom: var(--space-4);
+  box-shadow: var(--shadow-sm);
+}
+
+.coCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-4);
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.coTitle {
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.coReason {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  margin: 4px 0 0 0;
+}
+
+.coStats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.coBadge {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.coTimelineBadge {
+  background: #fef3c7;
+  color: #d97706;
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.coDate {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.noItemsMsg {
+  padding: var(--space-4) 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* Item Tables */
+.tableWrap {
+  overflow-x: auto;
+  width: 100%;
+}
+
+.itemTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: var(--text-sm);
+}
+
+.itemTable th {
+  background: var(--color-surface-2);
+  padding: 8px 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.itemTable td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.itemTable tr:last-child td {
+  border-bottom: none;
+}
+
+.badgeAdd {
+  display: inline-block;
+  padding: 2px 6px;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+}
+
+.badgeSub {
+  display: inline-block;
+  padding: 2px 6px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+}
+
+/* Standard Tables (Room aggregated / substitutions) */
+.tableCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.th {
+  background: var(--color-surface-2);
+  padding: var(--space-3) var(--space-4);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tr {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tr:last-child {
+  border-bottom: none;
+}
+
+.td {
+  padding: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  vertical-align: middle;
+}
+
+.itemDetail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.itemName {
+  font-weight: 600;
+}
+
+.itemSub {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.itemPrice {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
