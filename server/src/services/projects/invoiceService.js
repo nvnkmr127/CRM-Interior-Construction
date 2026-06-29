@@ -63,6 +63,21 @@ async function getInvoiceDraftDetails(tenantId, milestoneId) {
   if (projRes.rowCount === 0) throw new Error('PROJECT_NOT_FOUND');
   const project = projRes.rows[0];
 
+  // Fetch active approved quotation for tax treatment settings
+  const activeQuoteQuery = `
+    SELECT tax_treatment, works_contract_rate, works_contract_hsn, gst_type
+    FROM quotations
+    WHERE project_id = $1 AND tenant_id = $2 AND status = 'accepted'
+    ORDER BY version DESC LIMIT 1
+  `;
+  const activeQuoteRes = await pool.query(activeQuoteQuery, [milestone.project_id, tenantId]);
+  const activeQuote = activeQuoteRes.rows[0] || {};
+
+  const taxTreatment = activeQuote.tax_treatment || 'works_contract';
+  const gstRate = taxTreatment === 'itemized' ? 18.00 : Number(activeQuote.works_contract_rate || 18.00);
+  const hsnCode = taxTreatment === 'itemized' ? '9954' : (activeQuote.works_contract_hsn || '9954');
+  const gstType = activeQuote.gst_type || 'cgst_sgst';
+
   return {
     billingName: project.client_name,
     billingAddress: project.site_address || '',
@@ -70,8 +85,10 @@ async function getInvoiceDraftDetails(tenantId, milestoneId) {
     companyName: project.tenant_name || 'Demo Company',
     companyAddress: '',
     companyGstin: '',
-    gstType: 'cgst_sgst',
-    gstRate: 18.00,
+    gstType,
+    gstRate,
+    hsnCode,
+    taxTreatment,
     paymentTerms: project.payment_terms || 'Net 15',
     invoiceDate: new Date().toISOString().split('T')[0],
     dueDate: milestone.due_date ? new Date(milestone.due_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
@@ -108,6 +125,8 @@ async function createInvoice({ tenantId, userId, milestoneId, data }) {
   const subtotal = Number(milestone.amount || 0);
   const gstRate = Number(data.gstRate !== undefined ? data.gstRate : 18.00);
   const gstType = data.gstType || 'cgst_sgst';
+  const hsnCode = data.hsnCode || null;
+  const taxTreatment = data.taxTreatment || 'itemized';
   const paymentTerms = data.paymentTerms || project.payment_terms || 'Net 15';
   
   let cgst = 0;
@@ -149,9 +168,9 @@ async function createInvoice({ tenantId, userId, milestoneId, data }) {
       billing_name, billing_address, billing_gstin,
       company_name, company_address, company_gstin,
       subtotal, gst_type, gst_rate, cgst_amount, sgst_amount, igst_amount, total_amount,
-      payment_terms, status, created_by
+      payment_terms, status, created_by, hsn_code, tax_treatment
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24
     ) RETURNING *
   `;
   const insertValues = [
@@ -159,7 +178,7 @@ async function createInvoice({ tenantId, userId, milestoneId, data }) {
     billingName, billingAddress, billingGstin,
     companyName, companyAddress, companyGstin,
     subtotal, gstType, gstRate, cgst, sgst, igst, totalAmount,
-    paymentTerms, initialStatus, userId
+    paymentTerms, initialStatus, userId, hsnCode, taxTreatment
   ];
 
   const { rows } = await pool.query(insertQuery, insertValues);
@@ -301,8 +320,9 @@ function generatePdfBuffer(invoice, milestone, project) {
     
     // Header labels
     doc.fillColor('#ffffff').fontSize(9).font('Helvetica-Bold');
-    doc.text('Description', 60, tableTop + 6, { width: 200 });
-    doc.text('Tax Rate', 270, tableTop + 6, { width: 50, align: 'right' });
+    doc.text('Description', 60, tableTop + 6, { width: 170 });
+    doc.text('HSN/SAC', 235, tableTop + 6, { width: 45, align: 'center' });
+    doc.text('Tax Rate', 285, tableTop + 6, { width: 40, align: 'right' });
     doc.text('Subtotal (INR)', 330, tableTop + 6, { width: 70, align: 'right' });
     doc.text('Tax Amount (INR)', 410, tableTop + 6, { width: 70, align: 'right' });
     doc.text('Total (INR)', 490, tableTop + 6, { width: 50, align: 'right' });
@@ -315,8 +335,9 @@ function generatePdfBuffer(invoice, milestone, project) {
     
     doc.fillColor(primaryColor).fontSize(9).font('Helvetica');
     const milestoneName = milestone.linked_milestone_name || milestone.name || 'Payment Milestone';
-    doc.text(milestoneName, 60, rowTop + 10, { width: 200 });
-    doc.text(`${Number(invoice.gst_rate).toFixed(2)}%`, 270, rowTop + 10, { width: 50, align: 'right' });
+    doc.text(milestoneName, 60, rowTop + 10, { width: 170 });
+    doc.text(invoice.hsn_code || '9954', 235, rowTop + 10, { width: 45, align: 'center' });
+    doc.text(`${Number(invoice.gst_rate).toFixed(2)}%`, 285, rowTop + 10, { width: 40, align: 'right' });
     doc.text(Number(invoice.subtotal).toFixed(2), 330, rowTop + 10, { width: 70, align: 'right' });
 
     // Tax description
@@ -365,6 +386,7 @@ function generatePdfBuffer(invoice, milestone, project) {
     const termsY = summaryTop + 10;
     doc.fillColor(primaryColor).fontSize(10).font('Helvetica-Bold').text('Terms & Conditions:', 50, termsY);
     doc.fillColor(secondaryColor).fontSize(8).font('Helvetica');
+    doc.text(`Tax Treatment: ${invoice.tax_treatment ? invoice.tax_treatment.toUpperCase().replace('_', ' ') : 'WORKS CONTRACT'}`, 50, doc.y + 4);
     doc.text('1. Invoice is generated automatically from CRM milestone sign-off.', 50, doc.y + 4, { width: 270 });
     doc.text('2. Please complete payment as per agreed payment terms.', 50, doc.y + 3, { width: 270 });
     doc.text(`3. Quote Invoice reference "${invoice.invoice_number}" in transfer notes.`, 50, doc.y + 3, { width: 270 });

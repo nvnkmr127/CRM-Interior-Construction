@@ -148,6 +148,8 @@ const portalAmcsRoutes = require('./routes/portal/amcs');
 const portalWarrantyClaimsRoutes = require('./routes/portal/warrantyClaims');
 const serviceTicketsRoutes = require('./routes/serviceTickets');
 const portalServiceTicketsRoutes = require('./routes/portal/serviceTickets');
+const portalQuotationsRoutes = require('./routes/portal/quotations');
+
 
 const usersRoutes = require('./routes/users');
 const dashboardRoutes = require('./routes/dashboard');
@@ -176,8 +178,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/leads/manager', require('./routes/manager'));
 app.use('/api/leads', leadsRoutes);
 app.use('/api/public-portal', require('./routes/portal'));
-app.use('/api/config', configRoutes);
 app.use('/api/projects', projectsRoutes);
+app.use('/api/warehouses', require('./routes/warehouses'));
+app.use('/api/vendor-lead-times', require('./routes/vendorLeadTimes'));
 app.use('/api/snags', snagsRoutes);
 app.use('/api/projects/:id/snags', snagsRoutes);
 app.use('/api/payment-milestones', paymentMilestonesRoutes);
@@ -234,6 +237,8 @@ app.use('/api/portal/amcs', portalAmcsRoutes);
 app.use('/api/portal/warranty-claims', portalWarrantyClaimsRoutes);
 app.use('/api/projects/:projectId/service-tickets', serviceTicketsRoutes);
 app.use('/api/portal/service-tickets', portalServiceTicketsRoutes);
+app.use('/api/portal/quotations', portalQuotationsRoutes);
+
 
 
 app.use('/api/dashboard', dashboardRouter);

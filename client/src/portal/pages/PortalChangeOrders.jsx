@@ -4,6 +4,12 @@ import { useToast } from '../../store/toastContext';
 import api from '../../api/axios';
 import { Spinner, Modal, Button, Input } from '../../components/ui';
 
+const REASON_LABELS = {
+  'client-requested': 'Client Requested',
+  'design-required': 'Design Required',
+  'site-required': 'Site Required'
+};
+
 export default function PortalChangeOrders() {
   const toast = useToast();
   const [changeOrders, setChangeOrders] = useState([]);
@@ -183,7 +189,7 @@ export default function PortalChangeOrders() {
                 {co.reason && (
                   <div className={styles.metaItem}>
                     Reason for Change
-                    <strong>{co.reason}</strong>
+                    <strong>{REASON_LABELS[co.reason] || co.reason}</strong>
                   </div>
                 )}
                 <div className={styles.metaItem}>

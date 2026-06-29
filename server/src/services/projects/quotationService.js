@@ -3,15 +3,18 @@ const { getTenantThreshold, isUserSuperadmin } = require('../../utils/finance');
 
 class QuotationService {
   async createQuotation(tenantId, data) {
-    const { leadId, projectId, createdBy, quotationNumber, notes, termsConditions, validUntil, changeReason } = data;
+    const { leadId, projectId, createdBy, quotationNumber, notes, termsConditions, validUntil, changeReason, taxTreatment, worksContractRate, worksContractHsn } = data;
     
     const query = `
       INSERT INTO quotations 
-      (tenant_id, lead_id, project_id, created_by, quotation_number, notes, terms_conditions, valid_until, change_reason)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      (tenant_id, lead_id, project_id, created_by, quotation_number, notes, terms_conditions, valid_until, change_reason, tax_treatment, works_contract_rate, works_contract_hsn)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10, 'itemized'), COALESCE($11, 18.00), COALESCE($12, '9954'))
       RETURNING *
     `;
-    const values = [tenantId, leadId, projectId, createdBy, quotationNumber, notes, termsConditions, validUntil, changeReason || null];
+    const values = [
+      tenantId, leadId, projectId, createdBy, quotationNumber, notes, termsConditions, validUntil, changeReason || null,
+      taxTreatment || null, worksContractRate || null, worksContractHsn || null
+    ];
     const result = await pool.query(query, values);
     return result.rows[0];
   }
@@ -35,18 +38,19 @@ class QuotationService {
   }
 
   async addBOQItem(tenantId, quotationId, itemData) {
-    const { parentItemId, roomOrArea, itemName, description, unit, quantity, unitPrice, markupPercentage, materialSpecifications, brand, sortOrder, itemKey, scopeType, changeOrderId, hsnCode, gstRate } = itemData;
+    const { parentItemId, roomOrArea, itemName, description, unit, quantity, unitPrice, markupPercentage, materialSpecifications, brand, sortOrder, itemKey, scopeType, changeOrderId, hsnCode, gstRate, laborTrade, laborRateType, laborUnitRate, laborMarkupPercentage } = itemData;
 
     const query = `
       INSERT INTO quotation_items 
-      (tenant_id, quotation_id, parent_item_id, room_or_area, item_name, description, unit, quantity, unit_price, markup_percentage, material_specifications, brand, sort_order, item_key, scope_type, change_order_id, hsn_code, gst_rate)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, COALESCE($14, gen_random_uuid()), COALESCE($15, 'original'), $16, $17, $18)
+      (tenant_id, quotation_id, parent_item_id, room_or_area, item_name, description, unit, quantity, unit_price, markup_percentage, material_specifications, brand, sort_order, item_key, scope_type, change_order_id, hsn_code, gst_rate, labor_trade, labor_rate_type, labor_unit_rate, labor_markup_percentage)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, COALESCE($14, gen_random_uuid()), COALESCE($15, 'original'), $16, $17, $18, $19, $20, $21, $22)
       RETURNING *
     `;
     const values = [
       tenantId, quotationId, parentItemId || null, roomOrArea, itemName, description, 
       unit, quantity, unitPrice, markupPercentage, materialSpecifications, brand, sortOrder, itemKey || null,
-      scopeType || 'original', changeOrderId || null, hsnCode || null, gstRate || 0.00
+      scopeType || 'original', changeOrderId || null, hsnCode || null, gstRate || 0.00,
+      laborTrade || null, laborRateType || 'rate_per_unit', laborUnitRate || 0, laborMarkupPercentage || 0
     ];
 
     const result = await pool.query(query, values);
@@ -114,7 +118,11 @@ class QuotationService {
       scope_type: 'scopeType',
       change_order_id: 'changeOrderId',
       hsn_code: 'hsnCode',
-      gst_rate: 'gstRate'
+      gst_rate: 'gstRate',
+      labor_trade: 'laborTrade',
+      labor_rate_type: 'laborRateType',
+      labor_unit_rate: 'laborUnitRate',
+      labor_markup_percentage: 'laborMarkupPercentage'
     };
 
     for (const [colName, jsKey] of Object.entries(updateableFields)) {
@@ -163,23 +171,45 @@ class QuotationService {
 
   async updateQuotationTotals(tenantId, quotationId, client = pool) {
     // 1. Fetch current quotation configuration
-    const qQuery = 'SELECT status, gst_type, discount_amount FROM quotations WHERE id = $1 AND tenant_id = $2';
+    const qQuery = 'SELECT status, gst_type, discount_amount, tax_treatment, works_contract_rate, works_contract_hsn FROM quotations WHERE id = $1 AND tenant_id = $2';
     const qRes = await client.query(qQuery, [quotationId, tenantId]);
     if (qRes.rowCount === 0) return null;
-    const { status, gst_type: gstType, discount_amount: discountAmountStr } = qRes.rows[0];
+    const { status, gst_type: gstType, discount_amount: discountAmountStr, tax_treatment: taxTreatment, works_contract_rate: worksContractRateStr } = qRes.rows[0];
     const discountAmount = parseFloat(discountAmountStr || 0);
+    const isComposite = taxTreatment === 'works_contract' || taxTreatment === 'composite_supply';
+    const worksContractRate = parseFloat(worksContractRateStr || 18.00);
 
-    // 2. Recompute CGST, SGST, IGST on each line item based on parent's gst_type and line-item's own gst_rate
+    // 2. Recompute labor_total_price on each line item
+    const recomputeLaborQuery = `
+      UPDATE quotation_items
+      SET labor_total_price = CASE 
+            WHEN labor_rate_type = 'lump_sum' THEN (labor_unit_rate * (1.0 + (labor_markup_percentage / 100.0)))
+            ELSE (quantity * labor_unit_rate * (1.0 + (labor_markup_percentage / 100.0)))
+          END
+      WHERE quotation_id = $1 AND tenant_id = $2
+    `;
+    await client.query(recomputeLaborQuery, [quotationId, tenantId]);
+
+    // 3. Recompute CGST, SGST, IGST on each line item based on combined (total_price + labor_total_price)
     const recomputeItemsQuery = `
       UPDATE quotation_items
-      SET cgst_amount = CASE WHEN $1 = 'cgst_sgst' THEN (total_price * (gst_rate / 100.0) / 2.0) ELSE 0.00 END,
-          sgst_amount = CASE WHEN $1 = 'cgst_sgst' THEN (total_price * (gst_rate / 100.0) / 2.0) ELSE 0.00 END,
-          igst_amount = CASE WHEN $1 = 'igst' THEN (total_price * (gst_rate / 100.0)) ELSE 0.00 END
+      SET cgst_amount = CASE 
+            WHEN $1 = 'cgst_sgst' THEN ((total_price + labor_total_price) * (CASE WHEN $4 = TRUE THEN $5::numeric ELSE gst_rate END / 100.0) / 2.0) 
+            ELSE 0.00 
+          END,
+          sgst_amount = CASE 
+            WHEN $1 = 'cgst_sgst' THEN ((total_price + labor_total_price) * (CASE WHEN $4 = TRUE THEN $5::numeric ELSE gst_rate END / 100.0) / 2.0) 
+            ELSE 0.00 
+          END,
+          igst_amount = CASE 
+            WHEN $1 = 'igst' THEN ((total_price + labor_total_price) * (CASE WHEN $4 = TRUE THEN $5::numeric ELSE gst_rate END / 100.0)) 
+            ELSE 0.00 
+          END
       WHERE quotation_id = $2 AND tenant_id = $3
     `;
-    await client.query(recomputeItemsQuery, [gstType, quotationId, tenantId]);
+    await client.query(recomputeItemsQuery, [gstType, quotationId, tenantId, isComposite, worksContractRate]);
 
-    // 3. Sum up all BOQ items' subtotals and tax splits (negating reductions)
+    // 4. Sum up all BOQ items' subtotals (material and labor separately) and tax splits (negating reductions)
     const sumQuery = `
       SELECT 
         COALESCE(SUM(
@@ -189,7 +219,15 @@ class QuotationService {
             WHEN scope_type = 'reduction' AND ($1 != 'accepted' OR pco.status = 'approved') THEN -total_price
             ELSE 0 
           END
-        ), 0) as new_subtotal,
+        ), 0) as new_material_subtotal,
+        COALESCE(SUM(
+          CASE 
+            WHEN scope_type = 'original' THEN labor_total_price
+            WHEN scope_type = 'addition' AND ($1 != 'accepted' OR pco.status = 'approved') THEN labor_total_price
+            WHEN scope_type = 'reduction' AND ($1 != 'accepted' OR pco.status = 'approved') THEN -labor_total_price
+            ELSE 0 
+          END
+        ), 0) as new_labor_subtotal,
         COALESCE(SUM(
           CASE 
             WHEN scope_type = 'original' THEN cgst_amount
@@ -219,14 +257,16 @@ class QuotationService {
       WHERE qi.quotation_id = $2 AND qi.tenant_id = $3
     `;
     const sumResult = await client.query(sumQuery, [status, quotationId, tenantId]);
-    const newSubtotal = parseFloat(sumResult.rows[0].new_subtotal);
+    const newMaterialSubtotal = parseFloat(sumResult.rows[0].new_material_subtotal);
+    const newLaborSubtotal = parseFloat(sumResult.rows[0].new_labor_subtotal);
+    const newSubtotal = newMaterialSubtotal + newLaborSubtotal;
     const newCgst = parseFloat(sumResult.rows[0].new_cgst);
     const newSgst = parseFloat(sumResult.rows[0].new_sgst);
     const newIgst = parseFloat(sumResult.rows[0].new_igst);
     const newTax = newCgst + newSgst + newIgst;
     const newTotal = newSubtotal + newTax - discountAmount;
 
-    // 4. Write back totals and splits to parent quotation
+    // 5. Write back totals and splits to parent quotation
     const updateQuery = `
       UPDATE quotations
       SET subtotal = $1,
@@ -235,12 +275,14 @@ class QuotationService {
           igst_total = $4,
           tax_amount = $5,
           total_amount = $6,
+          material_subtotal = $7,
+          labor_subtotal = $8,
           updated_at = CURRENT_TIMESTAMP
-      WHERE id = $7 AND tenant_id = $8
+      WHERE id = $9 AND tenant_id = $10
       RETURNING *
     `;
     const updateResult = await client.query(updateQuery, [
-      newSubtotal, newCgst, newSgst, newIgst, newTax, newTotal, quotationId, tenantId
+      newSubtotal, newCgst, newSgst, newIgst, newTax, newTotal, newMaterialSubtotal, newLaborSubtotal, quotationId, tenantId
     ]);
     return updateResult.rows[0];
   }
@@ -287,15 +329,17 @@ class QuotationService {
       const nextVersion = base.version + 1;
       const insertQuoteQuery = `
         INSERT INTO quotations 
-        (tenant_id, lead_id, project_id, created_by, quotation_number, status, version, subtotal, tax_amount, discount_amount, total_amount, notes, terms_conditions, valid_until, change_reason, gst_type, cgst_total, sgst_total, igst_total)
-        VALUES ($1, $2, $3, $4, $5, 'draft', $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+        (tenant_id, lead_id, project_id, created_by, quotation_number, status, version, subtotal, tax_amount, discount_amount, total_amount, notes, terms_conditions, valid_until, change_reason, gst_type, cgst_total, sgst_total, igst_total, tax_treatment, works_contract_rate, works_contract_hsn, material_subtotal, labor_subtotal)
+        VALUES ($1, $2, $3, $4, $5, 'draft', $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
         RETURNING *
       `;
       const quoteValues = [
         tenantId, base.lead_id, base.project_id, userId, base.quotation_number,
         nextVersion, base.subtotal, base.tax_amount, base.discount_amount, base.total_amount,
         base.notes, base.terms_conditions, base.valid_until, changeReason,
-        base.gst_type || 'cgst_sgst', base.cgst_total || 0, base.sgst_total || 0, base.igst_total || 0
+        base.gst_type || 'cgst_sgst', base.cgst_total || 0, base.sgst_total || 0, base.igst_total || 0,
+        base.tax_treatment || 'itemized', base.works_contract_rate || 18.00, base.works_contract_hsn || '9954',
+        base.material_subtotal || 0, base.labor_subtotal || 0
       ];
       const newQuoteRes = await client.query(insertQuoteQuery, quoteValues);
       const newQuotation = newQuoteRes.rows[0];
@@ -311,8 +355,8 @@ class QuotationService {
       for (const item of oldItems) {
         const insertItemQuery = `
           INSERT INTO quotation_items 
-          (tenant_id, quotation_id, parent_item_id, room_or_area, item_name, description, unit, quantity, unit_price, markup_percentage, material_specifications, brand, sort_order, item_key, scope_type, change_order_id, hsn_code, gst_rate, cgst_amount, sgst_amount, igst_amount)
-          VALUES ($1, $2, NULL, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+          (tenant_id, quotation_id, parent_item_id, room_or_area, item_name, description, unit, quantity, unit_price, markup_percentage, material_specifications, brand, sort_order, item_key, scope_type, change_order_id, hsn_code, gst_rate, cgst_amount, sgst_amount, igst_amount, labor_trade, labor_rate_type, labor_unit_rate, labor_markup_percentage, labor_total_price)
+          VALUES ($1, $2, NULL, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
           RETURNING id
         `;
         const values = [
@@ -320,7 +364,8 @@ class QuotationService {
           item.unit, item.quantity, item.unit_price, item.markup_percentage,
           item.material_specifications, item.brand, item.sort_order, item.item_key,
           item.scope_type, item.change_order_id, item.hsn_code, item.gst_rate,
-          item.cgst_amount, item.sgst_amount, item.igst_amount
+          item.cgst_amount, item.sgst_amount, item.igst_amount,
+          item.labor_trade, item.labor_rate_type, item.labor_unit_rate, item.labor_markup_percentage, item.labor_total_price
         ];
         const insertRes = await client.query(insertItemQuery, values);
         idMap[item.id] = insertRes.rows[0].id;
@@ -545,7 +590,10 @@ class QuotationService {
       terms_conditions: 'termsConditions',
       valid_until: 'validUntil',
       discount_amount: 'discountAmount',
-      gst_type: 'gstType'
+      gst_type: 'gstType',
+      tax_treatment: 'taxTreatment',
+      works_contract_rate: 'worksContractRate',
+      works_contract_hsn: 'worksContractHsn'
     };
 
     for (const [colName, jsKey] of Object.entries(updateableFields)) {

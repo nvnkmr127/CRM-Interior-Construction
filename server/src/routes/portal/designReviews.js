@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../../db/pool');
+const { incrementProjectStageRevision } = require('../../services/projects/revisionTracker');
 const authenticatePortal = require('../../middleware/authenticatePortal');
 const { getDocumentUrl } = require('../../services/documents/documentService');
 
@@ -117,10 +118,7 @@ router.post('/drawings/:documentId/revision', async (req, res, next) => {
       `;
       const { rows } = await client.query(updateDocQuery, [documentId, projectId, tenantId, note.trim()]);
 
-      await client.query(
-        `UPDATE projects SET current_design_revisions = current_design_revisions + 1 WHERE id = $1 AND tenant_id = $2`,
-        [projectId, tenantId]
-      );
+      await incrementProjectStageRevision(projectId, tenantId, client);
 
       await client.query('COMMIT');
       res.json({ success: true, data: rows[0], message: 'Revision requested on drawing.' });

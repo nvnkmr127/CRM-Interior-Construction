@@ -4,6 +4,7 @@ const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const pool = require('../config/db');
+const { incrementProjectStageRevision } = require('../services/projects/revisionTracker');
 
 const router = express.Router({ mergeParams: true });
 router.use(authenticate);
@@ -14,7 +15,8 @@ const drawingRegisterSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   status: z.enum(['issued_for_approval', 'issued_for_construction', 'superseded', 'issued_for_info']),
   issuedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Issued date must be in YYYY-MM-DD format'),
-  documentId: z.string().uuid().optional().nullable()
+  documentId: z.string().uuid().optional().nullable(),
+  layoutType: z.enum(['electrical', 'plumbing', 'civil', 'false_ceiling', 'furniture', 'flooring']).optional().nullable()
 });
 
 const updateDrawingRegisterSchema = z.object({
@@ -23,8 +25,22 @@ const updateDrawingRegisterSchema = z.object({
   title: z.string().min(1).optional(),
   status: z.enum(['issued_for_approval', 'issued_for_construction', 'superseded', 'issued_for_info']).optional(),
   issuedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  documentId: z.string().uuid().optional().nullable()
+  documentId: z.string().uuid().optional().nullable(),
+  layoutType: z.enum(['electrical', 'plumbing', 'civil', 'false_ceiling', 'furniture', 'flooring']).optional().nullable()
 });
+
+function validateDrawingRelease(layoutType, clientStatus, contractorStatus) {
+  if (!layoutType) return;
+  if (['electrical', 'plumbing', 'false_ceiling'].includes(layoutType)) {
+    if (clientStatus !== 'approved' || contractorStatus !== 'approved') {
+      throw new Error(`MEP layouts (${layoutType.replace('_', ' ')}) require both client and contractor approval before they can be issued for construction.`);
+    }
+  } else if (['civil', 'furniture', 'flooring'].includes(layoutType)) {
+    if (clientStatus !== 'approved') {
+      throw new Error(`Layouts (${layoutType}) require client approval before they can be issued for construction.`);
+    }
+  }
+}
 
 // GET /api/projects/:projectId/drawing-register
 router.get('/', authorize('projects:read'), async (req, res) => {
@@ -58,6 +74,14 @@ router.post('/', authorize('projects:manage'), async (req, res) => {
 
     const data = drawingRegisterSchema.parse(req.body);
 
+    if (data.status === 'issued_for_construction') {
+      try {
+        validateDrawingRelease(data.layoutType, 'pending', 'pending');
+      } catch (err) {
+        return fail(res, 'APPROVAL_REQUIRED', err.message, 422);
+      }
+    }
+
     await client.query('BEGIN');
 
     // Check if combination already exists
@@ -86,9 +110,9 @@ router.post('/', authorize('projects:manage'), async (req, res) => {
 
     const insertQuery = `
       INSERT INTO drawing_register (
-        tenant_id, project_id, drawing_number, revision_code, title, status, issued_date, issued_by, is_superseded, document_id
+        tenant_id, project_id, drawing_number, revision_code, title, status, issued_date, issued_by, is_superseded, document_id, layout_type
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
       ) RETURNING *
     `;
 
@@ -102,8 +126,18 @@ router.post('/', authorize('projects:manage'), async (req, res) => {
       data.issuedDate,
       userId,
       isSuperseded,
-      data.documentId || null
+      data.documentId || null,
+      data.layoutType || null
     ]);
+
+    // Check if drawing has any previous revisions in this project to increment stage revision
+    const { rows: prevRevs } = await client.query(
+      `SELECT id FROM drawing_register WHERE project_id = $1 AND tenant_id = $2 AND drawing_number = $3 AND id != $4`,
+      [projectId, tenantId, data.drawingNumber, rows[0].id]
+    );
+    if (prevRevs.length > 0) {
+      await incrementProjectStageRevision(projectId, tenantId, client);
+    }
 
     await client.query('COMMIT');
     return success(res, rows[0], {}, 201);
@@ -141,6 +175,20 @@ router.put('/:id', authorize('projects:manage'), async (req, res) => {
 
     const record = orig[0];
 
+    const nextLayoutType = data.layoutType !== undefined ? data.layoutType : record.layout_type;
+    const nextStatus = data.status !== undefined ? data.status : record.status;
+    const nextClientStatus = record.client_status;
+    const nextContractorStatus = record.contractor_status;
+
+    if (nextStatus === 'issued_for_construction') {
+      try {
+        validateDrawingRelease(nextLayoutType, nextClientStatus, nextContractorStatus);
+      } catch (err) {
+        await client.query('ROLLBACK');
+        return fail(res, 'APPROVAL_REQUIRED', err.message, 422);
+      }
+    }
+
     // Build update fields dynamically
     const fields = [];
     const values = [];
@@ -176,6 +224,10 @@ router.put('/:id', authorize('projects:manage'), async (req, res) => {
     if (data.documentId !== undefined) {
       fields.push(`document_id = $${idx++}`);
       values.push(data.documentId);
+    }
+    if (data.layoutType !== undefined) {
+      fields.push(`layout_type = $${idx++}`);
+      values.push(data.layoutType);
     }
 
     if (fields.length > 0) {
@@ -279,6 +331,134 @@ router.delete('/:id', authorize('projects:manage'), async (req, res) => {
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete drawing.', 500);
   } finally {
     client.release();
+  }
+});
+
+// POST /api/projects/:projectId/drawing-register/:id/client-approve
+router.post('/:id/client-approve', authorize('projects:manage'), async (req, res) => {
+  try {
+    const { projectId, id } = req.params;
+    const tenantId = req.tenantId;
+    const userId = req.user.userId;
+    const { notes } = req.body;
+
+    const { rows } = await pool.query(
+      `UPDATE drawing_register
+       SET client_status = 'approved',
+           client_approved_by = $1,
+           client_approved_at = NOW(),
+           client_notes = $2,
+           updated_at = NOW()
+       WHERE id = $3 AND project_id = $4 AND tenant_id = $5
+       RETURNING *`,
+      [userId, notes || null, id, projectId, tenantId]
+    );
+
+    if (rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Drawing not found.', 404);
+    }
+    return success(res, rows[0]);
+  } catch (err) {
+    console.error('[DrawingRegister Router] Client approve error:', err);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to approve drawing.', 500);
+  }
+});
+
+// POST /api/projects/:projectId/drawing-register/:id/client-revision
+router.post('/:id/client-revision', authorize('projects:manage'), async (req, res) => {
+  try {
+    const { projectId, id } = req.params;
+    const tenantId = req.tenantId;
+    const { notes } = req.body;
+
+    if (!notes || !notes.trim()) {
+      return fail(res, 'VALIDATION_ERROR', 'Revision comments are required.', 400);
+    }
+
+    const { rows } = await pool.query(
+      `UPDATE drawing_register
+       SET client_status = 'revision_requested',
+           client_approved_by = NULL,
+           client_approved_at = NULL,
+           client_notes = $1,
+           status = 'issued_for_approval',
+           updated_at = NOW()
+       WHERE id = $2 AND project_id = $3 AND tenant_id = $4
+       RETURNING *`,
+      [notes.trim(), id, projectId, tenantId]
+    );
+
+    if (rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Drawing not found.', 404);
+    }
+    return success(res, rows[0]);
+  } catch (err) {
+    console.error('[DrawingRegister Router] Client revision error:', err);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to request client revision.', 500);
+  }
+});
+
+// POST /api/projects/:projectId/drawing-register/:id/contractor-approve
+router.post('/:id/contractor-approve', authorize('projects:manage'), async (req, res) => {
+  try {
+    const { projectId, id } = req.params;
+    const tenantId = req.tenantId;
+    const userId = req.user.userId;
+    const { notes } = req.body;
+
+    const { rows } = await pool.query(
+      `UPDATE drawing_register
+       SET contractor_status = 'approved',
+           contractor_approved_by = $1,
+           contractor_approved_at = NOW(),
+           contractor_notes = $2,
+           updated_at = NOW()
+       WHERE id = $3 AND project_id = $4 AND tenant_id = $5
+       RETURNING *`,
+      [userId, notes || null, id, projectId, tenantId]
+    );
+
+    if (rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Drawing not found.', 404);
+    }
+    return success(res, rows[0]);
+  } catch (err) {
+    console.error('[DrawingRegister Router] Contractor approve error:', err);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to approve drawing.', 500);
+  }
+});
+
+// POST /api/projects/:projectId/drawing-register/:id/contractor-revision
+router.post('/:id/contractor-revision', authorize('projects:manage'), async (req, res) => {
+  try {
+    const { projectId, id } = req.params;
+    const tenantId = req.tenantId;
+    const { notes } = req.body;
+
+    if (!notes || !notes.trim()) {
+      return fail(res, 'VALIDATION_ERROR', 'Revision comments are required.', 400);
+    }
+
+    const { rows } = await pool.query(
+      `UPDATE drawing_register
+       SET contractor_status = 'revision_requested',
+           contractor_approved_by = NULL,
+           contractor_approved_at = NULL,
+           contractor_notes = $1,
+           status = 'issued_for_approval',
+           updated_at = NOW()
+       WHERE id = $2 AND project_id = $3 AND tenant_id = $4
+       RETURNING *`,
+      [notes.trim(), id, projectId, tenantId]
+    );
+
+    if (rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Drawing not found.', 404);
+    }
+    return success(res, rows[0]);
+  } catch (err) {
+    console.error('[DrawingRegister Router] Contractor revision error:', err);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to request contractor revision.', 500);
   }
 });
 

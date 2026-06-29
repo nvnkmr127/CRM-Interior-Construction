@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Badge, Modal, Input, Textarea, EmptyState, Spinner } from '../ui';
+import { Button, Badge, Modal, Input, Textarea, EmptyState, Spinner, Select } from '../ui';
 import { useToast } from '../../store/toastContext';
 import styles from './ChangeOrdersTab.module.css';
 import {
@@ -9,6 +9,12 @@ import {
   deleteChangeOrder,
   getProject
 } from '../../api/projects';
+
+const REASON_LABELS = {
+  'client-requested': 'Client Requested',
+  'design-required': 'Design Required',
+  'site-required': 'Site Required'
+};
 
 export default function ChangeOrdersTab({ projectId }) {
   const toast = useToast();
@@ -258,7 +264,7 @@ export default function ChangeOrdersTab({ projectId }) {
                 {co.reason && (
                   <div className={styles.metaItem}>
                     Reason for Change
-                    <strong>{co.reason}</strong>
+                    <strong>{REASON_LABELS[co.reason] || co.reason}</strong>
                   </div>
                 )}
                 <div className={styles.metaItem}>
@@ -391,12 +397,16 @@ export default function ChangeOrdersTab({ projectId }) {
             onChange={e => setForm({ ...form, timeline_impact_days: e.target.value })}
             required
           />
-          <Textarea
+          <Select
             label="Reason for Change"
-            placeholder="e.g. Client requested revisions after architectural layout sign-off."
+            placeholder="Select reason..."
             value={form.reason}
-            onChange={e => setForm({ ...form, reason: e.target.value })}
-            rows={2}
+            onChange={val => setForm({ ...form, reason: val })}
+            options={[
+              { value: 'client-requested', label: 'Client Requested' },
+              { value: 'design-required', label: 'Design Required' },
+              { value: 'site-required', label: 'Site Required' }
+            ]}
           />
           <Textarea
             label="Description / Scope Details"

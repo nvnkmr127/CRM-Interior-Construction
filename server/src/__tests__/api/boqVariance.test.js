@@ -42,6 +42,14 @@ describe('BOQ Variance Reports API', () => {
       });
     projectId = projRes.body.data.id;
 
+    // Set project status to 'ongoing' to bypass booking lock restrictions
+    await pool.query(
+      `UPDATE projects 
+       SET status = 'ongoing' 
+       WHERE id = $1`, 
+      [projectId]
+    );
+
     // Create client portal user for signing substitutions
     clientToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = crypto.createHash('sha256').update(clientToken).digest('hex');
@@ -91,7 +99,7 @@ describe('BOQ Variance Reports API', () => {
       .send({
         title: 'Extra living room lighting',
         description: 'Add spot lights and dimmers',
-        reason: 'Client requested warmer lighting options',
+        reason: 'client-requested',
         amount: 11000,
         timeline_impact_days: 2,
         status: 'draft'

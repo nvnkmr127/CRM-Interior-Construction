@@ -12,6 +12,7 @@ const NAV_ITEMS = [
     { to: '/projects/handover-dashboard', icon: '📋', label: 'Handover Dashboard' },
     { to: '/projects/retention-dashboard', icon: '🤝', label: 'Retention Dashboard' },
     { to: '/tasks',      icon: '◻', label: 'My Tasks' },
+    { to: '/warehouse',   icon: '🏢', label: 'Warehouse & Inventory' },
   ]},
   { group: 'ANALYTICS', items: [
     { to: '/analytics/leads',    icon: '▲', label: 'Lead Analytics' },

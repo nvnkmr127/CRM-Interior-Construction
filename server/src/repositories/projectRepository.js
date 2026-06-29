@@ -24,7 +24,8 @@ class ProjectRepository {
       key_holder_name, key_holder_phone, spare_key_location, gate_pass_number,
       access_card_holder, access_time_restrictions,
       lead_designer_id, junior_designer_id, site_engineer_id, qc_engineer_id,
-      site_supervisor_id, crm_executive_id, procurement_officer_id
+      site_supervisor_id, crm_executive_id, procurement_officer_id,
+      stage_revision_limits, stage_revision_counts
     } = data;
 
     const query = `
@@ -50,7 +51,8 @@ class ProjectRepository {
         key_holder_name, key_holder_phone, spare_key_location, gate_pass_number,
         access_card_holder, access_time_restrictions,
         lead_designer_id, junior_designer_id, site_engineer_id, qc_engineer_id,
-        site_supervisor_id, crm_executive_id, procurement_officer_id
+        site_supervisor_id, crm_executive_id, procurement_officer_id,
+        stage_revision_limits, stage_revision_counts
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36,
@@ -60,7 +62,7 @@ class ProjectRepository {
         $55, $56, $57, $58, $59, $60,
         $61, $62, $63, $64, $65, $66, $67, $68,
         $69, $70, $71, $72, $73, $74,
-        $75, $76, $77, $78, $79, $80, $81
+        $75, $76, $77, $78, $79, $80, $81, $82, $83
       ) RETURNING *
     `;
     const values = [
@@ -129,7 +131,9 @@ class ProjectRepository {
       qc_engineer_id || null,
       site_supervisor_id || null,
       crm_executive_id || null,
-      procurement_officer_id || null
+      procurement_officer_id || null,
+      stage_revision_limits || '{}',
+      stage_revision_counts || '{}'
     ];
 
     const { rows } = await dbClient.query(query, values);
@@ -438,14 +442,24 @@ class ProjectRepository {
         LIMIT 1
       )
       SELECT 
-        COALESCE(SUM(total_price) FILTER (WHERE scope_type = 'original'), 0) as original_scope_total,
-        COALESCE(SUM(total_price) FILTER (WHERE scope_type = 'addition'), 0) as additions_total,
-        COALESCE(SUM(total_price) FILTER (WHERE scope_type = 'reduction'), 0) as reductions_total
-      FROM quotation_items
-      WHERE tenant_id = $1 AND quotation_id = (SELECT id FROM latest_quotation)
+        COALESCE(SUM(qi.total_price) FILTER (WHERE qi.scope_type = 'original'), 0) as original_scope_total,
+        COALESCE(SUM(qi.total_price) FILTER (WHERE qi.scope_type = 'addition' AND (qi.change_order_id IS NULL OR pco.status = 'approved')), 0) as additions_total,
+        COALESCE(SUM(qi.total_price) FILTER (WHERE qi.scope_type = 'reduction' AND (qi.change_order_id IS NULL OR pco.status = 'approved')), 0) as reductions_total
+      FROM quotation_items qi
+      LEFT JOIN project_change_orders pco ON qi.change_order_id = pco.id
+      WHERE qi.tenant_id = $1 AND qi.quotation_id = (SELECT id FROM latest_quotation)
     `;
     const { rows: boqRows } = await pool.query(boqStatsQuery, [tenantId, projectId]);
     const boqStats = boqRows[0] || { original_scope_total: 0, additions_total: 0, reductions_total: 0 };
+
+    // Timeline impact days from approved change orders
+    const timelineQuery = `
+      SELECT COALESCE(SUM(timeline_impact_days), 0) as approved_timeline_impact_days
+      FROM project_change_orders
+      WHERE tenant_id = $1 AND project_id = $2 AND status = 'approved'
+    `;
+    const { rows: timelineRows } = await pool.query(timelineQuery, [tenantId, projectId]);
+    const approvedTimelineImpactDays = Number(timelineRows[0]?.approved_timeline_impact_days || 0);
 
     const projectQuery = `SELECT contract_value FROM projects WHERE tenant_id = $1 AND id = $2`;
     const { rows: projectRows } = await pool.query(projectQuery, [tenantId, projectId]);
@@ -518,7 +532,8 @@ class ProjectRepository {
       originalScopeTotal,
       additionsTotal,
       reductionsTotal,
-      netContractValue
+      netContractValue,
+      approvedTimelineImpactDays
     };
   }
 }

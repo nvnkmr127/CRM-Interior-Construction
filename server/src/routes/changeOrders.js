@@ -12,7 +12,7 @@ router.use(authenticate);
 const changeOrderSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional().nullable(),
-  reason: z.string().optional().nullable(),
+  reason: z.enum(['client-requested', 'design-required', 'site-required']).or(z.literal('')).optional().nullable(),
   amount: z.number().nonnegative('Amount must be a non-negative number'),
   timeline_impact_days: z.number({ required_error: 'Timeline impact in days is required.' }).int('Timeline impact must be an integer.'),
   status: z.enum(['draft', 'submitted', 'approved', 'rejected']).optional(),

@@ -384,6 +384,25 @@ async function createProject({ tenantId, userId, data }) {
       );
     }
 
+    // 2.6. Seed MEP coordination checklist items
+    const mepItems = [
+      'Electrical switch and socket layout marking verification',
+      'False ceiling lighting and electrical points alignment coordination',
+      'Plumbing routing slopes and structural beam clearance verification',
+      'MEP contractors & site team design clash resolution review',
+      'Client formal sign-off on layout point adjustments',
+      'Contractor drawing clearance before civil execution starts'
+    ];
+
+    for (const item of mepItems) {
+      await client.query(
+        `INSERT INTO project_mep_checklists (tenant_id, project_id, item_name, status)
+         VALUES ($1, $2, $3, 'pending')
+         ON CONFLICT (project_id, item_name) DO NOTHING`,
+        [tenantId, project.id, item]
+      );
+    }
+
     await client.query('COMMIT');
 
     // 3. Log the action (after commit)

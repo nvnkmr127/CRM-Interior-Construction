@@ -8,7 +8,11 @@ import {
   createDrawingRegisterEntry,
   updateDrawingRegisterEntry,
   deleteDrawingRegisterEntry,
-  getDocumentUrl
+  getDocumentUrl,
+  approveDrawingRegisterClient,
+  requestDrawingRegisterClientRevision,
+  approveDrawingRegisterContractor,
+  requestDrawingRegisterContractorRevision
 } from '../../api/projects';
 
 const STATUS_LABELS = {
@@ -23,6 +27,15 @@ const STATUS_VARIANTS = {
   issued_for_construction: 'success',
   superseded: 'neutral',
   issued_for_info: 'info'
+};
+
+const LAYOUT_LABELS = {
+  electrical: 'Electrical Layout',
+  plumbing: 'Plumbing Layout',
+  civil: 'Civil Layout',
+  false_ceiling: 'False Ceiling',
+  furniture: 'Furniture Layout',
+  flooring: 'Flooring Layout'
 };
 
 export default function DrawingRegisterTab({ projectId }) {
@@ -49,7 +62,8 @@ export default function DrawingRegisterTab({ projectId }) {
     title: '',
     status: 'issued_for_approval',
     issuedDate: new Date().toISOString().split('T')[0],
-    file: null
+    file: null,
+    layoutType: ''
   });
 
   const [revisionForm, setRevisionForm] = useState({
@@ -58,7 +72,8 @@ export default function DrawingRegisterTab({ projectId }) {
     title: '',
     status: 'issued_for_approval',
     issuedDate: new Date().toISOString().split('T')[0],
-    file: null
+    file: null,
+    layoutType: ''
   });
 
   const [editForm, setEditForm] = useState({
@@ -68,7 +83,8 @@ export default function DrawingRegisterTab({ projectId }) {
     title: '',
     status: 'issued_for_approval',
     issuedDate: '',
-    documentId: null
+    documentId: null,
+    layoutType: ''
   });
 
   const fetchDrawings = async () => {
@@ -175,7 +191,8 @@ export default function DrawingRegisterTab({ projectId }) {
         title: registerForm.title.trim(),
         status: registerForm.status,
         issuedDate: registerForm.issuedDate,
-        documentId
+        documentId,
+        layoutType: registerForm.layoutType || null
       };
 
       const res = await createDrawingRegisterEntry(projectId, payload);
@@ -188,7 +205,8 @@ export default function DrawingRegisterTab({ projectId }) {
           title: '',
           status: 'issued_for_approval',
           issuedDate: new Date().toISOString().split('T')[0],
-          file: null
+          file: null,
+          layoutType: ''
         });
         fetchDrawings();
       }
@@ -196,6 +214,8 @@ export default function DrawingRegisterTab({ projectId }) {
       console.error(err);
       if (err.response?.status === 409) {
         toast.error('A drawing with this revision code already exists.');
+      } else if (err.response?.status === 422) {
+        toast.error(err.response.data?.message || err.response.data?.error?.message || 'Failed to register drawing: approvals required.');
       } else {
         toast.error('Failed to register drawing.');
       }
@@ -210,7 +230,8 @@ export default function DrawingRegisterTab({ projectId }) {
       title: active.title,
       status: 'issued_for_approval',
       issuedDate: new Date().toISOString().split('T')[0],
-      file: null
+      file: null,
+      layoutType: active.layout_type || ''
     });
     setIsRevisionModalOpen(true);
   };
@@ -240,7 +261,8 @@ export default function DrawingRegisterTab({ projectId }) {
         title: revisionForm.title.trim(),
         status: revisionForm.status,
         issuedDate: revisionForm.issuedDate,
-        documentId
+        documentId,
+        layoutType: revisionForm.layoutType || null
       };
 
       const res = await createDrawingRegisterEntry(projectId, payload);
@@ -253,6 +275,8 @@ export default function DrawingRegisterTab({ projectId }) {
       console.error(err);
       if (err.response?.status === 409) {
         toast.error('This revision code already exists for this drawing.');
+      } else if (err.response?.status === 422) {
+        toast.error(err.response.data?.message || err.response.data?.error?.message || 'Failed to add revision: approvals required.');
       } else {
         toast.error('Failed to add drawing revision.');
       }
@@ -267,7 +291,8 @@ export default function DrawingRegisterTab({ projectId }) {
       title: drawing.title,
       status: drawing.status,
       issuedDate: drawing.issued_date ? new Date(drawing.issued_date).toISOString().split('T')[0] : '',
-      documentId: drawing.document_id
+      documentId: drawing.document_id,
+      layoutType: drawing.layout_type || ''
     });
     setIsEditModalOpen(true);
   };
@@ -281,7 +306,8 @@ export default function DrawingRegisterTab({ projectId }) {
         title: editForm.title.trim(),
         status: editForm.status,
         issuedDate: editForm.issuedDate,
-        documentId: editForm.documentId
+        documentId: editForm.documentId,
+        layoutType: editForm.layoutType || null
       };
 
       const res = await updateDrawingRegisterEntry(projectId, editForm.id, payload);
@@ -294,6 +320,8 @@ export default function DrawingRegisterTab({ projectId }) {
       console.error(err);
       if (err.response?.status === 409) {
         toast.error('This drawing number and revision combination already exists.');
+      } else if (err.response?.status === 422) {
+        toast.error(err.response.data?.message || err.response.data?.error?.message || 'Failed to update drawing: approvals required.');
       } else {
         toast.error('Failed to update drawing details.');
       }
@@ -318,6 +346,76 @@ export default function DrawingRegisterTab({ projectId }) {
     } catch (err) {
       console.error(err);
       toast.error('Failed to delete drawing.');
+    }
+  };
+
+  const handleClientApprove = async (id) => {
+    const notes = window.prompt('Enter client approval notes (optional):');
+    if (notes === null) return; // cancel click
+    try {
+      const res = await approveDrawingRegisterClient(projectId, id, { notes });
+      if (res.data?.success) {
+        toast.success('Drawing client sign-off saved!');
+        fetchDrawings();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to approve drawing.');
+    }
+  };
+
+  const handleClientRevision = async (id) => {
+    const notes = window.prompt('Enter reason for client revision request (required):');
+    if (notes === null) return;
+    if (!notes.trim()) {
+      toast.error('Comments are required to request a revision.');
+      return;
+    }
+
+    try {
+      const res = await requestDrawingRegisterClientRevision(projectId, id, { notes: notes.trim() });
+      if (res.data?.success) {
+        toast.success('Client revision request submitted.');
+        fetchDrawings();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to request client revision.');
+    }
+  };
+
+  const handleContractorApprove = async (id) => {
+    const notes = window.prompt('Enter contractor approval notes (optional):');
+    if (notes === null) return;
+    try {
+      const res = await approveDrawingRegisterContractor(projectId, id, { notes });
+      if (res.data?.success) {
+        toast.success('Drawing contractor sign-off saved!');
+        fetchDrawings();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to approve drawing.');
+    }
+  };
+
+  const handleContractorRevision = async (id) => {
+    const notes = window.prompt('Enter reason for contractor revision request (required):');
+    if (notes === null) return;
+    if (!notes.trim()) {
+      toast.error('Comments are required to request a contractor revision.');
+      return;
+    }
+
+    try {
+      const res = await requestDrawingRegisterContractorRevision(projectId, id, { notes: notes.trim() });
+      if (res.data?.success) {
+        toast.success('Contractor revision request submitted.');
+        fetchDrawings();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to request contractor revision.');
     }
   };
 
@@ -371,6 +469,7 @@ export default function DrawingRegisterTab({ projectId }) {
                 <tr>
                   <th>Drawing Number</th>
                   <th>Title</th>
+                  <th>Layout Type</th>
                   <th>Rev</th>
                   <th>Status</th>
                   <th>Issued Date</th>
@@ -397,6 +496,15 @@ export default function DrawingRegisterTab({ projectId }) {
                         )}
                       </td>
                       <td className={styles.drawingTitle}>{active.title}</td>
+                      <td>
+                        {active.layout_type ? (
+                          <Badge variant="info" size="sm">
+                            {LAYOUT_LABELS[active.layout_type] || active.layout_type}
+                          </Badge>
+                        ) : (
+                          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>General</span>
+                        )}
+                      </td>
                       <td>
                         <Badge variant="accent" size="sm">{active.revision_code}</Badge>
                       </td>
@@ -508,7 +616,86 @@ export default function DrawingRegisterTab({ projectId }) {
 
                       <span>By:</span>
                       <span>{rev.issued_by_name || '—'}</span>
+
+                      <span>Layout Type:</span>
+                      <strong>{rev.layout_type ? (LAYOUT_LABELS[rev.layout_type] || rev.layout_type) : 'General'}</strong>
                     </div>
+
+                    {rev.layout_type && (
+                      <div style={{ marginTop: '12px', borderTop: '1px dashed var(--color-border)', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <h5 style={{ margin: '0 0 4px 0', fontSize: 'var(--text-xs)', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 600 }}>Review & Sign-offs</h5>
+                        
+                        {/* Client approval */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>Client:</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Badge variant={rev.client_status === 'approved' ? 'success' : rev.client_status === 'revision_requested' ? 'danger' : 'warning'} size="sm">
+                              {rev.client_status === 'approved' ? 'Approved' : rev.client_status === 'revision_requested' ? 'Revision Requested' : 'Pending'}
+                            </Badge>
+                            {rev.client_status !== 'approved' && !rev.is_superseded && (
+                              <div style={{ display: 'flex', gap: '4px' }}>
+                                <button
+                                  type="button"
+                                  style={{ background: 'none', border: 'none', color: 'var(--color-success)', cursor: 'pointer', fontSize: '11px', padding: '2px 4px', fontWeight: 500 }}
+                                  onClick={() => handleClientApprove(rev.id)}
+                                >
+                                  ✔ Approve
+                                </button>
+                                <button
+                                  type="button"
+                                  style={{ background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '11px', padding: '2px 4px', fontWeight: 500 }}
+                                  onClick={() => handleClientRevision(rev.id)}
+                                >
+                                  ✖ Revise
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {rev.client_notes && (
+                          <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', background: 'var(--color-background-subtle, #f8f9fa)', padding: '6px 8px', borderRadius: '4px', borderLeft: '3px solid var(--color-border)' }}>
+                            <strong>Client Feedback:</strong> {rev.client_notes}
+                          </div>
+                        )}
+
+                        {/* Contractor approval */}
+                        {['electrical', 'plumbing', 'false_ceiling'].includes(rev.layout_type) && (
+                          <>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginTop: '4px' }}>
+                              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>Contractor:</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Badge variant={rev.contractor_status === 'approved' ? 'success' : rev.contractor_status === 'revision_requested' ? 'danger' : 'warning'} size="sm">
+                                  {rev.contractor_status === 'approved' ? 'Approved' : rev.contractor_status === 'revision_requested' ? 'Revision Requested' : 'Pending'}
+                                </Badge>
+                                {rev.contractor_status !== 'approved' && !rev.is_superseded && (
+                                  <div style={{ display: 'flex', gap: '4px' }}>
+                                    <button
+                                      type="button"
+                                      style={{ background: 'none', border: 'none', color: 'var(--color-success)', cursor: 'pointer', fontSize: '11px', padding: '2px 4px', fontWeight: 500 }}
+                                      onClick={() => handleContractorApprove(rev.id)}
+                                    >
+                                      ✔ Approve
+                                    </button>
+                                    <button
+                                      type="button"
+                                      style={{ background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '11px', padding: '2px 4px', fontWeight: 500 }}
+                                      onClick={() => handleContractorRevision(rev.id)}
+                                    >
+                                      ✖ Revise
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            {rev.contractor_notes && (
+                              <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', background: 'var(--color-background-subtle, #f8f9fa)', padding: '6px 8px', borderRadius: '4px', borderLeft: '3px solid var(--color-border)' }}>
+                                <strong>Contractor Feedback:</strong> {rev.contractor_notes}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
 
                     <div className={styles.revCardActions}>
                       {rev.document_id ? (
@@ -615,6 +802,24 @@ export default function DrawingRegisterTab({ projectId }) {
           </div>
 
           <div className={styles.formGroup}>
+            <label>Layout Type Classification</label>
+            <select
+              value={registerForm.layoutType}
+              onChange={(e) => setRegisterForm({ ...registerForm, layoutType: e.target.value })}
+              className={styles.modalSelect}
+              disabled={uploading}
+            >
+              <option value="">General (No Layout Classification)</option>
+              <option value="electrical">Electrical Layout</option>
+              <option value="plumbing">Plumbing Layout</option>
+              <option value="civil">Civil Layout</option>
+              <option value="false_ceiling">False Ceiling Layout</option>
+              <option value="furniture">Furniture Layout</option>
+              <option value="flooring">Flooring Layout</option>
+            </select>
+          </div>
+
+          <div className={styles.formGroup}>
             <label className={styles.required}>Status</label>
             <select
               value={registerForm.status}
@@ -698,6 +903,24 @@ export default function DrawingRegisterTab({ projectId }) {
           </div>
 
           <div className={styles.formGroup}>
+            <label>Layout Type Classification</label>
+            <select
+              value={revisionForm.layoutType}
+              onChange={(e) => setRevisionForm({ ...revisionForm, layoutType: e.target.value })}
+              className={styles.modalSelect}
+              disabled={uploading}
+            >
+              <option value="">General (No Layout Classification)</option>
+              <option value="electrical">Electrical Layout</option>
+              <option value="plumbing">Plumbing Layout</option>
+              <option value="civil">Civil Layout</option>
+              <option value="false_ceiling">False Ceiling Layout</option>
+              <option value="furniture">Furniture Layout</option>
+              <option value="flooring">Flooring Layout</option>
+            </select>
+          </div>
+
+          <div className={styles.formGroup}>
             <label className={styles.required}>Status</label>
             <select
               value={revisionForm.status}
@@ -772,6 +995,23 @@ export default function DrawingRegisterTab({ projectId }) {
               onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
               required
             />
+          </div>
+
+          <div className={styles.formGroup}>
+            <label>Layout Type Classification</label>
+            <select
+              value={editForm.layoutType}
+              onChange={(e) => setEditForm({ ...editForm, layoutType: e.target.value })}
+              className={styles.modalSelect}
+            >
+              <option value="">General (No Layout Classification)</option>
+              <option value="electrical">Electrical Layout</option>
+              <option value="plumbing">Plumbing Layout</option>
+              <option value="civil">Civil Layout</option>
+              <option value="false_ceiling">False Ceiling Layout</option>
+              <option value="furniture">Furniture Layout</option>
+              <option value="flooring">Flooring Layout</option>
+            </select>
           </div>
 
           <div className={styles.formGrid}>

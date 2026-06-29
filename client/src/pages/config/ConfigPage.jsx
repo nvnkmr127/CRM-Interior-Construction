@@ -17,6 +17,7 @@ const UsersManager        = lazy(() => import('./UsersManager'))
 const ConversionChecklistManager = lazy(() => import('./ConversionChecklistManager'))
 const QcChecklistsManager = lazy(() => import('./QcChecklistsManager'))
 const FinancialSettings = lazy(() => import('./FinancialSettings'))
+const LeadTimesManager = lazy(() => import('./LeadTimesManager'))
 
 const CONFIG_NAV = [
   { group: 'PIPELINE', items: [
@@ -28,6 +29,7 @@ const CONFIG_NAV = [
     { to: 'automations',   icon: '⚙', label: 'Automations',       desc: 'Trigger-based rules' },
     { to: 'conversion-checklist', icon: '☑', label: 'Conversion Checklist', desc: 'Pre-conversion requirements' },
     { to: 'qc-checklists', icon: '☑', label: 'Trade QC Checklists', desc: 'Pre-installation checklists' },
+    { to: 'vendor-lead-times', icon: '⏱', label: 'Vendor Lead Times', desc: 'Material category order lead times' },
   ]},
   { group: 'INTEGRATIONS', items: [
     { to: 'api-keys',      icon: '⊙', label: 'API Keys',    desc: 'Connect external tools' },
@@ -96,6 +98,7 @@ export default function ConfigPage() {
             <Route path='logs'          element={<LogsViewer />} />
             <Route path='users'         element={<UsersManager />} />
             <Route path='financial-settings' element={<FinancialSettings />} />
+            <Route path='vendor-lead-times' element={<LeadTimesManager />} />
             <Route path='*'             element={<Navigate to='/config/lead-stages' replace />} />
           </Routes>
         </Suspense>

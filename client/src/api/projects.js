@@ -154,6 +154,13 @@ export const createPurchaseOrder = (projectId, data) => api.post(`/projects/${pr
 export const updatePurchaseOrder = (projectId, id, data) => api.put(`/projects/${projectId}/purchase-orders/${id}`, data);
 export const updatePOItemReceipt = (projectId, id, itemId, data) => api.put(`/projects/${projectId}/purchase-orders/${id}/items/${itemId}/receipt`, data);
 
+// Purchase Requests
+export const getPurchaseRequests = (projectId) => api.get(`/projects/${projectId}/purchase-requests`);
+export const getPurchaseRequest = (projectId, id) => api.get(`/projects/${projectId}/purchase-requests/${id}`);
+export const createPurchaseRequest = (projectId, data) => api.post(`/projects/${projectId}/purchase-requests`, data);
+export const updatePurchaseRequest = (projectId, id, data) => api.put(`/projects/${projectId}/purchase-requests/${id}`, data);
+export const convertPRToPO = (projectId, id, data) => api.post(`/projects/${projectId}/purchase-requests/${id}/convert`, data);
+
 // Material Deliveries
 export const getMaterialDeliveries = (projectId) => api.get(`/projects/${projectId}/material-deliveries`);
 export const getMaterialDelivery = (projectId, id) => api.get(`/projects/${projectId}/material-deliveries/${id}`);
@@ -206,6 +213,14 @@ export const getDrawingRegister = (projectId) => api.get(`/projects/${projectId}
 export const createDrawingRegisterEntry = (projectId, data) => api.post(`/projects/${projectId}/drawing-register`, data);
 export const updateDrawingRegisterEntry = (projectId, id, data) => api.put(`/projects/${projectId}/drawing-register/${id}`, data);
 export const deleteDrawingRegisterEntry = (projectId, id) => api.delete(`/projects/${projectId}/drawing-register/${id}`);
+export const approveDrawingRegisterClient = (projectId, id, data) => api.post(`/projects/${projectId}/drawing-register/${id}/client-approve`, data);
+export const requestDrawingRegisterClientRevision = (projectId, id, data) => api.post(`/projects/${projectId}/drawing-register/${id}/client-revision`, data);
+export const approveDrawingRegisterContractor = (projectId, id, data) => api.post(`/projects/${projectId}/drawing-register/${id}/contractor-approve`, data);
+export const requestDrawingRegisterContractorRevision = (projectId, id, data) => api.post(`/projects/${projectId}/drawing-register/${id}/contractor-revision`, data);
+
+// MEP Checklist
+export const getMepChecklist = (projectId) => api.get(`/projects/${projectId}/mep-checklist`);
+export const updateMepChecklistItem = (projectId, itemId, data) => api.patch(`/projects/${projectId}/mep-checklist/${itemId}`, data);
 
 // Project Closure Checklist
 export const getClosureChecklist = (projectId) => api.get(`/projects/${projectId}/closure-checklist`);

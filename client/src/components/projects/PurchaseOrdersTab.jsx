@@ -39,6 +39,7 @@ export default function PurchaseOrdersTab({ projectId }) {
     expectedDeliveryDate: '',
     notes: '',
     termsConditions: '',
+    deliveryAddress: '',
     selectedItems: {} // Maps boqItemId to { selected, quantity, unitPrice, itemName, unit, brand, materialSpecifications }
   });
 
@@ -145,6 +146,7 @@ export default function PurchaseOrdersTab({ projectId }) {
       expectedDeliveryDate: '',
       notes: '',
       termsConditions: '',
+      deliveryAddress: project?.site_address || '',
       selectedItems: initialSelectedItems
     });
     setIsCreateModalOpen(true);
@@ -220,6 +222,7 @@ export default function PurchaseOrdersTab({ projectId }) {
         expectedDeliveryDate: form.expectedDeliveryDate || null,
         notes: form.notes || null,
         termsConditions: form.termsConditions || null,
+        deliveryAddress: form.deliveryAddress || null,
         items: itemsToCreate
       };
 
@@ -452,6 +455,10 @@ export default function PurchaseOrdersTab({ projectId }) {
                     <strong>{formatDate(selectedPo.expected_delivery_date)}</strong>
                   </div>
                   <div className={styles.detailMetaItem}>
+                    <span>Delivery Address:</span>
+                    <strong>{selectedPo.delivery_address || '—'}</strong>
+                  </div>
+                  <div className={styles.detailMetaItem}>
                     <span>Total PO Amount:</span>
                     <strong>{formatCurrency(selectedPo.total_amount)}</strong>
                   </div>
@@ -537,6 +544,19 @@ export default function PurchaseOrdersTab({ projectId }) {
                 </div>
 
                 <div className={styles.actionsBlock}>
+                  {['sent', 'confirmed', 'partially received', 'received'].includes(selectedPo.status) && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        const key = `${selectedPo.tenant_id}/projects/${projectId}/po/PO_${selectedPo.po_number}.pdf`;
+                        window.open(`/api/local-download?key=${encodeURIComponent(key)}`, '_blank');
+                      }}
+                      style={{ marginRight: 'auto' }}
+                    >
+                      Download PO PDF
+                    </Button>
+                  )}
                   {selectedPo.status === 'draft' && (
                     <>
                       <Button
@@ -765,6 +785,16 @@ export default function PurchaseOrdersTab({ projectId }) {
                   ))}
                 </div>
               )}
+            </div>
+
+            <div className={styles.fullWidth}>
+              <Textarea
+                label="Delivery Address"
+                placeholder="Specify the delivery location/address..."
+                value={form.deliveryAddress}
+                onChange={e => setForm({ ...form, deliveryAddress: e.target.value })}
+                rows={2}
+              />
             </div>
 
             <div className={styles.fullWidth}>

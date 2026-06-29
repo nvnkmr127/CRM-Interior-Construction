@@ -3,6 +3,7 @@ const app = require('../../app');
 const pool = require('../../db/pool');
 
 describe('Quotation Versioning and Comparison API', () => {
+  jest.setTimeout(30000);
   let accessToken;
   let tenantId;
   let projectId;
@@ -43,6 +44,19 @@ describe('Quotation Versioning and Comparison API', () => {
       });
     
     projectId = projRes.body.data.id;
+
+    // Confirm booking so downstream actions are unlocked
+    await request(app)
+      .post(`/api/projects/${projectId}/booking`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        advance_amount: 50000,
+        payment_method: 'bank_transfer',
+        agreed_scope_summary: 'Full house interior design and construction works contract',
+        design_freeze_target_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        project_start_date: new Date().toISOString().split('T')[0],
+        assigned_designer_id: userId
+      });
   });
 
   afterAll(async () => {

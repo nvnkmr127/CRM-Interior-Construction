@@ -2229,6 +2229,48 @@ export const setupMockInterceptor = (api) => {
               }
             }
           }
+          else if (url.includes('/vendor-lead-times')) {
+            if (!mockDatabase.vendorLeadTimes) {
+              mockDatabase.vendorLeadTimes = [
+                { id: 'mock-lt-1', material_category: 'plywood', lead_time_days: 7, vendor_id: null },
+                { id: 'mock-lt-2', material_category: 'hardware', lead_time_days: 3, vendor_id: null },
+                { id: 'mock-lt-3', material_category: 'laminate', lead_time_days: 5, vendor_id: null },
+                { id: 'mock-lt-4', material_category: 'paint', lead_time_days: 3, vendor_id: null },
+                { id: 'mock-lt-5', material_category: 'modular', lead_time_days: 15, vendor_id: null },
+                { id: 'mock-lt-6', material_category: 'general', lead_time_days: 5, vendor_id: null }
+              ];
+            }
+
+            if (method === 'get') {
+              responseData.data = mockDatabase.vendorLeadTimes;
+            } else if (method === 'post') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const existingIdx = mockDatabase.vendorLeadTimes.findIndex(lt => 
+                lt.material_category === payload.materialCategory && lt.vendor_id === (payload.vendorId || null)
+              );
+              
+              if (existingIdx !== -1) {
+                mockDatabase.vendorLeadTimes[existingIdx].lead_time_days = Number(payload.leadTimeDays);
+                responseData.data = mockDatabase.vendorLeadTimes[existingIdx];
+              } else {
+                const newLt = {
+                  id: `mock-lt-${Date.now()}`,
+                  material_category: payload.materialCategory,
+                  lead_time_days: Number(payload.leadTimeDays),
+                  vendor_id: payload.vendorId || null
+                };
+                mockDatabase.vendorLeadTimes.push(newLt);
+                responseData.data = newLt;
+              }
+              persistDb();
+            } else if (method === 'delete') {
+              const parts = url.split('/');
+              const id = parts[parts.length - 1];
+              mockDatabase.vendorLeadTimes = mockDatabase.vendorLeadTimes.filter(lt => lt.id !== id);
+              persistDb();
+              responseData.data = { success: true };
+            }
+          }
           else if (isMutation) {
             console.warn(
               `[MockSession] ${method.toUpperCase()} ${config.url} intercepted — request NOT sent to server.`

@@ -26,7 +26,9 @@ const createInvoiceSchema = z.object({
   billingGstin: z.string().optional().nullable(),
   gstType: z.enum(['cgst_sgst', 'igst']).optional().nullable(),
   gstRate: z.number().optional().nullable(),
-  paymentTerms: z.string().optional().nullable()
+  paymentTerms: z.string().optional().nullable(),
+  hsnCode: z.string().optional().nullable(),
+  taxTreatment: z.enum(['itemized', 'works_contract', 'composite_supply']).optional().nullable()
 });
 
 // GET /api/invoices/milestone/:milestoneId

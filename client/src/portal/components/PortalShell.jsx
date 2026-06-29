@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { path: '/portal/material-palettes', label: 'Material Palettes', icon: '🧱' },
   { path: '/portal/material-approvals', label: 'Material Approvals', icon: '🔄' },
   { path: '/portal/change-orders', label: 'Change Orders', icon: '📄' },
+  { path: '/portal/quotations', label: 'Quotations & BOQ', icon: '📋' },
   { path: '/portal/documents', label: 'Documents', icon: '📁' },
   { path: '/portal/meeting-notes', label: 'Meeting Notes', icon: '📝' },
   { path: '/portal/snags', label: 'Snags', icon: '🔧' },

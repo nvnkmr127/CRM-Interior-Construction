@@ -25,11 +25,16 @@ class PurchaseOrderService {
         }
       }
 
+      // Fetch default delivery address from project site_address if not provided
+      const projectRes = await client.query('SELECT site_address FROM projects WHERE id = $1', [projectId]);
+      const defaultAddress = projectRes.rows.length > 0 ? projectRes.rows[0].site_address : '';
+      const deliveryAddress = poData.deliveryAddress || defaultAddress;
+
       // 2. Insert main PO
       const poQuery = `
         INSERT INTO purchase_orders 
-        (tenant_id, project_id, vendor_id, po_number, status, expected_delivery_date, notes, terms_conditions, total_amount)
-        VALUES ($1, $2, $3, $4, 'draft', $5, $6, $7, 0.00)
+        (tenant_id, project_id, vendor_id, po_number, status, expected_delivery_date, notes, terms_conditions, total_amount, delivery_address)
+        VALUES ($1, $2, $3, $4, 'draft', $5, $6, $7, 0.00, $8)
         RETURNING *
       `;
       const poRes = await client.query(poQuery, [
@@ -39,7 +44,8 @@ class PurchaseOrderService {
         poNumber,
         expectedDeliveryDate || null,
         notes || null,
-        termsConditions || null
+        termsConditions || null,
+        deliveryAddress || null
       ]);
       const po = poRes.rows[0];
 
@@ -151,7 +157,7 @@ class PurchaseOrderService {
   }
 
   async updatePurchaseOrder(tenantId, userId, projectId, poId, poData) {
-    const { vendorId, expectedDeliveryDate, notes, termsConditions, status } = poData;
+    const { vendorId, expectedDeliveryDate, notes, termsConditions, status, deliveryAddress } = poData;
     const client = await pool.connect();
     
     try {
@@ -191,6 +197,10 @@ class PurchaseOrderService {
         fields.push(`status = $${index++}`);
         values.push(status);
       }
+      if (deliveryAddress !== undefined) {
+        fields.push(`delivery_address = $${index++}`);
+        values.push(deliveryAddress);
+      }
 
       fields.push(`updated_at = NOW()`);
 
@@ -205,6 +215,14 @@ class PurchaseOrderService {
 
       // Sync budget expenses
       await this.syncBudgetExpenses(client, tenantId, projectId, updatedPo);
+
+      // Auto-generate PO PDF document on transition to 'sent'
+      if (status === 'sent') {
+        const { generatePurchaseOrderPDF } = require('./poPdfService');
+        await generatePurchaseOrderPDF(tenantId, projectId, poId, userId).catch(err => {
+          console.error('[PO PDF Service] Failed to generate PO PDF:', err);
+        });
+      }
 
       await client.query('COMMIT');
       

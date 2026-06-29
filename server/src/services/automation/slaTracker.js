@@ -57,27 +57,27 @@ async function checkTenantOverdueFollowups(tenantId) {
             await pool.query(`
               INSERT INTO notifications (tenant_id, user_id, type, message, reference_url)
               VALUES ($1, $2, 'escalation', $3, $4)
-            `, [tenantId, manager.id, msg, \`/leads/\${overdue.lead_id}\`]);
+            `, [tenantId, manager.id, msg, `/leads/${overdue.lead_id}`]);
           }
 
-          console.log(\`[SLA Tracker] Escalated overdue follow-up \${overdue.id} for lead \${overdue.lead_id} in tenant \${tenantId}\`);
+          console.log(`[SLA Tracker] Escalated overdue follow-up ${overdue.id} for lead ${overdue.lead_id} in tenant ${tenantId}`);
         }
       }
     }
   } catch (err) {
-    console.error(\`[SLA Tracker] Error checking overdue followups for tenant \${tenantId}:\`, err);
+    console.error(`[SLA Tracker] Error checking overdue followups for tenant ${tenantId}:`, err);
   }
 }
 
 async function checkTenantSlaBreaches(tenantId) {
-  const query = \`
+  const query = `
     SELECT l.*, 
            s.name AS stage_name, s.max_days_in_stage,
            COALESCE(EXTRACT(DAY FROM CURRENT_TIMESTAMP - COALESCE(l.stage_updated_at, l.updated_at)), 0) AS days_in_stage
     FROM leads l
     JOIN lead_stages s ON l.stage_id = s.id
     WHERE l.tenant_id = $1 AND l.status != 'converted' AND l.deleted_at IS NULL
-  \`;
+  `;
   
   try {
     const res = await pool.query(query, [tenantId]);
@@ -86,29 +86,29 @@ async function checkTenantSlaBreaches(tenantId) {
     for (const lead of leads) {
       if (lead.max_days_in_stage && lead.days_in_stage > lead.max_days_in_stage) {
         // Check if we already alerted them today
-        const checkAlert = await pool.query(\`
+        const checkAlert = await pool.query(`
           SELECT id FROM lead_timeline 
           WHERE tenant_id = $1 AND lead_id = $2 AND event_type = 'system.sla_breach' 
           AND created_at >= CURRENT_DATE
-        \`, [tenantId, lead.id]);
+        `, [tenantId, lead.id]);
         
         if (checkAlert.rows.length === 0) {
-          const msg = \`SLA Breached: Lead has been in \${lead.stage_name} for \${lead.days_in_stage} days (Limit: \${lead.max_days_in_stage} days).\`;
+          const msg = `SLA Breached: Lead has been in ${lead.stage_name} for ${lead.days_in_stage} days (Limit: ${lead.max_days_in_stage} days).`;
           
-          await pool.query(\`
+          await pool.query(`
             INSERT INTO lead_timeline (tenant_id, lead_id, event_type, summary)
             VALUES ($1, $2, 'system.sla_breach', $3)
-          \`, [tenantId, lead.id, msg]);
+          `, [tenantId, lead.id, msg]);
           
           // Trigger full automation for the SLA breach
           await triggerAutomation('sla_breached', lead, { stageName: lead.stage_name });
           
-          console.log(\`[SLA Tracker] Breached SLA for lead \${lead.id} in tenant \${tenantId}\`);
+          console.log(`[SLA Tracker] Breached SLA for lead ${lead.id} in tenant ${tenantId}`);
         }
       }
     }
   } catch (err) {
-    console.error(\`[SLA Tracker] Error checking SLA breaches for tenant \${tenantId}:\`, err);
+    console.error(`[SLA Tracker] Error checking SLA breaches for tenant ${tenantId}:`, err);
   }
 }
 

@@ -30,6 +30,8 @@ export default function PaymentsTab({ projectId }) {
     billingGstin: '',
     gstType: 'cgst_sgst',
     gstRate: 18.00,
+    hsnCode: '',
+    taxTreatment: 'works_contract',
     paymentTerms: '',
     invoiceDate: '',
     dueDate: '',
@@ -169,6 +171,8 @@ export default function PaymentsTab({ projectId }) {
         billingGstin: draft.billingGstin || '',
         gstType: draft.gstType || 'cgst_sgst',
         gstRate: draft.gstRate || 18.00,
+        hsnCode: draft.hsnCode || '',
+        taxTreatment: draft.taxTreatment || 'works_contract',
         paymentTerms: draft.paymentTerms || 'Net 15',
         invoiceDate: draft.invoiceDate || new Date().toISOString().split('T')[0],
         dueDate: draft.dueDate || '',
@@ -644,6 +648,24 @@ export default function PaymentsTab({ projectId }) {
                 step="0.01" 
                 value={invoiceForm.gstRate} 
                 onChange={e => setInvoiceForm(prev => ({ ...prev, gstRate: Number(e.target.value) }))} 
+              />
+            </div>
+
+            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)'}}>
+              <Select 
+                label="Tax Treatment" 
+                value={invoiceForm.taxTreatment} 
+                onChange={val => setInvoiceForm(prev => ({ ...prev, taxTreatment: val }))} 
+                options={[
+                  { value: 'itemized', label: 'Itemized Supply' },
+                  { value: 'works_contract', label: 'Works Contract' },
+                  { value: 'composite_supply', label: 'Composite Supply' }
+                ]}
+              />
+              <Input 
+                label="HSN/SAC Code" 
+                value={invoiceForm.hsnCode} 
+                onChange={e => setInvoiceForm(prev => ({ ...prev, hsnCode: e.target.value }))} 
               />
             </div>
 

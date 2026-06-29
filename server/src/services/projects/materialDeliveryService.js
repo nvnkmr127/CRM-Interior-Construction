@@ -348,6 +348,32 @@ class MaterialDeliveryService {
         vendorNotificationSent = true;
         vendorNotificationSentAt = new Date().toISOString();
         console.log(`[Notification Service] ALERT dispatched to Vendor for Purchase Order ${delivery.purchase_order_id || 'N/A'}: Materials rejected during incoming site inspection.`);
+        
+        if (delivery.purchase_order_id) {
+          const poRes = await client.query(
+            `SELECT pr.requested_by, po.po_number 
+             FROM purchase_orders po
+             LEFT JOIN purchase_requests pr ON po.purchase_request_id = pr.id
+             WHERE po.id = $1`,
+            [delivery.purchase_order_id]
+          );
+          if (poRes.rows.length > 0 && poRes.rows[0].requested_by) {
+            const po = poRes.rows[0];
+            await client.query(
+              `INSERT INTO notifications (tenant_id, user_id, type, message, reference_url, actor_id, actor_name)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+              [
+                tenantId,
+                po.requested_by,
+                'material_rejection',
+                `Items from Delivery ${delivery.delivery_number} (PO ${po.po_number}) were rejected during site inspection.`,
+                `/projects/${projectId}/deliveries`,
+                userId,
+                'Site Inspector'
+              ]
+            );
+          }
+        }
       }
  
       const updateQuery = `

@@ -65,6 +65,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
     segment: '',
     allowedDesignRevisions: 3,
     currentDesignRevisions: 0,
+    stageRevisionLimits: {},
     enforceDependencies: true,
     pmHoursAllocated: 10,
     designerHoursAllocated: 20,
@@ -218,6 +219,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
         segment: project.segment || '',
         allowedDesignRevisions: project.allowed_design_revisions !== undefined && project.allowed_design_revisions !== null ? project.allowed_design_revisions : 3,
         currentDesignRevisions: project.current_design_revisions !== undefined && project.current_design_revisions !== null ? project.current_design_revisions : 0,
+        stageRevisionLimits: project.stage_revision_limits || {},
         enforceDependencies: project.enforce_dependencies !== undefined ? project.enforce_dependencies : (project.enforceDependencies !== undefined ? project.enforceDependencies : true),
         vendors: project.vendors || [],
         consultants: project.consultants || [],
@@ -269,6 +271,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
         projectCategory: '', projectSubCategory: '', propertyType: '', propertyAge: '',
         renovationScope: '', segment: '',
         allowedDesignRevisions: 3, currentDesignRevisions: 0,
+        stageRevisionLimits: {},
         enforceDependencies: true,
         vendors: [], consultants: [], site_team: [],
         pmHoursAllocated: 10,
@@ -361,6 +364,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
         segment: formData.segment || null,
         allowed_design_revisions: formData.allowedDesignRevisions !== '' && formData.allowedDesignRevisions !== undefined ? Number(formData.allowedDesignRevisions) : 3,
         current_design_revisions: formData.currentDesignRevisions !== '' && formData.currentDesignRevisions !== undefined ? Number(formData.currentDesignRevisions) : 0,
+        stage_revision_limits: formData.stageRevisionLimits || {},
         enforce_dependencies: formData.enforceDependencies,
         measurements: formData.measurements || [],
         vendors: formData.vendors || [],
@@ -1909,6 +1913,36 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
               onChange={e => setFormData({...formData, currentDesignRevisions: e.target.value})} 
               error={errors.currentDesignRevisions}
             />
+          </div>
+        </div>
+
+        <div className={styles.fullWidth} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '16px', background: 'var(--color-surface-hover, #fafafa)', marginTop: '8px', marginBottom: '8px' }}>
+          <h4 style={{ margin: '0 0 8px 0', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>Stage-Specific Revision Limits</h4>
+          <p style={{ margin: '0 0 12px 0', fontSize: '11px', color: 'var(--color-text-muted)' }}>Configure permitted revision rounds for each design stage. Exceeding these limits triggers an automatic change order request.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+            {[
+              'Requirement Gathering',
+              'Concept Presentation',
+              'Concept Approval',
+              'Detailed Design',
+              'Client Review',
+              'Revision Rounds',
+              'Design Freeze'
+            ].map(stage => (
+              <div key={stage}>
+                <Input
+                  label={`${stage} Limit`}
+                  type="number"
+                  placeholder="3"
+                  value={formData.stageRevisionLimits?.[stage] ?? ''}
+                  onChange={e => {
+                    const newLimits = { ...formData.stageRevisionLimits };
+                    newLimits[stage] = e.target.value === '' ? '' : Number(e.target.value);
+                    setFormData({ ...formData, stageRevisionLimits: newLimits });
+                  }}
+                />
+              </div>
+            ))}
           </div>
         </div>
 

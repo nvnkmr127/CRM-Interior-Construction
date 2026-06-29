@@ -40,6 +40,7 @@ const FinancialApprovalsPage = lazy(() => import('./pages/dashboard/FinancialApp
 const GlobalCoordinationPage = lazy(() => import('./pages/projects/GlobalCoordinationPage'))
 const GlobalHandoverDashboard = lazy(() => import('./pages/projects/GlobalHandoverDashboard'))
 const GlobalRetentionDashboard = lazy(() => import('./pages/projects/GlobalRetentionDashboard'))
+const WarehousePage = lazy(() => import('./pages/warehouse/WarehousePage'))
 
 export default function App() {
   return (
@@ -82,6 +83,7 @@ export default function App() {
                     <Route path='/settings/audit-trail' element={<AuditTrailPage />} />
                     <Route path='/config/*' element={<ConfigPage />} />
                     <Route path='/financial-approvals' element={<FinancialApprovalsPage />} />
+                    <Route path='/warehouse' element={<WarehousePage />} />
                   </Route>
                   <Route path='*' element={<NotFound />} />
                 </Routes>

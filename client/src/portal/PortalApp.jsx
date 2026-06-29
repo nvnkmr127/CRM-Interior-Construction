@@ -19,6 +19,8 @@ import PortalHandover from './pages/PortalHandover'
 import PortalWarranties from './pages/PortalWarranties'
 import PortalAmcs from './pages/PortalAmcs'
 import PortalClaims from './pages/PortalClaims'
+import PortalQuotations from './pages/PortalQuotations'
+
 
 
 
@@ -61,6 +63,8 @@ function PortalAppContent() {
               <Route path="warranties" element={<PortalWarranties />} />
               <Route path="amcs" element={<PortalAmcs />} />
               <Route path="claims" element={<PortalClaims />} />
+              <Route path="quotations" element={<PortalQuotations />} />
+
 
 
             </Routes>

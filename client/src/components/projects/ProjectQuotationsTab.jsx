@@ -48,7 +48,11 @@ export default function ProjectQuotationsTab({ projectId }) {
     scopeType: 'original',
     changeOrderId: '',
     hsnCode: '',
-    gstRate: '18'
+    gstRate: '18',
+    laborTrade: '',
+    laborRateType: 'rate_per_unit',
+    laborUnitRate: '0',
+    laborMarkupPercentage: '0'
   });
 
   // Compare state
@@ -159,12 +163,16 @@ export default function ProjectQuotationsTab({ projectId }) {
         changeOrderId: newItem.changeOrderId || null,
         hsnCode: newItem.hsnCode.trim() || null,
         gstRate: Number(newItem.gstRate || 0),
-        sortOrder: activeQuotation.items ? activeQuotation.items.length : 0
+        sortOrder: activeQuotation.items ? activeQuotation.items.length : 0,
+        laborTrade: newItem.laborTrade || null,
+        laborRateType: newItem.laborRateType,
+        laborUnitRate: Number(newItem.laborUnitRate || 0),
+        laborMarkupPercentage: Number(newItem.laborMarkupPercentage || 0)
       });
       if (res.data?.success) {
         toast.success('Item added to BOQ');
         setNewItem({
-          roomOrArea: newItem.roomOrArea, // keep room for quick adding
+          roomOrArea: '',
           itemName: '',
           description: '',
           unit: 'SqFt',
@@ -174,7 +182,11 @@ export default function ProjectQuotationsTab({ projectId }) {
           scopeType: 'original',
           changeOrderId: '',
           hsnCode: '',
-          gstRate: '18'
+          gstRate: '18',
+          laborTrade: '',
+          laborRateType: 'rate_per_unit',
+          laborUnitRate: '0',
+          laborMarkupPercentage: '0'
         });
         setShowAddItem(false);
         // Refresh quotation
@@ -206,7 +218,11 @@ export default function ProjectQuotationsTab({ projectId }) {
       scopeType: item.scope_type || 'original',
       changeOrderId: item.change_order_id || '',
       hsnCode: item.hsn_code || '',
-      gstRate: String(item.gst_rate || 0)
+      gstRate: String(item.gst_rate || 0),
+      laborTrade: item.labor_trade || '',
+      laborRateType: item.labor_rate_type || 'rate_per_unit',
+      laborUnitRate: String(item.labor_unit_rate || 0),
+      laborMarkupPercentage: String(item.labor_markup_percentage || 0)
     });
   };
 
@@ -226,7 +242,11 @@ export default function ProjectQuotationsTab({ projectId }) {
         scopeType: editForm.scopeType,
         changeOrderId: editForm.changeOrderId || null,
         hsnCode: editForm.hsnCode.trim() || null,
-        gstRate: Number(editForm.gstRate || 0)
+        gstRate: Number(editForm.gstRate || 0),
+        laborTrade: editForm.laborTrade || null,
+        laborRateType: editForm.laborRateType,
+        laborUnitRate: Number(editForm.laborUnitRate || 0),
+        laborMarkupPercentage: Number(editForm.laborMarkupPercentage || 0)
       });
       if (res.data?.success) {
         toast.success('Item updated');
@@ -289,6 +309,83 @@ export default function ProjectQuotationsTab({ projectId }) {
     } catch (err) {
       console.error(err);
       toast.error('Failed to update GST Type');
+    } finally {
+      setItemsLoading(false);
+    }
+  };
+
+  const handleUpdateTaxTreatment = async (newTreatment) => {
+    setItemsLoading(true);
+    try {
+      const res = await updateQuotation(projectId, activeQuotation.id, {
+        taxTreatment: newTreatment
+      });
+      if (res.data?.success) {
+        toast.success(`Tax Treatment updated to ${newTreatment.replace('_', ' ').toUpperCase()}`);
+        setActiveQuotation(res.data.data);
+        setQuotations(quotations.map(q => q.id === activeQuotation.id ? { 
+          ...q, 
+          tax_treatment: res.data.data.tax_treatment,
+          tax_amount: res.data.data.tax_amount,
+          total_amount: res.data.data.total_amount,
+          cgst_total: res.data.data.cgst_total,
+          sgst_total: res.data.data.sgst_total,
+          igst_total: res.data.data.igst_total
+        } : q));
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update Tax Treatment');
+    } finally {
+      setItemsLoading(false);
+    }
+  };
+
+  const handleUpdateWorksContractRate = async (newRate) => {
+    if (isNaN(Number(newRate)) || Number(newRate) < 0) return;
+    setItemsLoading(true);
+    try {
+      const res = await updateQuotation(projectId, activeQuotation.id, {
+        worksContractRate: Number(newRate)
+      });
+      if (res.data?.success) {
+        toast.success(`Works Contract GST Rate updated to ${newRate}%`);
+        setActiveQuotation(res.data.data);
+        setQuotations(quotations.map(q => q.id === activeQuotation.id ? { 
+          ...q, 
+          works_contract_rate: res.data.data.works_contract_rate,
+          tax_amount: res.data.data.tax_amount,
+          total_amount: res.data.data.total_amount,
+          cgst_total: res.data.data.cgst_total,
+          sgst_total: res.data.data.sgst_total,
+          igst_total: res.data.data.igst_total
+        } : q));
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update Works Contract Rate');
+    } finally {
+      setItemsLoading(false);
+    }
+  };
+
+  const handleUpdateWorksContractHsn = async (newHsn) => {
+    setItemsLoading(true);
+    try {
+      const res = await updateQuotation(projectId, activeQuotation.id, {
+        worksContractHsn: newHsn
+      });
+      if (res.data?.success) {
+        toast.success(`Works Contract HSN Code updated to ${newHsn}`);
+        setActiveQuotation(res.data.data);
+        setQuotations(quotations.map(q => q.id === activeQuotation.id ? { 
+          ...q, 
+          works_contract_hsn: res.data.data.works_contract_hsn
+        } : q));
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update Works Contract HSN Code');
     } finally {
       setItemsLoading(false);
     }
@@ -666,20 +763,67 @@ export default function ProjectQuotationsTab({ projectId }) {
                     Version {activeQuotation.version} &bull; Status: <strong className="text-capitalize">{activeQuotation.status}</strong>
                   </span>
                   {activeQuotation.status === 'draft' ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <span className="text-xs text-gray-500 font-medium">GST Type:</span>
-                      <select
-                        style={{ fontSize: '12px', border: '1px solid var(--color-border)', borderRadius: '4px', padding: '2px 8px', backgroundColor: 'white', cursor: 'pointer' }}
-                        value={activeQuotation.gst_type || 'cgst_sgst'}
-                        onChange={(e) => handleUpdateGstType(e.target.value)}
-                      >
-                        <option value="cgst_sgst">Intra-State (CGST + SGST)</option>
-                        <option value="igst">Inter-State (IGST)</option>
-                      </select>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span className="text-xs text-gray-500 font-medium">GST Type:</span>
+                        <select
+                          style={{ fontSize: '12px', border: '1px solid var(--color-border)', borderRadius: '4px', padding: '2px 8px', backgroundColor: 'white', cursor: 'pointer' }}
+                          value={activeQuotation.gst_type || 'cgst_sgst'}
+                          onChange={(e) => handleUpdateGstType(e.target.value)}
+                        >
+                          <option value="cgst_sgst">Intra-State (CGST + SGST)</option>
+                          <option value="igst">Inter-State (IGST)</option>
+                        </select>
+                      </div>
+                      
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span className="text-xs text-gray-500 font-medium">Tax Treatment:</span>
+                        <select
+                          style={{ fontSize: '12px', border: '1px solid var(--color-border)', borderRadius: '4px', padding: '2px 8px', backgroundColor: 'white', cursor: 'pointer' }}
+                          value={activeQuotation.tax_treatment || 'itemized'}
+                          onChange={(e) => handleUpdateTaxTreatment(e.target.value)}
+                        >
+                          <option value="itemized">Itemized Supply</option>
+                          <option value="works_contract">Works Contract</option>
+                          <option value="composite_supply">Composite Supply</option>
+                        </select>
+                      </div>
+
+                      {(activeQuotation.tax_treatment === 'works_contract' || activeQuotation.tax_treatment === 'composite_supply') && (
+                        <>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span className="text-xs text-gray-500 font-medium">GST Rate (%):</span>
+                            <input
+                              type="number"
+                              style={{ width: '65px', fontSize: '12px', border: '1px solid var(--color-border)', borderRadius: '4px', padding: '2px 8px' }}
+                              value={activeQuotation.works_contract_rate || 18.00}
+                              onChange={(e) => handleUpdateWorksContractRate(e.target.value)}
+                              step="0.01"
+                              min="0"
+                            />
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span className="text-xs text-gray-500 font-medium">HSN/SAC:</span>
+                            <input
+                              type="text"
+                              style={{ width: '80px', fontSize: '12px', border: '1px solid var(--color-border)', borderRadius: '4px', padding: '2px 8px' }}
+                              value={activeQuotation.works_contract_hsn || '9954'}
+                              onChange={(e) => handleUpdateWorksContractHsn(e.target.value)}
+                            />
+                          </div>
+                        </>
+                      )}
                     </div>
                   ) : (
                     <span className="text-xs text-gray-500">
                       &bull; GST Type: <strong>{activeQuotation.gst_type === 'igst' ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'}</strong>
+                      &bull; Tax Treatment: <strong className="text-uppercase">{activeQuotation.tax_treatment ? activeQuotation.tax_treatment.replace('_', ' ') : 'ITEMIZED'}</strong>
+                      {(activeQuotation.tax_treatment === 'works_contract' || activeQuotation.tax_treatment === 'composite_supply') && (
+                        <>
+                          &bull; GST Rate: <strong>{activeQuotation.works_contract_rate || 18.00}%</strong>
+                          &bull; HSN/SAC: <strong>{activeQuotation.works_contract_hsn || '9954'}</strong>
+                        </>
+                      )}
                     </span>
                   )}
                 </div>
@@ -790,6 +934,9 @@ export default function ProjectQuotationsTab({ projectId }) {
                         {/* Items */}
                         {items.map(item => {
                           const isItemEditing = editingItem === item.id;
+                          const isComposite = activeQuotation.tax_treatment === 'works_contract' || activeQuotation.tax_treatment === 'composite_supply';
+                          const displayedGstRate = isComposite ? (activeQuotation.works_contract_rate || 18.00) : (item.gst_rate || 0);
+                          const displayedHsn = isComposite ? (activeQuotation.works_contract_hsn || '9954') : item.hsn_code;
                           return (
                             <tr key={item.id}>
                               <td>
@@ -815,31 +962,33 @@ export default function ProjectQuotationsTab({ projectId }) {
                                       onChange={(e) => setEditForm({ ...editForm, roomOrArea: e.target.value })}
                                       placeholder="Room/Area Name"
                                     />
-                                    <div style={{ display: 'flex', gap: '8px' }}>
-                                      <div style={{ flex: 1 }}>
-                                        <label style={{ fontSize: '10px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '2px' }}>HSN Code</label>
-                                        <input 
-                                          type="text" 
-                                          className={styles.itemInput} 
-                                          value={editForm.hsnCode}
-                                          onChange={(e) => setEditForm({ ...editForm, hsnCode: e.target.value })}
-                                          placeholder="HSN Code"
-                                        />
+                                    {(!activeQuotation.tax_treatment || activeQuotation.tax_treatment === 'itemized') && (
+                                      <div style={{ display: 'flex', gap: '8px' }}>
+                                        <div style={{ flex: 1 }}>
+                                          <label style={{ fontSize: '10px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '2px' }}>HSN Code</label>
+                                          <input 
+                                            type="text" 
+                                            className={styles.itemInput} 
+                                            value={editForm.hsnCode}
+                                            onChange={(e) => setEditForm({ ...editForm, hsnCode: e.target.value })}
+                                            placeholder="HSN Code"
+                                          />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                          <label style={{ fontSize: '10px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '2px' }}>GST Rate (%)</label>
+                                          <input 
+                                            type="number" 
+                                            className={styles.itemInput} 
+                                            value={editForm.gstRate}
+                                            onChange={(e) => setEditForm({ ...editForm, gstRate: e.target.value })}
+                                            placeholder="GST Rate"
+                                            min="0"
+                                            max="100"
+                                            step="0.01"
+                                          />
+                                        </div>
                                       </div>
-                                      <div style={{ flex: 1 }}>
-                                        <label style={{ fontSize: '10px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '2px' }}>GST Rate (%)</label>
-                                        <input 
-                                          type="number" 
-                                          className={styles.itemInput} 
-                                          value={editForm.gstRate}
-                                          onChange={(e) => setEditForm({ ...editForm, gstRate: e.target.value })}
-                                          placeholder="GST Rate"
-                                          min="0"
-                                          max="100"
-                                          step="0.01"
-                                        />
-                                      </div>
-                                    </div>
+                                    )}
                                     <div className="flex gap-2">
                                       <div style={{ flex: 1 }}>
                                         <label style={{ fontSize: '10px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '2px' }}>Scope Type</label>
@@ -868,6 +1017,58 @@ export default function ProjectQuotationsTab({ projectId }) {
                                         </select>
                                       </div>
                                     </div>
+                                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px', borderTop: '1px dashed var(--color-border)', paddingTop: '8px' }}>
+                                      <div style={{ flex: 1 }}>
+                                        <label style={{ fontSize: '10px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '2px' }}>Labor Trade</label>
+                                        <select
+                                          className={styles.itemInput}
+                                          value={editForm.laborTrade || ''}
+                                          onChange={(e) => setEditForm({ ...editForm, laborTrade: e.target.value })}
+                                        >
+                                          <option value="">No Labor Cost</option>
+                                          <option value="Carpentry">Carpentry</option>
+                                          <option value="Electrical">Electrical</option>
+                                          <option value="Plumbing">Plumbing</option>
+                                          <option value="Painting">Painting</option>
+                                          <option value="Civil">Civil / Masonry</option>
+                                          <option value="Demolition">Demolition</option>
+                                          <option value="Other">Other Trade</option>
+                                        </select>
+                                      </div>
+                                      {editForm.laborTrade && (
+                                        <>
+                                          <div style={{ flex: 1 }}>
+                                            <label style={{ fontSize: '10px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '2px' }}>Rate Type</label>
+                                            <select
+                                              className={styles.itemInput}
+                                              value={editForm.laborRateType || 'rate_per_unit'}
+                                              onChange={(e) => setEditForm({ ...editForm, laborRateType: e.target.value })}
+                                            >
+                                              <option value="rate_per_unit">Rate per Unit</option>
+                                              <option value="lump_sum">Lump Sum</option>
+                                            </select>
+                                          </div>
+                                          <div style={{ flex: 1 }}>
+                                            <label style={{ fontSize: '10px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '2px' }}>Labor Rate (₹)</label>
+                                            <input 
+                                              type="number" 
+                                              className={styles.itemInput} 
+                                              value={editForm.laborUnitRate} 
+                                              onChange={(e) => setEditForm({ ...editForm, laborUnitRate: e.target.value })}
+                                            />
+                                          </div>
+                                          <div style={{ flex: 1 }}>
+                                            <label style={{ fontSize: '10px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '2px' }}>Labor Markup %</label>
+                                            <input 
+                                              type="number" 
+                                              className={styles.itemInput} 
+                                              value={editForm.laborMarkupPercentage} 
+                                              onChange={(e) => setEditForm({ ...editForm, laborMarkupPercentage: e.target.value })}
+                                            />
+                                          </div>
+                                        </>
+                                      )}
+                                    </div>
                                   </div>
                                 ) : (
                                   <div>
@@ -878,14 +1079,28 @@ export default function ProjectQuotationsTab({ projectId }) {
                                       {item.scope_type === 'addition' && <span style={{ fontSize: '10px', background: '#dcfce7', color: '#166534', padding: '1px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Scope Addition</span>}
                                       {item.scope_type === 'reduction' && <span style={{ fontSize: '10px', background: '#fee2e2', color: '#991b1b', padding: '1px 6px', borderRadius: '4px', fontWeight: 'bold' }}>Scope Reduction</span>}
                                       {item.scope_type === 'original' && <span style={{ fontSize: '10px', background: '#f3f4f6', color: '#374151', padding: '1px 6px', borderRadius: '4px' }}>Original Scope</span>}
-                                      {item.hsn_code && <span style={{ fontSize: '10px', background: '#eff6ff', color: '#1e40af', padding: '1px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>HSN: {item.hsn_code}</span>}
-                                      <span style={{ fontSize: '10px', background: '#f3f4f6', color: '#4b5563', padding: '1px 6px', borderRadius: '4px' }}>GST: {Number(item.gst_rate || 0)}%</span>
+                                      {displayedHsn && <span style={{ fontSize: '10px', background: '#eff6ff', color: '#1e40af', padding: '1px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>HSN: {displayedHsn}</span>}
+                                      <span style={{ fontSize: '10px', background: '#f3f4f6', color: '#4b5563', padding: '1px 6px', borderRadius: '4px' }}>GST: {Number(displayedGstRate)}%</span>
                                       {item.change_order_title && (
                                         <span style={{ fontSize: '10px', color: 'var(--color-text-secondary)' }}>
                                           Authorized by: <strong>{item.change_order_title}</strong>
                                         </span>
                                       )}
                                     </div>
+                                    {item.labor_trade && (
+                                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px' }}>
+                                         <span style={{ fontSize: '10px', background: '#fef3c7', color: '#92400e', padding: '1px 6px', borderRadius: '4px', fontWeight: '500' }}>
+                                           Labor: {item.labor_trade.toUpperCase()}
+                                         </span>
+                                         <span style={{ fontSize: '10px', color: '#6b7280' }}>
+                                           {item.labor_rate_type === 'lump_sum' 
+                                             ? `Lump Sum: ₹${Number(item.labor_unit_rate).toLocaleString('en-IN')}`
+                                             : `${Number(item.quantity)} unit × ₹${Number(item.labor_unit_rate).toLocaleString('en-IN')}/unit`}
+                                           {Number(item.labor_markup_percentage || 0) > 0 && ` (+${item.labor_markup_percentage}% markup)`}
+                                           {` = ₹${Number(item.labor_total_price).toLocaleString('en-IN')}`}
+                                         </span>
+                                       </div>
+                                     )}
                                   </div>
                                 )}
                               </td>
@@ -938,15 +1153,20 @@ export default function ProjectQuotationsTab({ projectId }) {
                                 )}
                               </td>
                               <td className="text-right font-bold" style={{ verticalAlign: 'top' }}>
-                                <div>{item.scope_type === 'reduction' ? '-' : ''}₹{Number(item.total_price).toLocaleString('en-IN')}</div>
+                                <div>{item.scope_type === 'reduction' ? '-' : ''}₹{Number(Number(item.total_price || 0) + Number(item.labor_total_price || 0)).toLocaleString('en-IN')}</div>
+                                {Number(item.labor_total_price || 0) > 0 && (
+                                  <div style={{ fontSize: '9px', color: '#6b7280', fontWeight: 'normal', marginTop: '2px' }}>
+                                    (Mat: ₹{Number(item.total_price || 0).toLocaleString('en-IN')}, Lab: ₹{Number(item.labor_total_price || 0).toLocaleString('en-IN')})
+                                  </div>
+                                )}
                                 {activeQuotation.gst_type === 'cgst_sgst' ? (
                                   <div style={{ fontSize: '10px', color: '#6b7280', fontWeight: 'normal', marginTop: '4px', lineHeight: '1.2' }}>
-                                    CGST ({Number(item.gst_rate || 0) / 2}%): {item.scope_type === 'reduction' ? '-' : ''}₹{Number(item.cgst_amount || 0).toLocaleString('en-IN')}<br />
-                                    SGST ({Number(item.gst_rate || 0) / 2}%): {item.scope_type === 'reduction' ? '-' : ''}₹{Number(item.sgst_amount || 0).toLocaleString('en-IN')}
+                                    CGST ({Number(displayedGstRate) / 2}%): {item.scope_type === 'reduction' ? '-' : ''}₹{Number(item.cgst_amount || 0).toLocaleString('en-IN')}<br />
+                                    SGST ({Number(displayedGstRate) / 2}%): {item.scope_type === 'reduction' ? '-' : ''}₹{Number(item.sgst_amount || 0).toLocaleString('en-IN')}
                                   </div>
                                 ) : (
                                   <div style={{ fontSize: '10px', color: '#6b7280', fontWeight: 'normal', marginTop: '4px', lineHeight: '1.2' }}>
-                                    IGST ({Number(item.gst_rate || 0)}%): {item.scope_type === 'reduction' ? '-' : ''}₹{Number(item.igst_amount || 0).toLocaleString('en-IN')}
+                                    IGST ({Number(displayedGstRate)}%): {item.scope_type === 'reduction' ? '-' : ''}₹{Number(item.igst_amount || 0).toLocaleString('en-IN')}
                                   </div>
                                 )}
                               </td>
@@ -978,7 +1198,19 @@ export default function ProjectQuotationsTab({ projectId }) {
             {/* Totals Card */}
             {activeQuotation.items && activeQuotation.items.length > 0 && (
               <div className={styles.totalsCard}>
-                <div className={styles.totalsRow}>
+                {Number(activeQuotation.labor_subtotal || 0) > 0 && (
+                  <>
+                    <div className={styles.totalsRow} style={{ color: '#4b5563', fontSize: '12px' }}>
+                      <span>Material Subtotal:</span>
+                      <span>₹{Number(activeQuotation.material_subtotal || 0).toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className={styles.totalsRow} style={{ color: '#4b5563', fontSize: '12px' }}>
+                      <span>Labor Subtotal:</span>
+                      <span>₹{Number(activeQuotation.labor_subtotal || 0).toLocaleString('en-IN')}</span>
+                    </div>
+                  </>
+                )}
+                <div className={styles.totalsRow} style={{ fontWeight: 600 }}>
                   <span>Subtotal:</span>
                   <span>₹{Number(activeQuotation.subtotal || 0).toLocaleString('en-IN')}</span>
                 </div>
@@ -1077,29 +1309,33 @@ export default function ProjectQuotationsTab({ projectId }) {
                       required
                     />
                   </div>
-                  <div className={styles.formGroup}>
-                    <label>HSN Code</label>
-                    <input 
-                      type="text" 
-                      className={styles.itemInput} 
-                      value={newItem.hsnCode || ''}
-                      onChange={(e) => setNewItem({ ...newItem, hsnCode: e.target.value })}
-                      placeholder="e.g. 9954"
-                    />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label>GST Rate (%)</label>
-                    <input 
-                      type="number" 
-                      className={styles.itemInput} 
-                      value={newItem.gstRate || ''}
-                      onChange={(e) => setNewItem({ ...newItem, gstRate: e.target.value })}
-                      placeholder="e.g. 18"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                    />
-                  </div>
+                  {(!activeQuotation.tax_treatment || activeQuotation.tax_treatment === 'itemized') && (
+                    <>
+                      <div className={styles.formGroup}>
+                        <label>HSN Code</label>
+                        <input 
+                          type="text" 
+                          className={styles.itemInput} 
+                          value={newItem.hsnCode || ''}
+                          onChange={(e) => setNewItem({ ...newItem, hsnCode: e.target.value })}
+                          placeholder="e.g. 9954"
+                        />
+                      </div>
+                      <div className={styles.formGroup}>
+                        <label>GST Rate (%)</label>
+                        <input 
+                          type="number" 
+                          className={styles.itemInput} 
+                          value={newItem.gstRate || ''}
+                          onChange={(e) => setNewItem({ ...newItem, gstRate: e.target.value })}
+                          placeholder="e.g. 18"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                        />
+                      </div>
+                    </>
+                  )}
                   <div className={styles.formGroup}>
                     <label>Item Name</label>
                     <input 
@@ -1180,6 +1416,65 @@ export default function ProjectQuotationsTab({ projectId }) {
                     onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
                     placeholder="Describe material grades, thickness, finish details etc."
                   />
+                </div>
+                <div style={{ marginTop: '12px', borderTop: '1px dashed var(--color-border)', paddingTop: '12px', width: '100%' }}>
+                  <h5 className="font-semibold text-xs text-gray-600 mb-2">Labor Cost Estimation</h5>
+                  <div className={styles.formGrid}>
+                    <div className={styles.formGroup}>
+                      <label>Labor Trade</label>
+                      <select
+                        className={styles.itemInput}
+                        value={newItem.laborTrade || ''}
+                        onChange={(e) => setNewItem({ ...newItem, laborTrade: e.target.value })}
+                      >
+                        <option value="">No Labor Cost</option>
+                        <option value="Carpentry">Carpentry</option>
+                        <option value="Electrical">Electrical</option>
+                        <option value="Plumbing">Plumbing</option>
+                        <option value="Painting">Painting</option>
+                        <option value="Civil">Civil / Masonry</option>
+                        <option value="Demolition">Demolition</option>
+                        <option value="Other">Other Trade</option>
+                      </select>
+                    </div>
+                    {newItem.laborTrade && (
+                      <>
+                        <div className={styles.formGroup}>
+                          <label>Rate Type</label>
+                          <select
+                            className={styles.itemInput}
+                            value={newItem.laborRateType || 'rate_per_unit'}
+                            onChange={(e) => setNewItem({ ...newItem, laborRateType: e.target.value })}
+                          >
+                            <option value="rate_per_unit">Rate per Unit</option>
+                            <option value="lump_sum">Lump Sum</option>
+                          </select>
+                        </div>
+                        <div className={styles.formGroup}>
+                          <label>Labor Rate (₹)</label>
+                          <input 
+                            type="number" 
+                            className={styles.itemInput} 
+                            value={newItem.laborUnitRate} 
+                            onChange={(e) => setNewItem({ ...newItem, laborUnitRate: e.target.value })}
+                            min="0"
+                            step="0.01"
+                          />
+                        </div>
+                        <div className={styles.formGroup}>
+                          <label>Labor Markup %</label>
+                          <input 
+                            type="number" 
+                            className={styles.itemInput} 
+                            value={newItem.laborMarkupPercentage} 
+                            onChange={(e) => setNewItem({ ...newItem, laborMarkupPercentage: e.target.value })}
+                            min="0"
+                            step="1"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <div className="flex gap-2 justify-end">
                   <Button type="button" variant="outline" size="sm" onClick={() => setShowAddItem(false)}>Cancel</Button>

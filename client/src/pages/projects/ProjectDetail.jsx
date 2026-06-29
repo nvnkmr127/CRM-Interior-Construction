@@ -35,6 +35,7 @@ const ChangeOrdersTab = React.lazy(() => import('../../components/projects/Chang
 const BOQVarianceTab = React.lazy(() => import('../../components/projects/BOQVarianceTab'));
 const ProjectQuotationsTab = React.lazy(() => import('../../components/projects/ProjectQuotationsTab'));
 const BudgetTab = React.lazy(() => import('../../components/projects/BudgetTab'));
+const PurchaseRequestsTab = React.lazy(() => import('../../components/projects/PurchaseRequestsTab'));
 const PurchaseOrdersTab = React.lazy(() => import('../../components/projects/PurchaseOrdersTab'));
 const MaterialDeliveriesTab = React.lazy(() => import('../../components/projects/MaterialDeliveriesTab'));
 const VendorPaymentsTab = React.lazy(() => import('../../components/projects/VendorPaymentsTab'));
@@ -43,6 +44,7 @@ const FactoryProductionTab = React.lazy(() => import('../../components/projects/
 const WorkActivitiesTab = React.lazy(() => import('../../components/projects/WorkActivitiesTab'));
 const DailySiteReportsTab = React.lazy(() => import('../../components/projects/DailySiteReportsTab'));
 const WeeklyReportsTab = React.lazy(() => import('../../components/projects/WeeklyReportsTab'));
+const MepChecklistTab = React.lazy(() => import('../../components/projects/MepChecklistTab'));
 const RoomProgressTab = React.lazy(() => import('../../components/projects/RoomProgressTab'));
 const HandoverHistoryTab = React.lazy(() => import('../../components/projects/HandoverHistoryTab'));
 const MeetingNotesTab = React.lazy(() => import('../../components/projects/MeetingNotesTab'));
@@ -73,7 +75,10 @@ function daysRemaining(targetDate) {
 }
 
 function OverviewTab({ project, onRefresh }) {
-  const days = daysRemaining(project.target_date);
+  const baseTargetDate = project.target_date ? new Date(project.target_date) : null;
+  const timelineImpact = project.stats?.approvedTimelineImpactDays || 0;
+  const revisedTargetDate = baseTargetDate && timelineImpact > 0 ? new Date(baseTargetDate.getTime() + timelineImpact * 24 * 60 * 60 * 1000) : null;
+  const days = daysRemaining(revisedTargetDate || project.target_date);
   const [handoverState, setHandoverState] = useState({
     isOpen: false,
     role: 'pm',
@@ -112,6 +117,7 @@ function OverviewTab({ project, onRefresh }) {
     { label: 'Market Segment',  value: project.segment ? project.segment.replace(/_/g, ' ') : '—' },
     { label: 'Start Date',      value: formatDate(project.start_date) },
     { label: 'Target Date',     value: formatDate(project.target_date) },
+    ...(timelineImpact > 0 && revisedTargetDate ? [{ label: 'Revised Target Date', value: formatDate(revisedTargetDate) }] : []),
     { label: 'Base Contract Value (Original Scope)', value: formatValue(project.stats?.originalScopeTotal || project.contract_value) },
     { label: 'Scope Additions (Change Orders)', value: formatValue(project.stats?.additionsTotal || 0) },
     { label: 'Scope Reductions (Change Orders)', value: formatValue(project.stats?.reductionsTotal || 0) },
@@ -168,6 +174,72 @@ function OverviewTab({ project, onRefresh }) {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Design Stage Revisions Tracker */}
+      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden', padding: '20px' }}>
+        <h3 style={{ margin: '0 0 4px 0', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>Stage Revision Limits & Counts</h3>
+        <p style={{ margin: '0 0 16px 0', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Permitted revision rounds and active consumption per design stage.</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
+          {[
+            'Requirement Gathering',
+            'Concept Presentation',
+            'Concept Approval',
+            'Detailed Design',
+            'Client Review',
+            'Revision Rounds',
+            'Design Freeze'
+          ].map(stage => {
+            const limit = project.stage_revision_limits?.[stage] ?? 3;
+            const count = project.stage_revision_counts?.[stage] ?? 0;
+            const isExceeded = count > limit;
+            const isApproaching = count === limit - 1 && limit > 1;
+
+            let cardBg = 'var(--color-surface-hover, #fafafa)';
+            let borderColor = 'var(--color-border)';
+            let textColor = 'var(--color-text)';
+
+            if (isExceeded) {
+              cardBg = 'var(--color-danger-bg, #fef2f2)';
+              borderColor = 'var(--color-danger, #ef4444)';
+              textColor = 'var(--color-danger, #b91c1c)';
+            } else if (isApproaching) {
+              cardBg = 'var(--color-warning-bg, #fef9c3)';
+              borderColor = 'var(--color-warning, #eab308)';
+              textColor = 'var(--color-warning, #854d0e)';
+            }
+
+            return (
+              <div key={stage} style={{
+                background: cardBg,
+                border: `1px solid ${borderColor}`,
+                borderRadius: 'var(--radius-md)',
+                padding: '12px 16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+                position: 'relative'
+              }}>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                  {stage}
+                </div>
+                <div style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: textColor, display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                  {count} <span style={{ fontSize: 'var(--text-xs)', fontWeight: 500, color: 'var(--color-text-muted)' }}>/ {limit} allowed</span>
+                </div>
+                {isExceeded && (
+                  <span style={{ fontSize: '9px', fontWeight: 600, color: '#b91c1c', textTransform: 'uppercase', background: '#fee2e2', padding: '2px 6px', borderRadius: '4px', alignSelf: 'flex-start', marginTop: '4px' }}>
+                    Limit Exceeded
+                  </span>
+                )}
+                {isApproaching && (
+                  <span style={{ fontSize: '9px', fontWeight: 600, color: '#854d0e', textTransform: 'uppercase', background: '#fef9c3', padding: '2px 6px', borderRadius: '4px', alignSelf: 'flex-start', marginTop: '4px' }}>
+                    1 Round Left
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -791,7 +863,7 @@ export default function ProjectDetail() {
     }
   };
 
-  const tabs = ['Overview', 'Booking', 'Meeting Notes', 'Site Visits', 'Baseline Assessment', 'Delay Notifications', 'Handovers', 'Design Brief', 'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 'Commercial Approval', 'Change Orders', 'BOQ Variance', 'Budget', 'Purchase Orders', 'Material Deliveries', 'Vendor Payments', 'Substitutions', 'Factory Production', 'Coordination', 'Phases', 'Gantt Chart', 'Work Activities', 'Room Progress', 'Tasks', 'Daily Site Reports', 'Weekly Reports', 'Documents', 'Drawing Register', 'Payments', 'Snags', 'Punch List', 'Handover', 'Warranties', 'AMCs', 'Handover Readiness', 'Service Tickets', 'Customer Retention', 'Project Closure', 'Retrospective'];
+  const tabs = ['Overview', 'Booking', 'Meeting Notes', 'Site Visits', 'Baseline Assessment', 'Delay Notifications', 'Handovers', 'Design Brief', 'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 'Commercial Approval', 'Change Orders', 'BOQ Variance', 'Budget', 'Purchase Requests', 'Purchase Orders', 'Material Deliveries', 'Vendor Payments', 'Substitutions', 'Factory Production', 'Coordination', 'Phases', 'Gantt Chart', 'Work Activities', 'Room Progress', 'Tasks', 'Daily Site Reports', 'Weekly Reports', 'Documents', 'Drawing Register', 'MEP Checklist', 'Payments', 'Snags', 'Punch List', 'Handover', 'Warranties', 'AMCs', 'Handover Readiness', 'Service Tickets', 'Customer Retention', 'Project Closure', 'Retrospective'];
 
   const reloadProject = () => {
     if (!projectId) return;
@@ -833,6 +905,7 @@ export default function ProjectDetail() {
       case 'Change Orders': return <ChangeOrdersTab projectId={projectId} />;
       case 'BOQ Variance': return <BOQVarianceTab projectId={projectId} />;
       case 'Budget': return <BudgetTab projectId={projectId} />;
+      case 'Purchase Requests': return <PurchaseRequestsTab projectId={projectId} />;
       case 'Purchase Orders': return <PurchaseOrdersTab projectId={projectId} />;
       case 'Material Deliveries': return <MaterialDeliveriesTab projectId={projectId} />;
       case 'Vendor Payments': return <VendorPaymentsTab projectId={projectId} />;
@@ -848,6 +921,7 @@ export default function ProjectDetail() {
       case 'Weekly Reports': return <WeeklyReportsTab projectId={projectId} />;
       case 'Documents': return <DocumentPanel projectId={projectId} />;
       case 'Drawing Register': return <DrawingRegisterTab projectId={projectId} />;
+      case 'MEP Checklist': return <MepChecklistTab projectId={projectId} />;
       case 'Payments': return <PaymentsTab projectId={projectId} />;
       case 'Snags': return <SnagsDashboard projectId={projectId} />;
       case 'Handover': return <HandoverChecklist projectId={projectId} />;
@@ -863,7 +937,12 @@ export default function ProjectDetail() {
     }
   };
 
-  const days = project ? daysRemaining(project.target_date) : null;
+  const detailBaseTargetDate = project?.target_date ? new Date(project.target_date) : null;
+  const detailTimelineImpact = project?.stats?.approvedTimelineImpactDays || 0;
+  const detailRevisedTargetDate = detailBaseTargetDate && detailTimelineImpact > 0 
+    ? new Date(detailBaseTargetDate.getTime() + detailTimelineImpact * 24 * 60 * 60 * 1000) 
+    : null;
+  const days = project ? daysRemaining(detailRevisedTargetDate || project.target_date) : null;
 
   if (loading) {
     return (

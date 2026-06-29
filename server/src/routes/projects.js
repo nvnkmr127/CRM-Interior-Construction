@@ -19,6 +19,7 @@ const changeOrdersRoutes = require('./changeOrders');
 const quotationsRoutes = require('./quotations');
 const budgetRoutes = require('./budget');
 const purchaseOrdersRoutes = require('./purchaseOrders');
+const purchaseRequestsRoutes = require('./purchaseRequests');
 const materialDeliveriesRoutes = require('./materialDeliveries');
 const vendorPaymentsRoutes = require('./vendorPayments');
 const materialSubstitutionsRoutes = require('./materialSubstitutions');
@@ -57,6 +58,7 @@ router.use('/:projectId/change-orders', verifyProjectBooked, changeOrdersRoutes)
 router.use('/:projectId/quotations', verifyProjectBooked, quotationsRoutes);
 router.use('/:projectId/budget', verifyProjectBooked, budgetRoutes);
 router.use('/:projectId/purchase-orders', verifyProjectBooked, purchaseOrdersRoutes);
+router.use('/:projectId/purchase-requests', verifyProjectBooked, purchaseRequestsRoutes);
 router.use('/:projectId/material-deliveries', verifyProjectBooked, materialDeliveriesRoutes);
 router.use('/:projectId/vendor-payments', verifyProjectBooked, vendorPaymentsRoutes);
 router.use('/:projectId/material-substitutions', verifyProjectBooked, materialSubstitutionsRoutes);
@@ -173,6 +175,8 @@ const createProjectSchema = z.object({
   segment: z.string().optional().nullable(),
   allowed_design_revisions: z.number().int().nonnegative().optional().nullable(),
   current_design_revisions: z.number().int().nonnegative().optional().nullable(),
+  stage_revision_limits: z.any().optional().nullable(),
+  stage_revision_counts: z.any().optional().nullable(),
   pm_hours_allocated: z.number().int().nonnegative().optional().nullable(),
   designer_hours_allocated: z.number().int().nonnegative().optional().nullable(),
   measurements: z.array(z.object({
@@ -1707,6 +1711,114 @@ router.patch('/:projectId/compliance/:itemId', authorize('projects:update'), asy
       userId: req.user.userId,
       action: 'project.compliance_updated',
       entity: 'project_compliance',
+      entityId: itemId,
+      oldValue,
+      newValue: rows[0]
+    });
+
+    return success(res, rows[0]);
+  } catch (err) {
+    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    next(err);
+  }
+});
+
+// GET /api/projects/:projectId/mep-checklist
+router.get('/:projectId/mep-checklist', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const tenantId = req.tenantId;
+
+    const { rows } = await pool.query(
+      `SELECT pmc.*, u.name as approved_by_name
+       FROM project_mep_checklists pmc
+       LEFT JOIN users u ON pmc.approved_by = u.id
+       WHERE pmc.project_id = $1 AND pmc.tenant_id = $2
+       ORDER BY pmc.created_at ASC`,
+      [projectId, tenantId]
+    );
+
+    if (rows.length > 0) {
+      return success(res, rows);
+    }
+
+    const mepItems = [
+      'Electrical switch and socket layout marking verification',
+      'False ceiling lighting and electrical points alignment coordination',
+      'Plumbing routing slopes and structural beam clearance verification',
+      'MEP contractors & site team design clash resolution review',
+      'Client formal sign-off on layout point adjustments',
+      'Contractor drawing clearance before civil execution starts'
+    ];
+
+    const seededRows = [];
+    for (const item of mepItems) {
+      const insertRes = await pool.query(
+        `INSERT INTO project_mep_checklists (tenant_id, project_id, item_name, status)
+         VALUES ($1, $2, $3, 'pending')
+         ON CONFLICT (project_id, item_name) DO UPDATE SET tenant_id = EXCLUDED.tenant_id
+         RETURNING *`,
+        [tenantId, projectId, item]
+      );
+      seededRows.push(insertRes.rows[0]);
+    }
+
+    return success(res, seededRows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/projects/:projectId/mep-checklist/:itemId
+router.patch('/:projectId/mep-checklist/:itemId', authorize('projects:update'), async (req, res, next) => {
+  try {
+    const { projectId, itemId } = req.params;
+    const tenantId = req.tenantId;
+    const schema = z.object({
+      status: z.enum(['pending', 'in_progress', 'approved', 'not_applicable']),
+      notes: z.string().optional().nullable()
+    });
+
+    const { status, notes } = schema.parse(req.body);
+
+    const checkRes = await pool.query(
+      'SELECT id, status, notes FROM project_mep_checklists WHERE id = $1 AND project_id = $2 AND tenant_id = $3',
+      [itemId, projectId, tenantId]
+    );
+    if (checkRes.rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'MEP checklist item not found.', 404);
+    }
+    const oldValue = checkRes.rows[0];
+
+    const approvedAt = status === 'approved' ? 'NOW()' : 'NULL';
+    const approvedBy = status === 'approved' ? `$1` : 'NULL';
+
+    const updateQuery = `
+      UPDATE project_mep_checklists
+      SET status = $2,
+          notes = $3,
+          approved_by = ${approvedBy},
+          approved_at = ${approvedAt},
+          updated_at = NOW()
+      WHERE id = $4 AND project_id = $5 AND tenant_id = $6
+      RETURNING *
+    `;
+
+    const { rows } = await pool.query(updateQuery, [
+      status === 'approved' ? req.user.userId : null,
+      status,
+      notes || null,
+      itemId,
+      projectId,
+      tenantId
+    ]);
+
+    const { logAction } = require('../services/auditLog');
+    await logAction({
+      tenantId,
+      userId: req.user.userId,
+      action: 'project.mep_checklist_updated',
+      entity: 'project_mep_checklist',
       entityId: itemId,
       oldValue,
       newValue: rows[0]

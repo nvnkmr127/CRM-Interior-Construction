@@ -1,6 +1,7 @@
+if (process.env.NODE_ENV === 'test') {
+  require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env.test') });
+}
 require('dotenv').config({ path: require('path').resolve(__dirname, '../../../.env') });
-// We use a relative path to the root .env just in case it's not found automatically.
-// Alternatively, dotenv.config() will find it if we run from the root.
 require('dotenv').config();
 
 const { z } = require('zod');
