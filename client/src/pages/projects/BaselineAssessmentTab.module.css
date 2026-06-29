@@ -1,0 +1,257 @@
+.container {
+  padding: 24px;
+  background: var(--color-surface, #fff);
+  border-radius: var(--radius-lg, 12px);
+  border: 1px solid var(--color-border, #e2e8f0);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.titleSection h3 {
+  margin: 0 0 6px 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text, #1e293b);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted, #64748b);
+}
+
+.metaInfo {
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #64748b);
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+}
+
+.notesCard {
+  background: var(--color-surface-hover, #f8fafc);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.notesCard h4 {
+  margin: 0 0 8px 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text, #1e293b);
+}
+
+.notesText {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary, #475569);
+  white-space: pre-wrap;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 20px;
+}
+
+.roomCard {
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+}
+
+.roomHeader {
+  background: var(--color-surface-hover, #f8fafc);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-text, #1e293b);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.roomBody {
+  padding: 16px;
+  flex-grow: 1;
+}
+
+.checklistGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.checkItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  font-size: 0.85rem;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--color-border, #f1f5f9);
+}
+
+.checkItem:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.areaLabel {
+  font-weight: 500;
+  color: var(--color-text-secondary, #475569);
+  text-transform: capitalize;
+}
+
+.itemDetail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  max-width: 70%;
+}
+
+.itemNotes {
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #64748b);
+  margin-top: 4px;
+}
+
+.badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badgeOk {
+  background: var(--color-success-bg, #f0fdf4);
+  color: var(--color-success, #22c55e);
+}
+
+.badgeDefect {
+  background: var(--color-danger-bg, #fef2f2);
+  color: var(--color-danger, #ef4444);
+}
+
+.badgeDamaged {
+  background: var(--color-warning-bg, #fffbeb);
+  color: var(--color-warning, #d97706);
+}
+
+.badgeNa {
+  background: var(--color-surface-hover, #f1f5f9);
+  color: var(--color-text-muted, #94a3b8);
+}
+
+.photoGallery {
+  border-top: 1px solid var(--color-border, #e2e8f0);
+  padding: 12px 16px;
+  background: var(--color-surface-hover, #fafafa);
+}
+
+.photoTitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted, #64748b);
+  margin-bottom: 8px;
+}
+
+.photoThumbs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.photoThumb {
+  width: 50px;
+  height: 50px;
+  border-radius: 4px;
+  object-fit: cover;
+  border: 1px solid var(--color-border, #cbd5e1);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.photoThumb:hover {
+  transform: scale(1.05);
+}
+
+.emptyState {
+  padding: 40px;
+  text-align: center;
+  border: 1px dashed var(--color-border, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  color: var(--color-text-muted, #64748b);
+}
+
+.formSection {
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  padding-bottom: 24px;
+}
+
+.formSection:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.roomEditCard {
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  padding: 16px;
+  margin-bottom: 16px;
+  background: var(--color-surface, #fff);
+  position: relative;
+}
+
+.removeRoomBtn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  color: var(--color-danger, #ef4444);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.areaEditGrid {
+  display: grid;
+  grid-template-columns: 100px 140px 1fr;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.areaEditGridLabel {
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: capitalize;
+}

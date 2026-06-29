@@ -37,41 +37,45 @@ const amcsRoutes = require('./amcs');
 const warrantyClaimsRoutes = require('./warrantyClaims');
 const projectClosuresRoutes = require('./projectClosures');
 const projectRetrospectivesRoutes = require('./projectRetrospectives');
+const baselineAssessmentRoutes = require('./baselineAssessment');
 
+
+const verifyProjectBooked = require('../middleware/verifyBooking');
 
 const router = express.Router();
 
 router.use(authenticate);
 
-// Mount nested routes
-router.use('/:projectId/phases', phasesRoutes);
-router.use('/:projectId/tasks', tasksRoutes);
-router.use('/:projectId/documents', documentsRoutes);
-router.use('/:projectId/design-assets', designAssetsRoutes);
-router.use('/:projectId/design-reviews', designReviewsRoutes);
-router.use('/:projectId/material-palettes', materialPalettesRoutes);
-router.use('/:projectId/change-orders', changeOrdersRoutes);
-router.use('/:projectId/quotations', quotationsRoutes);
-router.use('/:projectId/budget', budgetRoutes);
-router.use('/:projectId/purchase-orders', purchaseOrdersRoutes);
-router.use('/:projectId/material-deliveries', materialDeliveriesRoutes);
-router.use('/:projectId/vendor-payments', vendorPaymentsRoutes);
-router.use('/:projectId/material-substitutions', materialSubstitutionsRoutes);
-router.use('/:projectId/production-orders', productionOrdersRoutes);
-router.use('/:projectId/work-activities', workActivitiesRoutes);
-router.use('/:projectId/site-readiness', siteReadinessRoutes);
-router.use('/:projectId/task-dependencies', taskDependenciesRoutes);
-router.use('/:projectId/daily-reports', dailySiteReportsRoutes);
-router.use('/:projectId/room-progress', roomProgressRoutes);
-router.use('/:projectId/meeting-notes', meetingNotesRoutes);
-router.use('/:projectId/delay-notifications', delayNotificationsRoutes);
-router.use('/:projectId/drawing-register', drawingRegisterRoutes);
-router.use('/:projectId/punch-lists', punchListsRoutes);
-router.use('/:projectId/warranties', warrantiesRoutes);
-router.use('/:projectId/amcs', amcsRoutes);
-router.use('/:projectId/warranty-claims', warrantyClaimsRoutes);
-router.use('/:projectId/closure-checklist', projectClosuresRoutes);
-router.use('/:projectId/retrospective', projectRetrospectivesRoutes);
+// Mount nested routes with verifyProjectBooked gate to ensure no project advances without booking confirmation
+router.use('/:projectId/phases', verifyProjectBooked, phasesRoutes);
+router.use('/:projectId/tasks', verifyProjectBooked, tasksRoutes);
+router.use('/:projectId/documents', verifyProjectBooked, documentsRoutes);
+router.use('/:projectId/design-assets', verifyProjectBooked, designAssetsRoutes);
+router.use('/:projectId/design-reviews', verifyProjectBooked, designReviewsRoutes);
+router.use('/:projectId/material-palettes', verifyProjectBooked, materialPalettesRoutes);
+router.use('/:projectId/change-orders', verifyProjectBooked, changeOrdersRoutes);
+router.use('/:projectId/quotations', verifyProjectBooked, quotationsRoutes);
+router.use('/:projectId/budget', verifyProjectBooked, budgetRoutes);
+router.use('/:projectId/purchase-orders', verifyProjectBooked, purchaseOrdersRoutes);
+router.use('/:projectId/material-deliveries', verifyProjectBooked, materialDeliveriesRoutes);
+router.use('/:projectId/vendor-payments', verifyProjectBooked, vendorPaymentsRoutes);
+router.use('/:projectId/material-substitutions', verifyProjectBooked, materialSubstitutionsRoutes);
+router.use('/:projectId/production-orders', verifyProjectBooked, productionOrdersRoutes);
+router.use('/:projectId/work-activities', verifyProjectBooked, workActivitiesRoutes);
+router.use('/:projectId/site-readiness', verifyProjectBooked, siteReadinessRoutes);
+router.use('/:projectId/task-dependencies', verifyProjectBooked, taskDependenciesRoutes);
+router.use('/:projectId/daily-reports', verifyProjectBooked, dailySiteReportsRoutes);
+router.use('/:projectId/room-progress', verifyProjectBooked, roomProgressRoutes);
+router.use('/:projectId/meeting-notes', verifyProjectBooked, meetingNotesRoutes);
+router.use('/:projectId/delay-notifications', verifyProjectBooked, delayNotificationsRoutes);
+router.use('/:projectId/drawing-register', verifyProjectBooked, drawingRegisterRoutes);
+router.use('/:projectId/punch-lists', verifyProjectBooked, punchListsRoutes);
+router.use('/:projectId/warranties', verifyProjectBooked, warrantiesRoutes);
+router.use('/:projectId/amcs', verifyProjectBooked, amcsRoutes);
+router.use('/:projectId/warranty-claims', verifyProjectBooked, warrantyClaimsRoutes);
+router.use('/:projectId/closure-checklist', verifyProjectBooked, projectClosuresRoutes);
+router.use('/:projectId/retrospective', verifyProjectBooked, projectRetrospectivesRoutes);
+router.use('/:projectId/baseline-assessment', verifyProjectBooked, baselineAssessmentRoutes);
 
 
 
@@ -122,8 +126,37 @@ const createProjectSchema = z.object({
     email: z.string().optional().nullable(),
     role: z.string().optional().nullable(),
     decision_authority: z.string().optional().nullable(),
-    relationship_notes: z.string().optional().nullable()
+    relationship_notes: z.string().optional().nullable(),
+    contact_preference: z.string().optional().nullable(),
+    approval_authority_level: z.string().optional().nullable()
   })).optional().nullable(),
+  spouse_name: z.string().optional().nullable(),
+  spouse_phone: z.string().optional().nullable(),
+  spouse_email: z.string().optional().nullable(),
+  number_of_family_members: z.number().int().optional().nullable(),
+  lifestyle_preferences: z.string().optional().nullable(),
+  preferred_communication_channel: z.string().optional().nullable(),
+  lift_availability: z.string().optional().nullable(),
+  lift_dimensions: z.string().optional().nullable(),
+  staircase_access: z.string().optional().nullable(),
+  working_hour_window: z.string().optional().nullable(),
+  society_contact: z.string().optional().nullable(),
+  parking_permission: z.string().optional().nullable(),
+  unloading_area: z.string().optional().nullable(),
+  noc_requirements: z.string().optional().nullable(),
+  key_holder_name: z.string().optional().nullable(),
+  key_holder_phone: z.string().optional().nullable(),
+  spare_key_location: z.string().optional().nullable(),
+  gate_pass_number: z.string().optional().nullable(),
+  access_card_holder: z.string().optional().nullable(),
+  access_time_restrictions: z.string().optional().nullable(),
+  lead_designer_id: z.string().uuid().optional().nullable(),
+  junior_designer_id: z.string().uuid().optional().nullable(),
+  site_engineer_id: z.string().uuid().optional().nullable(),
+  qc_engineer_id: z.string().uuid().optional().nullable(),
+  site_supervisor_id: z.string().uuid().optional().nullable(),
+  crm_executive_id: z.string().uuid().optional().nullable(),
+  procurement_officer_id: z.string().uuid().optional().nullable(),
   carpet_area: z.number().optional().nullable(),
   built_up_area: z.number().optional().nullable(),
   number_of_rooms: z.number().int().optional().nullable(),
@@ -363,6 +396,39 @@ router.patch('/referrals/:id', authorize('projects:update'), async (req, res, ne
   }
 });
 
+// GET /api/projects/coordination/dashboard
+router.get('/coordination/dashboard', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const { getCoordinationDashboard } = require('../services/projects/coordinationService');
+    const data = await getCoordinationDashboard(req.tenantId);
+    return success(res, data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/projects/handover/readiness-dashboard
+router.get('/handover/readiness-dashboard', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const { getReadinessDashboard } = require('../services/postSale/handoverReadinessService');
+    const data = await getReadinessDashboard(req.tenantId);
+    return success(res, data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/projects/retention/dashboard
+router.get('/retention/dashboard', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const { getRetentionDashboard } = require('../services/postSale/retentionService');
+    const data = await getRetentionDashboard(req.tenantId);
+    return success(res, data);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/projects/:projectId/boq-variance
 router.get('/:projectId/boq-variance', authorize('projects:read'), require('../controllers/boqVarianceController').getProjectBOQVarianceReport);
 
@@ -398,8 +464,14 @@ router.patch('/:id', authorize('projects:update'), async (req, res, next) => {
     if (err instanceof z.ZodError) {
       return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     }
-    if (err.message === 'BOOKING_PAYMENT_REQUIRED' || err.status === 400) {
+    if (err.code === 'BOOKING_REQUIRED') {
+      return fail(res, 'BOOKING_REQUIRED', err.message, 400);
+    }
+    if (err.message === 'BOOKING_PAYMENT_REQUIRED' || err.code === 'BOOKING_PAYMENT_REQUIRED') {
       return fail(res, 'BOOKING_PAYMENT_REQUIRED', err.message, 400);
+    }
+    if (err.status === 400) {
+      return fail(res, err.code || 'BAD_REQUEST', err.message, 400);
     }
     if (err.message === 'NOT_FOUND' || err.status === 404) {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
@@ -420,6 +492,45 @@ router.delete('/:id', authorize('projects:delete'), async (req, res, next) => {
     }
     console.error('[Projects Router] Delete error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete project.', 500);
+  }
+});
+
+// GET /api/projects/:id/retention
+router.get('/:id/retention', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const { getRetentionSchedules } = require('../services/postSale/retentionService');
+    const data = await getRetentionSchedules(req.params.id, req.tenantId);
+    return success(res, data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/projects/:id/retention/:scheduleId
+router.patch('/:id/retention/:scheduleId', authorize('projects:manage'), async (req, res, next) => {
+  try {
+    const { status, actualDate, feedback, csatScore, notes } = z.object({
+      status: z.enum(['scheduled', 'completed', 'deferred', 'cancelled']).optional(),
+      actualDate: z.string().optional().nullable(),
+      feedback: z.string().optional().nullable(),
+      csatScore: z.number().int().min(1).max(5).optional().nullable(),
+      notes: z.string().optional().nullable()
+    }).parse(req.body);
+
+    const { updateRetentionSchedule } = require('../services/postSale/retentionService');
+    const data = await updateRetentionSchedule(req.params.scheduleId, req.tenantId, {
+      status, actualDate, feedback, csatScore, notes
+    }, req.user.userId);
+
+    return success(res, data, { message: 'Retention schedule updated successfully.' });
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    }
+    if (err.message === 'SCHEDULE_NOT_FOUND') {
+      return fail(res, 'NOT_FOUND', 'Retention schedule not found', 404);
+    }
+    next(err);
   }
 });
 
@@ -526,6 +637,70 @@ router.post('/:id/handover/items', authorize('projects:manage'), async (req, res
   }
 });
 
+// GET /api/projects/:id/handover/readiness
+router.get('/:id/handover/readiness', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const { evaluateReadinessGates } = require('../services/postSale/handoverReadinessService');
+    const data = await evaluateReadinessGates(req.params.id, req.tenantId);
+    return success(res, data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/projects/:id/handover/readiness/pm-sign-off
+router.post('/:id/handover/readiness/pm-sign-off', authorize('projects:manage'), async (req, res, next) => {
+  try {
+    const { pmSignOff } = require('../services/postSale/handoverReadinessService');
+    const result = await pmSignOff(req.params.id, req.tenantId, req.user.userId);
+    return success(res, result, { message: 'PM sign-off for handover readiness recorded successfully.' });
+  } catch (err) {
+    if (err.message === 'PROJECT_NOT_FOUND') {
+      return fail(res, 'NOT_FOUND', 'Project not found', 404);
+    }
+    if (err.message === 'GATES_PENDING') {
+      return fail(res, 'BAD_REQUEST', 'Cannot sign off. Outstanding gates are pending completion.', 400);
+    }
+    next(err);
+  }
+});
+
+// GET /api/projects/:id/handover/appointments
+router.get('/:id/handover/appointments', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const { getProjectAppointments } = require('../services/postSale/handoverReadinessService');
+    const data = await getProjectAppointments(req.params.id, req.tenantId);
+    return success(res, data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/projects/:id/handover/appointments
+router.post('/:id/handover/appointments', authorize('projects:manage'), async (req, res, next) => {
+  try {
+    const { appointmentDate, notes } = z.object({
+      appointmentDate: z.string().transform(val => new Date(val)),
+      notes: z.string().optional().nullable()
+    }).parse(req.body);
+
+    const { scheduleAppointment } = require('../services/postSale/handoverReadinessService');
+    const result = await scheduleAppointment(req.params.id, req.tenantId, appointmentDate, notes, req.user.userId);
+    return success(res, result, { message: 'Handover appointment scheduled successfully.' });
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    }
+    if (err.message === 'PROJECT_NOT_FOUND') {
+      return fail(res, 'NOT_FOUND', 'Project not found', 404);
+    }
+    if (err.message === 'READINESS_CHECK_FAILED') {
+      return fail(res, 'BAD_REQUEST', 'Cannot schedule appointment. Handover readiness gates are not fully green.', 400);
+    }
+    next(err);
+  }
+});
+
 const applySchema = z.object({
   templateId: z.string().uuid()
 });
@@ -566,7 +741,14 @@ const designRequirementsSchema = z.object({
   flooring_preference: z.string().optional().nullable(),
   lifestyle_inputs: z.string().optional().nullable(),
   must_haves: z.string().optional().nullable(),
-  nice_to_haves: z.string().optional().nullable()
+  nice_to_haves: z.string().optional().nullable(),
+  family_size: z.preprocess((val) => (val === '' || val === null || val === undefined) ? null : parseInt(val, 10), z.number().nullable()).optional(),
+  usage_patterns: z.string().optional().nullable(),
+  storage_priorities: z.string().optional().nullable(),
+  brand_flexibility: z.string().optional().nullable(),
+  brand_remarks: z.string().optional().nullable(),
+  existing_furniture: z.string().optional().nullable(),
+  budget_category_allocation: z.any().optional().nullable()
 });
 
 const roomRequirementSchema = z.object({
@@ -607,7 +789,14 @@ router.get('/:projectId/design-requirements', authorize('projects:read'), async 
         flooring_preference: '',
         lifestyle_inputs: '',
         must_haves: '',
-        nice_to_haves: ''
+        nice_to_haves: '',
+        family_size: null,
+        usage_patterns: '',
+        storage_priorities: '',
+        brand_flexibility: '',
+        brand_remarks: '',
+        existing_furniture: '',
+        budget_category_allocation: {}
       };
     }
     
@@ -643,8 +832,10 @@ router.put('/:projectId/design-requirements', authorize('projects:update'), asyn
       INSERT INTO project_design_requirements (
         tenant_id, project_id, interior_style, color_theme, material_preference,
         kitchen_style, wardrobe_style, lighting_preference, flooring_preference,
-        lifestyle_inputs, must_haves, nice_to_haves
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        lifestyle_inputs, must_haves, nice_to_haves,
+        family_size, usage_patterns, storage_priorities, brand_flexibility, brand_remarks,
+        existing_furniture, budget_category_allocation
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
       ON CONFLICT (project_id) DO UPDATE SET
         interior_style = EXCLUDED.interior_style,
         color_theme = EXCLUDED.color_theme,
@@ -656,6 +847,13 @@ router.put('/:projectId/design-requirements', authorize('projects:update'), asyn
         lifestyle_inputs = EXCLUDED.lifestyle_inputs,
         must_haves = EXCLUDED.must_haves,
         nice_to_haves = EXCLUDED.nice_to_haves,
+        family_size = EXCLUDED.family_size,
+        usage_patterns = EXCLUDED.usage_patterns,
+        storage_priorities = EXCLUDED.storage_priorities,
+        brand_flexibility = EXCLUDED.brand_flexibility,
+        brand_remarks = EXCLUDED.brand_remarks,
+        existing_furniture = EXCLUDED.existing_furniture,
+        budget_category_allocation = EXCLUDED.budget_category_allocation,
         updated_at = CURRENT_TIMESTAMP
       RETURNING *
     `;
@@ -670,7 +868,14 @@ router.put('/:projectId/design-requirements', authorize('projects:update'), asyn
       data.flooring_preference || null,
       data.lifestyle_inputs || null,
       data.must_haves || null,
-      data.nice_to_haves || null
+      data.nice_to_haves || null,
+      data.family_size || null,
+      data.usage_patterns || null,
+      data.storage_priorities || null,
+      data.brand_flexibility || null,
+      data.brand_remarks || null,
+      data.existing_furniture || null,
+      data.budget_category_allocation ? JSON.stringify(data.budget_category_allocation) : '{}'
     ];
     
     const { rows } = await pool.query(query, values);
@@ -794,6 +999,283 @@ router.delete('/:projectId/inspirations/:id', authorize('projects:update'), asyn
     );
     if (rows.length === 0) return fail(res, 'NOT_FOUND', 'Inspiration not found', 404);
     return res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/projects/:projectId/design-workflow
+router.get('/:projectId/design-workflow', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const tenantId = req.tenantId;
+
+    // 1. Fetch project stage info
+    const projRes = await pool.query(
+      `SELECT id, name, design_stage, is_scope_locked FROM projects WHERE id = $1 AND tenant_id = $2`,
+      [projectId, tenantId]
+    );
+    if (projRes.rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Project not found.', 404);
+    }
+    const project = projRes.rows[0];
+
+    // 2. Fetch history
+    const historyRes = await pool.query(
+      `SELECT h.*, u.name as changed_by_name
+       FROM project_design_stage_history h
+       LEFT JOIN users u ON h.changed_by = u.id
+       WHERE h.project_id = $1 AND h.tenant_id = $2
+       ORDER BY h.created_at DESC`,
+      [projectId, tenantId]
+    );
+
+    // 3. Compute Gate status
+    // Gate A: Design Brief Completed
+    const briefRes = await pool.query(
+      `SELECT interior_style FROM project_design_requirements WHERE project_id = $1 AND tenant_id = $2`,
+      [projectId, tenantId]
+    );
+    const brief_completed = briefRes.rows.length > 0 && !!briefRes.rows[0].interior_style;
+
+    // Gate B: Concept Uploaded
+    const assetsRes = await pool.query(
+      `SELECT COUNT(*)::int as count FROM design_assets WHERE project_id = $1 AND tenant_id = $2 AND is_visible_to_client = true`,
+      [projectId, tenantId]
+    );
+    const concept_uploaded = assetsRes.rows[0].count > 0;
+
+    // Gate C: Concept Approved
+    const approvedConceptRes = await pool.query(
+      `SELECT COUNT(*)::int as count FROM design_assets WHERE project_id = $1 AND tenant_id = $2 AND status = 'approved'`,
+      [projectId, tenantId]
+    );
+    const historyConceptConfirmRes = await pool.query(
+      `SELECT COUNT(*)::int as count FROM project_design_stage_history WHERE project_id = $1 AND tenant_id = $2 AND to_stage = 'Concept Approval' AND client_confirmed = true`,
+      [projectId, tenantId]
+    );
+    const concept_approved = approvedConceptRes.rows[0].count > 0 || historyConceptConfirmRes.rows[0].count > 0;
+
+    // Gate D: Detailed Drawings Uploaded
+    const docsRes = await pool.query(
+      `SELECT COUNT(*)::int as count FROM documents WHERE project_id = $1 AND tenant_id = $2 AND doc_type IN ('drawing', 'render')`,
+      [projectId, tenantId]
+    );
+    const drawings_uploaded = docsRes.rows[0].count > 0;
+
+    // Gate E: Drawings Approved
+    const approvedDocsRes = await pool.query(
+      `SELECT COUNT(*)::int as count FROM documents WHERE project_id = $1 AND tenant_id = $2 AND doc_type IN ('drawing', 'render') AND status = 'approved'`,
+      [projectId, tenantId]
+    );
+    const drawings_approved = approvedDocsRes.rows[0].count > 0;
+
+    const design_frozen = !!project.is_scope_locked;
+
+    return success(res, {
+      project_id: project.id,
+      name: project.name,
+      current_stage: project.design_stage || 'Requirement Gathering',
+      is_scope_locked: design_frozen,
+      gates: {
+        brief_completed,
+        concept_uploaded,
+        concept_approved,
+        drawings_uploaded,
+        drawings_approved,
+        design_frozen
+      },
+      history: historyRes.rows
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/projects/:projectId/design-workflow/transition
+router.post('/:projectId/design-workflow/transition', authorize('projects:update'), async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const tenantId = req.tenantId;
+    const { to_stage, comments } = req.body;
+
+    const VALID_STAGES = [
+      'Requirement Gathering',
+      'Concept Presentation',
+      'Concept Approval',
+      'Detailed Design',
+      'Client Review',
+      'Revision Rounds',
+      'Design Freeze'
+    ];
+
+    if (!VALID_STAGES.includes(to_stage)) {
+      return fail(res, 'VALIDATION_ERROR', 'Invalid target stage name.', 400);
+    }
+
+    // 1. Fetch project stage info
+    const projRes = await pool.query(
+      `SELECT id, name, design_stage, is_scope_locked FROM projects WHERE id = $1 AND tenant_id = $2`,
+      [projectId, tenantId]
+    );
+    if (projRes.rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Project not found.', 404);
+    }
+    const project = projRes.rows[0];
+    const from_stage = project.design_stage || 'Requirement Gathering';
+
+    if (from_stage === to_stage) {
+      return fail(res, 'VALIDATION_ERROR', 'Project is already in this stage.', 400);
+    }
+
+    // 2. Validate gates depending on target stage
+    if (to_stage === 'Concept Presentation') {
+      const briefRes = await pool.query(
+        `SELECT interior_style FROM project_design_requirements WHERE project_id = $1 AND tenant_id = $2`,
+        [projectId, tenantId]
+      );
+      const brief_completed = briefRes.rows.length > 0 && !!briefRes.rows[0].interior_style;
+      if (!brief_completed) {
+        return fail(res, 'STAGE_GATE_FAILED', 'Design brief must be completed and saved before moving to Concept Presentation.', 422);
+      }
+    }
+
+    if (to_stage === 'Concept Approval') {
+      const assetsRes = await pool.query(
+        `SELECT COUNT(*)::int as count FROM design_assets WHERE project_id = $1 AND tenant_id = $2 AND is_visible_to_client = true`,
+        [projectId, tenantId]
+      );
+      if (assetsRes.rows[0].count === 0) {
+        return fail(res, 'STAGE_GATE_FAILED', 'At least one Concept or Mood Board must be uploaded and visible to client before Concept Approval stage.', 422);
+      }
+    }
+
+    if (to_stage === 'Detailed Design') {
+      const approvedConceptRes = await pool.query(
+        `SELECT COUNT(*)::int as count FROM design_assets WHERE project_id = $1 AND tenant_id = $2 AND status = 'approved'`,
+        [projectId, tenantId]
+      );
+      const historyConceptConfirmRes = await pool.query(
+        `SELECT COUNT(*)::int as count FROM project_design_stage_history WHERE project_id = $1 AND tenant_id = $2 AND to_stage = 'Concept Approval' AND client_confirmed = true`,
+        [projectId, tenantId]
+      );
+      const concept_approved = approvedConceptRes.rows[0].count > 0 || historyConceptConfirmRes.rows[0].count > 0;
+      if (!concept_approved) {
+        return fail(res, 'STAGE_GATE_FAILED', 'Concept must be approved by client before starting Detailed Design.', 422);
+      }
+    }
+
+    if (to_stage === 'Client Review') {
+      const docsRes = await pool.query(
+        `SELECT COUNT(*)::int as count FROM documents WHERE project_id = $1 AND tenant_id = $2 AND doc_type IN ('drawing', 'render')`,
+        [projectId, tenantId]
+      );
+      if (docsRes.rows[0].count === 0) {
+        return fail(res, 'STAGE_GATE_FAILED', 'At least one drawing or render must be uploaded before launching Client Review.', 422);
+      }
+    }
+
+    if (to_stage === 'Design Freeze') {
+      await pool.query(
+        `UPDATE projects SET is_scope_locked = true, updated_at = NOW() WHERE id = $1 AND tenant_id = $2`,
+        [projectId, tenantId]
+      );
+    } else {
+      if (from_stage === 'Design Freeze') {
+        await pool.query(
+          `UPDATE projects SET is_scope_locked = false, updated_at = NOW() WHERE id = $1 AND tenant_id = $2`,
+          [projectId, tenantId]
+        );
+      }
+    }
+
+    // Update project stage
+    await pool.query(
+      `UPDATE projects SET design_stage = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3`,
+      [to_stage, projectId, tenantId]
+    );
+
+    // Insert history
+    const histRes = await pool.query(
+      `INSERT INTO project_design_stage_history (
+        tenant_id, project_id, from_stage, to_stage, changed_by, client_confirmed, comments
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [tenantId, projectId, from_stage, to_stage, req.userId, false, comments || 'Stage transition']
+    );
+
+    return success(res, { current_stage: to_stage, history: histRes.rows[0] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/projects/:projectId/design-workflow/client-confirm
+router.post('/:projectId/design-workflow/client-confirm', authorize('projects:update'), async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const tenantId = req.tenantId;
+    const { comments } = req.body;
+
+    // Get current stage
+    const projRes = await pool.query(
+      `SELECT id, design_stage FROM projects WHERE id = $1 AND tenant_id = $2`,
+      [projectId, tenantId]
+    );
+    if (projRes.rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Project not found.', 404);
+    }
+    const current_stage = projRes.rows[0].design_stage || 'Requirement Gathering';
+
+    // Set client_confirmed = true for the latest history record of this stage
+    const lastHistRes = await pool.query(
+      `SELECT id FROM project_design_stage_history
+       WHERE project_id = $1 AND tenant_id = $2 AND to_stage = $3
+       ORDER BY created_at DESC LIMIT 1`,
+      [projectId, tenantId, current_stage]
+    );
+
+    let historyRecord;
+    if (lastHistRes.rows.length > 0) {
+      const updateHist = await pool.query(
+        `UPDATE project_design_stage_history
+         SET client_confirmed = true, client_confirmed_at = NOW(), comments = COALESCE($1, comments)
+         WHERE id = $2 RETURNING *`,
+        [comments, lastHistRes.rows[0].id]
+      );
+      historyRecord = updateHist.rows[0];
+    } else {
+      const insertHist = await pool.query(
+        `INSERT INTO project_design_stage_history (
+          tenant_id, project_id, from_stage, to_stage, changed_by, client_confirmed, client_confirmed_at, comments
+        ) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7) RETURNING *`,
+        [tenantId, projectId, current_stage, current_stage, req.userId, true, comments || 'Client signoff']
+      );
+      historyRecord = insertHist.rows[0];
+    }
+
+    // Auto progress from Concept Approval to Detailed Design if client approved
+    if (current_stage === 'Concept Approval') {
+      await pool.query(
+        `UPDATE projects SET design_stage = 'Detailed Design', updated_at = NOW() WHERE id = $1 AND tenant_id = $2`,
+        [projectId, tenantId]
+      );
+      await pool.query(
+        `INSERT INTO project_design_stage_history (
+          tenant_id, project_id, from_stage, to_stage, changed_by, client_confirmed, client_confirmed_at, comments
+        ) VALUES ($1, $2, 'Concept Approval', 'Detailed Design', $3, false, null, 'Auto-progressed after concept approval')`,
+        [tenantId, projectId, req.userId]
+      );
+      return success(res, { current_stage: 'Detailed Design', message: 'Concept approved, auto-progressed to Detailed Design.' });
+    }
+
+    if (current_stage === 'Design Freeze') {
+      await pool.query(
+        `UPDATE projects SET is_scope_locked = true, updated_at = NOW() WHERE id = $1 AND tenant_id = $2`,
+        [projectId, tenantId]
+      );
+    }
+
+    return success(res, { current_stage, history: historyRecord });
   } catch (err) {
     next(err);
   }
@@ -1316,6 +1798,354 @@ router.patch('/:projectId/vendor-coordination/:vendorId', authorize('projects:up
     });
 
     return success(res, rows[0]);
+  } catch (err) {
+    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    next(err);
+  }
+});
+
+// GET /api/projects/:id/booking
+router.get('/:id/booking', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT pb.*, u.name as designer_name, u_conf.name as confirmed_by_name
+       FROM project_bookings pb
+       LEFT JOIN users u ON pb.assigned_designer_id = u.id
+       LEFT JOIN users u_conf ON pb.confirmed_by = u_conf.id
+       WHERE pb.project_id = $1 AND pb.tenant_id = $2`,
+      [req.params.id, req.tenantId]
+    );
+    if (rows.length === 0) {
+      return success(res, null);
+    }
+    return success(res, rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/projects/:id/booking
+router.post('/:id/booking', authorize('projects:update'), async (req, res, next) => {
+  try {
+    const confirmBookingSchema = z.object({
+      advance_amount: z.number().min(0, 'Advance amount cannot be negative'),
+      payment_method: z.enum(['bank_transfer', 'cash', 'card', 'upi', 'cheque']),
+      agreement_file_key: z.string().optional().nullable(),
+      agreement_file_name: z.string().optional().nullable(),
+      agreement_file_size: z.number().optional().nullable(),
+      agreement_file_mime: z.string().optional().nullable(),
+      agreed_scope_summary: z.string().min(1, 'Agreed scope summary is required'),
+      design_freeze_target_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format for design freeze target date'),
+      project_start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format for project start date'),
+      assigned_designer_id: z.string().uuid('Invalid assigned designer ID')
+    });
+
+    const data = confirmBookingSchema.parse(req.body);
+    const projectId = req.params.id;
+    const tenantId = req.tenantId;
+    const userId = req.user.userId;
+
+    const projRes = await pool.query(
+      'SELECT * FROM projects WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
+      [projectId, tenantId]
+    );
+    if (projRes.rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Project not found', 404);
+    }
+    const project = projRes.rows[0];
+
+    const bookingCheck = await pool.query(
+      'SELECT id FROM project_bookings WHERE project_id = $1 AND tenant_id = $2',
+      [projectId, tenantId]
+    );
+    if (bookingCheck.rows.length > 0) {
+      return fail(res, 'CONFLICT', 'Booking has already been confirmed for this project.', 409);
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const insertBookingQuery = `
+        INSERT INTO project_bookings (
+          tenant_id, project_id, advance_amount, payment_method,
+          agreement_file_key, agreement_file_name, agreement_file_size, agreement_file_mime,
+          agreed_scope_summary, design_freeze_target_date, project_start_date,
+          assigned_designer_id, confirmed_by, confirmed_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+        RETURNING *
+      `;
+      const insertBookingValues = [
+        tenantId, projectId, data.advance_amount, data.payment_method,
+        data.agreement_file_key || null, data.agreement_file_name || null,
+        data.agreement_file_size || null, data.agreement_file_mime || null,
+        data.agreed_scope_summary, data.design_freeze_target_date, data.project_start_date,
+        data.assigned_designer_id, userId
+      ];
+      const bookingRes = await client.query(insertBookingQuery, insertBookingValues);
+      const bookingRecord = bookingRes.rows[0];
+
+      // Update project attributes and status
+      await client.query(
+        `UPDATE projects 
+         SET status = 'active',
+             start_date = $1,
+             designer_id = $2,
+             booking_amount = $3,
+             updated_at = NOW()
+         WHERE id = $4 AND tenant_id = $5`,
+        [data.project_start_date, data.assigned_designer_id, data.advance_amount, projectId, tenantId]
+      );
+
+      // Register contract document
+      if (data.agreement_file_key) {
+        await client.query(
+          `INSERT INTO documents (
+            tenant_id, project_id, name, doc_type, version, storage_key, file_size_bytes, mime_type, uploaded_by, status
+          ) VALUES ($1, $2, $3, $4, 1, $5, $6, $7, $8, 'approved')
+           ON CONFLICT DO NOTHING`,
+          [
+            tenantId,
+            projectId,
+            data.agreement_file_name,
+            'contract',
+            data.agreement_file_key,
+            data.agreement_file_size || null,
+            data.agreement_file_mime || null,
+            userId
+          ]
+        );
+      }
+
+      // Check payment milestone
+      const milestoneRes = await client.query(
+        "SELECT id FROM payment_milestones WHERE project_id = $1 AND tenant_id = $2 AND name = 'Booking Advance' LIMIT 1",
+        [projectId, tenantId]
+      );
+      if (milestoneRes.rows.length > 0) {
+        await client.query(
+          `UPDATE payment_milestones 
+           SET amount = $1, 
+               status = 'paid', 
+               paid_amount = $1, 
+               paid_at = $2
+           WHERE id = $3`,
+          [data.advance_amount, new Date().toISOString(), milestoneRes.rows[0].id]
+        );
+      } else {
+        const contractVal = Number(project.contract_value || data.advance_amount);
+        const percentage = contractVal > 0 
+          ? ((data.advance_amount / contractVal) * 100).toFixed(2)
+          : 100.00;
+
+        await client.query(
+          `INSERT INTO payment_milestones (
+            tenant_id, project_id, name, amount, percentage, status, paid_amount, paid_at
+          ) VALUES ($1, $2, 'Booking Advance', $3, $4, 'paid', $3, $5)`,
+          [tenantId, projectId, data.advance_amount, percentage, new Date().toISOString()]
+        );
+      }
+
+      await client.query('COMMIT');
+
+      const { logAction } = require('../services/auditLog');
+      await logAction({
+        tenantId,
+        userId,
+        action: 'project.booking_confirmed',
+        entity: 'project',
+        entityId: projectId,
+        newValue: bookingRecord
+      });
+
+      return success(res, bookingRecord, { message: 'Booking confirmed and project activated successfully.' });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    next(err);
+  }
+});
+
+// GET /api/projects/:id/commercial-approval
+router.get('/:id/commercial-approval', authenticate, authorize('projects:read'), async (req, res, next) => {
+  try {
+    const projectId = req.params.id;
+    const tenantId = req.tenantId;
+
+    // 1. BOQ Accepted check: status = 'accepted' and accepted_at is not null
+    const boqRes = await pool.query(
+      "SELECT id, quotation_number, accepted_at FROM quotations WHERE project_id = $1 AND tenant_id = $2 AND status = 'accepted' AND accepted_at IS NOT NULL LIMIT 1",
+      [projectId, tenantId]
+    );
+    const boq_accepted = boqRes.rows.length > 0;
+    const accepted_boq_details = boqRes.rows[0] || null;
+
+    // 2. All revisions closed check: active design review rounds count must be 0
+    const reviewRes = await pool.query(
+      "SELECT COUNT(*)::int as count FROM design_review_rounds WHERE project_id = $1 AND tenant_id = $2 AND status = 'active'",
+      [projectId, tenantId]
+    );
+    const active_reviews_count = reviewRes.rows[0]?.count || 0;
+    const all_revisions_closed = active_reviews_count === 0;
+
+    // 3. Payment schedule agreed check: sum of payment milestones percentages is 100%
+    const milestoneRes = await pool.query(
+      "SELECT COALESCE(SUM(percentage), 0)::float as total_pct, COALESCE(SUM(amount), 0)::float as total_amt FROM payment_milestones WHERE project_id = $1 AND tenant_id = $2",
+      [projectId, tenantId]
+    );
+    const total_pct = milestoneRes.rows[0]?.total_pct || 0;
+    const total_amt = milestoneRes.rows[0]?.total_amt || 0;
+
+    // Check project contract value
+    const projRes = await pool.query(
+      "SELECT contract_value FROM projects WHERE id = $1 AND tenant_id = $2",
+      [projectId, tenantId]
+    );
+    if (projRes.rows.length === 0) return fail(res, 'NOT_FOUND', 'Project not found', 404);
+    const contractVal = Number(projRes.rows[0].contract_value || 0);
+
+    // Schedule is agreed if total percentage is exactly 100%
+    // Or if percentage sum is 0 but amount sum matches project contract_value
+    const payment_schedule_agreed = Math.abs(total_pct - 100) < 0.01 || (total_pct === 0 && contractVal > 0 && Math.abs(total_amt - contractVal) < 0.01);
+
+    // 4. Overall commercial approval sign-off status
+    const approvalRes = await pool.query(
+      "SELECT pca.*, u.name as approved_by_name FROM project_commercial_approvals pca LEFT JOIN users u ON pca.approved_by = u.id WHERE pca.project_id = $1 AND pca.tenant_id = $2 LIMIT 1",
+      [projectId, tenantId]
+    );
+    const approval = approvalRes.rows[0] || null;
+
+    return success(res, {
+      boq_accepted,
+      accepted_boq_details,
+      all_revisions_closed,
+      active_reviews_count,
+      payment_schedule_agreed,
+      payment_milestones_total_percentage: total_pct,
+      payment_milestones_total_amount: total_amt,
+      contract_value: contractVal,
+      is_approved: !!approval,
+      approval_details: approval
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/projects/:id/commercial-approval
+router.post('/:id/commercial-approval', authenticate, authorize('projects:manage'), async (req, res, next) => {
+  try {
+    const projectId = req.params.id;
+    const tenantId = req.tenantId;
+    const userId = req.user.userId;
+    const { notes } = req.body;
+
+    // 1. Recalculate checklist
+    const boqRes = await pool.query(
+      "SELECT id FROM quotations WHERE project_id = $1 AND tenant_id = $2 AND status = 'accepted' AND accepted_at IS NOT NULL LIMIT 1",
+      [projectId, tenantId]
+    );
+    const boq_accepted = boqRes.rows.length > 0;
+
+    const reviewRes = await pool.query(
+      "SELECT COUNT(*)::int as count FROM design_review_rounds WHERE project_id = $1 AND tenant_id = $2 AND status = 'active'",
+      [projectId, tenantId]
+    );
+    const all_revisions_closed = (reviewRes.rows[0]?.count || 0) === 0;
+
+    const milestoneRes = await pool.query(
+      "SELECT COALESCE(SUM(percentage), 0)::float as total_pct, COALESCE(SUM(amount), 0)::float as total_amt FROM payment_milestones WHERE project_id = $1 AND tenant_id = $2",
+      [projectId, tenantId]
+    );
+    const total_pct = milestoneRes.rows[0]?.total_pct || 0;
+    const total_amt = milestoneRes.rows[0]?.total_amt || 0;
+
+    const projRes = await pool.query(
+      "SELECT contract_value FROM projects WHERE id = $1 AND tenant_id = $2",
+      [projectId, tenantId]
+    );
+    if (projRes.rows.length === 0) return fail(res, 'NOT_FOUND', 'Project not found', 404);
+    const contractVal = Number(projRes.rows[0].contract_value || 0);
+
+    const payment_schedule_agreed = Math.abs(total_pct - 100) < 0.01 || (total_pct === 0 && contractVal > 0 && Math.abs(total_amt - contractVal) < 0.01);
+
+    const missing = [];
+    if (!boq_accepted) missing.push('BOQ acceptance by client');
+    if (!all_revisions_closed) missing.push('Closure of active design reviews');
+    if (!payment_schedule_agreed) missing.push(`Payment schedule agreement (current total: ${total_pct}% / ${total_amt} of ${contractVal})`);
+
+    if (missing.length > 0) {
+      return fail(
+        res,
+        'COMMERCIAL_GATE_FAILED',
+        `Cannot approve commercial sign-off. Pending criteria: ${missing.join(', ')}`,
+        400
+      );
+    }
+
+    // 2. Insert commercial approval record
+    const insertRes = await pool.query(
+      `INSERT INTO project_commercial_approvals (tenant_id, project_id, approved_by, notes)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (tenant_id, project_id) 
+       DO UPDATE SET approved_by = $3, notes = $4, approved_at = CURRENT_TIMESTAMP
+       RETURNING *`,
+      [tenantId, projectId, userId, notes || null]
+    );
+
+    const approvalRecord = insertRes.rows[0];
+
+    const { logAction } = require('../services/auditLog');
+    await logAction({
+      tenantId,
+      userId,
+      action: 'project.commercial_approved',
+      entity: 'project',
+      entityId: projectId,
+      newValue: approvalRecord
+    });
+
+    return success(res, approvalRecord, { message: 'Commercial approval sign-off completed successfully.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/projects/:id/coordination
+router.get('/:id/coordination', authenticate, authorize('projects:read'), async (req, res, next) => {
+  try {
+    const { getProjectCoordination } = require('../services/projects/coordinationService');
+    const data = await getProjectCoordination(req.tenantId, req.params.id);
+    return success(res, data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/projects/:id/coordination
+router.patch('/:id/coordination', authenticate, authorize('projects:manage'), async (req, res, next) => {
+  try {
+    const projectId = req.params.id;
+    const tenantId = req.tenantId;
+    const { siteReadinessDate } = z.object({
+      siteReadinessDate: z.string().nullable().transform(val => val ? new Date(val) : null)
+    }).parse(req.body);
+
+    await pool.query(
+      'UPDATE projects SET site_readiness_date = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND tenant_id = $3',
+      [siteReadinessDate, projectId, tenantId]
+    );
+
+    const { checkAndTriggerCoordinationDelays, getProjectCoordination } = require('../services/projects/coordinationService');
+    await checkAndTriggerCoordinationDelays(tenantId, projectId);
+
+    const data = await getProjectCoordination(tenantId, projectId);
+    return success(res, data, { message: 'Site readiness date updated successfully.' });
   } catch (err) {
     if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     next(err);

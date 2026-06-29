@@ -1,0 +1,294 @@
+.container {
+  background: var(--color-background-elevation-1, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.titleSection {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.titleInfo h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #0f172a);
+}
+
+.titleInfo p {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #64748b);
+  margin-top: 4px;
+}
+
+/* Stepper progression bar */
+.stepper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  margin: 20px 0 32px 0;
+  padding: 0 10px;
+}
+
+.stepper::before {
+  content: '';
+  position: absolute;
+  top: 18px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--color-background-elevation-3, #e2e8f0);
+  z-index: 1;
+}
+
+.stepperProgress {
+  position: absolute;
+  top: 18px;
+  left: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--color-primary, #3b82f6), #10b981);
+  z-index: 2;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 3;
+  position: relative;
+  cursor: pointer;
+  width: 12%;
+}
+
+.circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-background-elevation-1, #ffffff);
+  border: 3px solid var(--color-background-elevation-3, #cbd5e1);
+  color: var(--color-text-secondary, #64748b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 0 4px var(--color-background-elevation-1);
+}
+
+.step:hover .circle {
+  transform: scale(1.1);
+  border-color: var(--color-primary-hover, #2563eb);
+}
+
+.activeStep .circle {
+  border-color: var(--color-primary, #3b82f6);
+  color: var(--color-primary, #3b82f6);
+  background: var(--color-primary-light, rgba(59, 130, 246, 0.1));
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.completedStep .circle {
+  border-color: #10b981;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary, #64748b);
+  text-align: center;
+  margin-top: 10px;
+  white-space: nowrap;
+  transition: color 0.3s ease;
+}
+
+.activeStep .label {
+  color: var(--color-primary, #3b82f6);
+}
+
+.completedStep .label {
+  color: #10b981;
+}
+
+/* Detail & Gates Panel */
+.workflowPanel {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  background: var(--color-background-elevation-2, #f8fafc);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  padding: 20px;
+}
+
+@media (min-width: 768px) {
+  .workflowPanel {
+    grid-template-columns: 3fr 2fr;
+  }
+}
+
+.panelLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.stageBanner {
+  background: var(--color-surface, #ffffff);
+  border-left: 4px solid var(--color-primary, #3b82f6);
+  border-radius: 4px;
+  padding: 14px 18px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.stageBannerTitle {
+  font-size: 0.925rem;
+  font-weight: 700;
+  color: var(--color-text-primary, #1e293b);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stageBannerDesc {
+  font-size: 0.825rem;
+  color: var(--color-text-secondary, #64748b);
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+.checklistSection {
+  background: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 6px;
+  padding: 16px;
+}
+
+.checklistTitle {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-text-primary, #1e293b);
+  margin-bottom: 12px;
+}
+
+.checkItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.875rem;
+  padding: 6px 0;
+  color: var(--color-text-primary, #334155);
+}
+
+.checkIconSuccess {
+  color: #10b981;
+  font-weight: bold;
+}
+
+.checkIconPending {
+  color: #ef4444;
+  font-weight: bold;
+}
+
+.actionSection {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.transitionComments {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+/* History List Panel */
+.panelRight {
+  border-left: none;
+  padding-left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+@media (min-width: 768px) {
+  .panelRight {
+    border-left: 1px solid var(--color-border, #cbd5e1);
+    padding-left: 24px;
+  }
+}
+
+.historyTitle {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-text-primary, #1e293b);
+  margin-bottom: 8px;
+}
+
+.historyList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.historyItem {
+  position: relative;
+  padding-left: 16px;
+  font-size: 0.8rem;
+}
+
+.historyItem::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-primary, #3b82f6);
+}
+
+.historyMeta {
+  display: flex;
+  justify-content: space-between;
+  color: var(--color-text-secondary, #64748b);
+  font-weight: 500;
+  margin-bottom: 3px;
+}
+
+.historyStage {
+  font-weight: 600;
+  color: var(--color-text-primary, #0f172a);
+}
+
+.historyComments {
+  color: var(--color-text-muted, #475569);
+  line-height: 1.4;
+  background: var(--color-background-elevation-1, #ffffff);
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border, #f1f5f9);
+  margin-top: 4px;
+}
+
+.badgeConfirm {
+  background: #d1fae5;
+  color: #065f46;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: bold;
+}

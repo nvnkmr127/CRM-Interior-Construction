@@ -53,4 +53,43 @@ eventBus.on('project.task_overdue', async ({ tenantId, task }) => {
   }
 });
 
+eventBus.on('project.handover_signed', async ({ tenantId, projectId }) => {
+  try {
+    const pool = require('../../config/db');
+    // 1. Update project property_handover_date if not set
+    await pool.query(
+      `UPDATE projects 
+       SET property_handover_date = CURRENT_DATE, 
+           updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $1 AND property_handover_date IS NULL`,
+      [projectId]
+    );
+
+    // 2. Generate customer retention schedules
+    const { generateRetentionSchedules } = require('../postSale/retentionService');
+    await generateRetentionSchedules(tenantId, projectId, new Date());
+
+    // 3. Create workmanship warranty
+    const { createWarranty } = require('../postSale/warrantyService');
+    const start = new Date();
+    const end = new Date();
+    end.setFullYear(start.getFullYear() + 1);
+
+    await createWarranty({
+      tenantId,
+      projectId,
+      productName: '1-Year Installation & Workmanship Warranty',
+      brand: 'In-House',
+      brandWarrantyMonths: 0,
+      companyWarrantyMonths: 12,
+      startDate: start,
+      endDate: end,
+      notes: 'Automatically activated upon successful handover sign-off.'
+    });
+    console.log(`[Project Event Handler] Auto-activated installation warranty and retention schedules for project ${projectId}`);
+  } catch (error) {
+    console.error('[Project Event Handler] Error processing project.handover_signed:', error);
+  }
+});
+
 module.exports = {};

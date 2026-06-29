@@ -12,15 +12,15 @@ async function updateProject({ tenantId, userId, projectId, data }) {
     throw error;
   }
 
-  // Enforce booking amount gate if project is transitioning to active
-  if (data.status === 'active' && currentProject.status !== 'active' && Number(currentProject.booking_amount) > 0) {
-    const paymentCheck = await pool.query(
-      "SELECT id FROM payment_milestones WHERE project_id = $1 AND tenant_id = $2 AND name = 'Booking Advance' AND status = 'paid' LIMIT 1",
+  // Enforce booking record gate if project is transitioning to active
+  if (data.status === 'active' && currentProject.status !== 'active') {
+    const bookingCheck = await pool.query(
+      "SELECT id FROM project_bookings WHERE project_id = $1 AND tenant_id = $2 LIMIT 1",
       [projectId, tenantId]
     );
-    if (paymentCheck.rows.length === 0) {
-      const error = new Error('BOOKING_PAYMENT_REQUIRED');
-      error.message = 'Cannot activate project: Booking advance payment has not been received.';
+    if (bookingCheck.rows.length === 0) {
+      const error = new Error('Cannot activate project: Booking confirmation has not been completed.');
+      error.code = 'BOOKING_REQUIRED';
       error.status = 400;
       throw error;
     }
@@ -103,8 +103,9 @@ async function updateProject({ tenantId, userId, projectId, data }) {
           if (!contact.name) continue;
           await client.query(`
             INSERT INTO project_contacts (
-              tenant_id, project_id, name, phone, email, role, decision_authority, relationship_notes
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+              tenant_id, project_id, name, phone, email, role, decision_authority, relationship_notes,
+              contact_preference, approval_authority_level
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
           `, [
             tenantId,
             projectId,
@@ -113,7 +114,9 @@ async function updateProject({ tenantId, userId, projectId, data }) {
             contact.email || null,
             contact.role || 'co_owner',
             contact.decision_authority || 'Influencer',
-            contact.relationship_notes || null
+            contact.relationship_notes || null,
+            contact.contact_preference || null,
+            contact.approval_authority_level || null
           ]);
         }
       }

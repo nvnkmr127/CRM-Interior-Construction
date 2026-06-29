@@ -73,6 +73,14 @@ class ProductionOrderService {
 
       await client.query('COMMIT');
 
+      // Trigger coordination delay check
+      try {
+        const { checkAndTriggerCoordinationDelays } = require('./coordinationService');
+        await checkAndTriggerCoordinationDelays(tenantId, projectId);
+      } catch (err) {
+        console.error('[ProductionOrderService] Coordination trigger error:', err);
+      }
+
       // Return the complete production order with items
       return this.getProductionOrderById(tenantId, projectId, productionOrder.id);
     } catch (error) {
@@ -139,6 +147,15 @@ class ProductionOrderService {
     ]);
     
     if (res.rows.length === 0) return null;
+
+    // Trigger coordination delay check
+    try {
+      const { checkAndTriggerCoordinationDelays } = require('./coordinationService');
+      await checkAndTriggerCoordinationDelays(tenantId, projectId);
+    } catch (err) {
+      console.error('[ProductionOrderService] Coordination trigger error:', err);
+    }
+
     return this.getProductionOrderById(tenantId, projectId, id);
   }
 

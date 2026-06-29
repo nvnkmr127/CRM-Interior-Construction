@@ -19,11 +19,7 @@ async function createProject({ tenantId, userId, data }) {
     ...projectData 
   } = data;
   
-  if ((projectData.booking_amount && Number(projectData.booking_amount) > 0) || projectData.payment_terms) {
-    projectData.status = 'pending_payment';
-  } else {
-    projectData.status = projectData.status || 'active';
-  }
+  projectData.status = 'pending_booking';
 
   const client = await pool.connect();
 
@@ -42,8 +38,9 @@ async function createProject({ tenantId, userId, data }) {
         if (!contact.name) continue;
         await client.query(`
           INSERT INTO project_contacts (
-            tenant_id, project_id, name, phone, email, role, decision_authority, relationship_notes
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            tenant_id, project_id, name, phone, email, role, decision_authority, relationship_notes,
+            contact_preference, approval_authority_level
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         `, [
           tenantId,
           project.id,
@@ -52,7 +49,9 @@ async function createProject({ tenantId, userId, data }) {
           contact.email || null,
           contact.role || 'co_owner',
           contact.decision_authority || 'Influencer',
-          contact.relationship_notes || null
+          contact.relationship_notes || null,
+          contact.contact_preference || null,
+          contact.approval_authority_level || null
         ]);
       }
     }
@@ -118,8 +117,10 @@ async function createProject({ tenantId, userId, data }) {
           INSERT INTO project_design_requirements (
             tenant_id, project_id, interior_style, color_theme, material_preference,
             kitchen_style, wardrobe_style, lighting_preference, flooring_preference,
-            lifestyle_inputs, must_haves, nice_to_haves
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            lifestyle_inputs, must_haves, nice_to_haves,
+            family_size, usage_patterns, storage_priorities, brand_flexibility, brand_remarks,
+            existing_furniture, budget_category_allocation
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
           ON CONFLICT (project_id) DO NOTHING
         `, [
           tenantId, project.id,
@@ -130,7 +131,14 @@ async function createProject({ tenantId, userId, data }) {
           lp.wardrobe_style || null,
           lp.lighting || null,
           lp.flooring || null,
-          null, null, null
+          null, null, null,
+          lp.family_size || null,
+          lp.usage_patterns || null,
+          lp.storage_priorities || null,
+          lp.brand_flexibility || null,
+          lp.brand_remarks || null,
+          lp.existing_furniture || null,
+          lp.budget_category_allocation ? JSON.stringify(lp.budget_category_allocation) : '{}'
         ]);
       }
 

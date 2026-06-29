@@ -8,6 +8,9 @@ const NAV_ITEMS = [
     { to: '/leads',      icon: '◎', label: 'Leads' },
     { to: '/projects',   icon: '◈', label: 'Projects' },
     { to: '/projects/resources', icon: '👥', label: 'Resource Capacity' },
+    { to: '/projects/coordination', icon: '🔄', label: 'Production Coordination' },
+    { to: '/projects/handover-dashboard', icon: '📋', label: 'Handover Dashboard' },
+    { to: '/projects/retention-dashboard', icon: '🤝', label: 'Retention Dashboard' },
     { to: '/tasks',      icon: '◻', label: 'My Tasks' },
   ]},
   { group: 'ANALYTICS', items: [

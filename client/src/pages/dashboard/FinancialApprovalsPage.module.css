@@ -94,7 +94,7 @@
   color: var(--color-primary);
   font-size: 0.75rem;
   font-weight: 600;
-  padding: var(--space-1) var(--space-2.5);
+  padding: var(--space-1) 10px;
   border-radius: var(--radius-sm);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -103,7 +103,7 @@
 .statusTag {
   font-size: 0.75rem;
   font-weight: 600;
-  padding: var(--space-1) var(--space-2.5);
+  padding: var(--space-1) 10px;
   border-radius: var(--radius-sm);
   text-transform: uppercase;
 }
@@ -126,7 +126,7 @@
 .statusBadge {
   font-size: 0.75rem;
   font-weight: 600;
-  padding: var(--space-0.5) var(--space-2);
+  padding: 2px var(--space-2);
   border-radius: var(--radius-sm);
   text-transform: uppercase;
 }
@@ -233,7 +233,7 @@
   color: var(--color-text-muted);
   font-weight: 600;
   text-align: left;
-  padding: var(--space-3.5) var(--space-4);
+  padding: 14px var(--space-4);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -297,7 +297,7 @@
 
 .textarea {
   width: 100%;
-  padding: var(--space-2.5) var(--space-3);
+  padding: 10px var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background-color: var(--color-bg);

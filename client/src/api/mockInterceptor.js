@@ -2177,6 +2177,7 @@ export const setupMockInterceptor = (api) => {
                 }
                 persistDb();
                 responseData.data = mockDatabase.projects[idx];
+              }
             }
           }
           // EVENTS (AUDIT TRAIL)

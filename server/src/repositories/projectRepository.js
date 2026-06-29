@@ -16,7 +16,15 @@ class ProjectRepository {
       allowed_design_revisions = 3, current_design_revisions = 0,
       pm_hours_allocated = 10, designer_hours_allocated = 20,
       fire_noc_status = 'pending', occupancy_permit_status = 'pending',
-      retention_money_percentage = 0.00, ld_clause_details = null, stakeholder_complexity = 'low'
+      retention_money_percentage = 0.00, ld_clause_details = null, stakeholder_complexity = 'low',
+      spouse_name, spouse_phone, spouse_email,
+      number_of_family_members, lifestyle_preferences, preferred_communication_channel,
+      lift_availability, lift_dimensions, staircase_access, working_hour_window,
+      society_contact, parking_permission, unloading_area, noc_requirements,
+      key_holder_name, key_holder_phone, spare_key_location, gate_pass_number,
+      access_card_holder, access_time_restrictions,
+      lead_designer_id, junior_designer_id, site_engineer_id, qc_engineer_id,
+      site_supervisor_id, crm_executive_id, procurement_officer_id
     } = data;
 
     const query = `
@@ -34,13 +42,25 @@ class ProjectRepository {
         allowed_design_revisions, current_design_revisions,
         pm_hours_allocated, designer_hours_allocated,
         fire_noc_status, occupancy_permit_status,
-        retention_money_percentage, ld_clause_details, stakeholder_complexity
+        retention_money_percentage, ld_clause_details, stakeholder_complexity,
+        spouse_name, spouse_phone, spouse_email,
+        number_of_family_members, lifestyle_preferences, preferred_communication_channel,
+        lift_availability, lift_dimensions, staircase_access, working_hour_window,
+        society_contact, parking_permission, unloading_area, noc_requirements,
+        key_holder_name, key_holder_phone, spare_key_location, gate_pass_number,
+        access_card_holder, access_time_restrictions,
+        lead_designer_id, junior_designer_id, site_engineer_id, qc_engineer_id,
+        site_supervisor_id, crm_executive_id, procurement_officer_id
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36,
         $37, $38, $39,
         $40, $41, $42, $43, $44, $45, $46, $47, $48, $49,
-        $50, $51, $52, $53, $54
+        $50, $51, $52, $53, $54,
+        $55, $56, $57, $58, $59, $60,
+        $61, $62, $63, $64, $65, $66, $67, $68,
+        $69, $70, $71, $72, $73, $74,
+        $75, $76, $77, $78, $79, $80, $81
       ) RETURNING *
     `;
     const values = [
@@ -82,7 +102,34 @@ class ProjectRepository {
       occupancy_permit_status,
       retention_money_percentage !== undefined && retention_money_percentage !== null ? Number(retention_money_percentage) : 0.00,
       ld_clause_details,
-      stakeholder_complexity
+      stakeholder_complexity,
+      spouse_name || null,
+      spouse_phone || null,
+      spouse_email || null,
+      number_of_family_members !== undefined && number_of_family_members !== null ? Number(number_of_family_members) : null,
+      lifestyle_preferences || null,
+      preferred_communication_channel || null,
+      lift_availability || null,
+      lift_dimensions || null,
+      staircase_access || null,
+      working_hour_window || null,
+      society_contact || null,
+      parking_permission || null,
+      unloading_area || null,
+      noc_requirements || null,
+      key_holder_name || null,
+      key_holder_phone || null,
+      spare_key_location || null,
+      gate_pass_number || null,
+      access_card_holder || null,
+      access_time_restrictions || null,
+      lead_designer_id || null,
+      junior_designer_id || null,
+      site_engineer_id || null,
+      qc_engineer_id || null,
+      site_supervisor_id || null,
+      crm_executive_id || null,
+      procurement_officer_id || null
     ];
 
     const { rows } = await dbClient.query(query, values);
@@ -93,10 +140,24 @@ class ProjectRepository {
     const query = `
       SELECT p.*,
         pm.name as pm_name,
-        d.name as designer_name
+        d.name as designer_name,
+        ld.name as lead_designer_name,
+        jd.name as junior_designer_name,
+        se.name as site_engineer_name,
+        qe.name as qc_engineer_name,
+        ss.name as site_supervisor_name,
+        crm.name as crm_executive_name,
+        po.name as procurement_officer_name
       FROM projects p
       LEFT JOIN users pm ON p.pm_id = pm.id
       LEFT JOIN users d ON p.designer_id = d.id
+      LEFT JOIN users ld ON p.lead_designer_id = ld.id
+      LEFT JOIN users jd ON p.junior_designer_id = jd.id
+      LEFT JOIN users se ON p.site_engineer_id = se.id
+      LEFT JOIN users qe ON p.qc_engineer_id = qe.id
+      LEFT JOIN users ss ON p.site_supervisor_id = ss.id
+      LEFT JOIN users crm ON p.crm_executive_id = crm.id
+      LEFT JOIN users po ON p.procurement_officer_id = po.id
       WHERE p.tenant_id = $1 AND p.id = $2 AND p.deleted_at IS NULL
     `;
     const { rows } = await pool.query(query, [tenantId, projectId]);
@@ -184,6 +245,19 @@ class ProjectRepository {
     const siteTeamRes = await pool.query(siteTeamQuery, [tenantId, projectId]);
     project.site_team = siteTeamRes.rows;
 
+    // Fetch project booking details
+    const bookingRes = await pool.query(
+      `SELECT pb.*, 
+              u_des.name as designer_name,
+              u_conf.name as confirmed_by_name
+       FROM project_bookings pb
+       LEFT JOIN users u_des ON pb.assigned_designer_id = u_des.id
+       LEFT JOIN users u_conf ON pb.confirmed_by = u_conf.id
+       WHERE pb.tenant_id = $1 AND pb.project_id = $2`,
+      [tenantId, projectId]
+    );
+    project.booking = bookingRes.rows[0] || null;
+
     return project;
   }
 
@@ -219,6 +293,13 @@ class ProjectRepository {
       SELECT p.*,
         pm.name as pm_name,
         d.name as designer_name,
+        ld.name as lead_designer_name,
+        jd.name as junior_designer_name,
+        se.name as site_engineer_name,
+        qe.name as qc_engineer_name,
+        ss.name as site_supervisor_name,
+        crm.name as crm_executive_name,
+        po.name as procurement_officer_name,
         (SELECT count(id)::int FROM project_phases WHERE project_id = p.id AND tenant_id = $1) as phase_count,
         (SELECT count(id)::int FROM project_phases WHERE project_id = p.id AND tenant_id = $1 AND status = 'completed') as completed_phase_count,
         (SELECT count(id)::int FROM tasks WHERE project_id = p.id AND tenant_id = $1 AND deleted_at IS NULL) as total_tasks,
@@ -226,6 +307,13 @@ class ProjectRepository {
       FROM projects p
       LEFT JOIN users pm ON p.pm_id = pm.id
       LEFT JOIN users d ON p.designer_id = d.id
+      LEFT JOIN users ld ON p.lead_designer_id = ld.id
+      LEFT JOIN users jd ON p.junior_designer_id = jd.id
+      LEFT JOIN users se ON p.site_engineer_id = se.id
+      LEFT JOIN users qe ON p.qc_engineer_id = qe.id
+      LEFT JOIN users ss ON p.site_supervisor_id = ss.id
+      LEFT JOIN users crm ON p.crm_executive_id = crm.id
+      LEFT JOIN users po ON p.procurement_officer_id = po.id
       WHERE ${whereClause}
       ORDER BY p.created_at DESC
       LIMIT $${idx++} OFFSET $${idx}

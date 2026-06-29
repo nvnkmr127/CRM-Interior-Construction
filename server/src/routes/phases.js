@@ -13,14 +13,16 @@ const createPhaseSchema = z.object({
   sort_order: z.number().optional(),
   duration_days: z.number().optional().nullable(),
   sign_off_required: z.boolean().optional(),
-  sign_off_by: z.string().optional()
+  sign_off_by: z.string().optional(),
+  is_execution: z.boolean().optional()
 });
 
 const updatePhaseSchema = z.object({
   name: z.string().optional(),
   sort_order: z.number().optional(),
   duration_days: z.number().optional().nullable(),
-  status: z.string().optional()
+  status: z.string().optional(),
+  is_execution: z.boolean().optional()
 });
 
 const reorderSchema = z.object({
@@ -76,6 +78,9 @@ router.put('/:phaseId', authorize('projects:manage'), async (req, res, next) => 
   } catch (err) {
     if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     if (err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Phase not found', 404);
+    if (err.code === 'COMMERCIAL_APPROVAL_REQUIRED' || err.message === 'COMMERCIAL_APPROVAL_REQUIRED' || err.message.includes('Commercial approval has not been completed')) {
+      return fail(res, 'COMMERCIAL_APPROVAL_REQUIRED', err.message, 400);
+    }
     if (
       err.status === 400 ||
       err.message === 'SCOPE_LOCK_REQUIRED' ||

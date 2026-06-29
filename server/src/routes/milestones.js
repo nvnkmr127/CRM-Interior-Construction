@@ -49,6 +49,16 @@ router.post('/', authorize('projects:manage'), async (req, res, next) => {
     }
     
     const projectId = rows[0].project_id;
+
+    // Verify project is not pending booking
+    const projRes = await pool.query(
+      'SELECT status FROM projects WHERE id = $1 AND tenant_id = $2',
+      [projectId, req.tenantId]
+    );
+    if (projRes.rows.length > 0 && projRes.rows[0].status === 'pending_booking') {
+      return fail(res, 'BOOKING_REQUIRED', 'Project booking confirmation is pending. Downstream actions are locked.', 400);
+    }
+
     const milestone = await milestoneRepository.createMilestone(req.tenantId, req.params.phaseId, projectId, data);
     
     return success(res, milestone, {}, 201);

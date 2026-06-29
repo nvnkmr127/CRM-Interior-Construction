@@ -68,7 +68,34 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
     enforceDependencies: true,
     pmHoursAllocated: 10,
     designerHoursAllocated: 20,
-    site_team: []
+    site_team: [],
+    spouseName: '',
+    spousePhone: '',
+    spouseEmail: '',
+    numberOfFamilyMembers: '',
+    lifestylePreferences: '',
+    preferredCommunicationChannel: 'WhatsApp',
+    liftAvailability: 'none',
+    liftDimensions: '',
+    staircaseAccess: '',
+    workingHourWindow: '',
+    societyContact: '',
+    parkingPermission: 'allowed',
+    unloadingArea: '',
+    nocRequirements: '',
+    keyHolderName: '',
+    keyHolderPhone: '',
+    spareKeyLocation: '',
+    gatePassNumber: '',
+    accessCardHolder: '',
+    accessTimeRestrictions: '',
+    leadDesigner: '',
+    juniorDesigner: '',
+    siteEngineer: '',
+    qcEngineer: '',
+    siteSupervisor: '',
+    crmExecutive: '',
+    procurementOfficer: ''
   })
   
   const [errors, setErrors] = useState({})
@@ -78,7 +105,9 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
     email: '',
     role: 'co_owner',
     decision_authority: 'Influencer',
-    relationship_notes: ''
+    relationship_notes: '',
+    contact_preference: 'WhatsApp',
+    approval_authority_level: 'None'
   })
   const [newRoomMeasurement, setNewRoomMeasurement] = useState({
     room_name: '',
@@ -194,7 +223,34 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
         consultants: project.consultants || [],
         site_team: project.site_team || [],
         pmHoursAllocated: project.pm_hours_allocated !== undefined && project.pm_hours_allocated !== null ? project.pm_hours_allocated : 10,
-        designerHoursAllocated: project.designer_hours_allocated !== undefined && project.designer_hours_allocated !== null ? project.designer_hours_allocated : 20
+        designerHoursAllocated: project.designer_hours_allocated !== undefined && project.designer_hours_allocated !== null ? project.designer_hours_allocated : 20,
+        spouseName: project.spouse_name || project.spouseName || '',
+        spousePhone: project.spouse_phone || project.spousePhone || '',
+        spouseEmail: project.spouse_email || project.spouseEmail || '',
+        numberOfFamilyMembers: project.number_of_family_members || project.numberOfFamilyMembers || '',
+        lifestylePreferences: project.lifestyle_preferences || project.lifestylePreferences || '',
+        preferredCommunicationChannel: project.preferred_communication_channel || project.preferredCommunicationChannel || 'WhatsApp',
+        liftAvailability: project.lift_availability || project.liftAvailability || 'none',
+        liftDimensions: project.lift_dimensions || project.liftDimensions || '',
+        staircaseAccess: project.staircase_access || project.staircaseAccess || '',
+        workingHourWindow: project.working_hour_window || project.workingHourWindow || '',
+        societyContact: project.society_contact || project.societyContact || '',
+        parkingPermission: project.parking_permission || project.parkingPermission || 'allowed',
+        unloadingArea: project.unloading_area || project.unloadingArea || '',
+        nocRequirements: project.noc_requirements || project.nocRequirements || '',
+        keyHolderName: project.key_holder_name || project.keyHolderName || '',
+        keyHolderPhone: project.key_holder_phone || project.keyHolderPhone || '',
+        spareKeyLocation: project.spare_key_location || project.spareKeyLocation || '',
+        gatePassNumber: project.gate_pass_number || project.gatePassNumber || '',
+        accessCardHolder: project.access_card_holder || project.accessCardHolder || '',
+        accessTimeRestrictions: project.access_time_restrictions || project.accessTimeRestrictions || '',
+        leadDesigner: project.lead_designer_id || project.leadDesigner || '',
+        juniorDesigner: project.junior_designer_id || project.juniorDesigner || '',
+        siteEngineer: project.site_engineer_id || project.siteEngineer || '',
+        qcEngineer: project.qc_engineer_id || project.qcEngineer || '',
+        siteSupervisor: project.site_supervisor_id || project.siteSupervisor || '',
+        crmExecutive: project.crm_executive_id || project.crmExecutive || '',
+        procurementOfficer: project.procurement_officer_id || project.procurementOfficer || ''
       })
       setContractFile(null)
       setErrors({})
@@ -216,10 +272,16 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
         enforceDependencies: true,
         vendors: [], consultants: [], site_team: [],
         pmHoursAllocated: 10,
-        designerHoursAllocated: 20
+        designerHoursAllocated: 20,
+        spouseName: '', spousePhone: '', spouseEmail: '', numberOfFamilyMembers: '',
+        lifestylePreferences: '', preferredCommunicationChannel: 'WhatsApp',
+        liftAvailability: 'none', liftDimensions: '', staircaseAccess: '', workingHourWindow: '',
+        societyContact: '', parkingPermission: 'allowed', unloadingArea: '', nocRequirements: '',
+        keyHolderName: '', keyHolderPhone: '', spareKeyLocation: '', gatePassNumber: '',
+        accessCardHolder: '', accessTimeRestrictions: '',
+        leadDesigner: '', juniorDesigner: '', siteEngineer: '', qcEngineer: '', siteSupervisor: '', crmExecutive: '', procurementOfficer: ''
       })
       setContractFile(null)
-      setErrors({})
     }
   }, [project, isOpen])
 
@@ -230,6 +292,8 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
     if (!formData.projectName || formData.projectName.length < 3) newErrors.projectName = 'Project name must be at least 3 chars'
     if (formData.clientPhone && formData.clientPhone.replace(/\D/g, '').length < 10) newErrors.clientPhone = 'Valid 10-digit phone required'
     if (formData.clientEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.clientEmail)) newErrors.clientEmail = 'Valid email required'
+    if (formData.spousePhone && formData.spousePhone.replace(/\D/g, '').length < 10) newErrors.spousePhone = 'Valid 10-digit phone required'
+    if (formData.spouseEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.spouseEmail)) newErrors.spouseEmail = 'Valid email required'
     if (!project && !contractFile) newErrors.contractFile = 'Signed contract document is required'
     
     setErrors(newErrors)
@@ -302,6 +366,33 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
         vendors: formData.vendors || [],
         consultants: formData.consultants || [],
         site_team: formData.site_team || [],
+        spouse_name: formData.spouseName || null,
+        spouse_phone: formData.spousePhone || null,
+        spouse_email: formData.spouseEmail || null,
+        number_of_family_members: formData.numberOfFamilyMembers !== '' && formData.numberOfFamilyMembers !== undefined ? Number(formData.numberOfFamilyMembers) : null,
+        lifestyle_preferences: formData.lifestylePreferences || null,
+        preferred_communication_channel: formData.preferredCommunicationChannel || null,
+        lift_availability: formData.liftAvailability || null,
+        lift_dimensions: formData.liftDimensions || null,
+        staircase_access: formData.staircaseAccess || null,
+        working_hour_window: formData.workingHourWindow || null,
+        society_contact: formData.societyContact || null,
+        parking_permission: formData.parkingPermission || null,
+        unloading_area: formData.unloadingArea || null,
+        noc_requirements: formData.nocRequirements || null,
+        key_holder_name: formData.keyHolderName || null,
+        key_holder_phone: formData.keyHolderPhone || null,
+        spare_key_location: formData.spareKeyLocation || null,
+        gate_pass_number: formData.gatePassNumber || null,
+        access_card_holder: formData.accessCardHolder || null,
+        access_time_restrictions: formData.accessTimeRestrictions || null,
+        lead_designer_id: formData.leadDesigner || null,
+        junior_designer_id: formData.juniorDesigner || null,
+        site_engineer_id: formData.siteEngineer || null,
+        qc_engineer_id: formData.qcEngineer || null,
+        site_supervisor_id: formData.siteSupervisor || null,
+        crm_executive_id: formData.crmExecutive || null,
+        procurement_officer_id: formData.procurementOfficer || null,
         ...contractFields
       }
       if (project) {
@@ -457,6 +548,139 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
             </div>
           )}
         </div>
+        {/* Project Team Roles Section */}
+        <div className={styles.fullWidth} style={{ marginTop: 8 }}>
+          <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Project Team & Role Assignments</div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+            <Select 
+              label="Lead Designer" 
+              options={[
+                { value: '', label: 'Select Lead Designer' },
+                ...teamMembers.map(u => ({ value: u.id, label: `${u.name} (${u.role_name || u.role || 'User'})` }))
+              ]}
+              value={formData.leadDesigner}
+              onChange={v => setFormData({...formData, leadDesigner: v})}
+            />
+            <Select 
+              label="Junior Designer" 
+              options={[
+                { value: '', label: 'Select Junior Designer' },
+                ...teamMembers.map(u => ({ value: u.id, label: `${u.name} (${u.role_name || u.role || 'User'})` }))
+              ]}
+              value={formData.juniorDesigner}
+              onChange={v => setFormData({...formData, juniorDesigner: v})}
+            />
+            <Select 
+              label="Site Engineer" 
+              options={[
+                { value: '', label: 'Select Site Engineer' },
+                ...teamMembers.map(u => ({ value: u.id, label: `${u.name} (${u.role_name || u.role || 'User'})` }))
+              ]}
+              value={formData.siteEngineer}
+              onChange={v => setFormData({...formData, siteEngineer: v})}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+            <Select 
+              label="QC Engineer" 
+              options={[
+                { value: '', label: 'Select QC Engineer' },
+                ...teamMembers.map(u => ({ value: u.id, label: `${u.name} (${u.role_name || u.role || 'User'})` }))
+              ]}
+              value={formData.qcEngineer}
+              onChange={v => setFormData({...formData, qcEngineer: v})}
+            />
+            <Select 
+              label="Site Supervisor" 
+              options={[
+                { value: '', label: 'Select Site Supervisor' },
+                ...teamMembers.map(u => ({ value: u.id, label: `${u.name} (${u.role_name || u.role || 'User'})` }))
+              ]}
+              value={formData.siteSupervisor}
+              onChange={v => setFormData({...formData, siteSupervisor: v})}
+            />
+            <Select 
+              label="CRM Executive" 
+              options={[
+                { value: '', label: 'Select CRM Executive' },
+                ...teamMembers.map(u => ({ value: u.id, label: `${u.name} (${u.role_name || u.role || 'User'})` }))
+              ]}
+              value={formData.crmExecutive}
+              onChange={v => setFormData({...formData, crmExecutive: v})}
+            />
+            <Select 
+              label="Procurement Officer" 
+              options={[
+                { value: '', label: 'Select Procurement Officer' },
+                ...teamMembers.map(u => ({ value: u.id, label: `${u.name} (${u.role_name || u.role || 'User'})` }))
+              ]}
+              value={formData.procurementOfficer}
+              onChange={v => setFormData({...formData, procurementOfficer: v})}
+            />
+          </div>
+        </div>
+
+        {/* Client Household Profile Section */}
+        <div className={styles.fullWidth} style={{ marginTop: 8 }}>
+          <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Client Household Profile & Preferences</div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+            <Input 
+              label="Spouse / Partner Name" 
+              placeholder="e.g. Jane Doe"
+              value={formData.spouseName} 
+              onChange={e => setFormData({...formData, spouseName: e.target.value})} 
+              error={errors.spouseName}
+            />
+            <Input 
+              label="Spouse / Partner Phone" 
+              placeholder="e.g. 98765 43210" 
+              value={formData.spousePhone} 
+              onChange={e => setFormData({...formData, spousePhone: e.target.value})}
+              error={errors.spousePhone}
+            />
+            <Input 
+              label="Spouse / Partner Email" 
+              type="email" 
+              placeholder="e.g. spouse@example.com" 
+              value={formData.spouseEmail} 
+              onChange={e => setFormData({...formData, spouseEmail: e.target.value})}
+              error={errors.spouseEmail}
+            />
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px', marginBottom: '16px' }}>
+            <Input 
+              label="Number of Family Members" 
+              type="number"
+              placeholder="e.g. 4" 
+              value={formData.numberOfFamilyMembers} 
+              onChange={e => setFormData({...formData, numberOfFamilyMembers: e.target.value})}
+            />
+            <Select 
+              label="Preferred Communication Channel" 
+              options={[
+                { value: 'WhatsApp', label: 'WhatsApp' },
+                { value: 'Email', label: 'Email' },
+                { value: 'Phone', label: 'Phone' },
+                { value: 'SMS', label: 'SMS' }
+              ]}
+              value={formData.preferredCommunicationChannel}
+              onChange={v => setFormData({...formData, preferredCommunicationChannel: v})}
+            />
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <Input 
+              label="Lifestyle Preferences & Brief" 
+              placeholder="e.g. Modern minimalist design, pet friendly materials, kid play area required."
+              value={formData.lifestylePreferences} 
+              onChange={e => setFormData({...formData, lifestylePreferences: e.target.value})}
+            />
+          </div>
+        </div>
 
         {/* Structured address fields */}
         <div className={styles.fullWidth}>
@@ -548,6 +772,121 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
             >
               📍 Get Location
             </Button>
+          </div>
+        </div>
+        {/* Site Logistics & Access Details */}
+        <div className={styles.fullWidth} style={{ marginTop: 8 }}>
+          <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Site Logistics & Access Details</div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+            <Select 
+              label="Lift Availability" 
+              options={[
+                { value: 'none', label: 'No Lift (Stairs Only)' },
+                { value: 'passenger_only', label: 'Passenger Lift Only' },
+                { value: 'service', label: 'Service Lift Available' }
+              ]}
+              value={formData.liftAvailability}
+              onChange={v => setFormData({...formData, liftAvailability: v})}
+            />
+            <Input 
+              label="Lift Dimensions" 
+              placeholder="e.g. 5ft x 5ft x 7ft"
+              value={formData.liftDimensions} 
+              onChange={e => setFormData({...formData, liftDimensions: e.target.value})} 
+            />
+            <Input 
+              label="Staircase Width / Access" 
+              placeholder="e.g. 4.5ft wide, clear"
+              value={formData.staircaseAccess} 
+              onChange={e => setFormData({...formData, staircaseAccess: e.target.value})} 
+            />
+            <Input 
+              label="Working Hours Window" 
+              placeholder="e.g. 9 AM - 6 PM (Mon-Sat)"
+              value={formData.workingHourWindow} 
+              onChange={e => setFormData({...formData, workingHourWindow: e.target.value})} 
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+            <Input 
+              label="Society Contact Info" 
+              placeholder="e.g. Security Supervisor, +91..."
+              value={formData.societyContact} 
+              onChange={e => setFormData({...formData, societyContact: e.target.value})} 
+            />
+            <Select 
+              label="Parking Permission" 
+              options={[
+                { value: 'allowed', label: 'Allowed On-Site' },
+                { value: 'restricted', label: 'Restricted / Prior Approval Required' },
+                { value: 'street_only', label: 'Street Parking Only' }
+              ]}
+              value={formData.parkingPermission}
+              onChange={v => setFormData({...formData, parkingPermission: v})}
+            />
+            <Input 
+              label="Material Unloading Area" 
+              placeholder="e.g. Gate 2 / Basement B1"
+              value={formData.unloadingArea} 
+              onChange={e => setFormData({...formData, unloadingArea: e.target.value})} 
+            />
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <Input 
+              label="Society NOC Requirements" 
+              placeholder="e.g. Needs security deposit, vendor list submission 2 days prior."
+              value={formData.nocRequirements} 
+              onChange={e => setFormData({...formData, nocRequirements: e.target.value})} 
+            />
+          </div>
+        </div>
+        {/* Site Access & Key Management Details */}
+        <div className={styles.fullWidth} style={{ marginTop: 8 }}>
+          <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Site Access & Key Management Details</div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+            <Input 
+              label="Key Holder Name" 
+              placeholder="e.g. Ramesh PM / Supervisor"
+              value={formData.keyHolderName} 
+              onChange={e => setFormData({...formData, keyHolderName: e.target.value})} 
+            />
+            <Input 
+              label="Key Holder Phone" 
+              placeholder="e.g. 98765 43210"
+              value={formData.keyHolderPhone} 
+              onChange={e => setFormData({...formData, keyHolderPhone: e.target.value})} 
+            />
+            <Input 
+              label="Spare Key Location" 
+              placeholder="e.g. Society Security Guard Box"
+              value={formData.spareKeyLocation} 
+              onChange={e => setFormData({...formData, spareKeyLocation: e.target.value})} 
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+            <Input 
+              label="Society Gate Pass Number" 
+              placeholder="e.g. GP-2026-987"
+              value={formData.gatePassNumber} 
+              onChange={e => setFormData({...formData, gatePassNumber: e.target.value})} 
+            />
+            <Input 
+              label="Access Card Holder" 
+              placeholder="e.g. Site Supervisor / Lead Painter"
+              value={formData.accessCardHolder} 
+              onChange={e => setFormData({...formData, accessCardHolder: e.target.value})} 
+            />
+            <Input 
+              label="Access Time Restrictions" 
+              placeholder="e.g. 9:00 AM - 5:30 PM only"
+              value={formData.accessTimeRestrictions} 
+              onChange={e => setFormData({...formData, accessTimeRestrictions: e.target.value})} 
+            />
           </div>
         </div>
 
@@ -897,6 +1236,32 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
                     }}>
                       {contact.decision_authority}
                     </span>
+                    {contact.contact_preference && (
+                      <span style={{
+                        marginLeft: '6px',
+                        padding: '2px 6px',
+                        fontSize: '11px',
+                        borderRadius: '4px',
+                        background: 'var(--color-info-bg, #e0f2fe)',
+                        color: 'var(--color-info, #0284c7)',
+                        fontWeight: 500
+                      }}>
+                        Channel: {contact.contact_preference}
+                      </span>
+                    )}
+                    {contact.approval_authority_level && (
+                      <span style={{
+                        marginLeft: '6px',
+                        padding: '2px 6px',
+                        fontSize: '11px',
+                        borderRadius: '4px',
+                        background: 'var(--color-warning-bg, #fef9c3)',
+                        color: 'var(--color-warning, #854d0e)',
+                        fontWeight: 500
+                      }}>
+                        Auth: {contact.approval_authority_level}
+                      </span>
+                    )}
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '4px' }}>
                       {contact.phone && `📞 ${contact.phone}`} {contact.email && ` | ✉️ ${contact.email}`} {contact.relationship_notes && ` | 📝 ${contact.relationship_notes}`}
                     </div>
@@ -955,7 +1320,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
                 onChange={e => setNewContact({...newContact, email: e.target.value})}
               />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr auto', gap: '12px', alignItems: 'end' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '12px' }}>
               <Select 
                 label="Role" 
                 options={[
@@ -979,6 +1344,29 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
                 value={newContact.decision_authority}
                 onChange={v => setNewContact({...newContact, decision_authority: v})}
               />
+              <Select 
+                label="Preferred Channel" 
+                options={[
+                  { value: 'WhatsApp', label: 'WhatsApp' },
+                  { value: 'Email', label: 'Email' },
+                  { value: 'Phone', label: 'Phone' },
+                  { value: 'SMS', label: 'SMS' }
+                ]}
+                value={newContact.contact_preference}
+                onChange={v => setNewContact({...newContact, contact_preference: v})}
+              />
+              <Select 
+                label="Approval Authority" 
+                options={[
+                  { value: 'Full', label: 'Full Approval Authority' },
+                  { value: 'Joint', label: 'Joint Approval Authority' },
+                  { value: 'None', label: 'None' }
+                ]}
+                value={newContact.approval_authority_level}
+                onChange={v => setNewContact({...newContact, approval_authority_level: v})}
+              />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '12px', alignItems: 'end' }}>
               <Input 
                 label="Relationship Notes" 
                 placeholder="e.g. Architect coordinating design signoffs"
@@ -1003,7 +1391,9 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
                     email: '',
                     role: 'co_owner',
                     decision_authority: 'Influencer',
-                    relationship_notes: ''
+                    relationship_notes: '',
+                    contact_preference: 'WhatsApp',
+                    approval_authority_level: 'None'
                   });
                 }}
                 style={{ height: '38px', padding: '0 16px' }}

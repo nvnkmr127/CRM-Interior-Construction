@@ -14,6 +14,9 @@ describe('Project Design Requirements API & Cloning', () => {
     const loginRes = await request(app)
       .post('/api/auth/login')
       .send({ email: 'admin@demo.com', password: 'Admin@123', tenantSlug: 'demo' });
+    if (!loginRes.body || !loginRes.body.data) {
+      console.error('Login failed in test. Status:', loginRes.status, 'Response:', loginRes.text);
+    }
     accessToken = loginRes.body.data.accessToken;
 
     // Fetch tenant ID for DB setup

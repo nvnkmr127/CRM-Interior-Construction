@@ -2704,8 +2704,31 @@ exports.getLeadByIdHandler = async (req, res, next) => {
     next(error);
   }
 };
-exports.updateLeadHandler = async (req, res, next) => { res.json({success: true}) };
-exports.deleteLeadHandler = async (req, res, next) => { res.json({success: true}) };
+exports.updateLeadHandler = async (req, res, next) => {
+  try {
+    const { tenantId, userId } = getTenantAndUser(req);
+    const leadId = req.params.id;
+    const { updateLead } = require('../services/leads/updateLead');
+    const updatedLead = await updateLead({ tenantId, userId, leadId, data: req.body });
+    return success(res, updatedLead);
+  } catch (error) {
+    if (error.message && error.message.includes('NOT_FOUND')) return fail(res, 'NOT_FOUND', 'Lead not found', 404);
+    if (error.code === 'STAGE_GATE_FAILED') return res.status(422).json({ success: false, error: { code: 'STAGE_GATE_FAILED', message: 'Missing mandatory fields', missing: error.missing } });
+    if (error.message === 'OPTIMISTIC_LOCK_FAILED') return res.status(409).json({ success: false, error: { code: 'OPTIMISTIC_LOCK_FAILED', message: 'Lead has been modified by another user. Please refresh.' } });
+    next(error);
+  }
+};
+exports.deleteLeadHandler = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const leadId = req.params.id;
+    const { softDeleteLead } = require('../repositories/leadRepository');
+    await softDeleteLead(tenantId, leadId);
+    return res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+};
 exports.syncEstimatesHandler = async function syncEstimatesHandler(req, res) {
   try {
     const { tenantId, userId } = getTenantAndUser(req);

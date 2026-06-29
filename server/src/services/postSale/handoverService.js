@@ -335,6 +335,13 @@ async function clientSignOff({ checklistId, tenantId, clientPortalUserId, client
       newValue: { checklistId }
     });
 
+    const eventBus = require('../../utils/eventBus');
+    eventBus.emit('project.handover_signed', {
+      tenantId,
+      projectId: checklist.project_id,
+      checklistId
+    });
+
     await client.query('COMMIT');
     return checklist;
   } catch (error) {

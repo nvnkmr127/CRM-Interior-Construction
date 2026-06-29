@@ -4,14 +4,36 @@ import { useToast } from '../../store/toastContext';
 import styles from './MaterialPalettesTab.module.css';
 import {
   getMaterialPalettes,
+  getMaterialPaletteBOQItems,
   createMaterialPalette,
   updateMaterialPalette,
   deleteMaterialPalette
 } from '../../api/projects';
 
+const SAMPLE_CATEGORIES = [
+  { value: '', label: 'Select Category' },
+  { value: 'Paint', label: 'Paint' },
+  { value: 'Laminate', label: 'Laminate' },
+  { value: 'Veneer', label: 'Veneer' },
+  { value: 'Tile / Marble', label: 'Tile / Marble' },
+  { value: 'Fabric', label: 'Fabric' },
+  { value: 'Hardware / Fittings', label: 'Hardware / Fittings' },
+  { value: 'Glass / Mirror', label: 'Glass / Mirror' },
+  { value: 'Wallpaper', label: 'Wallpaper' },
+  { value: 'Wood / Plywood', label: 'Wood / Plywood' },
+  { value: 'Other', label: 'Other' }
+];
+
+const DECISIONS = [
+  { value: 'deferred', label: 'Deferred / Under Review' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'rejected', label: 'Rejected' }
+];
+
 export default function MaterialPalettesTab({ projectId }) {
   const toast = useToast();
   const [paletteItems, setPaletteItems] = useState([]);
+  const [boqItems, setBoqItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Modal states
@@ -27,7 +49,12 @@ export default function MaterialPalettesTab({ projectId }) {
     shade_code: '',
     finish: '',
     image_url: '',
-    status: 'pending_approval'
+    status: 'pending_approval',
+    sample_category: '',
+    date_presented: '',
+    client_decision: 'deferred',
+    approved_by_signature: '',
+    boq_item_id: ''
   });
   const [isUploading, setIsUploading] = useState(false);
 
@@ -36,20 +63,26 @@ export default function MaterialPalettesTab({ projectId }) {
 
   useEffect(() => {
     if (projectId) {
-      fetchPalettes();
+      initTab();
     }
   }, [projectId]);
 
-  const fetchPalettes = async () => {
+  const initTab = async () => {
     setLoading(true);
     try {
-      const res = await getMaterialPalettes(projectId);
-      if (res.data?.success) {
-        setPaletteItems(res.data.data || []);
+      const [paletteRes, boqRes] = await Promise.all([
+        getMaterialPalettes(projectId),
+        getMaterialPaletteBOQItems(projectId)
+      ]);
+      if (paletteRes.data?.success) {
+        setPaletteItems(paletteRes.data.data || []);
+      }
+      if (boqRes.data?.success) {
+        setBoqItems(boqRes.data.data || []);
       }
     } catch (e) {
       console.error(e);
-      toast.error('Failed to load material palettes.');
+      toast.error('Failed to load material palette or BOQ references.');
     } finally {
       setLoading(false);
     }
@@ -62,9 +95,18 @@ export default function MaterialPalettesTab({ projectId }) {
     }
 
     try {
-      const res = await createMaterialPalette(projectId, createForm);
+      const payload = {
+        ...createForm,
+        date_presented: createForm.date_presented || null,
+        boq_item_id: createForm.boq_item_id || null
+      };
+
+      const res = await createMaterialPalette(projectId, payload);
       if (res.data?.success) {
-        setPaletteItems([res.data.data, ...paletteItems]);
+        const paletteRes = await getMaterialPalettes(projectId);
+        if (paletteRes.data?.success) {
+          setPaletteItems(paletteRes.data.data || []);
+        }
         setIsCreateOpen(false);
         setCreateForm({
           room_name: '',
@@ -73,9 +115,14 @@ export default function MaterialPalettesTab({ projectId }) {
           shade_code: '',
           finish: '',
           image_url: '',
-          status: 'pending_approval'
+          status: 'pending_approval',
+          sample_category: '',
+          date_presented: '',
+          client_decision: 'deferred',
+          approved_by_signature: '',
+          boq_item_id: ''
         });
-        toast.success('Material specification added.');
+        toast.success('Material sample selection added.');
       }
     } catch (err) {
       console.error(err);
@@ -90,12 +137,21 @@ export default function MaterialPalettesTab({ projectId }) {
     }
 
     try {
-      const res = await updateMaterialPalette(projectId, editingItem.id, editingItem);
+      const payload = {
+        ...editingItem,
+        date_presented: editingItem.date_presented || null,
+        boq_item_id: editingItem.boq_item_id || null
+      };
+
+      const res = await updateMaterialPalette(projectId, editingItem.id, payload);
       if (res.data?.success) {
-        setPaletteItems(paletteItems.map(item => item.id === editingItem.id ? res.data.data : item));
+        const paletteRes = await getMaterialPalettes(projectId);
+        if (paletteRes.data?.success) {
+          setPaletteItems(paletteRes.data.data || []);
+        }
         setIsEditOpen(false);
         setEditingItem(null);
-        toast.success('Material specification updated.');
+        toast.success('Material sample specification updated.');
       }
     } catch (err) {
       console.error(err);
@@ -153,28 +209,27 @@ export default function MaterialPalettesTab({ projectId }) {
   }, {});
 
   // Formatting helpers
-  const getBadgeVariant = (status) => {
-    switch (status) {
+  const getBadgeVariant = (decision) => {
+    switch (decision) {
       case 'approved': return 'success';
-      case 'revision_requested': return 'danger';
+      case 'rejected': return 'danger';
       default: return 'warning';
     }
   };
 
-  const getStatusLabel = (status) => {
-    switch (status) {
+  const getDecisionLabel = (decision) => {
+    switch (decision) {
       case 'approved': return 'Approved';
-      case 'revision_requested': return 'Revision Requested';
-      case 'pending_approval': return 'Pending Approval';
-      default: return status;
+      case 'rejected': return 'Rejected';
+      case 'deferred': return 'Deferred / Under Review';
+      default: return decision || 'Deferred';
     }
   };
 
   if (loading) {
     return (
       <div style={{ padding: '60px', textAlign: 'center' }}>
-        <Spinner size="lg" />
-        <div style={{ marginTop: '12px', color: 'var(--color-text-muted)' }}>Loading color & material palettes...</div>
+        <span>Loading color & material palettes...</span>
       </div>
     );
   }
@@ -183,13 +238,13 @@ export default function MaterialPalettesTab({ projectId }) {
     <div className={styles.container}>
       <div className={styles.header}>
         <div className={styles.headerInfo}>
-          <h2 className={styles.title}>Material Selection & Color Palettes</h2>
+          <h2 className={styles.title}>Physical Sample & Material approvals</h2>
           <p className={styles.description}>
-            Track shade codes, brand names, and finishes for construction materials room-by-room and collect formal client sign-off.
+            Track physical material samples presented to clients, record client decisions (approval/rejection), log sign-offs, and link selections to BOQ items.
           </p>
         </div>
         <Button variant="primary" onClick={() => setIsCreateOpen(true)}>
-          ➕ Add Material Specification
+          ➕ Add Material Sample
         </Button>
       </div>
 
@@ -197,7 +252,7 @@ export default function MaterialPalettesTab({ projectId }) {
         <EmptyState
           icon="🎨"
           title="No Material Palette Items Found"
-          description="Create room-wise lists of paints, laminates, fabrics, and fittings to lock in material choices."
+          description="Create room-wise lists of paint swatches, laminates, veneer samples, hardware, and fabrics to record client approvals."
           action={{
             label: "Add Material Specification",
             onClick: () => setIsCreateOpen(true)
@@ -211,7 +266,7 @@ export default function MaterialPalettesTab({ projectId }) {
               
               <div className={styles.grid}>
                 {groupedByRoom[roomName].map(item => (
-                  <div key={item.id} className={styles.card}>
+                  <div key={item.id} className={styles.card} style={{ borderTop: `4px solid ${item.client_decision === 'approved' ? '#10b981' : item.client_decision === 'rejected' ? '#ef4444' : '#f59e0b'}` }}>
                     {/* Color Swatch */}
                     <div className={styles.swatchWrapper}>
                       {item.image_url ? (
@@ -234,27 +289,47 @@ export default function MaterialPalettesTab({ projectId }) {
                     <div className={styles.cardContent}>
                       <div className={styles.cardHeader}>
                         <div className={styles.itemName}>{item.item_name}</div>
-                        <Badge variant={getBadgeVariant(item.status)}>{getStatusLabel(item.status)}</Badge>
+                        <Badge variant={getBadgeVariant(item.client_decision)}>{getDecisionLabel(item.client_decision)}</Badge>
                       </div>
 
                       <div className={styles.specsList}>
+                        {item.sample_category && (
+                          <div className={styles.specRow}>
+                            <span className={styles.specLabel}>Category:</span>
+                            <span className={styles.specVal} style={{ fontWeight: 600 }}>{item.sample_category}</span>
+                          </div>
+                        )}
                         <div className={styles.specRow}>
                           <span className={styles.specLabel}>Brand:</span>
                           <span className={styles.specVal}>{item.brand || '—'}</span>
                         </div>
                         <div className={styles.specRow}>
-                          <span className={styles.specLabel}>Shade Code:</span>
+                          <span className={styles.specLabel}>Shade / Code:</span>
                           <span className={styles.specVal}>{item.shade_code || '—'}</span>
                         </div>
                         <div className={styles.specRow}>
                           <span className={styles.specLabel}>Finish:</span>
                           <span className={styles.specVal}>{item.finish || '—'}</span>
                         </div>
+                        {item.date_presented && (
+                          <div className={styles.specRow}>
+                            <span className={styles.specLabel}>Presented:</span>
+                            <span className={styles.specVal}>{new Date(item.date_presented).toLocaleDateString('en-IN')}</span>
+                          </div>
+                        )}
+                        {item.boq_item_id && (
+                          <div className={styles.specRow} style={{ marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed var(--color-border)' }}>
+                            <span className={styles.specLabel}>BOQ Line:</span>
+                            <span className={styles.specVal} style={{ color: 'var(--color-primary)', fontSize: '11px', fontWeight: 500 }}>
+                              📁 {item.boq_room_or_area ? `[${item.boq_room_or_area}] ` : ''}{item.boq_item_name}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
-                      {item.status === 'revision_requested' && item.client_feedback && (
+                      {item.client_feedback && (
                         <div className={styles.feedbackBox}>
-                          <strong>Feedback:</strong> "{item.client_feedback}"
+                          <strong>Feedback / Reason:</strong> "{item.client_feedback}"
                         </div>
                       )}
                     </div>
@@ -262,10 +337,12 @@ export default function MaterialPalettesTab({ projectId }) {
                     {/* Card Footer */}
                     <div className={styles.cardFooter}>
                       <div className={styles.approvalMeta}>
-                        {item.status === 'approved' && item.client_approved_at ? (
+                        {item.client_decision === 'approved' && item.approved_by_signature ? (
+                          <span style={{ fontSize: '11px', color: '#047857', fontWeight: 600 }}>✍️ Signed by {item.approved_by_signature}</span>
+                        ) : item.client_decision === 'approved' && item.client_approved_at ? (
                           <span>Signed off on {new Date(item.client_approved_at).toLocaleDateString()}</span>
                         ) : (
-                          <span>Awaiting client</span>
+                          <span>Unsigned</span>
                         )}
                       </div>
 
@@ -287,53 +364,123 @@ export default function MaterialPalettesTab({ projectId }) {
       )}
 
       {/* Create Modal */}
-      <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Add Material Selection">
+      <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Add Material Sample & Decision">
         <form onSubmit={handleCreateSubmit} className={styles.form}>
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel}>Room / Category *</label>
-            <Input
-              required
-              placeholder="e.g. Living Room, Master Bedroom, Kitchen"
-              value={createForm.room_name}
-              onChange={e => setCreateForm({ ...createForm, room_name: e.target.value })}
-            />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Room / Area *</label>
+              <Input
+                required
+                placeholder="e.g. Living Room, Kitchen"
+                value={createForm.room_name}
+                onChange={e => setCreateForm({ ...createForm, room_name: e.target.value })}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Sample Item Name *</label>
+              <Input
+                required
+                placeholder="e.g. Main Wardrobe Laminate"
+                value={createForm.item_name}
+                onChange={e => setCreateForm({ ...createForm, item_name: e.target.value })}
+              />
+            </div>
           </div>
 
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel}>Item / Product Category *</label>
-            <Input
-              required
-              placeholder="e.g. Wall Paint, Primary Laminate, Sofa Fabric"
-              value={createForm.item_name}
-              onChange={e => setCreateForm({ ...createForm, item_name: e.target.value })}
-            />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Sample Category</label>
+              <select
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '0.9rem', outline: 'none' }}
+                value={createForm.sample_category}
+                onChange={e => setCreateForm({ ...createForm, sample_category: e.target.value })}
+              >
+                {SAMPLE_CATEGORIES.map(cat => (
+                  <option key={cat.value} value={cat.value}>{cat.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Date Presented</label>
+              <Input
+                type="date"
+                value={createForm.date_presented}
+                onChange={e => setCreateForm({ ...createForm, date_presented: e.target.value })}
+              />
+            </div>
           </div>
 
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel}>Brand</label>
-            <Input
-              placeholder="e.g. Asian Paints, CenturyPly, Hafele"
-              value={createForm.brand}
-              onChange={e => setCreateForm({ ...createForm, brand: e.target.value })}
-            />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Brand</label>
+              <Input
+                placeholder="e.g. CenturyPly, Hafele"
+                value={createForm.brand}
+                onChange={e => setCreateForm({ ...createForm, brand: e.target.value })}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Shade Code / Catalog Ref</label>
+              <Input
+                placeholder="e.g. Teak Wood 234"
+                value={createForm.shade_code}
+                onChange={e => setCreateForm({ ...createForm, shade_code: e.target.value })}
+              />
+            </div>
           </div>
 
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel}>Shade Code / Catalog Ref</label>
-            <Input
-              placeholder="e.g. AP-8231, Teak Wood 421"
-              value={createForm.shade_code}
-              onChange={e => setCreateForm({ ...createForm, shade_code: e.target.value })}
-            />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Finish</label>
+              <Input
+                placeholder="e.g. Matte, High Gloss"
+                value={createForm.finish}
+                onChange={e => setCreateForm({ ...createForm, finish: e.target.value })}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Link to BOQ Item</label>
+              <select
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '0.9rem', outline: 'none' }}
+                value={createForm.boq_item_id}
+                onChange={e => setCreateForm({ ...createForm, boq_item_id: e.target.value })}
+              >
+                <option value="">Do not link / Select BOQ item</option>
+                {boqItems.map(item => (
+                  <option key={item.id} value={item.id}>
+                    {item.room_or_area ? `[${item.room_or_area}] ` : ''}{item.item_name} {item.brand ? `(${item.brand})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel}>Finish</label>
-            <Input
-              placeholder="e.g. Matte, High Gloss, Satin Veneer"
-              value={createForm.finish}
-              onChange={e => setCreateForm({ ...createForm, finish: e.target.value })}
-            />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Client Decision</label>
+              <select
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '0.9rem', outline: 'none' }}
+                value={createForm.client_decision}
+                onChange={e => setCreateForm({ ...createForm, client_decision: e.target.value })}
+              >
+                {DECISIONS.map(dec => (
+                  <option key={dec.value} value={dec.value}>{dec.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Approved-By Signature / Acknowledgement</label>
+              <Input
+                placeholder="e.g. Signed by Jane Doe"
+                value={createForm.approved_by_signature}
+                onChange={e => setCreateForm({ ...createForm, approved_by_signature: e.target.value })}
+              />
+            </div>
           </div>
 
           {/* Swatch upload */}
@@ -364,7 +511,7 @@ export default function MaterialPalettesTab({ projectId }) {
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '12px' }}>
             <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
             <Button type="submit" variant="primary" disabled={isUploading}>Save Selection</Button>
           </div>
@@ -372,67 +519,124 @@ export default function MaterialPalettesTab({ projectId }) {
       </Modal>
 
       {/* Edit Modal */}
-      <Modal isOpen={isEditOpen} onClose={() => { setIsEditOpen(false); setEditingItem(null); }} title="Edit Material Selection">
+      <Modal isOpen={isEditOpen} onClose={() => { setIsEditOpen(false); setEditingItem(null); }} title="Edit Material Sample & Decision">
         {editingItem && (
           <form onSubmit={handleUpdateSubmit} className={styles.form}>
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Room / Category *</label>
-              <Input
-                required
-                placeholder="e.g. Living Room, Master Bedroom, Kitchen"
-                value={editingItem.room_name}
-                onChange={e => setEditingItem({ ...editingItem, room_name: e.target.value })}
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Room / Area *</label>
+                <Input
+                  required
+                  placeholder="e.g. Living Room, Kitchen"
+                  value={editingItem.room_name}
+                  onChange={e => setEditingItem({ ...editingItem, room_name: e.target.value })}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Sample Item Name *</label>
+                <Input
+                  required
+                  placeholder="e.g. Main Wardrobe Laminate"
+                  value={editingItem.item_name}
+                  onChange={e => setEditingItem({ ...editingItem, item_name: e.target.value })}
+                />
+              </div>
             </div>
 
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Item / Product Category *</label>
-              <Input
-                required
-                placeholder="e.g. Wall Paint, Primary Laminate, Sofa Fabric"
-                value={editingItem.item_name}
-                onChange={e => setEditingItem({ ...editingItem, item_name: e.target.value })}
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Sample Category</label>
+                <select
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '0.9rem', outline: 'none' }}
+                  value={editingItem.sample_category || ''}
+                  onChange={e => setEditingItem({ ...editingItem, sample_category: e.target.value })}
+                >
+                  {SAMPLE_CATEGORIES.map(cat => (
+                    <option key={cat.value} value={cat.value}>{cat.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Date Presented</label>
+                <Input
+                  type="date"
+                  value={editingItem.date_presented ? editingItem.date_presented.substring(0, 10) : ''}
+                  onChange={e => setEditingItem({ ...editingItem, date_presented: e.target.value })}
+                />
+              </div>
             </div>
 
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Brand</label>
-              <Input
-                placeholder="e.g. Asian Paints, CenturyPly, Hafele"
-                value={editingItem.brand || ''}
-                onChange={e => setEditingItem({ ...editingItem, brand: e.target.value })}
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Brand</label>
+                <Input
+                  placeholder="e.g. CenturyPly, Hafele"
+                  value={editingItem.brand || ''}
+                  onChange={e => setEditingItem({ ...editingItem, brand: e.target.value })}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Shade Code</label>
+                <Input
+                  placeholder="e.g. AP-8231, Teak Wood 421"
+                  value={editingItem.shade_code || ''}
+                  onChange={e => setEditingItem({ ...editingItem, shade_code: e.target.value })}
+                />
+              </div>
             </div>
 
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Shade Code</label>
-              <Input
-                placeholder="e.g. AP-8231, Teak Wood 421"
-                value={editingItem.shade_code || ''}
-                onChange={e => setEditingItem({ ...editingItem, shade_code: e.target.value })}
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Finish</label>
+                <Input
+                  placeholder="e.g. Matte, High Gloss"
+                  value={editingItem.finish || ''}
+                  onChange={e => setEditingItem({ ...editingItem, finish: e.target.value })}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Link to BOQ Item</label>
+                <select
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '0.9rem', outline: 'none' }}
+                  value={editingItem.boq_item_id || ''}
+                  onChange={e => setEditingItem({ ...editingItem, boq_item_id: e.target.value })}
+                >
+                  <option value="">Do not link / Select BOQ item</option>
+                  {boqItems.map(item => (
+                    <option key={item.id} value={item.id}>
+                      {item.room_or_area ? `[${item.room_or_area}] ` : ''}{item.item_name} {item.brand ? `(${item.brand})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Finish</label>
-              <Input
-                placeholder="e.g. Matte, High Gloss, Satin Veneer"
-                value={editingItem.finish || ''}
-                onChange={e => setEditingItem({ ...editingItem, finish: e.target.value })}
-              />
-            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Client Decision</label>
+                <select
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '0.9rem', outline: 'none' }}
+                  value={editingItem.client_decision || 'deferred'}
+                  onChange={e => setEditingItem({ ...editingItem, client_decision: e.target.value })}
+                >
+                  {DECISIONS.map(dec => (
+                    <option key={dec.value} value={dec.value}>{dec.label}</option>
+                  ))}
+                </select>
+              </div>
 
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Status</label>
-              <select
-                style={{ padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '0.9rem', outline: 'none' }}
-                value={editingItem.status}
-                onChange={e => setEditingItem({ ...editingItem, status: e.target.value })}
-              >
-                <option value="pending_approval">Pending Approval</option>
-                <option value="approved">Approved</option>
-                <option value="revision_requested">Revision Requested</option>
-              </select>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Approved-By Signature / Acknowledgement</label>
+                <Input
+                  placeholder="e.g. Signed by Jane Doe"
+                  value={editingItem.approved_by_signature || ''}
+                  onChange={e => setEditingItem({ ...editingItem, approved_by_signature: e.target.value })}
+                />
+              </div>
             </div>
 
             <div className={styles.formGroup}>
@@ -462,7 +666,16 @@ export default function MaterialPalettesTab({ projectId }) {
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Client Feedback</label>
+              <Input
+                placeholder="e.g. Shade is slightly darker than expected"
+                value={editingItem.client_feedback || ''}
+                onChange={e => setEditingItem({ ...editingItem, client_feedback: e.target.value })}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '12px' }}>
               <Button type="button" variant="outline" onClick={() => { setIsEditOpen(false); setEditingItem(null); }}>Cancel</Button>
               <Button type="submit" variant="primary" disabled={isUploading}>Save Changes</Button>
             </div>

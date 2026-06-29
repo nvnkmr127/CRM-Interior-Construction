@@ -3,6 +3,7 @@ const app = require('../../app');
 const pool = require('../../db/pool');
 
 describe('Lead-to-Project Conversion Checklist API', () => {
+  jest.setTimeout(30000);
   let accessToken;
   let leadId;
 
@@ -126,7 +127,7 @@ describe('Lead-to-Project Conversion Checklist API', () => {
     let projectId;
     let paymentMilestoneId;
 
-    it('creates a project with booking_amount > 0 and verifies status is pending_payment and Booking Advance milestone is created', async () => {
+    it('creates a project with booking_amount > 0 and verifies status is pending_booking and Booking Advance milestone is created', async () => {
       const res = await request(app)
         .post('/api/projects')
         .set('Authorization', `Bearer ${accessToken}`)
@@ -147,7 +148,7 @@ describe('Lead-to-Project Conversion Checklist API', () => {
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
       projectId = res.body.data.id;
-      expect(res.body.data.status).toBe('pending_payment');
+      expect(res.body.data.status).toBe('pending_booking');
       expect(Number(res.body.data.booking_amount)).toBe(15000);
 
       // Verify the payment milestone "Booking Advance" is created
@@ -164,7 +165,7 @@ describe('Lead-to-Project Conversion Checklist API', () => {
       paymentMilestoneId = advanceMilestone.id;
     }, 15000);
 
-    it('blocks manual activation of the project when Booking Advance milestone is unpaid', async () => {
+    it('blocks manual activation of the project when Booking record is missing', async () => {
       const res = await request(app)
         .patch(`/api/projects/${projectId}`)
         .set('Authorization', `Bearer ${accessToken}`)
@@ -172,14 +173,30 @@ describe('Lead-to-Project Conversion Checklist API', () => {
 
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
-      expect(res.body.error.code).toBe('BOOKING_PAYMENT_REQUIRED');
+      expect(res.body.error.code).toBe('BOOKING_REQUIRED');
     }, 15000);
 
-    it('automatically activates the project when the Booking Advance milestone is marked as paid', async () => {
+    it('automatically activates the project when the booking is confirmed', async () => {
+      const usersRes = await request(app)
+        .get('/api/users')
+        .set('Authorization', `Bearer ${accessToken}`);
+      const designerId = usersRes.body.data[0].id;
+
       const res = await request(app)
-        .patch(`/api/payment-milestones/${paymentMilestoneId}`)
+        .post(`/api/projects/${projectId}/booking`)
         .set('Authorization', `Bearer ${accessToken}`)
-        .send({ status: 'paid' });
+        .send({
+          advance_amount: 15000,
+          payment_method: 'bank_transfer',
+          agreed_scope_summary: 'Full apartment interior package as per specs.',
+          design_freeze_target_date: '2026-08-30',
+          project_start_date: '2026-07-15',
+          assigned_designer_id: designerId,
+          agreement_file_key: 'demo-tenant/contract/signed-agreement.pdf',
+          agreement_file_name: 'signed-agreement.pdf',
+          agreement_file_size: 204857,
+          agreement_file_mime: 'application/pdf'
+        });
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -302,6 +319,12 @@ describe('Lead-to-Project Conversion Checklist API', () => {
       `, [tenantId, userId]);
       const projectId = projRes.rows[0].id;
 
+      // Seed commercial approval so checklist check passes
+      await pool.query(
+        "INSERT INTO project_commercial_approvals (tenant_id, project_id) VALUES ($1, $2)",
+        [tenantId, projectId]
+      );
+
       // 2. Create an execution phase (is_execution = true)
       const phaseRes = await pool.query(`
         INSERT INTO project_phases (tenant_id, project_id, name, sort_order, status, is_execution)
@@ -329,6 +352,12 @@ describe('Lead-to-Project Conversion Checklist API', () => {
         RETURNING id
       `, [tenantId, userId]);
       const projectId = projRes.rows[0].id;
+
+      // Seed commercial approval so checklist check passes
+      await pool.query(
+        "INSERT INTO project_commercial_approvals (tenant_id, project_id) VALUES ($1, $2)",
+        [tenantId, projectId]
+      );
 
       // 2. Create Design Phase (is_execution = false, status = 'in_progress')
       const phase1Res = await pool.query(`
@@ -364,6 +393,12 @@ describe('Lead-to-Project Conversion Checklist API', () => {
         RETURNING id
       `, [tenantId, userId]);
       const projectId = projRes.rows[0].id;
+
+      // Seed commercial approval so checklist check passes
+      await pool.query(
+        "INSERT INTO project_commercial_approvals (tenant_id, project_id) VALUES ($1, $2)",
+        [tenantId, projectId]
+      );
 
       // 2. Insert approved contract document
       await pool.query(`
@@ -426,7 +461,7 @@ describe('Lead-to-Project Conversion Checklist API', () => {
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
       const projectId = res.body.data.id;
-      expect(res.body.data.status).toBe('pending_payment');
+      expect(res.body.data.status).toBe('pending_booking');
       expect(Number(res.body.data.booking_amount)).toBe(10000); // 10% of 100,000
 
       // Fetch payment milestones

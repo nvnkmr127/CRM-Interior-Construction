@@ -30,21 +30,22 @@ class PhaseRepository {
   async createPhase(tenantId, projectId, data) {
     const {
       name, sort_order = 0, status = 'pending', duration_days,
-      starts_at, ends_at, sign_off_required = true, sign_off_by = 'pm'
+      starts_at, ends_at, sign_off_required = true, sign_off_by = 'pm',
+      is_execution = false
     } = data;
 
     const query = `
       INSERT INTO project_phases (
         tenant_id, project_id, name, sort_order, status,
-        duration_days, starts_at, ends_at, sign_off_required, sign_off_by
+        duration_days, starts_at, ends_at, sign_off_required, sign_off_by, is_execution
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
       ) RETURNING *
     `;
     const values = [
       tenantId, projectId, name, sort_order, status,
       duration_days || null, starts_at || null, ends_at || null,
-      sign_off_required, sign_off_by
+      sign_off_required, sign_off_by, is_execution
     ];
 
     const { rows } = await pool.query(query, values);

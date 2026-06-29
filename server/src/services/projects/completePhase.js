@@ -109,6 +109,18 @@ async function checkScopeLock(tenantId, projectId, phaseId) {
     if (projectRes.rows.length === 0) return;
     const project = projectRes.rows[0];
 
+    const commCheck = await pool.query(
+      'SELECT id FROM project_commercial_approvals WHERE project_id = $1 AND tenant_id = $2 LIMIT 1',
+      [projectId, tenantId]
+    );
+
+    if (commCheck.rows.length === 0) {
+      const error = new Error('Cannot start execution phase: Commercial approval has not been completed.');
+      error.code = 'COMMERCIAL_APPROVAL_REQUIRED';
+      error.status = 400;
+      throw error;
+    }
+
     const docRes = await pool.query(
       "SELECT id FROM documents WHERE project_id = $1 AND tenant_id = $2 AND doc_type = 'contract' AND status = 'approved' LIMIT 1",
       [projectId, tenantId]

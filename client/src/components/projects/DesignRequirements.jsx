@@ -48,6 +48,24 @@ const PRIORITIES = [
   { id: 'Low', label: 'Low Priority' }
 ];
 
+const BRAND_FLEXIBILITIES = [
+  { id: '', label: 'Select Brand Flexibility' },
+  { id: 'Strict Premium', label: 'Strict Premium (Premium/Imported Only)' },
+  { id: 'Standard Branded', label: 'Standard Branded (Preferred Standard Brands)' },
+  { id: 'Value Centric', label: 'Value Centric (Local/Cost-Effective)' },
+  { id: 'Flexible', label: 'Flexible (Open to Designer Recommendations)' }
+];
+
+const BUDGET_CATEGORIES = [
+  { key: 'woodwork', label: 'Woodwork / Furniture' },
+  { key: 'civil', label: 'Civil & Flooring' },
+  { key: 'false_ceiling', label: 'False Ceiling' },
+  { key: 'painting', label: 'Painting & Wallpaper' },
+  { key: 'electrical', label: 'Electrical & Lighting' },
+  { key: 'decor', label: 'Decor & Furnishing' },
+  { key: 'appliances', label: 'Appliances / Home Automation' }
+];
+
 export default function DesignRequirements({ projectId }) {
   const toast = useToast();
   
@@ -62,8 +80,16 @@ export default function DesignRequirements({ projectId }) {
     flooring_preference: '',
     lifestyle_inputs: '',
     must_haves: '',
-    nice_to_haves: ''
+    nice_to_haves: '',
+    family_size: '',
+    usage_patterns: '',
+    storage_priorities: '',
+    brand_flexibility: '',
+    brand_remarks: '',
+    existing_furniture: '',
+    budget_category_allocation: {}
   });
+  
   const [rooms, setRooms] = useState([]);
   const [inspirations, setInspirations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -111,7 +137,14 @@ export default function DesignRequirements({ projectId }) {
             flooring_preference: designRequirements.flooring_preference || '',
             lifestyle_inputs: designRequirements.lifestyle_inputs || '',
             must_haves: designRequirements.must_haves || '',
-            nice_to_haves: designRequirements.nice_to_haves || ''
+            nice_to_haves: designRequirements.nice_to_haves || '',
+            family_size: designRequirements.family_size !== null && designRequirements.family_size !== undefined ? String(designRequirements.family_size) : '',
+            usage_patterns: designRequirements.usage_patterns || '',
+            storage_priorities: designRequirements.storage_priorities || '',
+            brand_flexibility: designRequirements.brand_flexibility || '',
+            brand_remarks: designRequirements.brand_remarks || '',
+            existing_furniture: designRequirements.existing_furniture || '',
+            budget_category_allocation: designRequirements.budget_category_allocation || {}
           });
         }
         setRooms(roomRequirements || []);
@@ -125,14 +158,24 @@ export default function DesignRequirements({ projectId }) {
     }
   };
 
+  // Calculate sum of category budgets
+  const getCategoryBudgetTotal = () => {
+    const alloc = stylesData.budget_category_allocation || {};
+    return Object.values(alloc).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+  };
+
   // 1. Save style preferences
   const handleSaveStyles = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     setSavingStyles(true);
     try {
-      const res = await updateDesignRequirements(projectId, stylesData);
+      const payload = {
+        ...stylesData,
+        family_size: stylesData.family_size ? parseInt(stylesData.family_size, 10) : null
+      };
+      const res = await updateDesignRequirements(projectId, payload);
       if (res.data?.success) {
-        toast.success('Style preferences saved successfully');
+        toast.success('Design brief saved successfully');
       }
     } catch (e) {
       toast.error('Failed to save style preferences');
@@ -282,15 +325,15 @@ export default function DesignRequirements({ projectId }) {
   return (
     <div className={styles.container}>
       
-      {/* 1. Style & Lifestyle Preferences */}
+      {/* 1. Aesthetic & Style Preferences */}
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <div>
-            <h3 className={styles.sectionTitle}>Style & Lifestyle Preferences</h3>
-            <p className={styles.sectionDesc}>Define the structural style preferences and client details</p>
+            <h3 className={styles.sectionTitle}>✨ Aesthetic & Style Preferences</h3>
+            <p className={styles.sectionDesc}>Define the overall interior look and feel, layouts, and materials</p>
           </div>
           <Button variant="primary" size="sm" onClick={handleSaveStyles} disabled={savingStyles}>
-            {savingStyles ? 'Saving...' : '💾 Save Preferences'}
+            {savingStyles ? 'Saving...' : '💾 Save Design Brief'}
           </Button>
         </div>
 
@@ -367,7 +410,7 @@ export default function DesignRequirements({ projectId }) {
             />
           </div>
 
-          <div className={styles.formField}>
+          <div className={`${styles.formField} ${styles.fullWidth}`}>
             <label className={styles.formLabel}>Flooring Preferences</label>
             <input
               type="text"
@@ -377,15 +420,70 @@ export default function DesignRequirements({ projectId }) {
               onChange={e => setStylesData({ ...stylesData, flooring_preference: e.target.value })}
             />
           </div>
+        </form>
+      </div>
+
+      {/* 2. Family Profile & Space Usage */}
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <h3 className={styles.sectionTitle}>👨‍👩‍👧‍👦 Family Profile & Usage Patterns</h3>
+            <p className={styles.sectionDesc}>Details about family size, daily routines, usage of spaces, and lifestyle inputs</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSaveStyles} className={styles.formGrid}>
+          <div className={styles.formField}>
+            <label className={styles.formLabel}>Family Size (No. of Members)</label>
+            <input
+              type="number"
+              placeholder="e.g. 4"
+              className={styles.input}
+              value={stylesData.family_size}
+              onChange={e => setStylesData({ ...stylesData, family_size: e.target.value })}
+            />
+          </div>
 
           <div className={styles.formField}>
-            <label className={styles.formLabel}>Lifestyle Inputs</label>
+            <label className={styles.formLabel}>General Lifestyle Inputs</label>
             <input
               type="text"
               placeholder="e.g. Family of 4, has a golden retriever, hosts weekly parties"
               className={styles.input}
               value={stylesData.lifestyle_inputs}
               onChange={e => setStylesData({ ...stylesData, lifestyle_inputs: e.target.value })}
+            />
+          </div>
+
+          <div className={`${styles.formField} ${styles.fullWidth}`}>
+            <label className={styles.formLabel}>Usage Patterns per Space</label>
+            <textarea
+              placeholder="e.g. Living room requires formal seating for hosting. Master bedroom needs a quiet home-office corner. Kitchen is used heavily for daily cooking."
+              className={styles.textarea}
+              value={stylesData.usage_patterns}
+              onChange={e => setStylesData({ ...stylesData, usage_patterns: e.target.value })}
+            />
+          </div>
+        </form>
+      </div>
+
+      {/* 3. Storage Priorities & Key Features */}
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <h3 className={styles.sectionTitle}>📦 Storage Priorities & Must-Haves</h3>
+            <p className={styles.sectionDesc}>Specify storage requirements, must-have items, and nice-to-have options</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSaveStyles} className={styles.formGrid}>
+          <div className={`${styles.formField} ${styles.fullWidth}`}>
+            <label className={styles.formLabel}>Storage Priorities</label>
+            <textarea
+              placeholder="e.g. Heavy storage in kitchen loft, dedicated shoe rack for 30 pairs, walk-in wardrobe layout for Master Bedroom, books storage in living room"
+              className={styles.textarea}
+              value={stylesData.storage_priorities}
+              onChange={e => setStylesData({ ...stylesData, storage_priorities: e.target.value })}
             />
           </div>
 
@@ -411,11 +509,95 @@ export default function DesignRequirements({ projectId }) {
         </form>
       </div>
 
-      {/* 2. Room-by-Room Breakdown (Budgets & Priorities) */}
+      {/* 4. Brands & Existing Assets */}
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <div>
-            <h3 className={styles.sectionTitle}>Room Budgets & Priorities</h3>
+            <h3 className={styles.sectionTitle}>🛋️ Brands & Existing Assets</h3>
+            <p className={styles.sectionDesc}>Brand flexibility and list of existing items to be incorporated into design</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSaveStyles} className={styles.formGrid}>
+          <div className={styles.formField}>
+            <label className={styles.formLabel}>Brand Selection Flexibility</label>
+            <select
+              className={styles.select}
+              value={stylesData.brand_flexibility}
+              onChange={e => setStylesData({ ...stylesData, brand_flexibility: e.target.value })}
+            >
+              {BRAND_FLEXIBILITIES.map(b => (
+                <option key={b.id} value={b.id}>{b.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className={styles.formField}>
+            <label className={styles.formLabel}>Preferred Brands / Remarks</label>
+            <input
+              type="text"
+              placeholder="e.g. Jaquar for bath, Hettich for kitchen fittings, Asian Paints"
+              className={styles.input}
+              value={stylesData.brand_remarks}
+              onChange={e => setStylesData({ ...stylesData, brand_remarks: e.target.value })}
+            />
+          </div>
+
+          <div className={`${styles.formField} ${styles.fullWidth}`}>
+            <label className={styles.formLabel}>Existing Furniture to be Incorporated</label>
+            <textarea
+              placeholder="e.g. Master Bedroom king-size teak bed (6ft x 6.5ft), Living room 3-seater sofa (7ft x 3.5ft), existing refrigerator (350L, double door) in kitchen"
+              className={styles.textarea}
+              value={stylesData.existing_furniture}
+              onChange={e => setStylesData({ ...stylesData, existing_furniture: e.target.value })}
+            />
+          </div>
+        </form>
+      </div>
+
+      {/* 5. Budget Allocation by Category */}
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <h3 className={styles.sectionTitle}>💰 Budget Allocation by Category</h3>
+            <p className={styles.sectionDesc}>Specify budgeted costs for different execution categories</p>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+            <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontWeight: 500 }}>Category Budget Total</span>
+            <span style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--color-primary, #3b82f6)' }}>₹{getCategoryBudgetTotal().toLocaleString('en-IN')}</span>
+          </div>
+        </div>
+
+        <form onSubmit={handleSaveStyles} className={styles.formGrid}>
+          {BUDGET_CATEGORIES.map(cat => (
+            <div key={cat.key} className={styles.formField}>
+              <label className={styles.formLabel}>{cat.label} (₹)</label>
+              <input
+                type="number"
+                placeholder="e.g. 150000"
+                className={styles.input}
+                value={stylesData.budget_category_allocation?.[cat.key] || ''}
+                onChange={e => {
+                  const val = e.target.value;
+                  setStylesData(prev => ({
+                    ...prev,
+                    budget_category_allocation: {
+                      ...(prev.budget_category_allocation || {}),
+                      [cat.key]: val === '' ? 0 : parseFloat(val)
+                    }
+                  }));
+                }}
+              />
+            </div>
+          ))}
+        </form>
+      </div>
+
+      {/* 6. Room Budgets & Priorities (Room-by-Room Breakdown) */}
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <h3 className={styles.sectionTitle}>📋 Room Budgets & Priorities</h3>
             <p className={styles.sectionDesc}>Manage priorities and budgets allocated to individual rooms</p>
           </div>
           <Button variant="primary" size="sm" onClick={openAddRoomModal}>
@@ -480,11 +662,11 @@ export default function DesignRequirements({ projectId }) {
         )}
       </div>
 
-      {/* 3. Inspirations & Uploads */}
+      {/* 7. Inspirations & Uploads (Style references with images) */}
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
           <div>
-            <h3 className={styles.sectionTitle}>Inspiration Board</h3>
+            <h3 className={styles.sectionTitle}>📸 Inspiration Board</h3>
             <p className={styles.sectionDesc}>References, mood boards, and designs shared by the client</p>
           </div>
           <Button variant="outline" size="sm" onClick={() => setIsAddingInspiration(!isAddingInspiration)}>

@@ -37,6 +37,9 @@ const AuditTrailPage  = lazy(() => import('./pages/settings/AuditTrailPage'))
 const ConfigPage     = lazy(() => import('./pages/config/ConfigPage'))
 const PortalApp      = lazy(() => import('./portal/PortalApp'))
 const FinancialApprovalsPage = lazy(() => import('./pages/dashboard/FinancialApprovalsPage'))
+const GlobalCoordinationPage = lazy(() => import('./pages/projects/GlobalCoordinationPage'))
+const GlobalHandoverDashboard = lazy(() => import('./pages/projects/GlobalHandoverDashboard'))
+const GlobalRetentionDashboard = lazy(() => import('./pages/projects/GlobalRetentionDashboard'))
 
 export default function App() {
   return (
@@ -60,6 +63,9 @@ export default function App() {
                     <Route path='/leads/manager' element={<ManagerDashboard />} />
                     <Route path='/projects' element={<ProjectsPage />} />
                     <Route path='/projects/resources' element={<ResourceCapacityPage />} />
+                    <Route path='/projects/coordination' element={<GlobalCoordinationPage />} />
+                    <Route path='/projects/handover-dashboard' element={<GlobalHandoverDashboard />} />
+                    <Route path='/projects/retention-dashboard' element={<GlobalRetentionDashboard />} />
                     <Route path='/projects/:id' element={<ProjectDetail />} />
                     <Route path='/tasks' element={<MyTasksPage />} />
                     <Route path='/analytics/leads' element={<LeadAnalytics />} />

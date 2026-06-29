@@ -1,0 +1,218 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.header {
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 16px;
+}
+
+.title {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin: 4px 0 0 0;
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.milestoneCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.milestoneHeader {
+  padding: 18px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.milestoneHeader:hover {
+  background: var(--color-surface-hover, #fafafa);
+}
+
+.milestoneTitleSection {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.milestoneDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.dot_scheduled { background: #3b82f6; }
+.dot_completed { background: #10b981; }
+.dot_deferred { background: #f59e0b; }
+.dot_cancelled { background: #ef4444; }
+
+.milestoneName {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.milestoneMeta {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  margin-left: 8px;
+}
+
+.badge {
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+}
+
+.badge_scheduled { background: #eff6ff; color: #1d4ed8; }
+.badge_completed { background: #ecfdf5; color: #047857; }
+.badge_deferred { background: #fffbeb; color: #b45309; }
+.badge_cancelled { background: #fef2f2; color: #dc2626; }
+
+.milestoneBody {
+  padding: 24px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-hover, #fafafa);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 768px) {
+  .milestoneBody {
+    grid-template-columns: 1fr;
+  }
+}
+
+.outcomeView {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.outcomeTitle {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.outcomeRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--text-xs);
+}
+
+.outcomeLabel {
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.outcomeVal {
+  color: var(--color-text);
+}
+
+.formSection {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.input, .select, .textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  outline: none;
+}
+
+.input:focus, .select:focus, .textarea:focus {
+  border-color: var(--color-accent, #3b82f6);
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.starRating {
+  display: flex;
+  gap: 6px;
+}
+
+.star {
+  font-size: 24px;
+  cursor: pointer;
+  color: #d1d5db;
+  transition: color 0.15s ease;
+}
+
+.starFilled {
+  color: #fbbf24;
+}
+
+.emptyState {
+  padding: 48px;
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+
+.loading {
+  padding: 48px;
+  text-align: center;
+  color: var(--color-text-secondary);
+}

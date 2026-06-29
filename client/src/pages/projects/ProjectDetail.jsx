@@ -19,6 +19,13 @@ const WarrantiesTab = React.lazy(() => import('./WarrantiesTab'));
 const AmcsTab = React.lazy(() => import('./AmcsTab'));
 const ProjectClosureTab = React.lazy(() => import('./ProjectClosureTab'));
 const ProjectRetrospectiveTab = React.lazy(() => import('./ProjectRetrospectiveTab'));
+const BookingTab = React.lazy(() => import('./BookingTab'));
+const CommercialApprovalTab = React.lazy(() => import('./CommercialApprovalTab'));
+const CoordinationTab = React.lazy(() => import('./CoordinationTab'));
+const HandoverReadinessTab = React.lazy(() => import('./HandoverReadinessTab'));
+const ServiceTicketsTab = React.lazy(() => import('./ServiceTicketsTab'));
+const CustomerRetentionTab = React.lazy(() => import('./CustomerRetentionTab'));
+const BaselineAssessmentTab = React.lazy(() => import('./BaselineAssessmentTab'));
 
 const DesignRequirements = React.lazy(() => import('../../components/projects/DesignRequirements'));
 const DesignAssetsTab = React.lazy(() => import('../../components/projects/DesignAssetsTab'));
@@ -43,6 +50,7 @@ const SiteVisitsTab = React.lazy(() => import('../../components/projects/SiteVis
 const DelayNotificationsTab = React.lazy(() => import('../../components/projects/DelayNotificationsTab'));
 const PunchListTab = React.lazy(() => import('../../components/projects/PunchListTab'));
 import HandoverModal from '../../components/projects/HandoverModal';
+import DesignStageHeader from '../../components/projects/DesignStageHeader';
 
 function formatDate(dateStr) {
   if (!dateStr) return '—';
@@ -172,6 +180,13 @@ function OverviewTab({ project, onRefresh }) {
           {[
             { role: 'Project Manager', name: project.pm_name, key: 'pm', id: project.pm_id },
             { role: 'Designer', name: project.designer_name, key: 'designer', id: project.designer_id },
+            { role: 'Lead Designer', name: project.lead_designer_name, id: project.lead_designer_id },
+            { role: 'Junior Designer', name: project.junior_designer_name, id: project.junior_designer_id },
+            { role: 'Site Engineer', name: project.site_engineer_name, id: project.site_engineer_id },
+            { role: 'QC Engineer', name: project.qc_engineer_name, id: project.qc_engineer_id },
+            { role: 'Site Supervisor', name: project.site_supervisor_name, id: project.site_supervisor_id },
+            { role: 'CRM Executive', name: project.crm_executive_name, id: project.crm_executive_id },
+            { role: 'Procurement Officer', name: project.procurement_officer_name, id: project.procurement_officer_id },
             ...(project.site_team || []).map(member => ({
               role: `${member.role.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} ${member.vendor_name ? `(${member.vendor_name})` : ''}`,
               name: member.name,
@@ -273,6 +288,193 @@ function OverviewTab({ project, onRefresh }) {
         </div>
       )}
 
+      {/* Client Household & Lifestyle Profile */}
+      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+          Client Household & Lifestyle Profile
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 0 }}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Spouse / Partner Name
+            </div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
+              {project.spouse_name || '—'}
+            </div>
+          </div>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Spouse Phone
+            </div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
+              {project.spouse_phone || '—'}
+            </div>
+          </div>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Spouse Email
+            </div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
+              {project.spouse_email || '—'}
+            </div>
+          </div>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Number of Family Members
+            </div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
+              {project.number_of_family_members || '—'}
+            </div>
+          </div>
+          <div style={{ padding: '14px 20px', borderBottom: 'none', borderRight: '1px solid var(--color-border)' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Preferred Communication Channel
+            </div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)', textTransform: 'capitalize' }}>
+              {project.preferred_communication_channel || '—'}
+            </div>
+          </div>
+          <div style={{ padding: '14px 20px', borderBottom: 'none', gridColumn: 'span 3' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Lifestyle Preferences & Brief
+            </div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
+              {project.lifestyle_preferences || '—'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Site Logistics & Access Details */}
+      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+          Site Logistics & Access Details
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 0 }}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Lift Availability
+            </div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)', textTransform: 'capitalize' }}>
+              {project.lift_availability === 'none' ? 'No Lift (Stairs Only)' : project.lift_availability === 'passenger_only' ? 'Passenger Lift Only' : project.lift_availability === 'service' ? 'Service Lift Available' : project.lift_availability || '—'}
+            </div>
+          </div>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Lift Dimensions
+            </div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
+              {project.lift_dimensions || '—'}
+            </div>
+          </div>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Staircase Access
+            </div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
+              {project.staircase_access || '—'}
+            </div>
+          </div>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: 'none' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Working Hour Window
+            </div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
+              {project.working_hour_window || '—'}
+            </div>
+          </div>
+          <div style={{ padding: '14px 20px', borderBottom: 'none', borderRight: '1px solid var(--color-border)' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Society Contact
+            </div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
+              {project.society_contact || '—'}
+            </div>
+          </div>
+          <div style={{ padding: '14px 20px', borderBottom: 'none', borderRight: '1px solid var(--color-border)' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Parking Permission
+            </div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)', textTransform: 'capitalize' }}>
+              {project.parking_permission === 'allowed' ? 'Allowed On-Site' : project.parking_permission === 'restricted' ? 'Restricted / Prior Approval' : project.parking_permission === 'street_only' ? 'Street Parking Only' : project.parking_permission || '—'}
+            </div>
+          </div>
+          <div style={{ padding: '14px 20px', borderBottom: 'none', borderRight: 'none' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Material Unloading Area
+            </div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
+              {project.unloading_area || '—'}
+            </div>
+          </div>
+          <div style={{ padding: '14px 20px', borderBottom: 'none', borderRight: 'none', gridColumn: 'span 4', borderTop: '1px solid var(--color-border)' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Society NOC Requirements
+            </div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
+              {project.noc_requirements || '—'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Site Access & Key Management */}
+      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+          Site Access & Key Management
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 0 }}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Key Holder Name
+            </div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
+              {project.key_holder_name || '—'}
+            </div>
+          </div>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Key Holder Phone
+            </div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
+              {project.key_holder_phone || '—'}
+            </div>
+          </div>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: 'none' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Spare Key Location
+            </div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
+              {project.spare_key_location || '—'}
+            </div>
+          </div>
+          <div style={{ padding: '14px 20px', borderBottom: 'none', borderRight: '1px solid var(--color-border)' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Society Gate Pass Number
+            </div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
+              {project.gate_pass_number || '—'}
+            </div>
+          </div>
+          <div style={{ padding: '14px 20px', borderBottom: 'none', borderRight: '1px solid var(--color-border)' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Access Card Holder
+            </div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
+              {project.access_card_holder || '—'}
+            </div>
+          </div>
+          <div style={{ padding: '14px 20px', borderBottom: 'none', borderRight: 'none' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Access Time Restrictions
+            </div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
+              {project.access_time_restrictions || '—'}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Stakeholders & Contacts */}
       <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
@@ -321,6 +523,30 @@ function OverviewTab({ project, onRefresh }) {
                       }}>
                         {contact.decision_authority || 'Influencer'}
                       </span>
+                      {contact.contact_preference && (
+                        <span style={{
+                          padding: '1px 6px',
+                          fontSize: '10px',
+                          borderRadius: '4px',
+                          background: 'var(--color-info-bg, #e0f2fe)',
+                          color: 'var(--color-info, #0284c7)',
+                          fontWeight: 600
+                        }}>
+                          💬 {contact.contact_preference}
+                        </span>
+                      )}
+                      {contact.approval_authority_level && (
+                        <span style={{
+                          padding: '1px 6px',
+                          fontSize: '10px',
+                          borderRadius: '4px',
+                          background: 'var(--color-warning-bg, #fef9c3)',
+                          color: 'var(--color-warning, #854d0e)',
+                          fontWeight: 600
+                        }}>
+                          🔑 {contact.approval_authority_level}
+                        </span>
+                      )}
                     </div>
                     {contact.relationship_notes && (
                       <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: 4 }}>
@@ -565,7 +791,7 @@ export default function ProjectDetail() {
     }
   };
 
-  const tabs = ['Overview', 'Meeting Notes', 'Site Visits', 'Delay Notifications', 'Handovers', 'Design Brief', 'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 'Change Orders', 'BOQ Variance', 'Budget', 'Purchase Orders', 'Material Deliveries', 'Vendor Payments', 'Substitutions', 'Factory Production', 'Phases', 'Gantt Chart', 'Work Activities', 'Room Progress', 'Tasks', 'Daily Site Reports', 'Weekly Reports', 'Documents', 'Drawing Register', 'Payments', 'Snags', 'Punch List', 'Handover', 'Warranties', 'AMCs', 'Project Closure', 'Retrospective'];
+  const tabs = ['Overview', 'Booking', 'Meeting Notes', 'Site Visits', 'Baseline Assessment', 'Delay Notifications', 'Handovers', 'Design Brief', 'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 'Commercial Approval', 'Change Orders', 'BOQ Variance', 'Budget', 'Purchase Orders', 'Material Deliveries', 'Vendor Payments', 'Substitutions', 'Factory Production', 'Coordination', 'Phases', 'Gantt Chart', 'Work Activities', 'Room Progress', 'Tasks', 'Daily Site Reports', 'Weekly Reports', 'Documents', 'Drawing Register', 'Payments', 'Snags', 'Punch List', 'Handover', 'Warranties', 'AMCs', 'Handover Readiness', 'Service Tickets', 'Customer Retention', 'Project Closure', 'Retrospective'];
 
   const reloadProject = () => {
     if (!projectId) return;
@@ -583,11 +809,19 @@ export default function ProjectDetail() {
       .finally(() => setLoading(false));
   }, [projectId]);
 
+  useEffect(() => {
+    if (project && project.status === 'pending_booking' && activeTab !== 'Booking' && activeTab !== 'Overview') {
+      setActiveTab('Booking');
+    }
+  }, [project, activeTab]);
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'Overview': return project ? <OverviewTab project={project} onRefresh={reloadProject} /> : null;
+      case 'Booking': return <BookingTab projectId={projectId} projectStatus={project?.status} onProjectUpdated={reloadProject} />;
       case 'Meeting Notes': return <MeetingNotesTab projectId={projectId} />;
       case 'Site Visits': return <SiteVisitsTab projectId={projectId} />;
+      case 'Baseline Assessment': return <BaselineAssessmentTab projectId={projectId} />;
       case 'Delay Notifications': return <DelayNotificationsTab projectId={projectId} />;
       case 'Handovers': return <HandoverHistoryTab projectId={projectId} />;
       case 'Design Brief': return <DesignRequirements projectId={projectId} />;
@@ -595,6 +829,7 @@ export default function ProjectDetail() {
       case 'Design Reviews': return <DesignReviewsTab projectId={projectId} />;
       case 'Material Palettes': return <MaterialPalettesTab projectId={projectId} />;
       case 'Quotations & BOQ': return <ProjectQuotationsTab projectId={projectId} />;
+      case 'Commercial Approval': return <CommercialApprovalTab projectId={projectId} projectStatus={project?.status} onProjectUpdated={reloadProject} />;
       case 'Change Orders': return <ChangeOrdersTab projectId={projectId} />;
       case 'BOQ Variance': return <BOQVarianceTab projectId={projectId} />;
       case 'Budget': return <BudgetTab projectId={projectId} />;
@@ -603,6 +838,7 @@ export default function ProjectDetail() {
       case 'Vendor Payments': return <VendorPaymentsTab projectId={projectId} />;
       case 'Substitutions': return <MaterialSubstitutionsTab projectId={projectId} />;
       case 'Factory Production': return <FactoryProductionTab projectId={projectId} />;
+      case 'Coordination': return <CoordinationTab projectId={projectId} projectStatus={project?.status} onProjectUpdated={reloadProject} />;
       case 'Phases': return <PhaseTimeline projectId={projectId} />;
       case 'Gantt Chart': return <GanttChart projectId={projectId} project={project} />;
       case 'Work Activities': return <WorkActivitiesTab projectId={projectId} project={project} />;
@@ -618,6 +854,9 @@ export default function ProjectDetail() {
       case 'Punch List': return <PunchListTab projectId={projectId} />;
       case 'Warranties': return <WarrantiesTab projectId={projectId} />;
       case 'AMCs': return <AmcsTab projectId={projectId} />;
+      case 'Handover Readiness': return <HandoverReadinessTab projectId={projectId} />;
+      case 'Service Tickets': return <ServiceTicketsTab projectId={projectId} />;
+      case 'Customer Retention': return <CustomerRetentionTab projectId={projectId} />;
       case 'Project Closure': return <ProjectClosureTab projectId={projectId} projectStatus={project.status} onProjectUpdated={reloadProject} />;
       case 'Retrospective': return <ProjectRetrospectiveTab projectId={projectId} projectStatus={project.status} />;
       default: return <div>{activeTab} Content (Coming Soon)</div>;
@@ -836,19 +1075,32 @@ export default function ProjectDetail() {
       </div>
 
       <div className={styles.tabs}>
-        {tabs.map(t => (
-          <button
-            key={t}
-            className={`${styles.tab} ${activeTab === t ? styles.tabActive : ''}`}
-            onClick={() => setActiveTab(t)}
-          >
-            {t}
-          </button>
-        ))}
+        {tabs.map(t => {
+          const isPendingBooking = project?.status === 'pending_booking';
+          const isAllowedTab = t === 'Overview' || t === 'Booking';
+          const isDisabled = isPendingBooking && !isAllowedTab;
+          return (
+            <button
+              key={t}
+              className={`${styles.tab} ${activeTab === t ? styles.tabActive : ''}`}
+              onClick={() => !isDisabled && setActiveTab(t)}
+              disabled={isDisabled}
+              style={{
+                opacity: isDisabled ? 0.5 : 1,
+                cursor: isDisabled ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {isDisabled ? `🔒 ${t}` : t}
+            </button>
+          );
+        })}
       </div>
 
       <div className={styles.tabContent}>
         <Suspense fallback={<div style={{ padding: 24, color: 'var(--color-text-muted)' }}>Loading…</div>}>
+          {['Design Brief', 'Design Assets', 'Design Reviews'].includes(activeTab) && (
+            <DesignStageHeader projectId={projectId} />
+          )}
           {renderTabContent()}
         </Suspense>
       </div>

@@ -104,8 +104,14 @@ export const getDrawingComments = (projectId, documentId) => api.get(`/projects/
 export const addDrawingComment = (projectId, documentId, comment) => api.post(`/projects/${projectId}/design-reviews/drawings/${documentId}/comments`, { comment });
 export const freezeProjectDesign = (projectId) => api.post(`/projects/${projectId}/design-reviews/freeze-design`);
 
+// Design Workflow
+export const getDesignWorkflow = (projectId) => api.get(`/projects/${projectId}/design-workflow`);
+export const transitionDesignWorkflow = (projectId, data) => api.post(`/projects/${projectId}/design-workflow/transition`, data);
+export const confirmDesignWorkflow = (projectId, data) => api.post(`/projects/${projectId}/design-workflow/client-confirm`, data);
+
 // Material Palettes
 export const getMaterialPalettes = (projectId) => api.get(`/projects/${projectId}/material-palettes`);
+export const getMaterialPaletteBOQItems = (projectId) => api.get(`/projects/${projectId}/material-palettes/boq-items`);
 export const createMaterialPalette = (projectId, data) => api.post(`/projects/${projectId}/material-palettes`, data);
 export const updateMaterialPalette = (projectId, id, data) => api.put(`/projects/${projectId}/material-palettes/${id}`, data);
 export const deleteMaterialPalette = (projectId, id) => api.delete(`/projects/${projectId}/material-palettes/${id}`);
@@ -213,6 +219,15 @@ export const saveRetrospective = (projectId, data) => api.post(`/projects/${proj
 export const archiveProject = (projectId) => api.post(`/projects/${projectId}/archive`);
 export const reopenProject = (projectId, data) => api.post(`/projects/${projectId}/reopen`, data);
 
+// Project Booking Confirmation
+export const getProjectBooking = (projectId) => api.get(`/projects/${projectId}/booking`);
+export const confirmProjectBooking = (projectId, data) => api.post(`/projects/${projectId}/booking`, data);
 
+// Project Commercial Approval
+export const getCommercialApprovalChecklist = (projectId) => api.get(`/projects/${projectId}/commercial-approval`);
+export const confirmCommercialApproval = (projectId, data) => api.post(`/projects/${projectId}/commercial-approval`, data);
 
-
+// Project Production-Site Coordination
+export const getProjectCoordination = (projectId) => api.get(`/projects/${projectId}/coordination`);
+export const updateProjectCoordination = (projectId, data) => api.patch(`/projects/${projectId}/coordination`, data);
+export const getCoordinationDashboard = () => api.get('/projects/coordination/dashboard');

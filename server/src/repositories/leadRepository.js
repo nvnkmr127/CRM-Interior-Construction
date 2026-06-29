@@ -85,6 +85,9 @@ async function findLeadById(tenantId, leadId) {
            s.name AS stage_name, s.color AS stage_color,
            lp.builder AS builder_name, lp.possession_date, lp.house_status,
            lpref.interior_style, lpref.material AS material_preference,
+           lpref.family_size, lpref.usage_patterns, lpref.storage_priorities,
+           lpref.brand_flexibility, lpref.brand_remarks, lpref.existing_furniture,
+           lpref.budget_category_allocation,
            COALESCE(EXTRACT(DAY FROM CURRENT_TIMESTAMP - l.updated_at), 0) AS days_in_stage,
            0 AS follow_up_overdue_days,
            (
@@ -237,6 +240,9 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
            s.name AS stage_name, s.color AS stage_color,
            lp.builder AS builder_name, lp.possession_date, lp.house_status,
            lpref.interior_style, lpref.material AS material_preference,
+           lpref.family_size, lpref.usage_patterns, lpref.storage_priorities,
+           lpref.brand_flexibility, lpref.brand_remarks, lpref.existing_furniture,
+           lpref.budget_category_allocation,
            ai.buying_intent, ai.sentiment,
            COALESCE(EXTRACT(DAY FROM CURRENT_TIMESTAMP - l.updated_at), 0) AS days_in_stage,
            0 AS follow_up_overdue_days,
@@ -475,7 +481,11 @@ async function updateLead(tenantId, leadId, updates) {
 
     // Separate lead fields from property/preference fields
     const propertyFields = ['builder_name', 'possession_date', 'house_status', 'property_type', 'carpet_area_sqft'];
-    const preferenceFields = ['interior_style', 'material_preference'];
+    const preferenceFields = [
+      'interior_style', 'material_preference', 'family_size', 'usage_patterns',
+      'storage_priorities', 'brand_flexibility', 'brand_remarks', 'existing_furniture',
+      'budget_category_allocation'
+    ];
     
     const leadUpdates = {};
     const propUpdates = {};
@@ -488,6 +498,7 @@ async function updateLead(tenantId, leadId, updates) {
         else propUpdates[key] = value;
       } else if (preferenceFields.includes(key)) {
         if (key === 'material_preference') prefUpdates['material'] = value;
+        else if (key === 'budget_category_allocation' && typeof value === 'object' && value !== null) prefUpdates[key] = JSON.stringify(value);
         else prefUpdates[key] = value;
       } else {
         leadUpdates[key] = value;
