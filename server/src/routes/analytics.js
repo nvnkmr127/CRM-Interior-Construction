@@ -415,10 +415,69 @@ router.get('/pipeline', authenticate, authorize('analytics:read'), analyticsCont
 router.get('/conversion', authenticate, authorize('analytics:read'), analyticsController.getConversionAnalytics);
 router.get('/forecast', authenticate, authorize('analytics:read'), analyticsController.getForecastAnalytics);
 router.get('/vendors', authenticate, authorize('analytics:read'), analyticsController.getVendorPerformanceReport);
+router.get('/vendors-capacity', authenticate, authorize('analytics:read'), analyticsController.getVendorCapacityReport);
+router.patch('/vendors-capacity/:vendorName', authenticate, authorize('analytics:read'), analyticsController.updateVendorCapacityProfile);
 router.get('/vendors/:vendorName', authenticate, authorize('analytics:read'), analyticsController.getVendorPerformanceDetail);
 router.get('/collection-forecast', authenticate, authorize('analytics:read'), analyticsController.getCollectionForecast);
 router.get('/profitability', authenticate, authorize('analytics:read'), analyticsController.getProfitabilityAnalytics);
 router.get('/resource-utilisation', authenticate, authorize('analytics:read'), analyticsController.getResourceUtilisation);
 router.get('/csat', authenticate, authorize('analytics:read'), analyticsController.getCSATAnalytics);
+
+router.get('/snags', async (req, res) => {
+  try {
+    const { from, to, projectId } = getDates(req);
+    // projectId would be in req.query.projectId if provided
+    const projId = req.query.projectId;
+    const tenantId = req.tenantId;
+    
+    let rootCauseQuery = `
+      SELECT root_cause_category, COUNT(id) as count
+      FROM snags
+      WHERE tenant_id = $1 AND created_at BETWEEN $2 AND $3 AND root_cause_category IS NOT NULL
+    `;
+    const rootParams = [tenantId, from.toISOString(), to.toISOString()];
+    if (projId) {
+      rootParams.push(projId);
+      rootCauseQuery += ` AND project_id = $${rootParams.length}`;
+    }
+    rootCauseQuery += ` GROUP BY root_cause_category ORDER BY count DESC`;
+    const rootCauseRes = await pool.query(rootCauseQuery, rootParams);
+
+    let vendorQuery = `
+      SELECT pv.vendor_name, COUNT(s.id) as count
+      FROM snags s
+      JOIN project_vendors pv ON s.vendor_id = pv.id
+      WHERE s.tenant_id = $1 AND s.created_at BETWEEN $2 AND $3
+    `;
+    const vendorParams = [tenantId, from.toISOString(), to.toISOString()];
+    if (projId) {
+      vendorParams.push(projId);
+      vendorQuery += ` AND s.project_id = $${vendorParams.length}`;
+    }
+    vendorQuery += ` GROUP BY pv.vendor_name ORDER BY count DESC LIMIT 10`;
+    const vendorRes = await pool.query(vendorQuery, vendorParams);
+
+    let categoryQuery = `
+      SELECT category, COUNT(id) as count
+      FROM snags
+      WHERE tenant_id = $1 AND created_at BETWEEN $2 AND $3
+    `;
+    const catParams = [tenantId, from.toISOString(), to.toISOString()];
+    if (projId) {
+      catParams.push(projId);
+      categoryQuery += ` AND project_id = $${catParams.length}`;
+    }
+    categoryQuery += ` GROUP BY category ORDER BY count DESC`;
+    const categoryRes = await pool.query(categoryQuery, catParams);
+
+    return success(res, {
+      byRootCause: rootCauseRes.rows.map(r => ({ label: r.root_cause_category, count: parseInt(r.count, 10) })),
+      byVendor: vendorRes.rows.map(r => ({ label: r.vendor_name, count: parseInt(r.count, 10) })),
+      byCategory: categoryRes.rows.map(r => ({ label: r.category, count: parseInt(r.count, 10) }))
+    });
+  } catch (err) {
+    res.status(500).json(fail('Failed to fetch snags analytics: ' + err.message));
+  }
+});
 
 module.exports = router;

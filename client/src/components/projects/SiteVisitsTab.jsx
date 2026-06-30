@@ -40,6 +40,7 @@ export default function SiteVisitsTab({ projectId }) {
     status: 'completed',
     notes: '',
     client_feedback: '',
+    next_steps: '',
     completed_at: ''
   });
 
@@ -115,6 +116,7 @@ export default function SiteVisitsTab({ projectId }) {
         assignee_id: visit.assignee_id || '',
         notes: visit.notes || '',
         client_invited: visit.client_invited || false,
+        agenda: visit.agenda || '',
         checklist: (visit.checklist || []).map(item => typeof item === 'string' ? item : item.text)
       });
     } else {
@@ -126,6 +128,7 @@ export default function SiteVisitsTab({ projectId }) {
         assignee_id: '',
         notes: '',
         client_invited: false,
+        agenda: '',
         checklist: ['Confirm layout alignments', 'Verify electrical points', 'Check plumbing and levels']
       });
     }
@@ -144,6 +147,7 @@ export default function SiteVisitsTab({ projectId }) {
       scheduled_at: scheduledAt,
       assignee_id: scheduleForm.assignee_id || null,
       notes: scheduleForm.notes,
+      agenda: scheduleForm.agenda,
       client_invited: scheduleForm.client_invited,
       checklist: scheduleForm.checklist.map(item => ({ text: item, completed: false }))
     };
@@ -213,6 +217,7 @@ export default function SiteVisitsTab({ projectId }) {
       status: visit.status === 'scheduled' ? 'completed' : visit.status,
       notes: visit.notes || '',
       client_feedback: visit.client_feedback || '',
+      next_steps: visit.next_steps || '',
       completed_at: visit.completed_at ? new Date(visit.completed_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
     });
     setIsOutcomesOpen(true);
@@ -226,6 +231,7 @@ export default function SiteVisitsTab({ projectId }) {
       status: outcomesForm.status,
       notes: outcomesForm.notes,
       client_feedback: outcomesForm.client_feedback,
+      next_steps: outcomesForm.next_steps,
       completed_at: outcomesForm.status === 'completed' ? new Date(outcomesForm.completed_at).toISOString() : null
     };
 
@@ -368,6 +374,11 @@ export default function SiteVisitsTab({ projectId }) {
                       </div>
                     </div>
                   </div>
+                  {visit.client_acknowledged_at && (
+                    <div style={{fontSize: 11, color: 'var(--color-success)', marginTop: 8}}>
+                      ✓ Acknowledged by client on {formatDate(visit.client_acknowledged_at)}
+                    </div>
+                  )}
                   <button className={styles.editBtn} onClick={() => handleExpandVisit(visit.id)}>
                     {isExpanded ? 'Hide Details' : 'View Details & Photos'}
                   </button>
@@ -420,11 +431,11 @@ export default function SiteVisitsTab({ projectId }) {
                       </div>
                       
                       <div className={styles.notesBox}>
-                        <div className={styles.sectionLabel}>Client Feedback</div>
-                        {visit.client_feedback ? (
-                          <div className={styles.notesText}>{visit.client_feedback}</div>
+                        <div className={styles.sectionLabel}>Next Steps / Action Items</div>
+                        {visit.next_steps ? (
+                          <div className={styles.notesText}>{visit.next_steps}</div>
                         ) : (
-                          <p className={styles.emptyText}>No client feedback recorded.</p>
+                          <p className={styles.emptyText}>No next steps recorded.</p>
                         )}
                       </div>
                     </div>
@@ -572,6 +583,16 @@ export default function SiteVisitsTab({ projectId }) {
                 </div>
 
                 <div className={styles.formGroup}>
+                  <label className={styles.label}>Agenda Summary</label>
+                  <textarea
+                    className={styles.textarea}
+                    placeholder="Agenda for the site visit..."
+                    value={scheduleForm.agenda}
+                    onChange={e => setScheduleForm(prev => ({ ...prev, agenda: e.target.value }))}
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
                   <label className={styles.label}>Agenda Items</label>
                   <div className={styles.agendaItemInputRow}>
                     <input
@@ -664,9 +685,20 @@ export default function SiteVisitsTab({ projectId }) {
                   <textarea
                     className={styles.textarea}
                     placeholder="Client feedback, requests, or approvals obtained during the visit..."
-                    rows={3}
+                    rows={2}
                     value={outcomesForm.client_feedback}
                     onChange={e => setOutcomesForm(prev => ({ ...prev, client_feedback: e.target.value }))}
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Next Steps / Action Items</label>
+                  <textarea
+                    className={styles.textarea}
+                    placeholder="Agreed actions and next steps..."
+                    rows={3}
+                    value={outcomesForm.next_steps}
+                    onChange={e => setOutcomesForm(prev => ({ ...prev, next_steps: e.target.value }))}
                   />
                 </div>
               </div>

@@ -102,7 +102,8 @@ router.get('/documents', async (req, res, next) => {
     const { projectId, tenantId } = req.portalUser;
 
     const query = `
-      SELECT id, name, doc_type, storage_key, file_size_bytes, mime_type, created_at, client_acknowledged_at, client_acknowledged_by
+      SELECT id, name, doc_type, storage_key, file_size_bytes, mime_type, created_at, client_acknowledged_at, client_acknowledged_by,
+             client_approval_status, client_approved_at, client_revision_requested_at, client_revision_note
       FROM documents
       WHERE project_id = $1 AND tenant_id = $2 AND is_visible_to_client = true
       ORDER BY created_at DESC
@@ -121,6 +122,10 @@ router.get('/documents', async (req, res, next) => {
         createdAt: doc.created_at,
         clientAcknowledgedAt: doc.client_acknowledged_at,
         clientAcknowledgedBy: doc.client_acknowledged_by,
+        clientApprovalStatus: doc.client_approval_status,
+        clientApprovedAt: doc.client_approved_at,
+        clientRevisionRequestedAt: doc.client_revision_requested_at,
+        clientRevisionNote: doc.client_revision_note,
         downloadUrl
       };
     }));
@@ -263,7 +268,8 @@ router.post('/documents/:documentId/acknowledge', async (req, res, next) => {
 
     const query = `
       UPDATE documents
-      SET client_acknowledged_at = NOW(), client_acknowledged_by = $1
+      SET client_acknowledged_at = NOW(), client_acknowledged_by = $1,
+          client_approval_status = 'approved', client_approved_at = NOW()
       WHERE id = $2 AND project_id = $3 AND tenant_id = $4 AND is_visible_to_client = true
       RETURNING *
     `;
@@ -274,6 +280,70 @@ router.post('/documents/:documentId/acknowledge', async (req, res, next) => {
     }
 
     res.json({ success: true, data: rows[0], message: 'Document acknowledged successfully.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/portal/project/documents/:documentId/approve
+router.post('/documents/:documentId/approve', async (req, res, next) => {
+  try {
+    const { projectId, tenantId, name: clientName } = req.portalUser;
+    const { documentId } = req.params;
+
+    const query = `
+      UPDATE documents
+      SET client_approval_status = 'approved', 
+          client_approved_at = NOW(), 
+          client_acknowledged_by = COALESCE(client_acknowledged_by, $1)
+      WHERE id = $2 AND project_id = $3 AND tenant_id = $4 AND is_visible_to_client = true
+      RETURNING *
+    `;
+    const { rows } = await pool.query(query, [clientName, documentId, projectId, tenantId]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Document not found or not visible' });
+    }
+
+    res.json({ success: true, data: rows[0], message: 'Document approved successfully.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/portal/project/documents/:documentId/request-revision
+router.post('/documents/:documentId/request-revision', async (req, res, next) => {
+  try {
+    const { projectId, tenantId, name: clientName } = req.portalUser;
+    const { documentId } = req.params;
+    const { revisionNote } = req.body;
+
+    if (!revisionNote || !revisionNote.trim()) {
+      return res.status(400).json({ success: false, message: 'Revision note is required.' });
+    }
+
+    const query = `
+      UPDATE documents
+      SET client_approval_status = 'revision_requested', 
+          client_revision_requested_at = NOW(),
+          client_revision_note = $1
+      WHERE id = $2 AND project_id = $3 AND tenant_id = $4 AND is_visible_to_client = true
+      RETURNING *
+    `;
+    const { rows } = await pool.query(query, [revisionNote, documentId, projectId, tenantId]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Document not found or not visible' });
+    }
+
+    // Also add this as a comment in design_item_comments for discussion
+    await pool.query(`
+      INSERT INTO design_item_comments (
+        tenant_id, document_id, comment, created_by_client, created_by_name
+      ) VALUES ($1, $2, $3, true, $4)
+    `, [tenantId, documentId, `Revision Requested: ${revisionNote}`, clientName]);
+
+    res.json({ success: true, data: rows[0], message: 'Revision requested successfully.' });
   } catch (error) {
     next(error);
   }
@@ -412,6 +482,61 @@ router.post('/referrals', async (req, res, next) => {
     );
 
     res.status(201).json({ success: true, data: rows[0], message: 'Referral submitted successfully!' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+const weeklyReportController = require('../../controllers/weeklyReportController');
+
+// GET /api/portal/project/weekly-reports
+router.get('/weekly-reports', async (req, res, next) => {
+  req.params.projectId = req.portalUser.projectId;
+  req.user = { tenantId: req.portalUser.tenantId };
+  return weeklyReportController.getWeeklyReports(req, res, next);
+});
+
+// GET /api/portal/project/site-visits
+router.get('/site-visits', async (req, res, next) => {
+  try {
+    const { projectId, tenantId } = req.portalUser;
+
+    const query = `
+      SELECT sv.*, u.name as assignee_name
+      FROM site_visits sv
+      LEFT JOIN users u ON sv.assignee_id = u.id
+      WHERE sv.tenant_id = $1 AND sv.project_id = $2 AND sv.client_invited = true
+      ORDER BY sv.scheduled_at DESC
+    `;
+    const result = await pool.query(query, [tenantId, projectId]);
+    
+    // Also fetch linked items for each visit if needed, or leave to client to fetch.
+    // We can just return the visits for now.
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/portal/project/site-visits/:id/acknowledge
+router.post('/site-visits/:id/acknowledge', async (req, res, next) => {
+  try {
+    const { projectId, tenantId, name: clientName } = req.portalUser;
+    const { id } = req.params;
+
+    const query = `
+      UPDATE site_visits
+      SET client_acknowledged_at = NOW(), client_acknowledged_by = $1
+      WHERE id = $2 AND project_id = $3 AND tenant_id = $4 AND client_invited = true
+      RETURNING *
+    `;
+    const { rows } = await pool.query(query, [clientName, id, projectId, tenantId]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Site visit not found or not visible' });
+    }
+
+    res.json({ success: true, data: rows[0], message: 'Site visit outcomes acknowledged successfully.' });
   } catch (error) {
     next(error);
   }

@@ -74,6 +74,12 @@ async function bulkCreateTasks({ tenantId, userId, projectId, tasks }) {
     }
   });
 
+  // Auto-link factory to installation tasks if this is a project task
+  if (projectId) {
+    const { autoLinkFactoryToInstallationTasks } = require('./autoLinkService');
+    await autoLinkFactoryToInstallationTasks(tenantId, projectId);
+  }
+
   return createdTasks;
 }
 

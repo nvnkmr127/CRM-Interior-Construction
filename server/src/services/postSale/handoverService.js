@@ -26,6 +26,10 @@ async function createChecklist({ tenantId, projectId, items = [] }) {
             { room: 'Kitchen', description: 'All cabinets and drawers open/close smoothly' },
             { room: 'Kitchen', description: 'Countertop installed without scratches or chips' },
             { room: 'Kitchen', description: 'Sink and faucet installed, no leaks' },
+            { room: 'Systems & Appliance Testing', description: 'Electrical Testing: Each circuit, each switch, each point tested' },
+            { room: 'Systems & Appliance Testing', description: 'Plumbing Testing: Each tap, each drain, water pressure tested' },
+            { room: 'Systems & Appliance Testing', description: 'Hardware Testing: Each door, drawer, hinge, pull tested' },
+            { room: 'Systems & Appliance Testing', description: 'Appliance Testing: Each installed appliance tested by client' },
             { room: 'Product Documentation', description: 'Hob (Cooktop) Manual & Warranty', item_type: 'document' },
             { room: 'Product Documentation', description: 'Chimney Manual & Warranty', item_type: 'document' },
             { room: 'Product Documentation', description: 'Water Purifier Manual & Warranty', item_type: 'document' },
@@ -42,6 +46,10 @@ async function createChecklist({ tenantId, projectId, items = [] }) {
             { room: 'Master Bedroom', description: 'Wardrobe sliding mechanism works smoothly' },
             { room: 'General', description: 'All switchboards aligned and working' },
             { room: 'General', description: 'Paint finish uniform with no patches' },
+            { room: 'Systems & Appliance Testing', description: 'Electrical Testing: Each circuit, each switch, each point tested' },
+            { room: 'Systems & Appliance Testing', description: 'Plumbing Testing: Each tap, each drain, water pressure tested' },
+            { room: 'Systems & Appliance Testing', description: 'Hardware Testing: Each door, drawer, hinge, pull tested' },
+            { room: 'Systems & Appliance Testing', description: 'Appliance Testing: Each installed appliance tested by client' },
             { room: 'Product Documentation', description: 'Hob (Cooktop) Manual & Warranty', item_type: 'document' },
             { room: 'Product Documentation', description: 'Chimney Manual & Warranty', item_type: 'document' },
             { room: 'Product Documentation', description: 'Water Purifier Manual & Warranty', item_type: 'document' },
@@ -57,6 +65,10 @@ async function createChecklist({ tenantId, projectId, items = [] }) {
           itemsToInsert = [
             { room: 'General', description: 'Installation completed as per design' },
             { room: 'General', description: 'Site cleaned and debris removed' },
+            { room: 'Systems & Appliance Testing', description: 'Electrical Testing: Each circuit, each switch, each point tested' },
+            { room: 'Systems & Appliance Testing', description: 'Plumbing Testing: Each tap, each drain, water pressure tested' },
+            { room: 'Systems & Appliance Testing', description: 'Hardware Testing: Each door, drawer, hinge, pull tested' },
+            { room: 'Systems & Appliance Testing', description: 'Appliance Testing: Each installed appliance tested by client' },
             { room: 'Product Documentation', description: 'Appliances Manual & Warranty', item_type: 'document' },
             { room: 'Product Documentation', description: 'Hardware & Fittings Warranties', item_type: 'document' },
             { room: 'Keys & Access Handovers', description: 'Main Door Keys', item_type: 'key_access' },
@@ -97,6 +109,10 @@ async function addDefaultItems(checklistId, projectType) {
         { room: 'Kitchen', description: 'All cabinets and drawers open/close smoothly' },
         { room: 'Kitchen', description: 'Countertop installed without scratches or chips' },
         { room: 'Kitchen', description: 'Sink and faucet installed, no leaks' },
+        { room: 'Systems & Appliance Testing', description: 'Electrical Testing: Each circuit, each switch, each point tested' },
+        { room: 'Systems & Appliance Testing', description: 'Plumbing Testing: Each tap, each drain, water pressure tested' },
+        { room: 'Systems & Appliance Testing', description: 'Hardware Testing: Each door, drawer, hinge, pull tested' },
+        { room: 'Systems & Appliance Testing', description: 'Appliance Testing: Each installed appliance tested by client' },
         { room: 'Product Documentation', description: 'Hob (Cooktop) Manual & Warranty', item_type: 'document' },
         { room: 'Product Documentation', description: 'Chimney Manual & Warranty', item_type: 'document' },
         { room: 'Product Documentation', description: 'Water Purifier Manual & Warranty', item_type: 'document' },
@@ -113,6 +129,10 @@ async function addDefaultItems(checklistId, projectType) {
         { room: 'Master Bedroom', description: 'Wardrobe sliding mechanism works smoothly' },
         { room: 'General', description: 'All switchboards aligned and working' },
         { room: 'General', description: 'Paint finish uniform with no patches' },
+        { room: 'Systems & Appliance Testing', description: 'Electrical Testing: Each circuit, each switch, each point tested' },
+        { room: 'Systems & Appliance Testing', description: 'Plumbing Testing: Each tap, each drain, water pressure tested' },
+        { room: 'Systems & Appliance Testing', description: 'Hardware Testing: Each door, drawer, hinge, pull tested' },
+        { room: 'Systems & Appliance Testing', description: 'Appliance Testing: Each installed appliance tested by client' },
         { room: 'Product Documentation', description: 'Hob (Cooktop) Manual & Warranty', item_type: 'document' },
         { room: 'Product Documentation', description: 'Chimney Manual & Warranty', item_type: 'document' },
         { room: 'Product Documentation', description: 'Water Purifier Manual & Warranty', item_type: 'document' },
@@ -128,6 +148,10 @@ async function addDefaultItems(checklistId, projectType) {
       defaultItems = [
         { room: 'General', description: 'Installation completed as per design' },
         { room: 'General', description: 'Site cleaned and debris removed' },
+        { room: 'Systems & Appliance Testing', description: 'Electrical Testing: Each circuit, each switch, each point tested' },
+        { room: 'Systems & Appliance Testing', description: 'Plumbing Testing: Each tap, each drain, water pressure tested' },
+        { room: 'Systems & Appliance Testing', description: 'Hardware Testing: Each door, drawer, hinge, pull tested' },
+        { room: 'Systems & Appliance Testing', description: 'Appliance Testing: Each installed appliance tested by client' },
         { room: 'Product Documentation', description: 'Appliances Manual & Warranty', item_type: 'document' },
         { room: 'Product Documentation', description: 'Hardware & Fittings Warranties', item_type: 'document' },
         { room: 'Keys & Access Handovers', description: 'Main Door Keys', item_type: 'key_access' },
@@ -161,7 +185,8 @@ async function updateItem({
   warrantyExpiryDate,
   hasManual,
   hasWarrantyCard,
-  keyDetails
+  keyDetails,
+  hasBrandRegistrationCard
 }) {
   const result = await pool.query(
     `UPDATE handover_items
@@ -173,7 +198,8 @@ async function updateItem({
          warranty_expiry_date = COALESCE(NULLIF($7, '')::DATE, warranty_expiry_date),
          has_manual = COALESCE($8, has_manual),
          has_warranty_card = COALESCE($9, has_warranty_card),
-         key_details = COALESCE($10, key_details)
+         key_details = COALESCE($10, key_details),
+         has_brand_registration_card = COALESCE($11, has_brand_registration_card)
      WHERE id = $4 AND checklist_id = $5
      RETURNING *`,
     [
@@ -185,8 +211,9 @@ async function updateItem({
       serialNumber, 
       warrantyExpiryDate, 
       hasManual, 
-      hasWarrantyCard,
-      keyDetails
+      hasWarrantyCard, 
+      keyDetails,
+      hasBrandRegistrationCard
     ]
   );
 

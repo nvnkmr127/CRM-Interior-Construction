@@ -246,3 +246,20 @@ export const confirmCommercialApproval = (projectId, data) => api.post(`/project
 export const getProjectCoordination = (projectId) => api.get(`/projects/${projectId}/coordination`);
 export const updateProjectCoordination = (projectId, data) => api.patch(`/projects/${projectId}/coordination`, data);
 export const getCoordinationDashboard = () => api.get('/projects/coordination/dashboard');
+export const getVendorCoordination = (projectId) => api.get(`/projects/${projectId}/vendor-coordination`).then(r => r.data.data);
+
+// Global Factory Production Orders & CNC Requests
+export const getGlobalProductionOrders = (params) => api.get('/projects/factory/production-orders', { params });
+export const getGlobalCNCRequests = () => api.get('/projects/factory/cnc-requests');
+export const getCNCRequests = (projectId, orderId) => api.get(`/projects/${projectId}/production-orders/${orderId}/cnc-requests`);
+export const createCNCRequest = (projectId, orderId, data) => api.post(`/projects/${projectId}/production-orders/${orderId}/cnc-requests`, data);
+export const updateCNCRequestStatus = (projectId, orderId, requestId, data) => api.put(`/projects/${projectId}/production-orders/${orderId}/cnc-requests/${requestId}`, data);
+export const getCuttingList = (projectId, orderId, itemId) => api.get(`/projects/${projectId}/production-orders/${orderId}/items/${itemId}/cutting-list`);
+export const saveCuttingList = (projectId, orderId, itemId, data) => api.post(`/projects/${projectId}/production-orders/${orderId}/items/${itemId}/cutting-list`, data);
+
+// External Inspections
+export const getExternalInspections = (projectId) => api.get(`/projects/${projectId}/external-inspections`).then(r => r.data.data);
+export const createExternalInspection = (projectId, data) => api.post(`/projects/${projectId}/external-inspections`, data).then(r => r.data.data);
+export const updateExternalInspection = (projectId, id, data) => api.patch(`/projects/${projectId}/external-inspections/${id}`, data).then(r => r.data.data);
+export const deleteExternalInspection = (projectId, id) => api.delete(`/projects/${projectId}/external-inspections/${id}`).then(r => r.data.data);
+

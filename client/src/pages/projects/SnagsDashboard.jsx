@@ -2,11 +2,14 @@ import { useState, useEffect, useMemo } from 'react'
 import styles from './SnagsDashboard.module.css'
 import { Badge, Button, Avatar, Modal } from '../../components/ui'
 import { useToast } from '../../store/toastContext'
-import { getSnags, updateSnag } from '../../api/snags'
+import { getSnags, updateSnag, createSnag } from '../../api/snags'
+import { getVendorCoordination, getExternalInspections, createExternalInspection, updateExternalInspection } from '../../api/projects'
+import { getSnagsAnalytics } from '../../api/analytics'
 
 const FILTERS = ['All', 'Open', 'Assigned', 'In Progress', 'Resolved', 'Verified']
 
 export default function SnagsDashboard({ projectId }) {
+  const [activeTab, setActiveTab] = useState('internal') // 'internal' | 'external'
   const [activeFilter, setActiveFilter] = useState('All')
   const [snags, setSnags] = useState([])
   const [loading, setLoading] = useState(true)
@@ -17,6 +20,16 @@ export default function SnagsDashboard({ projectId }) {
   const [reworkEstimatedHours, setReworkEstimatedHours] = useState('0')
   const [reworkActualHours, setReworkActualHours] = useState('0')
   const [reworkCost, setReworkCost] = useState('0')
+  
+  const [vendors, setVendors] = useState([])
+  const [analytics, setAnalytics] = useState(null)
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false)
+  const [newSnag, setNewSnag] = useState({ title: '', desc: '', category: 'General', rootCauseCategory: '', vendorId: '' })
+  
+  const [externalInspections, setExternalInspections] = useState([])
+  const [isExternalModalOpen, setIsExternalModalOpen] = useState(false)
+  const [newExternal, setNewExternal] = useState({ inspectorName: '', organization: '', inspectionDate: '', findings: '', severity: 'medium' })
+  
   const toast = useToast()
 
   useEffect(() => {
@@ -44,6 +57,18 @@ export default function SnagsDashboard({ projectId }) {
       })
       .catch(() => setSnags([]))
       .finally(() => setLoading(false))
+
+    getVendorCoordination(projectId)
+      .then(res => setVendors(res || []))
+      .catch(() => setVendors([]))
+
+    getSnagsAnalytics(projectId)
+      .then(res => setAnalytics(res))
+      .catch(() => setAnalytics(null))
+
+    getExternalInspections(projectId)
+      .then(res => setExternalInspections(res || []))
+      .catch(() => setExternalInspections([]))
   }, [projectId])
 
   const filteredSnags = useMemo(() => {
@@ -130,6 +155,62 @@ export default function SnagsDashboard({ projectId }) {
     setReworkCost('0')
   }
 
+  const submitNewSnag = async () => {
+    if (!newSnag.title.trim()) return toast.error('Title is required')
+    try {
+      const res = await createSnag(projectId, {
+        projectId,
+        title: newSnag.title,
+        description: newSnag.desc,
+        category: newSnag.category,
+        rootCauseCategory: newSnag.rootCauseCategory || null,
+        vendorId: newSnag.vendorId || null
+      })
+      
+      setSnags(prev => [{
+        id: res.id,
+        title: res.title,
+        desc: res.description || '',
+        category: res.category || 'General',
+        status: res.status || 'open',
+        raisedBy: { type: 'staff', name: 'Me', date: new Date().toISOString() },
+        assignee: null,
+        createdAt: new Date().toISOString(),
+        slaHours: 48,
+        photos: []
+      }, ...prev])
+
+      toast.success('Snag reported successfully')
+      setIsReportModalOpen(false)
+      setNewSnag({ title: '', desc: '', category: 'General', rootCauseCategory: '', vendorId: '' })
+    } catch {
+      toast.error('Failed to report snag')
+    }
+  }
+
+  const submitNewExternal = async () => {
+    if (!newExternal.inspectorName.trim() || !newExternal.inspectionDate) return toast.error('Inspector name and date are required')
+    try {
+      const res = await createExternalInspection(projectId, newExternal)
+      setExternalInspections([res, ...externalInspections])
+      toast.success('External inspection logged successfully')
+      setIsExternalModalOpen(false)
+      setNewExternal({ inspectorName: '', organization: '', inspectionDate: '', findings: '', severity: 'medium' })
+    } catch {
+      toast.error('Failed to log external inspection')
+    }
+  }
+
+  const updateExtStatus = async (id, status) => {
+    try {
+      await updateExternalInspection(projectId, id, { status })
+      setExternalInspections(prev => prev.map(e => e.id === id ? { ...e, status } : e))
+      toast.success(`Marked as ${status.replace('_', ' ')}`)
+    } catch {
+      toast.error('Failed to update status')
+    }
+  }
+
   return (
     <div className={styles.page}>
       <div className={styles.headerRow}>
@@ -142,8 +223,46 @@ export default function SnagsDashboard({ projectId }) {
             <span className={styles.slaText}>48h average resolution time</span>
           </div>
         </div>
-        <Button variant="primary" size="sm">+ Report Snag</Button>
+        <div style={{display:'flex', gap:12}}>
+          <Button variant={activeTab === 'internal' ? 'primary' : 'outline'} size="sm" onClick={() => setActiveTab('internal')}>Internal QC Snags</Button>
+          <Button variant={activeTab === 'external' ? 'primary' : 'outline'} size="sm" onClick={() => setActiveTab('external')}>Third-Party Inspections</Button>
+        </div>
       </div>
+
+      {activeTab === 'internal' && (
+        <>
+          <div style={{display:'flex', justifyContent:'flex-end', marginBottom:16}}>
+            <Button variant="primary" size="sm" onClick={() => setIsReportModalOpen(true)}>+ Report Snag</Button>
+          </div>
+
+          {analytics && (
+        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(250px, 1fr))', gap:16, marginBottom:24}}>
+          <div className={styles.card}>
+            <div style={{fontSize:'var(--text-xs)', fontWeight:600, color:'var(--color-text-muted)', marginBottom:12}}>Defects by Root Cause</div>
+            <div style={{display:'flex', flexDirection:'column', gap:8}}>
+              {analytics.byRootCause.length === 0 && <div style={{fontSize:'var(--text-xs)', color:'#999'}}>No data</div>}
+              {analytics.byRootCause.map(item => (
+                <div key={item.label} style={{display:'flex', justifyContent:'space-between', fontSize:'var(--text-sm)'}}>
+                  <span style={{textTransform:'capitalize'}}>{item.label.replace('_', ' ')}</span>
+                  <span style={{fontWeight:600}}>{item.count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className={styles.card}>
+            <div style={{fontSize:'var(--text-xs)', fontWeight:600, color:'var(--color-text-muted)', marginBottom:12}}>Defects by Vendor</div>
+            <div style={{display:'flex', flexDirection:'column', gap:8}}>
+              {analytics.byVendor.length === 0 && <div style={{fontSize:'var(--text-xs)', color:'#999'}}>No data</div>}
+              {analytics.byVendor.map(item => (
+                <div key={item.label} style={{display:'flex', justifyContent:'space-between', fontSize:'var(--text-sm)'}}>
+                  <span>{item.label}</span>
+                  <span style={{fontWeight:600}}>{item.count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className={styles.filters}>
         {FILTERS.map(f => (
@@ -282,6 +401,18 @@ export default function SnagsDashboard({ projectId }) {
                 </select>
               </div>
 
+              <div style={{display:'flex', flexDirection:'column', gap:4}}>
+                <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Responsible Vendor</label>
+                <select 
+                  style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-xs)'}}
+                  value={resolveTarget?.vendor_id || ''}
+                  onChange={e => setResolveTarget(prev => ({ ...prev, vendor_id: e.target.value }))}
+                >
+                  <option value="">No specific vendor</option>
+                  {vendors.map(v => <option key={v.id} value={v.id}>{v.vendor_name}</option>)}
+                </select>
+              </div>
+
               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
                 <div style={{display:'flex', flexDirection:'column', gap:4}}>
                   <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Est. Rework Hours</label>
@@ -319,7 +450,200 @@ export default function SnagsDashboard({ projectId }) {
             </div>
           )}
         </div>
+        </div>
       </Modal>
+
+      {/* Report Snag Modal */}
+      <Modal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        title="Report New Snag"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setIsReportModalOpen(false)}>Cancel</Button>
+            <Button variant="primary" onClick={submitNewSnag}>Report Snag</Button>
+          </>
+        }
+      >
+        <div style={{display:'flex', flexDirection:'column', gap:16}}>
+          <div style={{display:'flex', flexDirection:'column', gap:4}}>
+            <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Title *</label>
+            <input 
+              style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-sm)'}}
+              placeholder="e.g. Broken tile in master bathroom"
+              value={newSnag.title}
+              onChange={e => setNewSnag({...newSnag, title: e.target.value})}
+            />
+          </div>
+
+          <div style={{display:'flex', flexDirection:'column', gap:4}}>
+            <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Description</label>
+            <textarea 
+              style={{width:'100%', minHeight:80, padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-sm)', fontFamily:'inherit'}}
+              placeholder="Provide more details..."
+              value={newSnag.desc}
+              onChange={e => setNewSnag({...newSnag, desc: e.target.value})}
+            />
+          </div>
+          
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
+            <div style={{display:'flex', flexDirection:'column', gap:4}}>
+              <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Category</label>
+              <select 
+                style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-sm)'}}
+                value={newSnag.category}
+                onChange={e => setNewSnag({...newSnag, category: e.target.value})}
+              >
+                <option value="Civil">Civil</option>
+                <option value="Electrical">Electrical</option>
+                <option value="Plumbing">Plumbing</option>
+                <option value="Carpentry">Carpentry</option>
+                <option value="Painting">Painting</option>
+                <option value="General">General</option>
+              </select>
+            </div>
+            
+            <div style={{display:'flex', flexDirection:'column', gap:4}}>
+              <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Root Cause Category (Optional)</label>
+              <select 
+                style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-sm)'}}
+                value={newSnag.rootCauseCategory}
+                onChange={e => setNewSnag({...newSnag, rootCauseCategory: e.target.value})}
+              >
+                <option value="">Unknown / None</option>
+                <option value="workmanship_error">Workmanship Error</option>
+                <option value="material_defect">Material Defect</option>
+                <option value="design_flaw">Design Flaw</option>
+                <option value="site_damage">Site / Transit Damage</option>
+                <option value="vendor_fault">Vendor Fault</option>
+                <option value="other">Other / General</option>
+              </select>
+            </div>
+          </div>
+          
+          <div style={{display:'flex', flexDirection:'column', gap:4}}>
+            <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Responsible Vendor (Optional)</label>
+            <select 
+              style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-sm)'}}
+              value={newSnag.vendorId}
+              onChange={e => setNewSnag({...newSnag, vendorId: e.target.value})}
+            >
+              <option value="">No specific vendor</option>
+              {vendors.map(v => <option key={v.id} value={v.id}>{v.vendor_name}</option>)}
+            </select>
+          </div>
+        </div>
+      </Modal>
+      </>
+      )}
+
+      {activeTab === 'external' && (
+        <>
+          <div style={{display:'flex', justifyContent:'flex-end', marginBottom:16}}>
+            <Button variant="primary" size="sm" onClick={() => setIsExternalModalOpen(true)}>+ Log External Inspection</Button>
+          </div>
+
+          <div className={styles.grid}>
+            {externalInspections.length === 0 && <div style={{color:'var(--color-text-muted)'}}>No external inspections logged.</div>}
+            {externalInspections.map(ext => (
+              <div key={ext.id} className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <Badge variant={ext.severity === 'critical' || ext.severity === 'high' ? 'danger' : 'warning'} style={{textTransform:'capitalize'}}>
+                    {ext.severity} Severity
+                  </Badge>
+                  <Badge variant={ext.status === 'resolved' || ext.status === 'closed' ? 'success' : 'neutral'} style={{textTransform:'capitalize'}}>
+                    {ext.status.replace('_', ' ')}
+                  </Badge>
+                </div>
+
+                <div>
+                  <div className={styles.cardTitle}>{ext.inspector_name} {ext.organization && `(${ext.organization})`}</div>
+                  <div style={{fontSize:'var(--text-xs)', color:'var(--color-text-muted)', marginBottom:12}}>Date: {new Date(ext.inspection_date).toLocaleDateString()}</div>
+                  <div className={styles.cardDesc} style={{whiteSpace:'pre-wrap'}}>{ext.findings || 'No findings provided.'}</div>
+                </div>
+
+                <div className={styles.cardFooter} style={{marginTop:16, borderTop:'1px solid var(--color-border)', paddingTop:12}}>
+                  <div></div>
+                  <div style={{display:'flex', gap:8}}>
+                    {ext.status === 'open' && <Button variant="secondary" size="sm" onClick={() => updateExtStatus(ext.id, 'in_progress')}>Start Fixes</Button>}
+                    {ext.status === 'in_progress' && <Button variant="primary" size="sm" onClick={() => updateExtStatus(ext.id, 'resolved')}>Resolve</Button>}
+                    {ext.status === 'resolved' && <Button variant="outline" size="sm" onClick={() => updateExtStatus(ext.id, 'closed')}>Close</Button>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <Modal
+            isOpen={isExternalModalOpen}
+            onClose={() => setIsExternalModalOpen(false)}
+            title="Log Third-Party Inspection"
+            footer={
+              <>
+                <Button variant="ghost" onClick={() => setIsExternalModalOpen(false)}>Cancel</Button>
+                <Button variant="primary" onClick={submitNewExternal}>Save Inspection</Button>
+              </>
+            }
+          >
+            <div style={{display:'flex', flexDirection:'column', gap:16}}>
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
+                <div style={{display:'flex', flexDirection:'column', gap:4}}>
+                  <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Inspector Name *</label>
+                  <input 
+                    style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-sm)'}}
+                    value={newExternal.inspectorName}
+                    onChange={e => setNewExternal({...newExternal, inspectorName: e.target.value})}
+                  />
+                </div>
+                <div style={{display:'flex', flexDirection:'column', gap:4}}>
+                  <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Organization</label>
+                  <input 
+                    style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-sm)'}}
+                    placeholder="e.g. Client Rep, City Inspector"
+                    value={newExternal.organization}
+                    onChange={e => setNewExternal({...newExternal, organization: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
+                <div style={{display:'flex', flexDirection:'column', gap:4}}>
+                  <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Inspection Date *</label>
+                  <input 
+                    type="date"
+                    style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-sm)'}}
+                    value={newExternal.inspectionDate}
+                    onChange={e => setNewExternal({...newExternal, inspectionDate: e.target.value})}
+                  />
+                </div>
+                <div style={{display:'flex', flexDirection:'column', gap:4}}>
+                  <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Severity</label>
+                  <select 
+                    style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-sm)'}}
+                    value={newExternal.severity}
+                    onChange={e => setNewExternal({...newExternal, severity: e.target.value})}
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{display:'flex', flexDirection:'column', gap:4}}>
+                <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Findings / Notes</label>
+                <textarea 
+                  style={{width:'100%', minHeight:100, padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-sm)', fontFamily:'inherit'}}
+                  placeholder="Summarize the inspector's findings..."
+                  value={newExternal.findings}
+                  onChange={e => setNewExternal({...newExternal, findings: e.target.value})}
+                />
+              </div>
+            </div>
+          </Modal>
+        </>
+      )}
     </div>
   )
 }

@@ -17,7 +17,12 @@ const createAmcSchema = z.object({
   endDate: z.string().regex(dateRegex, 'End date must be in YYYY-MM-DD format'),
   coveredScope: z.string().optional().nullable(),
   autoRenewalAlertDays: z.number().int().nonnegative().optional(),
-  generateVisits: z.boolean().optional()
+  generateVisits: z.boolean().optional(),
+  visitFrequency: z.enum(['monthly', 'quarterly', 'bi-annual', 'annual']).optional(),
+  coveredProducts: z.any().optional(),
+  exclusions: z.string().optional().nullable(),
+  renewalDate: z.string().regex(dateRegex, 'Renewal date must be in YYYY-MM-DD format').optional().nullable(),
+  paymentSchedule: z.string().optional().nullable()
 });
 
 const updateAmcSchema = z.object({
@@ -28,7 +33,12 @@ const updateAmcSchema = z.object({
   coveredScope: z.string().optional().nullable(),
   status: z.enum(['active', 'expired', 'renewed', 'cancelled']).optional(),
   autoRenewalAlertDays: z.number().int().nonnegative().optional(),
-  renewalAlertSent: z.boolean().optional()
+  renewalAlertSent: z.boolean().optional(),
+  visitFrequency: z.enum(['monthly', 'quarterly', 'bi-annual', 'annual']).optional(),
+  coveredProducts: z.any().optional(),
+  exclusions: z.string().optional().nullable(),
+  renewalDate: z.string().regex(dateRegex, 'Renewal date must be in YYYY-MM-DD format').optional().nullable(),
+  paymentSchedule: z.string().optional().nullable()
 });
 
 const createVisitSchema = z.object({
@@ -75,6 +85,11 @@ router.post('/', authorize('projects:manage'), async (req, res, next) => {
       coveredScope: data.coveredScope,
       autoRenewalAlertDays: data.autoRenewalAlertDays,
       generateVisits: data.generateVisits,
+      visitFrequency: data.visitFrequency,
+      coveredProducts: data.coveredProducts,
+      exclusions: data.exclusions,
+      renewalDate: data.renewalDate,
+      paymentSchedule: data.paymentSchedule,
       userId
     });
 
@@ -105,6 +120,11 @@ router.put('/:id', authorize('projects:manage'), async (req, res, next) => {
     if (data.status !== undefined) updateData.status = data.status;
     if (data.autoRenewalAlertDays !== undefined) updateData.auto_renewal_alert_days = data.autoRenewalAlertDays;
     if (data.renewalAlertSent !== undefined) updateData.renewal_alert_sent = data.renewalAlertSent;
+    if (data.visitFrequency !== undefined) updateData.visit_frequency = data.visitFrequency;
+    if (data.coveredProducts !== undefined) updateData.covered_products = data.coveredProducts ? JSON.stringify(data.coveredProducts) : null;
+    if (data.exclusions !== undefined) updateData.exclusions = data.exclusions;
+    if (data.renewalDate !== undefined) updateData.renewal_date = data.renewalDate;
+    if (data.paymentSchedule !== undefined) updateData.payment_schedule = data.paymentSchedule;
 
     const amc = await amcService.updateAmc(id, tenantId, updateData, userId);
     return success(res, amc);

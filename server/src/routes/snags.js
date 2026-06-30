@@ -26,6 +26,34 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+// POST /api/snags
+router.post('/', async (req, res, next) => {
+  try {
+    const { projectId, title, description, photoKeys, category, rootCauseCategory, vendorId } = req.body;
+    
+    if (!projectId || !title) {
+      return fail(res, 'BAD_REQUEST', 'Project ID and Title are required', 400);
+    }
+    
+    const snag = await require('../services/postSale/snagService').createSnag({
+      tenantId: req.user.tenantId,
+      projectId,
+      raisedBy: req.user.userId,
+      raisedByClient: false,
+      title,
+      description,
+      photoKeys,
+      category,
+      rootCauseCategory,
+      vendorId
+    });
+    
+    return success(res, snag, 201);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // PATCH /api/snags/:id
 router.patch('/:id', async (req, res, next) => {
   try {
@@ -38,7 +66,9 @@ router.patch('/:id', async (req, res, next) => {
       reworkRootCauseCategory,
       reworkEstimatedHours,
       reworkActualHours,
-      reworkCost
+      reworkCost,
+      rootCauseCategory,
+      vendorId
     } = req.body;
     const tenantId = req.user.tenantId;
     const userId = req.user.userId;
@@ -49,7 +79,7 @@ router.patch('/:id', async (req, res, next) => {
       updatedSnag = await assignSnag({ tenantId, snagId, assigneeId, userId });
     }
 
-    if (status) {
+    if (status || rootCauseCategory || vendorId || resolutionNote || reworkRequired !== undefined) {
       updatedSnag = await updateSnagStatus({ 
         tenantId, 
         snagId, 
@@ -60,7 +90,9 @@ router.patch('/:id', async (req, res, next) => {
         reworkRootCauseCategory,
         reworkEstimatedHours,
         reworkActualHours,
-        reworkCost
+        reworkCost,
+        rootCauseCategory,
+        vendorId
       });
     }
 

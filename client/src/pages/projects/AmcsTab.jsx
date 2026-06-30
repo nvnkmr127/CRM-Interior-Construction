@@ -24,7 +24,11 @@ export default function AmcsTab({ projectId }) {
     startDate: '',
     endDate: '',
     coveredScope: '',
-    autoRenewalAlertDays: 30,
+    visitFrequency: 'quarterly',
+    coveredProducts: '',
+    exclusions: '',
+    paymentSchedule: '',
+    autoRenewalAlertDays: 90,
     generateVisits: true
   });
 
@@ -95,7 +99,11 @@ export default function AmcsTab({ projectId }) {
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
       coveredScope: 'Annual maintenance and periodic cleaning of interior wall finishes, realignment of modular kitchen cabinets, and hardware greasing.',
-      autoRenewalAlertDays: 30,
+      visitFrequency: 'quarterly',
+      coveredProducts: '',
+      exclusions: 'Consumables like bulbs, deep cleaning of upholstery not included.',
+      paymentSchedule: '100% advance on signing.',
+      autoRenewalAlertDays: 90,
       generateVisits: true
     });
     setContractModalOpen(true);
@@ -110,7 +118,11 @@ export default function AmcsTab({ projectId }) {
         startDate: contractForm.startDate,
         endDate: contractForm.endDate,
         coveredScope: contractForm.coveredScope || null,
-        autoRenewalAlertDays: parseInt(contractForm.autoRenewalAlertDays) || 30,
+        visitFrequency: contractForm.visitFrequency,
+        coveredProducts: contractForm.coveredProducts.split(',').map(s => s.trim()).filter(Boolean),
+        exclusions: contractForm.exclusions || null,
+        paymentSchedule: contractForm.paymentSchedule || null,
+        autoRenewalAlertDays: parseInt(contractForm.autoRenewalAlertDays) || 90,
         generateVisits: contractForm.generateVisits
       });
 
@@ -267,7 +279,8 @@ export default function AmcsTab({ projectId }) {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                     <span className={styles.amcDates}>
-                      📅 {new Date(a.start_date).toLocaleDateString('en-IN')} → {new Date(a.end_date).toLocaleDateString('en-IN')}
+                      📅 {new Date(a.start_date).toLocaleDateString('en-IN')} → {new Date(a.end_date).toLocaleDateString('en-IN')} 
+                      {a.renewal_date && ` (Renewal: ${new Date(a.renewal_date).toLocaleDateString('en-IN')})`}
                     </span>
                     <Button variant="outline" size="sm" style={{ color: 'var(--color-danger)' }} onClick={(e) => handleDeleteContract(a.id, e)}>
                       Delete
@@ -279,8 +292,23 @@ export default function AmcsTab({ projectId }) {
                 {isExpanded && (
                   <div className={styles.amcBody}>
                     <div className={styles.scopeSection}>
-                      <span className={styles.sectionTitle}>Covered Scope</span>
+                      <span className={styles.sectionTitle}>Covered Scope & Products</span>
                       <p className={styles.scopeText}>{a.covered_scope || 'No specific maintenance scope documented.'}</p>
+                      {a.covered_products && (
+                        <div style={{ marginTop: 8, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+                          <strong>Products:</strong> {Array.isArray(a.covered_products) ? a.covered_products.join(', ') : a.covered_products}
+                        </div>
+                      )}
+                      {a.exclusions && (
+                        <div style={{ marginTop: 8, fontSize: 13, color: 'var(--color-danger)' }}>
+                          <strong>Exclusions:</strong> {a.exclusions}
+                        </div>
+                      )}
+                      {a.payment_schedule && (
+                        <div style={{ marginTop: 8, fontSize: 13, color: 'var(--color-text-secondary)' }}>
+                          <strong>Payment Terms:</strong> {a.payment_schedule}
+                        </div>
+                      )}
                     </div>
 
                     <div className={styles.visitsSection}>
@@ -415,11 +443,26 @@ export default function AmcsTab({ projectId }) {
                 <Input
                   type="number"
                   value={contractForm.autoRenewalAlertDays}
-                  onChange={(e) => setContractForm(prev => ({ ...prev, autoRenewalAlertDays: parseInt(e.target.value) || 30 }))}
+                  onChange={(e) => setContractForm(prev => ({ ...prev, autoRenewalAlertDays: parseInt(e.target.value) || 90 }))}
                   min="0"
                 />
               </FormField>
 
+              <FormField label="Visit Frequency">
+                <select
+                  value={contractForm.visitFrequency}
+                  onChange={(e) => setContractForm(prev => ({ ...prev, visitFrequency: e.target.value }))}
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}
+                >
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Quarterly</option>
+                  <option value="bi-annual">Bi-Annual</option>
+                  <option value="annual">Annual</option>
+                </select>
+              </FormField>
+            </div>
+
+            <div className={styles.formGrid}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 32 }}>
                 <input
                   type="checkbox"
@@ -429,9 +472,27 @@ export default function AmcsTab({ projectId }) {
                   style={{ width: 18, height: 18, cursor: 'pointer' }}
                 />
                 <label htmlFor="genVisits" style={{ fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-                  Auto-schedule quarterly visits
+                  Auto-schedule visits
                 </label>
               </div>
+            </div>
+
+            <div className={styles.formGrid}>
+              <FormField label="Covered Products (Comma separated)">
+                <Input
+                  value={contractForm.coveredProducts}
+                  onChange={(e) => setContractForm(prev => ({ ...prev, coveredProducts: e.target.value }))}
+                  placeholder="AC Units, Sofas, Mattresses..."
+                />
+              </FormField>
+
+              <FormField label="Payment Schedule">
+                <Input
+                  value={contractForm.paymentSchedule}
+                  onChange={(e) => setContractForm(prev => ({ ...prev, paymentSchedule: e.target.value }))}
+                  placeholder="50% Advance, 50% End of year"
+                />
+              </FormField>
             </div>
 
             <FormField label="Covered Scope Description">
@@ -439,7 +500,16 @@ export default function AmcsTab({ projectId }) {
                 value={contractForm.coveredScope}
                 onChange={(e) => setContractForm(prev => ({ ...prev, coveredScope: e.target.value }))}
                 placeholder="Detail what plumbing, cabinet alignments, hardware checks or electrical maintenance services are included in this AMC fee..."
-                rows={4}
+                rows={2}
+              />
+            </FormField>
+
+            <FormField label="Exclusions (What is not covered)">
+              <Textarea
+                value={contractForm.exclusions}
+                onChange={(e) => setContractForm(prev => ({ ...prev, exclusions: e.target.value }))}
+                placeholder="Consumables, structural damages, third-party parts..."
+                rows={2}
               />
             </FormField>
 

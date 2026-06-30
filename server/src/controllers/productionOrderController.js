@@ -204,3 +204,82 @@ exports.getTransitDamageRecords = async (req, res, next) => {
   }
 };
 
+exports.getCuttingList = async (req, res, next) => {
+  try {
+    const tenantId = getTenantId(req);
+    const { itemId } = req.params;
+    const panels = await productionOrderService.getCuttingListByItem(tenantId, itemId);
+    res.status(200).json({ success: true, data: panels });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.saveCuttingList = async (req, res, next) => {
+  try {
+    const tenantId = getTenantId(req);
+    const { itemId } = req.params;
+    const panels = await productionOrderService.saveCuttingList(tenantId, itemId, req.body.panels);
+    res.status(200).json({ success: true, data: panels });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getCNCRequests = async (req, res, next) => {
+  try {
+    const tenantId = getTenantId(req);
+    const { id } = req.params; // orderId
+    const requests = await productionOrderService.getCNCRequestsByOrder(tenantId, id);
+    res.status(200).json({ success: true, data: requests });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.createCNCRequest = async (req, res, next) => {
+  try {
+    const tenantId = getTenantId(req);
+    const userId = getUserId(req);
+    const { projectId, id } = req.params; // projectId, orderId
+    const request = await productionOrderService.createCNCRequest(tenantId, userId, projectId, id, req.body);
+    res.status(201).json({ success: true, data: request });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateCNCRequestStatus = async (req, res, next) => {
+  try {
+    const tenantId = getTenantId(req);
+    const { requestId } = req.params;
+    const { status, programFileName, notes } = req.body;
+    const request = await productionOrderService.updateCNCRequestStatus(tenantId, requestId, status, programFileName, notes);
+    res.status(200).json({ success: true, data: request });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getGlobalProductionOrders = async (req, res, next) => {
+  try {
+    const tenantId = getTenantId(req);
+    const { search, status } = req.query;
+    const pos = await productionOrderService.getGlobalProductionOrders(tenantId, search, status);
+    res.status(200).json({ success: true, data: pos });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getGlobalCNCRequests = async (req, res, next) => {
+  try {
+    const tenantId = getTenantId(req);
+    const requests = await productionOrderService.getGlobalCNCRequests(tenantId);
+    res.status(200).json({ success: true, data: requests });
+  } catch (error) {
+    next(error);
+  }
+};
+
+

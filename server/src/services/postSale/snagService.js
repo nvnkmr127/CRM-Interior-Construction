@@ -3,12 +3,12 @@ const { logAction } = require('../auditLog');
 const { dispatchEvent } = require('../webhooks/webhookDispatcher');
 const { notifyUser } = require('../notificationService');
 
-async function createSnag({ tenantId, projectId, raisedBy, raisedByClient, title, description, photoKeys, category }) {
+async function createSnag({ tenantId, projectId, raisedBy, raisedByClient, title, description, photoKeys, category, rootCauseCategory, vendorId }) {
   const result = await pool.query(
-    `INSERT INTO snags (tenant_id, project_id, raised_by, raised_by_client, title, description, photo_keys, category, status)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open')
+    `INSERT INTO snags (tenant_id, project_id, raised_by, raised_by_client, title, description, photo_keys, category, status, root_cause_category, vendor_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', $9, $10)
      RETURNING *`,
-    [tenantId, projectId, raisedBy, raisedByClient, title, description, JSON.stringify(photoKeys || []), category]
+    [tenantId, projectId, raisedBy, raisedByClient, title, description, JSON.stringify(photoKeys || []), category, rootCauseCategory || null, vendorId || null]
   );
   
   const snag = result.rows[0];
@@ -70,7 +70,9 @@ async function updateSnagStatus({
   reworkRootCauseCategory,
   reworkEstimatedHours,
   reworkActualHours,
-  reworkCost 
+  reworkCost,
+  rootCauseCategory,
+  vendorId
 }) {
   // get current snag to check valid transitions and SLA
   const snagResult = await pool.query(
@@ -86,44 +88,66 @@ async function updateSnagStatus({
     'in_progress': ['resolved']
   };
 
-  if (!validTransitions[snag.status] || !validTransitions[snag.status].includes(status)) {
-    throw new Error(`Invalid status transition from ${snag.status} to ${status}`);
+  if (status) {
+    if (!validTransitions[snag.status] || !validTransitions[snag.status].includes(status)) {
+      throw new Error(`Invalid status transition from ${snag.status} to ${status}`);
+    }
   }
 
-  let updateQuery = `UPDATE snags SET status = $3`;
-  const params = [tenantId, snagId, status];
-  let index = 4;
+  let updateQuery = `UPDATE snags SET`;
+  const params = [tenantId, snagId];
+  let index = 3;
+  let setClauses = [];
   
+  if (status) {
+    setClauses.push(`status = $${index++}`);
+    params.push(status);
+  }
+
   if (status === 'resolved') {
-    updateQuery += `, resolved_at = NOW(), resolution_note = $${index++}`;
+    setClauses.push(`resolved_at = NOW()`);
+    setClauses.push(`resolution_note = $${index++}`);
     params.push(resolutionNote);
   }
 
   if (reworkRequired !== undefined) {
-    updateQuery += `, rework_required = $${index++}`;
+    setClauses.push(`rework_required = $${index++}`);
     params.push(reworkRequired);
   }
   if (reworkRootCauseCategory !== undefined) {
-    updateQuery += `, rework_root_cause_category = $${index++}`;
+    setClauses.push(`rework_root_cause_category = $${index++}`);
     params.push(reworkRootCauseCategory);
   }
   if (reworkEstimatedHours !== undefined) {
-    updateQuery += `, rework_estimated_hours = $${index++}`;
+    setClauses.push(`rework_estimated_hours = $${index++}`);
     params.push(reworkEstimatedHours);
   }
   if (reworkActualHours !== undefined) {
-    updateQuery += `, rework_actual_hours = $${index++}`;
+    setClauses.push(`rework_actual_hours = $${index++}`);
     params.push(reworkActualHours);
   }
   if (reworkCost !== undefined) {
-    updateQuery += `, rework_cost = $${index++}`;
+    setClauses.push(`rework_cost = $${index++}`);
     params.push(reworkCost);
   }
   if (status === 'resolved' && (reworkRequired || snag.rework_required)) {
-    updateQuery += `, rework_completed_at = NOW()`;
+    setClauses.push(`rework_completed_at = NOW()`);
   }
 
-  updateQuery += ` WHERE tenant_id = $1 AND id = $2 RETURNING *`;
+  if (rootCauseCategory !== undefined) {
+    setClauses.push(`root_cause_category = $${index++}`);
+    params.push(rootCauseCategory);
+  }
+  if (vendorId !== undefined) {
+    setClauses.push(`vendor_id = $${index++}`);
+    params.push(vendorId);
+  }
+
+  if (setClauses.length === 0) {
+    return snag; // nothing to update
+  }
+
+  updateQuery += ` ${setClauses.join(', ')} WHERE tenant_id = $1 AND id = $2 RETURNING *`;
   
   const result = await pool.query(updateQuery, params);
   const updatedSnag = result.rows[0];
@@ -149,12 +173,14 @@ async function updateSnagStatus({
     });
   }
 
-  dispatchEvent(tenantId, 'snag.status_changed', {
-    snagId,
-    projectId: snag.project_id,
-    oldStatus: snag.status,
-    newStatus: status
-  });
+  if (status) {
+    dispatchEvent(tenantId, 'snag.status_changed', {
+      snagId,
+      projectId: snag.project_id,
+      oldStatus: snag.status,
+      newStatus: status
+    });
+  }
 
   if (status === 'resolved' && snag.created_at) {
     const hoursTaken = (new Date() - new Date(snag.created_at)) / (1000 * 60 * 60);
@@ -212,9 +238,10 @@ async function getSnags({ tenantId, projectId, status, assigneeId, category, pag
   const offset = (page - 1) * limit;
   const params = [tenantId];
   let query = `
-    SELECT s.*, u.name as assignee_name
+    SELECT s.*, u.name as assignee_name, pv.vendor_name
     FROM snags s
     LEFT JOIN users u ON s.assignee_id = u.id
+    LEFT JOIN project_vendors pv ON s.vendor_id = pv.id
     WHERE s.tenant_id = $1
   `;
   

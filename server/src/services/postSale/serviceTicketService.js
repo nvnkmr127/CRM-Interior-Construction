@@ -38,6 +38,7 @@ async function createTicket({
   title,
   description = null,
   category,
+  affectedItem = null,
   priority = 'medium',
   warrantyEligibility = 'checking',
   assignedEngineerId = null,
@@ -49,28 +50,55 @@ async function createTicket({
 
     const ticketNumber = await generateTicketNumber(client, tenantId);
 
-    const prioritySlaMap = {
+    let isRepeatComplaint = false;
+    if (affectedItem && category) {
+      const repeatCheck = await client.query(`
+        SELECT COUNT(*) as count FROM service_tickets 
+        WHERE project_id = $1 AND category = $2 AND LOWER(affected_item) = LOWER($3)
+      `, [projectId, category, affectedItem]);
+      if (parseInt(repeatCheck.rows[0].count, 10) > 0) {
+        isRepeatComplaint = true;
+      }
+    }
+
+    const firstResponseSlaMap = {
       critical: 4,
       high: 24,
       medium: 72,
+      low: 72
+    };
+    const resolutionSlaMap = {
+      critical: 24,
+      high: 72,
+      medium: 168,
       low: 168
     };
-    const slaHours = prioritySlaMap[priority.toLowerCase()] || 72;
-    const dueDate = new Date(Date.now() + slaHours * 60 * 60 * 1000).toISOString();
+    
+    const p = priority.toLowerCase();
+    const firstResponseSlaHours = firstResponseSlaMap[p] || 72;
+    const resolutionSlaHours = resolutionSlaMap[p] || 168;
+
+    const now = Date.now();
+    const firstResponseDueDate = new Date(now + firstResponseSlaHours * 60 * 60 * 1000).toISOString();
+    const resolutionDueDate = new Date(now + resolutionSlaHours * 60 * 60 * 1000).toISOString();
 
     const ticketQuery = `
       INSERT INTO service_tickets (
         tenant_id, project_id, client_portal_user_id, ticket_number,
         title, description, category, priority, status,
-        warranty_eligibility, assigned_engineer_id, sla_hours, due_date
+        warranty_eligibility, assigned_engineer_id, 
+        first_response_sla_hours, resolution_sla_hours,
+        first_response_due_date, resolution_due_date,
+        affected_item, is_repeat_complaint
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', $9, $10, $11, $12)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING *
     `;
     const ticketValues = [
       tenantId, projectId, clientPortalUserId, ticketNumber,
       title, description, category, priority, warrantyEligibility, assignedEngineerId,
-      slaHours, dueDate
+      firstResponseSlaHours, resolutionSlaHours, firstResponseDueDate, resolutionDueDate,
+      affectedItem, isRepeatComplaint
     ];
 
     const { rows } = await client.query(ticketQuery, ticketValues);
@@ -87,6 +115,22 @@ async function createTicket({
     });
 
     await client.query('COMMIT');
+
+    if (isRepeatComplaint) {
+      try {
+        await escalateTicket({
+          tenantId,
+          ticketId: ticket.id,
+          escalatedToRole: 'qc',
+          previousLevel: 0,
+          newLevel: 1,
+          reason: 'Auto-escalated: Repeat Complaint detected for this item/category.'
+        });
+      } catch (err) {
+        console.error('Failed to auto-escalate repeat complaint:', err);
+      }
+    }
+
     return ticket;
   } catch (error) {
     await client.query('ROLLBACK');
@@ -109,28 +153,55 @@ async function updateTicket(ticketId, tenantId, updateData, userId = null) {
   }
   const oldValue = existingRes.rows[0];
 
-  const prioritySlaMap = {
+  const firstResponseSlaMap = {
     critical: 4,
     high: 24,
     medium: 72,
+    low: 72
+  };
+  const resolutionSlaMap = {
+    critical: 24,
+    high: 72,
+    medium: 168,
     low: 168
   };
 
   const newPriority = updateData.priority || oldValue.priority;
   if (updateData.priority && updateData.priority !== oldValue.priority) {
-    const slaHours = prioritySlaMap[newPriority.toLowerCase()] || 72;
-    updateData.sla_hours = slaHours;
+    const p = newPriority.toLowerCase();
+    const firstResponseSlaHours = firstResponseSlaMap[p] || 72;
+    const resolutionSlaHours = resolutionSlaMap[p] || 168;
+
+    updateData.first_response_sla_hours = firstResponseSlaHours;
+    updateData.resolution_sla_hours = resolutionSlaHours;
     
     const createdAt = new Date(oldValue.created_at);
-    const dueDate = new Date(createdAt.getTime() + slaHours * 60 * 60 * 1000);
-    updateData.due_date = dueDate.toISOString();
+    updateData.first_response_due_date = new Date(createdAt.getTime() + firstResponseSlaHours * 60 * 60 * 1000).toISOString();
+    updateData.resolution_due_date = new Date(createdAt.getTime() + resolutionSlaHours * 60 * 60 * 1000).toISOString();
+  }
+
+  if (updateData.status && updateData.status !== 'open' && oldValue.status === 'open' && !oldValue.first_responded_at) {
+    updateData.first_responded_at = new Date().toISOString();
+  }
+
+  // Estimate logic
+  if (updateData.warranty_eligibility === 'chargeable') {
+    if (updateData.chargeable_estimate !== undefined && !updateData.chargeable_estimate_status) {
+      updateData.chargeable_estimate_status = 'pending_approval';
+    }
+  }
+
+  if (updateData.chargeable_estimate_status === 'approved' && oldValue.chargeable_estimate_status !== 'approved') {
+    updateData.chargeable_estimate_approved_at = new Date().toISOString();
   }
 
   const allowedKeys = [
     'title', 'description', 'category', 'priority', 'status',
     'warranty_eligibility', 'assigned_engineer_id', 'resolution_details',
     'resolved_at', 'client_feedback_rating', 'client_feedback_comments',
-    'sla_hours', 'due_date'
+    'sla_hours', 'due_date', 'first_response_sla_hours', 'resolution_sla_hours',
+    'first_response_due_date', 'resolution_due_date', 'first_responded_at',
+    'chargeable_estimate', 'chargeable_estimate_status', 'chargeable_estimate_approved_at'
   ];
 
   const updateFields = [];
@@ -154,8 +225,8 @@ async function updateTicket(ticketId, tenantId, updateData, userId = null) {
       idx++;
     }
 
-    const dueDateVal = updateData.due_date || oldValue.due_date;
-    if (dueDateVal && new Date(resolvedAt) > new Date(dueDateVal)) {
+    const resDueDateVal = updateData.resolution_due_date || oldValue.resolution_due_date || updateData.due_date || oldValue.due_date;
+    if (resDueDateVal && new Date(resolvedAt) > new Date(resDueDateVal)) {
       await logAction({
         tenantId,
         userId,
@@ -164,9 +235,27 @@ async function updateTicket(ticketId, tenantId, updateData, userId = null) {
         entityId: ticketId,
         newValue: {
           resolvedAt,
-          dueDate: dueDateVal,
+          dueDate: resDueDateVal,
           hoursTaken: (new Date(resolvedAt) - new Date(oldValue.created_at)) / (3600 * 1000),
-          slaHours: updateData.sla_hours || oldValue.sla_hours || 72
+          slaHours: updateData.resolution_sla_hours || oldValue.resolution_sla_hours || oldValue.sla_hours || 168
+        }
+      });
+    }
+  }
+
+  // Check first response breach
+  if (updateData.first_responded_at) {
+    const frDueDate = updateData.first_response_due_date || oldValue.first_response_due_date;
+    if (frDueDate && new Date(updateData.first_responded_at) > new Date(frDueDate)) {
+      await logAction({
+        tenantId,
+        userId,
+        action: 'service_ticket.first_response_sla_breached',
+        entity: 'service_ticket',
+        entityId: ticketId,
+        newValue: {
+          respondedAt: updateData.first_responded_at,
+          dueDate: frDueDate
         }
       });
     }
@@ -267,8 +356,16 @@ async function getTicketById(ticketId, tenantId) {
     [ticketId, tenantId]
   );
 
+  const partsRes = await pool.query(
+    `SELECT * FROM service_ticket_parts
+     WHERE ticket_id = $1 AND tenant_id = $2
+     ORDER BY created_at ASC`,
+    [ticketId, tenantId]
+  );
+
   ticket.visits = visitsRes.rows;
   ticket.escalations = escalationsRes.rows;
+  ticket.parts_used = partsRes.rows;
   return ticket;
 }
 
@@ -758,36 +855,67 @@ async function checkAutomaticEscalations() {
     FROM service_tickets t
     JOIN projects p ON t.project_id = p.id
     WHERE t.status NOT IN ('resolved', 'closed')
-    AND t.due_date IS NOT NULL
   `;
   const { rows } = await pool.query(query);
 
   let escalationCount = 0;
   for (const ticket of rows) {
     const hoursElapsed = parseFloat(ticket.hours_elapsed);
-    const slaHours = ticket.sla_hours || 72;
+    const resSlaHours = ticket.resolution_sla_hours || ticket.sla_hours || 168;
+    const frSlaHours = ticket.first_response_sla_hours || 72;
 
-    if (hoursElapsed > slaHours * 3 && ticket.escalation_level < 2) {
+    let escalated = false;
+
+    // Check Resolution SLA
+    if (hoursElapsed > resSlaHours * 3 && ticket.escalation_level < 2) {
       await escalateTicket({
         tenantId: ticket.tenant_id,
         ticketId: ticket.id,
         escalatedToRole: 'director',
         previousLevel: ticket.escalation_level,
         newLevel: 2,
-        reason: `Ticket unresolved past 3x SLA (${slaHours * 3} hours)`
+        reason: `Ticket unresolved past 3x Resolution SLA (${resSlaHours * 3} hours)`
       });
       escalationCount++;
+      escalated = true;
     }
-    else if (hoursElapsed > slaHours * 2 && ticket.escalation_level < 1) {
+    else if (hoursElapsed > resSlaHours * 2 && ticket.escalation_level < 1) {
       await escalateTicket({
         tenantId: ticket.tenant_id,
         ticketId: ticket.id,
         escalatedToRole: 'pm',
         previousLevel: ticket.escalation_level,
         newLevel: 1,
-        reason: `Ticket unresolved past 2x SLA (${slaHours * 2} hours)`
+        reason: `Ticket unresolved past 2x Resolution SLA (${resSlaHours * 2} hours)`
       });
       escalationCount++;
+      escalated = true;
+    }
+
+    // Check First Response SLA (if not responded yet and not already escalated for resolution)
+    if (!escalated && !ticket.first_responded_at && ticket.status === 'open') {
+      if (hoursElapsed > frSlaHours * 3 && ticket.escalation_level < 2) {
+        await escalateTicket({
+          tenantId: ticket.tenant_id,
+          ticketId: ticket.id,
+          escalatedToRole: 'director',
+          previousLevel: ticket.escalation_level,
+          newLevel: 2,
+          reason: `Ticket not responded past 3x First Response SLA (${frSlaHours * 3} hours)`
+        });
+        escalationCount++;
+      }
+      else if (hoursElapsed > frSlaHours * 2 && ticket.escalation_level < 1) {
+        await escalateTicket({
+          tenantId: ticket.tenant_id,
+          ticketId: ticket.id,
+          escalatedToRole: 'pm',
+          previousLevel: ticket.escalation_level,
+          newLevel: 1,
+          reason: `Ticket not responded past 2x First Response SLA (${frSlaHours * 2} hours)`
+        });
+        escalationCount++;
+      }
     }
   }
 
@@ -844,6 +972,69 @@ async function getCsatMetrics(tenantId) {
   };
 }
 
+/**
+ * Adds a part used to a service ticket.
+ */
+async function addPartUsed({ tenantId, ticketId, visitId = null, partName, quantity, cost = null, userId = null }) {
+  // Verify ticket exists
+  const ticketRes = await pool.query(
+    'SELECT id FROM service_tickets WHERE id = $1 AND tenant_id = $2',
+    [ticketId, tenantId]
+  );
+  if (ticketRes.rows.length === 0) {
+    throw new Error('TICKET_NOT_FOUND');
+  }
+
+  const query = `
+    INSERT INTO service_ticket_parts (tenant_id, ticket_id, visit_id, part_name, quantity, cost)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    RETURNING *
+  `;
+  const { rows } = await pool.query(query, [tenantId, ticketId, visitId, partName, quantity, cost]);
+  const part = rows[0];
+
+  await logAction({
+    tenantId,
+    userId,
+    action: 'service_ticket.part_added',
+    entity: 'service_ticket',
+    entityId: ticketId,
+    newValue: part
+  });
+
+  return part;
+}
+
+/**
+ * Removes a part used from a service ticket.
+ */
+async function removePartUsed(partId, ticketId, tenantId, userId = null) {
+  const existingRes = await pool.query(
+    'SELECT * FROM service_ticket_parts WHERE id = $1 AND ticket_id = $2 AND tenant_id = $3',
+    [partId, ticketId, tenantId]
+  );
+  if (existingRes.rows.length === 0) {
+    throw new Error('PART_NOT_FOUND');
+  }
+  const oldValue = existingRes.rows[0];
+
+  await pool.query(
+    'DELETE FROM service_ticket_parts WHERE id = $1 AND ticket_id = $2 AND tenant_id = $3',
+    [partId, ticketId, tenantId]
+  );
+
+  await logAction({
+    tenantId,
+    userId,
+    action: 'service_ticket.part_removed',
+    entity: 'service_ticket',
+    entityId: ticketId,
+    oldValue
+  });
+
+  return oldValue;
+}
+
 module.exports = {
   createTicket,
   updateTicket,
@@ -860,5 +1051,7 @@ module.exports = {
   submitCsat,
   escalateTicket,
   checkAutomaticEscalations,
-  getCsatMetrics
+  getCsatMetrics,
+  addPartUsed,
+  removePartUsed
 };

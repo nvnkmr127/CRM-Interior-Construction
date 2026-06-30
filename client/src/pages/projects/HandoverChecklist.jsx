@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import styles from './HandoverChecklist.module.css'
 import { Badge, Button, Modal } from '../../components/ui'
 import { useToast } from '../../store/toastContext'
-import { getHandoverChecklist, createHandoverChecklist, addHandoverItem, updateHandoverItem, signOffHandoverChecklist } from '../../api/handover'
-
+import { getHandoverChecklist, createHandoverChecklist, addHandoverItem, updateHandoverItem, signOffHandoverChecklist, getRoomHandovers, signOffRoomHandover } from '../../api/handover'
 export default function HandoverChecklist({ projectId }) {
   const [checklist, setChecklist] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -12,17 +11,29 @@ export default function HandoverChecklist({ projectId }) {
   const [newItemText, setNewItemText] = useState({})
   const [newRoomText, setNewRoomText] = useState('')
   const [uploadingItem, setUploadingItem] = useState(null)
+  const [roomSignOffModal, setRoomSignOffModal] = useState({ isOpen: false, roomId: null, clientName: '', otp: '1234' })
   const fileInputRef = useRef(null)
   const toast = useToast()
 
   useEffect(() => {
     if (!projectId) return
     setLoading(true)
-    getHandoverChecklist(projectId)
-      .then(res => {
-        const raw = res.data?.data || res.data
+    Promise.all([
+      getHandoverChecklist(projectId).catch(e => {
+        if (e?.response?.status === 404) return null
+        throw e
+      }),
+      getRoomHandovers(projectId).catch(() => [])
+    ])
+      .then(([raw, roomHandoversRaw]) => {
         if (!raw) { setChecklist(null); return }
         
+        const roomHandovers = Array.isArray(roomHandoversRaw) ? roomHandoversRaw : []
+        const roomStatusMap = {}
+        roomHandovers.forEach(rh => {
+          roomStatusMap[rh.room] = rh
+        })
+
         const rawItems = raw.items || []
         const roomMap = {}
         rawItems.forEach(i => {
@@ -31,7 +42,10 @@ export default function HandoverChecklist({ projectId }) {
             roomMap[roomName] = {
               id: roomName,
               name: roomName,
-              items: []
+              items: [],
+              isSignedOff: roomStatusMap[roomName]?.status === 'signed_off',
+              signedOffAt: roomStatusMap[roomName]?.signedOffAt || null,
+              clientName: roomStatusMap[roomName]?.clientName || null
             }
           }
           roomMap[roomName].items.push({
@@ -46,6 +60,7 @@ export default function HandoverChecklist({ projectId }) {
             warrantyExpiryDate: i.warranty_expiry_date || '',
             hasManual: i.has_manual || false,
             hasWarrantyCard: i.has_warranty_card || false,
+            hasBrandRegistrationCard: i.has_brand_registration_card || false,
             keyDetails: i.key_details || ''
           })
         })
@@ -96,6 +111,7 @@ export default function HandoverChecklist({ projectId }) {
           warrantyExpiryDate: fields.warranty_expiry_date !== undefined ? fields.warranty_expiry_date : i.warrantyExpiryDate,
           hasManual: fields.has_manual !== undefined ? fields.has_manual : i.hasManual,
           hasWarrantyCard: fields.has_warranty_card !== undefined ? fields.has_warranty_card : i.hasWarrantyCard,
+          hasBrandRegistrationCard: fields.has_brand_registration_card !== undefined ? fields.has_brand_registration_card : i.hasBrandRegistrationCard,
           keyDetails: fields.key_details !== undefined ? fields.key_details : i.keyDetails
         }
       })
@@ -200,9 +216,36 @@ export default function HandoverChecklist({ projectId }) {
     try {
       await signOffHandoverChecklist(checklist.id)
       setChecklist({ ...checklist, status: 'signed_off', signedOffAt: new Date().toISOString() })
-      toast.success('Checklist sent for client sign-off')
+      toast.success('Project handover finalized successfully')
     } catch {
-      toast.error('Failed to initiate sign-off')
+      toast.error('Failed to finalize project handover')
+    }
+  }
+
+  const handleRoomSignOff = async () => {
+    const { roomId, clientName, otp } = roomSignOffModal
+    if (!clientName.trim() || !otp.trim()) {
+      toast.error('Client name and OTP are required')
+      return
+    }
+
+    try {
+      await signOffRoomHandover(projectId, { 
+        checklistId: checklist.id,
+        roomName: roomId,
+        clientName,
+        otp
+      })
+      
+      const newRooms = checklist.rooms.map(r => {
+        if (r.id !== roomId) return r
+        return { ...r, isSignedOff: true, signedOffAt: new Date().toISOString(), clientName }
+      })
+      setChecklist({ ...checklist, rooms: newRooms })
+      setRoomSignOffModal({ isOpen: false, roomId: null, clientName: '', otp: '1234' })
+      toast.success(`Room ${roomId} signed off successfully`)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to sign off room. Ensure checklist is internally authorized.')
     }
   }
 
@@ -224,7 +267,8 @@ export default function HandoverChecklist({ projectId }) {
   const totalItems = checklist.rooms.reduce((acc, r) => acc + r.items.length, 0)
   const checkedItems = checklist.rooms.reduce((acc, r) => acc + r.items.filter(i => i.isChecked).length, 0)
   const progressPercent = totalItems === 0 ? 0 : (checkedItems / totalItems) * 100
-  const isAllChecked = totalItems > 0 && checkedItems === totalItems
+  const allRoomsSignedOff = checklist.rooms.length > 0 && checklist.rooms.every(r => r.isSignedOff)
+  const isAllChecked = allRoomsSignedOff
   const isReadOnly = checklist.status === 'signed_off'
 
   return (
@@ -252,9 +296,9 @@ export default function HandoverChecklist({ projectId }) {
             variant="primary" 
             disabled={!isAllChecked}
             onClick={() => setIsSignOffModalOpen(true)}
-            title={!isAllChecked ? 'Check all items before sending for sign-off' : ''}
+            title={!isAllChecked ? 'All rooms must be signed off before final project handover' : ''}
           >
-            Send for Client Sign-Off
+            Finalize Project Handover
           </Button>
         )}
       </div>
@@ -266,21 +310,36 @@ export default function HandoverChecklist({ projectId }) {
               <div className={styles.roomTitle}>
                 {room.name}
                 <Badge variant="neutral">{room.items.length} items</Badge>
+                {room.isSignedOff && <Badge variant="success">Signed Off by {room.clientName}</Badge>}
               </div>
-              <div className={`${styles.chevron} ${collapsedRooms.has(room.id) ? styles.collapsed : ''}`}>▼</div>
+              <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                {!room.isSignedOff && !isReadOnly && (
+                  <Button 
+                    variant="outline" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setRoomSignOffModal({ isOpen: true, roomId: room.id, clientName: '', otp: '1234' })
+                    }}
+                    disabled={room.items.length === 0 || !room.items.every(i => i.isChecked)}
+                  >
+                    Sign Off Room
+                  </Button>
+                )}
+                <div className={`${styles.chevron} ${collapsedRooms.has(room.id) ? styles.collapsed : ''}`}>▼</div>
+              </div>
             </div>
 
             {!collapsedRooms.has(room.id) && (
               <div className={styles.itemsList}>
                 {room.items.map(item => (
                   <div key={item.id} className={`${styles.itemRow} ${item.isChecked ? styles.checked : ''}`}>
-                    <div className={styles.checkboxWrapper}>
+                    <div className={styles.checkboxWrapper} title="Physically handed to client">
                       <input 
                         type="checkbox" 
                         className={styles.checkbox}
                         checked={item.isChecked}
                         onChange={() => toggleItem(room.id, item.id)}
-                        disabled={isReadOnly}
+                        disabled={isReadOnly || room.isSignedOff}
                       />
                     </div>
                     <div className={styles.itemContent}>
@@ -300,7 +359,7 @@ export default function HandoverChecklist({ projectId }) {
                               type="text" 
                               placeholder="e.g. SN12345" 
                               value={item.serialNumber || ''} 
-                              disabled={isReadOnly}
+                              disabled={isReadOnly || room.isSignedOff}
                               onChange={(e) => handleUpdateDocFields(item.id, { serial_number: e.target.value })}
                               style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', width: '120px' }}
                             />
@@ -310,7 +369,7 @@ export default function HandoverChecklist({ projectId }) {
                             <input 
                               type="date" 
                               value={item.warrantyExpiryDate ? item.warrantyExpiryDate.split('T')[0] : ''} 
-                              disabled={isReadOnly}
+                              disabled={isReadOnly || room.isSignedOff}
                               onChange={(e) => handleUpdateDocFields(item.id, { warranty_expiry_date: e.target.value })}
                               style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '4px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', height: '22px' }}
                             />
@@ -319,7 +378,7 @@ export default function HandoverChecklist({ projectId }) {
                             <input 
                               type="checkbox" 
                               checked={item.hasManual} 
-                              disabled={isReadOnly}
+                              disabled={isReadOnly || room.isSignedOff}
                               onChange={(e) => handleUpdateDocFields(item.id, { has_manual: e.target.checked })}
                             />
                             <span>Manual</span>
@@ -328,10 +387,19 @@ export default function HandoverChecklist({ projectId }) {
                             <input 
                               type="checkbox" 
                               checked={item.hasWarrantyCard} 
-                              disabled={isReadOnly}
+                              disabled={isReadOnly || room.isSignedOff}
                               onChange={(e) => handleUpdateDocFields(item.id, { has_warranty_card: e.target.checked })}
                             />
                             <span>Warranty Card</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600, marginTop: '12px' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={item.hasBrandRegistrationCard} 
+                              disabled={isReadOnly || room.isSignedOff}
+                              onChange={(e) => handleUpdateDocFields(item.id, { has_brand_registration_card: e.target.checked })}
+                            />
+                            <span>Brand Reg. Card</span>
                           </div>
                         </div>
                       )}
@@ -343,7 +411,7 @@ export default function HandoverChecklist({ projectId }) {
                               type="text" 
                               placeholder="e.g. 3 physical keys / Temporary code: 1234 / Card #402" 
                               value={item.keyDetails || ''} 
-                              disabled={isReadOnly}
+                              disabled={isReadOnly || room.isSignedOff}
                               onChange={(e) => handleUpdateDocFields(item.id, { key_details: e.target.value })}
                               style={{ fontSize: '11px', padding: '6px 10px', borderRadius: '4px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', width: '100%' }}
                             />
@@ -358,7 +426,7 @@ export default function HandoverChecklist({ projectId }) {
                         style={{display:'none'}} 
                         accept="image/*"
                         onChange={(e) => handlePhotoUpload(room.id, item.id, e)}
-                        disabled={isReadOnly}
+                        disabled={isReadOnly || room.isSignedOff}
                       />
                       {uploadingItem === item.id ? (
                         <div className={styles.uploadProgress}>Uploading...</div>
@@ -369,16 +437,20 @@ export default function HandoverChecklist({ projectId }) {
                           alt="Thumbnail" 
                           onClick={() => window.open(item.photoKey, '_blank')}
                         />
-                      ) : (
+                      ) : !(isReadOnly || room.isSignedOff) ? (
                         <div className={styles.photoEmpty} onClick={() => triggerFileInput(room.id, item.id)}>
                           + Photo
+                        </div>
+                      ) : (
+                        <div className={styles.photoEmpty} style={{ cursor: 'default', opacity: 0.5 }}>
+                          No Photo
                         </div>
                       )}
                     </div>
                   </div>
                 ))}
                 
-                {!isReadOnly && (
+                {!isReadOnly && !room.isSignedOff && (
                   <div className={styles.addItemRow}>
                     <input 
                       className={styles.addItemInput} 
@@ -408,15 +480,51 @@ export default function HandoverChecklist({ projectId }) {
       <Modal
         isOpen={isSignOffModalOpen}
         onClose={() => setIsSignOffModalOpen(false)}
-        title="Send for Sign-Off"
+        title="Finalize Project Handover"
         footer={
           <>
             <Button variant="ghost" onClick={() => setIsSignOffModalOpen(false)}>Cancel</Button>
-            <Button variant="primary" onClick={handleSignOff}>Confirm & Send</Button>
+            <Button variant="primary" onClick={handleSignOff}>Finalize Project</Button>
           </>
         }
       >
-        <p>This will notify the client via their portal. Once signed, the checklist is locked and cannot be modified.</p>
+        <p>This will finalize the handover for the entire project. All rooms have been signed off individually. Proceed with project completion?</p>
+      </Modal>
+
+      <Modal
+        isOpen={roomSignOffModal.isOpen}
+        onClose={() => setRoomSignOffModal({ ...roomSignOffModal, isOpen: false })}
+        title={`Sign Off Room: ${roomSignOffModal.roomId}`}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setRoomSignOffModal({ ...roomSignOffModal, isOpen: false })}>Cancel</Button>
+            <Button variant="primary" onClick={handleRoomSignOff}>Sign Off Room</Button>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <p>Please provide the client name and OTP to sign off this room. Once signed, the room checklist will be locked.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontSize: '12px', fontWeight: 600 }}>Client Name</label>
+            <input 
+              type="text" 
+              value={roomSignOffModal.clientName}
+              onChange={(e) => setRoomSignOffModal({ ...roomSignOffModal, clientName: e.target.value })}
+              placeholder="e.g. John Doe"
+              style={{ padding: '8px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontSize: '12px', fontWeight: 600 }}>Client OTP (Use 1234 for testing)</label>
+            <input 
+              type="text" 
+              value={roomSignOffModal.otp}
+              onChange={(e) => setRoomSignOffModal({ ...roomSignOffModal, otp: e.target.value })}
+              placeholder="Enter 4 digit OTP"
+              style={{ padding: '8px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
+            />
+          </div>
+        </div>
       </Modal>
     </div>
   )

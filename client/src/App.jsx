@@ -26,9 +26,11 @@ const ProjectAnalytics= lazy(() => import('./pages/analytics/ProjectAnalyticsPag
 const BOQVarianceReportPage = lazy(() => import('./pages/analytics/BOQVarianceReportPage'))
 const VendorPerformanceReportPage = lazy(() => import('./pages/analytics/VendorPerformanceReportPage'))
 const VendorPerformanceDetailPage = lazy(() => import('./pages/analytics/VendorPerformanceDetailPage'))
+const VendorCapacityPage = lazy(() => import('./pages/analytics/VendorCapacityPage'))
 const CollectionForecastReportPage = lazy(() => import('./pages/analytics/CollectionForecastReportPage'))
 const ProjectProfitabilityReportPage = lazy(() => import('./pages/analytics/ProjectProfitabilityReportPage'))
 const ResourceUtilisationReportPage = lazy(() => import('./pages/analytics/ResourceUtilisationReportPage'))
+const ResourceWorkloadDashboard = lazy(() => import('./pages/analytics/ResourceWorkloadDashboard'))
 const CSATReportPage = lazy(() => import('./pages/analytics/CSATReportPage'))
 const ResourceCapacityPage = lazy(() => import('./pages/projects/ResourceCapacityPage'))
 const ProfilePage    = lazy(() => import('./pages/settings/ProfilePage'))
@@ -40,7 +42,9 @@ const FinancialApprovalsPage = lazy(() => import('./pages/dashboard/FinancialApp
 const GlobalCoordinationPage = lazy(() => import('./pages/projects/GlobalCoordinationPage'))
 const GlobalHandoverDashboard = lazy(() => import('./pages/projects/GlobalHandoverDashboard'))
 const GlobalRetentionDashboard = lazy(() => import('./pages/projects/GlobalRetentionDashboard'))
+const ResourceAbsencePage = lazy(() => import('./pages/projects/ResourceAbsencePage'))
 const WarehousePage = lazy(() => import('./pages/warehouse/WarehousePage'))
+const GlobalFactoryProductionPage = lazy(() => import('./pages/factory/GlobalFactoryProductionPage'))
 
 export default function App() {
   return (
@@ -67,6 +71,8 @@ export default function App() {
                     <Route path='/projects/coordination' element={<GlobalCoordinationPage />} />
                     <Route path='/projects/handover-dashboard' element={<GlobalHandoverDashboard />} />
                     <Route path='/projects/retention-dashboard' element={<GlobalRetentionDashboard />} />
+                    <Route path='/projects/absences' element={<ResourceAbsencePage />} />
+                    <Route path='/factory/production' element={<GlobalFactoryProductionPage />} />
                     <Route path='/projects/:id' element={<ProjectDetail />} />
                     <Route path='/tasks' element={<MyTasksPage />} />
                     <Route path='/analytics/leads' element={<LeadAnalytics />} />
@@ -74,9 +80,11 @@ export default function App() {
                     <Route path='/analytics/boq-variance' element={<BOQVarianceReportPage />} />
                     <Route path='/analytics/vendors' element={<VendorPerformanceReportPage />} />
                     <Route path='/analytics/vendors/:vendorName' element={<VendorPerformanceDetailPage />} />
+                    <Route path='/analytics/vendors-capacity' element={<VendorCapacityPage />} />
                     <Route path='/analytics/collection-forecast' element={<CollectionForecastReportPage />} />
                     <Route path='/analytics/profitability' element={<ProjectProfitabilityReportPage />} />
                     <Route path='/analytics/resources' element={<ResourceUtilisationReportPage />} />
+                    <Route path='/analytics/resource-workload' element={<ResourceWorkloadDashboard />} />
                     <Route path='/analytics/csat' element={<CSATReportPage />} />
                     <Route path='/settings/profile' element={<ProfilePage />} />
                     <Route path='/settings/preferences' element={<PreferencesPage />} />

@@ -667,10 +667,12 @@ exports.getResourceUtilisation = async (req, res, next) => {
                 WHEN p.pm_id = u.id AND p.designer_id = u.id THEN (p.pm_hours_allocated + p.designer_hours_allocated)
                 WHEN p.pm_id = u.id THEN p.pm_hours_allocated 
                 ELSE p.designer_hours_allocated 
-              END
+              END,
+              'contractValue', p.contract_value,
+              'targetDate', p.target_date
             ))
             FROM projects p
-            WHERE (p.pm_id = u.id OR p.designer_id = u.id) AND p.status = 'active' AND p.deleted_at IS NULL
+            WHERE (p.pm_id = u.id OR p.designer_id = u.id OR p.site_engineer_id = u.id) AND p.status = 'active' AND p.deleted_at IS NULL
           ),
           '[]'::json
         ) as "activeProjects",
@@ -704,6 +706,15 @@ exports.getResourceUtilisation = async (req, res, next) => {
       const completedTasks = row.completedTasks;
       
       const totalHoursAllocated = activeProjects.reduce((sum, p) => sum + (p.hoursAllocated || 0), 0);
+      const totalScopeValue = activeProjects.reduce((sum, p) => sum + (parseFloat(p.contractValue) || 0), 0);
+      
+      const deadlines = activeProjects
+        .filter(p => p.targetDate)
+        .map(p => new Date(p.targetDate).getTime())
+        .filter(d => !isNaN(d))
+        .sort();
+      const nearestDeadline = deadlines.length > 0 ? new Date(deadlines[0]).toISOString() : null;
+
       const capacity = row.weeklyCapacity;
       
       const workloadScore = capacity > 0 ? (totalHoursAllocated / capacity) * 100 : 0;
@@ -719,6 +730,8 @@ exports.getResourceUtilisation = async (req, res, next) => {
         activeProjects,
         activeProjectsCount: activeProjects.length,
         totalHoursAllocated,
+        totalScopeValue,
+        nearestDeadline,
         workloadScore,
         availability,
         totalTasks,
@@ -875,6 +888,93 @@ exports.getCSATAnalytics = async (req, res, next) => {
         feedbacks: listRes.rows
       }
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getVendorCapacityReport = async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId || (req.user && req.user.tenantId);
+
+    const query = `
+      WITH active_projects AS (
+        SELECT 
+          pv.vendor_name,
+          COUNT(DISTINCT p.id) as active_project_count
+        FROM project_vendors pv
+        JOIN projects p ON pv.project_id = p.id
+        WHERE p.tenant_id = $1 AND p.status = 'active' AND p.deleted_at IS NULL
+        GROUP BY pv.vendor_name
+      ),
+      all_vendors AS (
+        SELECT DISTINCT vendor_name FROM project_vendors WHERE tenant_id = $1
+      )
+      SELECT 
+        av.vendor_name,
+        COALESCE(vcp.estimated_team_strength, 0) as estimated_team_strength,
+        COALESCE(vcp.max_concurrent_projects, 5) as max_concurrent_projects,
+        COALESCE(vcp.status, 'active') as status,
+        COALESCE(ap.active_project_count, 0) as active_project_count
+      FROM all_vendors av
+      LEFT JOIN vendor_capacity_profiles vcp ON av.vendor_name = vcp.vendor_name AND vcp.tenant_id = $1
+      LEFT JOIN active_projects ap ON av.vendor_name = ap.vendor_name
+      ORDER BY av.vendor_name ASC
+    `;
+
+    const { rows } = await pool.query(query, [tenantId]);
+
+    const data = rows.map(row => {
+      const maxProj = parseInt(row.max_concurrent_projects, 10);
+      const activeProj = parseInt(row.active_project_count, 10);
+      const utilizationPercent = maxProj > 0 ? (activeProj / maxProj) * 100 : 100;
+      let availabilityStatus = 'Available';
+      if (utilizationPercent >= 100) availabilityStatus = 'Overloaded';
+      else if (utilizationPercent >= 80) availabilityStatus = 'At Capacity';
+
+      return {
+        vendorName: row.vendor_name,
+        estimatedTeamStrength: parseInt(row.estimated_team_strength, 10),
+        maxConcurrentProjects: maxProj,
+        activeProjectCount: activeProj,
+        status: row.status,
+        utilizationPercent: parseFloat(utilizationPercent.toFixed(1)),
+        availabilityStatus
+      };
+    });
+
+    res.json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateVendorCapacityProfile = async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId || (req.user && req.user.tenantId);
+    const { vendorName } = req.params;
+    const { estimatedTeamStrength, maxConcurrentProjects, status } = req.body;
+
+    const query = `
+      INSERT INTO vendor_capacity_profiles (tenant_id, vendor_name, estimated_team_strength, max_concurrent_projects, status, updated_at)
+      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+      ON CONFLICT (tenant_id, vendor_name) DO UPDATE SET
+        estimated_team_strength = EXCLUDED.estimated_team_strength,
+        max_concurrent_projects = EXCLUDED.max_concurrent_projects,
+        status = EXCLUDED.status,
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING *
+    `;
+
+    const { rows } = await pool.query(query, [
+      tenantId, 
+      vendorName, 
+      estimatedTeamStrength || 0, 
+      maxConcurrentProjects || 5, 
+      status || 'active'
+    ]);
+
+    res.json({ success: true, data: rows[0] });
   } catch (error) {
     next(error);
   }

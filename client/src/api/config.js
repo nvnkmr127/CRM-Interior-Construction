@@ -45,4 +45,15 @@ export const configApi = {
   getWebhookLogs: (params) => api.get('/logs/webhook-events', {params}).then(r=>r.data),
   getInboundLogs: (params) => api.get('/logs/inbound', {params}).then(r=>r.data),
   retryWebhook:   (logId)  => api.post(`/logs/webhook-events/${logId}/retry`).then(r=>r.data.data),
+
+  // Trade activity templates
+  getTradeTemplates: (params) => api.get('/config/trade-activity-templates', { params }).then(r=>r.data.data),
+  createTradeTemplate: (data) => api.post('/config/trade-activity-templates', data).then(r=>r.data.data),
+  updateTradeTemplate: (id, data) => api.patch(`/config/trade-activity-templates/${id}`, data).then(r=>r.data.data),
+  deleteTradeTemplate: (id) => api.delete(`/config/trade-activity-templates/${id}`),
+
+  // Trade dependency templates
+  getTradeDependencyTemplates: () => api.get('/config/trade-dependency-templates').then(r=>r.data.data),
+  createTradeDependencyTemplate: (data) => api.post('/config/trade-dependency-templates', data).then(r=>r.data.data),
+  deleteTradeDependencyTemplate: (id) => api.delete(`/config/trade-dependency-templates/${id}`),
 }

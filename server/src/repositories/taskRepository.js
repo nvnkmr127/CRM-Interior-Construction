@@ -161,6 +161,17 @@ class TaskRepository {
 
     if (fields.length === 0) return this.findTaskById(tenantId, taskId);
 
+    // Automatic escalation resets and triggers
+    if (updates.status !== undefined) {
+      if (updates.status === 'blocked') {
+        fields.push(`blocked_at = NOW()`);
+        fields.push(`escalation_level = 0`);
+      } else {
+        fields.push(`blocked_at = NULL`);
+        fields.push(`escalation_level = 0`);
+      }
+    }
+
     fields.push(`updated_at = NOW()`);
     values.push(taskId, tenantId);
 

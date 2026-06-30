@@ -1,11 +1,10 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const fs = require('fs');
 const path = require('path');
-const pool = require('./src/config/db');
+const { pool } = require('./src/config/db');
 
 async function run() {
   try {
-    const file = '073_add_project_vendors_and_consultants.sql';
+    const file = '158_project_site_visits.sql';
     const sqlPath = path.join(__dirname, 'migrations', file);
     const sql = fs.readFileSync(sqlPath, 'utf8');
     console.log(`Running migration: ${file}...`);

@@ -243,4 +243,58 @@ router.delete('/:id/visits/:visitId', authorize('projects:manage'), async (req, 
   }
 });
 
+const addPartSchema = z.object({
+  partName: z.string().min(1, 'Part name is required'),
+  quantity: z.number().int().min(1).default(1),
+  cost: z.number().optional().nullable(),
+  visitId: z.string().uuid().optional().nullable()
+});
+
+// POST /api/projects/:projectId/service-tickets/:id/parts
+router.post('/:id/parts', authorize('projects:manage'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.tenantId;
+    const userId = req.user.userId;
+
+    const data = addPartSchema.parse(req.body);
+    const part = await serviceTicketService.addPartUsed({
+      tenantId,
+      ticketId: id,
+      visitId: data.visitId,
+      partName: data.partName,
+      quantity: data.quantity,
+      cost: data.cost,
+      userId
+    });
+
+    return success(res, part, {}, 201);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    }
+    if (err.message === 'TICKET_NOT_FOUND') {
+      return fail(res, 'NOT_FOUND', 'Service ticket not found.', 404);
+    }
+    next(err);
+  }
+});
+
+// DELETE /api/projects/:projectId/service-tickets/:id/parts/:partId
+router.delete('/:id/parts/:partId', authorize('projects:manage'), async (req, res, next) => {
+  try {
+    const { id, partId } = req.params;
+    const tenantId = req.tenantId;
+    const userId = req.user.userId;
+
+    const part = await serviceTicketService.removePartUsed(partId, id, tenantId, userId);
+    return success(res, part);
+  } catch (err) {
+    if (err.message === 'PART_NOT_FOUND') {
+      return fail(res, 'NOT_FOUND', 'Part not found.', 404);
+    }
+    next(err);
+  }
+});
+
 module.exports = router;

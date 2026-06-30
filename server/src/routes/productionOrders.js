@@ -55,4 +55,13 @@ router.put('/:id/damage/:damageId', authenticate, authorize('projects:update'), 
 // Fetch transit damage reports for the production order batch
 router.get('/:id/damage', authenticate, authorize('projects:read'), productionOrderController.getTransitDamageRecords);
 
+// Cutting Lists
+router.get('/:id/items/:itemId/cutting-list', authenticate, authorize('projects:read'), productionOrderController.getCuttingList);
+router.post('/:id/items/:itemId/cutting-list', authenticate, authorize('projects:update'), productionOrderController.saveCuttingList);
+
+// CNC Requests
+router.get('/:id/cnc-requests', authenticate, authorize('projects:read'), productionOrderController.getCNCRequests);
+router.post('/:id/cnc-requests', authenticate, authorize('projects:update'), productionOrderController.createCNCRequest);
+router.put('/:id/cnc-requests/:requestId', authenticate, authorize('projects:update'), productionOrderController.updateCNCRequestStatus);
+
 module.exports = router;

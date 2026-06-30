@@ -6,7 +6,9 @@ import {
   updateServiceTicket,
   scheduleServiceVisit,
   updateServiceVisit,
-  getCsatMetrics
+  getCsatMetrics,
+  addServiceTicketPart,
+  removeServiceTicketPart
 } from '../../api/handover';
 import { usersApi } from '../../api/users';
 import { Button } from '../../components/ui';
@@ -25,6 +27,7 @@ export default function ServiceTicketsTab({ projectId }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Installation');
+  const [affectedItem, setAffectedItem] = useState('');
   const [priority, setPriority] = useState('medium');
   const [warrantyEligibility, setWarrantyEligibility] = useState('checking');
   const [assignedEngineerId, setAssignedEngineerId] = useState('');
@@ -40,6 +43,17 @@ export default function ServiceTicketsTab({ projectId }) {
   const [resolutionDetails, setResolutionDetails] = useState('');
   const [visitOutcome, setVisitOutcome] = useState('');
   const [submittingResolution, setSubmittingResolution] = useState(false);
+
+  // Form states for adding parts
+  const [partName, setPartName] = useState('');
+  const [partQuantity, setPartQuantity] = useState(1);
+  const [partCost, setPartCost] = useState('');
+  const [submittingPart, setSubmittingPart] = useState(false);
+
+  // Form states for classification
+  const [classificationEligibility, setClassificationEligibility] = useState('');
+  const [chargeableEstimate, setChargeableEstimate] = useState('');
+  const [submittingClassification, setSubmittingClassification] = useState(false);
 
   const loadData = async () => {
     try {
@@ -57,6 +71,39 @@ export default function ServiceTicketsTab({ projectId }) {
       toast.error('Failed to load support tickets data.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateClassification = async (ticketId) => {
+    try {
+      setSubmittingClassification(true);
+      await updateServiceTicket(projectId, ticketId, {
+        warranty_eligibility: classificationEligibility,
+        chargeable_estimate: classificationEligibility === 'chargeable' ? (parseFloat(chargeableEstimate) || null) : null
+      });
+      toast.success('Classification updated successfully.');
+      await loadData();
+    } catch (err) {
+      console.error('Update classification error:', err);
+      toast.error(err.response?.data?.message || 'Failed to update classification.');
+    } finally {
+      setSubmittingClassification(false);
+    }
+  };
+
+  const handleApproveEstimate = async (ticketId, action) => {
+    try {
+      setSubmittingClassification(true);
+      await updateServiceTicket(projectId, ticketId, {
+        chargeable_estimate_status: action
+      });
+      toast.success(`Estimate ${action} successfully.`);
+      await loadData();
+    } catch (err) {
+      console.error('Approve estimate error:', err);
+      toast.error('Failed to update estimate status.');
+    } finally {
+      setSubmittingClassification(false);
     }
   };
 
@@ -79,6 +126,7 @@ export default function ServiceTicketsTab({ projectId }) {
         title,
         description: description || null,
         category,
+        affectedItem: affectedItem || null,
         priority,
         warrantyEligibility,
         assignedEngineerId: assignedEngineerId || null
@@ -86,6 +134,7 @@ export default function ServiceTicketsTab({ projectId }) {
       toast.success('Support ticket raised successfully.');
       setTitle('');
       setDescription('');
+      setAffectedItem('');
       setCategory('Installation');
       setPriority('medium');
       setWarrantyEligibility('checking');
@@ -122,6 +171,43 @@ export default function ServiceTicketsTab({ projectId }) {
       toast.error(err.response?.data?.message || 'Failed to schedule visit.');
     } finally {
       setSubmittingVisit(false);
+    }
+  };
+
+  const handleAddPart = async (ticketId) => {
+    if (!partName.trim()) {
+      toast.warning('Please enter a part name.');
+      return;
+    }
+    try {
+      setSubmittingPart(true);
+      await addServiceTicketPart(projectId, ticketId, {
+        partName,
+        quantity: parseInt(partQuantity, 10),
+        cost: partCost ? parseFloat(partCost) : null
+      });
+      toast.success('Part added successfully.');
+      setPartName('');
+      setPartQuantity(1);
+      setPartCost('');
+      await loadData();
+    } catch (err) {
+      console.error('[ServiceTicketsTab] Add part error:', err);
+      toast.error('Failed to add part.');
+    } finally {
+      setSubmittingPart(false);
+    }
+  };
+
+  const handleRemovePart = async (ticketId, partId) => {
+    if (!window.confirm('Remove this part?')) return;
+    try {
+      await removeServiceTicketPart(projectId, ticketId, partId);
+      toast.success('Part removed.');
+      await loadData();
+    } catch (err) {
+      console.error('[ServiceTicketsTab] Remove part error:', err);
+      toast.error('Failed to remove part.');
     }
   };
 
@@ -216,6 +302,11 @@ export default function ServiceTicketsTab({ projectId }) {
                     <div className={styles.ticketPrimary}>
                       <span className={styles.ticketTitle}>
                         {ticket.title}
+                        {ticket.is_repeat_complaint && (
+                          <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: '#ef4444', color: 'white', fontWeight: 700, marginLeft: '8px' }}>
+                            REPEAT COMPLAINT
+                          </span>
+                        )}
                         <span className={`${styles.badge} ${styles['priority_' + ticket.priority]}`}>
                           {ticket.priority}
                         </span>
@@ -225,8 +316,25 @@ export default function ServiceTicketsTab({ projectId }) {
                       </span>
                       <div className={styles.ticketMeta}>
                         <span>Category: <strong>{ticket.category}</strong></span>
+                        {ticket.affected_item && <span>Item: <strong>{ticket.affected_item}</strong></span>}
                         <span>Warranty: <strong>{ticket.warranty_eligibility}</strong></span>
                         <span>Assigned to: <strong>{ticket.engineer_name || 'Unassigned'}</strong></span>
+                        {(ticket.first_response_due_date || ticket.resolution_due_date || ticket.due_date) && (
+                          <div style={{ marginTop: '4px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            {(ticket.first_response_due_date) && (
+                              <span style={{ fontSize: '10px', color: (new Date() > new Date(ticket.first_response_due_date) && !ticket.first_responded_at && ticket.status === 'open') ? '#ef4444' : 'var(--color-text-secondary)' }}>
+                                1st Response Due: {new Date(ticket.first_response_due_date).toLocaleString()}
+                                {(new Date() > new Date(ticket.first_response_due_date) && !ticket.first_responded_at && ticket.status === 'open') && ' (Breached!)'}
+                              </span>
+                            )}
+                            {(ticket.resolution_due_date || ticket.due_date) && (
+                              <span style={{ fontSize: '10px', color: (new Date() > new Date(ticket.resolution_due_date || ticket.due_date) && ticket.status !== 'resolved' && ticket.status !== 'closed') ? '#ef4444' : 'var(--color-text-secondary)' }}>
+                                Resolution Due: {new Date(ticket.resolution_due_date || ticket.due_date).toLocaleString()}
+                                {(new Date() > new Date(ticket.resolution_due_date || ticket.due_date) && ticket.status !== 'resolved' && ticket.status !== 'closed') && ' (Breached!)'}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <span>{isExpanded ? '▲' : '▼'}</span>
@@ -248,6 +356,93 @@ export default function ServiceTicketsTab({ projectId }) {
                           {ticket.resolved_at && <span style={{ fontSize: '10px', color: '#047857' }}>Resolved at: {new Date(ticket.resolved_at).toLocaleString()}</span>}
                         </div>
                       )}
+
+                      {/* Classification Section */}
+                      <div className={styles.visitsSection} style={{ marginTop: '16px' }}>
+                        <h4 className={styles.visitsTitle}>Service Classification</h4>
+                        <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '12px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                            <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                              <label className={styles.label} style={{ fontSize: '10px' }}>Warranty Status</label>
+                              <select 
+                                className={styles.select}
+                                value={classificationEligibility || ticket.warranty_eligibility}
+                                onChange={(e) => {
+                                  setClassificationEligibility(e.target.value);
+                                  if (e.target.value !== 'chargeable') {
+                                    setChargeableEstimate('');
+                                  } else if (ticket.chargeable_estimate) {
+                                    setChargeableEstimate(ticket.chargeable_estimate);
+                                  }
+                                }}
+                              >
+                                <option value="checking">Checking / Reviewing</option>
+                                <option value="eligible">Eligible (Under Warranty)</option>
+                                <option value="chargeable">Chargeable (Out of Warranty)</option>
+                                <option value="not_eligible">Not Eligible</option>
+                              </select>
+                            </div>
+                            {(classificationEligibility === 'chargeable' || (ticket.warranty_eligibility === 'chargeable' && !classificationEligibility)) && (
+                              <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                                <label className={styles.label} style={{ fontSize: '10px' }}>Chargeable Estimate (₹)</label>
+                                <input 
+                                  type="number" 
+                                  className={styles.input} 
+                                  placeholder="e.g. 5000"
+                                  value={chargeableEstimate !== '' ? chargeableEstimate : (ticket.chargeable_estimate || '')}
+                                  onChange={(e) => setChargeableEstimate(e.target.value)}
+                                />
+                              </div>
+                            )}
+                          </div>
+                          <Button 
+                            variant="secondary" 
+                            onClick={() => handleUpdateClassification(ticket.id)}
+                            disabled={submittingClassification}
+                          >
+                            {submittingClassification ? 'Saving...' : 'Update Classification'}
+                          </Button>
+
+                          {ticket.warranty_eligibility === 'chargeable' && ticket.chargeable_estimate_status === 'pending_approval' && (
+                            <div style={{ marginTop: '8px', padding: '12px', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '12px', color: '#92400e' }}>
+                                Client Approval Pending for <strong>₹{ticket.chargeable_estimate}</strong>
+                              </span>
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <Button variant="secondary" onClick={() => handleApproveEstimate(ticket.id, 'rejected')} disabled={submittingClassification}>Reject</Button>
+                                <Button variant="primary" onClick={() => handleApproveEstimate(ticket.id, 'approved')} disabled={submittingClassification}>Approve</Button>
+                              </div>
+                            </div>
+                          )}
+                          {ticket.warranty_eligibility === 'chargeable' && ticket.chargeable_estimate_status === 'approved' && (
+                            <div style={{ marginTop: '8px', padding: '8px', background: '#ecfdf5', border: '1px solid #10b981', borderRadius: '6px', fontSize: '12px', color: '#047857' }}>
+                              Estimate of ₹{ticket.chargeable_estimate} was <strong>Approved</strong>.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Parts Used */}
+                      <div className={styles.visitsSection} style={{ marginTop: '16px' }}>
+                        <h4 className={styles.visitsTitle}>Parts Used</h4>
+                        {(!ticket.parts_used || ticket.parts_used.length === 0) ? (
+                          <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>No parts logged.</span>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {ticket.parts_used.map(part => (
+                              <div key={part.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px', border: '1px solid var(--color-border)', borderRadius: '4px', fontSize: '12px' }}>
+                                <div>
+                                  <strong>{part.part_name}</strong> (x{part.quantity})
+                                  {part.cost != null && <span style={{ marginLeft: '8px', color: 'var(--color-text-secondary)' }}>Cost: ₹{part.cost}</span>}
+                                </div>
+                                {ticket.status !== 'resolved' && ticket.status !== 'closed' && (
+                                  <span style={{ color: '#ef4444', cursor: 'pointer', fontWeight: 600 }} onClick={() => handleRemovePart(ticket.id, part.id)}>Remove</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
 
                       {/* Scheduled Visits */}
                       <div className={styles.visitsSection}>
@@ -278,89 +473,118 @@ export default function ServiceTicketsTab({ projectId }) {
                       {ticket.status !== 'resolved' && ticket.status !== 'closed' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', borderTop: '1px solid var(--color-border)', paddingTop: '16px' }}>
                           
-                          {/* Schedule Visit Form */}
-                          <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text)' }}>Schedule Service Visit</span>
-                            
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                              <div className={styles.formGroup}>
-                                <label className={styles.label}>Scheduled Date & Time</label>
-                                <input
-                                  type="datetime-local"
-                                  className={styles.input}
-                                  value={visitDate}
-                                  onChange={(e) => setVisitDate(e.target.value)}
-                                />
-                              </div>
-                              <div className={styles.formGroup}>
-                                <label className={styles.label}>Technician Engineer</label>
-                                <select
-                                  className={styles.select}
-                                  value={visitEngineerId}
-                                  onChange={(e) => setVisitEngineerId(e.target.value)}
+                          {ticket.warranty_eligibility === 'chargeable' && ticket.chargeable_estimate_status === 'pending_approval' ? (
+                            <div style={{ padding: '16px', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '8px', color: '#b45309' }}>
+                                <strong>Estimate Pending Approval:</strong> Client must approve the estimate of ₹{ticket.chargeable_estimate} before service actions can begin.
+                            </div>
+                          ) : (
+                            <>
+                              {/* Schedule Visit Form */}
+                              <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text)' }}>Schedule Service Visit</span>
+                                
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                  <div className={styles.formGroup}>
+                                    <label className={styles.label}>Scheduled Date & Time</label>
+                                    <input
+                                      type="datetime-local"
+                                      className={styles.input}
+                                      value={visitDate}
+                                      onChange={(e) => setVisitDate(e.target.value)}
+                                    />
+                                  </div>
+                                  <div className={styles.formGroup}>
+                                    <label className={styles.label}>Technician Engineer</label>
+                                    <select
+                                      className={styles.select}
+                                      value={visitEngineerId}
+                                      onChange={(e) => setVisitEngineerId(e.target.value)}
+                                    >
+                                      <option value="">Select Technician...</option>
+                                      {users.map(u => (
+                                        <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </div>
+                                
+                                <div className={styles.formGroup}>
+                                  <label className={styles.label}>Visit Instructions</label>
+                                  <input
+                                    type="text"
+                                    className={styles.input}
+                                    placeholder="Instructions for technician..."
+                                    value={visitSummary}
+                                    onChange={(e) => setVisitSummary(e.target.value)}
+                                  />
+                                </div>
+
+                                <Button
+                                  variant="secondary"
+                                  onClick={() => handleScheduleVisit(ticket.id)}
+                                  disabled={submittingVisit}
                                 >
-                                  <option value="">Select Technician...</option>
-                                  {users.map(u => (
-                                    <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
-                                  ))}
-                                </select>
+                                  {submittingVisit ? 'Scheduling...' : 'Schedule Visit'}
+                                </Button>
                               </div>
-                            </div>
-                            
-                            <div className={styles.formGroup}>
-                              <label className={styles.label}>Visit Instructions</label>
-                              <input
-                                type="text"
-                                className={styles.input}
-                                placeholder="Instructions for technician..."
-                                value={visitSummary}
-                                onChange={(e) => setVisitSummary(e.target.value)}
-                              />
-                            </div>
 
-                            <Button
-                              variant="secondary"
-                              onClick={() => handleScheduleVisit(ticket.id)}
-                              disabled={submittingVisit}
-                            >
-                              {submittingVisit ? 'Scheduling...' : 'Schedule Visit'}
-                            </Button>
-                          </div>
+                              {/* Add Parts Form */}
+                              <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text)' }}>Log Parts Used</span>
+                                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '8px', alignItems: 'end' }}>
+                                  <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                                    <label className={styles.label} style={{ fontSize: '10px' }}>Part Name</label>
+                                    <input type="text" className={styles.input} value={partName} onChange={e => setPartName(e.target.value)} placeholder="e.g. Door Hinge" />
+                                  </div>
+                                  <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                                    <label className={styles.label} style={{ fontSize: '10px' }}>Qty</label>
+                                    <input type="number" min="1" className={styles.input} value={partQuantity} onChange={e => setPartQuantity(e.target.value)} />
+                                  </div>
+                                  <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                                    <label className={styles.label} style={{ fontSize: '10px' }}>Cost (₹)</label>
+                                    <input type="number" min="0" className={styles.input} value={partCost} onChange={e => setPartCost(e.target.value)} placeholder="Opt" />
+                                  </div>
+                                  <Button variant="secondary" onClick={() => handleAddPart(ticket.id)} disabled={submittingPart}>
+                                    Add Part
+                                  </Button>
+                                </div>
+                              </div>
 
-                          {/* Complete Ticket Form */}
-                          <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text)' }}>Resolve Service Ticket</span>
-                            
-                            <div className={styles.formGroup}>
-                              <label className={styles.label}>Visit Outcome Notes</label>
-                              <input
-                                type="text"
-                                className={styles.input}
-                                placeholder="Outcome details (e.g. replaced pipes)"
-                                value={visitOutcome}
-                                onChange={(e) => setVisitOutcome(e.target.value)}
-                              />
-                            </div>
+                              {/* Complete Ticket Form */}
+                              <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text)' }}>Resolve Service Ticket</span>
+                                
+                                <div className={styles.formGroup}>
+                                  <label className={styles.label}>Visit Outcome Notes</label>
+                                  <input
+                                    type="text"
+                                    className={styles.input}
+                                    placeholder="Outcome details (e.g. replaced pipes)"
+                                    value={visitOutcome}
+                                    onChange={(e) => setVisitOutcome(e.target.value)}
+                                  />
+                                </div>
 
-                            <div className={styles.formGroup}>
-                              <label className={styles.label}>Resolution Summary</label>
-                              <textarea
-                                className={styles.textarea}
-                                placeholder="Summary of resolution for client confirmation..."
-                                value={resolutionDetails}
-                                onChange={(e) => setResolutionDetails(e.target.value)}
-                              />
-                            </div>
+                                <div className={styles.formGroup}>
+                                  <label className={styles.label}>Resolution Summary</label>
+                                  <textarea
+                                    className={styles.textarea}
+                                    placeholder="Summary of resolution for client confirmation..."
+                                    value={resolutionDetails}
+                                    onChange={(e) => setResolutionDetails(e.target.value)}
+                                  />
+                                </div>
 
-                            <Button
-                              variant="primary"
-                              onClick={() => handleResolveTicket(ticket)}
-                              disabled={submittingResolution}
-                            >
-                              {submittingResolution ? 'Resolving...' : 'Resolve Ticket & Complete'}
-                            </Button>
-                          </div>
-
+                                <Button
+                                  variant="primary"
+                                  onClick={() => handleResolveTicket(ticket)}
+                                  disabled={submittingResolution}
+                                >
+                                  {submittingResolution ? 'Resolving...' : 'Resolve Ticket & Complete'}
+                                </Button>
+                              </div>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
@@ -401,6 +625,17 @@ export default function ServiceTicketsTab({ projectId }) {
               <option value="Modular Furniture">Modular Woodwork</option>
               <option value="General">General / Others</option>
             </select>
+          </div>
+
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Affected Item (For Repeat Tracking)</label>
+            <input
+              type="text"
+              className={styles.input}
+              placeholder="e.g. Master Bedroom Wardrobe Hinge"
+              value={affectedItem}
+              onChange={(e) => setAffectedItem(e.target.value)}
+            />
           </div>
 
           <div className={styles.formGroup}>

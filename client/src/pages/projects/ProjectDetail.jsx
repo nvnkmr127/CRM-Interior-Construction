@@ -51,6 +51,7 @@ const MeetingNotesTab = React.lazy(() => import('../../components/projects/Meeti
 const SiteVisitsTab = React.lazy(() => import('../../components/projects/SiteVisitsTab'));
 const DelayNotificationsTab = React.lazy(() => import('../../components/projects/DelayNotificationsTab'));
 const PunchListTab = React.lazy(() => import('../../components/projects/PunchListTab'));
+const ExecutionQCTab = React.lazy(() => import('../../components/projects/qc/ExecutionQCTab'));
 import HandoverModal from '../../components/projects/HandoverModal';
 import DesignStageHeader from '../../components/projects/DesignStageHeader';
 
@@ -863,7 +864,7 @@ export default function ProjectDetail() {
     }
   };
 
-  const tabs = ['Overview', 'Booking', 'Meeting Notes', 'Site Visits', 'Baseline Assessment', 'Delay Notifications', 'Handovers', 'Design Brief', 'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 'Commercial Approval', 'Change Orders', 'BOQ Variance', 'Budget', 'Purchase Requests', 'Purchase Orders', 'Material Deliveries', 'Vendor Payments', 'Substitutions', 'Factory Production', 'Coordination', 'Phases', 'Gantt Chart', 'Work Activities', 'Room Progress', 'Tasks', 'Daily Site Reports', 'Weekly Reports', 'Documents', 'Drawing Register', 'MEP Checklist', 'Payments', 'Snags', 'Punch List', 'Handover', 'Warranties', 'AMCs', 'Handover Readiness', 'Service Tickets', 'Customer Retention', 'Project Closure', 'Retrospective'];
+  const tabs = ['Overview', 'Booking', 'Meeting Notes', 'Site Visits', 'Baseline Assessment', 'Delay Notifications', 'Handovers', 'Design Brief', 'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 'Commercial Approval', 'Change Orders', 'BOQ Variance', 'Budget', 'Purchase Requests', 'Purchase Orders', 'Material Deliveries', 'Vendor Payments', 'Substitutions', 'Factory Production', 'Coordination', 'Phases', 'Gantt Chart', 'Work Activities', 'Room Progress', 'Tasks', 'Daily Site Reports', 'Weekly Reports', 'Documents', 'Drawing Register', 'MEP Checklist', 'Payments', 'Execution QC', 'Snags', 'Punch List', 'Handover', 'Warranties', 'AMCs', 'Handover Readiness', 'Service Tickets', 'Customer Retention', 'Project Closure', 'Retrospective'];
 
   const reloadProject = () => {
     if (!projectId) return;
@@ -923,6 +924,7 @@ export default function ProjectDetail() {
       case 'Drawing Register': return <DrawingRegisterTab projectId={projectId} />;
       case 'MEP Checklist': return <MepChecklistTab projectId={projectId} />;
       case 'Payments': return <PaymentsTab projectId={projectId} />;
+      case 'Execution QC': return <ExecutionQCTab projectId={projectId} project={project} />;
       case 'Snags': return <SnagsDashboard projectId={projectId} />;
       case 'Handover': return <HandoverChecklist projectId={projectId} />;
       case 'Punch List': return <PunchListTab projectId={projectId} />;

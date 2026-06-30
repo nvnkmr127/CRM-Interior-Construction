@@ -6,8 +6,7 @@ const pool = require('./server/src/db/pool');
 async function runMigration() {
   try {
     const migrations = [
-      '052_materialized_views.sql',
-      '053_audit_log_partitioning.sql'
+      '165_site_material_usages.sql'
     ];
     for (const file of migrations) {
       const sqlPath = path.join(__dirname, 'server/migrations', file);

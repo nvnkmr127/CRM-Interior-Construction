@@ -131,6 +131,12 @@ async function createTask({ tenantId, userId, data }) {
     record: task
   });
 
+  // Auto-link factory to installation tasks if this is a project task
+  if (task.project_id) {
+    const { autoLinkFactoryToInstallationTasks } = require('./autoLinkService');
+    await autoLinkFactoryToInstallationTasks(tenantId, task.project_id);
+  }
+
   // 6. Return constructed row
   return task;
 }

@@ -19,8 +19,22 @@ setInterval(() => {
   slaEngine.checkSLABreaches();
 }, 60 * 60 * 1000);
 
+// Start Delay Escalation Job (Runs every 1 hour)
+const delayEscalationJob = require('./jobs/delayEscalationJob');
+setInterval(() => {
+  delayEscalationJob.run().catch(err => {
+    console.error('Failed to run delay escalation checks:', err);
+  });
+}, 60 * 60 * 1000);
+
 // Start Estimates Reconciliation Job
 require('./jobs/reconcileEstimatesJob').start();
+
+// Start Task Escalation Job (Runs every 1 hour)
+const taskEscalationJob = require('./jobs/taskEscalationJob');
+setInterval(() => {
+  taskEscalationJob.start();
+}, 60 * 60 * 1000);
 
 // Start AMC Alert Scheduler (Runs every 12 hours)
 const amcService = require('./services/postSale/amcService');
@@ -29,6 +43,21 @@ setInterval(() => {
     console.error('Failed to run periodic AMC renewal checks:', err);
   });
 }, 12 * 60 * 60 * 1000);
+
+// Start Weekly Progress Report Job
+const weeklyProgressReportJob = require('./jobs/weeklyProgressReportJob');
+let lastWeeklyReportRun = null;
+setInterval(() => {
+  const now = new Date();
+  // Run on Friday (5) at 17:00 (5 PM)
+  if (now.getDay() === 5 && now.getHours() === 17) {
+    const todayStr = now.toDateString();
+    if (lastWeeklyReportRun !== todayStr) {
+      lastWeeklyReportRun = todayStr;
+      weeklyProgressReportJob.run().catch(err => console.error(err));
+    }
+  }
+}, 60 * 60 * 1000); // Check every hour
 
 app.set('trust proxy', 1);
 app.use(helmet());
@@ -177,6 +206,7 @@ app.use('/api/auth/mfa', require('./routes/mfa'));
 app.use('/api/auth', authRoutes);
 app.use('/api/leads/manager', require('./routes/manager'));
 app.use('/api/leads', leadsRoutes);
+app.use('/api/config', configRoutes);
 app.use('/api/public-portal', require('./routes/portal'));
 app.use('/api/projects', projectsRoutes);
 app.use('/api/warehouses', require('./routes/warehouses'));
@@ -252,8 +282,11 @@ app.use('/api/views', require('./routes/views'));
 app.use('/api/sequences', require('./routes/sequences'));
 app.use('/api/automation', require('./routes/automation'));
 app.use('/api/partners', require('./routes/partners'));
+app.use('/api/leaves', require('./routes/leaves'));
 app.use('/api/ai', aiRoutes);
 app.use('/api/mobile', mobileRoutes);
+
+require('./routes/qc')(app);
 
 // Error handler MUST be the last middleware
 app.use(errorHandler);

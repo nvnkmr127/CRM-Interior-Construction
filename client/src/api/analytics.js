@@ -12,6 +12,6 @@ export const getCollectionForecast = () => api.get('/analytics/collection-foreca
 
 export const getProfitabilityAnalytics = () => api.get('/analytics/profitability').then(r=>r.data.data);
 
-export const getResourceUtilisationReport = () => api.get('/analytics/resource-utilisation').then(r=>r.data.data);
-
-export const getCSATAnalyticsReport = () => api.get('/analytics/csat').then(r=>r.data.data);
+export const getResourceUtilisation = () => api.get('/analytics/resource-utilisation').then(r=>r.data.data);
+export const getCSATAnalytics = () => api.get('/analytics/csat').then(r=>r.data.data);
+export const getSnagsAnalytics = (projectId) => api.get('/analytics/snags', { params: { projectId } }).then(r=>r.data.data);

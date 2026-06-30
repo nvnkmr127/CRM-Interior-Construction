@@ -156,6 +156,28 @@ class ProductionOrderService {
       console.error('[ProductionOrderService] Coordination trigger error:', err);
     }
 
+    // Sync project timeline task status
+    if (status) {
+      try {
+        let taskStatus = 'todo';
+        if (status === 'in_production') {
+          taskStatus = 'in_progress';
+        } else if (status === 'completed') {
+          taskStatus = 'done';
+        } else if (status === 'cancelled') {
+          taskStatus = 'blocked';
+        }
+        await pool.query(
+          `UPDATE tasks 
+           SET status = $1, updated_at = CURRENT_TIMESTAMP 
+           WHERE project_id = $2 AND tenant_id = $3 AND (title ILIKE '%Factory Woodwork Production%' OR title ILIKE '%Factory Production%')`,
+          [taskStatus, projectId, tenantId]
+        );
+      } catch (err) {
+        console.error('[ProductionOrderService] Timeline task sync error:', err.message);
+      }
+    }
+
     return this.getProductionOrderById(tenantId, projectId, id);
   }
 
@@ -167,7 +189,12 @@ class ProductionOrderService {
       productionCompleteDate,
       qcStatus,
       packagingStatus,
-      dispatchDate
+      dispatchDate,
+      cuttingStatus,
+      edgeBandingStatus,
+      drillingStatus,
+      assemblyStatus,
+      cncStatus
     } = itemData;
 
     const client = await pool.connect();
@@ -195,8 +222,13 @@ class ProductionOrderService {
             qc_status = COALESCE($5, qc_status),
             packaging_status = COALESCE($6, packaging_status),
             dispatch_date = COALESCE($7, dispatch_date),
+            cutting_status = COALESCE($8, cutting_status),
+            edge_banding_status = COALESCE($9, edge_banding_status),
+            drilling_status = COALESCE($10, drilling_status),
+            assembly_status = COALESCE($11, assembly_status),
+            cnc_status = COALESCE($12, cnc_status),
             updated_at = CURRENT_TIMESTAMP
-        WHERE id = $8 AND tenant_id = $9
+        WHERE id = $13 AND tenant_id = $14
         RETURNING *
       `;
       const updateRes = await client.query(updateItemQuery, [
@@ -207,6 +239,11 @@ class ProductionOrderService {
         qcStatus !== undefined ? qcStatus : null,
         packagingStatus !== undefined ? packagingStatus : null,
         dispatchDate !== undefined ? dispatchDate : null,
+        cuttingStatus !== undefined ? cuttingStatus : null,
+        edgeBandingStatus !== undefined ? edgeBandingStatus : null,
+        drillingStatus !== undefined ? drillingStatus : null,
+        assemblyStatus !== undefined ? assemblyStatus : null,
+        cncStatus !== undefined ? cncStatus : null,
         itemId,
         tenantId
       ]);
@@ -233,6 +270,24 @@ class ProductionOrderService {
         [newOrderStatus, orderId, tenantId]
       );
 
+      // Sync project timeline task status
+      try {
+        let taskStatus = 'todo';
+        if (newOrderStatus === 'in_production') {
+          taskStatus = 'in_progress';
+        } else if (newOrderStatus === 'completed') {
+          taskStatus = 'done';
+        }
+        await client.query(
+          `UPDATE tasks 
+           SET status = $1, updated_at = CURRENT_TIMESTAMP 
+           WHERE project_id = $2 AND tenant_id = $3 AND (title ILIKE '%Factory Woodwork Production%' OR title ILIKE '%Factory Production%')`,
+          [taskStatus, projectId, tenantId]
+        );
+      } catch (err) {
+        console.error('[ProductionOrderService] Timeline task sync error:', err.message);
+      }
+
       await client.query('COMMIT');
       return updateRes.rows[0];
     } catch (error) {
@@ -244,7 +299,18 @@ class ProductionOrderService {
   }
 
   async recordQCInspection(tenantId, userId, projectId, orderId, itemId, data) {
-    const { status, notes, photoKeys } = data;
+    const { status, notes, photoKeys, checklist } = data;
+
+    // Validate checklist against status
+    if (status === 'passed' && checklist && Array.isArray(checklist) && checklist.some(c => !c.passed)) {
+      throw new AppError('Cannot approve QC inspection: one or more checklist items have failed.', 400, 'QC_CHECKLIST_FAILED');
+    }
+
+    // Validate photos against failed status
+    const parsedPhotoKeys = photoKeys || [];
+    if (status === 'failed' && parsedPhotoKeys.length === 0) {
+      throw new AppError('At least one defect photograph is required for failed QC inspection.', 400, 'QC_PHOTO_REQUIRED');
+    }
 
     const client = await pool.connect();
     try {
@@ -264,8 +330,8 @@ class ProductionOrderService {
       // 2. Insert inspection record
       const insertQuery = `
         INSERT INTO production_qc_inspections 
-        (tenant_id, production_order_item_id, inspected_by, status, notes, photo_keys)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        (tenant_id, production_order_item_id, inspected_by, status, notes, photo_keys, checklist)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
       `;
       const inspectionRes = await client.query(insertQuery, [
@@ -274,7 +340,8 @@ class ProductionOrderService {
         userId,
         status,
         notes || null,
-        JSON.stringify(photoKeys || [])
+        JSON.stringify(parsedPhotoKeys),
+        JSON.stringify(checklist || [])
       ]);
       const inspection = inspectionRes.rows[0];
 
@@ -532,11 +599,24 @@ class ProductionOrderService {
       const randomSuffix = Math.floor(1000 + Math.random() * 9000);
       const dispatchNumber = `DSP-${dateStr}-${randomSuffix}`;
 
+      // 1.5 Fetch production order items to construct the manifest
+      const { rows: orderItems } = await client.query(
+        `SELECT id, item_name, quantity, unit FROM production_order_items 
+         WHERE production_order_id = $1 AND tenant_id = $2`,
+        [orderId, tenantId]
+      );
+      const manifest = orderItems.map(item => ({
+        item_id: item.id,
+        item_name: item.item_name,
+        quantity: item.quantity,
+        unit: item.unit
+      }));
+
       // 2. Insert dispatch detail
       const insertQuery = `
         INSERT INTO production_dispatches
-        (tenant_id, project_id, production_order_id, dispatch_number, vehicle_number, driver_name, driver_contact, expected_delivery_date, status)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'in_transit')
+        (tenant_id, project_id, production_order_id, dispatch_number, vehicle_number, driver_name, driver_contact, expected_delivery_date, status, manifest)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'in_transit', $9)
         RETURNING *
       `;
       const dispatchRes = await client.query(insertQuery, [
@@ -547,7 +627,8 @@ class ProductionOrderService {
         vehicleNumber || null,
         driverName || null,
         driverContact || null,
-        expectedDeliveryDate || null
+        expectedDeliveryDate || null,
+        JSON.stringify(manifest)
       ]);
 
       // 3. Mark items as dispatched and set dispatch date
@@ -953,6 +1034,126 @@ class ProductionOrderService {
     return res.rows[0];
   }
 
+  async getCuttingListByItem(tenantId, itemId) {
+    const query = `
+      SELECT * FROM production_cutting_lists
+      WHERE production_order_item_id = $1 AND tenant_id = $2
+      ORDER BY panel_name ASC
+    `;
+    const res = await pool.query(query, [itemId, tenantId]);
+    return res.rows;
+  }
+
+  async saveCuttingList(tenantId, itemId, panels) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // 1. Delete existing panel entries for this item
+      await client.query(
+        'DELETE FROM production_cutting_lists WHERE production_order_item_id = $1 AND tenant_id = $2',
+        [itemId, tenantId]
+      );
+
+      // 2. Insert new entries
+      if (Array.isArray(panels) && panels.length > 0) {
+        for (const panel of panels) {
+          const insertQuery = `
+            INSERT INTO production_cutting_lists (
+              tenant_id, production_order_item_id, panel_name, length_mm, width_mm, thickness_mm,
+              material, edge_banding, quantity, cnc_program_name, cnc_status, cnc_notes, assembly_notes
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          `;
+          await client.query(insertQuery, [
+            tenantId,
+            itemId,
+            panel.panel_name || panel.panelName,
+            Number(panel.length_mm || panel.lengthMm || 0),
+            Number(panel.width_mm || panel.widthMm || 0),
+            Number(panel.thickness_mm || panel.thicknessMm || 0),
+            panel.material || '',
+            panel.edge_banding || panel.edgeBanding || 'none',
+            Number(panel.quantity || 1),
+            panel.cnc_program_name || panel.cncProgramName || null,
+            panel.cnc_status || panel.cncStatus || 'not_required',
+            panel.cnc_notes || panel.cncNotes || null,
+            panel.assembly_notes || panel.assemblyNotes || null
+          ]);
+        }
+      }
+
+      await client.query('COMMIT');
+      return this.getCuttingListByItem(tenantId, itemId);
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  async getCNCRequestsByOrder(tenantId, orderId) {
+    const query = `
+      SELECT cr.*, u.name as designer_name
+      FROM production_cnc_requests cr
+      LEFT JOIN users u ON cr.designer_id = u.id
+      WHERE cr.production_order_id = $1 AND cr.tenant_id = $2
+      ORDER BY cr.created_at DESC
+    `;
+    const res = await pool.query(query, [orderId, tenantId]);
+    return res.rows;
+  }
+
+  async createCNCRequest(tenantId, userId, projectId, orderId, requestData) {
+    const { programFileName, notes } = requestData;
+    
+    // Generate request number
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const requestNumber = `CNC-${dateStr}-${randomSuffix}`;
+
+    const query = `
+      INSERT INTO production_cnc_requests (
+        tenant_id, project_id, production_order_id, request_number, designer_id, status, program_file_name, notes
+      ) VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7)
+      RETURNING *
+    `;
+    const res = await pool.query(query, [
+      tenantId,
+      projectId,
+      orderId,
+      requestNumber,
+      userId,
+      programFileName || null,
+      notes || null
+    ]);
+    return res.rows[0];
+  }
+
+  async updateCNCRequestStatus(tenantId, requestId, status, programFileName, notes) {
+    const query = `
+      UPDATE production_cnc_requests
+      SET status = COALESCE($1, status),
+          program_file_name = COALESCE($2, program_file_name),
+          notes = COALESCE($3, notes),
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $4 AND tenant_id = $5
+      RETURNING *
+    `;
+    const res = await pool.query(query, [
+      status !== undefined ? status : null,
+      programFileName !== undefined ? programFileName : null,
+      notes !== undefined ? notes : null,
+      requestId,
+      tenantId
+    ]);
+
+    if (res.rows.length === 0) {
+      throw new AppError('CNC request not found', 404);
+    }
+    return res.rows[0];
+  }
+
   async getTransitDamageRecords(tenantId, projectId, orderId) {
     let query = `
       SELECT ptd.*, 
@@ -980,6 +1181,52 @@ class ProductionOrderService {
     query += ` ORDER BY ptd.created_at DESC`;
 
     const res = await pool.query(query, params);
+    return res.rows;
+  }
+
+  async getGlobalProductionOrders(tenantId, search, status) {
+    let query = `
+      SELECT po.*, p.name as project_name, u.name as pm_name,
+             COALESCE(COUNT(poi.id), 0) as total_items,
+             COALESCE(SUM(CASE WHEN poi.status = 'completed' THEN 1 ELSE 0 END), 0) as completed_items
+      FROM production_orders po
+      JOIN projects p ON po.project_id = p.id
+      LEFT JOIN users u ON p.pm_id = u.id
+      LEFT JOIN production_order_items poi ON po.id = poi.production_order_id
+      WHERE po.tenant_id = $1 AND p.deleted_at IS NULL
+    `;
+    const params = [tenantId];
+
+    if (search) {
+      params.push(`%${search}%`);
+      query += ` AND (po.order_number ILIKE $${params.length} OR p.name ILIKE $${params.length} OR po.factory_name ILIKE $${params.length})`;
+    }
+
+    if (status && status !== 'all') {
+      params.push(status);
+      query += ` AND po.status = $${params.length}`;
+    }
+
+    query += `
+      GROUP BY po.id, p.name, u.name
+      ORDER BY po.created_at DESC
+    `;
+
+    const res = await pool.query(query, params);
+    return res.rows;
+  }
+
+  async getGlobalCNCRequests(tenantId) {
+    const query = `
+      SELECT cr.*, po.order_number, p.name as project_name, u.name as designer_name
+      FROM production_cnc_requests cr
+      JOIN production_orders po ON cr.production_order_id = po.id
+      JOIN projects p ON cr.project_id = p.id
+      LEFT JOIN users u ON cr.designer_id = u.id
+      WHERE cr.tenant_id = $1 AND p.deleted_at IS NULL
+      ORDER BY cr.created_at DESC
+    `;
+    const res = await pool.query(query, [tenantId]);
     return res.rows;
   }
 }

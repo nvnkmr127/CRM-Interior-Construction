@@ -39,6 +39,12 @@ describe('Project Production Orders API', () => {
       });
     projectId = projRes.body.data.id;
 
+    // Update project status to 'booked' to bypass verifyProjectBooked middleware
+    await pool.query(
+      "UPDATE projects SET status = 'booked' WHERE id = $1 AND tenant_id = $2",
+      [projectId, tenantId]
+    );
+
     // Create a dummy quotation/BOQ item for linking
     const quoteRes = await pool.query(
       `INSERT INTO quotations (tenant_id, project_id, quotation_number, status)
@@ -413,6 +419,137 @@ describe('Project Production Orders API', () => {
       expect(res.body.data.status).toBe('resolved');
       expect(res.body.data.liability_type).toBe('insurance_claim');
       expect(res.body.data.resolution_notes).toContain('Claim approved');
+    });
+
+    it('should get global factory production orders list', async () => {
+      const res = await request(app)
+        .get('/api/projects/factory/production-orders')
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.some(o => o.id === productionOrderId)).toBe(true);
+    });
+
+    it('should update specific stage statuses for a production order item', async () => {
+      const res = await request(app)
+        .put(`/api/projects/${projectId}/production-orders/${productionOrderId}/items/${itemId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          cuttingStatus: 'in_progress',
+          edgeBandingStatus: 'completed',
+          drillingStatus: 'pending',
+          assemblyStatus: 'na',
+          cncStatus: 'pending_request'
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.cutting_status).toBe('in_progress');
+      expect(res.body.data.edge_banding_status).toBe('completed');
+      expect(res.body.data.drilling_status).toBe('pending');
+      expect(res.body.data.assembly_status).toBe('na');
+      expect(res.body.data.cnc_status).toBe('pending_request');
+    });
+
+    it('should save and retrieve cutting list panels for a production order item', async () => {
+      // 1. Save cutting list
+      const saveRes = await request(app)
+        .post(`/api/projects/${projectId}/production-orders/${productionOrderId}/items/${itemId}/cutting-list`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          panels: [
+            {
+              panel_name: 'Cabinet Side Panel L',
+              length_mm: 720.00,
+              width_mm: 560.00,
+              thickness_mm: 18.00,
+              material: 'Plywood',
+              edge_banding: '2_long',
+              quantity: 2,
+              cnc_status: 'requested'
+            },
+            {
+              panel_name: 'Cabinet Side Panel R',
+              length_mm: 720.00,
+              width_mm: 560.00,
+              thickness_mm: 18.00,
+              material: 'Plywood',
+              edge_banding: '2_long',
+              quantity: 2,
+              cnc_status: 'not_required'
+            }
+          ]
+        });
+
+      expect(saveRes.status).toBe(200);
+      expect(saveRes.body.success).toBe(true);
+
+      // 2. Get cutting list
+      const getRes = await request(app)
+        .get(`/api/projects/${projectId}/production-orders/${productionOrderId}/items/${itemId}/cutting-list`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(getRes.status).toBe(200);
+      expect(getRes.body.success).toBe(true);
+      expect(getRes.body.data).toHaveLength(2);
+      expect(getRes.body.data[0].panel_name).toBe('Cabinet Side Panel L');
+      expect(parseFloat(getRes.body.data[0].length_mm)).toBe(720);
+      expect(getRes.body.data[0].edge_banding).toBe('2_long');
+    });
+
+    let cncRequestId;
+
+    it('should create, retrieve, and update CNC requests for a production order', async () => {
+      // 1. Create CNC request
+      const createRes = await request(app)
+        .post(`/api/projects/${projectId}/production-orders/${productionOrderId}/cnc-requests`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          programFileName: 'cabinet_left_router.cnc',
+          notes: 'Groove depths must be exactly 8mm for back panel slide-in.'
+        });
+
+      expect(createRes.status).toBe(201);
+      expect(createRes.body.success).toBe(true);
+      expect(createRes.body.data.program_file_name).toBe('cabinet_left_router.cnc');
+      expect(createRes.body.data.status).toBe('pending');
+      
+      cncRequestId = createRes.body.data.id;
+
+      // 2. Retrieve CNC requests for order
+      const getRes = await request(app)
+        .get(`/api/projects/${projectId}/production-orders/${productionOrderId}/cnc-requests`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(getRes.status).toBe(200);
+      expect(getRes.body.success).toBe(true);
+      expect(getRes.body.data.some(r => r.id === cncRequestId)).toBe(true);
+
+      // 3. Retrieve global CNC requests list
+      const globalRes = await request(app)
+        .get('/api/projects/factory/cnc-requests')
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(globalRes.status).toBe(200);
+      expect(globalRes.body.success).toBe(true);
+      expect(globalRes.body.data.some(r => r.id === cncRequestId)).toBe(true);
+
+      // 4. Update CNC request status
+      const updateRes = await request(app)
+        .put(`/api/projects/${projectId}/production-orders/${productionOrderId}/cnc-requests/${cncRequestId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          status: 'completed',
+          programFileName: 'cabinet_left_router_v2.cnc',
+          notes: 'Design revised to include cable passage routing.'
+        });
+
+      expect(updateRes.status).toBe(200);
+      expect(updateRes.body.success).toBe(true);
+      expect(updateRes.body.data.status).toBe('completed');
+      expect(updateRes.body.data.program_file_name).toBe('cabinet_left_router_v2.cnc');
+      expect(updateRes.body.data.notes).toBe('Design revised to include cable passage routing.');
     });
   });
 });

@@ -52,4 +52,46 @@ eventBus.on('project.schedule_shifted', async ({ pmId, clientEmail, clientName, 
   }
 });
 
+eventBus.on('task.escalated', async ({ tenantId, task, targetUserId, targetLevel, hoursBlocked, pmId, delayAssessment }) => {
+  try {
+    const roles = {
+      1: 'Project Manager',
+      2: 'Operations Head',
+      3: 'Business Head'
+    };
+    
+    let message = `Escalation Alert (Level ${targetLevel}): Task '${task.title}' in project '${task.project_name}' has been blocked for over ${hoursBlocked} hours.`;
+    if (delayAssessment) {
+      message += `\nImpact Assessment: ${delayAssessment}`;
+    }
+
+    // Notify the target user
+    await notificationQueue.add('taskEscalationNotification', {
+      type: 'in-app',
+      recipientId: targetUserId,
+      message: message,
+    });
+    await notificationQueue.add('taskEscalationNotification', {
+      type: 'email',
+      recipientId: targetUserId,
+      message: message,
+    });
+
+    console.log(`[NotificationHandler] Dispatched Escalation Level ${targetLevel} to user ${targetUserId} for task ${task.id}`);
+
+    // If level 2 or 3, also notify the PM so they are aware
+    if (targetLevel > 1 && pmId && pmId !== targetUserId) {
+      const pmMessage = `FYI: Task '${task.title}' blocked for ${hoursBlocked} hours has been escalated to the ${roles[targetLevel]}.`;
+      await notificationQueue.add('taskEscalationNotification', {
+        type: 'in-app',
+        recipientId: pmId,
+        message: pmMessage,
+      });
+    }
+
+  } catch (error) {
+    console.error('[NotificationHandler] Error processing task.escalated:', error);
+  }
+});
+
 console.log('[NotificationService] Subscribed to EventBus events');

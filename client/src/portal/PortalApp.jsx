@@ -20,8 +20,8 @@ import PortalWarranties from './pages/PortalWarranties'
 import PortalAmcs from './pages/PortalAmcs'
 import PortalClaims from './pages/PortalClaims'
 import PortalQuotations from './pages/PortalQuotations'
-
-
+import PortalWeeklyReports from './pages/PortalWeeklyReports'
+import PortalSiteVisits from './pages/PortalSiteVisits'
 
 
 function PortalProtectedRoute({ children }) {
@@ -64,6 +64,8 @@ function PortalAppContent() {
               <Route path="amcs" element={<PortalAmcs />} />
               <Route path="claims" element={<PortalClaims />} />
               <Route path="quotations" element={<PortalQuotations />} />
+              <Route path="weekly-reports" element={<PortalWeeklyReports />} />
+              <Route path="site-visits" element={<PortalSiteVisits />} />
 
 
 

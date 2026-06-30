@@ -7,6 +7,9 @@ const webhookSourcesRouter = require('./webhookSources');
 const apiKeysRouter = require('./apiKeys');
 const webhooksRouter = require('./webhooks');
 const tenantSettingsRouter = require('./tenantSettings');
+const tradeActivityTemplatesRouter = require('./tradeActivityTemplates');
+
+const tradeDependencyTemplatesRouter = require('./tradeDependencyTemplates');
 
 const router = express.Router();
 
@@ -18,5 +21,7 @@ router.use('/webhook-sources', webhookSourcesRouter);
 router.use('/api-keys', apiKeysRouter);
 router.use('/webhooks', webhooksRouter);
 router.use('/tenant-settings', tenantSettingsRouter);
+router.use('/trade-activity-templates', tradeActivityTemplatesRouter);
+router.use('/trade-dependency-templates', tradeDependencyTemplatesRouter);
 
 module.exports = router;

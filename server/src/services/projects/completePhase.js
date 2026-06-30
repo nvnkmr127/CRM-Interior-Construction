@@ -33,6 +33,19 @@ async function completePhase({ tenantId, userId, phaseId }) {
     throw error;
   }
 
+  // 2.5 Stage Gate: check if there are pending QC stages for this phase
+  const pendingQcRes = await pool.query(
+    `SELECT stage_name FROM project_qc_stages 
+     WHERE phase_id = $1 AND tenant_id = $2 AND status != 'completed'`,
+    [phaseId, tenantId]
+  );
+  if (pendingQcRes.rows.length > 0) {
+    const error = new Error('QC_STAGES_INCOMPLETE');
+    error.status = 400;
+    error.details = pendingQcRes.rows.map(r => r.stage_name);
+    throw error;
+  }
+
   // 3. Complete the phase
   await phaseRepository.signOffPhase(phaseId, userId, tenantId);
 

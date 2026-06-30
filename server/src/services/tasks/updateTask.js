@@ -89,12 +89,69 @@ async function updateTask({ tenantId, userId, taskId, data }) {
         const isFS = dep.dependency_type === 'finish-to-start';
         const isSS = dep.dependency_type === 'start-to-start';
         
-        if (isFS && dep.depends_on_task_status !== 'done') {
-          const err = new Error('DEPENDENCY_UNSATISFIED');
-          err.status = 400;
-          err.code = 'DEPENDENCY_UNSATISFIED';
-          err.message = `Cannot start/complete task: Prerequisite task '${dep.depends_on_task_title}' must be completed first.`;
-          throw err;
+        if (isFS) {
+          if (dep.depends_on_task_status !== 'done') {
+            const err = new Error('DEPENDENCY_UNSATISFIED');
+            err.status = 400;
+            err.code = 'DEPENDENCY_UNSATISFIED';
+            err.message = `Cannot start/complete task: Prerequisite task '${dep.depends_on_task_title}' must be completed first.`;
+            throw err;
+          }
+
+          // Factory-to-Project timeline linkage checks
+          const currentTitleLower = (currentTask.title || '').toLowerCase();
+          const depTitleLower = (dep.depends_on_task_title || '').toLowerCase();
+          const isInstallation = currentTitleLower.includes('installation') || currentTitleLower.includes('assembly');
+          const isFactory = depTitleLower.includes('factory') || depTitleLower.includes('production') || depTitleLower.includes('manufacturing');
+
+          if (isInstallation && isFactory) {
+            // 1. Check if production orders exist for this project
+            const { rows: poCountRows } = await pool.query(
+              'SELECT COUNT(*)::int as count FROM production_orders WHERE project_id = $1 AND tenant_id = $2',
+              [currentTask.project_id, tenantId]
+            );
+            const poCount = poCountRows[0]?.count || 0;
+
+            if (poCount === 0) {
+              const err = new Error('FACTORY_PRODUCTION_REQUIRED');
+              err.status = 400;
+              err.code = 'FACTORY_PRODUCTION_REQUIRED';
+              err.message = `Cannot start task '${currentTask.title}': Factory production must be scheduled and completed first.`;
+              throw err;
+            }
+
+            // 2. Check if all scheduled production orders have been delivered and received at site
+            const { rows: poDeliveredRows } = await pool.query(
+              `SELECT COUNT(DISTINCT po.id)::int as count 
+               FROM production_orders po
+               JOIN production_dispatches pd ON po.id = pd.production_order_id
+               WHERE po.project_id = $1 AND po.tenant_id = $2 AND pd.status = 'delivered'`,
+              [currentTask.project_id, tenantId]
+            );
+            const deliveredCount = poDeliveredRows[0]?.count || 0;
+
+            if (deliveredCount < poCount) {
+              // Let's check if there are dispatches at all
+              const { rows: dispatchCheckRows } = await pool.query(
+                'SELECT status FROM production_dispatches WHERE project_id = $1 AND tenant_id = $2',
+                [currentTask.project_id, tenantId]
+              );
+              
+              if (dispatchCheckRows.length === 0) {
+                const err = new Error('FACTORY_DISPATCH_REQUIRED');
+                err.status = 400;
+                err.code = 'FACTORY_DISPATCH_REQUIRED';
+                err.message = `Cannot start task '${currentTask.title}': Factory dispatch must be confirmed first.`;
+                throw err;
+              } else {
+                const err = new Error('MATERIAL_RECEIPT_REQUIRED');
+                err.status = 400;
+                err.code = 'MATERIAL_RECEIPT_REQUIRED';
+                err.message = `Cannot start task '${currentTask.title}': Material receipt at site has not been recorded yet.`;
+                throw err;
+              }
+            }
+          }
         }
         
         if (isSS && dep.depends_on_task_status !== 'in_progress' && dep.depends_on_task_status !== 'done') {
@@ -160,6 +217,12 @@ async function updateTask({ tenantId, userId, taskId, data }) {
     }).catch(err => {
       console.error('[UpdateTask] Error recalculating schedule:', err);
     });
+  }
+
+  // Auto-link factory to installation tasks if the title changed and this is a project task
+  if (data.title && updatedTask.project_id) {
+    const { autoLinkFactoryToInstallationTasks } = require('./autoLinkService');
+    await autoLinkFactoryToInstallationTasks(tenantId, updatedTask.project_id);
   }
 
   return updatedTask;

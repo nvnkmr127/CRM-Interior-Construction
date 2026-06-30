@@ -39,6 +39,9 @@ const warrantyClaimsRoutes = require('./warrantyClaims');
 const projectClosuresRoutes = require('./projectClosures');
 const projectRetrospectivesRoutes = require('./projectRetrospectives');
 const baselineAssessmentRoutes = require('./baselineAssessment');
+const siteExpensesRoutes = require('./siteExpenses');
+const materialUsagesRoutes = require('./materialUsages');
+const labourAttendanceRoutes = require('./labourAttendance');
 
 
 const verifyProjectBooked = require('../middleware/verifyBooking');
@@ -46,6 +49,35 @@ const verifyProjectBooked = require('../middleware/verifyBooking');
 const router = express.Router();
 
 router.use(authenticate);
+
+// Global factory production endpoints (must be defined before parameterized nested routes to prevent UUID conflict)
+router.get('/factory/production-orders', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const productionOrderController = require('../controllers/productionOrderController');
+    await productionOrderController.getGlobalProductionOrders(req, res, next);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/factory/cnc-requests', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const productionOrderController = require('../controllers/productionOrderController');
+    await productionOrderController.getGlobalCNCRequests(req, res, next);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/coordination/dashboard', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const { getCoordinationDashboard } = require('../services/projects/coordinationService');
+    const data = await getCoordinationDashboard(req.tenantId);
+    return success(res, data);
+  } catch (err) {
+    next(err);
+  }
+});
 
 // Mount nested routes with verifyProjectBooked gate to ensure no project advances without booking confirmation
 router.use('/:projectId/phases', verifyProjectBooked, phasesRoutes);
@@ -78,6 +110,9 @@ router.use('/:projectId/warranty-claims', verifyProjectBooked, warrantyClaimsRou
 router.use('/:projectId/closure-checklist', verifyProjectBooked, projectClosuresRoutes);
 router.use('/:projectId/retrospective', verifyProjectBooked, projectRetrospectivesRoutes);
 router.use('/:projectId/baseline-assessment', verifyProjectBooked, baselineAssessmentRoutes);
+router.use('/:projectId/attendance', verifyProjectBooked, labourAttendanceRoutes);
+router.use('/:projectId/site-expenses', verifyProjectBooked, siteExpensesRoutes);
+router.use('/:projectId/material-usages', verifyProjectBooked, materialUsagesRoutes);
 
 
 
@@ -209,12 +244,20 @@ const createProjectSchema = z.object({
     phone: z.string().optional().nullable(),
     email: z.string().optional().nullable(),
     status: z.string().optional().nullable()
-  })).optional().nullable()
+  })).optional().nullable(),
+  installation_warranty_start_date: z.string().optional().nullable(),
+  installation_warranty_end_date: z.string().optional().nullable(),
+  installation_warranty_scope: z.string().optional().nullable(),
+  installation_warranty_status: z.enum(['active', 'expired', 'voided']).optional().nullable()
 });
 
 const updateProjectSchema = createProjectSchema.partial().extend({
   status: z.string().optional(),
-  changeReason: z.string().optional()
+  changeReason: z.string().optional(),
+  warranty_exclusions: z.array(z.string()).optional().nullable(),
+  warranty_terms_acknowledged: z.boolean().optional().nullable(),
+  warranty_terms_acknowledged_at: z.string().optional().nullable(),
+  warranty_terms_acknowledged_by: z.string().optional().nullable()
 });
 
 // Route to generate S3 pre-signed upload URL for contract document
@@ -400,16 +443,7 @@ router.patch('/referrals/:id', authorize('projects:update'), async (req, res, ne
   }
 });
 
-// GET /api/projects/coordination/dashboard
-router.get('/coordination/dashboard', authorize('projects:read'), async (req, res, next) => {
-  try {
-    const { getCoordinationDashboard } = require('../services/projects/coordinationService');
-    const data = await getCoordinationDashboard(req.tenantId);
-    return success(res, data);
-  } catch (err) {
-    next(err);
-  }
-});
+// Standard CRUD routes
 
 // GET /api/projects/handover/readiness-dashboard
 router.get('/handover/readiness-dashboard', authorize('projects:read'), async (req, res, next) => {
@@ -2260,6 +2294,64 @@ router.patch('/:id/coordination', authenticate, authorize('projects:manage'), as
     return success(res, data, { message: 'Site readiness date updated successfully.' });
   } catch (err) {
     if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    next(err);
+  }
+});
+
+// GET /api/projects/:projectId/external-inspections
+router.get('/:projectId/external-inspections', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const { getExternalInspections } = require('../services/projects/externalInspectionService');
+    const data = await getExternalInspections({ tenantId: req.tenantId, projectId: req.params.projectId });
+    return success(res, data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/projects/:projectId/external-inspections
+router.post('/:projectId/external-inspections', authorize('projects:write'), async (req, res, next) => {
+  try {
+    const { createExternalInspection } = require('../services/projects/externalInspectionService');
+    const data = await createExternalInspection({ 
+      tenantId: req.tenantId, 
+      projectId: req.params.projectId, 
+      userId: req.userId,
+      ...req.body 
+    });
+    return success(res, data, { message: 'External inspection logged successfully', statusCode: 201 });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/projects/:projectId/external-inspections/:id
+router.patch('/:projectId/external-inspections/:id', authorize('projects:write'), async (req, res, next) => {
+  try {
+    const { updateExternalInspection } = require('../services/projects/externalInspectionService');
+    const data = await updateExternalInspection({ 
+      tenantId: req.tenantId, 
+      projectId: req.params.projectId, 
+      id: req.params.id,
+      updates: req.body 
+    });
+    return success(res, data, { message: 'External inspection updated successfully' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/projects/:projectId/external-inspections/:id
+router.delete('/:projectId/external-inspections/:id', authorize('projects:write'), async (req, res, next) => {
+  try {
+    const { deleteExternalInspection } = require('../services/projects/externalInspectionService');
+    await deleteExternalInspection({ 
+      tenantId: req.tenantId, 
+      projectId: req.params.projectId, 
+      id: req.params.id 
+    });
+    return success(res, null, { message: 'External inspection deleted successfully' });
+  } catch (err) {
     next(err);
   }
 });

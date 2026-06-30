@@ -123,9 +123,9 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId }) {
     try {
       await updateTask(projectId, task.id, { status: newStatus })
       toast.success('Status updated')
-    } catch {
+    } catch (err) {
       setTask(t => ({ ...t, status: task.status }))
-      toast.error('Failed to update status')
+      toast.error(err?.response?.data?.error?.message || 'Failed to update status')
     }
   }
 

@@ -35,7 +35,8 @@ router.patch('/items/:itemId', authorize('projects:manage'), async (req, res, ne
       warrantyExpiryDate: data.warranty_expiry_date,
       hasManual: data.has_manual,
       hasWarrantyCard: data.has_warranty_card,
-      keyDetails: data.key_details
+      keyDetails: data.key_details,
+      hasBrandRegistrationCard: data.has_brand_registration_card
     });
     return success(res, item);
   } catch (err) {

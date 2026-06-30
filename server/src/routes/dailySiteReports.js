@@ -20,7 +20,9 @@ const createReportSchema = z.object({
     quantity: z.string().min(1, 'Quantity is required')
   })).optional(),
   issuesEncountered: z.string().optional().nullable(),
-  photos: z.array(z.string()).min(1, 'At least one progress photo upload is required')
+  photos: z.array(z.string()).min(3, 'At least three progress photo uploads are required'),
+  tomorrowsPlan: z.string().min(1, 'Tomorrow\'s plan is required'),
+  supervisorSignature: z.string().min(1, 'Supervisor signature is required')
 });
 
 // GET /api/projects/:projectId/daily-reports
@@ -57,9 +59,25 @@ router.post('/', authorize('projects:manage'), async (req, res) => {
   try {
     const data = createReportSchema.parse(req.body);
     
+    const pool = require('../config/db');
+
+    // End-of-day cutoff check
+    const tenantRes = await pool.query('SELECT config FROM tenants WHERE id = $1', [req.tenantId]);
+    const configStr = tenantRes.rows[0]?.config || '{}';
+    const config = typeof configStr === 'string' ? JSON.parse(configStr) : configStr;
+    const cutoffTime = config.dsr_cutoff_time || '23:59';
+
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const [cutoffHour, cutoffMinute] = cutoffTime.split(':').map(Number);
+    
+    if (currentHour > cutoffHour || (currentHour === cutoffHour && currentMinute > cutoffMinute)) {
+      return fail(res, 'PAST_CUTOFF_TIME', `Daily site reports must be submitted before ${cutoffTime}.`, 400);
+    }
+
     // Check if report already exists for this project on this date
     const reportDate = data.reportDate || new Date().toISOString().split('T')[0];
-    const pool = require('../config/db');
     const existingCheck = await pool.query(
       'SELECT id FROM daily_site_reports WHERE project_id = $1 AND report_date = $2 AND tenant_id = $3',
       [req.params.projectId, reportDate, req.tenantId]
@@ -76,7 +94,9 @@ router.post('/', authorize('projects:manage'), async (req, res) => {
       manpower: data.manpower,
       materials: data.materials,
       issues_encountered: data.issuesEncountered,
-      photos: data.photos
+      photos: data.photos,
+      tomorrows_plan: data.tomorrowsPlan,
+      supervisor_signature: data.supervisorSignature
     };
 
     const report = await dailySiteReportRepository.createReport(

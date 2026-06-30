@@ -997,10 +997,158 @@ export const setupMockInterceptor = (api) => {
             }
           }
 
-          // WORK ACTIVITIES
+          // CONFIG TRADE ACTIVITY TEMPLATES
+          else if (url.includes('/config/trade-activity-templates')) {
+            const urlParts = url.split('?');
+            const match = urlParts[0].match(/\/config\/trade-activity-templates(?:\/([a-zA-Z0-9-]+))?$/);
+            const templateId = match ? match[1] : null;
+
+            if (!mockDatabase.tradeActivityTemplates) {
+              mockDatabase.tradeActivityTemplates = [
+                { id: 't1', trade: 'civil', room_type: 'General', activity_name: 'Demolition and hacking', description: 'Demolition of existing structures, walls, or tiles.', sort_order: 10 },
+                { id: 't2', trade: 'civil', room_type: 'General', activity_name: 'Debris removal & site cleaning', description: 'Clearing out debris and preparing the floor/walls.', sort_order: 20 },
+                { id: 't3', trade: 'electrical', room_type: 'General', activity_name: 'Wall chasing and conduit pipe laying', description: 'Cutting grooves in walls and fitting PVC conduit pipes.', sort_order: 10 },
+                { id: 't4', trade: 'plumbing', room_type: 'Bathroom', activity_name: 'Waterproofing base coat application', description: 'Applying waterproofing compounds on floors and wet walls.', sort_order: 10 }
+              ];
+            }
+
+            if (method === 'get') {
+              responseData.data = mockDatabase.tradeActivityTemplates;
+            } else if (method === 'post') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const newTpl = {
+                id: `mock-tpl-${Date.now()}`,
+                trade: payload.trade,
+                room_type: payload.room_type || 'General',
+                activity_name: payload.activity_name,
+                description: payload.description || '',
+                sort_order: Number(payload.sort_order || 0),
+                tenant_id: 'mock-tenant-id'
+              };
+              mockDatabase.tradeActivityTemplates.push(newTpl);
+              persistDb();
+              responseData.data = newTpl;
+            } else if (method === 'patch' || method === 'put') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const idx = mockDatabase.tradeActivityTemplates.findIndex(t => t.id === templateId);
+              if (idx !== -1) {
+                mockDatabase.tradeActivityTemplates[idx] = {
+                  ...mockDatabase.tradeActivityTemplates[idx],
+                  ...payload
+                };
+                persistDb();
+                responseData.data = mockDatabase.tradeActivityTemplates[idx];
+              }
+            } else if (method === 'delete') {
+              const idx = mockDatabase.tradeActivityTemplates.findIndex(t => t.id === templateId);
+              if (idx !== -1) {
+                mockDatabase.tradeActivityTemplates.splice(idx, 1);
+                persistDb();
+              }
+              responseData.data = { success: true };
+            }
+          }
+
+          // WORK ACTIVITIES DEPENDENCIES
+          else if (url.includes('/work-activities/dependencies')) {
+            const match = url.match(/\/projects\/([a-zA-Z0-9-]+)\/work-activities\/dependencies(?:\/([a-zA-Z0-9-]+))?$/);
+            const projectId = match ? match[1] : null;
+            const dependencyId = match ? match[2] : null;
+
+            if (!mockDatabase.workActivityDependencies) mockDatabase.workActivityDependencies = [];
+
+            if (method === 'get') {
+              const deps = mockDatabase.workActivityDependencies.filter(d => d.project_id === projectId);
+              const joined = deps.map(d => {
+                const act1 = mockDatabase.workActivities?.find(a => a.id === d.activity_id) || {};
+                const act2 = mockDatabase.workActivities?.find(a => a.id === d.depends_on_activity_id) || {};
+                return {
+                  ...d,
+                  activity_name: act1.activity_name || 'Activity',
+                  activity_trade: act1.trade || 'civil',
+                  activity_room: act1.room_name || 'General',
+                  depends_on_activity_name: act2.activity_name || 'Prerequisite',
+                  depends_on_activity_trade: act2.trade || 'civil',
+                  depends_on_activity_room: act2.room_name || 'General',
+                  depends_on_activity_status: act2.status || 'todo'
+                };
+              });
+              responseData.data = joined;
+            } else if (method === 'post') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const newDep = {
+                id: `mock-dep-${Date.now()}`,
+                project_id: projectId,
+                activity_id: payload.activityId,
+                depends_on_activity_id: payload.dependsOnActivityId,
+                dependency_type: payload.dependencyType || 'finish-to-start',
+                created_at: new Date().toISOString()
+              };
+              mockDatabase.workActivityDependencies.push(newDep);
+              persistDb();
+              responseData.data = newDep;
+            } else if (method === 'delete') {
+              const idx = mockDatabase.workActivityDependencies.findIndex(d => d.id === dependencyId);
+              if (idx !== -1) {
+                mockDatabase.workActivityDependencies.splice(idx, 1);
+                persistDb();
+              }
+              responseData.data = { success: true };
+            } else if (method === 'put' && url.includes('/bulk')) {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              mockDatabase.workActivityDependencies = mockDatabase.workActivityDependencies.filter(d => d.project_id !== projectId);
+              if (Array.isArray(payload.dependencies)) {
+                for (const dep of payload.dependencies) {
+                  mockDatabase.workActivityDependencies.push({
+                    id: `mock-dep-${Date.now()}-${Math.random()}`,
+                    project_id: projectId,
+                    activity_id: dep.activityId,
+                    depends_on_activity_id: dep.dependsOnActivityId,
+                    dependency_type: dep.dependencyType || 'finish-to-start',
+                    created_at: new Date().toISOString()
+                  });
+                }
+              }
+              persistDb();
+              responseData.data = { success: true };
+            }
+          }
+
+          // WORK ACTIVITIES PHOTOS
+          else if (url.includes('/work-activities') && url.includes('/photos')) {
+            const match = url.match(/\/projects\/([a-zA-Z0-9-]+)\/work-activities\/([a-zA-Z0-9-]+)\/photos(?:\/([a-zA-Z0-9-]+))?$/);
+            const projectId = match ? match[1] : null;
+            const activityId = match ? match[2] : null;
+            const photoId = match ? match[3] : null;
+
+            if (method === 'post') {
+              const newPhoto = {
+                id: `mock-photo-${Date.now()}`,
+                activity_id: activityId,
+                file_url: 'https://images.unsplash.com/photo-1581094288338-2314dddb7eed?w=400',
+                caption: 'Mock Uploaded Evidence',
+                created_at: new Date().toISOString()
+              };
+              const act = mockDatabase.workActivities?.find(a => a.id === activityId);
+              if (act) {
+                if (!act.photos) act.photos = [];
+                act.photos.push({ ...newPhoto, url: newPhoto.file_url });
+              }
+              persistDb();
+              responseData.data = { ...newPhoto, url: newPhoto.file_url };
+            } else if (method === 'delete') {
+              const act = mockDatabase.workActivities?.find(a => a.id === activityId);
+              if (act && act.photos) {
+                act.photos = act.photos.filter(p => p.id !== photoId);
+              }
+              persistDb();
+              responseData.data = { success: true };
+            }
+          }
+
+          // WORK ACTIVITIES MAIN
           else if (url.includes('/work-activities')) {
             const urlParts = url.split('?');
-            // match path: /projects/:projectId/work-activities or /projects/:projectId/work-activities/:id
             const match = urlParts[0].match(/\/projects\/([a-zA-Z0-9-]+)\/work-activities(?:\/([a-zA-Z0-9-]+))?$/);
             const projectId = match ? match[1] : null;
             const activityId = match ? match[2] : null;
@@ -1009,12 +1157,15 @@ export const setupMockInterceptor = (api) => {
 
             if (method === 'get') {
               if (url.includes('/templates')) {
-                responseData.data = [
-                  { trade: 'civil', room_type: 'General', activity_name: 'Demolition and hacking', description: 'Demolition of existing structures, walls, or tiles.' },
-                  { trade: 'civil', room_type: 'General', activity_name: 'Debris removal & site cleaning', description: 'Clearing out debris and preparing the floor/walls.' },
-                  { trade: 'electrical', room_type: 'General', activity_name: 'Wall chasing and conduit pipe laying', description: 'Cutting grooves in walls and fitting PVC conduit pipes.' },
-                  { trade: 'plumbing', room_type: 'Bathroom', activity_name: 'Waterproofing base coat application', description: 'Applying waterproofing compounds on floors and wet walls.' }
-                ];
+                if (!mockDatabase.tradeActivityTemplates) {
+                  mockDatabase.tradeActivityTemplates = [
+                    { id: 't1', trade: 'civil', room_type: 'General', activity_name: 'Demolition and hacking', description: 'Demolition of existing structures, walls, or tiles.', sort_order: 10 },
+                    { id: 't2', trade: 'civil', room_type: 'General', activity_name: 'Debris removal & site cleaning', description: 'Clearing out debris and preparing the floor/walls.', sort_order: 20 },
+                    { id: 't3', trade: 'electrical', room_type: 'General', activity_name: 'Wall chasing and conduit pipe laying', description: 'Cutting grooves in walls and fitting PVC conduit pipes.', sort_order: 10 },
+                    { id: 't4', trade: 'plumbing', room_type: 'Bathroom', activity_name: 'Waterproofing base coat application', description: 'Applying waterproofing compounds on floors and wet walls.', sort_order: 10 }
+                  ];
+                }
+                responseData.data = mockDatabase.tradeActivityTemplates;
               } else {
                 let filtered = mockDatabase.workActivities.filter(a => a.project_id === projectId);
                 const params = urlParts[1] ? new URLSearchParams(urlParts[1]) : null;
@@ -1029,6 +1180,27 @@ export const setupMockInterceptor = (api) => {
                   if (statusParam) filtered = filtered.filter(a => a.status === statusParam);
                   if (phaseParam) filtered = filtered.filter(a => a.phase_id === phaseParam);
                 }
+
+                // Enrich with photos and dependencies
+                filtered = filtered.map(a => {
+                  const deps = mockDatabase.workActivityDependencies?.filter(d => d.activity_id === a.id) || [];
+                  const joinedDeps = deps.map(d => {
+                    const target = mockDatabase.workActivities.find(act => act.id === d.depends_on_activity_id) || {};
+                    return {
+                      ...d,
+                      depends_on_activity_name: target.activity_name || 'Prerequisite',
+                      depends_on_activity_status: target.status || 'todo',
+                      depends_on_activity_room: target.room_name || 'General',
+                      depends_on_activity_trade: target.trade || 'civil'
+                    };
+                  });
+                  return {
+                    ...a,
+                    dependencies: joinedDeps,
+                    photos: a.photos || []
+                  };
+                });
+
                 responseData.data = filtered;
               }
             } else if (method === 'post') {
@@ -1074,12 +1246,15 @@ export const setupMockInterceptor = (api) => {
 
               if (url.includes('/generate')) {
                 const { phaseId, roomName, trade } = payload;
-                const templates = [
-                  { trade: 'civil', room_type: 'General', activity_name: 'Demolition and hacking', description: 'Demolition of existing structures, walls, or tiles.' },
-                  { trade: 'civil', room_type: 'General', activity_name: 'Debris removal & site cleaning', description: 'Clearing out debris and preparing the floor/walls.' },
-                  { trade: 'electrical', room_type: 'General', activity_name: 'Wall chasing and conduit pipe laying', description: 'Cutting grooves in walls and fitting PVC conduit pipes.' },
-                  { trade: 'plumbing', room_type: 'Bathroom', activity_name: 'Waterproofing base coat application', description: 'Applying waterproofing compounds on floors and wet walls.' }
-                ].filter(t => t.trade === trade);
+                if (!mockDatabase.tradeActivityTemplates) {
+                  mockDatabase.tradeActivityTemplates = [
+                    { id: 't1', trade: 'civil', room_type: 'General', activity_name: 'Demolition and hacking', description: 'Demolition of existing structures, walls, or tiles.', sort_order: 10 },
+                    { id: 't2', trade: 'civil', room_type: 'General', activity_name: 'Debris removal & site cleaning', description: 'Clear out debris and prepare the floor/walls.', sort_order: 20 },
+                    { id: 't3', trade: 'electrical', room_type: 'General', activity_name: 'Wall chasing and conduit pipe laying', description: 'Cut grooves in walls and fit PVC conduit pipes.', sort_order: 10 },
+                    { id: 't4', trade: 'plumbing', room_type: 'Bathroom', activity_name: 'Waterproofing base coat application', description: 'Apply waterproofing compounds on floors and wet walls.', sort_order: 10 }
+                  ];
+                }
+                const templates = mockDatabase.tradeActivityTemplates.filter(t => t.trade === trade);
 
                 const created = [];
                 for (const tpl of templates) {
@@ -1093,6 +1268,8 @@ export const setupMockInterceptor = (api) => {
                     description: tpl.description,
                     status: 'todo',
                     qc_checklist: MOCK_QC_CHECKLISTS[trade] || [],
+                    photos: [],
+                    dependencies: [],
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
                   };
@@ -1115,6 +1292,8 @@ export const setupMockInterceptor = (api) => {
                   due_date: payload.due_date || null,
                   notes: payload.notes || '',
                   qc_checklist: payload.qc_checklist || MOCK_QC_CHECKLISTS[payload.trade] || [],
+                  photos: [],
+                  dependencies: [],
                   created_at: new Date().toISOString(),
                   updated_at: new Date().toISOString()
                 };
@@ -1129,6 +1308,27 @@ export const setupMockInterceptor = (api) => {
                 const current = mockDatabase.workActivities[idx];
                 const targetStatus = payload.status || current.status;
                 const targetChecklist = payload.qc_checklist !== undefined ? payload.qc_checklist : (current.qc_checklist || []);
+
+                if (targetStatus === 'completed' || targetStatus === 'in_progress') {
+                  const deps = mockDatabase.workActivityDependencies?.filter(d => d.activity_id === activityId) || [];
+                  for (const dep of deps) {
+                    const prerequisite = mockDatabase.workActivities.find(act => act.id === dep.depends_on_activity_id);
+                    if (prerequisite && prerequisite.status !== 'completed') {
+                      return Promise.reject({
+                        response: {
+                          status: 400,
+                          data: {
+                            success: false,
+                            error: {
+                              code: 'DEPENDENCY_UNSATISFIED',
+                              message: `Cannot start/complete work activity: Prerequisite activity '${prerequisite.activity_name}' must be completed first.`
+                            }
+                          }
+                        }
+                      });
+                    }
+                  }
+                }
 
                 if (targetStatus === 'completed') {
                   const incomplete = targetChecklist.filter(item => item.required && !item.is_checked);

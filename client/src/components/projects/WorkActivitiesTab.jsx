@@ -9,7 +9,11 @@ import {
   createWorkActivity,
   updateWorkActivity,
   deleteWorkActivity,
-  generateWorkActivities
+  generateWorkActivities,
+  createWorkActivityDependency,
+  deleteWorkActivityDependency,
+  uploadWorkActivityPhoto,
+  deleteWorkActivityPhoto
 } from '../../api/workActivities';
 
 const TRADES = [
@@ -133,12 +137,33 @@ export default function WorkActivitiesTab({ projectId, project }) {
     try {
       await updateWorkActivity(projectId, act.id, { status: nextStatus });
       toast.success(`Activity marked as ${nextStatus}`);
-    } catch {
+    } catch (err) {
       // Revert
       setActivities(prev =>
         prev.map(a => (a.id === act.id ? { ...a, status: oldStatus } : a))
       );
-      toast.error('Failed to update activity status');
+      
+      if (err.response?.data?.error?.code === 'DEPENDENCY_UNSATISFIED_SOFT') {
+        if (window.confirm(err.response.data.error.message)) {
+          try {
+            await updateWorkActivity(projectId, act.id, { status: nextStatus, force: true });
+            toast.success(`Activity marked as ${nextStatus} (Forced)`);
+            setActivities(prev =>
+              prev.map(a =>
+                a.id === act.id
+                  ? { ...a, status: nextStatus, completed_at: nextStatus === 'completed' ? new Date().toISOString() : null }
+                  : a
+              )
+            );
+          } catch (forceErr) {
+            toast.error(forceErr.response?.data?.error?.message || 'Failed to update activity status');
+          }
+        }
+        return;
+      }
+      
+      const errMsg = err.response?.data?.error?.message || 'Failed to update activity status';
+      toast.error(errMsg);
     }
   };
 
@@ -159,8 +184,26 @@ export default function WorkActivitiesTab({ projectId, project }) {
       if (updated) {
         setActivities(prev => prev.map(a => (a.id === id ? { ...a, ...updated } : a)));
       }
-    } catch {
-      toast.error('Failed to update activity');
+    } catch (err) {
+      if (err.response?.data?.error?.code === 'DEPENDENCY_UNSATISFIED_SOFT') {
+        if (window.confirm(err.response.data.error.message)) {
+          try {
+            const payload = { [field]: value === '' ? null : value, force: true };
+            const res = await updateWorkActivity(projectId, id, payload);
+            const updated = res.data?.data || res.data;
+            if (updated) {
+              setActivities(prev => prev.map(a => (a.id === id ? { ...a, ...updated } : a)));
+            }
+            return;
+          } catch (forceErr) {
+            toast.error(forceErr.response?.data?.error?.message || 'Failed to update activity');
+          }
+        }
+      } else {
+        const errMsg = err.response?.data?.error?.message || 'Failed to update activity';
+        toast.error(errMsg);
+      }
+      fetchData();
     }
   };
 
@@ -208,6 +251,52 @@ export default function WorkActivitiesTab({ projectId, project }) {
       toast.success('Activity deleted');
     } catch {
       toast.error('Failed to delete activity');
+    }
+  };
+
+  // Handle adding dependency
+  const handleAddDependency = async (activityId, dependsOnActivityId) => {
+    try {
+      await createWorkActivityDependency(projectId, { activityId, dependsOnActivityId });
+      toast.success('Prerequisite dependency added.');
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.error?.message || 'Failed to add dependency.');
+    }
+  };
+
+  // Handle removing dependency
+  const handleRemoveDependency = async (dependencyId) => {
+    try {
+      await deleteWorkActivityDependency(projectId, dependencyId);
+      toast.success('Dependency removed.');
+      fetchData();
+    } catch (err) {
+      toast.error('Failed to remove dependency.');
+    }
+  };
+
+  // Handle photo upload
+  const handleUploadPhoto = async (activityId, file) => {
+    try {
+      toast.info('Uploading photo evidence...');
+      await uploadWorkActivityPhoto(projectId, activityId, file);
+      toast.success('Photo evidence uploaded successfully.');
+      fetchData();
+    } catch (err) {
+      toast.error('Failed to upload photo evidence.');
+    }
+  };
+
+  // Handle photo delete
+  const handleDeletePhoto = async (activityId, photoId) => {
+    if (!window.confirm('Are you sure you want to delete this completion photo?')) return;
+    try {
+      await deleteWorkActivityPhoto(projectId, activityId, photoId);
+      toast.success('Photo evidence deleted.');
+      fetchData();
+    } catch (err) {
+      toast.error('Failed to delete photo.');
     }
   };
 
@@ -776,6 +865,102 @@ export default function WorkActivitiesTab({ projectId, project }) {
                           ))}
                         </div>
                       )}
+
+                      {/* Dependencies section */}
+                      <div className={styles.dependenciesSection}>
+                        <div className={styles.subSectionTitle}>Prerequisite Dependencies:</div>
+                        {act.dependencies && act.dependencies.length > 0 ? (
+                          <div className={styles.dependencyList}>
+                            {act.dependencies.map(dep => {
+                              const isCompleted = dep.depends_on_activity_status === 'completed';
+                              return (
+                                <div key={dep.id} className={styles.dependencyItem}>
+                                  <span className={styles.depText}>
+                                    [{dep.depends_on_activity_room}] {dep.depends_on_activity_name} ({dep.depends_on_activity_trade.replace('_', ' ')})
+                                  </span>
+                                  <Badge variant={isCompleted ? 'success' : 'warning'} size="sm">
+                                    {isCompleted ? 'Completed' : 'Pending'}
+                                  </Badge>
+                                  <button
+                                    type="button"
+                                    className={styles.depRemoveBtn}
+                                    onClick={() => handleRemoveDependency(dep.id)}
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className={styles.noDepsText}>No prerequisite dependencies.</div>
+                        )}
+                        <div className={styles.dependencyAddRow}>
+                          <select
+                            className={styles.statusSelect}
+                            style={{ height: 26, fontSize: 10 }}
+                            defaultValue=""
+                            onChange={e => {
+                              if (e.target.value) {
+                                handleAddDependency(act.id, e.target.value);
+                                e.target.value = "";
+                              }
+                            }}
+                          >
+                            <option value="">＋ Add Prerequisite Activity...</option>
+                            {activities
+                              .filter(a => a.id !== act.id && (!act.dependencies || !act.dependencies.some(d => d.depends_on_activity_id === a.id)))
+                              .map(a => (
+                                <option key={a.id} value={a.id}>
+                                  [{a.room_name}] {a.activity_name} ({a.trade.replace('_', ' ')})
+                                </option>
+                              ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Completion Evidence Section */}
+                      <div className={styles.photosSection}>
+                        <div className={styles.subSectionTitle}>Completion Evidence (Photos):</div>
+                        {act.photos && act.photos.length > 0 && (
+                          <div className={styles.photoGrid}>
+                            {act.photos.map(p => (
+                              <div key={p.id} className={styles.photoThumb}>
+                                <img
+                                  src={p.url}
+                                  alt={p.caption || 'evidence'}
+                                  className={styles.photoImage}
+                                  onClick={() => window.open(p.url, '_blank')}
+                                  title="View Full Size"
+                                />
+                                <button
+                                  type="button"
+                                  className={styles.photoRemoveBtn}
+                                  onClick={() => handleDeletePhoto(act.id, p.id)}
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div style={{ marginTop: 8 }}>
+                          <label className={styles.uploadBtn}>
+                            📷 Upload Photo
+                            <input
+                              type="file"
+                              accept="image/*"
+                              style={{ display: 'none' }}
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  await handleUploadPhoto(act.id, file);
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </div>
 
                       {/* Supervisor Notes input */}
                       <div style={{ marginTop: 12 }}>

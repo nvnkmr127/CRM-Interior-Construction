@@ -123,6 +123,32 @@ class WorkActivityRepository {
       ORDER BY pwa.created_at ASC
     `;
     const { rows } = await pool.query(query, values);
+    
+    // Attach photos and dependencies
+    const storage = require('../utils/storage');
+    for (const activity of rows) {
+      const { rows: photos } = await pool.query(`
+        SELECT wap.*, u.name as uploader_name
+        FROM work_activity_photos wap
+        LEFT JOIN users u ON wap.uploaded_by = u.id
+        WHERE wap.activity_id = $1 AND wap.tenant_id = $2
+        ORDER BY wap.created_at ASC
+      `, [activity.id, tenantId]);
+      
+      for (const p of photos) {
+        p.url = await storage.getDownloadUrl(p.file_url);
+      }
+      activity.photos = photos;
+
+      const { rows: dependencies } = await pool.query(`
+        SELECT wad.*, pwa.activity_name as depends_on_activity_name, pwa.status as depends_on_activity_status
+        FROM work_activity_dependencies wad
+        JOIN project_work_activities pwa ON wad.depends_on_activity_id = pwa.id
+        WHERE wad.activity_id = $1 AND wad.tenant_id = $2
+      `, [activity.id, tenantId]);
+      activity.dependencies = dependencies;
+    }
+    
     return rows;
   }
 
@@ -137,7 +163,33 @@ class WorkActivityRepository {
       WHERE pwa.id = $1 AND pwa.tenant_id = $2
     `;
     const { rows } = await pool.query(query, [id, tenantId]);
-    return rows[0] || null;
+    const activity = rows[0] || null;
+    if (activity) {
+      // Attach photos
+      const storage = require('../utils/storage');
+      const { rows: photos } = await pool.query(`
+        SELECT wap.*, u.name as uploader_name
+        FROM work_activity_photos wap
+        LEFT JOIN users u ON wap.uploaded_by = u.id
+        WHERE wap.activity_id = $1 AND wap.tenant_id = $2
+        ORDER BY wap.created_at ASC
+      `, [id, tenantId]);
+      
+      for (const p of photos) {
+        p.url = await storage.getDownloadUrl(p.file_url);
+      }
+      activity.photos = photos;
+
+      // Attach dependencies
+      const { rows: dependencies } = await pool.query(`
+        SELECT wad.*, pwa.activity_name as depends_on_activity_name, pwa.status as depends_on_activity_status
+        FROM work_activity_dependencies wad
+        JOIN project_work_activities pwa ON wad.depends_on_activity_id = pwa.id
+        WHERE wad.activity_id = $1 AND wad.tenant_id = $2
+      `, [id, tenantId]);
+      activity.dependencies = dependencies;
+    }
+    return activity;
   }
 
   async createActivity(tenantId, data) {
@@ -172,35 +224,76 @@ class WorkActivityRepository {
     let idx = 1;
 
     // Auto-update completed_at / completed_by when status changes to completed
-    if (updates.status === 'completed') {
+    if (updates.status) {
       const currentActivity = await this.findActivityById(id, tenantId);
       if (!currentActivity) throw new Error('NOT_FOUND');
 
-      const qcChecklist = updates.qc_checklist !== undefined ? updates.qc_checklist : currentActivity.qc_checklist;
-      const parsedChecklist = typeof qcChecklist === 'string' ? JSON.parse(qcChecklist) : (qcChecklist || []);
+      // Check dependencies if status is in_progress or completed
+      if (updates.status === 'in_progress' || updates.status === 'completed') {
+        // Read tenant config for dependency enforcement mode ('hard', 'soft', 'none')
+        const { rows: tenantRows } = await pool.query(
+          'SELECT config FROM tenants WHERE id = $1',
+          [tenantId]
+        );
+        const configStr = tenantRows[0]?.config;
+        const tenantConfig = typeof configStr === 'string' ? JSON.parse(configStr || '{}') : (configStr || {});
+        const enforcementMode = tenantConfig.dependency_enforcement_mode || 'hard';
 
-      const incomplete = parsedChecklist.filter(item => item.required && !item.is_checked);
-      if (incomplete.length > 0) {
-        const error = new Error('QC_CHECKLIST_INCOMPLETE');
-        error.status = 400;
-        error.code = 'QC_CHECKLIST_INCOMPLETE';
-        error.message = `Cannot complete work activity: There are ${incomplete.length} unchecked required QC checklist items.`;
-        throw error;
+        if (enforcementMode !== 'none') {
+          const { rows: deps } = await pool.query(`
+            SELECT wad.*, pwa.activity_name as depends_on_name, pwa.status as depends_on_status
+            FROM work_activity_dependencies wad
+            JOIN project_work_activities pwa ON wad.depends_on_activity_id = pwa.id
+            WHERE wad.activity_id = $1 AND wad.tenant_id = $2
+          `, [id, tenantId]);
+
+          for (const dep of deps) {
+            if (dep.depends_on_status !== 'completed') {
+              if (enforcementMode === 'soft' && !updates.force) {
+                const err = new Error('DEPENDENCY_UNSATISFIED_SOFT');
+                err.status = 400;
+                err.code = 'DEPENDENCY_UNSATISFIED_SOFT';
+                err.message = `Prerequisite activity '${dep.depends_on_name}' is not completed. Do you want to proceed anyway?`;
+                throw err;
+              } else if (enforcementMode === 'hard') {
+                const err = new Error('DEPENDENCY_UNSATISFIED');
+                err.status = 400;
+                err.code = 'DEPENDENCY_UNSATISFIED';
+                err.message = `Cannot start/complete work activity: Prerequisite activity '${dep.depends_on_name}' must be completed first.`;
+                throw err;
+              }
+            }
+          }
+        }
       }
 
-      updates.completed_at = new Date().toISOString();
-      if (userId) {
-        updates.completed_by = userId;
+      if (updates.status === 'completed') {
+        const qcChecklist = updates.qc_checklist !== undefined ? updates.qc_checklist : currentActivity.qc_checklist;
+        const parsedChecklist = typeof qcChecklist === 'string' ? JSON.parse(qcChecklist) : (qcChecklist || []);
+
+        const incomplete = parsedChecklist.filter(item => item.required && !item.is_checked);
+        if (incomplete.length > 0) {
+          const error = new Error('QC_CHECKLIST_INCOMPLETE');
+          error.status = 400;
+          error.code = 'QC_CHECKLIST_INCOMPLETE';
+          error.message = `Cannot complete work activity: There are ${incomplete.length} unchecked required QC checklist items.`;
+          throw error;
+        }
+
+        updates.completed_at = new Date().toISOString();
+        if (userId) {
+          updates.completed_by = userId;
+        }
+      } else {
+        updates.completed_at = null;
+        updates.completed_by = null;
       }
-    } else if (updates.status && updates.status !== 'completed') {
-      updates.completed_at = null;
-      updates.completed_by = null;
     }
 
     updates.updated_at = new Date().toISOString();
 
     for (const [key, value] of Object.entries(updates)) {
-      if (['id', 'project_id', 'tenant_id', 'created_at', 'completed_by_name', 'assignee_name'].includes(key)) continue;
+      if (['id', 'project_id', 'tenant_id', 'created_at', 'completed_by_name', 'assignee_name', 'force'].includes(key)) continue;
       fields.push(`${key} = $${idx}`);
       if (key === 'qc_checklist') {
         values.push(JSON.stringify(value));
@@ -237,13 +330,18 @@ class WorkActivityRepository {
     return true;
   }
 
-  async findTemplates(trade = null, roomType = null) {
+  async findTemplates(trade = null, roomType = null, tenantId = null) {
     let query = `SELECT * FROM trade_activity_templates`;
     const values = [];
     let whereClauses = [];
 
+    if (tenantId) {
+      whereClauses.push(`(tenant_id = $${values.length + 1} OR tenant_id IS NULL)`);
+      values.push(tenantId);
+    }
+
     if (trade) {
-      whereClauses.push(`trade = $1`);
+      whereClauses.push(`trade = $${values.length + 1}`);
       values.push(trade);
     }
     if (roomType) {
@@ -260,6 +358,54 @@ class WorkActivityRepository {
     return rows;
   }
 
+  async createTemplate(tenantId, data) {
+    const { trade, room_type = 'General', activity_name, description, sort_order = 0 } = data;
+    const query = `
+      INSERT INTO trade_activity_templates (tenant_id, trade, room_type, activity_name, description, sort_order)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `;
+    const { rows } = await pool.query(query, [tenantId, trade, room_type, activity_name, description || null, sort_order]);
+    return rows[0];
+  }
+
+  async updateTemplate(id, tenantId, updates) {
+    const fields = [];
+    const values = [];
+    let idx = 1;
+
+    for (const [key, value] of Object.entries(updates)) {
+      if (['id', 'tenant_id', 'created_at'].includes(key)) continue;
+      fields.push(`${key} = $${idx++}`);
+      values.push(value);
+    }
+
+    if (fields.length === 0) {
+      const { rows } = await pool.query('SELECT * FROM trade_activity_templates WHERE id = $1 AND (tenant_id = $2 OR tenant_id IS NULL)', [id, tenantId]);
+      return rows[0] || null;
+    }
+
+    values.push(id, tenantId);
+    const query = `
+      UPDATE trade_activity_templates
+      SET ${fields.join(', ')}
+      WHERE id = $${idx} AND tenant_id = $${idx + 1}
+      RETURNING *
+    `;
+    const { rows } = await pool.query(query, values);
+    if (rows.length === 0) throw new Error('NOT_FOUND');
+    return rows[0];
+  }
+
+  async deleteTemplate(id, tenantId) {
+    const { rowCount } = await pool.query(`
+      DELETE FROM trade_activity_templates
+      WHERE id = $1 AND tenant_id = $2
+    `, [id, tenantId]);
+    if (rowCount === 0) throw new Error('NOT_FOUND');
+    return true;
+  }
+
   async generateActivities(tenantId, projectId, phaseId, roomName, trade) {
     // 1. Resolve roomType based on roomName
     let roomType = 'General';
@@ -274,8 +420,8 @@ class WorkActivityRepository {
       roomType = 'Living Room';
     }
 
-    // 2. Fetch templates for this trade and roomType
-    const templates = await this.findTemplates(trade, roomType);
+    // 2. Fetch templates for this trade, roomType, and tenantId
+    const templates = await this.findTemplates(trade, roomType, tenantId);
     if (templates.length === 0) {
       return [];
     }
@@ -307,6 +453,63 @@ class WorkActivityRepository {
         
         created.push(res.rows[0]);
       }
+
+      // Auto-link dependencies based on standard templates
+      if (created.length > 0) {
+        // Find standard dependencies for this trade
+        const { rows: depTemplates } = await client.query(`
+          SELECT depends_on_trade FROM trade_dependency_templates 
+          WHERE trade = $1 AND (tenant_id = $2 OR tenant_id IS NULL)
+        `, [trade, tenantId]);
+
+        if (depTemplates.length > 0) {
+          const dependsOnTrades = depTemplates.map(d => d.depends_on_trade);
+          
+          // Find existing activities in this room for those trades
+          const { rows: existingActivities } = await client.query(`
+            SELECT id, trade FROM project_work_activities
+            WHERE tenant_id = $1 AND project_id = $2 AND room_name = $3 AND trade = ANY($4)
+          `, [tenantId, projectId, roomName, dependsOnTrades]);
+
+          // Create dependencies for each newly created activity
+          for (const newAct of created) {
+            for (const existingAct of existingActivities) {
+              await client.query(`
+                INSERT INTO work_activity_dependencies (tenant_id, project_id, activity_id, depends_on_activity_id)
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT (activity_id, depends_on_activity_id) DO NOTHING
+              `, [tenantId, projectId, newAct.id, existingAct.id]);
+            }
+          }
+        }
+        
+        // Also check if any existing activities in this room depend on the newly created trade
+        const { rows: reverseDepTemplates } = await client.query(`
+          SELECT trade FROM trade_dependency_templates 
+          WHERE depends_on_trade = $1 AND (tenant_id = $2 OR tenant_id IS NULL)
+        `, [trade, tenantId]);
+        
+        if (reverseDepTemplates.length > 0) {
+          const dependentTrades = reverseDepTemplates.map(d => d.trade);
+          
+          // Find existing activities in this room that depend on the newly created activities
+          const { rows: existingDependentActivities } = await client.query(`
+            SELECT id, trade FROM project_work_activities
+            WHERE tenant_id = $1 AND project_id = $2 AND room_name = $3 AND trade = ANY($4)
+          `, [tenantId, projectId, roomName, dependentTrades]);
+          
+          for (const newAct of created) {
+            for (const existingDepAct of existingDependentActivities) {
+              await client.query(`
+                INSERT INTO work_activity_dependencies (tenant_id, project_id, activity_id, depends_on_activity_id)
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT (activity_id, depends_on_activity_id) DO NOTHING
+              `, [tenantId, projectId, existingDepAct.id, newAct.id]);
+            }
+          }
+        }
+      }
+
       await client.query('COMMIT');
       return created;
     } catch (e) {
@@ -315,6 +518,36 @@ class WorkActivityRepository {
     } finally {
       client.release();
     }
+  }
+
+  // --- Trade Dependency Templates ---
+  
+  async findTradeDependencyTemplates(tenantId) {
+    const { rows } = await pool.query(`
+      SELECT * FROM trade_dependency_templates 
+      WHERE tenant_id = $1 OR tenant_id IS NULL
+      ORDER BY trade ASC
+    `, [tenantId]);
+    return rows;
+  }
+
+  async createTradeDependencyTemplate(tenantId, data) {
+    const { trade, depends_on_trade } = data;
+    const { rows } = await pool.query(`
+      INSERT INTO trade_dependency_templates (tenant_id, trade, depends_on_trade)
+      VALUES ($1, $2, $3)
+      RETURNING *
+    `, [tenantId, trade, depends_on_trade]);
+    return rows[0];
+  }
+
+  async deleteTradeDependencyTemplate(id, tenantId) {
+    const { rowCount } = await pool.query(`
+      DELETE FROM trade_dependency_templates
+      WHERE id = $1 AND tenant_id = $2
+    `, [id, tenantId]);
+    if (rowCount === 0) throw new Error('NOT_FOUND');
+    return true;
   }
 }
 

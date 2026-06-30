@@ -18,7 +18,18 @@ import {
   getQCAndReworkSummary,
   dispatchProductionOrder,
   confirmSiteDelivery,
-  getDispatchRecords
+  getDispatchRecords,
+  getProjectCoordination,
+  updateProjectCoordination,
+  getCuttingList,
+  saveCuttingList,
+  getCNCRequests,
+  createCNCRequest,
+  updateCNCRequestStatus,
+  getTransitDamageRecords,
+  createTransitDamageReport,
+  initiateReplacementOrder,
+  updateTransitDamageStatus
 } from '../../api/projects';
 
 export default function FactoryProductionTab({ projectId }) {
@@ -33,6 +44,17 @@ export default function FactoryProductionTab({ projectId }) {
   const [qcSummary, setQcSummary] = useState({ inspections: [], reworkOrders: [] });
   const [dispatches, setDispatches] = useState([]);
   const [damages, setDamages] = useState([]);
+
+  // Coordination & Cutting List & CNC States
+  const [coordination, setCoordination] = useState(null);
+  const [isCuttingListModalOpen, setIsCuttingListModalOpen] = useState(false);
+  const [isCncRequestModalOpen, setIsCncRequestModalOpen] = useState(false);
+  const [cuttingListPanels, setCuttingListPanels] = useState([]);
+  const [cncRequests, setCncRequests] = useState([]);
+  const [cncFormNew, setCncFormNew] = useState({
+    programFileName: '',
+    notes: ''
+  });
 
   // Loading States
   const [loading, setLoading] = useState(true);
@@ -101,7 +123,14 @@ export default function FactoryProductionTab({ projectId }) {
   const [inspectForm, setInspectForm] = useState({
     status: 'passed', // passed, failed
     notes: '',
-    photoKeysInput: '' // Comma-separated photo keys
+    photoKeysInput: '', // Comma-separated photo keys
+    checklist: [
+      { parameter: 'Dimensional Accuracy', passed: true, remarks: '' },
+      { parameter: 'Edge Banding Finish', passed: true, remarks: '' },
+      { parameter: 'Boring & Pre-Drills', passed: true, remarks: '' },
+      { parameter: 'Surface & Core Quality', passed: true, remarks: '' },
+      { parameter: 'Hardware Compatibility', passed: true, remarks: '' }
+    ]
   });
 
   // Form States - Rework Order Creation
@@ -123,10 +152,11 @@ export default function FactoryProductionTab({ projectId }) {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [ordersRes, projectRes, quotesRes] = await Promise.all([
+      const [ordersRes, projectRes, quotesRes, coordRes] = await Promise.all([
         getProductionOrders(projectId),
         getProject(projectId),
-        getQuotations(projectId)
+        getQuotations(projectId),
+        getProjectCoordination(projectId).catch(() => null)
       ]);
 
       if (ordersRes.data?.success) {
@@ -136,6 +166,10 @@ export default function FactoryProductionTab({ projectId }) {
       const projData = projectRes.data?.data || projectRes.data;
       if (projData) {
         setProject(projData);
+      }
+
+      if (coordRes && coordRes.data) {
+        setCoordination(coordRes.data.data || coordRes.data);
       }
 
       if (quotesRes.data?.success) {
@@ -163,11 +197,12 @@ export default function FactoryProductionTab({ projectId }) {
   const handleSelectOrder = async (orderId) => {
     setItemsLoading(true);
     try {
-      const [orderRes, summaryRes, dispatchesRes, damagesRes] = await Promise.all([
+      const [orderRes, summaryRes, dispatchesRes, damagesRes, cncRes] = await Promise.all([
         getProductionOrder(projectId, orderId),
         getQCAndReworkSummary(projectId, orderId),
         getDispatchRecords(projectId, orderId),
-        getTransitDamageRecords(projectId, orderId)
+        getTransitDamageRecords(projectId, orderId),
+        getCNCRequests(projectId, orderId).catch(() => null)
       ]);
 
       if (orderRes.data?.success) {
@@ -184,7 +219,12 @@ export default function FactoryProductionTab({ projectId }) {
             production_complete_date: item.production_complete_date ? new Date(item.production_complete_date).toISOString().split('T')[0] : '',
             qc_status: item.qc_status || 'pending',
             packaging_status: item.packaging_status || 'pending',
-            dispatch_date: item.dispatch_date ? new Date(item.dispatch_date).toISOString().split('T')[0] : ''
+            dispatch_date: item.dispatch_date ? new Date(item.dispatch_date).toISOString().split('T')[0] : '',
+            cutting_status: item.cutting_status || 'pending',
+            edge_banding_status: item.edge_banding_status || 'pending',
+            drilling_status: item.drilling_status || 'pending',
+            assembly_status: item.assembly_status || 'pending',
+            cnc_status: item.cnc_status || 'not_required'
           };
         });
         setEditedItems(itemEdits);
@@ -196,6 +236,10 @@ export default function FactoryProductionTab({ projectId }) {
 
       if (dispatchesRes.data?.success) {
         setDispatches(dispatchesRes.data.data || []);
+      }
+
+      if (cncRes && cncRes.data?.success) {
+        setCncRequests(cncRes.data.data || []);
       }
 
       if (damagesRes.data?.success) {
@@ -324,7 +368,12 @@ export default function FactoryProductionTab({ projectId }) {
         productionCompleteDate: edits.production_complete_date ? new Date(edits.production_complete_date).toISOString() : null,
         qcStatus: edits.qc_status,
         packagingStatus: edits.packaging_status,
-        dispatchDate: edits.dispatch_date ? new Date(edits.dispatch_date).toISOString() : null
+        dispatchDate: edits.dispatch_date ? new Date(edits.dispatch_date).toISOString() : null,
+        cuttingStatus: edits.cutting_status,
+        edgeBandingStatus: edits.edge_banding_status,
+        drillingStatus: edits.drilling_status,
+        assemblyStatus: edits.assembly_status,
+        cncStatus: edits.cnc_status
       };
 
       const res = await updateProductionOrderItem(projectId, selectedOrder.id, itemId, payload);
@@ -377,23 +426,42 @@ export default function FactoryProductionTab({ projectId }) {
     setInspectForm({
       status: 'passed',
       notes: '',
-      photoKeysInput: ''
+      photoKeysInput: '',
+      checklist: [
+        { parameter: 'Dimensional Accuracy', passed: true, remarks: '' },
+        { parameter: 'Edge Banding Finish', passed: true, remarks: '' },
+        { parameter: 'Boring & Pre-Drills', passed: true, remarks: '' },
+        { parameter: 'Surface & Core Quality', passed: true, remarks: '' },
+        { parameter: 'Hardware Compatibility', passed: true, remarks: '' }
+      ]
     });
     setIsInspectModalOpen(true);
   };
 
   const handleRecordQC = async (e) => {
     e.preventDefault();
+
+    const photoKeys = inspectForm.photoKeysInput
+      ? inspectForm.photoKeysInput.split(',').map(s => s.trim()).filter(Boolean)
+      : [];
+
+    if (inspectForm.status === 'passed' && inspectForm.checklist.some(c => !c.passed)) {
+      toast.error('Cannot approve QC: All checklist items must be passed.');
+      return;
+    }
+
+    if (inspectForm.status === 'failed' && photoKeys.length === 0) {
+      toast.error('At least one defect photograph is required for failed QC inspection.');
+      return;
+    }
+
     setActionLoading(true);
     try {
-      const photoKeys = inspectForm.photoKeysInput
-        ? inspectForm.photoKeysInput.split(',').map(s => s.trim()).filter(Boolean)
-        : [];
-
       const res = await recordQCInspection(projectId, selectedOrder.id, activeItem.id, {
         status: inspectForm.status,
         notes: inspectForm.notes,
-        photoKeys
+        photoKeys,
+        checklist: inspectForm.checklist
       });
 
       if (res.data?.success) {
@@ -414,7 +482,8 @@ export default function FactoryProductionTab({ projectId }) {
       }
     } catch (err) {
       console.error(err);
-      toast.error('Failed to record QC inspection.');
+      const errMsg = err.response?.data?.error?.message || 'Failed to record QC inspection.';
+      toast.error(errMsg);
     } finally {
       setActionLoading(false);
     }
@@ -658,6 +727,106 @@ export default function FactoryProductionTab({ projectId }) {
     }
   };
 
+  const openCuttingListModal = async (item) => {
+    setActiveItem(item);
+    setItemsLoading(true);
+    try {
+      const res = await getCuttingList(projectId, selectedOrder.id, item.id);
+      setCuttingListPanels(res.data?.data || res.data || []);
+      setIsCuttingListModalOpen(true);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to load cutting list panels.');
+    } finally {
+      setItemsLoading(false);
+    }
+  };
+
+  const handleSaveCuttingList = async (e) => {
+    e.preventDefault();
+    setActionLoading(true);
+    try {
+      const res = await saveCuttingList(projectId, selectedOrder.id, activeItem.id, { panels: cuttingListPanels });
+      if (res.data?.success) {
+        toast.success('Cutting list saved successfully.');
+        setIsCuttingListModalOpen(false);
+        handleSelectOrder(selectedOrder.id);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to save cutting list.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleAddPanelRow = () => {
+    setCuttingListPanels(prev => [
+      ...prev,
+      {
+        panel_name: 'New Cabinet Panel',
+        length_mm: 600,
+        width_mm: 400,
+        thickness_mm: 18,
+        material: 'Plywood',
+        edge_banding: 'none',
+        quantity: 1,
+        cnc_status: 'not_required',
+        cnc_program_name: '',
+        cnc_notes: '',
+        assembly_notes: ''
+      }
+    ]);
+  };
+
+  const handleDeletePanelRow = (idx) => {
+    setCuttingListPanels(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handlePanelFieldChange = (idx, field, value) => {
+    setCuttingListPanels(prev => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p));
+  };
+
+  const openCncRequestModal = () => {
+    setCncFormNew({ programFileName: '', notes: '' });
+    setIsCncRequestModalOpen(true);
+  };
+
+  const handleCreateCNCRequestSubmit = async (e) => {
+    e.preventDefault();
+    setActionLoading(true);
+    try {
+      const res = await createCNCRequest(projectId, selectedOrder.id, {
+        programFileName: cncFormNew.programFileName,
+        notes: cncFormNew.notes
+      });
+      if (res.data?.success) {
+        toast.success('CNC program request logged successfully.');
+        setIsCncRequestModalOpen(false);
+        handleSelectOrder(selectedOrder.id);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to request CNC program.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUpdateProjectSiteReadiness = async (newDate) => {
+    setActionLoading(true);
+    try {
+      await updateProjectCoordination(projectId, { siteReadinessDate: newDate || null });
+      toast.success('Project site readiness date updated.');
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update project site readiness date.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const calculateProgress = (order) => {
     if (!order.total_items) return 0;
     return Math.round((order.completed_items / order.total_items) * 100);
@@ -678,6 +847,79 @@ export default function FactoryProductionTab({ projectId }) {
           </Button>
         </div>
       </div>
+
+      {/* Timeline Sync Coordination Card */}
+      {coordination && (
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.8)',
+          border: '1px solid rgba(226, 232, 240, 0.8)',
+          borderRadius: 'var(--radius-lg, 12px)',
+          padding: '18px 24px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.02)',
+          marginBottom: '24px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px'
+        }}>
+          <div>
+            <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>🔄 Timeline Alignment Coordination</span>
+              {coordination.alertType === 'factory_delay' && (
+                <span className={styles.badge} style={{ backgroundColor: '#fee2e2', color: '#b91c1c', fontSize: '10px' }}>
+                  🚨 Factory Delay ({coordination.divergenceDays} days)
+                </span>
+              )}
+              {coordination.alertType === 'site_delay' && (
+                <span className={styles.badge} style={{ backgroundColor: '#fffbeb', color: '#d97706', fontSize: '10px' }}>
+                  ⚠️ Site Delay ({coordination.divergenceDays} days)
+                </span>
+              )}
+              {coordination.alertType === 'aligned' && (
+                <span className={styles.badge} style={{ backgroundColor: '#ecfdf5', color: '#047857', fontSize: '10px' }}>
+                  ✓ Aligned
+                </span>
+              )}
+              {coordination.alertType === 'pending_setup' && (
+                <span className={styles.badge} style={{ backgroundColor: '#f1f5f9', color: '#475569', fontSize: '10px' }}>
+                  Pending Target Setup
+                </span>
+              )}
+            </h4>
+            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+              {coordination.alertType === 'factory_delay' && 'Factory woodwork completion is scheduled after the site readiness date. Site team may experience idle time.'}
+              {coordination.alertType === 'site_delay' && 'Site is delayed relative to factory completion. Finished items will arrive early and require logistics holding.'}
+              {coordination.alertType === 'aligned' && 'Factory completion and site readiness are successfully synchronized.'}
+              {coordination.alertType === 'pending_setup' && 'Provide the target site readiness date to enable divergence calculations.'}
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)' }}>Site Readiness Date</span>
+              <input
+                type="date"
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--color-border)',
+                  fontSize: '12px'
+                }}
+                value={coordination.siteReadinessDate || ''}
+                onChange={(e) => handleUpdateProjectSiteReadiness(e.target.value)}
+              />
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-text-muted)' }}>Factory Readiness Date</span>
+              <strong style={{ fontSize: '13px', color: '#0f172a', padding: '6px 0' }}>
+                {coordination.factoryReadinessDate ? new Date(coordination.factoryReadinessDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Not Scheduled'}
+              </strong>
+            </div>
+          </div>
+        </div>
+      )}
 
       {orders.length === 0 ? (
         <EmptyState
@@ -907,9 +1149,10 @@ export default function FactoryProductionTab({ projectId }) {
                             <th>Qty</th>
                             <th>Factory</th>
                             <th>QC Status</th>
+                            <th>Production Stages</th>
                             <th>Milestones</th>
                             <th>Packaging & Dispatch</th>
-                            <th style={{ width: '60px' }}>Actions</th>
+                            <th style={{ width: '120px' }}>Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -943,6 +1186,80 @@ export default function FactoryProductionTab({ projectId }) {
                                     >
                                       Inspect
                                     </Button>
+                                  </div>
+                                </td>
+                                <td>
+                                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', minWidth: '220px' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                      <span style={{ fontSize: '9px', fontWeight: 'bold', color: 'var(--color-text-muted)' }}>Cutting</span>
+                                      <select
+                                        className={styles.inlineSelect}
+                                        style={{ fontSize: '10px', padding: '2px 4px' }}
+                                        value={edits.cutting_status || 'pending'}
+                                        onChange={(e) => handleInlineItemChange(item.id, 'cutting_status', e.target.value)}
+                                      >
+                                        <option value="pending">Pending</option>
+                                        <option value="in_progress">In Progress</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="na">N/A</option>
+                                      </select>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                      <span style={{ fontSize: '9px', fontWeight: 'bold', color: 'var(--color-text-muted)' }}>Edge Banding</span>
+                                      <select
+                                        className={styles.inlineSelect}
+                                        style={{ fontSize: '10px', padding: '2px 4px' }}
+                                        value={edits.edge_banding_status || 'pending'}
+                                        onChange={(e) => handleInlineItemChange(item.id, 'edge_banding_status', e.target.value)}
+                                      >
+                                        <option value="pending">Pending</option>
+                                        <option value="in_progress">In Progress</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="na">N/A</option>
+                                      </select>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                      <span style={{ fontSize: '9px', fontWeight: 'bold', color: 'var(--color-text-muted)' }}>Drilling</span>
+                                      <select
+                                        className={styles.inlineSelect}
+                                        style={{ fontSize: '10px', padding: '2px 4px' }}
+                                        value={edits.drilling_status || 'pending'}
+                                        onChange={(e) => handleInlineItemChange(item.id, 'drilling_status', e.target.value)}
+                                      >
+                                        <option value="pending">Pending</option>
+                                        <option value="in_progress">In Progress</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="na">N/A</option>
+                                      </select>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                      <span style={{ fontSize: '9px', fontWeight: 'bold', color: 'var(--color-text-muted)' }}>Assembly</span>
+                                      <select
+                                        className={styles.inlineSelect}
+                                        style={{ fontSize: '10px', padding: '2px 4px' }}
+                                        value={edits.assembly_status || 'pending'}
+                                        onChange={(e) => handleInlineItemChange(item.id, 'assembly_status', e.target.value)}
+                                      >
+                                        <option value="pending">Pending</option>
+                                        <option value="in_progress">In Progress</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="na">N/A</option>
+                                      </select>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', gridColumn: 'span 2' }}>
+                                      <span style={{ fontSize: '9px', fontWeight: 'bold', color: 'var(--color-text-muted)' }}>CNC Status</span>
+                                      <select
+                                        className={styles.inlineSelect}
+                                        style={{ fontSize: '10px', padding: '2px 4px' }}
+                                        value={edits.cnc_status || 'not_required'}
+                                        onChange={(e) => handleInlineItemChange(item.id, 'cnc_status', e.target.value)}
+                                      >
+                                        <option value="not_required">Not Required</option>
+                                        <option value="pending_request">Pending Request</option>
+                                        <option value="generated">Generated</option>
+                                        <option value="completed">Completed</option>
+                                      </select>
+                                    </div>
                                   </div>
                                 </td>
                                 <td>
@@ -1004,14 +1321,25 @@ export default function FactoryProductionTab({ projectId }) {
                                   </div>
                                 </td>
                                 <td>
-                                  <Button
-                                    onClick={() => handleSaveItemChanges(item.id)}
-                                    disabled={updatingItemId === item.id}
-                                    variant="secondary"
-                                    size="sm"
-                                  >
-                                    {updatingItemId === item.id ? '...' : 'Save'}
-                                  </Button>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    <Button
+                                      onClick={() => handleSaveItemChanges(item.id)}
+                                      disabled={updatingItemId === item.id}
+                                      variant="primary"
+                                      size="sm"
+                                      style={{ width: '100%' }}
+                                    >
+                                      {updatingItemId === item.id ? '...' : 'Save'}
+                                    </Button>
+                                    <Button
+                                      onClick={() => openCuttingListModal(item)}
+                                      variant="secondary"
+                                      size="sm"
+                                      style={{ width: '100%', fontSize: '10px', whiteSpace: 'nowrap' }}
+                                    >
+                                      📐 Panel List & CNC
+                                    </Button>
+                                  </div>
                                 </td>
                               </tr>
                             );
@@ -1069,6 +1397,26 @@ export default function FactoryProductionTab({ projectId }) {
                                 ))}
                               </div>
                             )}
+                            {/* Checklist display */}
+                            {ins.checklist && (() => {
+                              const parsedChecklist = Array.isArray(ins.checklist) 
+                                ? ins.checklist 
+                                : JSON.parse(ins.checklist || '[]');
+                              if (parsedChecklist.length === 0) return null;
+                              return (
+                                <div style={{ marginTop: '8px', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '4px', background: 'rgba(0,0,0,0.02)', padding: '8px', borderRadius: '4px' }}>
+                                  <strong style={{ fontSize: '11px', color: 'var(--color-text)' }}>Acceptance Checklist:</strong>
+                                  {parsedChecklist.map((check, checkIdx) => (
+                                    <div key={checkIdx} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text)' }}>
+                                      <span>{check.passed ? '✅' : '❌'}</span>
+                                      <span style={{ color: check.passed ? 'var(--color-text)' : '#b91c1c', fontWeight: check.passed ? 'normal' : '500' }}>
+                                        {check.parameter} {check.remarks ? `(${check.remarks})` : ''}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            })()}
 
                             <div style={{ fontSize: '10px', color: 'var(--color-text-muted)', marginTop: '8px', textAlign: 'right' }}>
                               Inspected by: {ins.inspector_name || 'Inspector'} on {new Date(ins.created_at).toLocaleDateString('en-IN')}
@@ -1215,7 +1563,7 @@ export default function FactoryProductionTab({ projectId }) {
                               </div>
                               <div>
                                 <div style={{ color: 'var(--color-text-muted)', marginBottom: '2px' }}>Expected Delivery</div>
-                                <strong>{disp.expected_delivery_date ? new Date(disp.expected_delivery_date).toLocaleDateString('en-IN') : '—'}</strong>
+                                <strong>{disp.expected_delivery_date ? new Date(disp.expected_delivery_date).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</strong>
                               </div>
                               {disp.actual_delivery_date && (
                                 <div>
@@ -1224,6 +1572,27 @@ export default function FactoryProductionTab({ projectId }) {
                                 </div>
                               )}
                             </div>
+
+                            {/* Material Manifest display */}
+                            {disp.manifest && (() => {
+                              const parsedManifest = Array.isArray(disp.manifest) 
+                                ? disp.manifest 
+                                : JSON.parse(disp.manifest || '[]');
+                              if (parsedManifest.length === 0) return null;
+                              return (
+                                <div style={{ marginTop: '12px', background: 'rgba(0,0,0,0.02)', padding: '10px', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
+                                  <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--color-text)', marginBottom: '6px' }}>📦 Material Manifest / Shipped Items:</div>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    {parsedManifest.map((item, itemIdx) => (
+                                      <div key={itemIdx} style={{ fontSize: '11px', color: 'var(--color-text)', display: 'flex', justifyContent: 'space-between' }}>
+                                        <span>• {item.item_name}</span>
+                                        <strong>{item.quantity} {item.unit || 'Nos'}</strong>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })()}
 
                             {disp.status === 'delivered' && (
                               <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed var(--color-border)', fontSize: '12px' }}>
@@ -1520,6 +1889,55 @@ export default function FactoryProductionTab({ projectId }) {
             </div>
           </div>
 
+          <div style={{ marginBottom: '15px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '13px', color: 'var(--color-text)' }}>
+              Acceptance Criteria Checklist
+            </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'var(--color-surface-hover, #f8fafc)', padding: '12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+              {inspectForm.checklist && inspectForm.checklist.map((item, idx) => (
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px', flex: 1, color: 'var(--color-text)' }}>
+                    <input
+                      type="checkbox"
+                      checked={item.passed}
+                      onChange={(e) => {
+                        const newChecklist = [...inspectForm.checklist];
+                        newChecklist[idx] = { ...newChecklist[idx], passed: e.target.checked };
+                        // Automatically set status to failed if any item is unchecked
+                        const anyFailed = newChecklist.some(c => !c.passed);
+                        setInspectForm(prev => ({ 
+                          ...prev, 
+                          checklist: newChecklist,
+                          status: anyFailed ? 'failed' : prev.status 
+                        }));
+                      }}
+                    />
+                    <strong>{item.parameter}</strong>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Remarks (optional)"
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: '11px',
+                      borderRadius: '4px',
+                      border: '1px solid var(--color-border)',
+                      width: '180px',
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-text)'
+                    }}
+                    value={item.remarks}
+                    onChange={(e) => {
+                      const newChecklist = [...inspectForm.checklist];
+                      newChecklist[idx] = { ...newChecklist[idx], remarks: e.target.value };
+                      setInspectForm(prev => ({ ...prev, checklist: newChecklist }));
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div>
             <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px' }}>
               Quality Audit Notes / Inspection Checklist details
@@ -1636,11 +2054,11 @@ export default function FactoryProductionTab({ projectId }) {
               />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px' }}>
-                Expected Delivery Date
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: 'var(--color-text)' }}>
+                Expected Delivery Date & Time
               </label>
               <Input
-                type="date"
+                type="datetime-local"
                 value={dispatchForm.expectedDeliveryDate}
                 onChange={(e) => setDispatchForm(prev => ({ ...prev, expectedDeliveryDate: e.target.value }))}
                 required
@@ -1690,8 +2108,30 @@ export default function FactoryProductionTab({ projectId }) {
         title="Confirm Site Delivery Receipt"
       >
         <form onSubmit={handleConfirmDeliverySubmit} className={styles.modalForm}>
+          {activeDispatch && activeDispatch.manifest && (() => {
+            const parsedManifest = Array.isArray(activeDispatch.manifest)
+              ? activeDispatch.manifest
+              : JSON.parse(activeDispatch.manifest || '[]');
+            if (parsedManifest.length === 0) return null;
+            return (
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: 'var(--color-text)' }}>
+                  📦 Verify Materials Manifest (Incoming Items):
+                </label>
+                <div style={{ maxHeight: '150px', overflowY: 'auto', background: 'var(--color-surface-hover, #f8fafc)', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                  {parsedManifest.map((item, idx) => (
+                    <div key={idx} style={{ fontSize: '11px', display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: idx < parsedManifest.length - 1 ? '1px solid var(--color-border)' : 'none', color: 'var(--color-text)' }}>
+                      <span>• {item.item_name}</span>
+                      <strong>{item.quantity} {item.unit || 'Nos'}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px', color: 'var(--color-text)' }}>
               Received By (Receiver Name / Site Supervisor)
             </label>
             <Input
@@ -1912,6 +2352,221 @@ export default function FactoryProductionTab({ projectId }) {
             </Button>
             <Button type="submit" variant="primary" disabled={actionLoading}>
               Save Changes
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal - Cutting List Panel Editing */}
+      <Modal
+        isOpen={isCuttingListModalOpen}
+        onClose={() => setIsCuttingListModalOpen(false)}
+        title={activeItem ? `Cutting List Details: ${activeItem.item_name}` : 'Cutting List Details'}
+        style={{ maxWidth: '900px' }}
+      >
+        <form onSubmit={handleSaveCuttingList} className={styles.modalForm}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
+              Define board specifications, dimension details, and edge banding orientations.
+            </span>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <Button type="button" onClick={handleAddPanelRow} variant="secondary" size="sm">
+                + Add Panel Row
+              </Button>
+              <Button type="button" onClick={openCncRequestModal} variant="secondary" size="sm" style={{ border: '1px solid var(--color-primary)', color: 'var(--color-primary)', background: 'none' }}>
+                ⚙ Request CNC Program
+              </Button>
+            </div>
+          </div>
+
+          <div style={{ overflowX: 'auto', border: '1px solid var(--color-border)', borderRadius: '6px', marginBottom: '16px' }}>
+            <table className={styles.itemTable} style={{ fontSize: '11px' }}>
+              <thead>
+                <tr style={{ background: '#f8fafc' }}>
+                  <th style={{ padding: '8px' }}>Panel Name</th>
+                  <th style={{ padding: '8px', width: '70px' }}>Length (mm)</th>
+                  <th style={{ padding: '8px', width: '70px' }}>Width (mm)</th>
+                  <th style={{ padding: '8px', width: '70px' }}>Thickness (mm)</th>
+                  <th style={{ padding: '8px', width: '90px' }}>Material</th>
+                  <th style={{ padding: '8px', width: '100px' }}>Edge Banding</th>
+                  <th style={{ padding: '8px', width: '60px' }}>Qty</th>
+                  <th style={{ padding: '8px', width: '100px' }}>CNC status</th>
+                  <th style={{ padding: '8px', width: '50px' }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {cuttingListPanels.length === 0 ? (
+                  <tr>
+                    <td colSpan="9" style={{ textAlign: 'center', padding: '16px', color: 'var(--color-text-muted)' }}>
+                      No panels added yet. Click "+ Add Panel Row" to begin.
+                    </td>
+                  </tr>
+                ) : (
+                  cuttingListPanels.map((panel, idx) => (
+                    <tr key={idx}>
+                      <td style={{ padding: '6px' }}>
+                        <input
+                          type="text"
+                          className={styles.inlineInput}
+                          style={{ padding: '4px' }}
+                          value={panel.panel_name || ''}
+                          onChange={(e) => handlePanelFieldChange(idx, 'panel_name', e.target.value)}
+                          required
+                        />
+                      </td>
+                      <td style={{ padding: '6px' }}>
+                        <input
+                          type="number"
+                          className={styles.inlineInput}
+                          style={{ padding: '4px' }}
+                          value={panel.length_mm || ''}
+                          onChange={(e) => handlePanelFieldChange(idx, 'length_mm', parseFloat(e.target.value) || 0)}
+                          required
+                        />
+                      </td>
+                      <td style={{ padding: '6px' }}>
+                        <input
+                          type="number"
+                          className={styles.inlineInput}
+                          style={{ padding: '4px' }}
+                          value={panel.width_mm || ''}
+                          onChange={(e) => handlePanelFieldChange(idx, 'width_mm', parseFloat(e.target.value) || 0)}
+                          required
+                        />
+                      </td>
+                      <td style={{ padding: '6px' }}>
+                        <input
+                          type="number"
+                          className={styles.inlineInput}
+                          style={{ padding: '4px' }}
+                          value={panel.thickness_mm || ''}
+                          onChange={(e) => handlePanelFieldChange(idx, 'thickness_mm', parseFloat(e.target.value) || 0)}
+                          required
+                        />
+                      </td>
+                      <td style={{ padding: '6px' }}>
+                        <select
+                          className={styles.inlineSelect}
+                          style={{ padding: '4px', fontSize: '11px' }}
+                          value={panel.material || 'Plywood'}
+                          onChange={(e) => handlePanelFieldChange(idx, 'material', e.target.value)}
+                        >
+                          <option value="Plywood">Plywood</option>
+                          <option value="MDF">MDF</option>
+                          <option value="HDF">HDF</option>
+                          <option value="Particle Board">Particle Board</option>
+                          <option value="Solid Wood">Solid Wood</option>
+                        </select>
+                      </td>
+                      <td style={{ padding: '6px' }}>
+                        <select
+                          className={styles.inlineSelect}
+                          style={{ padding: '4px', fontSize: '11px' }}
+                          value={panel.edge_banding || 'none'}
+                          onChange={(e) => handlePanelFieldChange(idx, 'edge_banding', e.target.value)}
+                        >
+                          <option value="none">None</option>
+                          <option value="1_long">1 Long Edge</option>
+                          <option value="2_long">2 Long Edges</option>
+                          <option value="1_short">1 Short Edge</option>
+                          <option value="2_short">2 Short Edges</option>
+                          <option value="all_sides">All 4 Sides</option>
+                        </select>
+                      </td>
+                      <td style={{ padding: '6px' }}>
+                        <input
+                          type="number"
+                          className={styles.inlineInput}
+                          style={{ padding: '4px' }}
+                          min="1"
+                          value={panel.quantity || 1}
+                          onChange={(e) => handlePanelFieldChange(idx, 'quantity', parseInt(e.target.value) || 1)}
+                          required
+                        />
+                      </td>
+                      <td style={{ padding: '6px' }}>
+                        <select
+                          className={styles.inlineSelect}
+                          style={{ padding: '4px', fontSize: '11px' }}
+                          value={panel.cnc_status || 'not_required'}
+                          onChange={(e) => handlePanelFieldChange(idx, 'cnc_status', e.target.value)}
+                        >
+                          <option value="not_required">Not Required</option>
+                          <option value="pending_request">Pending Request</option>
+                          <option value="generated">Generated</option>
+                          <option value="completed">Completed</option>
+                        </select>
+                      </td>
+                      <td style={{ padding: '6px', textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePanelRow(idx)}
+                          style={{ border: 'none', background: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '14px' }}
+                          title="Delete Panel Row"
+                        >
+                          🗑
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className={styles.actionsBlock}>
+            <Button type="button" variant="secondary" onClick={() => setIsCuttingListModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" disabled={actionLoading}>
+              {actionLoading ? 'Saving...' : 'Save Cutting List Spec'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal - Request CNC Program */}
+      <Modal
+        isOpen={isCncRequestModalOpen}
+        onClose={() => setIsCncRequestModalOpen(false)}
+        title="Request CNC Router Program"
+      >
+        <form onSubmit={handleCreateCNCRequestSubmit} className={styles.modalForm}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px' }}>
+              Target CNC Program File Name
+            </label>
+            <Input
+              type="text"
+              placeholder="e.g. cabinet_side_left_18mm.cnc"
+              value={cncFormNew.programFileName}
+              onChange={(e) => setCncFormNew(prev => ({ ...prev, programFileName: e.target.value }))}
+              required
+            />
+            <p style={{ margin: '4px 0 0 0', fontSize: '10px', color: 'var(--color-text-muted)' }}>
+              Specify the pattern layout or program name the CNC operator should load.
+            </p>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '6px', fontWeight: '500', fontSize: '13px' }}>
+              CNC Design / Grooving Notes
+            </label>
+            <Textarea
+              placeholder="Add details about grooving depths, inner corner radius offsets, or pocket routes required..."
+              value={cncFormNew.notes}
+              onChange={(e) => setCncFormNew(prev => ({ ...prev, notes: e.target.value }))}
+              rows={4}
+              required
+            />
+          </div>
+
+          <div className={styles.actionsBlock}>
+            <Button type="button" variant="secondary" onClick={() => setIsCncRequestModalOpen(false)}>
+              Back
+            </Button>
+            <Button type="submit" variant="primary" disabled={actionLoading}>
+              {actionLoading ? 'Submitting Request...' : 'Send CNC Request to Design'}
             </Button>
           </div>
         </form>

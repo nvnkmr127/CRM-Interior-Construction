@@ -8,6 +8,7 @@ async function createClaim({
   tenantId,
   projectId,
   warrantyId = null,
+  amcId = null,
   claimNumber,
   claimDate = new Date().toISOString().split('T')[0],
   natureOfDefect,
@@ -28,15 +29,15 @@ async function createClaim({
 
   const query = `
     INSERT INTO warranty_claims (
-      tenant_id, project_id, warranty_id, claim_number, 
+      tenant_id, project_id, warranty_id, amc_id, claim_number, 
       claim_date, nature_of_defect, status, eligibility_decision,
       is_repeat_claim, repeat_claim_count
     )
-    VALUES ($1, $2, $3, $4, $5, $6, 'open', 'pending', $7, $8)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, 'open', 'pending', $8, $9)
     RETURNING *
   `;
   const values = [
-    tenantId, projectId, warrantyId, claimNumber,
+    tenantId, projectId, warrantyId, amcId, claimNumber,
     claimDate, natureOfDefect, isRepeat, repeatCount
   ];
 
@@ -110,7 +111,7 @@ async function updateClaim(claimId, tenantId, updateData, userId = null) {
   const oldValue = existingRes.rows[0];
 
   const allowedKeys = [
-    'warranty_id', 'claim_date', 'nature_of_defect', 'eligibility_decision',
+    'warranty_id', 'amc_id', 'claim_date', 'nature_of_defect', 'eligibility_decision',
     'eligibility_reason', 'assigned_technician_id', 'status', 'resolution_details'
   ];
 
@@ -205,9 +206,11 @@ async function getClaimsByProject(projectId, tenantId) {
       w.product_name,
       w.brand,
       w.serial_number,
-      u.name AS technician_name
+      u.name AS technician_name,
+      a.contract_number AS amc_contract_number
     FROM warranty_claims c
     LEFT JOIN warranties w ON c.warranty_id = w.id
+    LEFT JOIN amcs a ON c.amc_id = a.id
     LEFT JOIN users u ON c.assigned_technician_id = u.id
     WHERE c.project_id = $1 AND c.tenant_id = $2
     ORDER BY c.claim_date DESC, c.created_at DESC

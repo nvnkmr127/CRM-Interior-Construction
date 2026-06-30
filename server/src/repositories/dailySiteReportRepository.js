@@ -9,13 +9,15 @@ class DailySiteReportRepository {
       manpower = [],
       materials = [],
       issues_encountered = null,
-      photos = []
+      photos = [],
+      tomorrows_plan,
+      supervisor_signature
     } = data;
 
     const query = `
       INSERT INTO daily_site_reports (
-        tenant_id, project_id, report_date, work_done, manpower, materials, issues_encountered, photos, submitted_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        tenant_id, project_id, report_date, work_done, manpower, materials, issues_encountered, photos, submitted_by, tomorrows_plan, supervisor_signature
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING *
     `;
 
@@ -28,7 +30,9 @@ class DailySiteReportRepository {
       JSON.stringify(materials),
       issues_encountered,
       JSON.stringify(photos),
-      userId
+      userId,
+      tomorrows_plan,
+      supervisor_signature
     ];
 
     const { rows } = await pool.query(query, values);

@@ -76,15 +76,15 @@ router.post('/project/:projectId', authenticate, async (req, res, next) => {
   try {
     const { projectId } = req.params;
     const tenantId = req.tenantId || req.user.tenantId;
-    const { scheduled_at, assignee_id, notes, checklist, client_invited } = req.body;
+    const { scheduled_at, assignee_id, notes, checklist, client_invited, agenda, next_steps } = req.body;
 
     const query = `
-      INSERT INTO site_visits (tenant_id, project_id, assignee_id, scheduled_at, notes, checklist, client_invited)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      INSERT INTO site_visits (tenant_id, project_id, assignee_id, scheduled_at, notes, checklist, client_invited, agenda, next_steps)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
     `;
     const result = await pool.query(query, [
-      tenantId, projectId, assignee_id || req.user.userId, scheduled_at, notes, JSON.stringify(checklist || []), client_invited || false
+      tenantId, projectId, assignee_id || req.user.userId, scheduled_at, notes, JSON.stringify(checklist || []), client_invited || false, agenda, next_steps
     ]);
 
     return success(res, result.rows[0], {}, 201);
@@ -109,7 +109,9 @@ router.patch('/:id', authenticate, async (req, res, next) => {
       assignee_id,
       checklist,
       client_invited,
-      client_feedback
+      client_feedback,
+      agenda,
+      next_steps
     } = req.body;
 
     const query = `
@@ -125,8 +127,10 @@ router.patch('/:id', authenticate, async (req, res, next) => {
           checklist = COALESCE($9, checklist),
           client_invited = COALESCE($10, client_invited),
           client_feedback = COALESCE($11, client_feedback),
+          agenda = COALESCE($12, agenda),
+          next_steps = COALESCE($13, next_steps),
           updated_at = CURRENT_TIMESTAMP
-      WHERE id = $12 AND tenant_id = $13
+      WHERE id = $14 AND tenant_id = $15
       RETURNING *
     `;
     const result = await pool.query(query, [
@@ -141,6 +145,8 @@ router.patch('/:id', authenticate, async (req, res, next) => {
       checklist ? JSON.stringify(checklist) : null,
       client_invited,
       client_feedback,
+      agenda,
+      next_steps,
       id, tenantId
     ]);
 
@@ -261,6 +267,70 @@ router.delete('/:id/photos/:photoId', authenticate, async (req, res, next) => {
     await pool.query(deleteQuery, [photoId, siteVisitId, tenantId]);
 
     return success(res, { message: 'Photo deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Link an item to a site visit
+router.post('/:id/linked-items', authenticate, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.tenantId || req.user.tenantId;
+    const { item_type, item_id } = req.body;
+
+    if (!item_type || !item_id) {
+      return fail(res, 'BAD_REQUEST', 'item_type and item_id are required', 400);
+    }
+
+    const query = `
+      INSERT INTO site_visit_linked_items (tenant_id, site_visit_id, item_type, item_id)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+    `;
+    const result = await pool.query(query, [tenantId, id, item_type, item_id]);
+    
+    return success(res, result.rows[0], {}, 201);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete a linked item from a site visit
+router.delete('/:id/linked-items/:linkId', authenticate, async (req, res, next) => {
+  try {
+    const { id, linkId } = req.params;
+    const tenantId = req.tenantId || req.user.tenantId;
+
+    const query = `
+      DELETE FROM site_visit_linked_items
+      WHERE id = $1 AND site_visit_id = $2 AND tenant_id = $3
+    `;
+    const result = await pool.query(query, [linkId, id, tenantId]);
+
+    if (result.rowCount === 0) return fail(res, 'NOT_FOUND', 'Linked item not found', 404);
+
+    return success(res, { message: 'Linked item removed' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get all linked items for a site visit
+router.get('/:id/linked-items', authenticate, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.tenantId || req.user.tenantId;
+
+    const query = `
+      SELECT * FROM site_visit_linked_items
+      WHERE site_visit_id = $1 AND tenant_id = $2
+      ORDER BY created_at ASC
+    `;
+    const result = await pool.query(query, [id, tenantId]);
+
+    // We could join with tasks/snags to get names, but keeping it simple for now
+    return success(res, result.rows);
   } catch (error) {
     next(error);
   }

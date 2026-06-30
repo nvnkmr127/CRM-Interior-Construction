@@ -6,85 +6,7 @@ const { success, fail } = require('../utils/response');
 
 router.use(authenticate);
 
-// Auto-detect overdue milestones or project target dates and create draft delay notifications
-const detectAndCreateDelayDrafts = async (tenantId, projectId) => {
-  // 1. Scan for overdue milestones (due date in past and status not completed)
-  const milestoneQuery = `
-    SELECT m.id, m.name, m.due_date
-    FROM milestones m
-    JOIN project_phases p ON m.phase_id = p.id
-    WHERE m.project_id = $1 AND m.tenant_id = $2 
-      AND m.status != 'completed' AND m.due_date < CURRENT_DATE
-  `;
-  const milestones = await pool.query(milestoneQuery, [projectId, tenantId]);
-
-  for (const m of milestones.rows) {
-    // Check if a delay notification for this milestone and original_date already exists
-    const checkQuery = `
-      SELECT id FROM delay_notifications
-      WHERE project_id = $1 AND tenant_id = $2 
-        AND milestone_id = $3 AND original_date = $4
-    `;
-    const checkRes = await pool.query(checkQuery, [projectId, tenantId, m.id, m.due_date]);
-    
-    if (checkRes.rows.length === 0) {
-      const revisedDate = new Date();
-      revisedDate.setDate(revisedDate.getDate() + 7);
-      const revisedDateStr = revisedDate.toISOString().split('T')[0];
-      const origDateStr = new Date(m.due_date).toISOString().split('T')[0];
-
-      const draftText = `Dear Client, we would like to inform you that the milestone "${m.name}" originally scheduled for completion on ${origDateStr} has been delayed. The revised expected completion date is now ${revisedDateStr}. Reason for delay: [Please specify the reason]. We apologize for the delay and appreciate your patience.`;
-
-      const insertQuery = `
-        INSERT INTO delay_notifications (
-          tenant_id, project_id, milestone_id, type, original_date, revised_date, reason, message_draft, status
-        )
-        VALUES ($1, $2, $3, 'milestone_delay', $4, $5, 'Awaiting details', $6, 'draft')
-      `;
-      await pool.query(insertQuery, [
-        tenantId, projectId, m.id, m.due_date, revisedDateStr, draftText
-      ]);
-    }
-  }
-
-  // 2. Scan for overdue project target date
-  const projectQuery = `
-    SELECT id, name, target_date
-    FROM projects
-    WHERE id = $1 AND tenant_id = $2 
-      AND status = 'active' AND target_date < CURRENT_DATE
-  `;
-  const projects = await pool.query(projectQuery, [projectId, tenantId]);
-
-  if (projects.rows.length > 0) {
-    const p = projects.rows[0];
-    const checkQuery = `
-      SELECT id FROM delay_notifications
-      WHERE project_id = $1 AND tenant_id = $2 
-        AND milestone_id IS NULL AND original_date = $3
-    `;
-    const checkRes = await pool.query(checkQuery, [projectId, tenantId, p.target_date]);
-    
-    if (checkRes.rows.length === 0) {
-      const revisedDate = new Date();
-      revisedDate.setDate(revisedDate.getDate() + 7);
-      const revisedDateStr = revisedDate.toISOString().split('T')[0];
-      const origDateStr = new Date(p.target_date).toISOString().split('T')[0];
-
-      const draftText = `Dear Client, we would like to inform you that the final completion date for your project "${p.name}" originally scheduled for ${origDateStr} has been delayed. The revised expected completion date is now ${revisedDateStr}. Reason for delay: [Please specify the reason]. We apologize for the delay and appreciate your patience.`;
-
-      const insertQuery = `
-        INSERT INTO delay_notifications (
-          tenant_id, project_id, milestone_id, type, original_date, revised_date, reason, message_draft, status
-        )
-        VALUES ($1, $2, NULL, 'project_delay', $3, $4, 'Awaiting details', $5, 'draft')
-      `;
-      await pool.query(insertQuery, [
-        tenantId, projectId, p.target_date, revisedDateStr, draftText
-      ]);
-    }
-  }
-};
+const delayNotificationService = require('../services/projects/delayNotificationService');
 
 // GET /api/projects/:projectId/delay-notifications
 router.get('/', async (req, res, next) => {
@@ -93,7 +15,7 @@ router.get('/', async (req, res, next) => {
     const tenantId = req.tenantId || req.user.tenantId;
 
     // Run auto-detection
-    await detectAndCreateDelayDrafts(tenantId, projectId);
+    await delayNotificationService.detectAndCreateDelayDrafts(tenantId, projectId);
 
     const query = `
       SELECT dn.*, m.name as milestone_name

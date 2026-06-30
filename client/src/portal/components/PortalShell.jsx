@@ -20,7 +20,9 @@ const NAV_ITEMS = [
   { path: '/portal/payments', label: 'Payments', icon: '💳' },
   { path: '/portal/warranties', label: 'Warranties', icon: '🛡️' },
   { path: '/portal/amcs', label: 'Maintenance (AMC)', icon: '🛠️' },
-  { path: '/portal/claims', label: 'Warranty Claims', icon: '🔧' }
+  { path: '/portal/claims', label: 'Warranty Claims', icon: '🔧' },
+  { path: '/portal/weekly-reports', label: 'Weekly Reports', icon: '📊' },
+  { path: '/portal/site-visits', label: 'Site Visits', icon: '📍' }
 ]
 
 export default function PortalShell({ children }) {

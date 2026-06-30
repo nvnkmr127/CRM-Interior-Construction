@@ -13,8 +13,13 @@ async function createAmc({
   startDate,
   endDate,
   coveredScope = null,
-  autoRenewalAlertDays = 30,
+  autoRenewalAlertDays = 90,
   generateVisits = false,
+  visitFrequency = 'quarterly',
+  coveredProducts = [],
+  exclusions = null,
+  renewalDate = null,
+  paymentSchedule = null,
   userId = null
 }) {
   const client = await pool.connect();
@@ -24,14 +29,16 @@ async function createAmc({
     const amcQuery = `
       INSERT INTO amcs (
         tenant_id, project_id, contract_number, contract_value, 
-        start_date, end_date, covered_scope, auto_renewal_alert_days
+        start_date, end_date, covered_scope, auto_renewal_alert_days,
+        visit_frequency, covered_products, exclusions, renewal_date, payment_schedule
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING *
     `;
     const amcValues = [
       tenantId, projectId, contractNumber, contractValue,
-      startDate, endDate, coveredScope, autoRenewalAlertDays
+      startDate, endDate, coveredScope, autoRenewalAlertDays,
+      visitFrequency, JSON.stringify(coveredProducts || []), exclusions, renewalDate || endDate, paymentSchedule
     ];
 
     const amcRes = await client.query(amcQuery, amcValues);
@@ -45,11 +52,16 @@ async function createAmc({
       
       // Calculate total months of AMC
       const totalMonths = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
-      const numVisits = Math.max(1, Math.floor(totalMonths / 3)); // One visit per 3 months (quarterly)
+      let intervalMonths = 3;
+      if (visitFrequency === 'monthly') intervalMonths = 1;
+      else if (visitFrequency === 'bi-annual') intervalMonths = 6;
+      else if (visitFrequency === 'annual') intervalMonths = 12;
+
+      const numVisits = Math.max(1, Math.floor(totalMonths / intervalMonths));
       
       for (let i = 1; i <= numVisits; i++) {
         const visitDate = new Date(start);
-        visitDate.setMonth(start.getMonth() + (i * 3));
+        visitDate.setMonth(start.getMonth() + (i * intervalMonths));
         
         // If scheduled date exceeds the contract end date, adjust or cap it
         if (visitDate > end) {
@@ -104,7 +116,8 @@ async function updateAmc(amcId, tenantId, updateData, userId = null) {
 
   const allowedKeys = [
     'contract_number', 'contract_value', 'start_date', 'end_date',
-    'covered_scope', 'status', 'auto_renewal_alert_days', 'renewal_alert_sent'
+    'covered_scope', 'status', 'auto_renewal_alert_days', 'renewal_alert_sent',
+    'visit_frequency', 'covered_products', 'exclusions', 'renewal_date', 'payment_schedule'
   ];
 
   const updateFields = [];

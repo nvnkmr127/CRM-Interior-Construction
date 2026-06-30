@@ -72,7 +72,7 @@ export default function MyTasksPage() {
     } catch (err) {
       console.error('Failed to update task:', err)
       setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: task.status } : t))
-      toast.error('Failed to update task')
+      toast.error(err?.response?.data?.error?.message || 'Failed to update task')
     } finally {
       setUpdatingTaskId(null)
     }

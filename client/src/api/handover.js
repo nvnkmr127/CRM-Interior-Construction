@@ -6,6 +6,9 @@ export const updateHandoverItem = (itemId, data) => api.patch(`/handover/items/$
 export const signOffHandoverChecklist = (checklistId) => api.post(`/handover/checklists/${checklistId}/sign-off`).then(r=>r.data.data);
 export const addHandoverItem = (checklistId, data) => api.post(`/handover/checklists/${checklistId}/items`, data).then(r=>r.data.data);
 
+// Room-level handovers
+export const getRoomHandovers = (projectId) => api.get(`/projects/${projectId}/room-handovers`).then(r => r.data.data || r.data);
+export const signOffRoomHandover = (projectId, data) => api.post(`/projects/${projectId}/room-handovers/sign-off`, data).then(r => r.data.data || r.data);
 // Handover Readiness Gates & Scheduled Appointments
 export const getHandoverReadiness = (projectId) => api.get(`/projects/${projectId}/handover/readiness`).then(r => r.data.data || r.data);
 export const pmSignOffHandoverReadiness = (projectId) => api.post(`/projects/${projectId}/handover/readiness/pm-sign-off`).then(r => r.data.data || r.data);
@@ -28,5 +31,8 @@ export const deleteServiceTicket = (projectId, ticketId) => api.delete(`/project
 export const scheduleServiceVisit = (projectId, ticketId, data) => api.post(`/projects/${projectId}/service-tickets/${ticketId}/visits`, data).then(r => r.data.data || r.data);
 export const updateServiceVisit = (projectId, ticketId, visitId, data) => api.put(`/projects/${projectId}/service-tickets/${ticketId}/visits/${visitId}`, data).then(r => r.data.data || r.data);
 export const deleteServiceVisit = (projectId, ticketId, visitId) => api.delete(`/projects/${projectId}/service-tickets/${ticketId}/visits/${visitId}`).then(r => r.data.data || r.data);
+
+export const addServiceTicketPart = (projectId, ticketId, data) => api.post(`/projects/${projectId}/service-tickets/${ticketId}/parts`, data).then(r => r.data.data || r.data);
+export const removeServiceTicketPart = (projectId, ticketId, partId) => api.delete(`/projects/${projectId}/service-tickets/${ticketId}/parts/${partId}`).then(r => r.data.data || r.data);
 
 export const getCsatMetrics = (projectId) => api.get(`/projects/${projectId}/service-tickets/csat-metrics`).then(r => r.data.data || r.data);

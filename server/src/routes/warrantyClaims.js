@@ -12,6 +12,7 @@ const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
 const createClaimSchema = z.object({
   warrantyId: z.string().uuid().optional().nullable(),
+  amcId: z.string().uuid().optional().nullable(),
   claimNumber: z.string().min(1, 'Claim number is required'),
   claimDate: z.string().regex(dateRegex, 'Claim date must be in YYYY-MM-DD format').optional(),
   natureOfDefect: z.string().min(1, 'Nature of defect is required')
@@ -19,6 +20,7 @@ const createClaimSchema = z.object({
 
 const updateClaimSchema = z.object({
   warrantyId: z.string().uuid().optional().nullable(),
+  amcId: z.string().uuid().optional().nullable(),
   claimDate: z.string().regex(dateRegex).optional(),
   natureOfDefect: z.string().min(1).optional(),
   eligibilityDecision: z.enum(['pending', 'approved', 'rejected']).optional(),
@@ -52,6 +54,7 @@ router.post('/', authorize('projects:manage'), async (req, res, next) => {
       tenantId,
       projectId,
       warrantyId: data.warrantyId,
+      amcId: data.amcId,
       claimNumber: data.claimNumber,
       claimDate: data.claimDate,
       natureOfDefect: data.natureOfDefect,
@@ -78,6 +81,7 @@ router.put('/:id', authorize('projects:manage'), async (req, res, next) => {
 
     const updateData = {};
     if (data.warrantyId !== undefined) updateData.warranty_id = data.warrantyId;
+    if (data.amcId !== undefined) updateData.amc_id = data.amcId;
     if (data.claimDate !== undefined) updateData.claim_date = data.claimDate;
     if (data.natureOfDefect !== undefined) updateData.nature_of_defect = data.natureOfDefect;
     if (data.eligibilityDecision !== undefined) updateData.eligibility_decision = data.eligibilityDecision;
