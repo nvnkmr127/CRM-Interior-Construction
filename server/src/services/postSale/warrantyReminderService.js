@@ -5,7 +5,7 @@ const { notificationQueue } = require('../../queues/queueSetup');
 const eventBus = require('../../utils/eventBus');
 
 /**
- * Checks approaching warranty expiries (at 60 and 30 days) and sends reminders with AMC offers.
+ * Checks approaching warranty expiries (at 90 and 30 days) and sends reminders with AMC offers.
  * Returns the count of reminders sent.
  */
 async function checkAndSendWarrantyExpiryReminders(projectId = null) {
@@ -51,8 +51,8 @@ async function checkAndSendWarrantyExpiryReminders(projectId = null) {
         ? w.end_date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
         : new Date(w.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
-      if (diffDays === 60) {
-        reminderType = '60_days_before';
+      if (diffDays === 90) {
+        reminderType = '90_days_before';
       } else if (diffDays === 30) {
         reminderType = '30_days_before';
       }

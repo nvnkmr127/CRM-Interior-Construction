@@ -5,6 +5,23 @@ const { notificationQueue } = require('../../queues/queueSetup');
 const eventBus = require('../../utils/eventBus');
 
 /**
+ * Retrieves user IDs for Finance users (Finance Head).
+ */
+async function getFinanceUsers(tenantId) {
+  try {
+    const { rows } = await pool.query(`
+      SELECT u.id FROM users u
+      JOIN roles r ON u.role_id = r.id
+      WHERE u.tenant_id = $1 AND (r.permissions::text LIKE '%finance:invoices%' OR r.permissions::text LIKE '%finance:payments%' OR r.name ILIKE '%finance%')
+    `, [tenantId]);
+    return rows.map(r => r.id);
+  } catch (error) {
+    console.error('[Payment Reminder] Error fetching finance users:', error);
+    return [];
+  }
+}
+
+/**
  * Checks approaching and overdue payment milestones, sending automated reminders.
  * Returns the count of reminders sent.
  */
@@ -16,7 +33,7 @@ async function checkAndSendPaymentReminders(projectId = null) {
     let query = `
       SELECT 
         pm.id, pm.tenant_id, pm.project_id, pm.name as milestone_name, pm.amount, pm.due_date, pm.status,
-        p.name as project_name, p.client_name, p.client_email, p.client_phone, p.pm_id
+        p.name as project_name, p.client_name, p.client_email, p.client_phone, p.pm_id, p.crm_executive_id
       FROM payment_milestones pm
       JOIN projects p ON pm.project_id = p.id
       WHERE pm.status != 'paid' 
@@ -112,15 +129,33 @@ async function checkAndSendPaymentReminders(projectId = null) {
             }
           }
           
-          // C. Notify Project Manager (in-app notification)
-          if (milestone.pm_id) {
+          // C. Notify internal stakeholders (CRM, PM, Finance Head) based on escalation matrix
+          const internalMessage = pmMessage;
+          const notifyInternalUser = (userId) => {
+            if (!userId) return;
             notifyUser({
               tenantId: milestone.tenant_id,
-              userId: milestone.pm_id,
+              userId: userId,
               type: 'payment_reminder',
-              message: pmMessage,
+              message: internalMessage,
               referenceUrl: `/projects/${milestone.project_id}/billing`
             });
+          };
+
+          // 1. CRM Executive (always notified for all stages)
+          notifyInternalUser(milestone.crm_executive_id);
+
+          // 2. Project Manager (notified for 3, 7, and 14 days overdue)
+          if (diffDays <= -3) {
+            notifyInternalUser(milestone.pm_id);
+          }
+
+          // 3. Finance Head (notified for 14 days overdue)
+          if (diffDays <= -14) {
+            const financeUsers = await getFinanceUsers(milestone.tenant_id);
+            for (const fId of financeUsers) {
+              notifyInternalUser(fId);
+            }
           }
           
           // D. Log to audit_logs (to prevent duplicate reminders)

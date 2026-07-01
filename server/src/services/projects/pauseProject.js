@@ -5,7 +5,7 @@ const { logAction } = require('../auditLog');
  * Pauses a project, setting status to 'on_hold', loging audit trails, deactivating 
  * site team members (resource reallocation), and saving a client communication record.
  */
-async function pauseProject({ projectId, tenantId, userId, reason, expectedResumeDate, clientCommunication }) {
+async function pauseProject({ projectId, tenantId, userId, reason, expectedResumeDate, resourceReleaseInstructions, siteSecurityPlan, clientCommunication }) {
   const currentRes = await pool.query(
     'SELECT id, name, status FROM projects WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
     [projectId, tenantId]
@@ -34,12 +34,14 @@ async function pauseProject({ projectId, tenantId, userId, reason, expectedResum
        SET status = 'on_hold',
            on_hold_reason = $1,
            expected_resume_date = $2,
+           resource_release_instructions = $3,
+           site_security_plan = $4,
            paused_at = NOW(),
-           paused_by = $3,
+           paused_by = $5,
            updated_at = NOW()
-       WHERE id = $4 AND tenant_id = $5
+       WHERE id = $6 AND tenant_id = $7
        RETURNING *`,
-      [reason, expectedResumeDate || null, userId, projectId, tenantId]
+      [reason, expectedResumeDate || null, resourceReleaseInstructions || null, siteSecurityPlan || null, userId, projectId, tenantId]
     );
     const updatedProject = updateRes.rows[0];
 
@@ -77,7 +79,7 @@ async function pauseProject({ projectId, tenantId, userId, reason, expectedResum
       entity: 'project',
       entityId: projectId,
       oldValue: { status: project.status },
-      newValue: { status: 'on_hold', reason, expectedResumeDate }
+      newValue: { status: 'on_hold', reason, expectedResumeDate, resourceReleaseInstructions, siteSecurityPlan }
     }, client);
 
     await client.query('COMMIT');
@@ -93,7 +95,7 @@ async function pauseProject({ projectId, tenantId, userId, reason, expectedResum
 /**
  * Resumes a paused project, setting status to 'active', logging audit trails.
  */
-async function resumeProject({ projectId, tenantId, userId }) {
+async function resumeProject({ projectId, tenantId, userId, siteConditionVerified, materialStatusVerified }) {
   const currentRes = await pool.query(
     'SELECT id, name, status FROM projects WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
     [projectId, tenantId]
@@ -112,6 +114,13 @@ async function resumeProject({ projectId, tenantId, userId }) {
     throw err;
   }
 
+  if (!siteConditionVerified || !materialStatusVerified) {
+    const err = new Error('PRE_RESUME_CHECKLIST_INCOMPLETE');
+    err.message = 'Site condition and material status must be verified before resuming the project.';
+    err.status = 400;
+    throw err;
+  }
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -120,7 +129,10 @@ async function resumeProject({ projectId, tenantId, userId }) {
     const updateRes = await client.query(
       `UPDATE projects 
        SET status = 'active',
+           on_hold_reason = NULL,
            expected_resume_date = NULL,
+           resource_release_instructions = NULL,
+           site_security_plan = NULL,
            updated_at = NOW()
        WHERE id = $1 AND tenant_id = $2
        RETURNING *`,

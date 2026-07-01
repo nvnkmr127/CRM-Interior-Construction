@@ -8,15 +8,15 @@ const purchaseRequestController = require('../controllers/purchaseRequestControl
 router.get('/', authenticate, authorize('projects:read'), purchaseRequestController.getProjectPurchaseRequests);
 
 // Create a new purchase request for a project
-router.post('/', authenticate, authorize('projects:update'), purchaseRequestController.createPurchaseRequest);
+router.post('/', authenticate, authorize('procurement:manage'), purchaseRequestController.createPurchaseRequest);
 
 // Get detailed purchase request
 router.get('/:id', authenticate, authorize('projects:read'), purchaseRequestController.getPurchaseRequest);
 
 // Update purchase request details or status (PM approval / rejection)
-router.put('/:id', authenticate, authorize('projects:update'), purchaseRequestController.updatePurchaseRequest);
+router.put('/:id', authenticate, authorize('procurement:manage'), purchaseRequestController.updatePurchaseRequest);
 
 // Convert approved purchase request to draft purchase order
-router.post('/:id/convert', authenticate, authorize('projects:update'), purchaseRequestController.convertToPurchaseOrder);
+router.post('/:id/convert', authenticate, authorize('procurement:manage'), purchaseRequestController.convertToPurchaseOrder);
 
 module.exports = router;

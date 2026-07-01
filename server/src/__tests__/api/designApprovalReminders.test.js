@@ -10,6 +10,7 @@ describe('Design/Document Approval Reminders', () => {
 
   let doc48h;
   let doc72h;
+  let doc120h;
   let docControlRecent;
   let docControlInvisible;
   let docControlApproved;
@@ -79,6 +80,14 @@ describe('Design/Document Approval Reminders', () => {
     `, [tenantId, projectId]);
     doc72h = res2.rows[0].id;
 
+    // 2.5 Document pending for 125 hours (should trigger 120h reminder)
+    const res25 = await pool.query(`
+      INSERT INTO documents (tenant_id, project_id, name, storage_key, status, is_visible_to_client, created_at)
+      VALUES ($1, $2, 'Escalation Document', 'key120', 'pending_review', true, NOW() - INTERVAL '125 hours')
+      RETURNING id
+    `, [tenantId, projectId]);
+    doc120h = res25.rows[0].id;
+
     // 3. Document pending for 10 hours (should NOT trigger)
     const res3 = await pool.query(`
       INSERT INTO documents (tenant_id, project_id, name, storage_key, status, is_visible_to_client, created_at)
@@ -106,16 +115,17 @@ describe('Design/Document Approval Reminders', () => {
     // Execute reminder scan
     const sentCount = await documentReminderService.checkAndSendDocumentApprovalReminders(projectId);
     
-    // We expect exactly 2 reminders (one 48h and one 72h)
-    expect(sentCount).toBe(2);
+    // We expect exactly 3 reminders (one 48h, one 72h, and one 120h)
+    expect(sentCount).toBe(3);
 
     // Filter EventBus events to our specific documents
-    const filteredEvents = reminderEvents.filter(e => [doc48h, doc72h].includes(e.documentId));
-    expect(filteredEvents.length).toBe(2);
+    const filteredEvents = reminderEvents.filter(e => [doc48h, doc72h, doc120h].includes(e.documentId));
+    expect(filteredEvents.length).toBe(3);
 
     const reminderTypes = filteredEvents.map(e => e.reminderType);
     expect(reminderTypes).toContain('48_hours_reminder');
     expect(reminderTypes).toContain('72_hours_reminder');
+    expect(reminderTypes).toContain('120_hours_reminder');
 
     // Run again - should send 0 new reminders due to audit log deduplication
     const secondRunCount = await documentReminderService.checkAndSendDocumentApprovalReminders(projectId);

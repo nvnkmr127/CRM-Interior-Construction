@@ -49,7 +49,7 @@ router.get('/rounds', authorize('projects:read'), async (req, res, next) => {
 });
 
 // POST /api/projects/:projectId/design-reviews/rounds
-router.post('/rounds', authorize('projects:manage'), async (req, res, next) => {
+router.post('/rounds', authorize('design:manage'), async (req, res, next) => {
   try {
     const { projectId } = req.params;
     const tenantId = req.tenantId;
@@ -71,7 +71,7 @@ router.post('/rounds', authorize('projects:manage'), async (req, res, next) => {
 });
 
 // POST /api/projects/:projectId/design-reviews/rounds/:id/close
-router.post('/rounds/:id/close', authorize('projects:manage'), async (req, res, next) => {
+router.post('/rounds/:id/close', authorize('design:manage'), async (req, res, next) => {
   try {
     const { projectId, id } = req.params;
     const tenantId = req.tenantId;
@@ -141,7 +141,7 @@ router.get('/drawings', authorize('projects:read'), async (req, res, next) => {
 });
 
 // PUT /api/projects/:projectId/design-reviews/drawings/:documentId
-router.put('/drawings/:documentId', authorize('projects:manage'), async (req, res, next) => {
+router.put('/drawings/:documentId', authorize('design:manage'), async (req, res, next) => {
   try {
     const { projectId, documentId } = req.params;
     const tenantId = req.tenantId;
@@ -188,7 +188,7 @@ router.get('/drawings/:documentId/comments', authorize('projects:read'), async (
 });
 
 // POST /api/projects/:projectId/design-reviews/drawings/:documentId/comments
-router.post('/drawings/:documentId/comments', authorize('projects:manage'), async (req, res, next) => {
+router.post('/drawings/:documentId/comments', authorize('design:manage'), async (req, res, next) => {
   try {
     const { documentId } = req.params;
     const tenantId = req.tenantId;
@@ -211,7 +211,7 @@ router.post('/drawings/:documentId/comments', authorize('projects:manage'), asyn
 });
 
 // POST /api/projects/:projectId/freeze-design
-router.post('/freeze-design', authorize('projects:manage'), async (req, res, next) => {
+router.post('/freeze-design', authorize('design:manage'), async (req, res, next) => {
   try {
     const { projectId } = req.params;
     const tenantId = req.tenantId;

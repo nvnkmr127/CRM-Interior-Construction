@@ -8,7 +8,7 @@ describe('Warranty Expiry Reminder Notifications to Clients', () => {
   let projectId;
   let pmUserId;
 
-  let warranty60d;
+  let warranty90d;
   let warranty30d;
   let warrantyOtherOffset;
   let warrantyExpired;
@@ -60,16 +60,16 @@ describe('Warranty Expiry Reminder Notifications to Clients', () => {
     reminderEvents.length = 0;
   });
 
-  it('should send expiry reminders for appropriate intervals (60 and 30 days before) and avoid sending duplicates or sending for voided/expired warranties', async () => {
+  it('should send expiry reminders for appropriate intervals (90 and 30 days before) and avoid sending duplicates or sending for voided/expired warranties', async () => {
     // Create the test warranties
     
-    // 1. Expiring in 60 days
+    // 1. Expiring in 90 days
     const res1 = await pool.query(`
       INSERT INTO warranties (tenant_id, project_id, product_name, brand, start_date, end_date, status)
-      VALUES ($1, $2, '60d Fridge', 'Samsung', CURRENT_DATE, CURRENT_DATE + 60, 'active')
+      VALUES ($1, $2, '90d Fridge', 'Samsung', CURRENT_DATE, CURRENT_DATE + 90, 'active')
       RETURNING id
     `, [tenantId, projectId]);
-    warranty60d = res1.rows[0].id;
+    warranty90d = res1.rows[0].id;
 
     // 2. Expiring in 30 days
     const res2 = await pool.query(`
@@ -108,18 +108,18 @@ describe('Warranty Expiry Reminder Notifications to Clients', () => {
     // Run the reminder service check
     const remindersCount = await warrantyReminderService.checkAndSendWarrantyExpiryReminders(projectId);
     
-    // We expect exactly 2 reminders to be sent (60d and 30d)
+    // We expect exactly 2 reminders to be sent (90d and 30d)
     expect(remindersCount).toBe(2);
 
     // Filter events to our created warranties only
     const projectReminderEvents = reminderEvents.filter(e => 
-      [warranty60d, warranty30d].includes(e.warrantyId)
+      [warranty90d, warranty30d].includes(e.warrantyId)
     );
     expect(projectReminderEvents.length).toBe(2);
 
     // Verify trigger types
     const types = projectReminderEvents.map(e => e.reminderType);
-    expect(types).toContain('60_days_before');
+    expect(types).toContain('90_days_before');
     expect(types).toContain('30_days_before');
 
     // Verify audit logs were written for deduplication
@@ -128,11 +128,11 @@ describe('Warranty Expiry Reminder Notifications to Clients', () => {
       WHERE entity = 'warranty' 
         AND action = 'warranty_expiry_reminder'
         AND entity_id IN ($1, $2)
-    `, [warranty60d, warranty30d]);
+    `, [warranty90d, warranty30d]);
     expect(auditLogsRes.rows.length).toBe(2);
 
     const loggedIds = auditLogsRes.rows.map(r => r.entity_id);
-    expect(loggedIds).toContain(warranty60d);
+    expect(loggedIds).toContain(warranty90d);
     expect(loggedIds).toContain(warranty30d);
 
     // Run the check again. Since audit logs exist, it should send 0 new reminders.

@@ -533,6 +533,81 @@ router.delete('/:id', authorize('projects:delete'), async (req, res, next) => {
   }
 });
 
+// POST /api/projects/:id/cancel/preview
+router.post('/:id/cancel/preview', authorize('projects:manage'), async (req, res, next) => {
+  try {
+    const { previewCancellation } = require('../services/projects/cancelProject');
+    const result = await previewCancellation({
+      projectId: req.params.id,
+      tenantId: req.tenantId
+    });
+    return success(res, result);
+  } catch (err) {
+    if (err.message === 'PROJECT_NOT_FOUND' || err.status === 404) {
+      return fail(res, 'NOT_FOUND', 'Project not found', 404);
+    }
+    if (err.status === 400) {
+      return fail(res, 'BAD_REQUEST', err.message, 400);
+    }
+    next(err);
+  }
+});
+
+const cancelProjectSchema = z.object({
+  reason: z.string().min(1, 'Reason is required'),
+  settlementNotes: z.string().optional(),
+  refundOverride: z.number().min(0).optional().nullable(),
+  recoverOverride: z.number().min(0).optional().nullable(),
+});
+
+// POST /api/projects/:id/cancel
+router.post('/:id/cancel', authorize('projects:manage'), async (req, res, next) => {
+  try {
+    const body = cancelProjectSchema.parse(req.body);
+    const { cancelProject } = require('../services/projects/cancelProject');
+    const updated = await cancelProject({
+      projectId: req.params.id,
+      tenantId: req.tenantId,
+      userId: req.user.id,
+      ...body
+    });
+    return success(res, updated);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    }
+    if (err.message === 'PROJECT_NOT_FOUND' || err.status === 404) {
+      return fail(res, 'NOT_FOUND', 'Project not found', 404);
+    }
+    if (err.status === 400) {
+      return fail(res, 'BAD_REQUEST', err.message, 400);
+    }
+    next(err);
+  }
+});
+
+// POST /api/projects/:id/acknowledge-cancellation
+router.post('/:id/acknowledge-cancellation', authorize('projects:manage'), async (req, res, next) => {
+  try {
+    const { acknowledgeCancellation } = require('../services/projects/cancelProject');
+    const updated = await acknowledgeCancellation({
+      projectId: req.params.id,
+      tenantId: req.tenantId,
+      userId: req.user.id
+    });
+    return success(res, updated);
+  } catch (err) {
+    if (err.message === 'PROJECT_NOT_FOUND' || err.status === 404) {
+      return fail(res, 'NOT_FOUND', 'Project not found', 404);
+    }
+    if (err.status === 400) {
+      return fail(res, 'BAD_REQUEST', err.message, 400);
+    }
+    next(err);
+  }
+});
+
+
 // GET /api/projects/:id/retention
 router.get('/:id/retention', authorize('projects:read'), async (req, res, next) => {
   try {
@@ -1405,10 +1480,12 @@ router.post('/:id/pause', authorize('projects:update'), async (req, res, next) =
         direction: z.enum(['inbound', 'outbound']).optional(),
         subject: z.string().optional().nullable(),
         body: z.string().min(1, 'Body is required')
-      }).optional().nullable()
+      }).optional().nullable(),
+      resourceReleaseInstructions: z.string().optional().nullable(),
+      siteSecurityPlan: z.string().optional().nullable()
     });
 
-    const { reason, expectedResumeDate, clientCommunication } = schema.parse(req.body);
+    const { reason, expectedResumeDate, clientCommunication, resourceReleaseInstructions, siteSecurityPlan } = schema.parse(req.body);
     const { pauseProject } = require('../services/projects/pauseProject');
 
     const project = await pauseProject({
@@ -1417,6 +1494,8 @@ router.post('/:id/pause', authorize('projects:update'), async (req, res, next) =
       userId: req.user.userId,
       reason,
       expectedResumeDate,
+      resourceReleaseInstructions,
+      siteSecurityPlan,
       clientCommunication
     });
 
@@ -1432,16 +1511,26 @@ router.post('/:id/pause', authorize('projects:update'), async (req, res, next) =
 router.post('/:id/resume', authorize('projects:update'), async (req, res, next) => {
   try {
     const { id } = req.params;
+    
+    const schema = z.object({
+      siteConditionVerified: z.boolean(),
+      materialStatusVerified: z.boolean()
+    });
+    
+    const { siteConditionVerified, materialStatusVerified } = schema.parse(req.body);
     const { resumeProject } = require('../services/projects/pauseProject');
 
     const project = await resumeProject({
       projectId: id,
       tenantId: req.tenantId,
-      userId: req.user.userId
+      userId: req.user.userId,
+      siteConditionVerified,
+      materialStatusVerified
     });
 
     return success(res, project, { message: 'Project resumed successfully.' });
   } catch (err) {
+    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     if (err.status) return fail(res, err.message, err.message, err.status);
     next(err);
   }

@@ -4,6 +4,7 @@ const serviceTicketService = require('../postSale/serviceTicketService');
 const paymentReminderService = require('../projects/paymentReminderService');
 const warrantyReminderService = require('../postSale/warrantyReminderService');
 const documentReminderService = require('../projects/documentReminderService');
+const { notifyUser } = require('../notificationService');
 
 class SLAEngine {
   /**
@@ -143,9 +144,114 @@ class SLAEngine {
       // 9. Send document/design approval reminders to clients (48h and 72h pending)
       const documentRemindersSent = await documentReminderService.checkAndSendDocumentApprovalReminders();
 
+      // 10. Check Snag SLAs (50%, 100%, 200%, 300%)
+      await this.checkSnagSLAs();
+
       console.log(`[SLA Engine] SLA check complete. Found ${leadRes.rows.length} lead breaches, ${milestoneRes.rows.length} milestone breaches, ${taskRes.rows.length} task breaches, ${ticketRes.rows.length} service ticket breaches, applied ${escalationsApplied} escalations, sent ${remindersSent} visit reminders, sent ${paymentRemindersSent} payment reminders, sent ${warrantyRemindersSent} warranty expiry reminders, and sent ${documentRemindersSent} document reminders.`);
     } catch (error) {
       console.error('[SLA Engine] Error checking SLA breaches:', error);
+    }
+  }
+
+  async checkSnagSLAs() {
+    try {
+      const snagQuery = `
+        SELECT s.id, s.tenant_id, s.title, s.created_at, s.sla_hours, s.assignee_id, s.project_id, p.pm_id, p.name as project_name
+        FROM snags s
+        JOIN projects p ON s.project_id = p.id
+        WHERE s.status NOT IN ('resolved', 'client_verified')
+      `;
+      const snagRes = await pool.query(snagQuery);
+
+      for (const snag of snagRes.rows) {
+        const slaHours = snag.sla_hours || 48;
+        const hoursElapsed = (new Date() - new Date(snag.created_at)) / (1000 * 60 * 60);
+
+        let thresholdAction = null;
+        if (hoursElapsed >= slaHours * 3) {
+          thresholdAction = 'snag_sla_300';
+        } else if (hoursElapsed >= slaHours * 2) {
+          thresholdAction = 'snag_sla_200';
+        } else if (hoursElapsed >= slaHours) {
+          thresholdAction = 'snag_sla_100';
+        } else if (hoursElapsed >= slaHours * 0.5) {
+          thresholdAction = 'snag_sla_50';
+        }
+
+        if (!thresholdAction) continue;
+
+        // Check deduplication
+        const checkQuery = `
+          SELECT 1 FROM audit_logs
+          WHERE tenant_id = $1 AND entity = 'snag' AND entity_id = $2 AND action = $3
+          LIMIT 1
+        `;
+        const checkRes = await pool.query(checkQuery, [snag.tenant_id, snag.id, thresholdAction]);
+
+        if (checkRes.rowCount === 0) {
+          console.log(`[SLA Engine] Snag ${snag.id} reached threshold ${thresholdAction}.`);
+
+          let message = '';
+          const usersToNotify = new Set();
+          
+          if (thresholdAction === 'snag_sla_50') {
+            message = `SLA Alert (50%): Snag "${snag.title}" in project "${snag.project_name}" has reached 50% of its SLA.`;
+            if (snag.assignee_id) usersToNotify.add(snag.assignee_id);
+          } else if (thresholdAction === 'snag_sla_100') {
+            message = `SLA Breach (100%): Snag "${snag.title}" in project "${snag.project_name}" has breached its SLA.`;
+            if (snag.assignee_id) usersToNotify.add(snag.assignee_id);
+            if (snag.pm_id) usersToNotify.add(snag.pm_id);
+          } else if (thresholdAction === 'snag_sla_200') {
+            message = `SLA Escalation (200%): Snag "${snag.title}" in project "${snag.project_name}" is heavily overdue. Escalated to Operations.`;
+            if (snag.assignee_id) usersToNotify.add(snag.assignee_id);
+            if (snag.pm_id) usersToNotify.add(snag.pm_id);
+            
+            // Get Operations Head
+            const opsRes = await pool.query(`
+              SELECT u.id FROM users u JOIN roles r ON u.role_id = r.id
+              WHERE u.tenant_id = $1 AND (r.name ILIKE '%operations%' OR r.name ILIKE '%director%')
+            `, [snag.tenant_id]);
+            for (const row of opsRes.rows) usersToNotify.add(row.id);
+
+          } else if (thresholdAction === 'snag_sla_300') {
+            message = `CRITICAL SLA Breach (300%): Snag "${snag.title}" in project "${snag.project_name}" requires immediate Management Review.`;
+            if (snag.assignee_id) usersToNotify.add(snag.assignee_id);
+            if (snag.pm_id) usersToNotify.add(snag.pm_id);
+            
+            // Get Management and Operations
+            const mgmtRes = await pool.query(`
+              SELECT u.id FROM users u JOIN roles r ON u.role_id = r.id
+              WHERE u.tenant_id = $1 AND (r.name IN ('gm', 'manager', 'director') OR r.name ILIKE '%operations%')
+            `, [snag.tenant_id]);
+            for (const row of mgmtRes.rows) usersToNotify.add(row.id);
+          }
+
+          // Notify resolved users
+          for (const userId of usersToNotify) {
+            notifyUser({
+              tenantId: snag.tenant_id,
+              userId,
+              type: thresholdAction,
+              message,
+              referenceUrl: `/projects/${snag.project_id}/snags`
+            });
+          }
+
+          // Log action
+          await pool.query(`
+            INSERT INTO audit_logs (tenant_id, entity, entity_id, action, new_value)
+            VALUES ($1, 'snag', $2, $3, $4)
+          `, [snag.tenant_id, snag.id, thresholdAction, JSON.stringify({ hoursElapsed, message })]);
+
+          eventBus.emit('snag.sla_escalated', {
+            tenantId: snag.tenant_id,
+            snag,
+            level: thresholdAction
+          });
+        }
+      }
+    } catch (err) {
+      console.error('[SLA Engine] Error checking Snag SLAs:', err);
     }
   }
 }

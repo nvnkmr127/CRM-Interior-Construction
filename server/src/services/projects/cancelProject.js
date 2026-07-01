@@ -2,6 +2,83 @@ const pool = require('../../db/pool');
 const { logAction } = require('../auditLog');
 
 /**
+ * Previews cancellation settlement details without mutating state.
+ */
+async function previewCancellation({ projectId, tenantId }) {
+  const currentRes = await pool.query(
+    'SELECT id, status, contract_value FROM projects WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
+    [projectId, tenantId]
+  );
+  if (currentRes.rows.length === 0) {
+    const err = new Error('PROJECT_NOT_FOUND');
+    err.status = 404;
+    throw err;
+  }
+  const project = currentRes.rows[0];
+
+  if (project.status === 'cancelled' || project.status === 'completed') {
+    const err = new Error('PROJECT_ALREADY_CLOSED');
+    err.message = `Cannot cancel a project in status: ${project.status}`;
+    err.status = 400;
+    throw err;
+  }
+
+  // 1. Calculate default financial settlement numbers
+  // Sum of paid payment milestones
+  const paidMilestonesRes = await pool.query(
+    `SELECT COALESCE(SUM(amount), 0)::numeric as total_paid 
+     FROM payment_milestones 
+     WHERE project_id = $1 AND tenant_id = $2 AND status = 'paid'`,
+    [projectId, tenantId]
+  );
+  const totalPaid = parseFloat(paidMilestonesRes.rows[0].total_paid);
+
+  // Sum of completed work activities ratio
+  const totalActRes = await pool.query(
+    `SELECT count(*)::int as count FROM project_work_activities 
+     WHERE project_id = $1 AND tenant_id = $2`,
+    [projectId, tenantId]
+  );
+  const totalActivities = totalActRes.rows[0].count;
+
+  const compActRes = await pool.query(
+    `SELECT count(*)::int as count FROM project_work_activities 
+     WHERE project_id = $1 AND tenant_id = $2 AND status = 'completed'`,
+    [projectId, tenantId]
+  );
+  const completedActivities = compActRes.rows[0].count;
+
+  const completedRatio = totalActivities > 0 ? (completedActivities / totalActivities) : 1.0;
+  const completedWorkValue = parseFloat(project.contract_value || 0) * completedRatio;
+
+  // Material cost from profitability view
+  const materialCostRes = await pool.query(
+    `SELECT COALESCE(total_material_cost, 0)::numeric as material_cost 
+     FROM project_profitability_view 
+     WHERE project_id = $1 AND tenant_id = $2`,
+    [projectId, tenantId]
+  );
+  const materialCost = materialCostRes.rows.length > 0 ? parseFloat(materialCostRes.rows[0].material_cost) : 0;
+
+  let refundAmount = 0;
+  let recoverAmount = 0;
+
+  if (totalPaid > completedWorkValue) {
+    refundAmount = totalPaid - completedWorkValue;
+  } else if (completedWorkValue > totalPaid) {
+    recoverAmount = completedWorkValue - totalPaid;
+  }
+
+  return {
+    totalPaid,
+    completedWorkValue,
+    materialCost,
+    refundAmount,
+    recoverAmount
+  };
+}
+
+/**
  * Cancels a project, calculating financial settlements, releasing team resources, 
  * updating cancellation state, enqueuing PDF closure documents, and logging audit events.
  */
@@ -100,11 +177,20 @@ async function cancelProject({ projectId, tenantId, userId, reason, settlementNo
       [projectId, tenantId]
     );
 
+    // Material cost from profitability view
+    const materialCostRes = await client.query(
+      `SELECT COALESCE(total_material_cost, 0)::numeric as material_cost 
+       FROM project_profitability_view 
+       WHERE project_id = $1 AND tenant_id = $2`,
+      [projectId, tenantId]
+    );
+    const materialCost = materialCostRes.rows.length > 0 ? parseFloat(materialCostRes.rows[0].material_cost) : 0;
+
     // 4. Enqueue closure document generation job
     await client.query(
       `INSERT INTO automation_jobs (tenant_id, event_type, entity, record)
        VALUES ($1, 'generate_project_cancellation_pdf', 'project', $2)`,
-      [tenantId, JSON.stringify({ projectId, cancellationReason: reason, refundAmount, recoverAmount })]
+      [tenantId, JSON.stringify({ projectId, cancellationReason: reason, refundAmount, recoverAmount, materialCost })]
     );
 
     // 5. Log audit action
@@ -115,7 +201,7 @@ async function cancelProject({ projectId, tenantId, userId, reason, settlementNo
       entity: 'project',
       entityId: projectId,
       oldValue: { status: project.status },
-      newValue: { status: 'cancelled', reason, refundAmount, recoverAmount }
+      newValue: { status: 'cancelled', reason, refundAmount, recoverAmount, materialCost }
     }, client);
 
     await client.query('COMMIT');
@@ -164,4 +250,4 @@ async function acknowledgeCancellation({ projectId, tenantId, userId }) {
   return rows[0];
 }
 
-module.exports = { cancelProject, acknowledgeCancellation };
+module.exports = { previewCancellation, cancelProject, acknowledgeCancellation };

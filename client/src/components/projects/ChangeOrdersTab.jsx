@@ -28,8 +28,11 @@ export default function ChangeOrdersTab({ projectId }) {
     title: '',
     description: '',
     reason: '',
-    timeline_impact_days: '',
-    amount: ''
+    timeline_impact_days: '0',
+    amount: '',
+    design_cost: '0',
+    material_impact: '',
+    procurement_impact: ''
   });
 
   useEffect(() => {
@@ -69,7 +72,10 @@ export default function ChangeOrdersTab({ projectId }) {
       description: '',
       reason: '',
       timeline_impact_days: '0',
-      amount: ''
+      amount: '',
+      design_cost: '0',
+      material_impact: '',
+      procurement_impact: ''
     });
     setIsModalOpen(true);
   };
@@ -81,7 +87,10 @@ export default function ChangeOrdersTab({ projectId }) {
       description: co.description || '',
       reason: co.reason || '',
       timeline_impact_days: String(co.timeline_impact_days ?? 0),
-      amount: String(co.amount)
+      amount: String(co.amount),
+      design_cost: String(co.design_cost ?? 0),
+      material_impact: co.material_impact || '',
+      procurement_impact: co.procurement_impact || ''
     });
     setIsModalOpen(true);
   };
@@ -101,7 +110,10 @@ export default function ChangeOrdersTab({ projectId }) {
       description: form.description.trim() || null,
       reason: form.reason.trim() || null,
       timeline_impact_days: Number(form.timeline_impact_days),
-      amount: Number(form.amount)
+      amount: Number(form.amount),
+      design_cost: Number(form.design_cost) || 0,
+      material_impact: form.material_impact.trim() || null,
+      procurement_impact: form.procurement_impact.trim() || null
     };
 
     try {
@@ -271,6 +283,24 @@ export default function ChangeOrdersTab({ projectId }) {
                   Timeline Impact
                   <strong>{co.timeline_impact_days > 0 ? `+${co.timeline_impact_days} Days` : 'No Timeline Impact'}</strong>
                 </div>
+                {co.design_cost > 0 && (
+                  <div className={styles.metaItem}>
+                    Design Cost
+                    <strong>{formatCurrency(co.design_cost)}</strong>
+                  </div>
+                )}
+                {co.material_impact && (
+                  <div className={styles.metaItem}>
+                    Material Impact
+                    <strong>{co.material_impact}</strong>
+                  </div>
+                )}
+                {co.procurement_impact && (
+                  <div className={styles.metaItem}>
+                    Procurement Impact
+                    <strong>{co.procurement_impact}</strong>
+                  </div>
+                )}
               </div>
 
               {/* Revised Cost Highlights */}
@@ -408,6 +438,31 @@ export default function ChangeOrdersTab({ projectId }) {
               { value: 'site-required', label: 'Site Required' }
             ]}
           />
+          
+          {form.reason === 'design-required' && (
+            <>
+              <Input
+                label="Design Cost (₹)"
+                type="number"
+                placeholder="e.g. 2000"
+                value={form.design_cost}
+                onChange={e => setForm({ ...form, design_cost: e.target.value })}
+              />
+              <Input
+                label="Material Impact"
+                placeholder="e.g. Custom fabrication required for new layout"
+                value={form.material_impact}
+                onChange={e => setForm({ ...form, material_impact: e.target.value })}
+              />
+              <Input
+                label="Procurement Impact"
+                placeholder="e.g. Needs specialized hardware from international vendor"
+                value={form.procurement_impact}
+                onChange={e => setForm({ ...form, procurement_impact: e.target.value })}
+              />
+            </>
+          )}
+          
           <Textarea
             label="Description / Scope Details"
             placeholder="Describe the specific modifications and additions to be performed."

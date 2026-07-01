@@ -43,7 +43,7 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
 });
 
 // POST /api/projects/:projectId/warranty-claims
-router.post('/', authorize('projects:manage'), async (req, res, next) => {
+router.post('/', authorize('support:manage'), async (req, res, next) => {
   try {
     const { projectId } = req.params;
     const tenantId = req.tenantId;
@@ -71,7 +71,7 @@ router.post('/', authorize('projects:manage'), async (req, res, next) => {
 });
 
 // PUT /api/projects/:projectId/warranty-claims/:id
-router.put('/:id', authorize('projects:manage'), async (req, res, next) => {
+router.put('/:id', authorize('support:manage'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const tenantId = req.tenantId;
@@ -104,7 +104,7 @@ router.put('/:id', authorize('projects:manage'), async (req, res, next) => {
 });
 
 // DELETE /api/projects/:projectId/warranty-claims/:id
-router.delete('/:id', authorize('projects:manage'), async (req, res, next) => {
+router.delete('/:id', authorize('support:manage'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const tenantId = req.tenantId;

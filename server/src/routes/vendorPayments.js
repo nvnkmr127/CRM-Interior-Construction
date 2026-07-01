@@ -8,15 +8,15 @@ const vendorPaymentController = require('../controllers/vendorPaymentController'
 router.get('/', authenticate, authorize('projects:read'), vendorPaymentController.getProjectVendorPaymentMilestones);
 
 // Schedule a new vendor payment milestone
-router.post('/', authenticate, authorize('projects:update'), vendorPaymentController.createVendorPaymentMilestone);
+router.post('/', authenticate, authorize('finance:payments'), vendorPaymentController.createVendorPaymentMilestone);
 
 // Get detailed payment milestone
 router.get('/:id', authenticate, authorize('projects:read'), vendorPaymentController.getVendorPaymentMilestone);
 
 // Log/update payment data against a milestone
-router.put('/:id', authenticate, authorize('projects:update'), vendorPaymentController.updateVendorPaymentMilestone);
+router.put('/:id', authenticate, authorize('finance:payments'), vendorPaymentController.updateVendorPaymentMilestone);
 
 // Delete a scheduled vendor milestone
-router.delete('/:id', authenticate, authorize('projects:update'), vendorPaymentController.deleteVendorPaymentMilestone);
+router.delete('/:id', authenticate, authorize('finance:payments'), vendorPaymentController.deleteVendorPaymentMilestone);
 
 module.exports = router;

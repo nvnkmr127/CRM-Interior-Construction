@@ -5,7 +5,26 @@ const { notificationQueue } = require('../../queues/queueSetup');
 const eventBus = require('../../utils/eventBus');
 
 /**
- * Checks for shared documents pending review and alerts clients if pending for >= 48h or 72h.
+ * Retrieves the user ID for Operations Head.
+ */
+async function getOperationsHead(tenantId) {
+  try {
+    const { rows } = await pool.query(`
+      SELECT u.id 
+      FROM users u
+      JOIN roles r ON u.role_id = r.id
+      WHERE u.tenant_id = $1 AND (r.name ILIKE '%operations%' OR r.name ILIKE '%director%')
+      LIMIT 1
+    `, [tenantId]);
+    return rows.length > 0 ? rows[0].id : null;
+  } catch (error) {
+    console.error('[Document Reminder] Error fetching Operations Head:', error);
+    return null;
+  }
+}
+
+/**
+ * Checks for shared documents pending review and alerts clients if pending for >= 48h, 72h, or 120h.
  * Returns the count of reminders sent.
  */
 async function checkAndSendDocumentApprovalReminders(projectId = null) {
@@ -40,7 +59,9 @@ async function checkAndSendDocumentApprovalReminders(projectId = null) {
 
       let reminderType = null;
 
-      if (diffHours >= 72) {
+      if (diffHours >= 120) {
+        reminderType = '120_hours_reminder';
+      } else if (diffHours >= 72) {
         reminderType = '72_hours_reminder';
       } else if (diffHours >= 48) {
         reminderType = '48_hours_reminder';
@@ -61,9 +82,21 @@ async function checkAndSendDocumentApprovalReminders(projectId = null) {
         if (checkRes.rowCount === 0) {
           console.log(`[Document Approval Reminder] Sending "${reminderType}" alert for document "${d.document_name}" (${d.id})`);
 
-          const emailMessage = `Dear ${d.client_name},\n\nThis is a friendly reminder that the document/design "${d.document_name}" for project "${d.project_name}" is pending your review and approval.\n\nPlease log in to your Client Portal to review and approve it. Keeping designs approved on time helps us prevent project timeline delays.\n\nBest regards,\nCRM Project Team`;
-          const waMessage = `Approval Reminder: The document "${d.document_name}" for project "${d.project_name}" is pending your approval. Please review it on the Client Portal to avoid project delays.`;
-          const pmMessage = `Document approval reminder (${reminderType}) sent to client ${d.client_name} for "${d.document_name}" (Project: "${d.project_name}").`;
+          let emailMessage = '';
+          let waMessage = '';
+          let pmMessage = `Document approval reminder (${reminderType}) sent to client ${d.client_name} for "${d.document_name}" (Project: "${d.project_name}").`;
+
+          if (reminderType === '48_hours_reminder') {
+            emailMessage = `Dear ${d.client_name},\n\nThis is a friendly reminder that the document/design "${d.document_name}" for project "${d.project_name}" is pending your review and approval.\n\nPlease log in to your Client Portal to review and approve it. Keeping designs approved on time helps us prevent project timeline delays.\n\nBest regards,\nCRM Project Team`;
+            waMessage = `Approval Reminder: The document "${d.document_name}" for project "${d.project_name}" is pending your approval. Please review it on the Client Portal to avoid project delays.`;
+          } else if (reminderType === '72_hours_reminder') {
+            emailMessage = `Dear ${d.client_name},\n\nThis is a follow-up reminder that the document/design "${d.document_name}" for project "${d.project_name}" has been pending your approval for 3 days.\n\nYour prompt review is essential to maintain the project schedule. Please log in to your Client Portal to provide your feedback or approval.\n\nBest regards,\nCRM Project Team`;
+            waMessage = `Follow-up Reminder: The document "${d.document_name}" for project "${d.project_name}" has been pending your approval for 3 days. Please review it promptly.`;
+          } else if (reminderType === '120_hours_reminder') {
+            emailMessage = `Dear ${d.client_name},\n\nThis is an urgent reminder that the document/design "${d.document_name}" for project "${d.project_name}" has been pending your approval for 5 days.\n\nExtended delays in design approval directly impact the overall project timeline. Please log in to your Client Portal to review and approve it immediately.\n\nBest regards,\nCRM Project Team`;
+            waMessage = `Urgent Reminder: The document "${d.document_name}" for project "${d.project_name}" has been pending your approval for 5 days. Please review it immediately to prevent timeline delays.`;
+            pmMessage = `URGENT: Document approval for "${d.document_name}" (Project: "${d.project_name}") has been pending for 5 days. This has been escalated to Operations.`;
+          }
 
           // A. Send Email to client
           if (d.client_email) {
@@ -84,15 +117,30 @@ async function checkAndSendDocumentApprovalReminders(projectId = null) {
             }
           }
 
-          // C. Notify PM In-App
-          if (d.pm_id) {
-            notifyUser({
-              tenantId: d.tenant_id,
-              userId: d.pm_id,
-              type: 'document_approval_reminder',
-              message: pmMessage,
-              referenceUrl: `/projects/${d.project_id}?tab=Documents`
-            });
+          // C. Notify internal stakeholders based on escalation
+          if (reminderType === '72_hours_reminder' || reminderType === '120_hours_reminder') {
+            if (d.pm_id) {
+              notifyUser({
+                tenantId: d.tenant_id,
+                userId: d.pm_id,
+                type: 'document_approval_reminder',
+                message: pmMessage,
+                referenceUrl: `/projects/${d.project_id}?tab=Documents`
+              });
+            }
+          }
+          
+          if (reminderType === '120_hours_reminder') {
+            const opsHeadId = await getOperationsHead(d.tenant_id);
+            if (opsHeadId) {
+              notifyUser({
+                tenantId: d.tenant_id,
+                userId: opsHeadId,
+                type: 'document_approval_reminder',
+                message: `Escalation: Design approval for "${d.document_name}" in project "${d.project_name}" has been pending for 5 days.`,
+                referenceUrl: `/projects/${d.project_id}?tab=Documents`
+              });
+            }
           }
 
           // D. Log to audit_logs

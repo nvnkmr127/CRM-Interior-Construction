@@ -22,7 +22,7 @@ const updateItemSchema = z.object({
   key_details: z.string().optional().nullable()
 });
 
-router.patch('/items/:itemId', authorize('projects:manage'), async (req, res, next) => {
+router.patch('/items/:itemId', authorize('handover:authorize'), async (req, res, next) => {
   try {
     const data = updateItemSchema.parse(req.body);
     const item = await updateItem({
@@ -79,7 +79,7 @@ router.post('/checklists/:id/authorize', authorize('handover:authorize'), async 
 });
 
 // POST /api/handover/checklists/:id/sign-off
-router.post('/checklists/:id/sign-off', authorize('projects:manage'), async (req, res, next) => {
+router.post('/checklists/:id/sign-off', authorize('handover:authorize'), async (req, res, next) => {
   try {
     const checklist = await clientSignOff({
       checklistId: req.params.id,

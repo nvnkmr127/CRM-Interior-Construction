@@ -4,7 +4,7 @@ import { Button, Badge, Modal, DataTable, Avatar, Input, Select } from '../../co
 import { useToast } from '../../store/toastContext'
 import api from '../../api/axios'
 
-const ROLE_OPTIONS = [
+const DEFAULT_ROLE_OPTIONS = [
   { value: 'superadmin', label: 'Super Admin' },
   { value: 'pm', label: 'Project Manager' },
   { value: 'designer', label: 'Designer' },
@@ -19,10 +19,19 @@ export default function UsersManager() {
   const [statusChangeTarget, setStatusChangeTarget] = useState(null)
   const toast = useToast()
 
+  const [roles, setRoles] = useState([])
+  const roleOptions = roles.length > 0 
+    ? roles.map(r => ({ value: r.id, label: r.name })) 
+    : DEFAULT_ROLE_OPTIONS
+
   useEffect(() => {
     api.get('/users')
       .then(res => { const r = res.data?.data || res.data; setUsers(Array.isArray(r) ? r : []); })
       .catch(() => setUsers([]))
+      
+    api.get('/roles')
+      .then(res => { const r = res.data?.data || res.data; setRoles(Array.isArray(r) ? r : []); })
+      .catch(() => setRoles([]))
   }, [])
 
   const handleInvite = async () => {
@@ -85,7 +94,7 @@ export default function UsersManager() {
         const roleColors = { superadmin: 'accent', pm: 'info', designer: 'neutral', sales: 'success' }
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Badge variant={roleColors[u.role]}>{ROLE_OPTIONS.find(r => r.value === u.role)?.label}</Badge>
+            <Badge variant="neutral">{u.role_name || roleOptions.find(r => r.value === u.role)?.label || u.role}</Badge>
           </div>
         )
       }
@@ -106,8 +115,8 @@ export default function UsersManager() {
       render: (u) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}>
           <Select 
-            value={u.role} 
-            options={ROLE_OPTIONS} 
+            value={u.role_id || u.role} 
+            options={roleOptions} 
             onChange={(val) => setRoleChangeTarget({ user: u, newRole: val })}
           />
           {u.status === 'active' ? (
@@ -164,7 +173,7 @@ export default function UsersManager() {
           />
           <Select 
             label="Role" 
-            options={ROLE_OPTIONS} 
+            options={roleOptions} 
             value={inviteData.role} 
             onChange={val => setInviteData({...inviteData, role: val})} 
           />
@@ -183,7 +192,7 @@ export default function UsersManager() {
           </>
         }
       >
-        <p>Change {roleChangeTarget?.user.name}'s role to {ROLE_OPTIONS.find(r => r.value === roleChangeTarget?.newRole)?.label}?</p>
+        <p>Change {roleChangeTarget?.user.name}'s role to {roleOptions.find(r => r.value === roleChangeTarget?.newRole)?.label}?</p>
       </Modal>
 
       {/* Status Change Modal */}

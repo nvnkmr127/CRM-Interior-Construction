@@ -17,7 +17,10 @@ const changeOrderSchema = z.object({
   timeline_impact_days: z.number({ required_error: 'Timeline impact in days is required.' }).int('Timeline impact must be an integer.'),
   status: z.enum(['draft', 'submitted', 'approved', 'rejected']).optional(),
   client_signature: z.string().optional().nullable(),
-  client_signed_at: z.string().optional().nullable()
+  client_signed_at: z.string().optional().nullable(),
+  design_cost: z.number().nonnegative().optional().nullable(),
+  material_impact: z.string().optional().nullable(),
+  procurement_impact: z.string().optional().nullable()
 });
 
 const updateChangeOrderSchema = changeOrderSchema.partial();
@@ -69,8 +72,8 @@ router.post('/', authorize('projects:update'), async (req, res) => {
 
     const { rows } = await pool.query(
       `INSERT INTO project_change_orders 
-       (tenant_id, project_id, title, description, reason, amount, timeline_impact_days, status, client_signature, client_signed_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       (tenant_id, project_id, title, description, reason, amount, timeline_impact_days, status, client_signature, client_signed_at, design_cost, material_impact, procurement_impact)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING *`,
       [
         tenantId,
@@ -82,7 +85,10 @@ router.post('/', authorize('projects:update'), async (req, res) => {
         data.timeline_impact_days || 0,
         data.status || 'draft',
         data.client_signature || null,
-        data.client_signed_at ? new Date(data.client_signed_at) : null
+        data.client_signed_at ? new Date(data.client_signed_at) : null,
+        data.design_cost || 0,
+        data.material_impact || null,
+        data.procurement_impact || null
       ]
     );
 

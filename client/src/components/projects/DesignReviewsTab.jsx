@@ -10,8 +10,10 @@ import {
   associateDrawingWithRound,
   getDrawingComments,
   addDrawingComment,
+  addDrawingComment,
   freezeProjectDesign,
-  getProject
+  getProject,
+  createChangeOrder
 } from '../../api/projects';
 
 export default function DesignReviewsTab({ projectId }) {
@@ -36,6 +38,18 @@ export default function DesignReviewsTab({ projectId }) {
 
   // Zoom image overlay
   const [zoomImageUrl, setZoomImageUrl] = useState(null);
+
+  // Post-Freeze Change Order Modal
+  const [isChangeOrderModalOpen, setIsChangeOrderModalOpen] = useState(false);
+  const [changeOrderForm, setChangeOrderForm] = useState({
+    title: 'Post-Freeze Design Change',
+    description: '',
+    design_cost: '',
+    material_impact: '',
+    procurement_impact: '',
+    timeline_impact_days: '',
+    amount: ''
+  });
 
   useEffect(() => {
     if (projectId) {
@@ -146,6 +160,48 @@ export default function DesignReviewsTab({ projectId }) {
     } catch (err) {
       console.error(err);
       toast.error('Failed to freeze design scope.');
+    }
+  };
+
+  const handleCreatePostFreezeChangeOrder = async (e) => {
+    e.preventDefault();
+    if (!changeOrderForm.title.trim()) return toast.error('Title is required');
+    if (!changeOrderForm.amount || isNaN(Number(changeOrderForm.amount)) || Number(changeOrderForm.amount) < 0) {
+      return toast.error('Valid positive total amount is required');
+    }
+    if (changeOrderForm.timeline_impact_days === '' || isNaN(Number(changeOrderForm.timeline_impact_days))) {
+      return toast.error('Timeline impact is required');
+    }
+
+    try {
+      const res = await createChangeOrder(projectId, {
+        title: changeOrderForm.title,
+        description: changeOrderForm.description || null,
+        reason: 'design-required',
+        timeline_impact_days: Number(changeOrderForm.timeline_impact_days),
+        amount: Number(changeOrderForm.amount),
+        design_cost: Number(changeOrderForm.design_cost) || 0,
+        material_impact: changeOrderForm.material_impact || null,
+        procurement_impact: changeOrderForm.procurement_impact || null,
+        status: 'draft'
+      });
+
+      if (res.data?.success) {
+        toast.success('Post-freeze design change order created as Draft.');
+        setIsChangeOrderModalOpen(false);
+        setChangeOrderForm({
+          title: 'Post-Freeze Design Change',
+          description: '',
+          design_cost: '',
+          material_impact: '',
+          procurement_impact: '',
+          timeline_impact_days: '',
+          amount: ''
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to create post-freeze change order.');
     }
   };
 
@@ -418,9 +474,13 @@ export default function DesignReviewsTab({ projectId }) {
               : 'The design is still flexible. Finalize all layouts and renders, then click freeze to lock the project scope.'}
           </p>
         </div>
-        {!isLocked && (
+        {!isLocked ? (
           <Button variant="success" size="sm" onClick={handleFreezeDesign}>
             🔒 Freeze Design & Lock Scope
+          </Button>
+        ) : (
+          <Button variant="warning" size="sm" onClick={() => setIsChangeOrderModalOpen(true)}>
+            ⚠️ Request Post-Freeze Change
           </Button>
         )}
       </div>
@@ -569,6 +629,75 @@ export default function DesignReviewsTab({ projectId }) {
           <img src={zoomImageUrl} alt="Zoom Preview" style={{ maxWidth: '90%', maxHeight: '90%', objectFit: 'contain', borderRadius: '4px' }} />
         </div>
       )}
+
+      {/* Post-Freeze Change Order Modal */}
+      <Modal
+        isOpen={isChangeOrderModalOpen}
+        onClose={() => setIsChangeOrderModalOpen(false)}
+        title="Raise Post-Freeze Design Change Order"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setIsChangeOrderModalOpen(false)}>Cancel</Button>
+            <Button variant="primary" onClick={handleCreatePostFreezeChangeOrder}>Create Change Order</Button>
+          </>
+        }
+      >
+        <form onSubmit={handleCreatePostFreezeChangeOrder} className={styles.form} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ padding: '12px', background: '#fffbeb', borderRadius: '6px', border: '1px solid #fef3c7', fontSize: '0.85rem', color: '#92400e' }}>
+            <strong>Note:</strong> Since the design scope is locked, any further changes require a formal Change Order to be approved by the client before work proceeds.
+          </div>
+          
+          <Input
+            label="Change Order Title"
+            value={changeOrderForm.title}
+            onChange={e => setChangeOrderForm({ ...changeOrderForm, title: e.target.value })}
+            required
+          />
+          <Textarea
+            label="Description / Scope Details"
+            value={changeOrderForm.description}
+            onChange={e => setChangeOrderForm({ ...changeOrderForm, description: e.target.value })}
+            rows={3}
+            required
+          />
+          <Input
+            label="Design Cost (₹)"
+            type="number"
+            value={changeOrderForm.design_cost}
+            onChange={e => setChangeOrderForm({ ...changeOrderForm, design_cost: e.target.value })}
+            required
+          />
+          <Input
+            label="Total Amount / Commercial Cost (₹)"
+            type="number"
+            value={changeOrderForm.amount}
+            onChange={e => setChangeOrderForm({ ...changeOrderForm, amount: e.target.value })}
+            required
+          />
+          <Input
+            label="Material Impact"
+            placeholder="e.g. Needs custom laminates"
+            value={changeOrderForm.material_impact}
+            onChange={e => setChangeOrderForm({ ...changeOrderForm, material_impact: e.target.value })}
+            required
+          />
+          <Input
+            label="Procurement Impact"
+            placeholder="e.g. Lead time increased for specific fittings"
+            value={changeOrderForm.procurement_impact}
+            onChange={e => setChangeOrderForm({ ...changeOrderForm, procurement_impact: e.target.value })}
+            required
+          />
+          <Input
+            label="Timeline Impact (Days)"
+            type="number"
+            placeholder="e.g. 5"
+            value={changeOrderForm.timeline_impact_days}
+            onChange={e => setChangeOrderForm({ ...changeOrderForm, timeline_impact_days: e.target.value })}
+            required
+          />
+        </form>
+      </Modal>
     </div>
   );
 }

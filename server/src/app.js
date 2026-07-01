@@ -189,6 +189,7 @@ const portalQuotationsRoutes = require('./routes/portal/quotations');
 
 
 const usersRoutes = require('./routes/users');
+const rolesRoutes = require('./routes/roles');
 const dashboardRoutes = require('./routes/dashboard');
 const errorHandler = require('./middleware/errorHandler');
 
@@ -226,6 +227,7 @@ app.use('/api/invoices', invoicesRoutes);
 app.use('/api/financials', financialsRoutes);
 app.use('/api/financial-approvals', financialApprovalsRoutes);
 app.use('/api/handover', handoverRoutes);
+app.use('/api/audit-logs', require('./routes/auditLogs'));
 
 // Safe fallback for local file downloads
 app.get('/api/local-download', (req, res) => {
@@ -253,6 +255,7 @@ app.use('/api/phases/:phaseId/milestones', milestonesRoutes);
 app.use('/api/tasks', globalTasksRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/roles', rolesRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/logs', logsRoutes);
 app.use('/api/webhooks', webhooksRoutes);

@@ -65,7 +65,7 @@ router.get('/', authorize('projects:read'), async (req, res) => {
 });
 
 // POST /api/projects/:projectId/drawing-register
-router.post('/', authorize('projects:manage'), async (req, res) => {
+router.post('/', authorize('design:manage'), async (req, res) => {
   const client = await pool.connect();
   try {
     const { projectId } = req.params;
@@ -152,7 +152,7 @@ router.post('/', authorize('projects:manage'), async (req, res) => {
 });
 
 // PUT /api/projects/:projectId/drawing-register/:id
-router.put('/:id', authorize('projects:manage'), async (req, res) => {
+router.put('/:id', authorize('design:manage'), async (req, res) => {
   const client = await pool.connect();
   try {
     const { projectId, id } = req.params;
@@ -274,7 +274,7 @@ router.put('/:id', authorize('projects:manage'), async (req, res) => {
 });
 
 // DELETE /api/projects/:projectId/drawing-register/:id
-router.delete('/:id', authorize('projects:manage'), async (req, res) => {
+router.delete('/:id', authorize('design:manage'), async (req, res) => {
   const client = await pool.connect();
   try {
     const { projectId, id } = req.params;
@@ -335,7 +335,7 @@ router.delete('/:id', authorize('projects:manage'), async (req, res) => {
 });
 
 // POST /api/projects/:projectId/drawing-register/:id/client-approve
-router.post('/:id/client-approve', authorize('projects:manage'), async (req, res) => {
+router.post('/:id/client-approve', authorize('design:manage'), async (req, res) => {
   try {
     const { projectId, id } = req.params;
     const tenantId = req.tenantId;
@@ -365,7 +365,7 @@ router.post('/:id/client-approve', authorize('projects:manage'), async (req, res
 });
 
 // POST /api/projects/:projectId/drawing-register/:id/client-revision
-router.post('/:id/client-revision', authorize('projects:manage'), async (req, res) => {
+router.post('/:id/client-revision', authorize('design:manage'), async (req, res) => {
   try {
     const { projectId, id } = req.params;
     const tenantId = req.tenantId;
@@ -399,7 +399,7 @@ router.post('/:id/client-revision', authorize('projects:manage'), async (req, re
 });
 
 // POST /api/projects/:projectId/drawing-register/:id/contractor-approve
-router.post('/:id/contractor-approve', authorize('projects:manage'), async (req, res) => {
+router.post('/:id/contractor-approve', authorize('design:manage'), async (req, res) => {
   try {
     const { projectId, id } = req.params;
     const tenantId = req.tenantId;
@@ -429,7 +429,7 @@ router.post('/:id/contractor-approve', authorize('projects:manage'), async (req,
 });
 
 // POST /api/projects/:projectId/drawing-register/:id/contractor-revision
-router.post('/:id/contractor-revision', authorize('projects:manage'), async (req, res) => {
+router.post('/:id/contractor-revision', authorize('design:manage'), async (req, res) => {
   try {
     const { projectId, id } = req.params;
     const tenantId = req.tenantId;

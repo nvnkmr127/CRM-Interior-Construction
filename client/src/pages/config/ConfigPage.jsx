@@ -19,6 +19,7 @@ const QcChecklistsManager = lazy(() => import('./QcChecklistsManager'))
 const FinancialSettings = lazy(() => import('./FinancialSettings'))
 const LeadTimesManager = lazy(() => import('./LeadTimesManager'))
 const TradeActivityTemplatesManager = lazy(() => import('./TradeActivityTemplatesManager'))
+const AuditTrail = lazy(() => import('./AuditTrail'))
 
 const CONFIG_NAV = [
   { group: 'PIPELINE', items: [
@@ -40,6 +41,7 @@ const CONFIG_NAV = [
   ]},
   { group: 'TEAM', items: [
     { to: 'users',         icon: '◉', label: 'Team Members', desc: 'Invite and manage access' },
+    { to: 'audit-trail',   icon: '📜', label: 'Audit Trail', desc: 'View system logs and changes' },
   ]},
   { group: 'FINANCE', items: [
     { to: 'financial-settings', icon: '💰', label: 'Financial Thresholds', desc: 'Configurable approval thresholds' },
@@ -100,6 +102,7 @@ export default function ConfigPage() {
             <Route path='webhooks'      element={<WebhooksManager />} />
             <Route path='logs'          element={<LogsViewer />} />
             <Route path='users'         element={<UsersManager />} />
+            <Route path='audit-trail'   element={<AuditTrail />} />
             <Route path='financial-settings' element={<FinancialSettings />} />
             <Route path='vendor-lead-times' element={<LeadTimesManager />} />
             <Route path='*'             element={<Navigate to='/config/lead-stages' replace />} />

@@ -10,6 +10,11 @@ export const updateProject = (id, data) => api.patch(`/projects/${id}`, data);
 
 export const deleteProject = (id) => api.delete(`/projects/${id}`);
 
+export const previewCancellation = (id) => api.post(`/projects/${id}/cancel/preview`);
+export const cancelProject = (id, data) => api.post(`/projects/${id}/cancel`, data);
+export const acknowledgeCancellation = (id) => api.post(`/projects/${id}/acknowledge-cancellation`);
+
+
 export const applyTemplate = (id, templateId) => api.post(`/projects/${id}/apply-template`, { templateId });
 
 // Phases
@@ -230,9 +235,11 @@ export const updateClosureChecklist = (projectId, data) => api.patch(`/projects/
 export const getRetrospective = (projectId) => api.get(`/projects/${projectId}/retrospective`);
 export const saveRetrospective = (projectId, data) => api.post(`/projects/${projectId}/retrospective`, data);
 
-// Project Archive & Reopen
+// Project Archive & Reopen & Pause/Resume
 export const archiveProject = (projectId) => api.post(`/projects/${projectId}/archive`);
 export const reopenProject = (projectId, data) => api.post(`/projects/${projectId}/reopen`, data);
+export const pauseProject = (projectId, data) => api.post(`/projects/${projectId}/pause`, data);
+export const resumeProject = (projectId, data) => api.post(`/projects/${projectId}/resume`, data);
 
 // Project Booking Confirmation
 export const getProjectBooking = (projectId) => api.get(`/projects/${projectId}/booking`);

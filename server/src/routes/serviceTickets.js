@@ -60,7 +60,7 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
 });
 
 // POST /api/projects/:projectId/service-tickets
-router.post('/', authorize('projects:manage'), async (req, res, next) => {
+router.post('/', authorize('support:manage'), async (req, res, next) => {
   try {
     const { projectId } = req.params;
     const tenantId = req.tenantId;
@@ -115,7 +115,7 @@ router.get('/:id', authorize('projects:read'), async (req, res, next) => {
 });
 
 // PUT /api/projects/:projectId/service-tickets/:id
-router.put('/:id', authorize('projects:manage'), async (req, res, next) => {
+router.put('/:id', authorize('support:manage'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const tenantId = req.tenantId;
@@ -148,7 +148,7 @@ router.put('/:id', authorize('projects:manage'), async (req, res, next) => {
 });
 
 // DELETE /api/projects/:projectId/service-tickets/:id
-router.delete('/:id', authorize('projects:manage'), async (req, res, next) => {
+router.delete('/:id', authorize('support:manage'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const tenantId = req.tenantId;
@@ -165,7 +165,7 @@ router.delete('/:id', authorize('projects:manage'), async (req, res, next) => {
 });
 
 // POST /api/projects/:projectId/service-tickets/:id/visits
-router.post('/:id/visits', authorize('projects:manage'), async (req, res, next) => {
+router.post('/:id/visits', authorize('support:manage'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const tenantId = req.tenantId;
@@ -194,7 +194,7 @@ router.post('/:id/visits', authorize('projects:manage'), async (req, res, next) 
 });
 
 // PUT /api/projects/:projectId/service-tickets/:id/visits/:visitId
-router.put('/:id/visits/:visitId', authorize('projects:manage'), async (req, res, next) => {
+router.put('/:id/visits/:visitId', authorize('support:manage'), async (req, res, next) => {
   try {
     const { id, visitId } = req.params;
     const tenantId = req.tenantId;
@@ -227,7 +227,7 @@ router.put('/:id/visits/:visitId', authorize('projects:manage'), async (req, res
 });
 
 // DELETE /api/projects/:projectId/service-tickets/:id/visits/:visitId
-router.delete('/:id/visits/:visitId', authorize('projects:manage'), async (req, res, next) => {
+router.delete('/:id/visits/:visitId', authorize('support:manage'), async (req, res, next) => {
   try {
     const { id, visitId } = req.params;
     const tenantId = req.tenantId;
@@ -251,7 +251,7 @@ const addPartSchema = z.object({
 });
 
 // POST /api/projects/:projectId/service-tickets/:id/parts
-router.post('/:id/parts', authorize('projects:manage'), async (req, res, next) => {
+router.post('/:id/parts', authorize('support:manage'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const tenantId = req.tenantId;
@@ -281,7 +281,7 @@ router.post('/:id/parts', authorize('projects:manage'), async (req, res, next) =
 });
 
 // DELETE /api/projects/:projectId/service-tickets/:id/parts/:partId
-router.delete('/:id/parts/:partId', authorize('projects:manage'), async (req, res, next) => {
+router.delete('/:id/parts/:partId', authorize('support:manage'), async (req, res, next) => {
   try {
     const { id, partId } = req.params;
     const tenantId = req.tenantId;
