@@ -7,12 +7,12 @@ const authorize = require('../middleware/authorize');
 const router = express.Router({ mergeParams: true });
 
 const budgetAllocationSchema = z.object({
-  category: z.enum(['labour', 'material', 'vendor', 'overhead']),
+  category: z.enum(['labour', 'material', 'vendor', 'overhead', 'civil', 'electrical', 'plumbing', 'carpentry']),
   budgetedCost: z.number().nonnegative('Budgeted cost must be a non-negative number')
 });
 
 const expenseSchema = z.object({
-  category: z.enum(['labour', 'material', 'vendor', 'overhead']),
+  category: z.enum(['labour', 'material', 'vendor', 'overhead', 'civil', 'electrical', 'plumbing', 'carpentry']),
   type: z.enum(['committed', 'actual']),
   description: z.string().min(1, 'Description is required'),
   amount: z.number().positive('Amount must be a positive number'),
@@ -33,12 +33,13 @@ router.get('/', authorize('projects:read'), async (req, res) => {
         COALESCE(pe.actual_cost, 0.00) as actual_cost
       FROM (
         SELECT 'labour'::varchar as category
-        UNION ALL
-        SELECT 'material'
-        UNION ALL
-        SELECT 'vendor'
-        UNION ALL
-        SELECT 'overhead'
+        UNION ALL SELECT 'material'
+        UNION ALL SELECT 'vendor'
+        UNION ALL SELECT 'overhead'
+        UNION ALL SELECT 'civil'
+        UNION ALL SELECT 'electrical'
+        UNION ALL SELECT 'plumbing'
+        UNION ALL SELECT 'carpentry'
       ) c
       LEFT JOIN project_budgets pb ON pb.category = c.category AND pb.project_id = $1 AND pb.tenant_id = $2
       LEFT JOIN (
@@ -313,3 +314,4 @@ async function checkBudgetThresholds(tenantId, projectId) {
 }
 
 module.exports = router;
+

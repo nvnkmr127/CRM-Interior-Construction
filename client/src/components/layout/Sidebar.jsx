@@ -94,3 +94,4 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
     </aside>
   )
 }
+

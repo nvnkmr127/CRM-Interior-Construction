@@ -292,6 +292,10 @@ export default function BudgetTab({ projectId }) {
                     <option value="material">Material</option>
                     <option value="vendor">Vendor</option>
                     <option value="overhead">Overhead</option>
+                    <option value="civil">Civil</option>
+                    <option value="electrical">Electrical</option>
+                    <option value="plumbing">Plumbing</option>
+                    <option value="carpentry">Carpentry</option>
                   </select>
                 </div>
                 <div className={styles.formGroup}>
@@ -334,6 +338,10 @@ export default function BudgetTab({ projectId }) {
                     <option value="material">Material</option>
                     <option value="vendor">Vendor</option>
                     <option value="overhead">Overhead</option>
+                    <option value="civil">Civil</option>
+                    <option value="electrical">Electrical</option>
+                    <option value="plumbing">Plumbing</option>
+                    <option value="carpentry">Carpentry</option>
                   </select>
                 </div>
                 <div className={styles.flexRow}>
@@ -446,3 +454,4 @@ export default function BudgetTab({ projectId }) {
     </div>
   );
 }
+

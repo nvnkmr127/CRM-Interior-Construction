@@ -32,6 +32,7 @@ const ProjectProfitabilityReportPage = lazy(() => import('./pages/analytics/Proj
 const ResourceUtilisationReportPage = lazy(() => import('./pages/analytics/ResourceUtilisationReportPage'))
 const ResourceWorkloadDashboard = lazy(() => import('./pages/analytics/ResourceWorkloadDashboard'))
 const CSATReportPage = lazy(() => import('./pages/analytics/CSATReportPage'))
+const DelayAnalysisReportPage = lazy(() => import('./pages/analytics/DelayAnalysisReportPage'))
 const ResourceCapacityPage = lazy(() => import('./pages/projects/ResourceCapacityPage'))
 const ProfilePage    = lazy(() => import('./pages/settings/ProfilePage'))
 const PreferencesPage= lazy(() => import('./pages/settings/PreferencesPage'))
@@ -86,6 +87,7 @@ export default function App() {
                     <Route path='/analytics/resources' element={<ResourceUtilisationReportPage />} />
                     <Route path='/analytics/resource-workload' element={<ResourceWorkloadDashboard />} />
                     <Route path='/analytics/csat' element={<CSATReportPage />} />
+                    <Route path='/analytics/delay-analysis' element={<DelayAnalysisReportPage />} />
                     <Route path='/settings/profile' element={<ProfilePage />} />
                     <Route path='/settings/preferences' element={<PreferencesPage />} />
                     <Route path='/settings/audit-trail' element={<AuditTrailPage />} />
@@ -103,3 +105,4 @@ export default function App() {
     </BrowserRouter>
   )
 }
+

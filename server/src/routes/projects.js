@@ -2356,4 +2356,15 @@ router.delete('/:projectId/external-inspections/:id', authorize('projects:write'
   }
 });
 
+
+// Project Profitability Routes
+const projectProfitabilityController = require('../controllers/projectProfitabilityController');
+router.get('/:projectId/profitability', authenticate, projectProfitabilityController.getProjectProfitability);
+router.get('/:projectId/ledger', authenticate, projectProfitabilityController.getProjectLedger);
+
+// Project Health Routes
+const projectHealthController = require('../controllers/projects/projectHealthController');
+router.get('/:projectId/health', authenticate, projectHealthController.getHealthReports);
+router.post('/:projectId/health/generate', authenticate, projectHealthController.generateHealthReport);
+
 module.exports = router;

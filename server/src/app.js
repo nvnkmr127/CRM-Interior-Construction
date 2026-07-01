@@ -44,6 +44,14 @@ setInterval(() => {
   });
 }, 12 * 60 * 60 * 1000);
 
+// Start Payment Reminder Job (Runs every 12 hours)
+const paymentReminderJob = require('./jobs/paymentReminderJob');
+setInterval(() => {
+  paymentReminderJob.run().catch(err => {
+    console.error('Failed to run payment reminder job:', err);
+  });
+}, 12 * 60 * 60 * 1000);
+
 // Start Weekly Progress Report Job
 const weeklyProgressReportJob = require('./jobs/weeklyProgressReportJob');
 let lastWeeklyReportRun = null;

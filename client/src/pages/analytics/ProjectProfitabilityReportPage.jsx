@@ -51,7 +51,7 @@ export default function ProjectProfitabilityReportPage() {
     );
   }
 
-  const { summary, byProjectType = [], byDesigner = [], byProjectSize = [], projects = [] } = data;
+  const { summary, byProjectType = [], byDesigner = [], byProjectSize = [], byCity = [], marginTrend = [], projects = [] } = data;
 
   const formatCurrency = (val) => {
     return new Intl.NumberFormat('en-IN', {
@@ -85,6 +85,10 @@ export default function ProjectProfitabilityReportPage() {
     activeSegments = byProjectType;
   } else if (segmentTab === 'designer') {
     activeSegments = byDesigner;
+  } else if (segmentTab === 'city') {
+    activeSegments = byCity;
+  } else if (segmentTab === 'trend') {
+    activeSegments = marginTrend;
   } else {
     activeSegments = byProjectSize;
   }
@@ -199,6 +203,18 @@ export default function ProjectProfitabilityReportPage() {
               onClick={() => setSegmentTab('size')}
             >
               By Project Size Tiers
+            </button>
+            <button 
+              className={`${styles.segmentTabBtn} ${segmentTab === 'city' ? styles.segmentTabActive : ''}`}
+              onClick={() => setSegmentTab('city')}
+            >
+              By City
+            </button>
+            <button 
+              className={`${styles.segmentTabBtn} ${segmentTab === 'trend' ? styles.segmentTabActive : ''}`}
+              onClick={() => setSegmentTab('trend')}
+            >
+              Margin Trend
             </button>
           </div>
         </div>

@@ -1,5 +1,6 @@
 const pool = require('../../db/pool');
 const { logAction } = require('../auditLog');
+const { notifyUser } = require('../notificationService');
 
 async function createChecklist({ tenantId, projectId, items = [] }) {
   const client = await pool.connect();
@@ -351,6 +352,16 @@ async function clientSignOff({ checklistId, tenantId, clientPortalUserId, client
        VALUES ($1, 'generate_handover_pdf', 'handover_checklist', $2)`,
       [tenantId, JSON.stringify({ checklistId, projectId: checklist.project_id })]
     );
+
+    // Trigger CSAT survey for handover completion
+    const { notifyUser } = require('../notificationService');
+    notifyUser({
+      tenantId,
+      userId: null,
+      type: 'csat_survey_trigger',
+      message: 'Congratulations on your handover! Please share your feedback on your experience with us.',
+      referenceUrl: `/client-portal/projects/${checklist.project_id}/surveys/handover`
+    });
 
     // 4. logAction 'project.handover_signed'
     await logAction({

@@ -480,4 +480,138 @@ router.get('/snags', async (req, res) => {
   }
 });
 
+
+// GET /api/analytics/payment-aging
+router.get('/payment-aging', authorize('analytics:read'), async (req, res) => {
+  try {
+    const tenantId = req.tenantId;
+
+    const query = `
+      SELECT 
+        p.client_name,
+        p.name AS project_name,
+        m.name AS milestone_name,
+        m.amount,
+        m.due_date,
+        (CURRENT_DATE - m.due_date) AS days_overdue,
+        CASE 
+          WHEN (CURRENT_DATE - m.due_date) <= 30 THEN '0-30 days'
+          WHEN (CURRENT_DATE - m.due_date) <= 60 THEN '31-60 days'
+          WHEN (CURRENT_DATE - m.due_date) <= 90 THEN '61-90 days'
+          ELSE '90+ days'
+        END AS aging_bucket
+      FROM payment_milestones m
+      JOIN projects p ON m.project_id = p.id
+      WHERE m.status IN ('overdue', 'pending', 'scheduled', 'invoice_raised') 
+        AND m.due_date < CURRENT_DATE
+        AND m.tenant_id = $1
+      ORDER BY days_overdue DESC
+    `;
+
+    const result = await pool.query(query, [tenantId]);
+    
+    // Calculate bucket totals
+    const summary = {
+      '0-30 days': 0,
+      '31-60 days': 0,
+      '61-90 days': 0,
+      '90+ days': 0
+    };
+
+    result.rows.forEach(r => {
+      const amount = parseFloat(r.amount) || 0;
+      if (summary[r.aging_bucket] !== undefined) {
+        summary[r.aging_bucket] += amount;
+      }
+    });
+
+    res.json(success({
+      summary,
+      details: result.rows
+    }));
+  } catch (error) {
+    console.error('Error fetching payment aging report:', error);
+    res.status(500).json(fail('Failed to fetch payment aging report'));
+  }
+});
+
+// 18. GET /api/analytics/projects/delay-analysis
+router.get('/projects/delay-analysis', async (req, res) => {
+  try {
+    const { from, to } = getDates(req);
+    const tenantId = req.tenantId;
+
+    const rawData = await pool.query(`
+      SELECT 
+        psr.id,
+        psr.reason,
+        psr.previous_target_date,
+        psr.new_target_date,
+        psr.revised_at,
+        p.project_type,
+        CASE
+          WHEN psr.reason ILIKE '%design%' OR psr.reason ILIKE '%drawing%' OR psr.reason ILIKE '%approval%' THEN 'Design'
+          WHEN psr.reason ILIKE '%procure%' OR psr.reason ILIKE '%material%' OR psr.reason ILIKE '%delivery%' THEN 'Procurement'
+          WHEN psr.reason ILIKE '%site%' OR psr.reason ILIKE '%labor%' OR psr.reason ILIKE '%civil%' THEN 'Site'
+          WHEN psr.reason ILIKE '%client%' OR psr.reason ILIKE '%customer%' OR psr.reason ILIKE '%change order%' THEN 'Client'
+          WHEN psr.reason ILIKE '%vendor%' OR psr.reason ILIKE '%contractor%' OR psr.reason ILIKE '%supplier%' THEN 'Vendor'
+          ELSE 'Other'
+        END as cause_category,
+        COALESCE(EXTRACT(EPOCH FROM (psr.new_target_date::timestamp - psr.previous_target_date::timestamp))/86400, 0) as delay_days
+      FROM project_schedule_revisions psr
+      JOIN projects p ON psr.project_id = p.id
+      WHERE psr.tenant_id = $1 
+        AND psr.revised_at BETWEEN $2 AND $3
+        AND psr.new_target_date IS NOT NULL 
+        AND psr.previous_target_date IS NOT NULL
+        AND psr.new_target_date > psr.previous_target_date
+    `, [tenantId, from.toISOString(), to.toISOString()]);
+
+    const records = rawData.rows;
+    let totalDelayImpact = 0;
+    const freqMap = { 'Design': 0, 'Procurement': 0, 'Site': 0, 'Client': 0, 'Vendor': 0, 'Other': 0 };
+    const durByType = {};
+    const trendMap = {};
+
+    records.forEach(r => {
+      const days = parseFloat(r.delay_days);
+      if (days <= 0) return;
+      totalDelayImpact += days;
+      
+      freqMap[r.cause_category] = (freqMap[r.cause_category] || 0) + 1;
+      
+      const pType = r.project_type || 'Unknown';
+      if (!durByType[pType]) durByType[pType] = { sum: 0, count: 0 };
+      durByType[pType].sum += days;
+      durByType[pType].count += 1;
+
+      // Group by YYYY-MM
+      const dateStr = new Date(r.revised_at).toISOString().slice(0, 7);
+      trendMap[dateStr] = (trendMap[dateStr] || 0) + days;
+    });
+
+    const frequencyByCause = Object.entries(freqMap)
+      .map(([name, count]) => ({ name, count }))
+      .filter(item => item.count > 0);
+
+    const durationByType = Object.entries(durByType)
+      .map(([type, data]) => ({ type, avgDays: Math.round(data.sum / data.count) }));
+
+    const trendByMonth = Object.entries(trendMap)
+      .map(([month, delayDays]) => ({ month, delayDays: Math.round(delayDays) }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+
+    return success(res, {
+      totalDelayImpact: Math.round(totalDelayImpact),
+      frequencyByCause,
+      durationByType,
+      trendByMonth
+    });
+
+  } catch (err) {
+    console.error('Delay Analytics Error:', err);
+    res.status(500).json(fail('Failed to fetch delay analytics'));
+  }
+});
+
 module.exports = router;

@@ -11,7 +11,7 @@ export default function CSATReportPage() {
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeSegmentTab, setActiveSegmentTab] = useState('trends'); // 'trends' | 'type' | 'team'
+  const [activeSegmentTab, setActiveSegmentTab] = useState('trends'); // 'trends' | 'type' | 'team' | 'city'
   const [searchTerm, setSearchTerm] = useState('');
   const [scoreFilter, setScoreFilter] = useState('all');
 
@@ -49,7 +49,7 @@ export default function CSATReportPage() {
     );
   }
 
-  const { summary, trends = [], byProjectType = [], byTeamMember = [], feedbacks = [] } = data;
+  const { summary, trends = [], byProjectType = [], byTeamMember = [], byCity = [], feedbacks = [] } = data;
 
   const renderStars = (rating) => {
     if (!rating || rating === 0) return <span className={styles.noStars}>No ratings</span>;
@@ -90,6 +90,7 @@ export default function CSATReportPage() {
   let activeSegmentsList = [];
   if (activeSegmentTab === 'trends') activeSegmentsList = trends;
   else if (activeSegmentTab === 'type') activeSegmentsList = byProjectType;
+  else if (activeSegmentTab === 'city') activeSegmentsList = byCity;
   else activeSegmentsList = byTeamMember;
 
   const maxVal = activeSegmentsList.reduce((max, s) => s.avgScore > max ? s.avgScore : max, 0) || 5;
@@ -167,6 +168,12 @@ export default function CSATReportPage() {
             By Project Type
           </button>
           <button 
+            className={`${styles.segmentTabBtn} ${activeSegmentTab === 'city' ? styles.segmentTabActive : ''}`}
+            onClick={() => setActiveSegmentTab('city')}
+          >
+            By City
+          </button>
+          <button 
             className={`${styles.segmentTabBtn} ${activeSegmentTab === 'team' ? styles.segmentTabActive : ''}`}
             onClick={() => setActiveSegmentTab('team')}
           >
@@ -180,7 +187,7 @@ export default function CSATReportPage() {
           <div className={styles.chartContainer}>
             <div className={styles.barList}>
               {activeSegmentsList.map((s, index) => {
-                const labelName = s.month || s.projectType || s.name;
+                const labelName = s.month || s.projectType || s.city || s.name;
                 const scorePct = (s.avgScore / 5) * 100; // score out of 5
 
                 return (

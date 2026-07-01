@@ -288,6 +288,20 @@ async function updateTicket(ticketId, tenantId, updateData, userId = null) {
     newValue
   });
 
+  // Trigger CSAT survey if ticket is resolved/closed
+  if (
+    (updateData.status === 'resolved' && oldValue.status !== 'resolved') ||
+    (updateData.status === 'closed' && oldValue.status !== 'closed')
+  ) {
+    notifyUser({
+      tenantId,
+      userId: null,
+      type: 'csat_survey_trigger',
+      message: 'Your service ticket has been resolved. Please rate your support experience!',
+      referenceUrl: `/client-portal/projects/${newValue.project_id}/surveys/service_ticket?ticketId=${ticketId}`
+    });
+  }
+
   return newValue;
 }
 

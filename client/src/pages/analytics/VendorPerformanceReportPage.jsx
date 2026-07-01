@@ -186,6 +186,7 @@ export default function VendorPerformanceReportPage() {
                 <tr>
                   <th className={styles.th}>Vendor Name</th>
                   <th className={styles.th}>Rating (Closure Retros)</th>
+                  <th className={styles.th}>Active Projects</th>
                   <th className={styles.th}>POs issued</th>
                   <th className={styles.th}>Spend Volume</th>
                   <th className={styles.th}>On-Time Rate</th>
@@ -201,6 +202,7 @@ export default function VendorPerformanceReportPage() {
                       <span className={styles.vendorName}>{row.vendorName}</span>
                     </td>
                     <td className={styles.td}>{renderStars(row.avgRating)}</td>
+                    <td className={styles.td}>{row.activeProjectsCount || 0}</td>
                     <td className={styles.td}>{row.poCount}</td>
                     <td className={styles.td}>{formatCurrency(row.poTotalAmount)}</td>
                     <td className={styles.td}>

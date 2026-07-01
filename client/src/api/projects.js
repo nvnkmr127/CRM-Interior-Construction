@@ -263,3 +263,6 @@ export const createExternalInspection = (projectId, data) => api.post(`/projects
 export const updateExternalInspection = (projectId, id, data) => api.patch(`/projects/${projectId}/external-inspections/${id}`, data).then(r => r.data.data);
 export const deleteExternalInspection = (projectId, id) => api.delete(`/projects/${projectId}/external-inspections/${id}`).then(r => r.data.data);
 
+// Project Profitability
+export const getProjectProfitability = (projectId) => api.get(/projects/ + projectId + /profitability).then(r => r.data.data);
+export const getProjectLedger = (projectId) => api.get(/projects/ + projectId + /ledger).then(r => r.data.data);

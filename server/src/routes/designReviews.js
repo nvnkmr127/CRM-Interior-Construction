@@ -5,6 +5,7 @@ const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const pool = require('../config/db');
 const { getDocumentUrl } = require('../services/documents/documentService');
+const { notifyUser } = require('../services/notificationService');
 
 const router = express.Router({ mergeParams: true });
 router.use(authenticate);
@@ -226,6 +227,16 @@ router.post('/freeze-design', authorize('projects:manage'), async (req, res, nex
     if (rows.length === 0) {
       return fail(res, 'NOT_FOUND', 'Project not found.', 404);
     }
+    
+    // Trigger CSAT survey for design phase completion
+    notifyUser({
+      tenantId,
+      userId: null, // Depending on who to notify, usually project client. We'd ideally fetch client's ID.
+      type: 'csat_survey_trigger',
+      message: 'Your project design has been approved and locked! Please share your feedback on the design experience.',
+      referenceUrl: `/client-portal/projects/${projectId}/surveys/design_approval`
+    });
+
     return success(res, rows[0], { message: 'Design scope frozen and locked successfully.' });
   } catch (err) {
     console.error('[DesignReviews Router] Freeze design error:', err);

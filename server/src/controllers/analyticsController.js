@@ -177,6 +177,15 @@ exports.getVendorPerformanceReport = async (req, res, next) => {
         JOIN project_vendors pv ON prv.project_vendor_id = pv.id
         WHERE prv.tenant_id = $1
         GROUP BY pv.vendor_name
+      ),
+      active_projects AS (
+        SELECT 
+          pv.vendor_name,
+          COUNT(DISTINCT pv.project_id) as active_projects_count
+        FROM project_vendors pv
+        JOIN projects p ON pv.project_id = p.id
+        WHERE pv.tenant_id = $1 AND p.status = 'active'
+        GROUP BY pv.vendor_name
       )
       SELECT 
         vb.vendor_name as "vendorName",
@@ -190,13 +199,15 @@ exports.getVendorPerformanceReport = async (req, res, next) => {
         COALESCE(pay.total_paid_amount, 0)::numeric as "totalPaidAmount",
         COALESCE(pay.overdue_payments_count, 0)::integer as "overduePaymentsCount",
         COALESCE(r.avg_rating, 0)::numeric as "avgRating",
-        COALESCE(r.rating_count, 0)::integer as "ratingCount"
+        COALESCE(r.rating_count, 0)::integer as "ratingCount",
+        COALESCE(ap.active_projects_count, 0)::integer as "activeProjectsCount"
       FROM vendor_base vb
       LEFT JOIN po_stats po ON vb.vendor_name = po.vendor_name
       LEFT JOIN delivery_stats d ON vb.vendor_name = d.vendor_name
       LEFT JOIN defect_stats def ON vb.vendor_name = def.vendor_name
       LEFT JOIN payment_stats pay ON vb.vendor_name = pay.vendor_name
       LEFT JOIN rating_stats r ON vb.vendor_name = r.vendor_name
+      LEFT JOIN active_projects ap ON vb.vendor_name = ap.vendor_name
       ORDER BY vb.vendor_name ASC
     `;
 
@@ -225,7 +236,8 @@ exports.getVendorPerformanceReport = async (req, res, next) => {
         totalPaidAmount: parseFloat(row.totalPaidAmount),
         overduePaymentsCount: row.overduePaymentsCount,
         avgRating: parseFloat(row.avgRating),
-        ratingCount: row.ratingCount
+        ratingCount: row.ratingCount,
+        activeProjectsCount: row.activeProjectsCount
       };
     });
 
@@ -526,6 +538,8 @@ exports.getProfitabilityAnalytics = async (req, res, next) => {
         p.id as "projectId",
         p.name as "projectName",
         p.project_type as "projectType",
+        COALESCE(p.city, 'Unspecified') as "city",
+        TO_CHAR(COALESCE(p.start_date, p.created_at), 'YYYY-MM') as "startMonth",
         COALESCE(p.contract_value, 0)::numeric as revenue,
         u.name as "designerName",
         COALESCE(pe.actual_cost, 0)::numeric as "actualCost",
@@ -567,6 +581,8 @@ exports.getProfitabilityAnalytics = async (req, res, next) => {
         projectId: r.projectId,
         projectName: r.projectName,
         projectType: r.projectType || 'Unspecified',
+        city: r.city,
+        startMonth: r.startMonth,
         designerName: r.designerName || 'Unassigned',
         revenue,
         actualCost,
@@ -615,6 +631,11 @@ exports.getProfitabilityAnalytics = async (req, res, next) => {
     const byProjectType = aggregateByField(projectsList, 'projectType');
     const byDesigner = aggregateByField(projectsList, 'designerName');
     const byProjectSize = aggregateByField(projectsList, 'sizeTier');
+    const byCity = aggregateByField(projectsList, 'city');
+    
+    // For margin trend, sort by month ascending
+    const marginTrend = aggregateByField(projectsList, 'startMonth')
+      .sort((a, b) => a.name.localeCompare(b.name));
 
     // Portfolio aggregates
     const portfolioRevenue = projectsList.reduce((sum, p) => sum + p.revenue, 0);
@@ -638,6 +659,8 @@ exports.getProfitabilityAnalytics = async (req, res, next) => {
         byProjectType,
         byDesigner,
         byProjectSize,
+        byCity,
+        marginTrend,
         projects: projectsList
       }
     });
@@ -808,6 +831,20 @@ exports.getCSATAnalytics = async (req, res, next) => {
     `;
     const typeRes = await pool.query(typeQuery, [tenantId]);
 
+    // Breakdown by City
+    const cityQuery = `
+      SELECT 
+        COALESCE(p.city, 'Unspecified') as "city",
+        AVG(cs.score)::numeric as "avgScore",
+        COUNT(cs.id)::integer as "count"
+      FROM csat_feedback cs
+      JOIN projects p ON cs.project_id = p.id
+      WHERE cs.tenant_id = $1
+      GROUP BY p.city
+      ORDER BY "avgScore" DESC
+    `;
+    const cityRes = await pool.query(cityQuery, [tenantId]);
+
     // 4. Breakdown by Team Member (PMs & Designers)
     const teamQuery = `
       WITH pm_csat AS (
@@ -875,6 +912,11 @@ exports.getCSATAnalytics = async (req, res, next) => {
         })),
         byProjectType: typeRes.rows.map(r => ({
           projectType: r.projectType,
+          avgScore: parseFloat(r.avgScore || 0),
+          count: parseInt(r.count || 0)
+        })),
+        byCity: cityRes.rows.map(r => ({
+          city: r.city,
           avgScore: parseFloat(r.avgScore || 0),
           count: parseInt(r.count || 0)
         })),
