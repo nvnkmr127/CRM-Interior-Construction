@@ -291,12 +291,14 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
   const validate = () => {
     const newErrors = {}
     if (!formData.projectType) newErrors.projectType = 'Project type is required'
-    if (!formData.clientName || formData.clientName.length < 2) newErrors.clientName = 'Valid client name required'
     if (!formData.projectName || formData.projectName.length < 3) newErrors.projectName = 'Project name must be at least 3 chars'
-    if (formData.clientPhone && formData.clientPhone.replace(/\D/g, '').length < 10) newErrors.clientPhone = 'Valid 10-digit phone required'
-    if (formData.clientEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.clientEmail)) newErrors.clientEmail = 'Valid email required'
-    if (formData.spousePhone && formData.spousePhone.replace(/\D/g, '').length < 10) newErrors.spousePhone = 'Valid 10-digit phone required'
-    if (formData.spouseEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.spouseEmail)) newErrors.spouseEmail = 'Valid email required'
+    if (project) {
+      if (!formData.clientName || formData.clientName.length < 2) newErrors.clientName = 'Valid client name required'
+      if (formData.clientPhone && formData.clientPhone.replace(/\D/g, '').length < 10) newErrors.clientPhone = 'Valid 10-digit phone required'
+      if (formData.clientEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.clientEmail)) newErrors.clientEmail = 'Valid email required'
+      if (formData.spousePhone && formData.spousePhone.replace(/\D/g, '').length < 10) newErrors.spousePhone = 'Valid 10-digit phone required'
+      if (formData.spouseEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.spouseEmail)) newErrors.spouseEmail = 'Valid email required'
+    }
     if (!project && !contractFile) newErrors.contractFile = 'Signed contract document is required'
     
     setErrors(newErrors)
@@ -320,9 +322,9 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
       const payload = {
         name: formData.projectName,
         type: formData.projectType,
-        client_name: formData.clientName,
-        client_phone: formData.clientPhone,
-        client_email: formData.clientEmail,
+        client_name: formData.clientName || formData.projectName || 'TBD',
+        client_phone: formData.clientPhone || null,
+        client_email: formData.clientEmail || null,
         site_address: formData.siteAddress,
         pm_id: formData.pm || null,
         designer_id: formData.designer || null,
@@ -553,7 +555,9 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
           )}
         </div>
         {/* Project Team Roles Section */}
-        <div className={styles.fullWidth} style={{ marginTop: 8 }}>
+        {!!project && (
+          <>
+            <div className={styles.fullWidth} style={{ marginTop: 8 }}>
           <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Project Team & Role Assignments</div>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '16px' }}>
@@ -2017,6 +2021,8 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
             When enabled, site supervisors are blocked from starting or completing tasks out of sequence based on configured dependencies.
           </p>
         </div>
+        </>
+        )}
 
         {!project && (
           <div className={styles.fullWidth} style={{ marginTop: 16 }}>

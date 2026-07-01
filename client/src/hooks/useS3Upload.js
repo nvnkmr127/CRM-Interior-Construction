@@ -24,12 +24,17 @@ export function useS3Upload() {
       })
 
       // 2. Upload directly to S3 (bypass our axios interceptor — no auth header to S3)
-      await axios.put(uploadUrl, file, {
-        headers: { 'Content-Type': file.type },
-        onUploadProgress: (e) => {
-          setProgress(Math.round((e.loaded * 100) / e.total))
-        },
-      })
+      if (uploadUrl.includes('mock-s3.local')) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setProgress(100);
+      } else {
+        await axios.put(uploadUrl, file, {
+          headers: { 'Content-Type': file.type },
+          onUploadProgress: (e) => {
+            setProgress(Math.round((e.loaded * 100) / e.total))
+          },
+        })
+      }
 
       // 3. Register the document in our DB
       const doc = await registerDocument(projectId, {
@@ -61,10 +66,15 @@ export function useS3Upload() {
         mimeType: file.type,
         docType: purpose,
       })
-      await axios.put(uploadUrl, file, {
-        headers: { 'Content-Type': file.type },
-        onUploadProgress: (e) => setProgress(Math.round(e.loaded*100/e.total)),
-      })
+      if (uploadUrl.includes('mock-s3.local')) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setProgress(100);
+      } else {
+        await axios.put(uploadUrl, file, {
+          headers: { 'Content-Type': file.type },
+          onUploadProgress: (e) => setProgress(Math.round(e.loaded*100/e.total)),
+        })
+      }
       return storageKey
     } catch(e) {
       setError('Upload failed'); throw e
@@ -82,10 +92,15 @@ export function useS3Upload() {
       });
       const { uploadUrl, storageKey } = res.data.data;
 
-      await axios.put(uploadUrl, file, {
-        headers: { 'Content-Type': file.type },
-        onUploadProgress: (e) => setProgress(Math.round(e.loaded * 100 / e.total)),
-      });
+      if (uploadUrl.includes('mock-s3.local')) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setProgress(100);
+      } else {
+        await axios.put(uploadUrl, file, {
+          headers: { 'Content-Type': file.type },
+          onUploadProgress: (e) => setProgress(Math.round(e.loaded * 100 / e.total)),
+        });
+      }
 
       return {
         storageKey,

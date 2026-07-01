@@ -59,6 +59,13 @@ const VendorsTab = React.lazy(() => import('../../components/projects/VendorsTab
 import HandoverModal from '../../components/projects/HandoverModal';
 import DesignStageHeader from '../../components/projects/DesignStageHeader';
 
+// New Editable Tabs
+const TeamAndRolesTab = React.lazy(() => import('../../components/projects/TeamAndRolesTab'));
+const ClientProfileTab = React.lazy(() => import('../../components/projects/ClientProfileTab'));
+const SiteDetailsTab = React.lazy(() => import('../../components/projects/SiteDetailsTab'));
+const VendorsAndConsultantsTab = React.lazy(() => import('../../components/projects/VendorsAndConsultantsTab'));
+const SettingsTab = React.lazy(() => import('../../components/projects/SettingsTab'));
+
 function formatDate(dateStr) {
   if (!dateStr) return '—';
   return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -79,7 +86,7 @@ function daysRemaining(targetDate) {
   return diff;
 }
 
-function OverviewTab({ project, onRefresh }) {
+function OverviewTab({ project, onRefresh, onEdit }) {
   const baseTargetDate = project.target_date ? new Date(project.target_date) : null;
   const timelineImpact = project.stats?.approvedTimelineImpactDays || 0;
   const revisedTargetDate = baseTargetDate && timelineImpact > 0 ? new Date(baseTargetDate.getTime() + timelineImpact * 24 * 60 * 60 * 1000) : null;
@@ -96,30 +103,10 @@ function OverviewTab({ project, onRefresh }) {
 
   const fields = [
     { label: 'Project Type',    value: project.project_type ? project.project_type.replace(/_/g, ' ') : '—' },
-    { label: 'Site Address',    value: project.site_address || '—' },
-    { label: 'Flat / Unit No',  value: project.flat_number || '—' },
-    { label: 'Floor',           value: project.floor || '—' },
-    { label: 'Building Name',   value: project.building_name || '—' },
-    { label: 'Street',          value: project.street || '—' },
-    { label: 'Landmark',        value: project.landmark || '—' },
     { label: 'City',            value: project.city || '—' },
-    { label: 'Pincode',         value: project.pincode || '—' },
-    { label: 'GPS Coordinates', value: project.latitude && project.longitude ? `${project.latitude}, ${project.longitude}` : '—' },
     { label: 'Builder Name',    value: project.builder_name || '—' },
-    { label: 'Society Name',    value: project.society_name || '—' },
-    { label: 'RERA ID',         value: project.rera_id || '—' },
-    { label: 'Builder NOC',     value: project.noc_status ? project.noc_status.replace(/_/g, ' ') : '—' },
-    { label: 'Occupancy Cert.', value: project.occupancy_certificate_status ? project.occupancy_certificate_status.replace(/_/g, ' ') : '—' },
-    { label: 'Property Handover Date', value: formatDate(project.property_handover_date) },
-    { label: 'Carpet Area',     value: project.carpet_area ? `${project.carpet_area} sq ft` : '—' },
-    { label: 'Built-up Area',   value: project.built_up_area ? `${project.built_up_area} sq ft` : '—' },
-    { label: 'Number of Rooms', value: project.number_of_rooms || '—' },
     { label: 'Project Category', value: project.project_category ? project.project_category.replace(/_/g, ' ') : '—' },
     { label: 'Sub-Category',    value: project.project_sub_category ? project.project_sub_category.replace(/_/g, ' ') : '—' },
-    { label: 'Ownership Type',  value: project.property_type ? project.property_type.replace(/_/g, ' ') : '—' },
-    { label: 'Property Age',    value: project.property_age ? project.property_age.replace(/_/g, ' ') : '—' },
-    { label: 'Renovation Scope', value: project.renovation_scope ? project.renovation_scope.replace(/_/g, ' ') : '—' },
-    { label: 'Market Segment',  value: project.segment ? project.segment.replace(/_/g, ' ') : '—' },
     { label: 'Start Date',      value: formatDate(project.start_date) },
     { label: 'Target Date',     value: formatDate(project.target_date) },
     ...(timelineImpact > 0 && revisedTargetDate ? [{ label: 'Revised Target Date', value: formatDate(revisedTargetDate) }] : []),
@@ -127,16 +114,9 @@ function OverviewTab({ project, onRefresh }) {
     { label: 'Scope Additions (Change Orders)', value: formatValue(project.stats?.additionsTotal || 0) },
     { label: 'Scope Reductions (Change Orders)', value: formatValue(project.stats?.reductionsTotal || 0) },
     { label: 'Net Contract Value', value: formatValue(project.stats?.netContractValue || project.contract_value) },
-    { label: 'Status',          value: project.status ? project.status.replace(/_/g, ' ') : '—' },
-    { label: 'Client Phone',    value: project.client_phone || '—' },
-    { label: 'Client Email',    value: project.client_email || '—' },
     { label: 'Booking Amount',  value: project.booking_amount ? formatValue(project.booking_amount) : (cf.advance_amount ? formatValue(cf.advance_amount) : '—') },
     { label: 'Payment Terms',   value: project.payment_terms ? project.payment_terms.replace(/_/g, ' – ') : (cf.payment_terms ? cf.payment_terms.replace(/_/g, ' – ') : '—') },
-    { label: 'Agreement Signed By', value: project.agreement_signed_by || '—' },
-    { label: 'Agreement Signed Date', value: formatDate(project.agreement_signed_at) },
-    { label: 'Signature Method', value: project.agreement_signature_method ? project.agreement_signature_method.replace(/_/g, ' ') : '—' },
-    { label: 'Allowed Design Revisions', value: project.allowed_design_revisions !== undefined && project.allowed_design_revisions !== null ? project.allowed_design_revisions : 3 },
-    { label: 'Current Design Revisions', value: project.current_design_revisions !== undefined && project.current_design_revisions !== null ? project.current_design_revisions : 0 },
+    { label: 'Status',          value: project.status ? project.status.replace(/_/g, ' ') : '—' },
   ];
 
   return (
@@ -161,8 +141,13 @@ function OverviewTab({ project, onRefresh }) {
 
       {/* Key details grid */}
       <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
-        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
-          Project Details
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid var(--color-border)' }}>
+          <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+            Project Details
+          </div>
+          <Button variant="outline" size="sm" onClick={onEdit}>
+            ✏️ Edit
+          </Button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 0 }}>
           {fields.map((f, i) => (
@@ -832,6 +817,7 @@ export default function ProjectDetail() {
   const [isResumeModalOpen, setIsResumeModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [archiving, setArchiving] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
 
   const handleArchive = async () => {
     if (window.confirm('Are you sure you want to formally archive this project? The data will remain accessible for reference.')) {
@@ -897,7 +883,12 @@ export default function ProjectDetail() {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'Overview': return project ? <OverviewTab project={project} onRefresh={reloadProject} /> : null;
+      case 'Overview': return project ? <OverviewTab project={project} onRefresh={reloadProject} onEdit={() => setIsEditing(true)} /> : null;
+      case 'Team & Roles': return <TeamAndRolesTab project={project} onRefresh={reloadProject} />;
+      case 'Client Profile': return <ClientProfileTab project={project} onRefresh={reloadProject} />;
+      case 'Site Details': return <SiteDetailsTab project={project} onRefresh={reloadProject} />;
+      case 'Vendors & Consultants': return <VendorsAndConsultantsTab project={project} onRefresh={reloadProject} />;
+      case 'Settings': return <SettingsTab project={project} onRefresh={reloadProject} />;
       case 'Booking': return <BookingTab projectId={projectId} projectStatus={project?.status} onProjectUpdated={reloadProject} />;
       case 'Meeting Notes': return <MeetingNotesTab projectId={projectId} />;
       case 'Site Visits': return <SiteVisitsTab projectId={projectId} />;
@@ -1007,36 +998,100 @@ export default function ProjectDetail() {
           </div>
           <div className={styles.headerRight}>
             <div className={styles.value}>{formatValue(project.contract_value)}</div>
-            {!project.is_scope_locked && project.status === 'active' && (
-              <Button size="sm" onClick={handleLockScope}>Lock Scope</Button>
-            )}
-            {project.status === 'active' && (
-              <Button variant="warning" size="sm" onClick={() => setIsPauseModalOpen(true)}>
-                Pause Project
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                ✏️ Edit
               </Button>
-            )}
-            {project.status === 'on_hold' && (
-              <Button variant="success" size="sm" onClick={() => setIsResumeModalOpen(true)}>
-                Resume Project
-              </Button>
-            )}
-            {(project.status === 'active' || project.status === 'on_hold') && (
-              <Button variant="outline" size="sm" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)' }} onClick={() => setIsCancelModalOpen(true)}>
-                Cancel Project
-              </Button>
-            )}
-            {(project.status === 'completed' || project.status === 'cancelled') && (
-              <Button variant="outline" size="sm" onClick={handleArchive} disabled={archiving}>
-                {archiving ? 'Archiving...' : 'Archive'}
-              </Button>
-            )}
-            {(project.status === 'completed' || project.status === 'cancelled' || project.status === 'archived') && (
-              <Button variant="primary" size="sm" onClick={() => setIsReopenModalOpen(true)}>
-                Reopen Project
-              </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>Edit</Button>
-            <Button variant="outline" size="sm" style={{color: 'var(--color-danger)', borderColor: 'var(--color-danger)'}} onClick={handleDelete}>Delete</Button>
+              
+              <div style={{ position: 'relative' }}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setActionsOpen(!actionsOpen)}
+                >
+                  Actions ▾
+                </Button>
+              
+              {actionsOpen && (
+                <>
+                  <div 
+                    style={{ position: 'fixed', inset: 0, zIndex: 40 }} 
+                    onClick={() => setActionsOpen(false)} 
+                  />
+                  <div style={{ 
+                    position: 'absolute', 
+                    right: 0, 
+                    top: 'calc(100% + 4px)', 
+                    background: 'var(--color-surface, #fff)', 
+                    border: '1px solid var(--color-border)', 
+                    borderRadius: 'var(--radius-md)', 
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)', 
+                    zIndex: 50,
+                    minWidth: '200px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    padding: '4px 0',
+                    overflow: 'hidden'
+                  }}>
+                    <style>{`
+                      .action-dropdown-item {
+                        padding: 8px 16px;
+                        background: none;
+                        border: none;
+                        text-align: left;
+                        width: 100%;
+                        cursor: pointer;
+                        font-size: 13px;
+                        color: var(--color-text);
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                      }
+                      .action-dropdown-item:hover {
+                        background: var(--color-surface-hover, #f3f4f6);
+                      }
+                    `}</style>
+                    {!project.is_scope_locked && project.status === 'active' && (
+                      <button className="action-dropdown-item" onClick={() => { setActionsOpen(false); handleLockScope(); }}>
+                        🔒 Lock Scope
+                      </button>
+                    )}
+                    {project.status === 'active' && (
+                      <button className="action-dropdown-item" onClick={() => { setActionsOpen(false); setIsPauseModalOpen(true); }}>
+                        ⏸️ Pause Project
+                      </button>
+                    )}
+                    {project.status === 'on_hold' && (
+                      <button className="action-dropdown-item" onClick={() => { setActionsOpen(false); setIsResumeModalOpen(true); }}>
+                        ▶️ Resume Project
+                      </button>
+                    )}
+                    {(project.status === 'completed' || project.status === 'cancelled') && (
+                      <button className="action-dropdown-item" onClick={() => { setActionsOpen(false); handleArchive(); }} disabled={archiving}>
+                        📦 {archiving ? 'Archiving...' : 'Archive Project'}
+                      </button>
+                    )}
+                    {(project.status === 'completed' || project.status === 'cancelled' || project.status === 'archived') && (
+                      <button className="action-dropdown-item" onClick={() => { setActionsOpen(false); setIsReopenModalOpen(true); }}>
+                        🔄 Reopen Project
+                      </button>
+                    )}
+                    
+                    <div style={{ height: '1px', background: 'var(--color-border)', margin: '4px 0' }} />
+                    
+                    {(project.status === 'active' || project.status === 'on_hold') && (
+                      <button className="action-dropdown-item" style={{ color: 'var(--color-danger)' }} onClick={() => { setActionsOpen(false); setIsCancelModalOpen(true); }}>
+                        🚫 Cancel Project
+                      </button>
+                    )}
+                    <button className="action-dropdown-item" style={{ color: 'var(--color-danger)' }} onClick={() => { setActionsOpen(false); handleDelete(); }}>
+                        🗑️ Delete Project
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+            </div>
           </div>
         </div>
 
@@ -1082,6 +1137,35 @@ export default function ProjectDetail() {
               )}
             </div>
           )}
+        </div>
+
+        {/* Quick Nav Tabs from Form Sections */}
+        <div className={styles.headerNav}>
+          {[
+            { id: 'Overview', icon: '📝', label: 'Overview' },
+            { id: 'Team & Roles', icon: '👥', label: 'Team & Roles' },
+            { id: 'Client Profile', icon: '👤', label: 'Client Profile' },
+            { id: 'Site Details', icon: '📍', label: 'Site Details' },
+            { id: 'Vendors & Consultants', icon: '🤝', label: 'Vendors & Consultants' },
+            { id: 'Settings', icon: '⚙️', label: 'Settings' }
+          ].map(tab => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                className={`${styles.headerNavItem} ${isActive ? styles.headerNavItemActive : ''}`}
+                onClick={() => {
+                  if (!tabs.includes(tab.id)) {
+                    tabs.push(tab.id);
+                  }
+                  setActiveTab(tab.id);
+                }}
+              >
+                <span className={styles.headerNavIcon}>{tab.icon}</span>
+                {tab.label}
+              </button>
+            )
+          })}
         </div>
       </div>
 

@@ -316,12 +316,13 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRecordId, setSelectedRecordId] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
   
   const toast = useToast();
   const bottomRef = useRef(null);
 
   // Initial Mock Records in AI Knowledge Vault
-  const records = [
+  const [records, setRecords] = useState([
     {
       id: 'rec-1',
       type: 'Meeting Summary',
@@ -369,12 +370,24 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
       status: 'Indexed',
       icon: '🎨'
     }
-  ];
+  ]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
+
+  const handleRecordChange = (recordId, field, value, idx = null) => {
+    setRecords(prev => prev.map(r => {
+      if (r.id !== recordId) return r;
+      if (field === 'details') {
+        const newDetails = [...r.details];
+        newDetails[idx] = value;
+        return { ...r, details: newDetails };
+      }
+      return { ...r, [field]: value };
+    }));
+  };
 
   const sendQuery = async (queryText) => {
     if (loading) return;
@@ -427,7 +440,19 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
   };
 
   return (
-    <div style={styles.wrapper}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        {!isEditing ? (
+          <Button size='sm' variant='outline' onClick={() => setIsEditing(true)} style={{ background: '#fff', border: '1px solid #d1d5db', color: '#374151', padding: '4px 10px', fontSize: '12px', height: '28px' }}>
+            ✏️ Edit Section
+          </Button>
+        ) : (
+          <Button size='sm' variant='ghost' onClick={() => setIsEditing(false)} style={{ color: '#ef4444', padding: '4px 10px', fontSize: '12px', height: '28px' }}>
+            Cancel Edit
+          </Button>
+        )}
+      </div>
+      <div style={styles.wrapper}>
       {/* LEFT PANEL: Knowledge Vault Column */}
       <div style={styles.vaultPanel}>
         <div style={styles.vaultHeader}>
@@ -474,18 +499,50 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
                   <span style={styles.cardDate}>{record.date}</span>
                 </div>
                 
-                <h4 style={styles.cardTitle}>
-                  <span>{record.icon}</span>
-                  {record.title}
-                </h4>
-                
-                <p style={styles.cardSummary}>{record.summary}</p>
-                
-                <ul style={styles.bulletList}>
-                  {record.details.map((detail, idx) => (
-                    <li key={idx} style={styles.bulletItem}>• {detail}</li>
-                  ))}
-                </ul>
+                {isEditing ? (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                      <span>{record.icon}</span>
+                      <input 
+                        value={record.title} 
+                        onChange={(e) => handleRecordChange(record.id, 'title', e.target.value)} 
+                        style={{ ...styles.searchInput, padding: '4px 8px', margin: 0, fontWeight: 600, flex: 1 }} 
+                      />
+                    </div>
+                    <textarea 
+                      value={record.summary}
+                      onChange={(e) => handleRecordChange(record.id, 'summary', e.target.value)}
+                      style={{ ...styles.searchInput, padding: '4px 8px', minHeight: '60px', marginBottom: '10px', resize: 'vertical' }}
+                    />
+                    <ul style={styles.bulletList}>
+                      {record.details.map((detail, idx) => (
+                        <li key={idx} style={{...styles.bulletItem, display: 'flex', gap: '4px', alignItems: 'flex-start'}}>
+                          <span style={{ marginTop: '2px' }}>•</span>
+                          <input 
+                            value={detail}
+                            onChange={(e) => handleRecordChange(record.id, 'details', e.target.value, idx)}
+                            style={{ ...styles.searchInput, padding: '2px 6px', fontSize: '11px', flex: 1 }}
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <>
+                    <h4 style={styles.cardTitle}>
+                      <span>{record.icon}</span>
+                      {record.title}
+                    </h4>
+                    
+                    <p style={styles.cardSummary}>{record.summary}</p>
+                    
+                    <ul style={styles.bulletList}>
+                      {record.details.map((detail, idx) => (
+                        <li key={idx} style={styles.bulletItem}>• {detail}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
 
                 <div style={styles.cardFooter}>
                   <span style={styles.cardMetadata}>By: {record.host}</span>
@@ -595,6 +652,7 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
               Send
             </Button>
           </form>
+        </div>
         </div>
       </div>
     </div>
