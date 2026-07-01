@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import layoutStyles from './ConfigLayout.module.css';
 import styles from './TradeActivityTemplatesManager.module.css';
-import { Button, Input, Toggle } from '../../components/ui';
+import { Button, Input } from '../../components/ui';
 import { useToast } from '../../store/toastContext';
 import { configApi } from '../../api/config';
-import { useTenant } from '../../store/tenantContext';
+
 
 const TRADES = [
   { id: 'civil', label: 'Civil Work' },
@@ -35,8 +35,12 @@ export default function TradeActivityTemplatesManager() {
   const [depDependsOnTrade, setDepDependsOnTrade] = useState('civil');
   const [savingDep, setSavingDep] = useState(false);
 
-  const { tenantConfig, updateTenantConfig } = useTenant();
-  const enforcementMode = tenantConfig?.dependency_enforcement_mode || 'hard';
+  const [enforcementMode, setEnforcementMode] = useState('hard');
+  const updateTenantConfig = async (config) => {
+    if (config.dependency_enforcement_mode) {
+      setEnforcementMode(config.dependency_enforcement_mode);
+    }
+  };
 
   // Form states for creating new template
   const [newName, setNewName] = useState('');

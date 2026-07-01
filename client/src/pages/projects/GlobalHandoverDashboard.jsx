@@ -41,8 +41,8 @@ export default function GlobalHandoverDashboard() {
   // Filter and Search logic
   const filteredData = data.filter(item => {
     const matchesSearch =
-      item.projectName.toLowerCase().includes(search.toLowerCase()) ||
-      item.pmName.toLowerCase().includes(search.toLowerCase());
+      (item.projectName || '').toLowerCase().includes(search.toLowerCase()) ||
+      (item.pmName || '').toLowerCase().includes(search.toLowerCase());
 
     if (!matchesSearch) return false;
 
@@ -144,8 +144,8 @@ export default function GlobalHandoverDashboard() {
               </tr>
             </thead>
             <tbody>
-              {filteredData.map(item => (
-                <tr key={item.projectId}>
+              {filteredData.map((item, index) => (
+                <tr key={item.projectId ? `${item.projectId}-${index}` : index}>
                   <td>
                     <Link to={`/projects/${item.projectId}`} className={styles.projectLink}>
                       {item.projectName}
@@ -156,50 +156,50 @@ export default function GlobalHandoverDashboard() {
                   {/* Gate 1: Tasks */}
                   <td style={{ textAlign: 'center' }}>
                     <span 
-                      className={`${styles.gateDot} ${item.gates.tasksCompleted.passed ? styles.dotPass : styles.dotFail}`}
-                      title={`Task Gate: ${item.gates.tasksCompleted.detail}`}
+                      className={`${styles.gateDot} ${item.gates?.tasksCompleted?.passed ? styles.dotPass : styles.dotFail}`}
+                      title={`Task Gate: ${item.gates?.tasksCompleted?.detail || 'No data'}`}
                     >
-                      {item.gates.tasksCompleted.passed ? '✓' : '✖'}
+                      {item.gates?.tasksCompleted?.passed ? '✓' : '✖'}
                     </span>
                   </td>
 
                   {/* Gate 2: Snags */}
                   <td style={{ textAlign: 'center' }}>
                     <span 
-                      className={`${styles.gateDot} ${item.gates.snagsResolved.passed ? styles.dotPass : styles.dotFail}`}
-                      title={`Snags Gate: ${item.gates.snagsResolved.detail}`}
+                      className={`${styles.gateDot} ${item.gates?.snagsResolved?.passed ? styles.dotPass : styles.dotFail}`}
+                      title={`Snags Gate: ${item.gates?.snagsResolved?.detail || 'No data'}`}
                     >
-                      {item.gates.snagsResolved.passed ? '✓' : '✖'}
+                      {item.gates?.snagsResolved?.passed ? '✓' : '✖'}
                     </span>
                   </td>
 
                   {/* Gate 3: Payments */}
                   <td style={{ textAlign: 'center' }}>
                     <span 
-                      className={`${styles.gateDot} ${item.gates.paymentsCleared.passed ? styles.dotPass : styles.dotFail}`}
-                      title={`Payments Gate: ${item.gates.paymentsCleared.detail}`}
+                      className={`${styles.gateDot} ${item.gates?.paymentsCleared?.passed ? styles.dotPass : styles.dotFail}`}
+                      title={`Payments Gate: ${item.gates?.paymentsCleared?.detail || 'No data'}`}
                     >
-                      {item.gates.paymentsCleared.passed ? '✓' : '✖'}
+                      {item.gates?.paymentsCleared?.passed ? '✓' : '✖'}
                     </span>
                   </td>
 
                   {/* Gate 4: Documents */}
                   <td style={{ textAlign: 'center' }}>
                     <span 
-                      className={`${styles.gateDot} ${item.gates.documentsUploaded.passed ? styles.dotPass : styles.dotFail}`}
-                      title={`Documents Gate: ${item.gates.documentsUploaded.detail}`}
+                      className={`${styles.gateDot} ${item.gates?.documentsUploaded?.passed ? styles.dotPass : styles.dotFail}`}
+                      title={`Documents Gate: ${item.gates?.documentsUploaded?.detail || 'No data'}`}
                     >
-                      {item.gates.documentsUploaded.passed ? '✓' : '✖'}
+                      {item.gates?.documentsUploaded?.passed ? '✓' : '✖'}
                     </span>
                   </td>
 
                   {/* Gate 5: PM Sign-off */}
                   <td style={{ textAlign: 'center' }}>
                     <span 
-                      className={`${styles.gateDot} ${item.gates.pmSignedOff.passed ? styles.dotPass : styles.dotFail}`}
-                      title={`PM Sign-Off: ${item.gates.pmSignedOff.detail}`}
+                      className={`${styles.gateDot} ${item.gates?.pmSignedOff?.passed ? styles.dotPass : styles.dotFail}`}
+                      title={`PM Sign-Off: ${item.gates?.pmSignedOff?.detail || 'No data'}`}
                     >
-                      {item.gates.pmSignedOff.passed ? '✓' : '✖'}
+                      {item.gates?.pmSignedOff?.passed ? '✓' : '✖'}
                     </span>
                   </td>
 

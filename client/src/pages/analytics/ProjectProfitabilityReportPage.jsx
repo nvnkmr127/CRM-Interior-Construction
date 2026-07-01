@@ -51,14 +51,14 @@ export default function ProjectProfitabilityReportPage() {
     );
   }
 
-  const { summary, byProjectType = [], byDesigner = [], byProjectSize = [], byCity = [], marginTrend = [], projects = [] } = data;
+  const { summary = {}, byProjectType = [], byDesigner = [], byProjectSize = [], byCity = [], marginTrend = [], projects = [] } = data;
 
   const formatCurrency = (val) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       maximumFractionDigits: 0
-    }).format(val);
+    }).format(val || 0);
   };
 
   // Helper to determine cost/margin values based on selected costType
@@ -68,16 +68,17 @@ export default function ProjectProfitabilityReportPage() {
 
   // Filter projects by search
   const filteredProjects = projects.filter(p => {
-    return p.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.projectType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.designerName.toLowerCase().includes(searchTerm.toLowerCase());
+    const term = (searchTerm || '').toLowerCase();
+    return p.projectName?.toLowerCase().includes(term) ||
+      p.projectType?.toLowerCase().includes(term) ||
+      p.designerName?.toLowerCase().includes(term);
   });
 
   // Calculate metrics for summary cards
-  const portfolioRevenue = summary.revenue;
-  const portfolioCost = costType === 'actual' ? summary.actualCost : summary.committedCost;
-  const portfolioMargin = costType === 'actual' ? summary.actualMargin : summary.committedMargin;
-  const portfolioMarginPct = costType === 'actual' ? summary.actualMarginPercent : summary.committedMarginPercent;
+  const portfolioRevenue = summary.revenue || 0;
+  const portfolioCost = costType === 'actual' ? (summary.actualCost || 0) : (summary.committedCost || 0);
+  const portfolioMargin = costType === 'actual' ? (summary.actualMargin || 0) : (summary.committedMargin || 0);
+  const portfolioMarginPct = costType === 'actual' ? (summary.actualMarginPercent || 0) : (summary.committedMarginPercent || 0);
 
   // Segmented chart logic
   let activeSegments = [];

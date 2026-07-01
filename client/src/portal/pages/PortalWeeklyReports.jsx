@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card'
-import { PortalApi } from '../store/portalAuthContext'
+import { Card } from '../../components/ui'
+import api from '../../api/axios'
 import styles from './PortalProject.module.css' // We can reuse standard styling, or use inline/tailwind if available
 
 export default function PortalWeeklyReports() {
@@ -15,7 +15,7 @@ export default function PortalWeeklyReports() {
   const fetchReports = async () => {
     try {
       setLoading(true)
-      const res = await PortalApi.get('/api/portal/project/weekly-reports')
+      const res = await api.get('/portal/project/weekly-reports')
       setReports(res.data)
     } catch (err) {
       setError('Failed to load weekly reports.')
@@ -33,9 +33,9 @@ export default function PortalWeeklyReports() {
       <div className={styles.container}>
         <h1 className={styles.title}>Weekly Progress Reports</h1>
         <Card>
-          <CardContent style={{ padding: '2rem', textAlign: 'center' }}>
+          <div style={{ padding: '2rem', textAlign: 'center' }}>
             <p style={{ color: 'var(--color-text-secondary)' }}>No weekly reports have been generated yet.</p>
-          </CardContent>
+          </div>
         </Card>
       </div>
     )
@@ -47,10 +47,10 @@ export default function PortalWeeklyReports() {
       
       {reports.map(report => (
         <Card key={report.id} style={{ marginBottom: '1rem', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
-          <CardHeader style={{ backgroundColor: 'var(--color-bg-secondary)', borderBottom: '1px solid var(--color-border)', padding: '1rem' }}>
-            <CardTitle>Report for week ending: {new Date(report.report_date).toLocaleDateString()}</CardTitle>
-          </CardHeader>
-          <CardContent style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{ backgroundColor: 'var(--color-bg-secondary)', borderBottom: '1px solid var(--color-border)', padding: '1rem' }}>
+            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Report for week ending: {new Date(report.report_date).toLocaleDateString()}</h2>
+          </div>
+          <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             
             <section>
               <h3 style={{ fontWeight: 600, marginBottom: '0.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.25rem' }}>Tasks Completed</h3>
@@ -107,7 +107,7 @@ export default function PortalWeeklyReports() {
               )}
             </section>
 
-          </CardContent>
+          </div>
         </Card>
       ))}
     </div>

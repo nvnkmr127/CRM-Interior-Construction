@@ -6,6 +6,8 @@ import { getProject, deleteProject, updateProject, archiveProject } from '../../
 import ProjectForm from '../../components/projects/ProjectForm';
 import ReopenProjectModal from '../../components/projects/ReopenProjectModal';
 import CancelProjectModal from '../../components/projects/CancelProjectModal';
+import PauseProjectModal from '../../components/projects/PauseProjectModal';
+import ResumeProjectModal from '../../components/projects/ResumeProjectModal';
 
 // Lazy load tabs
 const PhaseTimeline = React.lazy(() => import('../../components/projects/PhaseTimeline'));
@@ -53,6 +55,7 @@ const SiteVisitsTab = React.lazy(() => import('../../components/projects/SiteVis
 const DelayNotificationsTab = React.lazy(() => import('../../components/projects/DelayNotificationsTab'));
 const PunchListTab = React.lazy(() => import('../../components/projects/PunchListTab'));
 const ExecutionQCTab = React.lazy(() => import('../../components/projects/qc/ExecutionQCTab'));
+const VendorsTab = React.lazy(() => import('../../components/projects/VendorsTab'));
 import HandoverModal from '../../components/projects/HandoverModal';
 import DesignStageHeader from '../../components/projects/DesignStageHeader';
 
@@ -868,7 +871,7 @@ export default function ProjectDetail() {
     }
   };
 
-  const tabs = ['Overview', 'Booking', 'Meeting Notes', 'Site Visits', 'Baseline Assessment', 'Delay Notifications', 'Handovers', 'Design Brief', 'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 'Commercial Approval', 'Change Orders', 'BOQ Variance', 'Budget', 'Purchase Requests', 'Purchase Orders', 'Material Deliveries', 'Vendor Payments', 'Substitutions', 'Factory Production', 'Coordination', 'Phases', 'Gantt Chart', 'Work Activities', 'Room Progress', 'Tasks', 'Daily Site Reports', 'Weekly Reports', 'Documents', 'Drawing Register', 'MEP Checklist', 'Payments', 'Execution QC', 'Snags', 'Punch List', 'Handover', 'Warranties', 'AMCs', 'Handover Readiness', 'Service Tickets', 'Customer Retention', 'Project Closure', 'Retrospective'];
+  const tabs = ['Overview', 'Booking', 'Meeting Notes', 'Site Visits', 'Baseline Assessment', 'Delay Notifications', 'Handovers', 'Design Brief', 'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 'Commercial Approval', 'Change Orders', 'BOQ Variance', 'Budget', 'Purchase Requests', 'Purchase Orders', 'Material Deliveries', 'Vendors', 'Vendor Payments', 'Substitutions', 'Factory Production', 'Coordination', 'Phases', 'Gantt Chart', 'Work Activities', 'Room Progress', 'Tasks', 'Daily Site Reports', 'Weekly Reports', 'Documents', 'Drawing Register', 'MEP Checklist', 'Payments', 'Execution QC', 'Snags', 'Punch List', 'Handover', 'Warranties', 'AMCs', 'Handover Readiness', 'Service Tickets', 'Customer Retention', 'Project Closure', 'Retrospective'];
 
   const reloadProject = () => {
     if (!projectId) return;
@@ -898,6 +901,7 @@ export default function ProjectDetail() {
       case 'Booking': return <BookingTab projectId={projectId} projectStatus={project?.status} onProjectUpdated={reloadProject} />;
       case 'Meeting Notes': return <MeetingNotesTab projectId={projectId} />;
       case 'Site Visits': return <SiteVisitsTab projectId={projectId} />;
+      case 'Vendors': return <VendorsTab projectId={projectId} />;
       case 'Baseline Assessment': return <BaselineAssessmentTab projectId={projectId} />;
       case 'Delay Notifications': return <DelayNotificationsTab projectId={projectId} />;
       case 'Handovers': return <HandoverHistoryTab projectId={projectId} />;
@@ -1207,6 +1211,7 @@ export default function ProjectDetail() {
 
       {isEditing && (
         <ProjectForm 
+          isOpen={true}
           project={project} 
           onClose={() => setIsEditing(false)} 
           onSave={(updatedProject) => {

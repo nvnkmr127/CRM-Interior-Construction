@@ -332,8 +332,8 @@ export default function GlobalFactoryProductionPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {coordinationData.map(item => (
-                      <tr key={item.projectId}>
+                    {coordinationData.map((item, index) => (
+                      <tr key={`${item.projectId}-${index}`}>
                         <td className={styles.bold}>{item.projectName}</td>
                         <td>{item.pmName}</td>
                         <td>{formatDate(item.siteReadinessDate)}</td>

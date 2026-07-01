@@ -271,5 +271,17 @@ export const updateExternalInspection = (projectId, id, data) => api.patch(`/pro
 export const deleteExternalInspection = (projectId, id) => api.delete(`/projects/${projectId}/external-inspections/${id}`).then(r => r.data.data);
 
 // Project Profitability
-export const getProjectProfitability = (projectId) => api.get(/projects/ + projectId + /profitability).then(r => r.data.data);
-export const getProjectLedger = (projectId) => api.get(/projects/ + projectId + /ledger).then(r => r.data.data);
+export const getProjectProfitability = (projectId) => api.get(`/projects/${projectId}/profitability`).then(r => r.data.data);
+export const getProjectLedger = (projectId) => api.get(`/projects/${projectId}/ledger`).then(r => r.data.data);
+
+
+// Vendor Defaults & Recovery
+export const markVendorDefault = (projectId, vendorId, data) => api.post(`/projects/${projectId}/vendors/${vendorId}/default`, data).then(r => r.data.data);
+export const updateVendorRecovery = (projectId, vendorId, data) => api.patch(`/projects/${projectId}/vendors/${vendorId}/recovery`, data).then(r => r.data.data);
+
+// Payment Escalations
+export const getPaymentEscalations = (projectId) => api.get(`/projects/${projectId}/payment-escalations`).then(r => r.data.data);
+export const triggerPaymentEscalation = (projectId, data) => api.post(`/projects/${projectId}/payment-escalations`, data).then(r => r.data.data);
+export const resolvePaymentEscalation = (projectId, escalationId) => api.patch(`/projects/${projectId}/payment-escalations/${escalationId}/resolve`).then(r => r.data.data);
+
+

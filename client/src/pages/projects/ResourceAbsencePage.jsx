@@ -164,7 +164,7 @@ export default function ResourceAbsencePage() {
       )}
 
       {showModal && (
-        <Modal title="Plan Leave" onClose={() => setShowModal(false)} size="lg">
+        <Modal isOpen={showModal} title="Plan Leave" onClose={() => setShowModal(false)} size="lg">
           <form onSubmit={handleSubmit} className={styles.form}>
             <div className={styles.formRow}>
               <div className={styles.formGroup}>

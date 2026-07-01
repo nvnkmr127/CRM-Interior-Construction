@@ -126,9 +126,9 @@ export default function ResourceCapacityPage() {
   // Filtered resources
   const filteredResources = resources.filter(u => {
     // Search match
-    const nameMatch = u.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const emailMatch = u.email.toLowerCase().includes(searchQuery.toLowerCase())
-    const roleMatch = u.role_name.toLowerCase().includes(searchQuery.toLowerCase())
+    const nameMatch = (u.name || '').toLowerCase().includes(searchQuery.toLowerCase())
+    const emailMatch = (u.email || '').toLowerCase().includes(searchQuery.toLowerCase())
+    const roleMatch = (u.role_name || '').toLowerCase().includes(searchQuery.toLowerCase())
     const matchesSearch = nameMatch || emailMatch || roleMatch
 
     // Role filter

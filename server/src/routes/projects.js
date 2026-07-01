@@ -42,6 +42,7 @@ const baselineAssessmentRoutes = require('./baselineAssessment');
 const siteExpensesRoutes = require('./siteExpenses');
 const materialUsagesRoutes = require('./materialUsages');
 const labourAttendanceRoutes = require('./labourAttendance');
+const paymentEscalationsRoutes = require('./paymentEscalations');
 
 
 const verifyProjectBooked = require('../middleware/verifyBooking');
@@ -111,6 +112,7 @@ router.use('/:projectId/closure-checklist', verifyProjectBooked, projectClosures
 router.use('/:projectId/retrospective', verifyProjectBooked, projectRetrospectivesRoutes);
 router.use('/:projectId/baseline-assessment', verifyProjectBooked, baselineAssessmentRoutes);
 router.use('/:projectId/attendance', verifyProjectBooked, labourAttendanceRoutes);
+router.use('/:projectId/payment-escalations', verifyProjectBooked, paymentEscalationsRoutes);
 router.use('/:projectId/site-expenses', verifyProjectBooked, siteExpensesRoutes);
 router.use('/:projectId/material-usages', verifyProjectBooked, materialUsagesRoutes);
 
@@ -1966,7 +1968,13 @@ router.get('/:projectId/vendor-coordination', authorize('projects:read'), async 
          scheduled_start_date, 
          scheduled_finish_date, 
          blocker_description, 
-         current_status 
+         current_status,
+         default_date,
+         work_completed_assessment,
+         outstanding_scope,
+         replacement_vendor_id,
+         financial_recovery_amount,
+         financial_recovery_status
        FROM project_vendors 
        WHERE project_id = $1 AND tenant_id = $2
        ORDER BY scheduled_start_date ASC, created_at ASC`,
@@ -2029,8 +2037,45 @@ router.patch('/:projectId/vendor-coordination/:vendorId', authorize('projects:up
       entity: 'project_vendor',
       entityId: vendorId,
       oldValue,
-      newValue: rows[0]
+      newValue: { ...rows[0] }
     });
+
+    return success(res, rows[0]);
+  } catch (err) {
+    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    next(err);
+  }
+});
+
+// PATCH /api/projects/:projectId/vendors/:vendorId/recovery
+router.patch('/:projectId/vendors/:vendorId/recovery', authorize('projects:manage'), async (req, res, next) => {
+  try {
+    const { projectId, vendorId } = req.params;
+    const schema = z.object({
+      financialRecoveryStatus: z.enum(['pending', 'recovered', 'written_off']),
+      financialRecoveryAmount: z.number().min(0).optional()
+    });
+
+    const data = schema.parse(req.body);
+
+    const checkRes = await pool.query(
+      `SELECT id FROM project_vendors WHERE id = $1 AND project_id = $2 AND tenant_id = $3 AND (status = 'defaulted' OR current_status = 'defaulted')`,
+      [vendorId, projectId, req.tenantId]
+    );
+    if (checkRes.rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Defaulted project vendor not found.', 404);
+    }
+
+    let query = `UPDATE project_vendors SET financial_recovery_status = $1, updated_at = NOW()`;
+    const params = [data.financialRecoveryStatus, vendorId, projectId, req.tenantId];
+    if (data.financialRecoveryAmount !== undefined) {
+      query = `UPDATE project_vendors SET financial_recovery_status = $1, financial_recovery_amount = $2, updated_at = NOW()`;
+      params.splice(1, 0, data.financialRecoveryAmount);
+    }
+
+    query += ` WHERE id = $${params.length - 2} AND project_id = $${params.length - 1} AND tenant_id = $${params.length} RETURNING *`;
+
+    const { rows } = await pool.query(query, params);
 
     return success(res, rows[0]);
   } catch (err) {

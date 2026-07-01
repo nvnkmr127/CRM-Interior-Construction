@@ -4,9 +4,10 @@ import { getProjects } from '../../api/projects';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import styles from './WarehousePage.module.css';
-import { toast } from 'react-toastify';
+import { useToast } from '../../store/toastContext';
 
 export default function WarehousePage() {
+  const toast = useToast();
   const [warehouses, setWarehouses] = useState([]);
   const [selectedWarehouse, setSelectedWarehouse] = useState(null);
   const [activeTab, setActiveTab] = useState('inventory'); // inventory, quarantined, transactions
@@ -85,7 +86,7 @@ export default function WarehousePage() {
     }
   }, [selectedWarehouse, activeTab]);
 
-  const loadBaseData = async () => {
+  async function loadBaseData() {
     setLoading(true);
     try {
       const [wRes, pRes] = await Promise.all([
@@ -109,7 +110,7 @@ export default function WarehousePage() {
     }
   };
 
-  const loadTabData = async () => {
+  async function loadTabData() {
     if (!selectedWarehouse) return;
     try {
       if (activeTab === 'inventory') {
@@ -301,9 +302,9 @@ export default function WarehousePage() {
           <Button size="small" onClick={() => setIsWarehouseModalOpen(true)}>+</Button>
         </div>
         <div className={styles.warehouseList}>
-          {warehouses.map(w => (
+          {warehouses.map((w, index) => (
             <div
-              key={w.id}
+              key={w.id || index}
               className={`${styles.warehouseItem} ${selectedWarehouse?.id === w.id ? styles.activeWarehouse : ''}`}
               onClick={() => setSelectedWarehouse(w)}
             >

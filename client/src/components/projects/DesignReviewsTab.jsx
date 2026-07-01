@@ -10,7 +10,6 @@ import {
   associateDrawingWithRound,
   getDrawingComments,
   addDrawingComment,
-  addDrawingComment,
   freezeProjectDesign,
   getProject,
   createChangeOrder

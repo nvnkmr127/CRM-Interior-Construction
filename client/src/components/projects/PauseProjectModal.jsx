@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Modal, Button, Input, Textarea } from '../ui';
 import { pauseProject } from '../../api/projects';
-import { toast } from 'react-hot-toast';
+import { useToast } from '../../store/toastContext';
 
 export default function PauseProjectModal({ projectId, isOpen, onClose, onSuccess }) {
+  const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     reason: '',

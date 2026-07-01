@@ -450,7 +450,6 @@ export default function SnagsDashboard({ projectId }) {
             </div>
           )}
         </div>
-        </div>
       </Modal>
 
       {/* Report Snag Modal */}

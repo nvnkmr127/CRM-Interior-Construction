@@ -11,12 +11,14 @@ export default function Button({
   onClick,
   type = 'button',
   children,
+  className: customClassName,
   ...props
 }) {
   const className = [
     styles.btn,
     styles[variant],
-    styles[size]
+    styles[size],
+    customClassName
   ].filter(Boolean).join(' ');
 
   return (

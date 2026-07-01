@@ -59,8 +59,8 @@ export default function GlobalRetentionDashboard() {
   // Filters and Search logic
   const filteredData = data.filter(item => {
     const matchesSearch =
-      item.project_name.toLowerCase().includes(search.toLowerCase()) ||
-      (item.pm_name && item.pm_name.toLowerCase().includes(search.toLowerCase()));
+      (item.project_name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (item.pm_name || '').toLowerCase().includes(search.toLowerCase());
 
     if (!matchesSearch) return false;
 

@@ -39,8 +39,8 @@ export default function GlobalCoordinationPage() {
   // Filter and Search logic
   const filteredData = data.filter(item => {
     const matchesSearch = 
-      item.projectName.toLowerCase().includes(search.toLowerCase()) ||
-      item.pmName.toLowerCase().includes(search.toLowerCase());
+      (item.projectName || '').toLowerCase().includes(search.toLowerCase()) ||
+      (item.pmName || '').toLowerCase().includes(search.toLowerCase());
 
     if (!matchesSearch) return false;
 
@@ -151,8 +151,8 @@ export default function GlobalCoordinationPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredData.map(item => (
-                <tr key={item.projectId}>
+              {filteredData.map((item, index) => (
+                <tr key={item.projectId ? `${item.projectId}-${index}` : index}>
                   <td>
                     <Link to={`/projects/${item.projectId}`} className={styles.projectLink}>
                       {item.projectName}

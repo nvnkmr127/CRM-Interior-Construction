@@ -2,14 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Badge, Button, Modal, Input, Select } from '../../components/ui';
 import styles from './PaymentsTab.module.css';
 import { getPaymentMilestones, updatePaymentMilestone } from '../../api/paymentMilestones';
+import { getPaymentEscalations } from '../../api/projects';
 import { getInvoiceDraft, createInvoice } from '../../api/invoices';
 import { getCreditNotes, getRefunds, createCreditNote, createRefund } from '../../api/financials';
 import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
+import PaymentEscalationModal from '../../components/projects/PaymentEscalationModal';
 
 export default function PaymentsTab({ projectId }) {
   const toast = useToast();
   const [payments, setPayments] = useState([]);
+  const [escalations, setEscalations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
@@ -58,8 +61,22 @@ export default function PaymentsTab({ projectId }) {
     paymentMethod: 'Bank Transfer',
     referenceNumber: '',
     reason: '',
+    reason: '',
     notes: ''
   });
+
+  const [escalationModalOpen, setEscalationModalOpen] = useState(false);
+  const [escalationMilestone, setEscalationMilestone] = useState(null);
+  const [escalationDaysOverdue, setEscalationDaysOverdue] = useState(0);
+
+  const loadEscalations = async () => {
+    try {
+      const res = await getPaymentEscalations(projectId);
+      setEscalations(res || []);
+    } catch (e) {
+      console.error('Failed to load escalations:', e);
+    }
+  };
 
   useEffect(() => {
     if (!projectId) return;
@@ -94,16 +111,22 @@ export default function PaymentsTab({ projectId }) {
     }).catch(err => {
       console.error('Failed to load credit notes or refunds:', err);
     });
+
+    loadEscalations();
   }, [projectId]);
 
   // Overdue logic
   const today = new Date().toISOString().split('T')[0];
   
   const processedPayments = payments.map(p => {
+    let daysOverdue = 0;
     if (p.status !== 'paid' && p.dueDate < today) {
-      return { ...p, displayStatus: 'overdue', isOverdue: true };
+      const diffTime = Math.abs(new Date(today) - new Date(p.dueDate));
+      daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const activeEscalation = escalations.find(e => e.payment_milestone_id === p.id && e.status === 'active');
+      return { ...p, displayStatus: 'overdue', isOverdue: true, daysOverdue, activeEscalation };
     }
-    return { ...p, displayStatus: p.status, isOverdue: false };
+    return { ...p, displayStatus: p.status, isOverdue: false, daysOverdue: 0 };
   });
 
   const overdueCount = processedPayments.filter(p => p.isOverdue).length;
@@ -314,6 +337,12 @@ export default function PaymentsTab({ projectId }) {
     return 'neutral';
   };
 
+  const handleOpenEscalation = (p) => {
+    setEscalationMilestone(p);
+    setEscalationDaysOverdue(p.daysOverdue);
+    setEscalationModalOpen(true);
+  };
+
   if (loading) {
     return <div style={{ padding: '32px', color: 'var(--color-text-muted)' }}>Loading payments…</div>;
   }
@@ -368,6 +397,7 @@ export default function PaymentsTab({ projectId }) {
               <th>Amount</th>
               <th>Due Date</th>
               <th>Status</th>
+              <th>Escalation</th>
               <th>Invoice</th>
               <th>Actions</th>
             </tr>
@@ -387,6 +417,15 @@ export default function PaymentsTab({ projectId }) {
                 </td>
                 <td style={p.isOverdue ? {color: 'var(--color-danger)', fontWeight: 600} : {}}>{p.dueDate}</td>
                 <td><Badge variant={getStatusVariant(p.displayStatus)} size="sm">{p.displayStatus.replace('_', ' ').toUpperCase()}</Badge></td>
+                <td>
+                  {p.activeEscalation ? (
+                    <Badge variant="warning" size="sm">
+                      {p.activeEscalation.escalation_level.replace(/_/g, ' ').toUpperCase()}
+                    </Badge>
+                  ) : (
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-xs)' }}>None</span>
+                  )}
+                </td>
                 <td>
                   {p.invoiceReference ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -413,9 +452,16 @@ export default function PaymentsTab({ projectId }) {
                   )}
                 </td>
                 <td>
-                  {p.status !== 'paid' && (
-                    <Button variant="outline" size="sm" onClick={() => handleMarkPaidClick(p)}>Mark Paid</Button>
-                  )}
+                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                    {p.status !== 'paid' && (
+                      <Button variant="outline" size="sm" onClick={() => handleMarkPaidClick(p)}>Mark Paid</Button>
+                    )}
+                    {p.isOverdue && p.daysOverdue >= 15 && (
+                      <Button variant="outline" size="sm" style={{ color: 'var(--color-warning)', borderColor: 'var(--color-warning)' }} onClick={() => handleOpenEscalation(p)}>
+                        Escalate
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
             )) : (
@@ -861,15 +907,24 @@ export default function PaymentsTab({ projectId }) {
               onChange={e => setRefundForm(prev => ({ ...prev, notes: e.target.value }))} 
             />
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)', marginTop: 'var(--space-4)' }}>
-              <Button variant="ghost" onClick={() => setRefundModalOpen(false)} disabled={refundSubmitting}>Cancel</Button>
+            <div style={{display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)', marginTop: 'var(--space-4)'}}>
+              <Button variant="ghost" onClick={() => setRefundModalOpen(false)}>Cancel</Button>
               <Button variant="primary" onClick={handleConfirmRefund} disabled={refundSubmitting}>
-                {refundSubmitting ? 'Recording...' : 'Confirm & Record Refund'}
+                {refundSubmitting ? 'Recording...' : 'Record Refund'}
               </Button>
             </div>
           </div>
         </Modal>
       )}
+
+      <PaymentEscalationModal 
+        isOpen={escalationModalOpen}
+        onClose={() => setEscalationModalOpen(false)}
+        onSuccess={loadEscalations}
+        projectId={projectId}
+        milestone={escalationMilestone}
+        daysOverdue={escalationDaysOverdue}
+      />
     </div>
   );
 }

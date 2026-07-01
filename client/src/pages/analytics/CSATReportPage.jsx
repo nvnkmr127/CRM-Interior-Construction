@@ -49,7 +49,7 @@ export default function CSATReportPage() {
     );
   }
 
-  const { summary, trends = [], byProjectType = [], byTeamMember = [], byCity = [], feedbacks = [] } = data;
+  const { summary = {}, trends = [], byProjectType = [], byTeamMember = [], byCity = [], feedbacks = [] } = data;
 
   const renderStars = (rating) => {
     if (!rating || rating === 0) return <span className={styles.noStars}>No ratings</span>;
@@ -74,17 +74,18 @@ export default function CSATReportPage() {
 
   // Filter raw feedbacks list
   const filteredFeedbacks = feedbacks.filter(f => {
+    const term = (searchTerm || '').toLowerCase();
     const matchesSearch = 
-      f.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      f.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (f.comments && f.comments.toLowerCase().includes(searchTerm.toLowerCase()));
+      f.projectName?.toLowerCase().includes(term) ||
+      f.clientName?.toLowerCase().includes(term) ||
+      (f.comments && f.comments.toLowerCase().includes(term));
       
     const matchesScore = scoreFilter === 'all' || f.score === parseInt(scoreFilter, 10);
     return matchesSearch && matchesScore;
   });
 
   // Calculate percentages for distribution bars
-  const totalDistribution = Object.values(summary.distribution).reduce((a, b) => a + b, 0) || 1;
+  const totalDistribution = Object.values(summary.distribution || {}).reduce((a, b) => a + b, 0) || 1;
 
   // Max value for trends/projects bar chart
   let activeSegmentsList = [];
@@ -121,11 +122,11 @@ export default function CSATReportPage() {
         {/* Score Card */}
         <div className={styles.scoreCard}>
           <span className={styles.scoreTitle}>Overall CSAT Score</span>
-          <span className={styles.scoreNumber}>{summary.avgScore.toFixed(2)}</span>
+          <span className={styles.scoreNumber}>{(summary.avgScore || 0).toFixed(2)}</span>
           <div className={styles.scoreStars}>
-            {renderStars(summary.avgScore)}
+            {renderStars(summary.avgScore || 0)}
           </div>
-          <span className={styles.scoreCount}>Based on {summary.totalSurveys} client responses</span>
+          <span className={styles.scoreCount}>Based on {summary.totalSurveys || 0} client responses</span>
         </div>
 
         {/* Distribution Bars */}
@@ -133,7 +134,7 @@ export default function CSATReportPage() {
           <h4 className={styles.distTitle}>Rating Distribution</h4>
           <div className={styles.distList}>
             {[5, 4, 3, 2, 1].map(score => {
-              const count = summary.distribution[score] || 0;
+              const count = (summary.distribution || {})[score] || 0;
               const pct = (count / totalDistribution) * 100;
               return (
                 <div key={score} className={styles.distRow}>

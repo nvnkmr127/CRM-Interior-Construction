@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Modal, Button } from '../ui';
 import { resumeProject } from '../../api/projects';
-import { toast } from 'react-hot-toast';
+import { useToast } from '../../store/toastContext';
 
 export default function ResumeProjectModal({ projectId, isOpen, onClose, onSuccess }) {
+  const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [checks, setChecks] = useState({
     siteConditionVerified: false,
