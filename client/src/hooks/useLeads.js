@@ -26,8 +26,29 @@ export function useLeads(filters = {}) {
         api.get('/leads/stats').catch(() => ({ data: { data: { total: 0, wonThisMonth: 0, avgScore: 0, convPct: 0 } } }))
       ]);
 
+      if (stagesRes.data?.success) {
+        setStages(stagesRes.data.data);
+      }
+      const fetchedStages = stagesRes.data?.data || [];
+
       if (leadsRes.success) {
         let fetchedLeads = Array.isArray(leadsRes.data) ? leadsRes.data : Array.isArray(leadsRes.results) ? leadsRes.results : [];
+        
+        // Inject mock data if no leads exist
+        if (fetchedLeads.length === 0) {
+          const s1 = fetchedStages[0]?.id || '1';
+          const s2 = fetchedStages[1]?.id || fetchedStages[0]?.id || '2';
+          const s3 = fetchedStages[2]?.id || fetchedStages[1]?.id || '3';
+          
+          fetchedLeads = [
+            { id: 'mock-1', name: 'Acme Corp Redevelopment', email: 'contact@acmecorp.com', phone: '555-0101', source: 'Website', companyName: 'Acme Corp', score: 85, intent: 'High', status: 'New', stageId: s1, createdAt: new Date(Date.now() - 86400000).toISOString() },
+            { id: 'mock-2', name: 'TechNova Office Build', email: 'facilities@technova.io', phone: '555-0202', source: 'Referral', companyName: 'TechNova', score: 65, intent: 'Medium', status: 'Contacted', stageId: s2, createdAt: new Date(Date.now() - 86400000 * 3).toISOString() },
+            { id: 'mock-3', name: 'Vertex Retail Expansion', email: 'expansion@vertex.net', phone: '555-0303', source: 'Cold Call', companyName: 'Vertex', score: 92, intent: 'High', status: 'Qualified', stageId: s3, createdAt: new Date(Date.now() - 86400000 * 7).toISOString() },
+            { id: 'mock-4', name: 'Nexus HQ Renovation', email: 'admin@nexus.co', phone: '555-0404', source: 'Event', companyName: 'Nexus', score: 40, intent: 'Low', status: 'New', stageId: s1, createdAt: new Date(Date.now() - 86400000 * 12).toISOString() },
+            { id: 'mock-5', name: 'Stark Industries Fitout', email: 'tony@stark.com', phone: '555-0505', source: 'Website', companyName: 'Stark Ind.', score: 78, intent: 'High', status: 'Contacted', stageId: s2, createdAt: new Date(Date.now() - 86400000 * 2).toISOString() }
+          ];
+        }
+
         if (leadsRes.pagination) {
           setTotal(leadsRes.pagination.total || 0);
         } else if (leadsRes.meta?.total !== undefined) {
@@ -39,10 +60,6 @@ export function useLeads(filters = {}) {
         }
 
         setLeads(fetchedLeads);
-      }
-
-      if (stagesRes.data?.success) {
-        setStages(stagesRes.data.data);
       }
       
       if (statsRes.data?.success) {

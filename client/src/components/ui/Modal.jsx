@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import styles from './Modal.module.css'
 
-export default function Modal({ isOpen, onClose, title, size='md', children, footer, closeOnBackdrop=true }) {
+export default function Modal({ isOpen, onClose, title, size='md', children, footer, closeOnBackdrop=true, hideHeader=false, style={} }) {
   const panelRef = useRef(null)
 
   // Lock body scroll when open
@@ -32,15 +32,18 @@ export default function Modal({ isOpen, onClose, title, size='md', children, foo
     <div className={styles.overlay} onClick={closeOnBackdrop ? onClose : undefined}>
       <div
         ref={panelRef}
-        className={`${styles.panel} ${styles[size]}`}
+        className={`${styles.panel} ${styles[size]} ${hideHeader ? styles.noHeader : ''}`}
         onClick={e => e.stopPropagation()}
         role='dialog' aria-modal='true' aria-labelledby='modal-title'
+        style={style}
       >
-        <div className={styles.header}>
-          <h2 id='modal-title' className={styles.title}>{title}</h2>
-          <button className={styles.close} onClick={onClose} aria-label='Close'>✕</button>
-        </div>
-        <div className={styles.body}>{children}</div>
+        {!hideHeader && (
+          <div className={styles.header}>
+            <h2 id='modal-title' className={styles.title}>{title}</h2>
+            <button className={styles.close} onClick={onClose} aria-label='Close'>✕</button>
+          </div>
+        )}
+        <div className={styles.body} style={hideHeader ? { padding: 0 } : {}}>{children}</div>
         {footer && <div className={styles.footer}>{footer}</div>}
       </div>
     </div>,

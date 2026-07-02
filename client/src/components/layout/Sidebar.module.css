@@ -26,7 +26,8 @@
   flex-shrink: 0;
 }
 .logoText { font-size: var(--text-md); font-weight: 700; color: white; white-space: nowrap; }
-.nav { flex: 1; overflow-y: auto; padding: var(--space-3) 0; }
+.nav { flex: 1; overflow-y: auto; padding: var(--space-3) 0; -ms-overflow-style: none; scrollbar-width: none; }
+.nav::-webkit-scrollbar { display: none; }
 .navGroup { margin-bottom: var(--space-5); }
 .groupLabel {
   font-size: 10px; font-weight: 600; color: rgba(200,200,212,0.4);

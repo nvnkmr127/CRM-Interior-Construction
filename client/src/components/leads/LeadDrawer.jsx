@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../../store/toastContext';
-import { Drawer, Button, Badge } from '../ui';
+import { Modal, Button, Badge } from '../ui';
 import ScoreBadge from './ScoreBadge';
 import ActivityTimeline from './ActivityTimeline';
 import TaskWidget from './TaskWidget';
@@ -466,7 +466,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   if (!isOpen) return null;
 
   return (
-    <Drawer isOpen={isOpen} onClose={onClose} width="1295px" closeOnBackdrop={false} hideHeader noPadding>
+    <Modal isOpen={isOpen} onClose={onClose} closeOnBackdrop={false} hideHeader style={{ width: '1295px', maxWidth: '95vw', height: '90vh', borderRadius: '12px', overflow: 'hidden' }}>
       {loading || !lead ? (
         <div className="p-6 flex items-center justify-center text-gray-500">Loading lead details...</div>
       ) : (
@@ -474,20 +474,27 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
           {/* HEADER */}
           <div className="bg-white border-b border-gray-200 px-6 pt-6 pb-4 shrink-0 shadow-sm relative z-10">
-            <div className="flex justify-between items-start mb-3">
-              <div className="flex-1 mr-4">
+            <div className="flex items-center justify-between mb-3 gap-4">
+              <div className="flex-1">
                 <input
                   type="text"
                   value={lead.name}
                   onChange={(e) => handleFieldChange('name', e.target.value)}
                   onBlur={(e) => handleFieldBlur('name', e.target.value)}
-                  className="text-xl font-bold text-gray-900 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none w-full pb-1 transition-colors"
+                  className="text-xl font-bold !text-black bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none w-full pb-1 transition-colors"
                   placeholder="Lead Name"
                 />
               </div>
-              <Button variant="ghost" size="sm" onClick={onClose} className="!p-1 text-gray-800 hover:text-black">
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
-              </Button>
+              <button 
+                onClick={onClose} 
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors shrink-0 flex items-center justify-center"
+                title="Close"
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
             </div>
 
             <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -570,11 +577,14 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
           {/* TABS NAVIGATION */}
           <div className="bg-white px-6 border-b border-gray-200 shrink-0">
-            <nav className="flex -mb-px px-6 gap-6 overflow-x-auto">
-              {['overview', 'negotiation', 'ai-copilot', 'knowledge-base', 'stakeholders', 'communications', 'preferences', 'activity', 'tasks', 'followups', 'meeting-schedule', 'files', 'estimates', 'inspirations', 'twin', 'automations'].map(tab => (
+            <nav className="flex -mb-px px-6 gap-6 overflow-x-auto hide-scrollbar" style={{ scrollBehavior: 'smooth' }}>
+              {['overview', 'activity', 'communications', 'tasks', 'followups', 'meeting-schedule', 'stakeholders', 'preferences', 'inspirations', 'estimates', 'negotiation', 'files', 'ai-copilot', 'knowledge-base', 'twin', 'automations'].map(tab => (
                 <button
                   key={tab}
-                  onClick={() => setActiveTab(tab)}
+                  onClick={(e) => {
+                    setActiveTab(tab);
+                    e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                  }}
                   className={`whitespace-nowrap pb-3 pt-4 px-1 border-b-2 font-medium text-sm capitalize transition-colors ${
                     activeTab === tab
                       ? 'border-blue-500 text-blue-600'
@@ -1618,6 +1628,6 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
           )}
         </div>
       )}
-    </Drawer>
+    </Modal>
   );
 }

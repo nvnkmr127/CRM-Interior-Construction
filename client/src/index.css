@@ -250,6 +250,20 @@ code {
   background-color: var(--color-surface-3) !important;
 }
 
+/* ── CALENDAR PICKER ICON FIX ── */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  display: block;
+  opacity: 1;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="15" viewBox="0 0 24 24"><path fill="%23888" d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/></svg>');
+  width: 16px;
+  height: 15px;
+  cursor: pointer;
+}
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: none;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="15" viewBox="0 0 24 24"><path fill="%23fff" d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/></svg>');
+}
+
 /* ── REACT DATEPICKER DARK THEME OVERRIDES ── */
 .dark .react-datepicker {
   background-color: var(--color-surface) !important;
@@ -286,4 +300,38 @@ code {
 .dark .react-datepicker__time-list-item--selected {
   background-color: var(--color-accent) !important;
   color: var(--color-text-inverse) !important;
+}
+
+/* ── CUSTOM FAST TOOLTIPS ── */
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #000000;
+  color: #ffffff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.05s ease-in-out;
+  z-index: 9999;
+  box-shadow: 0px 4px 12px rgba(0,0,0,0.15);
+}
+
+[data-tooltip]:hover::after {
+  opacity: 1;
+}
+
+.dark [data-tooltip]::after {
+  background-color: #ffffff;
+  color: #000000;
 }

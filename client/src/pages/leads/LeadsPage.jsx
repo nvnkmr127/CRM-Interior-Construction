@@ -44,7 +44,7 @@ export default function LeadsPage() {
   React.useEffect(() => {
     localStorage.setItem('crm_leads_sortBy', sortBy);
   }, [sortBy]);
-  const [view, setView] = useState('list');
+  const [view, setView] = useState('dashboard');
   const [selectedLeadId, setSelectedLeadId] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [stageMenuLeadId, setStageMenuLeadId] = useState(null);
@@ -145,81 +145,48 @@ export default function LeadsPage() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.header} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-        <div>
+      <div className={styles.header}>
+        <div className={styles.headerLeft}>
           <h1 className={styles.title}>Leads</h1>
           <p className={styles.subtitle}>Manage your interior construction pipeline</p>
         </div>
 
-        {/* Universal Search */}
-        <div style={{ flex: 1, minWidth: '250px', maxWidth: '480px' }}>
-          <form 
-            onSubmit={(e) => {
-              e.preventDefault();
-              setDebouncedSearch(search);
-              setPage(1);
-            }} 
-            style={{ width: '100%' }}
+        <div className={styles.viewToggle} style={{ margin: '0 auto' }}>
+          <button
+            onClick={() => setView('dashboard')}
+            className={`${styles.viewBtn} ${view === 'dashboard' ? styles.viewBtnActive : ''}`}
           >
-            <div className={styles.searchContainer} style={{ position: 'relative' }}>
-              <input 
-                type="text" 
-                placeholder="Search leads by name, email, phone..." 
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className={styles.headerSearchInput}
-                style={{ width: '100%', paddingRight: '36px' }}
-              />
-              <svg className={styles.searchIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            </div>
-          </form>
+            &#128202; Dashboard
+          </button>
+          <button
+            onClick={() => setView('list')}
+            className={`${styles.viewBtn} ${view === 'list' ? styles.viewBtnActive : ''}`}
+          >
+            &#9776; List
+          </button>
+          <button
+            onClick={() => setView('kanban')}
+            className={`${styles.viewBtn} ${view === 'kanban' ? styles.viewBtnActive : ''}`}
+          >
+            &#9638; Kanban
+          </button>
+          <button
+            onClick={() => setView('calendar')}
+            className={`${styles.viewBtn} ${view === 'calendar' ? styles.viewBtnActive : ''}`}
+          >
+            &#128197; Calendar
+          </button>
+          <button
+            onClick={() => setView('map')}
+            className={`${styles.viewBtn} ${view === 'map' ? styles.viewBtnActive : ''}`}
+          >
+            &#128506; Map
+          </button>
         </div>
 
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           
-          {/* Notification Center */}
-          <div className={styles.notifWrapper}>
-            <button 
-              onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-              className={styles.notifToggle}
-              title="Notifications"
-            >
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-              <span className={styles.notifBadge}></span>
-            </button>
-            
-            {isNotificationsOpen && (
-              <div className={styles.notifDropdown}>
-                <div className={styles.notifHeader}>
-                  <h3>Notifications</h3>
-                  <button>Mark all read</button>
-                </div>
-                <div className={styles.notifList}>
-                  <div className={styles.notifItem}>
-                    <div className={`${styles.notifIcon} ${styles.notifIconInfo}`}>✨</div>
-                    <div className={styles.notifContent}>
-                      <p><span>AI Suggestion:</span> Follow up with Rahul Sharma. Lead score increased to 92.</p>
-                      <p className={styles.notifTime}>10 mins ago</p>
-                    </div>
-                  </div>
-                  <div className={styles.notifItem}>
-                    <div className={`${styles.notifIcon} ${styles.notifIconAlert}`}>🔴</div>
-                    <div className={styles.notifContent}>
-                      <p><span>SLA Alert:</span> 3 leads in 'Site Visit' have breached the 3-day SLA.</p>
-                      <p className={styles.notifTime}>1 hour ago</p>
-                    </div>
-                  </div>
-                  <div className={styles.notifItem}>
-                    <div className={`${styles.notifIcon} ${styles.notifIconEvent}`}>📅</div>
-                    <div className={styles.notifContent}>
-                      <p><span>Meeting:</span> Site visit with Amit Patel starts in 30 minutes.</p>
-                      <p className={styles.notifTime}>Just now</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+
 
           {isAdmin && (
             <Button 

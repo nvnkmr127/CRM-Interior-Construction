@@ -168,38 +168,6 @@ export default function LeadFilterRow({
         )}
       </div>
 
-      <div className={styles.viewToggle}>
-        <button
-          onClick={() => setView('dashboard')}
-          className={`${styles.viewBtn} ${view === 'dashboard' ? styles.viewBtnActive : ''}`}
-        >
-          &#128202; Dashboard
-        </button>
-        <button
-          onClick={() => setView('list')}
-          className={`${styles.viewBtn} ${view === 'list' ? styles.viewBtnActive : ''}`}
-        >
-          &#9776; List
-        </button>
-        <button
-          onClick={() => setView('kanban')}
-          className={`${styles.viewBtn} ${view === 'kanban' ? styles.viewBtnActive : ''}`}
-        >
-          &#9638; Kanban
-        </button>
-        <button
-          onClick={() => setView('calendar')}
-          className={`${styles.viewBtn} ${view === 'calendar' ? styles.viewBtnActive : ''}`}
-        >
-          &#128197; Calendar
-        </button>
-        <button
-          onClick={() => setView('map')}
-          className={`${styles.viewBtn} ${view === 'map' ? styles.viewBtnActive : ''}`}
-        >
-          &#128506; Map
-        </button>
-      </div>
     </div>
   );
 }

@@ -232,6 +232,7 @@ export default function LeadTable({
                 onChange={handleSelectAll}
               />
             </th>
+            <th className={styles.listTh} style={{ width: '50px' }}>#</th>
             <th className={styles.listTh}>Name</th>
             <th className={styles.listTh}>Phone</th>
             <th className={styles.listTh}>Source</th>
@@ -259,7 +260,7 @@ export default function LeadTable({
               </td>
             </tr>
           ) : (
-            filteredLeads.map(lead => (
+            filteredLeads.map((lead, idx) => (
               <tr
                 key={lead.id}
                 className={styles.listTr}
@@ -278,6 +279,11 @@ export default function LeadTable({
                     checked={selectedIds.has(lead.id)}
                     onChange={(e) => handleSelectRow(e, lead.id)}
                   />
+                </td>
+                <td className={styles.listTd}>
+                  <span className="text-gray-500 font-medium">
+                    {total ? total - (page - 1) * limit - idx : filteredLeads.length - idx}
+                  </span>
                 </td>
                 <td className={styles.listTd}>
                   <div className={styles.leadName}>

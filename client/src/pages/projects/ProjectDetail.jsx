@@ -889,6 +889,67 @@ export default function ProjectDetail() {
       case 'Site Details': return <SiteDetailsTab project={project} onRefresh={reloadProject} />;
       case 'Vendors & Consultants': return <VendorsAndConsultantsTab project={project} onRefresh={reloadProject} />;
       case 'Settings': return <SettingsTab project={project} onRefresh={reloadProject} />;
+      case 'Financial Overview': return (
+        <div className={styles.financialPanel}>
+          <div className={styles.financialPanelHeader}>Financial Overview</div>
+          <div className={styles.financialGrid}>
+            <div className={styles.financialCard}>
+              <span className={styles.financialLabel}>Contract Value (Net)</span>
+              <span className={styles.financialValue}>
+                {formatValue(project.stats?.netContractValue || project.contract_value)}
+              </span>
+            </div>
+            <div className={styles.financialCard}>
+              <span className={styles.financialLabel}>Billed (Net)</span>
+              <span className={styles.financialValue}>
+                {formatValue(project.stats?.netBilled !== undefined ? project.stats.netBilled : project.stats?.totalPayment)}
+              </span>
+            </div>
+            <div className={styles.financialCard}>
+              <span className={styles.financialLabel}>Collected (Net)</span>
+              <span className={styles.financialValue} style={{ color: 'var(--color-success, #22c55e)' }}>
+                {formatValue(project.stats?.netCollections !== undefined ? project.stats.netCollections : project.stats?.collectedPayment)}
+              </span>
+            </div>
+            <div className={styles.financialCard}>
+              <span className={styles.financialLabel}>Outstanding Balance</span>
+              <span className={styles.financialValue} style={{ color: 'var(--color-accent, #3b82f6)' }}>
+                {formatValue(project.stats?.outstandingBalance !== undefined ? project.stats.outstandingBalance : (project.stats?.totalPayment - project.stats?.collectedPayment))}
+              </span>
+            </div>
+            <div className={styles.financialCard}>
+              <span className={styles.financialLabel}>Overdue Amount</span>
+              <span className={`${styles.financialValue} ${project.stats?.overduePayments > 0 ? styles.financialDanger : ''}`}>
+                {formatValue(project.stats?.overduePayments || 0)}
+              </span>
+            </div>
+            <div className={styles.financialCard}>
+              <span className={styles.financialLabel}>Pending Invoices</span>
+              <span className={styles.financialValue} style={{ color: 'var(--color-info, #0ea5e9)' }}>
+                {formatValue(project.stats?.pendingInvoices || 0)}
+              </span>
+            </div>
+            <div className={styles.financialCard}>
+              <span className={styles.financialLabel}>Total Cost</span>
+              <span className={styles.financialValue} style={{ color: 'var(--color-danger, #ef4444)' }}>
+                {formatValue(project.stats?.totalActualCost || 0)}
+              </span>
+            </div>
+            <div className={styles.financialCard}>
+              <span className={styles.financialLabel}>Gross Profit</span>
+              <span className={styles.financialValue} style={{ color: (project.stats?.grossProfit || 0) >= 0 ? 'var(--color-success, #22c55e)' : 'var(--color-danger, #ef4444)' }}>
+                {formatValue(project.stats?.grossProfit !== undefined ? project.stats.grossProfit : (project.stats?.netContractValue || project.contract_value))}
+              </span>
+            </div>
+            <div className={styles.financialCard}>
+              <span className={styles.financialLabel}>Gross Margin</span>
+              <span className={styles.financialValue} style={{ color: (project.stats?.grossMarginPct || 0) >= 20 ? 'var(--color-success, #22c55e)' : (project.stats?.grossMarginPct || 0) >= 0 ? 'var(--color-warning, #eab308)' : 'var(--color-danger, #ef4444)' }}>
+                {project.stats?.grossMarginPct !== undefined ? `${project.stats.grossMarginPct}%` : '100%'}
+              </span>
+            </div>
+          </div>
+        </div>
+      );
       case 'Booking': return <BookingTab projectId={projectId} projectStatus={project?.status} onProjectUpdated={reloadProject} />;
       case 'Meeting Notes': return <MeetingNotesTab projectId={projectId} />;
       case 'Site Visits': return <SiteVisitsTab projectId={projectId} />;
@@ -1139,6 +1200,39 @@ export default function ProjectDetail() {
           )}
         </div>
 
+        {/* Stats Grid */}
+        <div className={styles.statsGrid}>
+          <div className={styles.statCard}>
+            <span className={styles.statLabel}>Task Progress</span>
+            <span className={styles.statValue}>
+              {taskDone}/{taskTotal}
+              {taskTotal > 0 && (
+                <span style={{ color: 'var(--color-text-secondary)', fontSize: '14px' }}>
+                  {' '}({Math.round((taskDone / taskTotal) * 100)}%)
+                </span>
+              )}
+            </span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statLabel}>Current Phase</span>
+            <span className={styles.statValue}>{currentPhase}</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statLabel}>Days Remaining</span>
+            <span className={days !== null && days < 0 ? `${styles.statValue} ${styles.statDanger}` : styles.statValue}>
+              {days === null ? '—' : days < 0 ? `Overdue ${Math.abs(days)} days` : `${days} days`}
+            </span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statLabel}>Payment Collected</span>
+            <span className={styles.statValue}>
+              {formatValue(project.stats?.collectedPayment)}
+              {' of '}
+              {formatValue(project.stats?.netContractValue || project.contract_value)}
+            </span>
+          </div>
+        </div>
+
         {/* Quick Nav Tabs from Form Sections */}
         <div className={styles.headerNav}>
           {[
@@ -1147,7 +1241,8 @@ export default function ProjectDetail() {
             { id: 'Client Profile', icon: '👤', label: 'Client Profile' },
             { id: 'Site Details', icon: '📍', label: 'Site Details' },
             { id: 'Vendors & Consultants', icon: '🤝', label: 'Vendors & Consultants' },
-            { id: 'Settings', icon: '⚙️', label: 'Settings' }
+            { id: 'Settings', icon: '⚙️', label: 'Settings' },
+            { id: 'Financial Overview', icon: '💰', label: 'Financial Overview' }
           ].map(tab => {
             const isActive = activeTab === tab.id;
             return (
@@ -1169,120 +1264,9 @@ export default function ProjectDetail() {
         </div>
       </div>
 
-      <div className={styles.statsGrid}>
-        <div className={styles.statCard}>
-          <span className={styles.statLabel}>Task Progress</span>
-          <span className={styles.statValue}>
-            {taskDone}/{taskTotal}
-            {taskTotal > 0 && (
-              <span style={{ color: 'var(--color-text-secondary)', fontSize: '14px' }}>
-                {' '}({Math.round((taskDone / taskTotal) * 100)}%)
-              </span>
-            )}
-          </span>
-        </div>
-        <div className={styles.statCard}>
-          <span className={styles.statLabel}>Current Phase</span>
-          <span className={styles.statValue}>{currentPhase}</span>
-        </div>
-        <div className={styles.statCard}>
-          <span className={styles.statLabel}>Days Remaining</span>
-          <span className={days !== null && days < 0 ? `${styles.statValue} ${styles.statDanger}` : styles.statValue}>
-            {days === null ? '—' : days < 0 ? `Overdue ${Math.abs(days)} days` : `${days} days`}
-          </span>
-        </div>
-        <div className={styles.statCard}>
-          <span className={styles.statLabel}>Payment Collected</span>
-          <span className={styles.statValue}>
-            {formatValue(project.stats?.collectedPayment)}
-            {' of '}
-            {formatValue(project.stats?.netContractValue || project.contract_value)}
-          </span>
-        </div>
-      </div>
 
-      {/* Project Financial Summary Dashboard Panel */}
-      <div className={styles.financialPanel}>
-        <div className={styles.financialPanelHeader}>Financial Overview</div>
-        <div className={styles.financialGrid}>
-          <div className={styles.financialCard}>
-            <span className={styles.financialLabel}>Contract Value (Net)</span>
-            <span className={styles.financialValue}>
-              {formatValue(project.stats?.netContractValue || project.contract_value)}
-            </span>
-          </div>
-          <div className={styles.financialCard}>
-            <span className={styles.financialLabel}>Billed (Net)</span>
-            <span className={styles.financialValue}>
-              {formatValue(project.stats?.netBilled !== undefined ? project.stats.netBilled : project.stats?.totalPayment)}
-            </span>
-          </div>
-          <div className={styles.financialCard}>
-            <span className={styles.financialLabel}>Collected (Net)</span>
-            <span className={styles.financialValue} style={{ color: 'var(--color-success, #22c55e)' }}>
-              {formatValue(project.stats?.netCollections !== undefined ? project.stats.netCollections : project.stats?.collectedPayment)}
-            </span>
-          </div>
-          <div className={styles.financialCard}>
-            <span className={styles.financialLabel}>Outstanding Balance</span>
-            <span className={styles.financialValue} style={{ color: 'var(--color-accent, #3b82f6)' }}>
-              {formatValue(project.stats?.outstandingBalance !== undefined ? project.stats.outstandingBalance : (project.stats?.totalPayment - project.stats?.collectedPayment))}
-            </span>
-          </div>
-          <div className={styles.financialCard}>
-            <span className={styles.financialLabel}>Overdue Amount</span>
-            <span className={`${styles.financialValue} ${project.stats?.overduePayments > 0 ? styles.financialDanger : ''}`}>
-              {formatValue(project.stats?.overduePayments || 0)}
-            </span>
-          </div>
-          <div className={styles.financialCard}>
-            <span className={styles.financialLabel}>Pending Invoices</span>
-            <span className={styles.financialValue} style={{ color: 'var(--color-info, #0ea5e9)' }}>
-              {formatValue(project.stats?.pendingInvoices || 0)}
-            </span>
-          </div>
-          <div className={styles.financialCard}>
-            <span className={styles.financialLabel}>Total Cost</span>
-            <span className={styles.financialValue} style={{ color: 'var(--color-danger, #ef4444)' }}>
-              {formatValue(project.stats?.totalActualCost || 0)}
-            </span>
-          </div>
-          <div className={styles.financialCard}>
-            <span className={styles.financialLabel}>Gross Profit</span>
-            <span className={styles.financialValue} style={{ color: (project.stats?.grossProfit || 0) >= 0 ? 'var(--color-success, #22c55e)' : 'var(--color-danger, #ef4444)' }}>
-              {formatValue(project.stats?.grossProfit !== undefined ? project.stats.grossProfit : (project.stats?.netContractValue || project.contract_value))}
-            </span>
-          </div>
-          <div className={styles.financialCard}>
-            <span className={styles.financialLabel}>Gross Margin</span>
-            <span className={styles.financialValue} style={{ color: (project.stats?.grossMarginPct || 0) >= 20 ? 'var(--color-success, #22c55e)' : (project.stats?.grossMarginPct || 0) >= 0 ? 'var(--color-warning, #eab308)' : 'var(--color-danger, #ef4444)' }}>
-              {project.stats?.grossMarginPct !== undefined ? `${project.stats.grossMarginPct}%` : '100%'}
-            </span>
-          </div>
-        </div>
-      </div>
 
-      <div className={styles.tabs}>
-        {tabs.map(t => {
-          const isPendingBooking = project?.status === 'pending_booking';
-          const isAllowedTab = t === 'Overview' || t === 'Booking';
-          const isDisabled = isPendingBooking && !isAllowedTab;
-          return (
-            <button
-              key={t}
-              className={`${styles.tab} ${activeTab === t ? styles.tabActive : ''}`}
-              onClick={() => !isDisabled && setActiveTab(t)}
-              disabled={isDisabled}
-              style={{
-                opacity: isDisabled ? 0.5 : 1,
-                cursor: isDisabled ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {isDisabled ? `🔒 ${t}` : t}
-            </button>
-          );
-        })}
-      </div>
+
 
       <div className={styles.tabContent}>
         <Suspense fallback={<div style={{ padding: 24, color: 'var(--color-text-muted)' }}>Loading…</div>}>

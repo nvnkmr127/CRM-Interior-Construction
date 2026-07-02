@@ -1861,7 +1861,9 @@ exports.knowledgeAssistantHandler = async (req, res, next) => {
     const { tenantId } = getTenantAndUser(req);
     const leadId = req.params.id;
     const { question } = req.body;
-    const lead = await leadRepository.findLeadById(tenantId, leadId);
+    const { findLeadById } = require('../repositories/leadRepository');
+    const aiService = require('../services/aiService');
+    const lead = await findLeadById(tenantId, leadId);
     if (!lead) return res.status(404).json({ success: false, error: { message: 'Lead not found' } });
     const activitiesQuery = await pool.query('SELECT type, notes, created_at FROM activities WHERE tenant_id = $1 AND lead_id = $2', [tenantId, leadId]);
     
