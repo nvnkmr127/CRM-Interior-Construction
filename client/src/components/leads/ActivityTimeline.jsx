@@ -247,7 +247,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white border border-gray-200 rounded-lg shadow-sm transition-all sticky top-0 z-10">
+      <div className="bg-white border border-gray-200 rounded-lg shadow-sm transition-all">
         <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border-b rounded-t-lg justify-between items-center">
           <div className="flex flex-wrap gap-2">
             <button 
@@ -379,17 +379,19 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-500">Video Call Link</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Google Meet link"
-                      value={formData.meeting_link}
-                      onChange={(e) => setFormData(prev => ({ ...prev, meeting_link: e.target.value }))}
-                      className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none shadow-inner"
-                    />
-                  </div>
-                  <div className="space-y-1">
+                  {formData.meeting_type === 'Google Meet' && (
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-gray-500">Video Call Link</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Google Meet link"
+                        value={formData.meeting_link}
+                        onChange={(e) => setFormData(prev => ({ ...prev, meeting_link: e.target.value }))}
+                        className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none shadow-inner"
+                      />
+                    </div>
+                  )}
+                  <div className={`space-y-1 ${formData.meeting_type !== 'Google Meet' ? 'col-span-2' : ''}`}>
                     <label className="text-xs font-semibold text-gray-500">Meeting Host</label>
                     <select
                       value={formData.meeting_host}

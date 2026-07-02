@@ -36,9 +36,23 @@ export default function VendorsAndConsultantsTab({ project, onRefresh }) {
     }
   };
 
+  let vendorsValue = 'No vendors assigned';
+  if (Array.isArray(project.vendors)) {
+    vendorsValue = project.vendors.map(v => v.vendor_name || v.name).join(', ') || vendorsValue;
+  } else if (typeof project.vendors === 'string' && project.vendors) {
+    vendorsValue = project.vendors;
+  }
+
+  let consultantsValue = 'No consultants assigned';
+  if (Array.isArray(project.consultants)) {
+    consultantsValue = project.consultants.map(c => c.name || c.consultant_name).join(', ') || consultantsValue;
+  } else if (typeof project.consultants === 'string' && project.consultants) {
+    consultantsValue = project.consultants;
+  }
+
   const fields = [
-    { label: 'Assigned Vendors', value: project.vendors || 'No vendors assigned' },
-    { label: 'Assigned Consultants', value: project.consultants || 'No consultants assigned' },
+    { label: 'Assigned Vendors', value: vendorsValue },
+    { label: 'Assigned Consultants', value: consultantsValue },
   ];
 
   return (

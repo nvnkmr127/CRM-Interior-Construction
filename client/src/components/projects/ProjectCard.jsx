@@ -26,7 +26,7 @@ function formatValue(val) {
 
 export default function ProjectCard({ project, onClick }) {
   const displayProject = project || {
-    name: "Luxury Villa Interior - Phase 1",
+    name: "Luxury Villa Interior - Phase 6",
     client_name: "Mr. Sharma",
     pm_name: "Rahul K.",
     type: "Residential",
@@ -36,6 +36,7 @@ export default function ProjectCard({ project, onClick }) {
     totalTasks: 20,
     phase: "Execution",
     value: 4500000,
+    contract_value: 4500000,
     target_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
     overdue: false
   };

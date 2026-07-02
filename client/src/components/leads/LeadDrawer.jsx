@@ -1211,17 +1211,19 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                           </select>
                         </div>
 
-                        <div className="col-span-2">
-                          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Video Call Link</label>
-                          <input
-                            type="url"
-                            placeholder="https://meet.google.com/..."
-                            value={meetingForm.meeting_link}
-                            onChange={e => setMeetingForm(prev => ({ ...prev, meeting_link: e.target.value }))}
-                            className="w-full text-sm border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
-                          />
-                          <p className="text-[10px] text-gray-400 mt-1">Leave empty to auto-generate a Google Meet link when selected as the type.</p>
-                        </div>
+                        {meetingForm.meeting_type === 'Google Meet' && (
+                          <div className="col-span-2">
+                            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Video Call Link</label>
+                            <input
+                              type="url"
+                              placeholder="https://meet.google.com/..."
+                              value={meetingForm.meeting_link}
+                              onChange={e => setMeetingForm(prev => ({ ...prev, meeting_link: e.target.value }))}
+                              className="w-full text-sm border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+                            />
+                            <p className="text-[10px] text-gray-400 mt-1">Leave empty to auto-generate a Google Meet link when selected as the type.</p>
+                          </div>
+                        )}
 
                         <div className="col-span-2">
                           <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Agenda / Description</label>

@@ -294,7 +294,7 @@ export const initialMockDatabase = {
   projects: [
     {
       id: 'mock-proj-1',
-      name: 'Luxury Villa Interior - Phase 1',
+      name: 'Luxury Villa Interior - Phase 6',
       client_name: 'Mr. Sharma',
       pm_name: 'Rahul K.',
       type: 'Residential',
@@ -304,6 +304,18 @@ export const initialMockDatabase = {
       totalTasks: 20,
       phase: 'Execution',
       value: 4500000,
+      contract_value: 4500000,
+      stats: {
+        netContractValue: 4500000,
+        netBilled: 3000000,
+        netCollections: 2500000,
+        outstandingBalance: 500000,
+        overduePayments: 100000,
+        pendingInvoices: 2,
+        totalActualCost: 1800000,
+        grossProfit: 2700000,
+        grossMarginPct: 60
+      },
       target_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
       overdue: false,
       created_at: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString(),
@@ -500,44 +512,44 @@ export const initialMockDatabase = {
 
 export const loadMockDatabase = () => {
   try {
-    const saved = localStorage.getItem('mockDatabase');
+    const saved = localStorage.getItem('mockDatabase_v3');
     if (saved) {
       const parsed = JSON.parse(saved);
-      // Ensure missing top-level keys get defaults from initial
       const merged = { ...initialMockDatabase, ...parsed };
       
-      // Also ensure that initial leads that were saved without lat/lng get patched with the new coordinates
       if (merged.leads && Array.isArray(merged.leads)) {
         if (merged.leads.length <= 2) {
           merged.leads = [...initialMockDatabase.leads];
         } else {
           merged.leads = merged.leads.map(lead => {
             let updatedLead = { ...lead };
-            
             const initialLead = initialMockDatabase.leads.find(l => l.id === lead.id);
             if (initialLead) {
-              updatedLead = { ...initialLead, ...lead }; // lead overrides initial, but initial provides missing lat/lng
+              updatedLead = { ...initialLead, ...lead };
             }
-            
-            // If the lead STILL has no coordinates (e.g. newly created lead before this fix), give it random ones
             if (!updatedLead.latitude || !updatedLead.longitude) {
               updatedLead.latitude = 12.92 + (Math.random() * 0.1 - 0.05);
               updatedLead.longitude = 77.54 + (Math.random() * 0.1 - 0.05);
             }
-            
             return updatedLead;
           });
         }
       }
       
+      if (merged.projects && Array.isArray(merged.projects)) {
+        merged.projects = merged.projects.map(proj => {
+          const initialProj = initialMockDatabase.projects.find(p => p.id === proj.id);
+          return { ...initialProj, ...proj };
+        });
+      }
       return merged;
     }
   } catch (e) {
-    console.error('Failed to parse mockDatabase from localStorage', e);
+    console.error('Failed to parse mockDatabase_v2', e);
   }
   return { ...initialMockDatabase };
 };
 
 export const saveMockDatabase = (db) => {
-  localStorage.setItem('mockDatabase', JSON.stringify(db));
+  localStorage.setItem('mockDatabase_v3', JSON.stringify(db));
 };
