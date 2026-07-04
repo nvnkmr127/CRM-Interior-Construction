@@ -14,8 +14,8 @@ export default function LeadFilterBar({ filters, setFilters, reps }) {
   };
 
   return (
-    <div className="flex flex-wrap gap-4 items-center mb-6 p-4 rounded-lg shadow" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', borderWidth: '1px' }}>
-      <div className="flex-1 min-w-[200px]">
+    <div className="flex flex-nowrap overflow-x-auto gap-4 items-start mb-6 p-5 rounded-xl shadow-sm" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', borderWidth: '1px' }}>
+      <div className="flex-1 min-w-[220px]">
         <Input 
           type="text" 
           name="search" 
@@ -33,11 +33,11 @@ export default function LeadFilterBar({ filters, setFilters, reps }) {
           onChange={handleRepChange}
           className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
         >
+          <option value="" disabled className="text-xs text-gray-400">Hold Ctrl for multiple</option>
           {reps?.map(rep => (
             <option key={rep.id} value={rep.id}>{rep.name}</option>
           ))}
         </select>
-        <span className="text-xs mt-1 block" style={{ color: 'var(--color-text-secondary)' }}>Hold Ctrl to select multiple</span>
       </div>
 
       <div className="min-w-[120px]">

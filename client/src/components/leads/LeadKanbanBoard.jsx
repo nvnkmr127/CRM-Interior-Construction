@@ -106,14 +106,23 @@ export default function LeadKanbanBoard({ initialLeads = [], stages = [], reps =
     return leads.filter(lead => {
       if (filters.search) {
         const term = filters.search.toLowerCase();
-        const matchName = lead.name?.toLowerCase().includes(term);
-        const matchPhone = lead.phone?.includes(term);
+        const matchName = String(lead.name || '').toLowerCase().includes(term);
+        const matchPhone = String(lead.phone || '').toLowerCase().includes(term);
         if (!matchName && !matchPhone) return false;
       }
-      if (filters.reps.length > 0 && !filters.reps.includes(lead.assigned_rep_id)) return false;
-      if (filters.scoreTier && lead.score_tier !== filters.scoreTier) return false;
-      if (filters.source && lead.source?.toLowerCase() !== filters.source.toLowerCase()) return false;
-      if (filters.locality && !lead.locality?.toLowerCase().includes(filters.locality.toLowerCase())) return false;
+      if (filters.reps.length > 0 && !filters.reps.includes(lead.assignee_id)) return false;
+      if (filters.scoreTier) {
+        const score = Number(lead.score) || 0;
+        let leadTier = 'dead';
+        if (score >= 61) leadTier = 'hot';
+        else if (score >= 31) leadTier = 'warm';
+        else if (score > 0) leadTier = 'cold';
+        
+        if (leadTier !== filters.scoreTier) return false;
+      }
+      if (filters.intent && String(lead.buying_intent || '').toLowerCase() !== filters.intent.toLowerCase()) return false;
+      if (filters.source && String(lead.source || '').toLowerCase() !== filters.source.toLowerCase()) return false;
+      if (filters.locality && !String(lead.locality || '').toLowerCase().includes(filters.locality.toLowerCase())) return false;
       return true;
     });
   }, [leads, filters]);

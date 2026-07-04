@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useToast } from '../../store/toastContext';
 import { Modal, Button, Badge } from '../ui';
 import ScoreBadge from './ScoreBadge';
@@ -92,6 +92,8 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
     reminders: false,
     notes: ''
   });
+
+  const tabsRef = useRef(null);
 
   useEffect(() => {
     if (lead) {
@@ -481,7 +483,8 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   value={lead.name}
                   onChange={(e) => handleFieldChange('name', e.target.value)}
                   onBlur={(e) => handleFieldBlur('name', e.target.value)}
-                  className="text-xl font-bold !text-black bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none w-full pb-1 transition-colors"
+                  className="text-xl font-bold bg-transparent border-b border-black focus:border-blue-500 focus:outline-none w-full pb-1 transition-colors"
+                  style={{ color: 'var(--color-text, inherit)' }}
                   placeholder="Lead Name"
                 />
               </div>
@@ -577,7 +580,11 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
           {/* TABS NAVIGATION */}
           <div className="bg-white px-6 border-b border-gray-200 shrink-0">
-            <nav className="flex -mb-px px-6 gap-6 overflow-x-auto hide-scrollbar" style={{ scrollBehavior: 'smooth' }}>
+            <nav 
+              ref={tabsRef}
+              className="flex px-6 gap-6 overflow-x-auto custom-scrollbar"
+              style={{ scrollBehavior: 'smooth', paddingBottom: '8px', marginBottom: '8px' }}
+            >
               {['overview', 'activity', 'communications', 'tasks', 'followups', 'meeting-schedule', 'stakeholders', 'preferences', 'inspirations', 'estimates', 'negotiation', 'files', 'ai-copilot', 'knowledge-base', 'twin', 'automations'].map(tab => (
                 <button
                   key={tab}
@@ -1170,12 +1177,25 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
                         <div>
                           <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Time *</label>
-                          <input
-                            type="time"
-                            required
-                            value={meetingForm.time}
-                            onChange={e => setMeetingForm(prev => ({ ...prev, time: e.target.value }))}
+                          <DatePicker
+                            selected={meetingForm.time ? new Date(`2000-01-01T${meetingForm.time}`) : null}
+                            onChange={(date) => {
+                              if (date) {
+                                const hours = date.getHours().toString().padStart(2, '0');
+                                const minutes = date.getMinutes().toString().padStart(2, '0');
+                                setMeetingForm(prev => ({ ...prev, time: `${hours}:${minutes}` }));
+                              } else {
+                                setMeetingForm(prev => ({ ...prev, time: '' }));
+                              }
+                            }}
+                            showTimeSelect
+                            showTimeSelectOnly
+                            timeIntervals={15}
+                            timeCaption="Time"
+                            dateFormat="h:mm aa"
                             className="w-full text-sm border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholderText="Select time"
+                            required
                           />
                         </div>
 

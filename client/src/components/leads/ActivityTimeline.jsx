@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { getLeadTimeline, logActivity } from '../../api/leads';
 import api from '../../api/axios';
 import { formatDistanceToNow, format } from 'date-fns';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import AIMeetingModal from './AIMeetingModal';
 
 const Icons = {
@@ -352,12 +354,25 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-gray-500">Time *</label>
-                    <input
-                      type="time"
-                      required
-                      value={formData.meeting_time}
-                      onChange={(e) => setFormData(prev => ({ ...prev, meeting_time: e.target.value }))}
+                    <DatePicker
+                      selected={formData.meeting_time ? new Date(`2000-01-01T${formData.meeting_time}`) : null}
+                      onChange={(date) => {
+                        if (date) {
+                          const hours = date.getHours().toString().padStart(2, '0');
+                          const minutes = date.getMinutes().toString().padStart(2, '0');
+                          setFormData(prev => ({ ...prev, meeting_time: `${hours}:${minutes}` }));
+                        } else {
+                          setFormData(prev => ({ ...prev, meeting_time: '' }));
+                        }
+                      }}
+                      showTimeSelect
+                      showTimeSelectOnly
+                      timeIntervals={15}
+                      timeCaption="Time"
+                      dateFormat="h:mm aa"
                       className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      placeholderText="Select time"
+                      required
                     />
                   </div>
                   <div className="space-y-1">

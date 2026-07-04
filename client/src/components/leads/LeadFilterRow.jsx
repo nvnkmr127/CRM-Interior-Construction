@@ -79,6 +79,15 @@ export default function LeadFilterRow({
 
   return (
     <div className={styles.filterRow}>
+      <input
+        type="text"
+        className={styles.filterSelect}
+        placeholder="Search by name or phone..."
+        value={search || ''}
+        onChange={e => setSearch(e.target.value)}
+        style={{ minWidth: '180px' }}
+      />
+      
       <select
         className={styles.filterSelect}
         value={assigneeFilter}

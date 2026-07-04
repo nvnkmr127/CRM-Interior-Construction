@@ -55,7 +55,9 @@ async function analyzeLeadConversations(lead, activities) {
       }
     });
 
-    const resultText = response.text();
+    let resultText = typeof response.text === 'function' ? response.text() : response.text;
+    resultText = resultText.trim();
+    if (resultText.startsWith('```json')) resultText = resultText.replace(/^```json\n/, '').replace(/\n```$/, '').trim();
     const result = JSON.parse(resultText);
 
     return {
@@ -92,7 +94,8 @@ async function summarizeActivity(text) {
       model: 'gemini-2.5-flash',
       contents: prompt,
     });
-    return response.text().trim();
+    const text = typeof response.text === 'function' ? response.text() : response.text;
+    return text.trim();
   } catch (error) {
     console.error('[AI Service] Failed to summarize activity:', error);
     return text;
@@ -124,7 +127,8 @@ async function draftCommunication(lead, channel, instructions) {
       model: 'gemini-2.5-flash',
       contents: prompt,
     });
-    return response.text().trim();
+    const text = typeof response.text === 'function' ? response.text() : response.text;
+    return text.trim();
   } catch (error) {
     console.error('[AI Service] Failed to draft communication:', error);
     return `Hello ${lead.name},\n\n[Failed to generate draft. Please try again.]\n\nBest,`;
@@ -173,7 +177,8 @@ async function parseDocument(base64Data, mimeType) {
       }
     });
     
-    let text = response.text().trim();
+    let text = typeof response.text === 'function' ? response.text() : response.text;
+    text = text.trim();
     if (text.startsWith('\`\`\`json')) {
       text = text.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '');
     }
@@ -348,7 +353,9 @@ async function generateDesignProposal(lead, preferences, inspirations) {
       }
     });
 
-    const resultText = response.text();
+    let resultText = typeof response.text === 'function' ? response.text() : response.text;
+    resultText = resultText.trim();
+    if (resultText.startsWith('```json')) resultText = resultText.replace(/^```json\n/, '').replace(/\n```$/, '').trim();
     const result = JSON.parse(resultText);
 
     return {
@@ -883,7 +890,8 @@ async function processVoiceNote(base64Audio, mimeType, leadContext) {
       }
     });
     
-    let text = response.text().trim();
+    let text = typeof response.text === 'function' ? response.text() : response.text;
+    text = text.trim();
     if (text.startsWith('\`\`\`json')) {
       text = text.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '');
     }

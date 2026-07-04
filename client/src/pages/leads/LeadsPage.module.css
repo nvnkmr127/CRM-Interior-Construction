@@ -255,6 +255,7 @@
   font-size: var(--text-sm);
   color: var(--color-text);
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 .listTr {

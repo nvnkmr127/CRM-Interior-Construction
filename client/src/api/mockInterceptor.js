@@ -236,6 +236,31 @@ export const setupMockInterceptor = (api) => {
               }
             }
           }
+          // GLOBAL SEARCH
+          else if (url.includes('/search')) {
+            const urlParts = url.split('?');
+            let q = '';
+            if (urlParts[1]) {
+              const searchParams = new URLSearchParams(urlParts[1]);
+              q = (searchParams.get('q') || '').toLowerCase().trim();
+            }
+            if (method === 'get') {
+              if (!q || q.length < 2) {
+                responseData.data = { leads: [], projects: [], tasks: [] };
+              } else {
+                const leads = (mockDatabase.leads || []).filter(l => 
+                  (l.name && l.name.toLowerCase().includes(q)) || 
+                  (l.email && l.email.toLowerCase().includes(q)) || 
+                  (l.phone && l.phone.toLowerCase().includes(q))
+                );
+                const projects = (mockDatabase.projects || []).filter(p => 
+                  (p.name && p.name.toLowerCase().includes(q)) || 
+                  (p.client_name && p.client_name.toLowerCase().includes(q))
+                );
+                responseData.data = { leads, projects, tasks: [] };
+              }
+            }
+          }
           // LEADS
           else if (url.includes('/leads')) {
             if (url.includes('/timeline')) {
@@ -248,6 +273,28 @@ export const setupMockInterceptor = (api) => {
               responseData.data = { intent: 'Warm', confidence: 80, reason: 'Mocked intent.' };
             } else if (url.includes('/sentiment')) {
               responseData.data = { emoji: '🙂', mood: 'Positive', tip: 'Mocked sentiment.' };
+            } else if (url.includes('/ai-design-proposal')) {
+              responseData.data = {
+                recommended_style: 'Modern Minimalist',
+                design_concept: 'A clean, uncluttered aesthetic focusing on functionality and open space.',
+                color_palette: [
+                  { hex: '#FAFAFA', name: 'Alabaster White' },
+                  { hex: '#2C3E50', name: 'Midnight Navy' },
+                  { hex: '#D4AF37', name: 'Muted Gold' }
+                ],
+                material_suggestions: ['Matte Black Fixtures', 'White Oak Flooring', 'Quartz Countertops']
+              };
+            } else if (url.includes('/ai-insights')) {
+              responseData.data = {
+                sentiment: 'Positive',
+                signals: ['Expressed interest in premium materials'],
+                objections: [],
+                nextAction: 'Schedule a site visit',
+                buyIntent: 'high',
+                winProbability: 80,
+                aiScoreBreakdown: { "Base Score": "+50", "High Budget": "+20", "Engaged": "+10" },
+                suggestedFollowupDate: new Date(Date.now() + 86400000).toISOString()
+              };
             } else if (url.includes('/negotiation')) {
               const match = url.match(/\/leads\/([a-zA-Z0-9-]+)\/negotiation$/);
               const leadId = match ? match[1] : null;
@@ -457,11 +504,12 @@ export const setupMockInterceptor = (api) => {
                   const searchVal = getParam('search');
                   if (searchVal) {
                     const s = searchVal.toLowerCase().trim();
-                    filtered = filtered.filter(l => 
-                      (l.name && l.name.toLowerCase().includes(s)) ||
-                      (l.email && l.email.toLowerCase().includes(s)) ||
-                      (l.phone && l.phone.toLowerCase().includes(s))
-                    );
+                    filtered = filtered.filter(l => {
+                      const name = String(l.name || '').toLowerCase();
+                      const email = String(l.email || '').toLowerCase();
+                      const phone = String(l.phone || '').toLowerCase();
+                      return name.includes(s) || email.includes(s) || phone.includes(s);
+                    });
                   }
 
                   // 2. Stage filter
