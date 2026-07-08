@@ -302,6 +302,17 @@ async function updateProject({ tenantId, userId, projectId, data }) {
       oldValue: oldValues,
       newValue: newValues
     });
+
+    try {
+      const updatedKeys = Object.keys(newValues);
+      await pool.query(
+        `INSERT INTO activities (project_id, tenant_id, type, title, notes, user_id, created_at)
+         VALUES ($1, $2, 'system', 'Project Updated', $3, $4, NOW())`,
+        [projectId, tenantId, `Updated fields: ${updatedKeys.join(', ')}`, userId]
+      );
+    } catch (err) {
+      console.error('Failed to insert project activity:', err);
+    }
   }
 
   // 4. Trigger automation if status explicitly changed

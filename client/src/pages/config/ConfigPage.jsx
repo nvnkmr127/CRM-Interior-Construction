@@ -20,6 +20,7 @@ const FinancialSettings = lazy(() => import('./FinancialSettings'))
 const LeadTimesManager = lazy(() => import('./LeadTimesManager'))
 const TradeActivityTemplatesManager = lazy(() => import('./TradeActivityTemplatesManager'))
 const AuditTrail = lazy(() => import('./AuditTrail'))
+const RolesManager = lazy(() => import('./RolesManager'))
 
 const CONFIG_NAV = [
   { group: 'PIPELINE', items: [
@@ -41,6 +42,7 @@ const CONFIG_NAV = [
   ]},
   { group: 'TEAM', items: [
     { to: 'users',         icon: '◉', label: 'Team Members', desc: 'Invite and manage access' },
+    { to: 'roles',         icon: '🔑', label: 'Roles & Permissions', desc: 'Manage access levels' },
     { to: 'audit-trail',   icon: '📜', label: 'Audit Trail', desc: 'View system logs and changes' },
   ]},
   { group: 'FINANCE', items: [
@@ -102,6 +104,7 @@ export default function ConfigPage() {
             <Route path='webhooks'      element={<WebhooksManager />} />
             <Route path='logs'          element={<LogsViewer />} />
             <Route path='users'         element={<UsersManager />} />
+            <Route path='roles'         element={<RolesManager />} />
             <Route path='audit-trail'   element={<AuditTrail />} />
             <Route path='financial-settings' element={<FinancialSettings />} />
             <Route path='vendor-lead-times' element={<LeadTimesManager />} />

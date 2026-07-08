@@ -3,6 +3,7 @@ const templateService = require('../templates/templateService');
 const { logAction } = require('../auditLog');
 const { enqueueAutomation } = require('../../queues/automationQueue');
 const pool = require('../../config/db');
+const { assignRolesRoundRobin } = require('./roundRobinService');
 
 async function createProject({ tenantId, userId, data }) {
   const { 
@@ -25,6 +26,9 @@ async function createProject({ tenantId, userId, data }) {
 
   try {
     await client.query('BEGIN');
+
+    // Apply round-robin logic for missing roles
+    await assignRolesRoundRobin(tenantId, projectData, client);
 
     // 1. Create the base project
     const project = await projectRepository.createProject(tenantId, { 

@@ -296,7 +296,24 @@ export const initialMockDatabase = {
       id: 'mock-proj-1',
       name: 'Luxury Villa Interior - Phase 6',
       client_name: 'Mr. Sharma',
+      pm_id: 'mock-user-1',
       pm_name: 'Rahul K.',
+      designer_id: 'mock-user-3',
+      designer_name: 'Priya M.',
+      lead_designer_id: 'mock-user-4',
+      lead_designer_name: 'Sanjay D.',
+      junior_designer_id: 'mock-user-5',
+      junior_designer_name: 'Neha V.',
+      site_engineer_id: 'mock-user-6',
+      site_engineer_name: 'Vikram Singh',
+      qc_engineer_id: 'mock-user-7',
+      qc_engineer_name: 'Arjun P.',
+      site_supervisor_id: 'mock-user-8',
+      site_supervisor_name: 'Ramesh K.',
+      crm_executive_id: 'mock-user-9',
+      crm_executive_name: 'Anita B.',
+      procurement_officer_id: 'mock-user-10',
+      procurement_officer_name: 'Karan T.',
       type: 'Residential',
       status: 'active',
       progress: 65,
@@ -385,7 +402,24 @@ export const initialMockDatabase = {
   users: [
     { id: 'mock-user-1', name: 'Rahul K.', role: 'project_manager' },
     { id: 'mock-user-2', name: 'Amit S.', role: 'sales_rep' },
-    { id: 'mock-user-3', name: 'Priya M.', role: 'designer' }
+    { id: 'mock-user-3', name: 'Priya M.', role: 'designer' },
+    { id: 'mock-user-4', name: 'Sanjay D.', role: 'lead_designer' },
+    { id: 'mock-user-5', name: 'Neha V.', role: 'junior_designer' },
+    { id: 'mock-user-6', name: 'Vikram Singh', role: 'site_engineer' },
+    { id: 'mock-user-7', name: 'Arjun P.', role: 'qc_engineer' },
+    { id: 'mock-user-8', name: 'Ramesh K.', role: 'site_supervisor' },
+    { id: 'mock-user-9', name: 'Anita B.', role: 'crm_executive' },
+    { id: 'mock-user-10', name: 'Karan T.', role: 'procurement_officer' },
+    { id: 'mock-user-11', name: 'Manoj G.', role: 'project_manager' },
+    { id: 'mock-user-12', name: 'Suresh N.', role: 'sales_rep' },
+    { id: 'mock-user-13', name: 'Preeti R.', role: 'designer' },
+    { id: 'mock-user-14', name: 'Deepak C.', role: 'lead_designer' },
+    { id: 'mock-user-15', name: 'Swati M.', role: 'junior_designer' },
+    { id: 'mock-user-16', name: 'Rajesh L.', role: 'site_engineer' },
+    { id: 'mock-user-17', name: 'Rakesh S.', role: 'qc_engineer' },
+    { id: 'mock-user-18', name: 'Vivek K.', role: 'site_supervisor' },
+    { id: 'mock-user-19', name: 'Shruti J.', role: 'crm_executive' },
+    { id: 'mock-user-20', name: 'Naveen B.', role: 'procurement_officer' }
   ],
   contacts: [
     {
@@ -455,6 +489,33 @@ export const initialMockDatabase = {
   ],
   activities: [
     {
+      id: 'mock-act-proj-1',
+      project_id: 'mock-proj-1',
+      type: 'system',
+      title: 'Project Initiated',
+      notes: 'Project has been transitioned from lead to active project state.',
+      created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+      user_name: 'System'
+    },
+    {
+      id: 'mock-act-proj-2',
+      project_id: 'mock-proj-1',
+      type: 'meeting',
+      title: 'Kickoff Meeting',
+      notes: 'Discussed timeline, budget, and design preferences with client.',
+      created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      user_name: 'Priya Sharma'
+    },
+    {
+      id: 'mock-act-proj-3',
+      project_id: 'mock-proj-1',
+      type: 'site_visit',
+      title: 'Initial Site Inspection',
+      notes: 'Checked site readiness for electrical and plumbing work.',
+      created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+      user_name: 'Rahul V.'
+    },
+    {
       id: 'mock-act-1',
       lead_id: 'mock-lead-1',
       type: 'note',
@@ -507,12 +568,64 @@ export const initialMockDatabase = {
       creator_name: 'Rahul K.',
       created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
     }
+  ],
+  paymentMilestones: [
+    {
+      id: 'mock-milestone-1',
+      project_id: 'p-1',
+      name: 'Booking Advance',
+      title: 'Booking Advance',
+      phase_name: 'Initiation',
+      amount: 297663.85,
+      due_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+      status: 'paid',
+      paid_at: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000).toISOString(),
+      payment_mode: 'Bank Transfer',
+      collected_by_name: 'Priya M.',
+      collected_by_role: 'sales_head',
+      paid_amount: 297663.85
+    },
+    {
+      id: 'mock-milestone-2',
+      project_id: 'p-1',
+      name: 'Design Sign-off',
+      title: 'Design Sign-off',
+      phase_name: 'Design',
+      amount: 1190655.4,
+      due_date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+      status: 'paid',
+      paid_at: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+      payment_mode: 'UPI',
+      collected_by_name: 'Amit S.',
+      collected_by_role: 'project_manager',
+      paid_amount: 1190655.4
+    },
+    {
+      id: 'mock-milestone-3',
+      project_id: 'p-1',
+      name: 'Material Delivery 1',
+      title: 'Material Delivery 1',
+      phase_name: 'Execution',
+      amount: 2381310.8,
+      due_date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      status: 'scheduled'
+    },
+    {
+      id: 'mock-milestone-4',
+      project_id: 'p-1',
+      name: 'Handover',
+      title: 'Handover',
+      phase_name: 'Closure',
+      amount: 2083646.95,
+      due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      status: 'scheduled'
+    }
   ]
 };
 
 export const loadMockDatabase = () => {
   try {
-    const saved = localStorage.getItem('mockDatabase_v3');
+    const saved = localStorage.getItem('mockDatabase_v4');
     if (saved) {
       const parsed = JSON.parse(saved);
       const merged = { ...initialMockDatabase, ...parsed };
@@ -542,6 +655,10 @@ export const loadMockDatabase = () => {
           return { ...initialProj, ...proj };
         });
       }
+      
+      // Force users to always be fresh from initialMockDatabase
+      merged.users = [...initialMockDatabase.users];
+
       return merged;
     }
   } catch (e) {
@@ -551,5 +668,5 @@ export const loadMockDatabase = () => {
 };
 
 export const saveMockDatabase = (db) => {
-  localStorage.setItem('mockDatabase_v3', JSON.stringify(db));
+  localStorage.setItem('mockDatabase_v4', JSON.stringify(db));
 };

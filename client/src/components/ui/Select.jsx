@@ -34,11 +34,11 @@ export default function Select({
 
   const handleSelect = (option) => {
     if (multi) {
-      const isSelected = (value || []).some(v => v === option.value)
-      if (isSelected) {
-        onChange((value || []).filter(v => v !== option.value))
+      const valArray = Array.isArray(value) ? value : (value ? [value] : [])
+      if (valArray.includes(option.value)) {
+        onChange(valArray.filter(v => v !== option.value))
       } else {
-        onChange([...(value || []), option.value])
+        onChange([...valArray, option.value])
       }
     } else {
       onChange(option.value)
@@ -49,15 +49,17 @@ export default function Select({
 
   const removeChip = (e, valToRemove) => {
     e.stopPropagation()
-    onChange((value || []).filter(v => v !== valToRemove))
+    const valArray = Array.isArray(value) ? value : (value ? [value] : [])
+    onChange(valArray.filter(v => v !== valToRemove))
   }
 
   const renderValue = () => {
     if (multi) {
-      if (!value || value.length === 0) return <span className={styles.placeholder}>{placeholder}</span>
+      const valArray = Array.isArray(value) ? value : (value ? [value] : [])
+      if (valArray.length === 0) return <span className={styles.placeholder}>{placeholder}</span>
       return (
         <div className={styles.chips}>
-          {value.map(val => {
+          {valArray.map(val => {
             const opt = options.find(o => o.value === val)
             if (!opt) return null
             return (

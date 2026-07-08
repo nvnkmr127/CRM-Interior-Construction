@@ -17,17 +17,20 @@ export const setupMockInterceptor = (api) => {
           // ACTIVITIES
           if (url.includes('/activities')) {
             const urlParts = url.split('?');
-            const match = urlParts[0].match(/\/leads\/([a-zA-Z0-9-]+)\/activities(?:\/([a-zA-Z0-9-]+))?$/);
-            const leadId = match ? match[1] : null;
-            const activityId = match ? match[2] : null;
+            const matchLead = urlParts[0].match(/\/leads\/([a-zA-Z0-9-]+)\/activities(?:\/([a-zA-Z0-9-]+))?$/);
+            const matchProj = urlParts[0].match(/\/projects\/([a-zA-Z0-9-]+)\/activities(?:\/([a-zA-Z0-9-]+))?$/);
+            
+            const entityId = matchLead ? matchLead[1] : (matchProj ? matchProj[1] : null);
+            const entityType = matchLead ? 'lead_id' : 'project_id';
+            const activityId = matchLead ? matchLead[2] : (matchProj ? matchProj[2] : null);
 
             if (method === 'get') {
-              responseData.data = mockDatabase.activities?.filter(a => a.lead_id === leadId) || [];
+              responseData.data = mockDatabase.activities?.filter(a => a[entityType] === entityId) || [];
             } else if (method === 'post') {
               const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
               const newActivity = {
                 id: `mock-act-${Date.now()}`,
-                lead_id: leadId,
+                [entityType]: entityId,
                 type: payload.type || 'note',
                 title: payload.title || null,
                 notes: payload.notes || '',
@@ -919,6 +922,20 @@ export const setupMockInterceptor = (api) => {
                     }
                   }
 
+                  const updatedKeys = Object.keys(updates).filter(k => currentProj[k] !== updates[k] && k !== 'updated_at');
+                  if (updatedKeys.length > 0) {
+                    if (!mockDatabase.activities) mockDatabase.activities = [];
+                    mockDatabase.activities.push({
+                      id: `mock-act-${Date.now()}`,
+                      project_id: projId,
+                      type: 'system',
+                      title: 'Project Updated',
+                      notes: `Updated fields: ${updatedKeys.join(', ')}`,
+                      created_at: new Date().toISOString(),
+                      user_name: 'System'
+                    });
+                  }
+
                   mockDatabase.projects[idx] = { ...currentProj, ...updates };
                   persistDb();
                   responseData.data = mockDatabase.projects[idx];
@@ -948,6 +965,67 @@ export const setupMockInterceptor = (api) => {
           else if (url.includes('/users')) {
             if (method === 'get') {
               responseData.data = [...(mockDatabase.users || [])];
+            }
+          }
+          // CUSTOM FIELDS
+          else if (url.includes('/config/custom-fields')) {
+            if (!mockDatabase.customFields) {
+              mockDatabase.customFields = [
+                { id: 'cf-1', entity: 'lead', label: 'Budget Range', name: 'budget_range', field_type: 'dropdown', is_required: true, options: ['< 5L', '5L - 10L', '> 10L'], sort_order: 0, is_active: true },
+                { id: 'cf-2', entity: 'lead', label: 'Property Type', name: 'property_type', field_type: 'dropdown', is_required: true, options: ['Apartment', 'Villa', 'Commercial'], sort_order: 1, is_active: true },
+                { id: 'cf-3', entity: 'project', label: 'Project Scope', name: 'project_scope', field_type: 'text', is_required: false, options: [], sort_order: 0, is_active: true },
+                { id: 'cf-4', entity: 'task', label: 'Task Priority', name: 'task_priority', field_type: 'dropdown', is_required: false, options: ['Low', 'Medium', 'High'], sort_order: 0, is_active: true },
+              ];
+            }
+            if (method === 'get') {
+              const urlParts = url.split('?');
+              if (urlParts[1]) {
+                const searchParams = new URLSearchParams(urlParts[1]);
+                const entity = searchParams.get('entity');
+                if (entity) {
+                  responseData.data = mockDatabase.customFields.filter(c => c.entity === entity);
+                } else {
+                  responseData.data = mockDatabase.customFields;
+                }
+              } else {
+                responseData.data = mockDatabase.customFields;
+              }
+            } else if (method === 'post') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const newField = {
+                id: `cf-${Date.now()}`,
+                entity: payload.entity,
+                label: payload.label,
+                name: payload.name,
+                field_type: payload.field_type,
+                is_required: payload.is_required || false,
+                options: payload.options || [],
+                sort_order: payload.sort_order || 0,
+                is_active: true
+              };
+              mockDatabase.customFields.push(newField);
+              persistDb();
+              responseData.data = newField;
+            } else if (method === 'put' || method === 'patch') {
+              const match = url.match(/\/config\/custom-fields\/([a-zA-Z0-9-]+)$/);
+              if (match) {
+                const id = match[1];
+                const updates = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                const idx = mockDatabase.customFields.findIndex(c => c.id === id);
+                if (idx !== -1) {
+                  mockDatabase.customFields[idx] = { ...mockDatabase.customFields[idx], ...updates };
+                  persistDb();
+                  responseData.data = mockDatabase.customFields[idx];
+                }
+              }
+            } else if (method === 'delete') {
+              const match = url.match(/\/config\/custom-fields\/([a-zA-Z0-9-]+)$/);
+              if (match) {
+                const id = match[1];
+                mockDatabase.customFields = mockDatabase.customFields.filter(c => c.id !== id);
+                persistDb();
+                responseData.data = { success: true };
+              }
             }
           }
           // LEAD STAGES

@@ -58,6 +58,7 @@ const ExecutionQCTab = React.lazy(() => import('../../components/projects/qc/Exe
 const VendorsTab = React.lazy(() => import('../../components/projects/VendorsTab'));
 import HandoverModal from '../../components/projects/HandoverModal';
 import DesignStageHeader from '../../components/projects/DesignStageHeader';
+import ActivityLogsTab from '../../components/projects/ActivityLogsTab';
 
 // New Editable Tabs
 const TeamAndRolesTab = React.lazy(() => import('../../components/projects/TeamAndRolesTab'));
@@ -857,7 +858,7 @@ export default function ProjectDetail() {
     }
   };
 
-  const tabs = ['Overview', 'Booking', 'Meeting Notes', 'Site Visits', 'Baseline Assessment', 'Delay Notifications', 'Handovers', 'Design Brief', 'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 'Commercial Approval', 'Change Orders', 'BOQ Variance', 'Budget', 'Purchase Requests', 'Purchase Orders', 'Material Deliveries', 'Vendors', 'Vendor Payments', 'Substitutions', 'Factory Production', 'Coordination', 'Phases', 'Gantt Chart', 'Work Activities', 'Room Progress', 'Tasks', 'Daily Site Reports', 'Weekly Reports', 'Documents', 'Drawing Register', 'MEP Checklist', 'Payments', 'Execution QC', 'Snags', 'Punch List', 'Handover', 'Warranties', 'AMCs', 'Handover Readiness', 'Service Tickets', 'Customer Retention', 'Project Closure', 'Retrospective'];
+  const tabs = ['Overview', 'Booking', 'Meeting Notes', 'Site Visits', 'Baseline Assessment', 'Delay Notifications', 'Handovers', 'Design Brief', 'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 'Commercial Approval', 'Change Orders', 'BOQ Variance', 'Budget', 'Purchase Requests', 'Purchase Orders', 'Material Deliveries', 'Vendors', 'Vendor Payments', 'Substitutions', 'Factory Production', 'Coordination', 'Phases', 'Gantt Chart', 'Work Activities', 'Room Progress', 'Tasks', 'Daily Site Reports', 'Weekly Reports', 'Documents', 'Drawing Register', 'MEP Checklist', 'Payments', 'Execution QC', 'Snags', 'Punch List', 'Handover', 'Warranties', 'AMCs', 'Handover Readiness', 'Service Tickets', 'Customer Retention', 'Project Closure', 'Retrospective', 'Activity Logs'];
 
   const reloadProject = () => {
     if (!projectId) return;
@@ -889,6 +890,16 @@ export default function ProjectDetail() {
       case 'Site Details': return <SiteDetailsTab project={project} onRefresh={reloadProject} />;
       case 'Vendors & Consultants': return <VendorsAndConsultantsTab project={project} onRefresh={reloadProject} />;
       case 'Settings': return <SettingsTab project={project} onRefresh={reloadProject} />;
+      case 'Activity Logs': return (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+            <h3 className="text-lg font-semibold text-gray-800">Activity Logs</h3>
+          </div>
+          <div className="p-6">
+            <ActivityLogsTab projectId={projectId} />
+          </div>
+        </div>
+      );
       case 'Financial Overview': return (
         <div className={styles.financialPanel}>
           <div className={styles.financialPanelHeader}>Financial Overview</div>
@@ -983,7 +994,7 @@ export default function ProjectDetail() {
       case 'Documents': return <DocumentPanel projectId={projectId} />;
       case 'Drawing Register': return <DrawingRegisterTab projectId={projectId} />;
       case 'MEP Checklist': return <MepChecklistTab projectId={projectId} />;
-      case 'Payments': return <PaymentsTab projectId={projectId} />;
+      case 'Payments': return <PaymentsTab projectId={projectId} project={project} />;
       case 'Execution QC': return <ExecutionQCTab projectId={projectId} project={project} />;
       case 'Snags': return <SnagsDashboard projectId={projectId} />;
       case 'Handover': return <HandoverChecklist projectId={projectId} />;
@@ -1242,7 +1253,9 @@ export default function ProjectDetail() {
             { id: 'Site Details', icon: '📍', label: 'Site Details' },
             { id: 'Vendors & Consultants', icon: '🤝', label: 'Vendors & Consultants' },
             { id: 'Settings', icon: '⚙️', label: 'Settings' },
-            { id: 'Financial Overview', icon: '💰', label: 'Financial Overview' }
+            { id: 'Financial Overview', icon: '💰', label: 'Financial Overview' },
+            { id: 'Payments', icon: '💸', label: 'Payments' },
+            { id: 'Activity Logs', icon: '📋', label: 'Activity Logs' }
           ].map(tab => {
             const isActive = activeTab === tab.id;
             return (

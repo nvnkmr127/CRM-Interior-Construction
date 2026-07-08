@@ -6,7 +6,20 @@ export const getProject = (id) => api.get(`/projects/${id}`);
 
 export const createProject = (data) => api.post('/projects', data);
 
-export const updateProject = (id, data) => api.patch(`/projects/${id}`, data);
+export const updateProject = async (id, data) => {
+  const response = await api.patch(`/projects/${id}`, data);
+  return response.data;
+};
+
+export const getProjectActivities = async (projectId, params) => {
+  const response = await api.get(`/projects/${projectId}/activities`, { params });
+  return response.data;
+};
+
+export const logActivity = async (projectId, data) => {
+  const response = await api.post(`/projects/${projectId}/activities`, data);
+  return response.data;
+};
 
 export const deleteProject = (id) => api.delete(`/projects/${id}`);
 

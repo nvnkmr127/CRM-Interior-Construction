@@ -153,24 +153,16 @@ class ProjectRepository {
     const query = `
       SELECT p.*,
         pm.name as pm_name,
-        d.name as designer_name,
-        ld.name as lead_designer_name,
-        jd.name as junior_designer_name,
-        se.name as site_engineer_name,
-        qe.name as qc_engineer_name,
-        ss.name as site_supervisor_name,
-        crm.name as crm_executive_name,
-        po.name as procurement_officer_name
+        (SELECT string_agg(u.name, ', ') FROM users u WHERE u.id = ANY(p.designer_ids)) as designer_name,
+        (SELECT string_agg(u.name, ', ') FROM users u WHERE u.id = ANY(p.lead_designer_ids)) as lead_designer_name,
+        (SELECT string_agg(u.name, ', ') FROM users u WHERE u.id = ANY(p.junior_designer_ids)) as junior_designer_name,
+        (SELECT string_agg(u.name, ', ') FROM users u WHERE u.id = ANY(p.site_engineer_ids)) as site_engineer_name,
+        (SELECT string_agg(u.name, ', ') FROM users u WHERE u.id = ANY(p.qc_engineer_ids)) as qc_engineer_name,
+        (SELECT string_agg(u.name, ', ') FROM users u WHERE u.id = ANY(p.site_supervisor_ids)) as site_supervisor_name,
+        (SELECT string_agg(u.name, ', ') FROM users u WHERE u.id = ANY(p.crm_executive_ids)) as crm_executive_name,
+        (SELECT string_agg(u.name, ', ') FROM users u WHERE u.id = ANY(p.procurement_officer_ids)) as procurement_officer_name
       FROM projects p
       LEFT JOIN users pm ON p.pm_id = pm.id
-      LEFT JOIN users d ON p.designer_id = d.id
-      LEFT JOIN users ld ON p.lead_designer_id = ld.id
-      LEFT JOIN users jd ON p.junior_designer_id = jd.id
-      LEFT JOIN users se ON p.site_engineer_id = se.id
-      LEFT JOIN users qe ON p.qc_engineer_id = qe.id
-      LEFT JOIN users ss ON p.site_supervisor_id = ss.id
-      LEFT JOIN users crm ON p.crm_executive_id = crm.id
-      LEFT JOIN users po ON p.procurement_officer_id = po.id
       WHERE p.tenant_id = $1 AND p.id = $2 AND p.deleted_at IS NULL
     `;
     const { rows } = await pool.query(query, [tenantId, projectId]);

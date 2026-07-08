@@ -202,19 +202,21 @@ export default function LeadsPage() {
 
       {view !== 'dashboard' && <LeadStatsBar stats={stats} loading={loading} />}
 
-      <LeadFilterRow
-        search={search} setSearch={setSearch}
-        assigneeFilter={assigneeFilter} setAssigneeFilter={setAssigneeFilter}
-        sourceFilter={sourceFilter} setSourceFilter={setSourceFilter}
-        scoreRange={scoreRange} setScoreRange={setScoreRange}
-        intentFilter={intentFilter} setIntentFilter={setIntentFilter}
-        sortBy={sortBy} setSortBy={setSortBy}
-        view={view} setView={setView}
-        assignees={assignees}
-        createdFrom={createdFrom} setCreatedFrom={setCreatedFrom}
-        createdTo={createdTo} setCreatedTo={setCreatedTo}
-        onClearFilters={clearFilters}
-      />
+      {view !== 'dashboard' && (
+        <LeadFilterRow
+          search={search} setSearch={setSearch}
+          assigneeFilter={assigneeFilter} setAssigneeFilter={setAssigneeFilter}
+          sourceFilter={sourceFilter} setSourceFilter={setSourceFilter}
+          scoreRange={scoreRange} setScoreRange={setScoreRange}
+          intentFilter={intentFilter} setIntentFilter={setIntentFilter}
+          sortBy={sortBy} setSortBy={setSortBy}
+          view={view} setView={setView}
+          assignees={assignees}
+          createdFrom={createdFrom} setCreatedFrom={setCreatedFrom}
+          createdTo={createdTo} setCreatedTo={setCreatedTo}
+          onClearFilters={clearFilters}
+        />
+      )}
 
       <div className={styles.content}>
         {view === 'dashboard' ? (

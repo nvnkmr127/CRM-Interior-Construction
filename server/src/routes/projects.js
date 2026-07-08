@@ -51,6 +51,36 @@ const router = express.Router();
 
 router.use(authenticate);
 
+// Get Project Activities
+router.get('/:id/activities', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const { pool } = require('../config/db');
+    const { rows } = await pool.query(
+      'SELECT * FROM activities WHERE project_id = $1 AND tenant_id = $2 ORDER BY created_at DESC',
+      [req.params.id, req.tenantId]
+    );
+    return success(res, rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Add Project Activity
+router.post('/:id/activities', authorize('projects:write'), async (req, res, next) => {
+  try {
+    const { type, title, notes, outcome, metadata } = req.body;
+    const { pool } = require('../config/db');
+    const { rows } = await pool.query(
+      `INSERT INTO activities (project_id, tenant_id, type, title, notes, outcome, metadata, user_id, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) RETURNING *`,
+      [req.params.id, req.tenantId, type || 'note', title, notes, outcome, metadata, req.user?.id || null]
+    );
+    return success(res, rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Global factory production endpoints (must be defined before parameterized nested routes to prevent UUID conflict)
 router.get('/factory/production-orders', authorize('projects:read'), async (req, res, next) => {
   try {
@@ -125,7 +155,7 @@ const createProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required'),
   project_type: z.string().optional(),
   pm_id: z.string().uuid().optional().nullable(),
-  designer_id: z.string().uuid().optional().nullable(),
+  designer_ids: z.array(z.string().uuid()).optional().nullable(),
   contract_value: z.number().optional().nullable(),
   booking_amount: z.number().optional().nullable(),
   start_date: z.string().optional().nullable(),
@@ -189,13 +219,13 @@ const createProjectSchema = z.object({
   gate_pass_number: z.string().optional().nullable(),
   access_card_holder: z.string().optional().nullable(),
   access_time_restrictions: z.string().optional().nullable(),
-  lead_designer_id: z.string().uuid().optional().nullable(),
-  junior_designer_id: z.string().uuid().optional().nullable(),
-  site_engineer_id: z.string().uuid().optional().nullable(),
-  qc_engineer_id: z.string().uuid().optional().nullable(),
-  site_supervisor_id: z.string().uuid().optional().nullable(),
-  crm_executive_id: z.string().uuid().optional().nullable(),
-  procurement_officer_id: z.string().uuid().optional().nullable(),
+  lead_designer_ids: z.array(z.string().uuid()).optional().nullable(),
+  junior_designer_ids: z.array(z.string().uuid()).optional().nullable(),
+  site_engineer_ids: z.array(z.string().uuid()).optional().nullable(),
+  qc_engineer_ids: z.array(z.string().uuid()).optional().nullable(),
+  site_supervisor_ids: z.array(z.string().uuid()).optional().nullable(),
+  crm_executive_ids: z.array(z.string().uuid()).optional().nullable(),
+  procurement_officer_ids: z.array(z.string().uuid()).optional().nullable(),
   carpet_area: z.number().optional().nullable(),
   built_up_area: z.number().optional().nullable(),
   number_of_rooms: z.number().int().optional().nullable(),
