@@ -55,6 +55,9 @@ async function updateLead({ tenantId, userId, leadId, data }) {
   const newStageId = data.stageId || data.stage_id;
   const currentStageId = currentLead.stage_id;
 
+  // Combine current lead data with incoming updates to check fields
+  const leadState = { ...currentLead, ...data };
+
   // 2. If data.stageId is present AND different from current
   if (newStageId && newStageId !== currentStageId) {
     // a. Fetch new stage config
@@ -68,8 +71,8 @@ async function updateLead({ tenantId, userId, leadId, data }) {
     const missing = [];
 
     // Combine current lead data with incoming updates to check fields
-    const leadState = { ...currentLead, ...data };
     
+
     // Parse custom_fields if it's a string, otherwise use it directly
     const customFields = typeof leadState.custom_fields === 'string' 
       ? JSON.parse(leadState.custom_fields) 

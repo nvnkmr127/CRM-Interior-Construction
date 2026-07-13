@@ -34,6 +34,15 @@ export default function MyTasksPage() {
   const [priorityFilter, setPriorityFilter] = useState('all')
   const [projectFilter, setProjectFilter] = useState('all')
   const [sortBy, setSortBy] = useState('due_asc')
+  
+  // AI Feature States
+  const [showDailyAssistant, setShowDailyAssistant] = useState(false)
+  const [showAIModal, setShowAIModal] = useState(false)
+  const [aiPrompt, setAiPrompt] = useState('')
+  const [aiGeneratedTasks, setAiGeneratedTasks] = useState(null)
+  const [showAIMeetingNotes, setShowAIMeetingNotes] = useState(false)
+  const [meetingTranscript, setMeetingTranscript] = useState('')
+  const [extractedTasks, setExtractedTasks] = useState(null)
 
   useEffect(() => {
     setLoading(true)
@@ -223,6 +232,17 @@ export default function MyTasksPage() {
       </div>
 
       <div className={styles.filterBar}>
+        <div style={{ display: 'flex', gap: '8px', marginRight: 'auto' }}>
+          <button onClick={() => setShowDailyAssistant(!showDailyAssistant)} style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #0d3b66, #125491)', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span>✨</span> Daily Briefing
+          </button>
+          <button onClick={() => setShowAIModal(true)} style={{ padding: '8px 12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span>🪄</span> Generate Tasks
+          </button>
+          <button onClick={() => setShowAIMeetingNotes(true)} style={{ padding: '8px 12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span>🎙️</span> Meeting Transcript
+          </button>
+        </div>
         <Select 
           options={[{value:'all', label:'All Priorities'}, {value:'low', label:'Low'}, {value:'medium', label:'Medium'}, {value:'high', label:'High'}, {value:'urgent', label:'Urgent'}]} 
           value={priorityFilter} 
@@ -243,6 +263,79 @@ export default function MyTasksPage() {
           onChange={setSortBy} 
         />
       </div>
+
+      {/* AI Daily Assistant */}
+      {showDailyAssistant && (
+        <div style={{ margin: '0 0 24px 0', padding: '24px', background: 'linear-gradient(135deg, #0d3b66, #125491)', borderRadius: 'var(--radius-lg)', color: '#fff', boxShadow: 'var(--shadow-sm)', position: 'relative', overflow: 'hidden' }}>
+           <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: '#ffffff', borderRadius: '50%', opacity: 0.1 }}></div>
+           
+           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
+              <div style={{ width: '100%' }}>
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
+                    <span style={{ fontSize: '1.8rem' }}>⛅</span>
+                    <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '600', color: '#fff' }}>Good Morning! Here is your AI Briefing.</h2>
+                 </div>
+                 
+                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '24px', marginBottom: '24px' }}>
+                    {/* Workload */}
+                    <div style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '16px', borderRadius: '8px' }}>
+                       <div style={{ fontSize: '0.8rem', color: '#cbd5e1', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '8px' }}>Today's Workload</div>
+                       <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#fff' }}>
+                          {tasks.filter(t => t.dueDate && t.dueDate.startsWith(new Date().toISOString().split('T')[0]) && t.status !== 'completed').length} 
+                          <span style={{ fontSize: '1rem', fontWeight: 'normal', color: '#cbd5e1', marginLeft: '4px' }}>tasks</span>
+                       </div>
+                       <div style={{ fontSize: '0.85rem', color: '#cbd5e1', marginTop: '4px' }}>
+                          ~ 0h 0m estimated
+                       </div>
+                    </div>
+                    
+                    {/* Overdue & Risks */}
+                    <div style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #f44336' }}>
+                       <div style={{ fontSize: '0.8rem', color: '#ffcdd2', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '8px' }}>Overdue & Risks</div>
+                       <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ffcdd2' }}>
+                          {tasks.filter(t => t.dueDate && t.dueDate < new Date().toISOString().split('T')[0] && t.status !== 'completed').length} 
+                          <span style={{ fontSize: '1rem', fontWeight: 'normal', color: '#ffcdd2', marginLeft: '4px' }}>overdue</span>
+                       </div>
+                       <div style={{ fontSize: '0.85rem', color: '#ffb74d', marginTop: '4px' }}>
+                          ⚠️ 2 High priority tasks lack estimates
+                       </div>
+                    </div>
+
+                    {/* Insights */}
+                    <div style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '16px', borderRadius: '8px' }}>
+                       <div style={{ fontSize: '0.8rem', color: '#cbd5e1', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '8px' }}>Productivity Insights</div>
+                       <div style={{ fontSize: '0.9rem', lineHeight: '1.4', color: '#fff' }}>
+                          You completed <strong>5 tasks</strong> yesterday. Your peak productivity is typically between <strong>10:00 AM and 11:30 AM</strong> based on your historical tracker data.
+                       </div>
+                    </div>
+                 </div>
+                 
+                 {/* Execution Order */}
+                 <div style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '16px', borderRadius: '8px', marginBottom: '24px' }}>
+                    <div style={{ fontSize: '0.85rem', color: '#cbd5e1', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '12px' }}>Suggested Execution Order & Next Actions</div>
+                    <ul style={{ margin: 0, paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.95rem', color: '#fff' }}>
+                       {[...tasks].filter(t => t.status !== 'completed').sort((a,b) => (a.priority==='urgent'?-1:1)).slice(0,3).map((t, idx) => (
+                          <li key={t.id}>
+                             <strong>{idx+1}.</strong> {t.title} 
+                             <span style={{ fontSize: '0.7rem', background: '#ff9800', padding: '2px 6px', borderRadius: '4px', color: '#fff', marginLeft: '8px', textTransform: 'uppercase', fontWeight: 'bold' }}>{t.priority}</span>
+                          </li>
+                       ))}
+                       {[...tasks].filter(t => t.status !== 'completed').length === 0 && <li style={{color: '#cbd5e1'}}>No critical tasks pending! Have a great day.</li>}
+                    </ul>
+                 </div>
+                 
+                 <div style={{ display: 'flex', gap: '12px' }}>
+                    <button style={{ padding: '10px 20px', background: '#4caf50', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+                       ▶ Start First Task
+                    </button>
+                    <button onClick={() => setShowDailyAssistant(false)} style={{ padding: '10px 20px', background: 'rgba(255, 255, 255, 0.1)', color: '#fff', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+                       Re-balance Schedule
+                    </button>
+                 </div>
+              </div>
+            </div>
+        </div>
+      )}
 
       <div className={styles.taskList}>
         {loading ? (

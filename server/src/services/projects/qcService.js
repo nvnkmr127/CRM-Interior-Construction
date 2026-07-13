@@ -121,10 +121,10 @@ async function signOffStage(tenantId, projectId, stageId, userId) {
   
   for (const item of itemsRes.rows) {
     if (item.is_passed !== true) {
-      throw new Error(\`Cannot sign off: Item "\${item.item_text}" is not marked as passed.\`);
+      throw new Error(`Cannot sign off: Item "${item.item_text}" is not marked as passed.`);
     }
     if (item.is_photo_mandatory && !item.photo_url) {
-      throw new Error(\`Cannot sign off: Photo is mandatory for "\${item.item_text}".\`);
+      throw new Error(`Cannot sign off: Photo is mandatory for "${item.item_text}".`);
     }
   }
   

@@ -44,7 +44,7 @@ class SupervisorAgent {
       
       let text = typeof response.text === 'function' ? response.text() : response.text;
       text = text.trim();
-      if (text.startsWith('\`\`\`json')) text = text.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '');
+      if (text.startsWith('```json')) text = text.replace(/^```json\n/, '').replace(/\n```$/, '');
       return JSON.parse(text);
     } catch (error) {
       console.error('[Supervisor Agent] Routing error:', error);

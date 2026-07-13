@@ -72,6 +72,28 @@ export default function PaymentsTab({ projectId, project }) {
   const [loading, setLoading] = useState(true);
   const [activeSubTab, setActiveSubTab] = useState('breakdown'); // breakdown, logs, milestones, credits, approvals
   
+  // Cost Breakdown "Cart" state
+  const [selectedCostItems, setSelectedCostItems] = useState([]);
+  const [customAvailableItems, setCustomAvailableItems] = useState([]);
+  const [costItemModalOpen, setCostItemModalOpen] = useState(false);
+  const [editingCostItem, setEditingCostItem] = useState({ id: '', label: '', value: '' });
+  const [editingCostItemType, setEditingCostItemType] = useState('selected'); // 'selected' or 'available'
+  // Credit Note & Refund States
+  const [creditNotes, setCreditNotes] = useState([]);
+  const [refunds, setRefunds] = useState([]);
+  const [creditNoteModalOpen, setCreditNoteModalOpen] = useState(false);
+  const [creditNoteSubmitting, setCreditNoteSubmitting] = useState(false);
+  const [creditNoteForm, setCreditNoteForm] = useState({ subtotal: '', gstType: 'cgst_sgst', gstRate: 18.00, reason: '', notes: '' });
+
+  const [refundModalOpen, setRefundModalOpen] = useState(false);
+  const [refundSubmitting, setRefundSubmitting] = useState(false);
+  const [refundForm, setRefundForm] = useState({ amount: '', paymentMethod: 'Bank Transfer', referenceNumber: '', reason: '', notes: '' });
+
+  // Debit Note States
+  const [debitNotes, setDebitNotes] = useState([]);
+  const [debitNoteModalOpen, setDebitNoteModalOpen] = useState(false);
+  const [debitNoteForm, setDebitNoteForm] = useState({ invoiceId: '', amount: '', reason: '', notes: '' });
+
   // Finance Approvals Queue State
   const [financeApprovals, setFinanceApprovals] = useState([]);
 
@@ -841,21 +863,6 @@ export default function PaymentsTab({ projectId, project }) {
   const [linkForm, setLinkForm] = useState({ expiryDays: 3 });
   const [selectedMilestoneForLink, setSelectedMilestoneForLink] = useState(null);
 
-  // Credit Note & Refund States
-  const [creditNotes, setCreditNotes] = useState([]);
-  const [refunds, setRefunds] = useState([]);
-  const [creditNoteModalOpen, setCreditNoteModalOpen] = useState(false);
-  const [creditNoteSubmitting, setCreditNoteSubmitting] = useState(false);
-  const [creditNoteForm, setCreditNoteForm] = useState({ subtotal: '', gstType: 'cgst_sgst', gstRate: 18.00, reason: '', notes: '' });
-
-  const [refundModalOpen, setRefundModalOpen] = useState(false);
-  const [refundSubmitting, setRefundSubmitting] = useState(false);
-  const [refundForm, setRefundForm] = useState({ amount: '', paymentMethod: 'Bank Transfer', referenceNumber: '', reason: '', notes: '' });
-
-  // Debit Note States
-  const [debitNotes, setDebitNotes] = useState([]);
-  const [debitNoteModalOpen, setDebitNoteModalOpen] = useState(false);
-  const [debitNoteForm, setDebitNoteForm] = useState({ invoiceId: '', amount: '', reason: '', notes: '' });
 
   const handleIssueDebitNote = () => {
     if (!debitNoteForm.invoiceId || !debitNoteForm.amount || !debitNoteForm.reason) {
@@ -941,14 +948,42 @@ export default function PaymentsTab({ projectId, project }) {
           if (!exists) {
             let mockDate = new Date(project?.createdAt || Date.now());
             mockDate.setDate(mockDate.getDate() + (index * 15));
+            const milestoneAmount = (totalB * mConf.percentage) / 100;
+            let mockPaymentEntries = [];
+            let mockStatus = index === 0 ? 'pending' : 'scheduled';
+            
+            // Inject mock payment data for the first two milestones
+            if (index === 0) {
+               mockStatus = 'paid';
+               mockPaymentEntries = [{
+                 id: `mock_txn_${Date.now()}_1`,
+                 amount: milestoneAmount,
+                 paidAt: mockDate.toISOString(),
+                 mode: 'Bank Transfer',
+                 collectedByName: 'System Mock',
+                 collectedByRole: 'Admin'
+               }];
+            } else if (index === 1) {
+               mockStatus = 'partially_paid';
+               mockPaymentEntries = [{
+                 id: `mock_txn_${Date.now()}_2`,
+                 amount: milestoneAmount * 0.5, // 50% paid
+                 paidAt: mockDate.toISOString(),
+                 mode: 'UPI',
+                 collectedByName: 'System Mock',
+                 collectedByRole: 'Admin'
+               }];
+            }
+
             const mockEntry = {
               id: `mock_m_${mConf.key}_${index}`,
               title: mConf.name || mConf.key,
               phase: 'Project Lifecycle',
-              amount: (totalB * mConf.percentage) / 100,
+              amount: milestoneAmount,
               due_date: mockDate.toISOString().split('T')[0],
-              status: index === 0 ? 'pending' : 'scheduled',
-              dependency: mConf.dependency
+              status: mockStatus,
+              dependency: mConf.dependency,
+              payment_entries: mockPaymentEntries
             };
             if (index === 0) raw.unshift(mockEntry); // Booking at top
             else raw.push(mockEntry); // Rest appended
@@ -1209,18 +1244,68 @@ export default function PaymentsTab({ projectId, project }) {
     toast.success('Payment link cancelled');
   };
 
-  // Mock Cost Breakdown
-  const costBreakdown = [
-    { label: 'Modular Kitchen (Cabinets, Countertop, Accessories)', value: Math.round(totalBudget * 0.25) },
-    { label: 'Wardrobes & Storage (Bedrooms, Living, Foyer)', value: Math.round(totalBudget * 0.28) },
-    { label: 'False Ceiling & Lighting', value: Math.round(totalBudget * 0.12) },
-    { label: 'Painting & Wallpaper (Premium Finish)', value: Math.round(totalBudget * 0.08) },
-    { label: 'Civil & Tiling Work (Bathrooms, Balcony)', value: Math.round(totalBudget * 0.07) },
-    { label: 'Electrical & Plumbing Modifications', value: Math.round(totalBudget * 0.05) },
-    { label: 'Custom Furniture (Beds, TV Unit, Study)', value: Math.round(totalBudget * 0.10) },
-    { label: 'Soft Furnishings & Decor', value: Math.round(totalBudget * 0.03) },
-    { label: 'Design & Management Fees', value: totalBudget - Math.round(totalBudget * 0.98) },
+  // Available Cost Items Catalog
+  const baseAvailableItems = [
+    { id: 'mk', label: 'Modular Kitchen (Cabinets, Countertop, Accessories)', value: Math.round(totalBudget * 0.25) },
+    { id: 'ws', label: 'Wardrobes & Storage (Bedrooms, Living, Foyer)', value: Math.round(totalBudget * 0.28) },
+    { id: 'fcl', label: 'False Ceiling & Lighting', value: Math.round(totalBudget * 0.12) },
+    { id: 'pw', label: 'Painting & Wallpaper (Premium Finish)', value: Math.round(totalBudget * 0.08) },
+    { id: 'ctw', label: 'Civil & Tiling Work (Bathrooms, Balcony)', value: Math.round(totalBudget * 0.07) },
+    { id: 'epm', label: 'Electrical & Plumbing Modifications', value: Math.round(totalBudget * 0.05) },
+    { id: 'cf', label: 'Custom Furniture (Beds, TV Unit, Study)', value: Math.round(totalBudget * 0.10) },
+    { id: 'sfd', label: 'Soft Furnishings & Decor', value: Math.round(totalBudget * 0.03) },
+    { id: 'dmf', label: 'Design & Management Fees', value: totalBudget - Math.round(totalBudget * 0.98) },
   ];
+
+  const availableCostItems = [...baseAvailableItems, ...customAvailableItems];
+
+  const handleAddCostItem = (item) => {
+    if (!selectedCostItems.find(i => i.id === item.id)) {
+      setSelectedCostItems(prev => [...prev, item]);
+    }
+  };
+
+  const handleRemoveCostItem = (itemId) => {
+    setSelectedCostItems(prev => prev.filter(i => i.id !== itemId));
+  };
+
+  const handleOpenAddAvailableCostItem = () => {
+    setEditingCostItemType('available');
+    setEditingCostItem({ id: 'avail_' + Date.now(), label: '', value: '' });
+    setCostItemModalOpen(true);
+  };
+
+  const handleOpenAddCostItem = () => {
+    setEditingCostItemType('selected');
+    setEditingCostItem({ id: 'custom_' + Date.now(), label: '', value: '' });
+    setCostItemModalOpen(true);
+  };
+
+  const handleOpenCustomizeCostItem = (item) => {
+    setEditingCostItemType('selected');
+    setEditingCostItem({ ...item });
+    setCostItemModalOpen(true);
+  };
+
+  const handleSaveCostItem = () => {
+    if (!editingCostItem.label || editingCostItem.value === '') {
+      toast.error('Please provide a label and value.');
+      return;
+    }
+    
+    if (editingCostItemType === 'available') {
+      setCustomAvailableItems(prev => [...prev, { ...editingCostItem, value: Number(editingCostItem.value) }]);
+    } else {
+      setSelectedCostItems(prev => {
+        const exists = prev.find(i => i.id === editingCostItem.id);
+        if (exists) {
+          return prev.map(i => i.id === editingCostItem.id ? { ...editingCostItem, value: Number(editingCostItem.value) } : i);
+        }
+        return [...prev, { ...editingCostItem, value: Number(editingCostItem.value) }];
+      });
+    }
+    setCostItemModalOpen(false);
+  };
 
   const paidLogs = [];
   payments.forEach(p => {
@@ -2318,17 +2403,65 @@ export default function PaymentsTab({ projectId, project }) {
         )}
 
         {activeSubTab === 'breakdown' && (
-          <div className={styles.breakdownList}>
-            <div className={styles.breakdownHeader}>DETAILED COST BREAKDOWN</div>
-            {costBreakdown.map((item, idx) => (
-              <div key={idx} className={styles.breakdownRow}>
-                <span>{item.label}</span>
-                <span className={styles.breakdownValue}>₹{item.value.toLocaleString('en-IN')}</span>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+            <div className={styles.breakdownList}>
+              <div className={styles.breakdownHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>AVAILABLE COST ITEMS</span>
+                <Button variant="outline" size="small" onClick={handleOpenAddAvailableCostItem}>+ Add Custom Item</Button>
               </div>
-            ))}
-            <div className={styles.breakdownRow} style={{ borderTop: '2px solid var(--color-border)', fontWeight: 700, marginTop: '8px' }}>
-              <span>Total</span>
-              <span className={styles.breakdownValue}>₹{totalBudget.toLocaleString('en-IN')}</span>
+              {availableCostItems.map((item, idx) => {
+                const isSelected = selectedCostItems.some(i => i.id === item.id);
+                return (
+                  <div key={item.id} className={styles.breakdownRow} style={{ opacity: isSelected ? 0.5 : 1 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span>{item.label}</span>
+                      <span className={styles.breakdownValue}>₹{item.value.toLocaleString('en-IN')}</span>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="small" 
+                      onClick={() => handleAddCostItem(item)}
+                      disabled={isSelected}
+                    >
+                      {isSelected ? 'Added' : 'Add to Breakdown'}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className={styles.breakdownList}>
+              <div className={styles.breakdownHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>SELECTED COST BREAKDOWN</span>
+                <Button variant="outline" size="small" onClick={handleOpenAddCostItem}>+ Add Custom Item</Button>
+              </div>
+              {selectedCostItems.length === 0 ? (
+                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                  No items added to the cost breakdown yet. Select items from the available list or add a custom item.
+                </div>
+              ) : (
+                selectedCostItems.map((item) => (
+                  <div key={item.id} className={styles.breakdownRow}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span>{item.label}</span>
+                      <span className={styles.breakdownValue}>₹{item.value.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <Button variant="outline" size="small" onClick={() => handleOpenCustomizeCostItem(item)}>Customize</Button>
+                      <Button variant="danger" size="small" onClick={() => handleRemoveCostItem(item.id)}>Remove</Button>
+                    </div>
+                  </div>
+                ))
+              )}
+              {selectedCostItems.length > 0 && (
+                <div className={styles.breakdownRow} style={{ borderTop: '2px solid var(--color-border)', fontWeight: 700, marginTop: '8px' }}>
+                  <span>Total Selected</span>
+                  <span className={styles.breakdownValue}>₹{selectedCostItems.reduce((acc, curr) => acc + curr.value, 0).toLocaleString('en-IN')}</span>
+                </div>
+              )}
+              <div className={styles.breakdownRow} style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
+                Project Total Budget: ₹{totalBudget.toLocaleString('en-IN')}
+              </div>
             </div>
           </div>
         )}
@@ -3459,6 +3592,32 @@ export default function PaymentsTab({ projectId, project }) {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)', marginTop: '8px' }}>
               <Button variant="ghost" onClick={() => setDebitNoteModalOpen(false)}>Cancel</Button>
               <Button variant="primary" onClick={handleIssueDebitNote}>Issue Debit Note</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Cost Item Customization Modal */}
+      {costItemModalOpen && (
+        <Modal isOpen onClose={() => setCostItemModalOpen(false)}>
+          <div style={{ padding: 'var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', maxWidth: '480px', width: '100%' }}>
+            <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>Customize Cost Item</h3>
+            <Input 
+              label="Item Name / Description" 
+              value={editingCostItem.label} 
+              onChange={e => setEditingCostItem(prev => ({ ...prev, label: e.target.value }))} 
+              required 
+            />
+            <Input 
+              label="Cost Value (INR)" 
+              type="number" 
+              value={editingCostItem.value} 
+              onChange={e => setEditingCostItem(prev => ({ ...prev, value: e.target.value }))} 
+              required 
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)', marginTop: '8px' }}>
+              <Button variant="ghost" onClick={() => setCostItemModalOpen(false)}>Cancel</Button>
+              <Button variant="primary" onClick={handleSaveCostItem}>Save Item</Button>
             </div>
           </div>
         </Modal>
