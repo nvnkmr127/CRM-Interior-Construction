@@ -159,6 +159,353 @@ export default function PaymentsTab({ projectId, project }) {
     ];
   }, [payments, gateOverrides]);
 
+  // Dashboard Calculations
+  const dashboardData = React.useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+
+    let todayCollection = 0;
+    let monthlyCollection = 0;
+
+    payments.forEach(p => {
+      (p.paymentEntries || []).forEach(e => {
+         const eDate = new Date(e.paidAt || p.dueDate);
+         if (eDate.toISOString().split('T')[0] === todayStr) {
+           todayCollection += (e.amount || 0);
+         }
+         if (eDate.getMonth() === currentMonth && eDate.getFullYear() === currentYear) {
+           monthlyCollection += (e.amount || 0);
+         }
+      });
+    });
+
+    const outstanding = payments.reduce((acc, p) => acc + (p.remainingAmount || 0), 0);
+    const overdue = payments.filter(p => p.status === 'overdue').reduce((acc, p) => acc + (p.remainingAmount || 0), 0);
+    const totalRefunds = refunds.reduce((acc, r) => acc + (Number(r.amount) || 0), 0);
+    const totalCreditNotes = creditNotes.reduce((acc, c) => acc + (Number(c.subtotal) || 0), 0);
+
+    // Mock Target
+    const collectionTarget = 5000000; 
+    const currentTotalCollected = payments.reduce((acc, p) => acc + (p.collectedAmount || 0), 0);
+
+    return {
+      todayCollection,
+      monthlyCollection,
+      outstanding,
+      overdue,
+      totalRefunds,
+      totalCreditNotes,
+      collectionTarget,
+      currentTotalCollected
+    };
+  }, [payments, refunds, creditNotes]);
+
+  const handleExportDashboard = () => {
+    toast.success('Finance Dashboard report exported to PDF successfully!');
+  };
+
+  // Bank Reconciliation States
+  const [bankStatements, setBankStatements] = useState([]);
+  const [reconciledMatches, setReconciledMatches] = useState([]);
+  
+  const handleImportStatement = () => {
+    // Simulating CSV parsing with mock transactions
+    const mockTxns = [
+      { id: 'TXN-' + Date.now() + '-1', date: new Date().toISOString(), amount: 50000, reference: 'Bank Transfer' },
+      { id: 'TXN-' + Date.now() + '-2', date: new Date().toISOString(), amount: 150000, reference: 'RTGS' },
+      { id: 'TXN-' + Date.now() + '-3', date: new Date(Date.now() - 86400000).toISOString(), amount: 99999, reference: 'NEFT' }, // Unmatched / Exception
+    ];
+    
+    // Duplicate detection
+    const existingIds = new Set(bankStatements.map(t => t.id));
+    const newTxns = mockTxns.filter(t => !existingIds.has(t.id));
+    
+    if (newTxns.length < mockTxns.length) {
+      toast.warning(`${mockTxns.length - newTxns.length} duplicate transactions ignored.`);
+    }
+    
+    if (newTxns.length > 0) {
+      setBankStatements(prev => [...prev, ...newTxns]);
+      toast.success(`${newTxns.length} bank transactions imported successfully.`);
+    }
+  };
+
+  const handleAutoReconcile = () => {
+    let newMatches = 0;
+    const updatedBankStmts = [...bankStatements];
+    const unmatchedBankStmts = updatedBankStmts.filter(b => !b.reconciled);
+    
+    // Find unmatched CRM payments
+    const unmatchedCrmPayments = [];
+    payments.forEach(p => {
+      (p.paymentEntries || []).forEach(e => {
+        if (!e.reconciled) {
+          unmatchedCrmPayments.push({ ...e, parentMilestoneId: p.id, parentMilestone: p.milestone });
+        }
+      });
+    });
+
+    unmatchedBankStmts.forEach(bankTxn => {
+      // Find matching CRM payment by exact amount
+      const matchIndex = unmatchedCrmPayments.findIndex(crmTxn => Number(crmTxn.amount) === Number(bankTxn.amount));
+      if (matchIndex !== -1) {
+        const crmMatch = unmatchedCrmPayments[matchIndex];
+        
+        // Record match
+        setReconciledMatches(prev => [...prev, {
+          id: 'REC-MATCH-' + Date.now() + Math.random(),
+          bankTxn,
+          crmTxn: crmMatch,
+          date: new Date().toISOString()
+        }]);
+
+        // Mark as reconciled
+        bankTxn.reconciled = true;
+        crmMatch.reconciled = true;
+        
+        // Update payments state
+        setPayments(prev => prev.map(p => {
+          if (p.id === crmMatch.parentMilestoneId) {
+            return {
+              ...p,
+              paymentEntries: p.paymentEntries.map(entry => entry.id === crmMatch.id ? { ...entry, reconciled: true } : entry)
+            };
+          }
+          return p;
+        }));
+
+        unmatchedCrmPayments.splice(matchIndex, 1);
+        newMatches++;
+      }
+    });
+
+    setBankStatements(updatedBankStmts);
+    if (newMatches > 0) {
+      toast.success(`${newMatches} transactions auto-reconciled successfully.`);
+    } else {
+      toast.info('No new auto-reconciliation matches found.');
+    }
+  };
+
+  const handleManualReconcile = (bankTxnId, crmTxnId) => {
+    // In a real scenario, this would have a full UI to select and map. We simulate an exact pairing here if we had the UI.
+    toast.success('Manual reconciliation recorded.');
+  };
+
+  // Collections Dashboard States
+  const [collectionNotes, setCollectionNotes] = useState([]);
+  const [promiseToPays, setPromiseToPays] = useState([]);
+  const [selectedCollectionItem, setSelectedCollectionItem] = useState(null);
+  const [collectionFilters, setCollectionFilters] = useState({ priority: 'All', owner: 'All' });
+  const [collectionActionForm, setCollectionActionForm] = useState({ note: '', callStatus: 'Connected', ptpDate: '' });
+
+  const collectionData = React.useMemo(() => {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const next7Days = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    const items = payments.filter(p => p.remainingAmount > 0).map(p => {
+      const dueDate = new Date(p.dueDate);
+      const isOverdue = p.status === 'overdue';
+      const isUpcoming = !isOverdue && dueDate <= next7Days;
+      
+      const daysOverdue = isOverdue ? Math.floor((today - dueDate) / (1000 * 60 * 60 * 24)) : 0;
+      
+      let priority = 'LOW';
+      let score = 0;
+      
+      if (isOverdue) {
+        if (daysOverdue > 30 || p.remainingAmount > 100000) { priority = 'HIGH'; score = 3; }
+        else if (daysOverdue > 7 || p.remainingAmount > 50000) { priority = 'MEDIUM'; score = 2; }
+        else { priority = 'LOW'; score = 1; }
+      } else if (isUpcoming) {
+        priority = 'UPCOMING'; score = 0;
+      } else {
+        priority = 'FUTURE'; score = -1;
+      }
+
+      // Find latest PTP
+      const ptp = promiseToPays.filter(pt => pt.milestoneId === p.id).sort((a,b) => new Date(b.date) - new Date(a.date))[0];
+      
+      // Find history
+      const history = collectionNotes.filter(n => n.milestoneId === p.id).sort((a,b) => new Date(b.date) - new Date(a.date));
+      const todayFollowUps = history.filter(n => new Date(n.date).toDateString() === new Date().toDateString());
+
+      return {
+        ...p,
+        isOverdue,
+        isUpcoming,
+        daysOverdue,
+        priority,
+        score,
+        latestPtp: ptp,
+        history,
+        todayFollowUp: todayFollowUps.length > 0,
+        owner: 'Finance Team A' // Mock owner
+      };
+    });
+
+    const activeItems = items.filter(i => i.score >= 0); // Hide FUTURE unless specifically requested
+    
+    // Apply filters
+    const filtered = activeItems.filter(i => {
+      if (collectionFilters.priority !== 'All' && i.priority !== collectionFilters.priority) return false;
+      if (collectionFilters.owner !== 'All' && i.owner !== collectionFilters.owner) return false;
+      return true;
+    }).sort((a,b) => b.score - a.score);
+
+    const overdueCount = activeItems.filter(i => i.isOverdue).length;
+    const upcomingCount = activeItems.filter(i => i.isUpcoming).length;
+    const ptpCount = activeItems.filter(i => i.latestPtp).length;
+    const todayFollowUpCount = activeItems.filter(i => i.todayFollowUp).length;
+
+    return {
+      items: filtered,
+      kpis: { overdueCount, upcomingCount, ptpCount, todayFollowUpCount }
+    };
+  }, [payments, collectionNotes, promiseToPays, collectionFilters]);
+
+  const handleLogCollectionAction = () => {
+    if (!selectedCollectionItem) return;
+    
+    if (collectionActionForm.note) {
+      setCollectionNotes(prev => [...prev, {
+        id: 'CN-' + Date.now(),
+        milestoneId: selectedCollectionItem.id,
+        date: new Date().toISOString(),
+        note: collectionActionForm.note,
+        callStatus: collectionActionForm.callStatus,
+        loggedBy: simulateRole
+      }]);
+    }
+    
+    if (collectionActionForm.ptpDate) {
+      setPromiseToPays(prev => [...prev, {
+        id: 'PTP-' + Date.now(),
+        milestoneId: selectedCollectionItem.id,
+        date: new Date().toISOString(),
+        ptpDate: collectionActionForm.ptpDate,
+        loggedBy: simulateRole
+      }]);
+    }
+    
+    toast.success('Collection action logged successfully.');
+    setCollectionActionForm({ note: '', callStatus: 'Connected', ptpDate: '' });
+  };
+
+  // General Payment Adjustments
+  const [paymentAdjustments, setPaymentAdjustments] = useState([]);
+  const [adjustmentModalOpen, setAdjustmentModalOpen] = useState(false);
+  const [adjustmentForm, setAdjustmentForm] = useState({
+    type: 'OVERPAYMENT',
+    sourceMilestoneId: '',
+    targetMilestoneId: '',
+    amount: '',
+    reason: ''
+  });
+
+  const handleRequestAdjustment = () => {
+    if (!adjustmentForm.sourceMilestoneId || !adjustmentForm.amount || !adjustmentForm.reason) {
+      toast.error('Source, Amount, and Reason are required.');
+      return;
+    }
+    if (adjustmentForm.type === 'TRANSFER' && !adjustmentForm.targetMilestoneId) {
+      toast.error('Target milestone is required for transfers.');
+      return;
+    }
+    
+    // Auto-detect milestone names for context
+    const srcM = payments.find(p => p.id === adjustmentForm.sourceMilestoneId)?.milestone || adjustmentForm.sourceMilestoneId;
+    let targetM = '';
+    if (adjustmentForm.type === 'TRANSFER') {
+      targetM = payments.find(p => p.id === adjustmentForm.targetMilestoneId)?.milestone || adjustmentForm.targetMilestoneId;
+    }
+
+    const adjPayload = {
+      ...adjustmentForm,
+      id: 'PADJ-' + Date.now(),
+      status: 'PENDING',
+      date: new Date().toISOString(),
+      requestedBy: simulateRole,
+      sourceName: srcM,
+      targetName: targetM
+    };
+
+    requestFinanceApproval('Payment Adjustment', adjustmentForm.amount, adjustmentForm.reason, { adjustment: adjPayload });
+    setAdjustmentModalOpen(false);
+    setAdjustmentForm({ type: 'OVERPAYMENT', sourceMilestoneId: '', targetMilestoneId: '', amount: '', reason: '' });
+  };
+
+
+
+  // ERP Integration (Tally) States
+  const [erpMappings, setErpMappings] = useState({
+    salesLedger: 'Sales A/c',
+    cgstLedger: 'CGST',
+    sgstLedger: 'SGST',
+    igstLedger: 'IGST',
+    bankLedger: 'ICICI Bank A/c'
+  });
+  const [syncLogs, setSyncLogs] = useState([]);
+  
+  const handleTriggerSync = (type) => {
+    let mockEntities = [];
+    if (type === 'Invoices') {
+      mockEntities = payments.filter(p => p.taxInvoiceNo).map(p => ({ id: p.id, name: p.taxInvoiceNo }));
+    } else if (type === 'Payments') {
+      mockEntities = payments.filter(p => p.collectedAmount > 0).map(p => ({ id: p.id, name: `Pay-${p.milestone}` }));
+    } else if (type === 'Customers') {
+      mockEntities = [{ id: 'CUST-01', name: project?.customer_name || 'Customer' }];
+    } else if (type === 'Ledger Entries') {
+      mockEntities = ledger.map(l => ({ id: l.id, name: l.details }));
+    }
+
+    if (mockEntities.length === 0) {
+      toast.error(`No ${type} available to sync.`);
+      return;
+    }
+
+    const newLogs = mockEntities.map((ent, idx) => ({
+      id: 'SYNC-' + Date.now() + idx,
+      date: new Date().toISOString(),
+      type: type,
+      entityId: ent.id,
+      entityName: ent.name,
+      status: Math.random() > 0.2 ? 'SUCCESS' : 'FAILED', // 80% success for demo
+      message: ''
+    }));
+
+    // For failed ones, add a mock error
+    newLogs.forEach(l => {
+      if (l.status === 'FAILED') l.message = 'Network timeout / Tally server unreachable.';
+    });
+
+    setSyncLogs(prev => [...newLogs, ...prev]);
+
+    const successes = newLogs.filter(l => l.status === 'SUCCESS').length;
+    const failures = newLogs.filter(l => l.status === 'FAILED').length;
+    
+    if (failures > 0) {
+      toast.warning(`Synced ${successes} ${type}. ${failures} failed.`);
+    } else {
+      toast.success(`Successfully synced ${successes} ${type} to ERP.`);
+    }
+
+    // Simulate generating Tally XML download
+    console.log(`Generated XML payload for ${type} using mappings:`, erpMappings);
+  };
+
+  const handleRetrySync = (logId) => {
+    setSyncLogs(prev => prev.map(l => l.id === logId ? {
+      ...l,
+      status: 'SUCCESS',
+      message: 'Retry successful',
+      date: new Date().toISOString()
+    } : l));
+    toast.success('Retry successful.');
+  };
+
   // Advance Adjustment States
   const [advanceAdjustments, setAdvanceAdjustments] = useState([]);
   const [manualAdjustmentModalOpen, setManualAdjustmentModalOpen] = useState(false);
@@ -289,6 +636,62 @@ export default function PaymentsTab({ projectId, project }) {
         } : p));
       } else if (type === 'Gate Override') {
         setGateOverrides(prev => [...prev, payload]);
+      } else if (type === 'Payment Adjustment') {
+        const adj = payload.adjustment;
+        const adjAmount = Number(adj.amount);
+        
+        // Update Adjustment History
+        setPaymentAdjustments(prev => [{...adj, status: 'APPROVED'}, ...prev]);
+        
+        // Update Payments based on type
+        if (adj.type === 'OVERPAYMENT') {
+           // Move overpayment to advance adjustment or credit pool (Simulated by reducing outstanding or showing credit)
+           // In this scenario we simulate creating a credit note or adding to Advance Adjustments
+           setAdvanceAdjustments(prev => [{
+             id: 'ADJ-OVER-' + Date.now(),
+             invoiceId: adj.sourceMilestoneId,
+             amount: adjAmount,
+             reason: 'Transferred from Overpayment',
+             status: 'APPROVED'
+           }, ...prev]);
+        } else if (adj.type === 'UNDERPAYMENT' || adj.type === 'WRONG_PAYMENT') {
+           // Wrong payment resets collected amount
+           // Underpayment might increase remaining amount
+           setPayments(prev => prev.map(p => {
+             if (p.id === adj.sourceMilestoneId) {
+               return {
+                 ...p,
+                 remainingAmount: p.remainingAmount + adjAmount,
+                 collectedAmount: Math.max(0, p.collectedAmount - adjAmount),
+                 status: (p.remainingAmount + adjAmount) > 0 ? 'overdue' : p.status
+               };
+             }
+             return p;
+           }));
+        } else if (adj.type === 'TRANSFER') {
+           setPayments(prev => prev.map(p => {
+             if (p.id === adj.sourceMilestoneId) {
+               // Taking money back out (increases remaining amount)
+               return {
+                 ...p,
+                 remainingAmount: p.remainingAmount + adjAmount,
+                 collectedAmount: Math.max(0, p.collectedAmount - adjAmount),
+                 status: (p.remainingAmount + adjAmount) > 0 ? 'overdue' : p.status
+               };
+             }
+             if (p.id === adj.targetMilestoneId) {
+               // Putting money in (decreases remaining amount)
+               const newRemaining = Math.max(0, p.remainingAmount - adjAmount);
+               return {
+                 ...p,
+                 remainingAmount: newRemaining,
+                 collectedAmount: p.collectedAmount + adjAmount,
+                 status: newRemaining === 0 ? 'paid' : p.status
+               };
+             }
+             return p;
+           }));
+        }
       }
 
       setFinanceApprovals(prev => prev.map(a => a.id === approval.id ? {
@@ -1191,13 +1594,18 @@ export default function PaymentsTab({ projectId, project }) {
 
       {/* Sub-Tabs */}
       <div className={styles.subTabsContainer}>
-        {['breakdown', 'logs', 'audit_logs', 'milestones', 'gates', 'links', 'invoices', 'receipts', 'ledger', 'receivables', 'reminders', 'credits', 'approvals', ...(simulateRole === 'Admin' ? ['rbac'] : [])].map(tab => (
+        {['dashboard', 'collections', 'tally_sync', 'reconciliation', 'adjustments', 'breakdown', 'logs', 'audit_logs', 'milestones', 'gates', 'links', 'invoices', 'receipts', 'ledger', 'receivables', 'reminders', 'credits', 'approvals', ...(simulateRole === 'Admin' ? ['rbac'] : [])].map(tab => (
           <button
             key={tab}
             className={`${styles.subTab} ${activeSubTab === tab ? styles.subTabActive : ''}`}
             onClick={() => setActiveSubTab(tab)}
           >
-            {tab === 'breakdown' ? 'Cost Breakdown' : 
+            {tab === 'dashboard' ? 'Dashboard' :
+             tab === 'collections' ? 'Collections' :
+             tab === 'tally_sync' ? 'ERP Sync' :
+             tab === 'reconciliation' ? 'Bank Recon' :
+             tab === 'adjustments' ? 'Adjustments' :
+             tab === 'breakdown' ? 'Cost Breakdown' : 
              tab === 'logs' ? 'History' : 
              tab === 'audit_logs' ? 'Audit Logs' : 
              tab === 'milestones' ? 'Milestones' : 
@@ -1216,6 +1624,699 @@ export default function PaymentsTab({ projectId, project }) {
 
       {/* Sub-Tab Content */}
       <div className={styles.subTabContent}>
+        {activeSubTab === 'dashboard' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+               <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 600 }}>Finance Dashboard</h3>
+               <Button variant="outline" size="sm" onClick={handleExportDashboard}>
+                 Export Report
+               </Button>
+            </div>
+
+            {/* KPIs Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+               <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px' }}>
+                 <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Today's Collection</div>
+                 <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', marginTop: '8px' }}>₹{dashboardData.todayCollection.toLocaleString('en-IN')}</div>
+               </div>
+               <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px' }}>
+                 <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Monthly Collection</div>
+                 <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', marginTop: '8px' }}>₹{dashboardData.monthlyCollection.toLocaleString('en-IN')}</div>
+               </div>
+               <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px' }}>
+                 <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Outstanding</div>
+                 <div style={{ fontSize: '24px', fontWeight: 700, color: '#ef4444', marginTop: '8px' }}>₹{dashboardData.outstanding.toLocaleString('en-IN')}</div>
+               </div>
+               <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px' }}>
+                 <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Overdue</div>
+                 <div style={{ fontSize: '24px', fontWeight: 700, color: '#b91c1c', marginTop: '8px' }}>₹{dashboardData.overdue.toLocaleString('en-IN')}</div>
+               </div>
+               <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px' }}>
+                 <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Refunds</div>
+                 <div style={{ fontSize: '24px', fontWeight: 700, color: '#f59e0b', marginTop: '8px' }}>₹{dashboardData.totalRefunds.toLocaleString('en-IN')}</div>
+               </div>
+               <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px' }}>
+                 <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Credit Notes Issued</div>
+                 <div style={{ fontSize: '24px', fontWeight: 700, color: '#3b82f6', marginTop: '8px' }}>₹{dashboardData.totalCreditNotes.toLocaleString('en-IN')}</div>
+               </div>
+            </div>
+
+            {/* Target Progress */}
+            <div className={styles.creditCard} style={{ padding: '24px' }}>
+               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                 <div style={{ fontWeight: 600, color: '#1e293b' }}>Collection Target (Mock)</div>
+                 <div style={{ color: '#64748b', fontSize: '14px' }}>
+                   ₹{dashboardData.currentTotalCollected.toLocaleString('en-IN')} / ₹{dashboardData.collectionTarget.toLocaleString('en-IN')}
+                 </div>
+               </div>
+               <div style={{ width: '100%', height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                 <div style={{ 
+                   height: '100%', 
+                   background: '#10b981', 
+                   width: `${Math.min(100, (dashboardData.currentTotalCollected / dashboardData.collectionTarget) * 100)}%` 
+                 }} />
+               </div>
+            </div>
+
+            {/* Charts & Visuals */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+               {/* Cash Flow */}
+               <div className={styles.creditCard} style={{ padding: '24px' }}>
+                 <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: '24px' }}>Cash Flow (Inflow vs Outflow)</div>
+                 <div style={{ display: 'flex', alignItems: 'flex-end', height: '150px', gap: '8px' }}>
+                   {/* Simple CSS bars for mock data */}
+                   {[40, 70, 50, 90, 60, 100, 80].map((h, i) => (
+                     <div key={i} style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center' }}>
+                       <div style={{ width: '100%', height: `${h}%`, background: '#3b82f6', borderRadius: '4px 4px 0 0', opacity: 0.8 }} title={`Inflow: ${h}`} />
+                       <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '4px' }}>{['M1','M2','M3','M4','M5','M6','M7'][i]}</div>
+                     </div>
+                   ))}
+                 </div>
+               </div>
+
+               {/* Collection Trend */}
+               <div className={styles.creditCard} style={{ padding: '24px' }}>
+                 <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: '24px' }}>Collection Trend</div>
+                 <div style={{ display: 'flex', alignItems: 'flex-end', height: '150px', gap: '8px' }}>
+                   {/* Simple CSS bars for mock data */}
+                   {[20, 40, 30, 80, 50, 90, 100].map((h, i) => (
+                     <div key={i} style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center' }}>
+                       <div style={{ width: '100%', height: `${h}%`, background: '#10b981', borderRadius: '4px 4px 0 0', opacity: 0.8 }} title={`Collection: ${h}`} />
+                       <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '4px' }}>{['M1','M2','M3','M4','M5','M6','M7'][i]}</div>
+                     </div>
+                   ))}
+                 </div>
+               </div>
+            </div>
+
+            {/* Tables Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+
+               {/* Receivable Aging */}
+               <div className={styles.creditCard} style={{ padding: '24px' }}>
+                 <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: '16px' }}>Receivable Aging</div>
+                 <table style={{ width: '100%', fontSize: '14px', borderCollapse: 'collapse' }}>
+                   <tbody>
+                     {[{label: '0-30 Days', val: 50000}, {label: '31-60 Days', val: 120000}, {label: '61-90 Days', val: 0}, {label: '90+ Days', val: 45000}].map((r, i) => (
+                       <tr key={i} style={{ borderBottom: i !== 3 ? '1px solid #e2e8f0' : 'none' }}>
+                         <td style={{ padding: '12px 0', color: '#475569' }}>{r.label}</td>
+                         <td style={{ padding: '12px 0', textAlign: 'right', fontWeight: 600, color: i > 1 && r.val > 0 ? '#ef4444' : '#1e293b' }}>₹{r.val.toLocaleString('en-IN')}</td>
+                       </tr>
+                     ))}
+                   </tbody>
+                 </table>
+               </div>
+            </div>
+
+            {/* Top Outstanding Projects */}
+            <div className={styles.creditCard} style={{ padding: '24px' }}>
+               <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: '16px' }}>Top Outstanding Projects (Global Mock)</div>
+               <table style={{ width: '100%', fontSize: '14px', borderCollapse: 'collapse', textAlign: 'left' }}>
+                 <thead>
+                   <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>
+                     <th style={{ padding: '12px 8px', fontWeight: 600 }}>Project</th>
+                     <th style={{ padding: '12px 8px', fontWeight: 600 }}>Client</th>
+                     <th style={{ padding: '12px 8px', fontWeight: 600, textAlign: 'right' }}>Outstanding</th>
+                     <th style={{ padding: '12px 8px', fontWeight: 600, textAlign: 'right' }}>Overdue</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                   {[
+                     {p: 'Skyline Penthouse', c: 'Arjun Mehta', o: 850000, od: 200000},
+                     {p: 'Oceanview Villa', c: 'Priya Sharma', o: 540000, od: 540000},
+                     {p: 'Tech Hub Office', c: 'NexGen IT', o: 320000, od: 0}
+                   ].map((row, i) => (
+                     <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                       <td style={{ padding: '12px 8px', color: '#1e293b', fontWeight: 500 }}>{row.p}</td>
+                       <td style={{ padding: '12px 8px', color: '#475569' }}>{row.c}</td>
+                       <td style={{ padding: '12px 8px', textAlign: 'right', color: '#1e293b' }}>₹{row.o.toLocaleString('en-IN')}</td>
+                       <td style={{ padding: '12px 8px', textAlign: 'right', color: row.od > 0 ? '#ef4444' : '#10b981' }}>₹{row.od.toLocaleString('en-IN')}</td>
+                     </tr>
+                   ))}
+                 </tbody>
+               </table>
+            </div>
+
+          </div>
+        )}
+
+        {activeSubTab === 'collections' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 600 }}>Collection Dashboard</h3>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <select 
+                  className={styles.input} 
+                  value={collectionFilters.priority} 
+                  onChange={(e) => setCollectionFilters(prev => ({...prev, priority: e.target.value}))}
+                  style={{ width: '150px' }}
+                >
+                  <option value="All">All Priorities</option>
+                  <option value="HIGH">High Priority</option>
+                  <option value="MEDIUM">Medium Priority</option>
+                  <option value="LOW">Low Priority</option>
+                  <option value="UPCOMING">Upcoming</option>
+                </select>
+                <select 
+                  className={styles.input} 
+                  value={collectionFilters.owner} 
+                  onChange={(e) => setCollectionFilters(prev => ({...prev, owner: e.target.value}))}
+                  style={{ width: '150px' }}
+                >
+                  <option value="All">All Owners</option>
+                  <option value="Finance Team A">Finance Team A</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Collection KPIs */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+              <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px', borderLeft: '4px solid #ef4444' }}>
+                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Overdue Follow-ups</div>
+                <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', marginTop: '8px' }}>{collectionData.kpis.overdueCount}</div>
+              </div>
+              <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px', borderLeft: '4px solid #3b82f6' }}>
+                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Upcoming Dues</div>
+                <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', marginTop: '8px' }}>{collectionData.kpis.upcomingCount}</div>
+              </div>
+              <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px', borderLeft: '4px solid #f59e0b' }}>
+                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Active Promises (PTP)</div>
+                <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', marginTop: '8px' }}>{collectionData.kpis.ptpCount}</div>
+              </div>
+              <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px', borderLeft: '4px solid #10b981' }}>
+                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Followed-Up Today</div>
+                <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', marginTop: '8px' }}>{collectionData.kpis.todayFollowUpCount}</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px' }}>
+              {/* Action List */}
+              <div className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>Action List</h4>
+                </div>
+                <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                  {collectionData.items.length === 0 ? (
+                    <div style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>No pending actions.</div>
+                  ) : (
+                    collectionData.items.map((item, idx) => (
+                      <div 
+                        key={idx} 
+                        style={{ 
+                          padding: '16px', 
+                          borderBottom: '1px solid #f1f5f9', 
+                          cursor: 'pointer',
+                          background: selectedCollectionItem?.id === item.id ? '#f0f9ff' : 'transparent'
+                        }}
+                        onClick={() => setSelectedCollectionItem(item)}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                          <span style={{ fontWeight: 600, color: '#1e293b' }}>{item.milestone}</span>
+                          <span style={{ 
+                            padding: '2px 8px', 
+                            borderRadius: '12px', 
+                            fontSize: '12px', 
+                            fontWeight: 600,
+                            background: item.priority === 'HIGH' ? '#fee2e2' : item.priority === 'MEDIUM' ? '#fef3c7' : item.priority === 'LOW' ? '#f1f5f9' : '#dcfce7',
+                            color: item.priority === 'HIGH' ? '#b91c1c' : item.priority === 'MEDIUM' ? '#b45309' : item.priority === 'LOW' ? '#475569' : '#166534'
+                          }}>
+                            {item.priority}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#475569' }}>
+                          <span>Due: {new Date(item.dueDate).toLocaleDateString()}</span>
+                          <span style={{ fontWeight: 600, color: '#ef4444' }}>₹{item.remainingAmount.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '8px', color: '#64748b' }}>
+                          <span>{item.daysOverdue > 0 ? `${item.daysOverdue} days overdue` : 'Upcoming'}</span>
+                          {item.latestPtp && (
+                            <span style={{ color: '#f59e0b', fontWeight: 600 }}>PTP: {new Date(item.latestPtp.ptpDate).toLocaleDateString()}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Action Center */}
+              <div className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>Action Center</h4>
+                </div>
+                {!selectedCollectionItem ? (
+                  <div style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>Select a milestone from the list to take action.</div>
+                ) : (
+                  <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px' }}>
+                      <div style={{ fontWeight: 600, marginBottom: '4px' }}>{selectedCollectionItem.milestone}</div>
+                      <div style={{ fontSize: '14px', color: '#475569' }}>Outstanding: ₹{selectedCollectionItem.remainingAmount.toLocaleString('en-IN')}</div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '14px', fontWeight: 500 }}>Call Status</label>
+                      <select 
+                        className={styles.input}
+                        value={collectionActionForm.callStatus}
+                        onChange={(e) => setCollectionActionForm(prev => ({...prev, callStatus: e.target.value}))}
+                      >
+                        <option value="Connected">Connected</option>
+                        <option value="No Answer">No Answer</option>
+                        <option value="Busy">Busy</option>
+                        <option value="Wrong Number">Wrong Number</option>
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '14px', fontWeight: 500 }}>Collection Notes</label>
+                      <textarea 
+                        className={styles.input} 
+                        style={{ height: '80px', resize: 'none' }}
+                        placeholder="Log details of the conversation..."
+                        value={collectionActionForm.note}
+                        onChange={(e) => setCollectionActionForm(prev => ({...prev, note: e.target.value}))}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '14px', fontWeight: 500 }}>Promise To Pay (PTP) Date</label>
+                      <input 
+                        type="date" 
+                        className={styles.input} 
+                        value={collectionActionForm.ptpDate}
+                        onChange={(e) => setCollectionActionForm(prev => ({...prev, ptpDate: e.target.value}))}
+                      />
+                    </div>
+
+                    <Button variant="primary" onClick={handleLogCollectionAction}>Log Action</Button>
+
+                    <div style={{ marginTop: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+                      <h5 style={{ margin: 0, marginBottom: '12px', fontSize: '14px', fontWeight: 600 }}>Reminder & Call History</h5>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '200px', overflowY: 'auto' }}>
+                        {selectedCollectionItem.history.length === 0 ? (
+                          <div style={{ fontSize: '12px', color: '#94a3b8' }}>No previous history logged.</div>
+                        ) : (
+                          selectedCollectionItem.history.map((h, i) => (
+                            <div key={i} style={{ fontSize: '12px', background: '#f1f5f9', padding: '8px', borderRadius: '4px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', marginBottom: '4px' }}>
+                                <span>{new Date(h.date).toLocaleString()}</span>
+                                <span style={{ fontWeight: 600 }}>{h.callStatus}</span>
+                              </div>
+                              <div style={{ color: '#1e293b' }}>{h.note}</div>
+                              <div style={{ color: '#94a3b8', marginTop: '4px', fontStyle: 'italic' }}>By: {h.loggedBy}</div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeSubTab === 'tally_sync' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Tally Integration / ERP Sync</h3>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <Button variant="outline" size="sm" onClick={() => handleTriggerSync('Customers')}>Sync Customers</Button>
+                <Button variant="outline" size="sm" onClick={() => handleTriggerSync('Invoices')}>Sync Invoices</Button>
+                <Button variant="outline" size="sm" onClick={() => handleTriggerSync('Payments')}>Sync Payments</Button>
+                <Button variant="outline" size="sm" onClick={() => handleTriggerSync('Ledger Entries')}>Sync Ledger</Button>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+              <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px', borderLeft: '4px solid #3b82f6' }}>
+                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Sync Attempts</div>
+                <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', marginTop: '8px' }}>{syncLogs.length}</div>
+              </div>
+              <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px', borderLeft: '4px solid #10b981' }}>
+                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Successful Syncs</div>
+                <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', marginTop: '8px' }}>{syncLogs.filter(s => s.status === 'SUCCESS').length}</div>
+              </div>
+              <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px', borderLeft: '4px solid #ef4444' }}>
+                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Failed Syncs</div>
+                <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', marginTop: '8px' }}>{syncLogs.filter(s => s.status === 'FAILED').length}</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
+              {/* Configuration */}
+              <div className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>Tally Ledger Mapping</h4>
+                </div>
+                <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>Sales Ledger Account</label>
+                    <input 
+                      type="text" 
+                      className={styles.input} 
+                      value={erpMappings.salesLedger}
+                      onChange={(e) => setErpMappings({...erpMappings, salesLedger: e.target.value})}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>Bank Account Ledger</label>
+                    <input 
+                      type="text" 
+                      className={styles.input} 
+                      value={erpMappings.bankLedger}
+                      onChange={(e) => setErpMappings({...erpMappings, bankLedger: e.target.value})}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
+                      <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>CGST Ledger</label>
+                      <input 
+                        type="text" 
+                        className={styles.input} 
+                        value={erpMappings.cgstLedger}
+                        onChange={(e) => setErpMappings({...erpMappings, cgstLedger: e.target.value})}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
+                      <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>SGST Ledger</label>
+                      <input 
+                        type="text" 
+                        className={styles.input} 
+                        value={erpMappings.sgstLedger}
+                        onChange={(e) => setErpMappings({...erpMappings, sgstLedger: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => toast.success('Mappings saved successfully.')}>Save Configuration</Button>
+                </div>
+              </div>
+
+              {/* Sync Log */}
+              <div className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>Sync Activity Log</h4>
+                </div>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Entity Type</th>
+                      <th>Identifier</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {syncLogs.length === 0 ? (
+                      <tr><td colSpan="5" style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>No sync history found.</td></tr>
+                    ) : (
+                      syncLogs.map((log) => (
+                        <tr key={log.id}>
+                          <td>{new Date(log.date).toLocaleString()}</td>
+                          <td><span style={{ fontWeight: 600, color: '#475569' }}>{log.type}</span></td>
+                          <td>{log.entityName}</td>
+                          <td>
+                            <span style={{ 
+                              padding: '2px 8px', 
+                              borderRadius: '12px', 
+                              fontSize: '12px', 
+                              fontWeight: 600,
+                              background: log.status === 'SUCCESS' ? '#dcfce7' : '#fee2e2',
+                              color: log.status === 'SUCCESS' ? '#166534' : '#b91c1c'
+                            }}>
+                              {log.status}
+                            </span>
+                            {log.message && <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '4px' }}>{log.message}</div>}
+                          </td>
+                          <td>
+                            {log.status === 'FAILED' && (
+                              <button 
+                                onClick={() => handleRetrySync(log.id)}
+                                style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
+                              >
+                                Retry
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeSubTab === 'adjustments' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Payment Adjustments</h3>
+              {hasPermission('Manage Invoices') && (
+                <Button variant="primary" size="sm" onClick={() => setAdjustmentModalOpen(true)}>Request Adjustment</Button>
+              )}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+              <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px', borderLeft: '4px solid #3b82f6' }}>
+                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Adjustments</div>
+                <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', marginTop: '8px' }}>{paymentAdjustments.length}</div>
+              </div>
+              <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px', borderLeft: '4px solid #f59e0b' }}>
+                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Pending Approvals</div>
+                <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', marginTop: '8px' }}>{financeApprovals.filter(a => a.type === 'Payment Adjustment' && a.status === 'PENDING').length}</div>
+              </div>
+              <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px', borderLeft: '4px solid #10b981' }}>
+                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Approved Actions</div>
+                <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', marginTop: '8px' }}>{paymentAdjustments.filter(a => a.status === 'APPROVED').length}</div>
+              </div>
+            </div>
+
+            <div className={styles.card}>
+              <div className={styles.cardHeader}>
+                <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>Adjustment History</h4>
+              </div>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Source</th>
+                    <th>Target</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paymentAdjustments.length === 0 ? (
+                    <tr><td colSpan="7" style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>No adjustments recorded.</td></tr>
+                  ) : (
+                    paymentAdjustments.map((adj) => (
+                      <tr key={adj.id}>
+                        <td style={{ fontSize: '12px', color: '#64748b' }}>{adj.id}</td>
+                        <td>{new Date(adj.date).toLocaleDateString()}</td>
+                        <td><span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '12px', background: '#f1f5f9', fontWeight: 600 }}>{adj.type}</span></td>
+                        <td>{adj.sourceName || adj.sourceMilestoneId}</td>
+                        <td>{adj.type === 'TRANSFER' ? (adj.targetName || adj.targetMilestoneId) : '-'}</td>
+                        <td style={{ fontWeight: 600, color: '#3b82f6' }}>₹{Number(adj.amount).toLocaleString('en-IN')}</td>
+                        <td>
+                          <span style={{ 
+                            padding: '2px 8px', 
+                            borderRadius: '12px', 
+                            fontSize: '12px', 
+                            background: adj.status === 'APPROVED' ? '#dcfce7' : adj.status === 'PENDING' ? '#fef3c7' : '#fee2e2',
+                            color: adj.status === 'APPROVED' ? '#166534' : adj.status === 'PENDING' ? '#b45309' : '#b91c1c'
+                          }}>
+                            {adj.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {adjustmentModalOpen && (
+              <div className={styles.modalOverlay}>
+                <div className={styles.modalContent} style={{ maxWidth: '500px' }}>
+                  <h3 style={{ margin: 0, marginBottom: '24px', fontSize: '18px', fontWeight: 600 }}>Request Payment Adjustment</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '14px', fontWeight: 500 }}>Adjustment Type</label>
+                      <select 
+                        className={styles.input}
+                        value={adjustmentForm.type}
+                        onChange={(e) => setAdjustmentForm({...adjustmentForm, type: e.target.value})}
+                      >
+                        <option value="OVERPAYMENT">Overpayment (Move to Credit/Advance)</option>
+                        <option value="UNDERPAYMENT">Underpayment (Short Payment)</option>
+                        <option value="WRONG_PAYMENT">Wrong Payment (Nullify)</option>
+                        <option value="TRANSFER">Transfer Between Invoices</option>
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '14px', fontWeight: 500 }}>Source Milestone/Invoice</label>
+                      <select 
+                        className={styles.input}
+                        value={adjustmentForm.sourceMilestoneId}
+                        onChange={(e) => setAdjustmentForm({...adjustmentForm, sourceMilestoneId: e.target.value})}
+                      >
+                        <option value="">Select Source...</option>
+                        {payments.map(p => (
+                          <option key={p.id} value={p.id}>{p.milestone} (Paid: ₹{p.collectedAmount?.toLocaleString('en-IN')})</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {adjustmentForm.type === 'TRANSFER' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <label style={{ fontSize: '14px', fontWeight: 500 }}>Target Milestone/Invoice</label>
+                        <select 
+                          className={styles.input}
+                          value={adjustmentForm.targetMilestoneId}
+                          onChange={(e) => setAdjustmentForm({...adjustmentForm, targetMilestoneId: e.target.value})}
+                        >
+                          <option value="">Select Target...</option>
+                          {payments.map(p => (
+                            <option key={p.id} value={p.id}>{p.milestone} (Due: ₹{p.remainingAmount?.toLocaleString('en-IN')})</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '14px', fontWeight: 500 }}>Amount (₹)</label>
+                      <input 
+                        type="number" 
+                        className={styles.input}
+                        placeholder="Enter adjustment amount"
+                        value={adjustmentForm.amount}
+                        onChange={(e) => setAdjustmentForm({...adjustmentForm, amount: e.target.value})}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '14px', fontWeight: 500 }}>Reason / Justification</label>
+                      <textarea 
+                        className={styles.input}
+                        placeholder="Explain why this adjustment is needed"
+                        value={adjustmentForm.reason}
+                        onChange={(e) => setAdjustmentForm({...adjustmentForm, reason: e.target.value})}
+                        style={{ height: '80px', resize: 'none' }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+                      <Button variant="outline" onClick={() => setAdjustmentModalOpen(false)}>Cancel</Button>
+                      <Button variant="primary" onClick={handleRequestAdjustment}>Submit for Approval</Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeSubTab === 'reconciliation' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Bank Reconciliation</h3>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <Button variant="outline" size="sm" onClick={handleImportStatement}>
+                  Import CSV
+                </Button>
+                <Button variant="primary" size="sm" onClick={handleAutoReconcile}>
+                  Auto Reconcile
+                </Button>
+              </div>
+            </div>
+
+            {/* Reconciliation Report Summary */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+              <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px' }}>
+                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Imported Txns</div>
+                <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', marginTop: '8px' }}>{bankStatements.length}</div>
+              </div>
+              <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px' }}>
+                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Reconciled</div>
+                <div style={{ fontSize: '24px', fontWeight: 700, color: '#10b981', marginTop: '8px' }}>{reconciledMatches.length}</div>
+              </div>
+              <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px' }}>
+                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Exceptions (Unmatched)</div>
+                <div style={{ fontSize: '24px', fontWeight: 700, color: '#ef4444', marginTop: '8px' }}>{bankStatements.filter(b => !b.reconciled).length}</div>
+              </div>
+            </div>
+
+            {/* Unmatched Bank Transactions */}
+            <div className={styles.card}>
+              <div className={styles.cardHeader}>
+                <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>Exceptions: Unmatched Bank Transactions</h4>
+              </div>
+              <table style={{ width: '100%', fontSize: '14px', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>
+                    <th style={{ padding: '12px 8px', fontWeight: 600 }}>Txn ID</th>
+                    <th style={{ padding: '12px 8px', fontWeight: 600 }}>Date</th>
+                    <th style={{ padding: '12px 8px', fontWeight: 600 }}>Reference</th>
+                    <th style={{ padding: '12px 8px', fontWeight: 600, textAlign: 'right' }}>Amount</th>
+                    <th style={{ padding: '12px 8px', fontWeight: 600, textAlign: 'right' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bankStatements.filter(b => !b.reconciled).length === 0 ? (
+                    <tr><td colSpan="5" style={{ padding: '16px', textAlign: 'center', color: '#64748b' }}>No unmatched bank transactions.</td></tr>
+                  ) : bankStatements.filter(b => !b.reconciled).map((txn, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '12px 8px', color: '#1e293b' }}>{txn.id}</td>
+                      <td style={{ padding: '12px 8px', color: '#475569' }}>{new Date(txn.date).toLocaleDateString()}</td>
+                      <td style={{ padding: '12px 8px', color: '#475569' }}>{txn.reference}</td>
+                      <td style={{ padding: '12px 8px', textAlign: 'right', color: '#1e293b', fontWeight: 600 }}>₹{txn.amount.toLocaleString('en-IN')}</td>
+                      <td style={{ padding: '12px 8px', textAlign: 'right' }}>
+                        <Button variant="outline" size="sm" onClick={() => handleManualReconcile(txn.id, null)}>Manual Link</Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Reconciled Ledger */}
+            <div className={styles.card}>
+              <div className={styles.cardHeader}>
+                <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>Reconciled Ledger</h4>
+              </div>
+              <table style={{ width: '100%', fontSize: '14px', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>
+                    <th style={{ padding: '12px 8px', fontWeight: 600 }}>Match ID</th>
+                    <th style={{ padding: '12px 8px', fontWeight: 600 }}>Date Matched</th>
+                    <th style={{ padding: '12px 8px', fontWeight: 600 }}>Bank Txn ID</th>
+                    <th style={{ padding: '12px 8px', fontWeight: 600 }}>CRM Payment ID</th>
+                    <th style={{ padding: '12px 8px', fontWeight: 600, textAlign: 'right' }}>Amount Reconciled</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reconciledMatches.length === 0 ? (
+                    <tr><td colSpan="5" style={{ padding: '16px', textAlign: 'center', color: '#64748b' }}>No reconciled records yet.</td></tr>
+                  ) : reconciledMatches.map((match, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '12px 8px', color: '#10b981', fontWeight: 500 }}>{match.id}</td>
+                      <td style={{ padding: '12px 8px', color: '#475569' }}>{new Date(match.date).toLocaleDateString()}</td>
+                      <td style={{ padding: '12px 8px', color: '#475569' }}>{match.bankTxn.id}</td>
+                      <td style={{ padding: '12px 8px', color: '#475569' }}>{match.crmTxn.id}</td>
+                      <td style={{ padding: '12px 8px', textAlign: 'right', color: '#1e293b', fontWeight: 600 }}>₹{match.bankTxn.amount.toLocaleString('en-IN')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {activeSubTab === 'breakdown' && (
           <div className={styles.breakdownList}>
             <div className={styles.breakdownHeader}>DETAILED COST BREAKDOWN</div>
