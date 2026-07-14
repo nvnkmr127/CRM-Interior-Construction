@@ -2,6 +2,10 @@ import api from './axios';
 
 export const getLeadAnalytics = (params) => api.get('/analytics/leads', { params }).then(r=>r.data.data);
 
+export const getRevenueAnalytics = (params) => api.get('/analytics/revenue-leads', { params }).then(r=>r.data.data);
+
+export const getLeadPredictions = (params) => api.get('/analytics/lead-predictions', { params }).then(r=>r.data.data);
+
 export const getProjectAnalytics = (params) => api.get('/analytics/projects', { params }).then(r=>r.data.data);
 
 export const getVendorPerformanceReport = () => api.get('/analytics/vendors').then(r=>r.data.data);

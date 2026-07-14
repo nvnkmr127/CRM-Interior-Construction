@@ -478,3 +478,922 @@
 .skeletonChart { height: 280px; }
 .skeletonArea  { height: 280px; }
 .skeletonTable { height: 240px; }
+
+/* ─── Funnel Analytics ────────────────────────────────────── */
+.funnelContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding-top: var(--space-4);
+}
+
+.funnelRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  transition: background 0.15s;
+}
+
+.funnelRow:hover {
+  background: var(--color-surface-2);
+}
+
+.funnelBarWrap {
+  flex: 1;
+  display: flex;
+  justify-content: center; /* Center the funnel bar to create a true funnel shape */
+  position: relative;
+  height: 48px;
+}
+
+.funnelBar {
+  height: 100%;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 600;
+  font-size: var(--text-sm);
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.funnelInfo {
+  width: 250px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.funnelStat {
+  display: flex;
+  flex-direction: column;
+}
+
+.funnelStat strong {
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.funnelDropBadge {
+  background: #FEF2F2;
+  color: #DC2626;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.th {
+  text-align: left;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 2px solid var(--color-border);
+  white-space: nowrap;
+  background: var(--color-surface-2);
+}
+
+.td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  vertical-align: middle;
+}
+
+.tr {
+  transition: background 0.12s;
+}
+
+.tr:last-child .td {
+  border-bottom: none;
+}
+
+.tr:hover {
+  background: var(--color-surface-2);
+}
+
+/* ─── Rank Badge ──────────────────────────────────────────── */
+.rankBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
+}
+
+.rankGold   { background: #FEF3C7; color: #92400E; }
+.rankSilver { background: #F3F4F6; color: #374151; }
+.rankBronze { background: #FEF3C7; color: #B45309; }
+
+/* ─── Member Cell ─────────────────────────────────────────── */
+.memberCell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.memberAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-accent-light, #FDE8D8);
+  color: var(--color-accent-dark, #c15f2e);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.memberName {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+/* ─── Performance Bar ─────────────────────────────────────── */
+.perfBarBg {
+  height: 8px;
+  background: var(--color-surface-2);
+  border-radius: 4px;
+  overflow: hidden;
+  min-width: 80px;
+}
+
+.perfBarFill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+
+/* ─── Score Badge ─────────────────────────────────────────── */
+.scoreBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.scoreBadgeHigh { background: #ECFDF5; color: #059669; }
+.scoreBadgeMid  { background: #FFFBEB; color: #D97706; }
+.scoreBadgeLow  { background: #F3F4F6; color: #6B7280; }
+
+/* ─── Skeleton ────────────────────────────────────────────── */
+.skeleton {
+  background: var(--color-surface-2);
+  border-radius: var(--radius-md);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%   { opacity: 0.55; }
+  50%  { opacity: 1; }
+  100% { opacity: 0.55; }
+}
+
+.skeletonKpi   { height: 100px; }
+.skeletonChart { height: 280px; }
+.skeletonArea  { height: 280px; }
+.skeletonTable { height: 240px; }
+
+/* ─── Funnel Analytics ────────────────────────────────────── */
+.funnelContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding-top: var(--space-4);
+}
+
+.funnelRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  transition: background 0.15s;
+}
+
+.funnelRow:hover {
+  background: var(--color-surface-2);
+}
+
+.funnelBarWrap {
+  flex: 1;
+  display: flex;
+  justify-content: center; /* Center the funnel bar to create a true funnel shape */
+  position: relative;
+  height: 48px;
+}
+
+.funnelBar {
+  height: 100%;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 600;
+  font-size: var(--text-sm);
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.funnelInfo {
+  width: 250px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.funnelStat {
+  display: flex;
+  flex-direction: column;
+}
+
+.funnelStat strong {
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.funnelDropBadge {
+  background: #FEF2F2;
+  color: #DC2626;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 10px;
+  margin-left: 6px;
+}
+
+.bottleneckAlert {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #DC2626;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  background: #FEF2F2;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-2);
+}
+
+/* ─── Sales Cycle Timeline ────────────────────────────────── */
+.cycleContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+}
+
+.cycleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.15s, border-color 0.15s;
+  cursor: pointer;
+}
+
+.cycleRow:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-border-strong);
+}
+
+.cycleStages {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 280px;
+}
+
+.cycleStageBox {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  padding: 6px 12px;
+  background: var(--color-surface-2);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.cycleArrow {
+  color: var(--color-text-muted);
+  font-size: 16px;
+}
+
+.cycleMetrics {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+}
+
+.cycleMetric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cycleMetricLabel {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.cycleMetricVal {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.cycleSlaBadge {
+  background: #FEF2F2;
+  color: #DC2626;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.cycleProgressBarWrap {
+  flex: 1;
+  max-width: 200px;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+/* ─── Stage Aging Heatmap ─────────────────────────────────── */
+.agingContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.agingRow {
+  display: flex;
+  align-items: center;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.2s;
+  color: #fff;
+  gap: var(--space-5);
+  box-shadow: var(--shadow-sm);
+}
+
+.agingRow:hover {
+  opacity: 0.95;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.agingStageName {
+  font-weight: 700;
+  font-size: var(--text-base);
+  width: 150px;
+  white-space: nowrap;
+}
+
+.agingMetrics {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.agingMetric {
+  display: flex;
+  flex-direction: column;
+}
+
+.agingMetricLabel {
+  font-size: var(--text-xs);
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.agingMetricVal {
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.agingSlaWarning {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+/* ─── SLA Dashboard ────────────────────────────────────────── */
+.slaGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4);
+  width: 100%;
+}
+
+.slaCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.slaCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.slaCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.slaCardTitle {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.slaCardIcon {
+  font-size: 1.25rem;
+  opacity: 0.8;
+}
+
+.slaCardBody {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.slaCardValue {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.slaSeverityBadge {
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.severityCritical { background: #FEF2F2; color: #DC2626; border: 1px solid #FCA5A5; }
+.severityHigh     { background: #FFF7ED; color: #EA580C; border: 1px solid #FDBA74; }
+.severityMedium   { background: #FEF9C3; color: #CA8A04; border: 1px solid #FDE047; }
+.severityLow      { background: #F3F4F6; color: #4B5563; border: 1px solid #D1D5DB; }
+
+.slaCardActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-light, #E5E7EB);
+}
+
+.slaActionButton {
+  background: var(--color-accent, #E8935A);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 4px 12px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.slaActionButton:hover {
+  opacity: 0.9;
+}
+
+.slaNotifyButton {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 50%;
+  transition: background 0.2s, color 0.2s;
+}
+
+.slaNotifyButton:hover {
+  background: var(--color-surface-2);
+  color: var(--color-accent);
+}
+
+/* ─── Info Tooltip ────────────────────────────────────────── */
+.infoIconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: help;
+  position: relative;
+  margin-left: 8px;
+}
+
+.infoTooltip {
+  visibility: hidden;
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  background: var(--color-text);
+  color: var(--color-surface);
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  width: 260px;
+  text-align: left;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+}
+
+.infoIconWrap:hover .infoTooltip {
+  visibility: visible;
+  opacity: 1;
+  transform: translateX(-50%) translateY(-4px);
+}
+
+.infoTooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: var(--color-text) transparent transparent transparent;
+}
+
+/* ─── AI Insights Panel ───────────────────────────────────── */
+.aiInsightsWrapper {
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-6);
+  padding: 24px;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.05) 0%, rgba(37, 99, 235, 0.05) 100%);
+  border: 1px solid rgba(124, 58, 237, 0.15);
+  border-radius: var(--radius-xl);
+  position: relative;
+  overflow: hidden;
+}
+
+.aiInsightsWrapper::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #7C3AED, #2563EB, #059669);
+}
+
+.aiHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: var(--space-5);
+}
+
+.aiHeaderIcon {
+  font-size: 24px;
+  background: linear-gradient(135deg, #7C3AED, #2563EB);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.aiHeaderTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.aiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-4);
+}
+
+.aiCard {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+
+/* Dark mode overrides if needed, using custom properties mostly */
+:root[data-theme="dark"] .aiCard {
+  background: rgba(30, 30, 30, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.aiCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.1);
+  border-color: rgba(124, 58, 237, 0.3);
+}
+
+.aiCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.aiCardTitle {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.4;
+}
+
+.aiConfidenceBadge {
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(124, 58, 237, 0.1);
+  color: #7C3AED;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.aiCardDesc {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  flex: 1;
+}
+
+.aiCardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-light, rgba(0,0,0,0.05));
+}
+
+:root[data-theme="dark"] .aiCardFooter {
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+.aiMetaGroup {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.aiSeverityBadge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.aiSeverity-Critical { background: #FEF2F2; color: #DC2626; }
+.aiSeverity-High { background: #FFF7ED; color: #EA580C; }
+.aiSeverity-Medium { background: #FEF9C3; color: #CA8A04; }
+.aiSeverity-Low { background: #ECFDF5; color: #059669; }
+
+.aiPriorityBadge {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-2);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.aiActionButton {
+  background: transparent;
+  color: var(--color-info, #2563EB);
+  border: 1px solid var(--color-info, #2563EB);
+  border-radius: var(--radius-md);
+  padding: 4px 12px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.aiActionButton:hover {
+  background: var(--color-info, #2563EB);
+  color: #fff;
+}
+
+/* ─── Executive Summary ────────────────────────────────────── */
+.execGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.execCard {
+  background: linear-gradient(135deg, var(--color-surface) 0%, rgba(15,23,42,0.02) 100%);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+
+:root[data-theme="dark"] .execCard {
+  background: linear-gradient(135deg, var(--color-surface) 0%, rgba(255,255,255,0.02) 100%);
+}
+
+.execCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  border-color: var(--color-text-secondary);
+}
+
+.execLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.execValue {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.execSub {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+}
+
+/* ─── Advanced Filter System ───────────────────────────────── */
+.filterBarContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.filterControlsRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filterChipsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.filterChip {
+  display: inline-flex;
+  align-items: center;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.filterChipClose {
+  margin-left: 6px;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.filterChipClose:hover {
+  color: var(--color-danger, #DC2626);
+}
+
+.clearAllBtn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.clearAllBtn:hover {
+  color: var(--color-text);
+}
+
+.filterModalGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 8px;
+  margin-bottom: 24px;
+}
+
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filterGroup label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filterModalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 16px;
+}
