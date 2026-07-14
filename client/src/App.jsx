@@ -10,6 +10,11 @@ import ErrorBoundary from './components/ErrorBoundary'
 import OfflineBanner from './components/layout/OfflineBanner'
 import CommandPalette from './components/ui/CommandPalette'
 
+import { TimeTrackerProvider } from './store/TimeTrackerContext'
+import { TaskNotificationProvider } from './store/TaskNotificationContext'
+import { TaskAutomationProvider } from './store/TaskAutomationContext'
+import { TaskGovernanceProvider } from './store/TaskGovernanceContext'
+
 // Lazy-load ALL pages
 const Login          = lazy(() => import('./pages/auth/Login'))
 const Register       = lazy(() => import('./pages/auth/Register'))
@@ -53,7 +58,11 @@ export default function App() {
       <AuthProvider>
         <ToastProvider>
           <BreadcrumbsProvider>
-            <ErrorBoundary>
+            <TimeTrackerProvider>
+              <TaskNotificationProvider>
+                <TaskAutomationProvider>
+                  <TaskGovernanceProvider>
+                    <ErrorBoundary>
               <OfflineBanner />
               <CommandPalette />
               <Suspense fallback={<PageLoader />}>
@@ -99,6 +108,10 @@ export default function App() {
                 </Routes>
               </Suspense>
             </ErrorBoundary>
+                  </TaskGovernanceProvider>
+                </TaskAutomationProvider>
+              </TaskNotificationProvider>
+            </TimeTrackerProvider>
           </BreadcrumbsProvider>
         </ToastProvider>
       </AuthProvider>

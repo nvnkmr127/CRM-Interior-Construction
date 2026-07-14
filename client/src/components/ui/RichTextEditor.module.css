@@ -1,0 +1,182 @@
+.editorContainer {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s;
+}
+
+.editorContainer.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  border-radius: 0;
+  border: none;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-background);
+  align-items: center;
+}
+
+.toolbar button {
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toolbar button:hover {
+  background: var(--color-surface-hover);
+}
+
+.toolbar button.active {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border-color: var(--color-primary-light);
+}
+
+.divider {
+  width: 1px;
+  height: 20px;
+  background: var(--color-border);
+  margin: 0 4px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.editorContent {
+  padding: 16px;
+  min-height: 200px;
+  max-height: 600px;
+  overflow-y: auto;
+  cursor: text;
+  flex: 1;
+}
+
+.editorContainer.fullscreen .editorContent {
+  max-height: none;
+}
+
+/* TipTap ProseMirror Styles */
+.editorContent :global(.ProseMirror) {
+  outline: none;
+  line-height: 1.6;
+}
+
+.editorContent :global(.ProseMirror p) {
+  margin: 0 0 1em 0;
+}
+
+.editorContent :global(.ProseMirror h1),
+.editorContent :global(.ProseMirror h2),
+.editorContent :global(.ProseMirror h3) {
+  margin: 1.5em 0 0.5em 0;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.editorContent :global(.ProseMirror h1) { font-size: 1.75rem; }
+.editorContent :global(.ProseMirror h2) { font-size: 1.5rem; }
+.editorContent :global(.ProseMirror h3) { font-size: 1.25rem; }
+
+.editorContent :global(.ProseMirror ul),
+.editorContent :global(.ProseMirror ol) {
+  padding-left: 1.5rem;
+  margin: 0 0 1em 0;
+}
+
+.editorContent :global(.ProseMirror blockquote) {
+  border-left: 3px solid var(--color-border);
+  padding-left: 1rem;
+  margin-left: 0;
+  margin-right: 0;
+  color: var(--color-text-muted);
+}
+
+.editorContent :global(.ProseMirror code) {
+  background: var(--color-background);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+.editorContent :global(.ProseMirror pre) {
+  background: var(--color-background);
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-family: monospace;
+}
+
+.editorContent :global(.ProseMirror pre code) {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+.editorContent :global(.ProseMirror img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.editorContent :global(.ProseMirror a) {
+  color: var(--color-primary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Table Styles */
+.editorContent :global(.ProseMirror table) {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+.editorContent :global(.ProseMirror table td),
+.editorContent :global(.ProseMirror table th) {
+  min-width: 1em;
+  border: 1px solid var(--color-border);
+  padding: 8px;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.editorContent :global(.ProseMirror table th) {
+  font-weight: bold;
+  text-align: left;
+  background-color: var(--color-background);
+}
+
+.mention {
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  font-weight: 500;
+}

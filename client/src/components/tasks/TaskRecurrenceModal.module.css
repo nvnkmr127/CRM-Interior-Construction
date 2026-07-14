@@ -1,0 +1,92 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 16px 0;
+}
+
+.row {
+  display: flex;
+  gap: 16px;
+}
+
+.label {
+  width: 100px;
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--color-text);
+  margin-top: 8px;
+}
+
+.intervalGroup {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.numberInput {
+  width: 60px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  outline: none;
+}
+
+.numberInput:focus {
+  border-color: var(--color-primary);
+}
+
+.dateInput {
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  outline: none;
+}
+
+.endGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.radioRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.radioRow label {
+  font-size: 14px;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.skipGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkboxRow label {
+  font-size: 14px;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 32px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 16px;
+}

@@ -1,0 +1,175 @@
+.threadContainer {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+}
+
+.threadContainer.reply {
+  margin-left: 32px;
+  border-left: 2px solid var(--color-border);
+  padding-left: 16px;
+  margin-bottom: 8px;
+}
+
+.commentBody {
+  display: flex;
+  gap: 12px;
+}
+
+.commentContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.commentHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.userName {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.timestamp {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.htmlContent {
+  font-size: 14px;
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.htmlContent :global(p) {
+  margin: 0 0 8px 0;
+}
+
+.htmlContent :global(img) {
+  max-width: 100%;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.commentActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.actionBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.actionBtn:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.reactionsWrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.reactionBtn {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 2px 6px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.reactionBtn.reacted {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
+}
+
+.reactionBtn.hidden {
+  display: none;
+}
+
+.reactionCount {
+  font-weight: 600;
+}
+
+.emojiPicker {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.emojiTrigger {
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  padding: 2px;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.emojiTrigger:hover {
+  background: var(--color-surface-hover);
+}
+
+.emojiMenu {
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 4px;
+  gap: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  z-index: 10;
+}
+
+.emojiPicker:hover .emojiMenu {
+  display: flex;
+}
+
+.emojiMenu button {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.emojiMenu button:hover {
+  background: var(--color-surface-hover);
+}
+
+.readReceipt {
+  font-size: 12px;
+  color: var(--color-primary);
+  margin-left: auto;
+  cursor: help;
+}
+
+.replyBox {
+  margin-top: 12px;
+}
+
+.repliesList {
+  margin-top: 12px;
+}

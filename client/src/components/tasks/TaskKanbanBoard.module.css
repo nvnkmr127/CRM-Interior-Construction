@@ -1,0 +1,238 @@
+.board {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--color-background);
+}
+
+.boardHeader {
+  display: flex;
+  min-width: min-content;
+  padding: 0 16px;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--color-background);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.colHeader {
+  width: 280px;
+  min-width: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 8px;
+  transition: width 0.3s;
+}
+
+.colHeader.collapsed {
+  width: 48px;
+  min-width: 48px;
+}
+
+.colBadge {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.collapseBtn {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.collapseBtn:hover {
+  background: var(--color-surface-hover);
+}
+
+.swimlanes {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 0 16px 16px;
+  min-width: min-content;
+}
+
+.swimlane {
+  margin-top: 24px;
+  content-visibility: auto; /* Optimization for virtual scrolling rendering */
+  contain-intrinsic-size: 200px;
+}
+
+.swimlaneHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 8px;
+  position: sticky;
+  left: 0;
+}
+
+.swimlaneIcon {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.swimlaneTitle {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--color-text);
+}
+
+.swimlaneCount {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.swimlaneCols {
+  display: flex;
+  gap: 16px;
+  min-height: 100px;
+}
+
+.colBody {
+  width: 280px;
+  min-width: 280px;
+  background: var(--color-surface);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.3s;
+  border: 2px solid transparent;
+}
+
+.colBody.dragOver {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.colBody.collapsed {
+  width: 48px;
+  min-width: 48px;
+  padding: 8px 0;
+  background: transparent;
+  border-right: 1px dashed var(--color-border);
+}
+
+.card {
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 12px;
+  cursor: grab;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
+}
+
+.card.dragging {
+  opacity: 0.5;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.taskId {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-family: monospace;
+}
+
+.priorityBadge {
+  font-size: 10px;
+  padding: 2px 6px;
+  text-transform: capitalize;
+}
+
+.cardTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+  line-height: 1.4;
+  margin-bottom: 12px;
+  word-break: break-word;
+}
+
+.inlineEditInput {
+  width: 100%;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  padding: 4px;
+  border: 1px solid var(--color-primary);
+  border-radius: 4px;
+  margin-bottom: 12px;
+  outline: none;
+}
+
+.cardFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--color-border);
+  padding-top: 8px;
+}
+
+.cardMeta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.date.overdue {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.metaIcon {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .boardHeader {
+    display: none; /* Hide sticky header on small screens */
+  }
+  
+  .swimlaneCols {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 16px;
+  }
+  
+  .colBody {
+    scroll-snap-align: start;
+  }
+}

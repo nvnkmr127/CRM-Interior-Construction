@@ -14,6 +14,128 @@ export const setupMockInterceptor = (api) => {
 
           const persistDb = () => saveMockDatabase(mockDatabase);
 
+          if (!mockDatabase.taskTemplates) {
+            mockDatabase.taskTemplates = [
+              {
+                id: 'tmpl-1',
+                name: 'Client Onboarding',
+                category: 'HR',
+                is_favorite: true,
+                is_shared: true,
+                title: 'Onboard [Client Name]',
+                description: '<p>Standard onboarding process.</p>',
+                priority: 'high',
+                checklist: [{ id: '1', text: 'Send welcome email', done: false }]
+              },
+              {
+                id: 'tmpl-2',
+                name: 'Weekly Report',
+                category: 'Management',
+                is_favorite: false,
+                is_shared: true,
+                title: 'Weekly Status Report',
+                description: 'Compile metrics.',
+                priority: 'medium',
+                checklist: []
+              }
+            ]
+          }
+
+          if (!mockDatabase.tags) {
+            mockDatabase.tags = [
+              { id: 'tag-1', name: 'Urgent', color: '#ef4444' },
+              { id: 'tag-2', name: 'Frontend', color: '#3b82f6' },
+              { id: 'tag-3', name: 'Backend', color: '#10b981' },
+              { id: 'tag-4', name: 'Design', color: '#8b5cf6' },
+            ]
+          }
+
+          if (!mockDatabase.taskViews) {
+            mockDatabase.taskViews = [
+              {
+                id: 'view-1',
+                name: 'Default List',
+                is_shared: true,
+                is_default: false,
+                payload: {
+                  activeTab: 'all',
+                  statusFilter: 'all',
+                  priorityFilter: 'all',
+                  projectFilter: 'all',
+                  tagFilter: 'all',
+                  sortBy: 'due_asc',
+                  viewMode: 'list'
+                }
+              }
+            ]
+          }
+
+          const logTaskActivity = (taskId, actionType, description, userName = 'Admin User') => {
+            if (!mockDatabase.taskActivity) mockDatabase.taskActivity = [];
+            mockDatabase.taskActivity.push({
+              id: `act-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              task_id: taskId,
+              action_type: actionType, // created, edited, status_changed, priority_changed, due_date_changed, assignee_changed, checklist_updated, comment_added, attachment_added
+              description,
+              created_at: new Date().toISOString(),
+              user_name: userName,
+              is_ai: actionType.startsWith('ai_')
+            });
+            persistDb();
+          };
+
+          const addDays = (date, days) => {
+            const d = new Date(date);
+            d.setDate(d.getDate() + days);
+            return d;
+          };
+
+          const addMonths = (date, months) => {
+            const d = new Date(date);
+            d.setMonth(d.getMonth() + months);
+            return d;
+          };
+
+          const generateFutureTasks = (baseTask, rule, startIndex = 1) => {
+            if (!rule || rule.endType === 'never') return [];
+            let current = new Date(baseTask.due_date || new Date().toISOString());
+            let tasks = [];
+            
+            const maxOccurrences = rule.endType === 'occurrences' ? rule.occurrences : 10;
+            const endDate = rule.endType === 'date' ? new Date(rule.endDate) : new Date(2100, 0, 1);
+            
+            let count = startIndex;
+            while (count < maxOccurrences) {
+              if (rule.frequency === 'daily') current = addDays(current, rule.interval || 1);
+              else if (rule.frequency === 'weekly') current = addDays(current, (rule.interval || 1) * 7);
+              else if (rule.frequency === 'monthly') current = addMonths(current, rule.interval || 1);
+              else if (rule.frequency === 'yearly') current = addMonths(current, (rule.interval || 1) * 12);
+              else break;
+
+              if (rule.skipWeekends) {
+                const day = current.getDay();
+                if (day === 6) current = addDays(current, 2); // Saturday -> Monday
+                if (day === 0) current = addDays(current, 1); // Sunday -> Monday
+              }
+
+              if (current > endDate) break;
+
+              const newTask = {
+                ...baseTask,
+                id: `mock-task-${Date.now()}-${count}`,
+                due_date: current.toISOString(),
+                status: 'todo', // Reset status for future occurrences
+                series_id: baseTask.series_id || baseTask.id,
+                series_index: count,
+                recurrence_rule: rule,
+                is_recurring: true
+              };
+              tasks.push(newTask);
+              count++;
+            }
+            return tasks;
+          };
+
           // ACTIVITIES
           if (url.includes('/activities')) {
             const urlParts = url.split('?');
@@ -143,6 +265,149 @@ export const setupMockInterceptor = (api) => {
               if (followupId) {
                 if (!mockDatabase.followups) mockDatabase.followups = [];
                 mockDatabase.followups = mockDatabase.followups.filter(f => f.id !== followupId);
+                persistDb();
+                responseData.data = { success: true };
+              }
+            }
+          }
+          // TAGS
+          if (url.includes('/tags')) {
+            if (!mockDatabase.tags) mockDatabase.tags = [];
+            const urlParts = url.split('?');
+            const match = urlParts[0].match(/\/tags\/([a-zA-Z0-9-]+)$/);
+            const tagId = match ? match[1] : null;
+
+            if (method === 'get') {
+              responseData.data = mockDatabase.tags;
+            } else if (method === 'post') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const newTag = {
+                id: `tag-${Date.now()}`,
+                name: payload.name,
+                color: payload.color || '#9ca3af'
+              };
+              mockDatabase.tags.push(newTag);
+              persistDb();
+              responseData.data = newTag;
+            } else if (method === 'patch' || method === 'put') {
+              if (tagId) {
+                const updates = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                const idx = mockDatabase.tags.findIndex(t => t.id === tagId);
+                if (idx !== -1) {
+                  mockDatabase.tags[idx] = { ...mockDatabase.tags[idx], ...updates };
+                  persistDb();
+                  responseData.data = mockDatabase.tags[idx];
+                } else {
+                  return [404, { error: { message: 'Tag not found' } }];
+                }
+              }
+            } else if (method === 'delete') {
+              if (tagId) {
+                mockDatabase.tags = mockDatabase.tags.filter(t => t.id !== tagId);
+                // Also remove this tag from all tasks
+                if (mockDatabase.tasks) {
+                  mockDatabase.tasks = mockDatabase.tasks.map(t => {
+                    if (t.tags && t.tags.includes(tagId)) {
+                      return { ...t, tags: t.tags.filter(tg => tg !== tagId) };
+                    }
+                    return t;
+                  });
+                }
+                persistDb();
+                responseData.data = { success: true };
+              }
+            }
+          }
+          // TASK VIEWS
+          if (url.includes('/task-views')) {
+            if (!mockDatabase.taskViews) mockDatabase.taskViews = [];
+            const urlParts = url.split('?');
+            const match = urlParts[0].match(/\/task-views\/([a-zA-Z0-9-]+)$/);
+            const viewId = match ? match[1] : null;
+
+            if (method === 'get') {
+              responseData.data = mockDatabase.taskViews;
+            } else if (method === 'post') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const newView = {
+                id: `view-${Date.now()}`,
+                name: payload.name || 'Untitled View',
+                is_shared: payload.is_shared || false,
+                is_default: payload.is_default || false,
+                payload: payload.payload || {}
+              };
+              
+              if (newView.is_default) {
+                mockDatabase.taskViews.forEach(v => v.is_default = false);
+              }
+              
+              mockDatabase.taskViews.push(newView);
+              persistDb();
+              responseData.data = newView;
+            } else if (method === 'patch' || method === 'put') {
+              if (viewId) {
+                const updates = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                const idx = mockDatabase.taskViews.findIndex(v => v.id === viewId);
+                if (idx !== -1) {
+                  if (updates.is_default) {
+                    mockDatabase.taskViews.forEach(v => v.is_default = false);
+                  }
+                  mockDatabase.taskViews[idx] = { ...mockDatabase.taskViews[idx], ...updates };
+                  persistDb();
+                  responseData.data = mockDatabase.taskViews[idx];
+                } else {
+                  return [404, { error: { message: 'View not found' } }];
+                }
+              }
+            } else if (method === 'delete') {
+              if (viewId) {
+                mockDatabase.taskViews = mockDatabase.taskViews.filter(v => v.id !== viewId);
+                persistDb();
+                responseData.data = { success: true };
+              }
+            }
+          }
+          // TASK TEMPLATES
+          if (url.includes('/task-templates')) {
+            if (!mockDatabase.taskTemplates) mockDatabase.taskTemplates = [];
+            const urlParts = url.split('?');
+            const match = urlParts[0].match(/\/task-templates\/([a-zA-Z0-9-]+)$/);
+            const templateId = match ? match[1] : null;
+
+            if (method === 'get') {
+              responseData.data = mockDatabase.taskTemplates;
+            } else if (method === 'post') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const newTmpl = {
+                id: `tmpl-${Date.now()}`,
+                name: payload.name || 'Untitled Template',
+                category: payload.category || 'General',
+                is_favorite: payload.is_favorite || false,
+                is_shared: payload.is_shared || false,
+                title: payload.title || '',
+                description: payload.description || '',
+                priority: payload.priority || 'medium',
+                checklist: payload.checklist || [],
+                subtasks: payload.subtasks || []
+              };
+              mockDatabase.taskTemplates.push(newTmpl);
+              persistDb();
+              responseData.data = newTmpl;
+            } else if (method === 'patch' || method === 'put') {
+              if (templateId) {
+                const updates = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                const idx = mockDatabase.taskTemplates.findIndex(t => t.id === templateId);
+                if (idx !== -1) {
+                  mockDatabase.taskTemplates[idx] = { ...mockDatabase.taskTemplates[idx], ...updates };
+                  persistDb();
+                  responseData.data = mockDatabase.taskTemplates[idx];
+                } else {
+                  return [404, { error: { message: 'Template not found' } }];
+                }
+              }
+            } else if (method === 'delete') {
+              if (templateId) {
+                mockDatabase.taskTemplates = mockDatabase.taskTemplates.filter(t => t.id !== templateId);
                 persistDb();
                 responseData.data = { success: true };
               }
@@ -1520,13 +1785,29 @@ export const setupMockInterceptor = (api) => {
                 lead_id: payload.lead_id || null,
                 project_id: payload.project_id || null,
                 title: payload.title,
-                due_date: payload.due_date,
+                start_date: payload.start_date || payload.due_date || null,
+                due_date: payload.due_date || null,
                 assigned_to: payload.assigned_to || null,
                 assignee_name: assignee ? assignee.name : null,
-                status: payload.status || 'open',
-                priority: payload.priority || 'medium'
+                status: payload.status || 'todo',
+                priority: payload.priority || 'medium',
+                description: payload.description || '',
+                checklist: payload.checklist || [],
+                is_recurring: payload.is_recurring || false,
+                recurrence_rule: payload.recurrence_rule || null,
+                series_id: payload.is_recurring ? `series-${Date.now()}` : null,
+                series_index: 0
               };
               mockDatabase.tasks.push(newTask);
+              
+              if (newTask.is_recurring && newTask.recurrence_rule) {
+                const futureTasks = generateFutureTasks(newTask, newTask.recurrence_rule, 1);
+                mockDatabase.tasks.push(...futureTasks);
+              }
+              logTaskActivity(newTask.id, 'created', 'Created task');
+              if (payload.assigned_to) {
+                logTaskActivity(newTask.id, 'assignee_changed', `Assigned task to ${newTask.assignee_name}`);
+              }
               persistDb();
               responseData.data = newTask;
             } else if (method === 'patch' || method === 'put') {
@@ -1534,13 +1815,76 @@ export const setupMockInterceptor = (api) => {
                 const updates = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
                 const idx = mockDatabase.tasks.findIndex(t => t.id === taskId);
                 if (idx !== -1) {
-                  const updatedTask = { ...mockDatabase.tasks[idx], ...updates };
+                  const oldTask = mockDatabase.tasks[idx];
+                  if (updates.status && updates.status !== oldTask.status) {
+                    logTaskActivity(taskId, 'status_changed', `Changed status from ${oldTask.status} to ${updates.status}`);
+                  }
+                  if (updates.priority && updates.priority !== oldTask.priority) {
+                    logTaskActivity(taskId, 'priority_changed', `Changed priority from ${oldTask.priority} to ${updates.priority}`);
+                  }
+                  if (updates.title && updates.title !== oldTask.title) {
+                    logTaskActivity(taskId, 'edited', `Updated task title`);
+                  }
+                  if (updates.description && updates.description !== oldTask.description) {
+                    logTaskActivity(taskId, 'edited', `Updated task description`);
+                  }
+                  if (updates.start_date && updates.start_date !== oldTask.start_date) {
+                    logTaskActivity(taskId, 'start_date_changed', `Changed start date`);
+                  }
+                  if (updates.due_date && updates.due_date !== oldTask.due_date) {
+                    logTaskActivity(taskId, 'due_date_changed', `Changed due date`);
+                  }
+                  if (updates.checklist) {
+                    logTaskActivity(taskId, 'checklist_updated', `Updated checklist`);
+                  }
+                  
+                  const updatedTask = { ...oldTask, ...updates };
                   if (updates.assigned_to !== undefined) {
                     const assignee = mockDatabase.users?.find(u => u.id === updates.assigned_to);
                     updatedTask.assignee_name = assignee ? assignee.name : null;
                     updatedTask.assigned_to = updates.assigned_to;
+                    if (updates.assigned_to !== oldTask.assigned_to) {
+                      logTaskActivity(taskId, 'assignee_changed', `Changed assignee to ${updatedTask.assignee_name || 'Unassigned'}`);
+                    }
                   }
                   mockDatabase.tasks[idx] = updatedTask;
+
+                  if (updates.is_recurring && updates.recurrence_rule && updates.updateMode === 'future' && updatedTask.series_id) {
+                    // Delete existing future tasks in series
+                    mockDatabase.tasks = mockDatabase.tasks.filter(t => !(t.series_id === updatedTask.series_id && t.series_index > updatedTask.series_index));
+                    // Generate new future tasks
+                    const futureTasks = generateFutureTasks(updatedTask, updates.recurrence_rule, updatedTask.series_index + 1);
+                    mockDatabase.tasks.push(...futureTasks);
+                  } else if (updates.updateMode === 'all' && updatedTask.series_id) {
+                    // Update all tasks in series (title, description, etc)
+                    mockDatabase.tasks = mockDatabase.tasks.map(t => {
+                      if (t.series_id === updatedTask.series_id) {
+                        return {
+                          ...t,
+                          title: updates.title !== undefined ? updates.title : t.title,
+                          description: updates.description !== undefined ? updates.description : t.description,
+                          start_date: updates.start_date !== undefined ? updates.start_date : t.start_date,
+                          due_date: updates.due_date !== undefined ? updates.due_date : t.due_date,
+                          priority: updates.priority !== undefined ? updates.priority : t.priority,
+                          assigned_to: updates.assigned_to !== undefined ? updates.assigned_to : t.assigned_to,
+                          assignee_name: updates.assigned_to !== undefined ? updatedTask.assignee_name : t.assignee_name,
+                          recurrence_rule: updates.recurrence_rule !== undefined ? updates.recurrence_rule : t.recurrence_rule,
+                          tags: updates.tags !== undefined ? updates.tags : t.tags
+                        };
+                      }
+                      return t;
+                    });
+                    
+                    if (updates.recurrence_rule) {
+                      const seriesRoot = mockDatabase.tasks.find(t => t.series_id === updatedTask.series_id && t.series_index === 0);
+                      if (seriesRoot) {
+                        mockDatabase.tasks = mockDatabase.tasks.filter(t => t.series_id !== updatedTask.series_id || t.id === seriesRoot.id);
+                        const futureTasks = generateFutureTasks(seriesRoot, updates.recurrence_rule, 1);
+                        mockDatabase.tasks.push(...futureTasks);
+                      }
+                    }
+                  }
+
                   persistDb();
                   responseData.data = updatedTask;
                 }
@@ -1551,6 +1895,171 @@ export const setupMockInterceptor = (api) => {
                 persistDb();
                 responseData.data = { success: true };
               }
+            }
+          }
+          // TASK COMMENTS
+          else if (url.includes('/comments') && (url.includes('/tasks') || url.includes('/projects'))) {
+            const urlParts = url.split('?');
+            const matchComment = urlParts[0].match(/\/tasks\/([a-zA-Z0-9-]+)\/comments\/([a-zA-Z0-9-]+)$/);
+            const matchComments = urlParts[0].match(/\/tasks\/([a-zA-Z0-9-]+)\/comments$/);
+            const matchReaction = urlParts[0].match(/\/tasks\/([a-zA-Z0-9-]+)\/comments\/([a-zA-Z0-9-]+)\/reactions$/);
+            
+            let taskId = null;
+            let commentId = null;
+            if (matchReaction) {
+              taskId = matchReaction[1];
+              commentId = matchReaction[2];
+            } else if (matchComment) {
+              taskId = matchComment[1];
+              commentId = matchComment[2];
+            } else if (matchComments) {
+              taskId = matchComments[1];
+            }
+
+            if (!mockDatabase.taskComments) mockDatabase.taskComments = [];
+
+            if (matchReaction && method === 'post') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const idx = mockDatabase.taskComments.findIndex(c => c.id === commentId);
+              if (idx !== -1) {
+                const comment = mockDatabase.taskComments[idx];
+                if (!comment.reactions) comment.reactions = [];
+                const existingReactIdx = comment.reactions.findIndex(r => r.emoji === payload.reaction && r.user_name === 'Admin User');
+                if (existingReactIdx !== -1) {
+                  comment.reactions.splice(existingReactIdx, 1);
+                } else {
+                  comment.reactions.push({ emoji: payload.reaction, user_name: 'Admin User' });
+                }
+                persistDb();
+                responseData.data = comment;
+              }
+            } else if (commentId && method === 'patch') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const idx = mockDatabase.taskComments.findIndex(c => c.id === commentId);
+              if (idx !== -1) {
+                mockDatabase.taskComments[idx] = { ...mockDatabase.taskComments[idx], ...payload, updated_at: new Date().toISOString() };
+                persistDb();
+                responseData.data = mockDatabase.taskComments[idx];
+              }
+            } else if (commentId && method === 'delete') {
+              mockDatabase.taskComments = mockDatabase.taskComments.filter(c => c.id !== commentId);
+              persistDb();
+              responseData.data = { success: true };
+            } else if (taskId && method === 'get') {
+              const params = urlParts[1] ? new URLSearchParams(urlParts[1]) : null;
+              const page = params ? parseInt(params.get('page') || '1', 10) : 1;
+              const limit = params ? parseInt(params.get('limit') || '20', 10) : 20;
+              
+              let comments = mockDatabase.taskComments.filter(c => c.task_id === taskId);
+              comments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+              
+              const offset = (page - 1) * limit;
+              const paginated = comments.slice(offset, offset + limit);
+              
+              responseData.data = {
+                data: paginated,
+                meta: { page, limit, total: comments.length }
+              };
+            } else if (taskId && method === 'post') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const newComment = {
+                id: `mock-comment-${Date.now()}`,
+                task_id: taskId,
+                content: payload.content,
+                parent_id: payload.parent_id || null,
+                attachments: payload.attachments || [],
+                created_at: new Date().toISOString(),
+                user_name: 'Admin User',
+                is_own: true,
+                reactions: [],
+                read_by: []
+              };
+              mockDatabase.taskComments.push(newComment);
+              logTaskActivity(taskId, 'comment_added', 'Added a comment');
+              persistDb();
+              responseData.data = newComment;
+            }
+          }
+          // TASK ATTACHMENTS
+          else if (url.includes('/attachments') && (url.includes('/tasks') || url.includes('/projects'))) {
+            const urlParts = url.split('?');
+            const matchAttachments = urlParts[0].match(/\/tasks\/([a-zA-Z0-9-]+)\/attachments$/);
+            const matchAttachment = urlParts[0].match(/\/tasks\/([a-zA-Z0-9-]+)\/attachments\/([a-zA-Z0-9-]+)$/);
+
+            let taskId = null;
+            let attachmentId = null;
+
+            if (matchAttachment) {
+              taskId = matchAttachment[1];
+              attachmentId = matchAttachment[2];
+            } else if (matchAttachments) {
+              taskId = matchAttachments[1];
+            }
+
+            if (!mockDatabase.taskAttachments) mockDatabase.taskAttachments = [];
+
+            if (taskId && method === 'get') {
+              const attachments = mockDatabase.taskAttachments.filter(a => a.task_id === taskId);
+              responseData.data = attachments;
+            } else if (taskId && method === 'post' && !attachmentId) {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const newAttachment = {
+                id: `mock-att-${Date.now()}`,
+                task_id: taskId,
+                name: payload.name,
+                type: payload.type,
+                size: payload.size,
+                url: payload.url,
+                version: 1,
+                created_at: new Date().toISOString(),
+                user_name: 'Admin User',
+              };
+              mockDatabase.taskAttachments.push(newAttachment);
+              logTaskActivity(taskId, 'attachment_added', `Added attachment: ${newAttachment.name}`);
+              persistDb();
+              
+              // Simulate network delay for upload progress
+              // await new Promise(resolve => setTimeout(resolve, 1500));
+              responseData.data = newAttachment;
+            } else if (attachmentId && method === 'delete') {
+              mockDatabase.taskAttachments = mockDatabase.taskAttachments.filter(a => a.id !== attachmentId);
+              persistDb();
+              responseData.data = { success: true };
+            } else if (attachmentId && method === 'patch') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const idx = mockDatabase.taskAttachments.findIndex(a => a.id === attachmentId);
+              if (idx !== -1) {
+                const updated = {
+                  ...mockDatabase.taskAttachments[idx],
+                  name: payload.name || mockDatabase.taskAttachments[idx].name,
+                  type: payload.type || mockDatabase.taskAttachments[idx].type,
+                  size: payload.size || mockDatabase.taskAttachments[idx].size,
+                  url: payload.url || mockDatabase.taskAttachments[idx].url,
+                  version: mockDatabase.taskAttachments[idx].version + 1,
+                  updated_at: new Date().toISOString()
+                };
+                mockDatabase.taskAttachments[idx] = updated;
+                persistDb();
+                
+                // Simulate network delay
+                // await new Promise(resolve => setTimeout(resolve, 1500));
+                responseData.data = updated;
+              }
+            }
+          }
+          // TASK ACTIVITY HISTORY
+          else if (url.includes('/activity') && (url.includes('/tasks') || url.includes('/projects'))) {
+            const urlParts = url.split('?');
+            const matchActivity = urlParts[0].match(/\/tasks\/([a-zA-Z0-9-]+)\/activity$/);
+            if (matchActivity && method === 'get') {
+              const taskId = matchActivity[1];
+              if (!mockDatabase.taskActivity) mockDatabase.taskActivity = [];
+              let activities = mockDatabase.taskActivity.filter(a => a.task_id === taskId);
+              
+              // Sort descending
+              activities.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+              
+              responseData.data = activities;
             }
           }
           // SITE VISITS

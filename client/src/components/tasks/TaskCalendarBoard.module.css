@@ -1,0 +1,251 @@
+.calendarBoard {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: var(--color-background);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.navGroup {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.arrows {
+  display: flex;
+  gap: 2px;
+}
+
+.arrows button {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: 6px 12px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.arrows button:hover {
+  background: var(--color-surface-hover);
+}
+
+.arrows button:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.arrows button:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Month Grid */
+.monthGrid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: auto repeat(5, 1fr); /* Header + 5 weeks usually */
+  background: var(--color-border);
+  gap: 1px; /* Creates borders */
+  overflow-y: auto;
+}
+
+.dayHeader {
+  background: var(--color-background);
+  padding: 8px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.dayCell {
+  background: var(--color-background);
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  transition: background 0.2s;
+}
+
+.dayCell.outOfMonth {
+  background: var(--color-surface);
+  opacity: 0.6;
+}
+
+.dayCell.weekend {
+  background: var(--color-surface-hover);
+}
+
+.dayCell:hover {
+  background: var(--color-surface);
+}
+
+.dateNumber {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-align: right;
+  padding: 4px;
+  margin-bottom: 4px;
+}
+
+.dateNumber.today {
+  background: var(--color-primary);
+  color: white;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  margin-left: auto;
+}
+
+.taskList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.taskBlock {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: grab;
+  color: white;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: relative;
+  z-index: 1;
+}
+
+.taskBlock:active {
+  cursor: grabbing;
+}
+
+/* Priority Colors */
+.taskBlock.neutral { background: var(--color-text-muted); }
+.taskBlock.primary { background: var(--color-primary); }
+.taskBlock.warning { background: #f59e0b; } /* Orange-ish */
+.taskBlock.danger { background: var(--color-danger); }
+.taskBlock.info { background: #3b82f6; }
+.taskBlock.success { background: var(--color-success); }
+
+/* Continuous spanning logic */
+.taskBlock.contLeft {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  margin-left: -4px;
+  padding-left: 12px;
+}
+
+.taskBlock.contRight {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  margin-right: -4px;
+}
+
+.taskTitle {
+  font-weight: 500;
+}
+
+/* Agenda View */
+.agendaView {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.agendaRow {
+  display: flex;
+  gap: 24px;
+  padding: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.agendaRow:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.agendaDate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 60px;
+  border-right: 1px solid var(--color-border);
+  padding-right: 24px;
+}
+
+.agendaDay {
+  font-size: 24px;
+  font-weight: bold;
+  color: var(--color-text);
+}
+
+.agendaMonth {
+  font-size: 13px;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.agendaContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+.agendaTitle {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.agendaMeta {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.placeholder {
+  padding: 48px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 15px;
+  line-height: 1.5;
+}
