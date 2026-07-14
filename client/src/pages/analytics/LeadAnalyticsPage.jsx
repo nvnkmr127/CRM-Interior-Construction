@@ -13,6 +13,8 @@ import ReportingCenterModal from '../../components/analytics/ReportingCenterModa
 import AnalyticsAlertsPanel from '../../components/analytics/AnalyticsAlertsPanel';
 import GoalTrackingWidget from '../../components/analytics/GoalTrackingWidget';
 import BenchmarkAnalyticsWidget from '../../components/analytics/BenchmarkAnalyticsWidget';
+import WidgetContainer from '../../components/analytics/WidgetContainer';
+import WidgetLibraryModal from '../../components/analytics/WidgetLibraryModal';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import {
@@ -712,6 +714,14 @@ export default function LeadAnalyticsPage() {
     }
   });
 
+  
+  const addWidget = (widgetId) => {
+    // Determine default sizing based on ID roughly, or use a generic 6x4
+    const newWidget = { i: widgetId, x: 0, y: 100, w: 12, h: 4, minW: 6, minH: 3 };
+    setLayout(prev => [...prev, newWidget]);
+    setLibraryOpen(false);
+  };
+
   const saveLayout = () => {
     localStorage.setItem('crm_dashboard_layout', JSON.stringify(layout));
     setIsEditMode(false);
@@ -722,6 +732,7 @@ export default function LeadAnalyticsPage() {
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [reportingCenterOpen, setReportingCenterOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const [savedFilters, setSavedFilters] = useState(() => {
     try {
       const saved = localStorage.getItem('crm_saved_filters');
@@ -998,6 +1009,7 @@ export default function LeadAnalyticsPage() {
             <option value="marketing">Marketing Preset</option>
           </select>
           <button className={styles.rangePill} onClick={() => setLayout(DEFAULT_DASHBOARD_LAYOUT)}>Reset Layout</button>
+          <button className={styles.rangePillActive} onClick={() => setLibraryOpen(true)}>+ Add Widget</button>
           <button className={styles.rangePillActive} onClick={saveLayout}>Save Layout</button>
           <button className={styles.clearAllBtn} onClick={() => setIsEditMode(false)}>Exit Edit Mode</button>
         </div>
@@ -1031,13 +1043,17 @@ export default function LeadAnalyticsPage() {
 )}
 {layout.some(l => l.i === 'goal_tracking') && (
   <div key="goal_tracking">
+    <WidgetContainer id="goal_tracking" isEditMode={isEditMode} layout={layout} setLayout={setLayout}>
     <GoalTrackingWidget onClick={handleCardClick} />
-  </div>
+      </WidgetContainer>
+</div>
 )}
       {layout.some(l => l.i === 'benchmark_analytics') && (
   <div key="benchmark_analytics">
+    <WidgetContainer id="benchmark_analytics" isEditMode={isEditMode} layout={layout} setLayout={setLayout}>
     <BenchmarkAnalyticsWidget onClick={handleCardClick} />
-  </div>
+      </WidgetContainer>
+</div>
 )}
       </ResponsiveGridLayout>
 
@@ -1046,6 +1062,9 @@ export default function LeadAnalyticsPage() {
         isOpen={reportingCenterOpen} 
         onClose={() => setReportingCenterOpen(false)} 
       />
+
+      {/* ── Widget Library Modal ── */}
+      <WidgetLibraryModal isOpen={libraryOpen} onClose={() => setLibraryOpen(false)} layout={layout} onAddWidget={addWidget} />
 
       {/* ── Advanced Drill-Down Modal ── */}
       <AnalyticsDrillDownModal 
