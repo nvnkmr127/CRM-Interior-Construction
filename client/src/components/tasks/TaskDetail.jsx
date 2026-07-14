@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { Link } from 'react-router-dom'
 import styles from './TaskDetail.module.css'
-import { Drawer, Button, Badge, Avatar, Select } from '../ui'
+import { Drawer, Button, Badge, Avatar, Select, RichTextEditor } from '../ui'
 import TaskComments from './TaskComments'
 import TaskAttachments from './TaskAttachments'
 import TaskActivityHistory from './TaskActivityHistory'
