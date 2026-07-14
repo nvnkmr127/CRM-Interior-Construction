@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { Link } from 'react-router-dom'
 import styles from './TaskDetail.module.css'
-import { Drawer, Button, Badge, Avatar, Select, RichTextEditor } from '../ui'
+import { Modal, Button, Badge, Avatar, Select, RichTextEditor } from '../ui'
 import TaskComments from './TaskComments'
 import TaskAttachments from './TaskAttachments'
 import TaskActivityHistory from './TaskActivityHistory'
@@ -14,12 +14,12 @@ import { useToast } from '../../store/toastContext'
 import { useTaskNotifications } from '../../store/TaskNotificationContext'
 import { useTaskAutomation } from '../../store/TaskAutomationContext'
 import { useGovernance } from '../../store/TaskGovernanceContext'
-import { getTask, updateTask, addTaskComment, deleteTask, createTask, createGlobalTask } from '../../api/tasks'
+import { getTask, getGlobalTask, updateTask, addTaskComment, deleteTask, createTask, createGlobalTask } from '../../api/tasks'
 
 const PRIORITIES = ['low', 'medium', 'high', 'urgent']
 const PRIORITY_COLORS = { low: 'info', medium: 'warning', high: 'danger', urgent: 'danger' }
 
-export default function TaskDetail({ isOpen, onClose, taskId, projectId }) {
+export default function TaskDetail({ isOpen, onClose, taskId, projectId, initialTask }) {
   const [task, setTask] = useState(null)
   const [loading, setLoading] = useState(false)
   const [title, setTitle] = useState('')
@@ -45,9 +45,28 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId }) {
   const { permissions, logAuditActivity } = useGovernance()
 
   const loadTask = () => {
-    if (!isOpen || !taskId || !projectId) return;
+    if (!isOpen || !taskId) return;
     setLoading(true)
-    getTask(projectId, taskId)
+
+    // Bypass fetch for mock tasks
+    if (String(taskId).startsWith('mock-') && initialTask) {
+      setTask(initialTask);
+      setTitle(initialTask.title || '');
+      setDesc(initialTask.description || '');
+      setLoading(false);
+      return;
+    }
+
+    if (!projectId) {
+      setLoading(false)
+      return;
+    }
+
+    const fetchTask = (projectId === 'general-tasks' || projectId === 'lead-tasks') 
+      ? getGlobalTask(taskId) 
+      : getTask(projectId, taskId);
+
+    fetchTask
       .then(res => {
         const t = res.data?.data || res.data
         if (!t) return
@@ -388,20 +407,20 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId }) {
   if (!isOpen) return null
 
   return (
-    <Drawer isOpen={isOpen} onClose={onClose} width={640}>
+    <Modal isOpen={isOpen} onClose={onClose} size="lg" hideHeader={false} title="">
       {loading || !task ? (
         <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading task details...</div>
       ) : (
         <>
           <div className={styles.headerRow}>
             <Badge variant={PRIORITY_COLORS[task.priority]} style={{ textTransform: 'capitalize' }}>{task.priority}</Badge>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div className={styles.flexGap2}>
               {['soft_deleted', 'archived'].includes(task.status) ? (
                 <Button variant="outline" size="sm" onClick={handleRestore}>Restore Task</Button>
               ) : (
                 <>
-                  {permissions.canDelete && <Button variant="outline" size="sm" style={{color: 'var(--color-text-muted)'}} onClick={handleArchive}>Archive</Button>}
-                  {permissions.canDelete && <Button variant="outline" size="sm" style={{color: 'var(--color-danger)', borderColor: 'var(--color-danger)'}} onClick={handleDelete}>Delete</Button>}
+                  {permissions.canDelete && <Button variant="outline" size="sm" className={styles.textMuted} onClick={handleArchive}>Archive</Button>}
+                  {permissions.canDelete && <Button variant="outline" size="sm" className={styles.textDanger} onClick={handleDelete}>Delete</Button>}
                   {permissions.canEdit && (
                     <Button variant="primary" size="sm" onClick={() => handleStatusChange('done')} disabled={task.status === 'done'}>
                       {task.status === 'done' ? '✓ Completed' : 'Mark Complete'}
@@ -420,7 +439,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId }) {
             onKeyDown={e => e.key === 'Escape' && setTitle(task.title)}
           />
 
-          <div className={styles.grid} style={{ marginTop: 24 }}>
+          <div className={`${styles.grid} ${styles.section}`}>
             {/* Left Col: Details */}
             <div>
               <div className={styles.detailRow}>
@@ -471,7 +490,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId }) {
                 <div className={styles.detailLabel} style={{ alignSelf: 'flex-start', marginTop: '4px' }}>Custom Fields</div>
                 <div style={{ flex: 1 }}>
                   {task.customFields?.map((cf, idx) => (
-                    <div key={idx} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                    <div key={idx} className={styles.flexGap2} style={{ marginBottom: '8px' }}>
                       <input 
                         value={cf.key} 
                         placeholder="Key (e.g. Client ID)" 
@@ -481,7 +500,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId }) {
                         }}
                         onBlur={() => applyUpdate({ customFields: task.customFields })}
                         disabled={!permissions.canEdit}
-                        style={{ flex: 1, padding: '4px 8px', fontSize: '12px', border: '1px solid var(--color-border)', borderRadius: '4px' }} 
+                        className={styles.customFieldInput}
                       />
                       <input 
                         value={cf.value} 
@@ -492,7 +511,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId }) {
                         }}
                         onBlur={() => applyUpdate({ customFields: task.customFields })}
                         disabled={!permissions.canEdit}
-                        style={{ flex: 1, padding: '4px 8px', fontSize: '12px', border: '1px solid var(--color-border)', borderRadius: '4px' }} 
+                        className={styles.customFieldInput}
                       />
                     </div>
                   ))}
@@ -549,25 +568,25 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId }) {
               <div className={styles.detailRow}>
                 <div className={styles.detailLabel}>Estimated</div>
                 <div className={styles.detailValue}>
-                  <input 
-                    type="number" 
-                    placeholder="Minutes"
-                    value={task.estimatedTime || ''}
-                    onChange={e => handleSave({ estimatedTime: parseInt(e.target.value) || 0 })}
-                    style={{ padding: '4px 8px', border: '1px solid var(--color-border)', borderRadius: '4px', width: '100px' }}
-                  /> min
+                    <input 
+                      type="number" 
+                      placeholder="Minutes"
+                      value={task.estimatedTime || ''}
+                      onChange={e => handleSave({ estimatedTime: parseInt(e.target.value) || 0 })}
+                      className={styles.estimatedInput}
+                    /> min
                 </div>
               </div>
 
-              <div style={{ marginTop: 24 }}>
+              <div className={styles.section}>
                 <TimeTracker task={task} onTimeLogged={handleTimeLogged} disabled={!permissions.canEdit} />
               </div>
 
-              <div style={{ marginTop: 24 }}>
+              <div className={styles.section}>
                 <TaskReminders task={task} onRemindersChange={(reminders) => applyUpdate({ reminders })} disabled={!permissions.canEdit} />
               </div>
 
-              <div style={{ marginTop: 24, paddingBottom: 24 }}>
+              <div className={styles.sectionPadded}>
                 <div className={styles.sectionTitle} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>Description</span>
                   {saveStatus && <span className={styles.saveIndicator} style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{saveStatus}</span>}
@@ -579,7 +598,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId }) {
 
 
 
-              <div style={{ marginTop: 24, paddingBottom: 24 }}>
+              <div className={styles.sectionPadded}>
                 <TaskAttachments taskId={task.id} projectId={projectId} isGlobal={!projectId} />
               </div>
             </div>
@@ -630,10 +649,10 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId }) {
                     <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>+ Add item</span>
                   </div>
                 </div>
-                <div style={{ marginTop: 24 }}>
+                <div className={styles.section}>
                   <TaskComments taskId={task.id} projectId={projectId} isGlobal={!projectId} />
                 </div>            
-                <div style={{ marginTop: 24, paddingBottom: 24, borderTop: '1px solid var(--color-border)', paddingTop: 24 }}>
+                <div className={styles.sectionBordered}>
                   <div className={styles.sectionTitle}>Immutable Audit Log</div>
                   <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '12px' }}>A permanent record of all modifications to this task, enforced by governance policy.</div>
                   <TaskActivityHistory taskId={task.id} projectId={projectId} isGlobal={!projectId} />
@@ -664,6 +683,6 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId }) {
           onSelect={handleSeriesEditSelect}
         />
       )}
-    </Drawer>
+    </Modal>
   )
 }

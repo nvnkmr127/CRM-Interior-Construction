@@ -6,6 +6,9 @@
   overflow-x: auto;
   overflow-y: hidden;
   background: var(--color-background);
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scroll-padding-left: 16px;
 }
 
 .boardHeader {
@@ -28,6 +31,7 @@
   justify-content: space-between;
   padding: 12px 8px;
   transition: width 0.3s;
+  scroll-snap-align: start;
 }
 
 .colHeader.collapsed {
@@ -79,7 +83,8 @@
   user-select: none;
   margin-bottom: 8px;
   position: sticky;
-  left: 0;
+  left: 16px;
+  z-index: 5;
 }
 
 .swimlaneIcon {
@@ -134,18 +139,18 @@
 }
 
 .card {
-  background: var(--color-background);
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 6px;
-  padding: 12px;
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
   cursor: grab;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s;
 }
 
 .card:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-4px);
 }
 
 .card.dragging {

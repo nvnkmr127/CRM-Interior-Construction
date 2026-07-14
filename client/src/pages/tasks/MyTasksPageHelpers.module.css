@@ -1,0 +1,169 @@
+/* Helper Classes */
+.flexCenter { display: flex; align-items: center; }
+.flexBetween { display: flex; align-items: center; justify-content: space-between; }
+.gap2 { gap: var(--space-2); }
+.gap3 { gap: var(--space-3); }
+.gap4 { gap: var(--space-4); }
+.mt4 { margin-top: var(--space-4); }
+.mrAuto { margin-right: auto; }
+
+.taskNodeWrapper {
+  transition: all 0.2s;
+  border-radius: var(--radius-md);
+  border: 2px solid transparent;
+}
+.taskNodeDragOver {
+  border-color: var(--color-primary);
+  border-style: dashed;
+}
+.taskNodeDragged {
+  opacity: 0.5;
+}
+
+.taskItemCard {
+  margin: 4px 0;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+}
+
+.expandBtn {
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+.expandPlaceholder { width: 24px; }
+
+.statusSelect {
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+  padding: 0;
+}
+
+.taskContentCol {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 6px;
+}
+.taskTitleText {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.progressBarContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+.progressBarTrack {
+  width: 100px;
+  height: 6px;
+  background: var(--color-surface-2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progressBarFill {
+  height: 100%;
+  transition: width 0.3s;
+}
+.progressBarFillSuccess { background: var(--color-success); }
+.progressBarFillPrimary { background: var(--color-primary); }
+
+.tagList { display: flex; gap: 4px; }
+
+.roleSelect {
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  outline: none;
+}
+
+.aiBtn {
+  padding: 8px 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--text-sm);
+}
+.aiBtnPrimary {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  color: #fff;
+  border: none;
+  font-weight: 600;
+}
+
+.searchContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.searchIcon {
+  position: absolute;
+  left: 10px;
+  color: var(--color-text-muted);
+}
+.searchInputStyled {
+  padding: 8px 12px 8px 32px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  width: 250px;
+  outline: none;
+  font-size: var(--text-sm);
+}
+.recentSearches {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: 10;
+}
+.recentSearchesHeader {
+  padding: 8px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+.recentSearchItem {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--color-text);
+}
+.recentSearchItem:hover {
+  background: var(--color-surface-hover);
+}
+
+.aiHeaderIcon { font-size: 1.8rem; }
+.textDanger { color: var(--color-danger); }
+.textSecondary { color: var(--color-text-secondary); }
+.emptyStateContainer { padding: 40px 0; }
+.emptyStateIcon { font-size: 32px; }

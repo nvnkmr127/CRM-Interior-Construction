@@ -31,6 +31,7 @@
   padding: 6px 12px;
   cursor: pointer;
   font-weight: bold;
+  color: var(--color-text);
 }
 
 .arrows button:hover {
@@ -132,7 +133,7 @@
 .taskBlock {
   font-size: 11px;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: grab;
   color: white;
   white-space: nowrap;
@@ -188,14 +189,14 @@
   padding: 16px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: transform 0.15s, box-shadow 0.15s;
 }
 
 .agendaRow:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  box-shadow: var(--shadow-sm);
 }
 
 .agendaDate {

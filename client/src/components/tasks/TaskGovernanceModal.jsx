@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Modal, Button } from '../ui'
 import { useGovernance } from '../../store/TaskGovernanceContext'
 import { useToast } from '../../store/toastContext'
+import styles from './TaskGovernanceModal.module.css'
 
 export default function TaskGovernanceModal({ isOpen, onClose }) {
   const { webhooks, setWebhooks, retentionDays, setRetentionDays, permissions } = useGovernance()
@@ -25,7 +26,7 @@ export default function TaskGovernanceModal({ isOpen, onClose }) {
   if (!permissions.canConfig) {
     return (
       <Modal isOpen={isOpen} onClose={onClose} title="🛡️ Enterprise Governance">
-        <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-danger)' }}>
+        <div className={styles.errorState}>
           You do not have Administrator privileges to configure governance settings.
         </div>
       </Modal>
@@ -34,12 +35,12 @@ export default function TaskGovernanceModal({ isOpen, onClose }) {
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="🛡️ Enterprise Governance Settings" size="md">
-      <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <div className={styles.container}>
         
         {/* Retention Policy */}
-        <div>
-          <h3 style={{ margin: '0 0 12px 0', fontSize: '15px' }}>Activity Log Retention</h3>
-          <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '12px' }}>
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>Activity Log Retention</h3>
+          <p className={styles.sectionDesc}>
             Configure how long immutable audit logs are kept before being pruned.
           </p>
           <select 
@@ -48,7 +49,7 @@ export default function TaskGovernanceModal({ isOpen, onClose }) {
               setRetentionDays(e.target.value)
               toast.success('Retention policy updated')
             }}
-            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
+            className={styles.input}
           >
             <option value="30">30 Days</option>
             <option value="90">90 Days</option>
@@ -57,32 +58,32 @@ export default function TaskGovernanceModal({ isOpen, onClose }) {
           </select>
         </div>
 
-        <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)' }} />
+        <hr className={styles.divider} />
 
         {/* API Webhooks */}
-        <div>
-          <h3 style={{ margin: '0 0 12px 0', fontSize: '15px' }}>API Webhooks</h3>
-          <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '12px' }}>
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>API Webhooks</h3>
+          <p className={styles.sectionDesc}>
             Trigger external URLs when a task is updated, deleted, or transitioned.
           </p>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+          <div className={styles.inputGroup}>
             <input 
               type="text" 
               placeholder="https://your-api.com/webhook" 
               value={newWebhook}
               onChange={e => setNewWebhook(e.target.value)}
-              style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
+              className={styles.input}
             />
             <Button variant="primary" onClick={handleAddWebhook}>Add URL</Button>
           </div>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div className={styles.list}>
             {webhooks.length === 0 ? (
-              <div style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>No webhooks configured.</div>
+              <div className={styles.emptyText}>No webhooks configured.</div>
             ) : (
               webhooks.map(w => (
-                <div key={w.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-surface)', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: '4px' }}>
-                  <div style={{ fontSize: '13px', fontFamily: 'monospace' }}>{w.url}</div>
+                <div key={w.id} className={styles.listItem}>
+                  <div className={styles.listItemText}>{w.url}</div>
                   <Button variant="danger" size="sm" onClick={() => handleRemoveWebhook(w.id)}>Remove</Button>
                 </div>
               ))

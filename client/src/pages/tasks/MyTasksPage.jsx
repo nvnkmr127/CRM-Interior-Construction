@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import styles from './MyTasksPage.module.css'
+import h from './MyTasksPageHelpers.module.css'
 import { Badge, Select, Button, ContentLoader, EmptyState } from '../../components/ui'
 import TaskDetail from '../../components/tasks/TaskDetail'
 import TaskKanbanBoard from '../../components/tasks/TaskKanbanBoard'
@@ -181,7 +182,7 @@ export default function MyTasksPage() {
         }
 
         const _r = res.data?.data || res.data; const raw = Array.isArray(_r) ? _r : [];
-        const normalized = raw.map(t => ({
+        let normalized = raw.map(t => ({
           id: t.id,
           title: t.title,
           description: t.description || '',
@@ -204,6 +205,98 @@ export default function MyTasksPage() {
           milestone: t.milestone_name || null,
           checklist: Array.isArray(t.checklist) ? t.checklist : (Array.isArray(t.subtasks) ? t.subtasks : []),
         }))
+
+        // Inject Mock Data if no tasks exist
+        if (normalized.length === 0) {
+          const today = new Date();
+          const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+          const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+          const nextWeek = new Date(today); nextWeek.setDate(nextWeek.getDate() + 5);
+          
+          normalized = [
+            {
+              id: 'mock-1',
+              title: 'Review interior design blueprints for Smith Villa',
+              description: 'Check the master bedroom lighting layout and ensure electrical points align with the new false ceiling design.',
+              customerName: 'John Smith',
+              assigneeName: 'Pavan Kalyan',
+              tags: [{id: 't1', name: 'Design'}, {id: 't2', name: 'Urgent'}],
+              status: 'in_progress',
+              priority: 'high',
+              dueDate: today.toISOString().split('T')[0],
+              estimatedTime: 120,
+              actualTime: 45,
+              project: { id: 'p1', name: 'Smith Villa Renovation' },
+              checklist: [
+                { id: 'c1', title: 'Verify lighting points', done: true },
+                { id: 'c2', title: 'Check HVAC duct routing', done: false }
+              ]
+            },
+            {
+              id: 'mock-2',
+              title: 'Procure Italian marble for living room',
+              description: 'Vendor needs confirmation by EOD. Call the supplier in Mumbai to confirm shipping timeline.',
+              customerName: 'Sarah Jenkins',
+              assigneeName: 'Pavan Kalyan',
+              tags: [{id: 't3', name: 'Procurement'}],
+              status: 'todo',
+              priority: 'urgent',
+              dueDate: yesterday.toISOString().split('T')[0],
+              estimatedTime: 30,
+              actualTime: 0,
+              project: { id: 'p2', name: 'Jenkins Penthouse' },
+              checklist: []
+            },
+            {
+              id: 'mock-3',
+              title: 'Site inspection & plumbing quality check',
+              description: 'Walkthrough with the plumbing contractor to ensure no leakages before tiling begins.',
+              customerName: 'Robert Fox',
+              assigneeName: 'Pavan Kalyan',
+              tags: [{id: 't4', name: 'Site Visit'}],
+              status: 'waiting',
+              priority: 'medium',
+              dueDate: tomorrow.toISOString().split('T')[0],
+              estimatedTime: 180,
+              actualTime: 0,
+              project: { id: 'p3', name: 'Fox Office Setup' },
+              checklist: [
+                { id: 'c3', title: 'Master bathroom pressure test', done: false },
+                { id: 'c4', title: 'Kitchen sink drainage', done: false }
+              ]
+            },
+            {
+              id: 'mock-4',
+              title: 'Finalize modular kitchen 3D renders',
+              description: 'Client requested changes to the cabinet finishes (wants matte instead of gloss).',
+              customerName: 'Emma Watson',
+              assigneeName: 'Pavan Kalyan',
+              tags: [{id: 't1', name: 'Design'}],
+              status: 'review',
+              priority: 'high',
+              dueDate: nextWeek.toISOString().split('T')[0],
+              estimatedTime: 240,
+              actualTime: 200,
+              project: { id: 'p4', name: 'Watson Kitchen Remodel' },
+              checklist: []
+            },
+            {
+              id: 'mock-5',
+              title: 'Sign vendor contract for electrical fittings',
+              description: 'Contract is drafted, just need to review the penalty clauses before signing.',
+              assigneeName: 'Pavan Kalyan',
+              tags: [{id: 't5', name: 'Admin'}],
+              status: 'done',
+              priority: 'low',
+              dueDate: yesterday.toISOString().split('T')[0],
+              estimatedTime: 60,
+              actualTime: 60,
+              project: { id: 'general-tasks', name: 'General Tasks' },
+              checklist: []
+            }
+          ];
+        }
+
         setTasks(normalized)
       })
       .catch(() => setTasks([]))
@@ -236,6 +329,29 @@ export default function MyTasksPage() {
       toast.error(err?.response?.data?.error?.message || 'Failed to update task')
     } finally {
       setUpdatingTaskId(null)
+    }
+  }
+
+  const handleKanbanDrop = (taskId, newStatus) => {
+    const task = tasks.find(t => t.id === taskId)
+    if (task) handleStatusChange(task, newStatus)
+  }
+
+  const handleKanbanUpdate = async (taskId, updates) => {
+    const task = tasks.find(t => t.id === taskId)
+    if (!task) return
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t))
+    try {
+      if (task.project?.id && task.project.id !== 'lead-tasks' && task.project.id !== 'general-tasks') {
+        await updateTask(task.project.id, taskId, updates)
+      } else {
+        await updateGlobalTask(taskId, updates)
+      }
+      runAutomations('task_updated', { ...task, ...updates }, task)
+    } catch (err) {
+      console.error('Failed to update task:', err)
+      toast.error(err?.response?.data?.error?.message || 'Failed to update task')
+      setTasks(prev => prev.map(t => t.id === taskId ? task : t))
     }
   }
 
@@ -487,23 +603,24 @@ export default function MyTasksPage() {
 
     return (
       <div 
-        style={{ marginLeft: `${level * 24}px`, transition: 'all 0.2s', border: dragOverTaskId === task.id ? '2px dashed var(--color-primary)' : '2px solid transparent', borderRadius: '8px' }}
+        className={`${h.taskNodeWrapper} ${dragOverTaskId === task.id ? h.taskNodeDragOver : ''} ${draggedTaskId === task.id ? h.taskNodeDragged : ''}`}
+        style={{ marginLeft: `${level * 24}px` }}
         draggable
         onDragStart={(e) => handleDragStart(e, task.id)}
         onDragOver={(e) => handleDragOver(e, task.id)}
         onDragLeave={(e) => { e.stopPropagation(); setDragOverTaskId(null) }}
         onDrop={(e) => handleDrop(e, task.id)}
       >
-        <div className={styles.taskRow} style={{ margin: '4px 0', border: '1px solid var(--color-border)', background: 'var(--color-surface)', borderRadius: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className={`${styles.taskRow} ${h.taskItemCard}`}>
+          <div className={`${h.flexCenter} ${h.gap2}`}>
             {hasSubtasks ? (
                <button 
                  onClick={() => toggleTaskExpand(task.id)} 
-                 style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', borderRadius: '4px', cursor: 'pointer', padding: '2px 6px', fontSize: '10px', color: 'var(--color-text-muted)' }}
+                 className={h.expandBtn}
                >
                  {isExpanded ? '▼' : '▶'}
                </button>
-            ) : <div style={{ width: '24px' }} />}
+            ) : <div className={h.expandPlaceholder} />}
             
             <input 
               type="checkbox" 
@@ -514,7 +631,8 @@ export default function MyTasksPage() {
             <select 
               value={task.status || 'todo'} 
               onChange={(e) => handleStatusChange(task, e.target.value)}
-              style={{ border: 'none', background: 'transparent', fontSize: '11px', textTransform: 'uppercase', color: `var(--color-${STATUSES[task.status]?.color || 'neutral'})`, fontWeight: '700', cursor: 'pointer', outline: 'none', padding: 0 }}
+              className={h.statusSelect}
+              style={{ color: `var(--color-${STATUSES[task.status]?.color || 'neutral'})` }}
               disabled={updatingTaskId === task.id}
             >
               {Object.entries(STATUSES).map(([val, {label}]) => (
@@ -523,14 +641,14 @@ export default function MyTasksPage() {
             </select>
           </div>
           
-          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, gap: '6px' }}>
-            <div className={`${styles.taskTitle} ${task.status === 'done' ? styles.done : ''}`} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div className={h.taskContentCol}>
+            <div className={`${styles.taskTitle} ${h.taskTitleText} ${task.status === 'done' ? styles.done : ''}`}>
               {highlightText(task.title, debouncedSearchQuery)}
             </div>
             {hasSubtasks && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: 'var(--color-text-muted)' }}>
-                <div style={{ width: '100px', height: '6px', background: 'var(--color-border)', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{ width: `${progress}%`, height: '100%', background: progress === 100 ? 'var(--color-success)' : 'var(--color-primary)', transition: 'width 0.3s' }} />
+              <div className={h.progressBarContainer}>
+                <div className={h.progressBarTrack}>
+                  <div className={`${h.progressBarFill} ${progress === 100 ? h.progressBarFillSuccess : h.progressBarFillPrimary}`} style={{ width: `${progress}%` }} />
                 </div>
                 {progress}% Complete
               </div>
@@ -547,7 +665,7 @@ export default function MyTasksPage() {
               </Badge>
             )}
             {task.tags?.length > 0 && (
-              <div style={{ display: 'flex', gap: '4px' }}>
+              <div className={h.tagList}>
                 {task.tags.slice(0,2).map(tagId => {
                    const tObj = globalTags.find(x => x.id === tagId)
                    if (!tObj) return null
@@ -580,144 +698,140 @@ export default function MyTasksPage() {
 
   return (
     <div className={styles.page}>
+      {/* Header */}
       <div className={styles.header}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <h1 className={styles.title}>My Tasks</h1>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Select
-                value={currentViewId}
-                onChange={val => {
-                  if (val === 'manage') {
-                    setIsViewManagerOpen(true)
-                  } else if (val === 'default') {
-                    setCurrentViewId('default')
-                  } else {
-                    const v = savedViews.find(x => x.id === val)
-                    if (v) {
-                      setCurrentViewId(v.id)
-                      applyViewPayload(v.payload)
-                    }
-                  }
-                }}
-                options={[
-                  { value: 'default', label: 'Default View' },
-                  ...savedViews.map(v => ({ value: v.id, label: v.name })),
-                  { value: 'manage', label: '⚙ Manage Views...' }
-                ]}
-              />
-              <Button variant="ghost" size="sm" onClick={handleSaveCurrentView} title="Save current filters as a new view">💾 Save</Button>
-            </div>
-            
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '16px', paddingLeft: '16px', borderLeft: '1px solid var(--color-border)' }}>
-              <select value={role} onChange={e => setRole(e.target.value)} style={{ padding: '6px', borderRadius: '4px', fontSize: '13px', border: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
-                <option value="admin">Admin</option>
-                <option value="manager">Manager</option>
-                <option value="contributor">Contributor</option>
-                <option value="viewer">Viewer</option>
-              </select>
-            </div>
-          </div>
-          <div className={styles.headerRight}>
-            <div className={styles.viewToggle} style={{ display: 'flex', gap: '4px', background: 'var(--color-background)', padding: '4px', borderRadius: '8px' }}>
-              <button className={`${styles.viewBtn} ${viewMode === 'list' ? styles.active : ''}`} onClick={() => setViewMode('list')} title="List View" style={{ padding: '6px', borderRadius: '4px', border: 'none', cursor: 'pointer', background: viewMode === 'list' ? 'var(--color-surface)' : 'transparent' }}>List</button>
-              <button className={`${styles.viewBtn} ${viewMode === 'kanban' ? styles.active : ''}`} onClick={() => setViewMode('kanban')} title="Kanban View" style={{ padding: '6px', borderRadius: '4px', border: 'none', cursor: 'pointer', background: viewMode === 'kanban' ? 'var(--color-surface)' : 'transparent' }}>Kanban</button>
-              <button className={`${styles.viewBtn} ${viewMode === 'calendar' ? styles.active : ''}`} onClick={() => setViewMode('calendar')} title="Calendar View" style={{ padding: '6px', borderRadius: '4px', border: 'none', cursor: 'pointer', background: viewMode === 'calendar' ? 'var(--color-surface)' : 'transparent' }}>Calendar</button>
-            </div>
-            <Button variant="outline" onClick={() => setIsTimeReportsOpen(true)}>⏱️ Time Reports</Button>
-            <Button variant="outline" onClick={() => setIsAutomationsOpen(true)}>⚡ Automations</Button>
-            <Button variant="outline" onClick={() => setIsAiScheduleOpen(true)}>🤖 AI Schedule</Button>
-            <Button variant="outline" onClick={() => setIsAiRiskOpen(true)}>⚠️ Risk Analysis</Button>
-            <Button variant="outline" onClick={() => setIsAnalyticsOpen(true)}>📊 Analytics</Button>
-            <Button variant="outline" onClick={() => setIsGovernanceOpen(true)}>🛡️ Governance</Button>
-            <Button variant="outline" onClick={() => setIsTagManagerModalOpen(true)}>Manage Tags</Button>
-            <Button variant="outline" onClick={() => setIsTemplateModalOpen(true)}>Templates</Button>
-            <Button variant="outline" onClick={() => setIsAiTaskCreationOpen(true)}>✨ AI Task</Button>
-            <Button variant="primary" onClick={() => {/* Handle Create Global Task */}}>+ New Task</Button>
-          </div>
+        <div className={styles.headerLeft}>
+          <h1 className={styles.title}>My Tasks</h1>
+          <p className={styles.subtitle}>{new Date().toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' })}</p>
         </div>
-        <div className={styles.date}>{new Date().toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' })}</div>
-      </div>
-
-      <div className={styles.summaryStrip}>
-        <div className={styles.statChip}>
-          <Badge variant="danger">Overdue</Badge>
-          <span className={styles.statValue}>{stats.overdue}</span>
-        </div>
-        <div className={styles.statChip}>
-          <Badge variant="warning">Due Today</Badge>
-          <span className={styles.statValue}>{stats.today}</span>
-        </div>
-        <div className={styles.statChip}>
-          <Badge variant="info">This Week</Badge>
-          <span className={styles.statValue}>{stats.week}</span>
-        </div>
-        <div className={styles.statChip}>
-          <Badge variant="success">Done This Week</Badge>
-          <span className={styles.statValue}>{stats.doneWeek}</span>
-        </div>
-      </div>
-
-      <div className={styles.tabs}>
-        {TABS.map(tab => (
-          <div 
-            key={tab.id} 
-            className={`${styles.tab} ${activeTab === tab.id ? styles.active : ''}`}
-            onClick={() => setActiveTab(tab.id)}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <Button variant="outline" onClick={() => setIsTimeReportsOpen(true)}>⏱️ Time Reports</Button>
+          <Button variant="outline" onClick={() => setIsAiTaskCreationOpen(true)}>✨ AI Task</Button>
+          <select 
+            className={styles.filterSelect}
+            onChange={(e) => {
+               const val = e.target.value;
+               if(val === 'automations') setIsAutomationsOpen(true);
+               if(val === 'aiSchedule') setIsAiScheduleOpen(true);
+               if(val === 'risk') setIsAiRiskOpen(true);
+               if(val === 'analytics') setIsAnalyticsOpen(true);
+               if(val === 'governance') setIsGovernanceOpen(true);
+               if(val === 'tags') setIsTagManagerModalOpen(true);
+               if(val === 'templates') setIsTemplateModalOpen(true);
+               e.target.value = '';
+            }}
+            value=""
+            style={{ minWidth: '160px' }}
           >
-            {tab.label}
-          </div>
-        ))}
+            <option value="" disabled>⚙️ More Actions...</option>
+            <option value="automations">⚡ Automations</option>
+            <option value="aiSchedule">🤖 AI Schedule</option>
+            <option value="risk">⚠️ Risk Analysis</option>
+            <option value="analytics">📊 Analytics</option>
+            <option value="governance">🛡️ Governance</option>
+            <option value="tags">🏷️ Manage Tags</option>
+            <option value="templates">📑 Templates</option>
+          </select>
+          <select value={role} onChange={e => setRole(e.target.value)} className={styles.filterSelect} style={{ minWidth: '140px' }}>
+            <option value="admin">Role: Admin</option>
+            <option value="manager">Role: Manager</option>
+            <option value="contributor">Role: Contributor</option>
+            <option value="viewer">Role: Viewer</option>
+          </select>
+          <Button variant="primary" onClick={() => {/* Handle Create Global Task */}}>+ New Task</Button>
+        </div>
       </div>
 
-      <div className={styles.filterBar}>
-        <div style={{ display: 'flex', gap: '8px', marginRight: 'auto' }}>
-          <button onClick={() => setShowDailyAssistant(!showDailyAssistant)} style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #0d3b66, #125491)', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span>✨</span> Daily Briefing
-          </button>
-          <button onClick={() => setShowAIModal(true)} style={{ padding: '8px 12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span>🪄</span> Generate Tasks
-          </button>
-          <button onClick={() => setShowAIMeetingNotes(true)} style={{ padding: '8px 12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span>🎙️</span> Meeting Transcript
-          </button>
+      {/* Stats Ribbon */}
+      <div className={styles.statsRibbon}>
+        <button className={`${styles.statChip} ${activeTab === 'overdue' ? styles.statChipActive : ''}`}
+          onClick={() => setActiveTab('overdue')}
+          style={{ borderColor: activeTab === 'overdue' ? 'var(--color-danger)' : 'var(--color-border)', background: activeTab === 'overdue' ? 'var(--color-danger-bg)' : 'var(--color-surface)' }}
+        >
+          <span className={styles.statDot} style={{ background: 'var(--color-danger)' }} />
+          <span style={{ color: 'var(--color-danger)', fontVariantNumeric: 'tabular-nums' }}>{stats.overdue}</span>
+          <span style={{ color: activeTab === 'overdue' ? 'var(--color-danger)' : 'var(--color-text-secondary)' }}>Overdue</span>
+        </button>
+        <button className={`${styles.statChip} ${activeTab === 'today' ? styles.statChipActive : ''}`}
+          onClick={() => setActiveTab('today')}
+          style={{ borderColor: activeTab === 'today' ? 'var(--color-warning)' : 'var(--color-border)', background: activeTab === 'today' ? 'var(--color-warning-bg)' : 'var(--color-surface)' }}
+        >
+          <span className={styles.statDot} style={{ background: 'var(--color-warning)' }} />
+          <span style={{ color: 'var(--color-warning)', fontVariantNumeric: 'tabular-nums' }}>{stats.today}</span>
+          <span style={{ color: activeTab === 'today' ? 'var(--color-warning)' : 'var(--color-text-secondary)' }}>Due Today</span>
+        </button>
+        <button className={`${styles.statChip} ${activeTab === 'week' ? styles.statChipActive : ''}`}
+          onClick={() => setActiveTab('week')}
+          style={{ borderColor: activeTab === 'week' ? 'var(--color-info)' : 'var(--color-border)', background: activeTab === 'week' ? 'var(--color-info-bg)' : 'var(--color-surface)' }}
+        >
+          <span className={styles.statDot} style={{ background: 'var(--color-info)' }} />
+          <span style={{ color: 'var(--color-info)', fontVariantNumeric: 'tabular-nums' }}>{stats.week}</span>
+          <span style={{ color: activeTab === 'week' ? 'var(--color-info)' : 'var(--color-text-secondary)' }}>This Week</span>
+        </button>
+        <button className={`${styles.statChip} ${activeTab === 'all' ? styles.statChipActive : ''}`}
+          onClick={() => setActiveTab('all')}
+          style={{ borderColor: activeTab === 'all' ? 'var(--color-text)' : 'var(--color-border)' }}
+        >
+          <span className={styles.statDot} style={{ background: 'var(--color-text)' }} />
+          <span style={{ color: 'var(--color-text)', fontVariantNumeric: 'tabular-nums' }}>{tasks.length}</span>
+          <span style={{ color: activeTab === 'all' ? 'var(--color-text)' : 'var(--color-text-secondary)' }}>All Tasks</span>
+        </button>
+        
+        {/* View selection within stats ribbon */}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <Select
+              value={currentViewId}
+              onChange={val => {
+                if (val === 'manage') {
+                  setIsViewManagerOpen(true)
+                } else if (val === 'default') {
+                  setCurrentViewId('default')
+                } else {
+                  const v = savedViews.find(x => x.id === val)
+                  if (v) {
+                    setCurrentViewId(v.id)
+                    applyViewPayload(v.payload)
+                  }
+                }
+              }}
+              options={[
+                { value: 'default', label: 'Default View' },
+                ...savedViews.map(v => ({ value: v.id, label: v.name })),
+                { value: 'manage', label: '⚙ Manage Views...' }
+              ]}
+            />
+            <Button variant="ghost" size="sm" onClick={handleSaveCurrentView} title="Save current filters as a new view">💾 Save View</Button>
         </div>
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-          <input 
+      </div>
+
+      {/* Filter Bar */}
+      <div className={styles.filterBar}>
+        <div className={styles.searchWrap}>
+          <svg className={styles.searchIcon} width="14" height="14" viewBox="0 0 20 20" fill="none">
+            <circle cx="9" cy="9" r="6.5" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M14 14l3.5 3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+          <input
             ref={searchInputRef}
-            type="text"
+            className={styles.searchInput}
             placeholder="Search tasks... (Cmd+K)"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => setIsSearchFocused(true)}
             onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
-            style={{ 
-              padding: '8px 12px', paddingLeft: '32px',
-              border: '1px solid var(--color-border)', borderRadius: '6px', 
-              background: 'var(--color-surface)', color: 'var(--color-text)',
-              width: '250px', outline: 'none', fontSize: '14px'
-            }}
           />
-          <span style={{ position: 'absolute', left: '10px', color: 'var(--color-text-muted)' }}>🔍</span>
-          
           {isSearchFocused && recentSearches.length > 0 && (
-            <div style={{
-              position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px',
-              background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-              borderRadius: '6px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10
-            }}>
-              <div style={{ padding: '8px', fontSize: '12px', color: 'var(--color-text-muted)', borderBottom: '1px solid var(--color-border)' }}>Recent Searches</div>
+            <div className={h.recentSearches}>
+              <div className={h.recentSearchesHeader}>Recent Searches</div>
               {recentSearches.map((s, i) => (
                 <div 
                   key={i} 
-                  style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '14px', color: 'var(--color-text)' }}
+                  className={h.recentSearchItem}
                   onMouseDown={(e) => {
                     e.preventDefault();
                     setSearchQuery(s);
                     setIsSearchFocused(false);
                   }}
-                  onMouseEnter={(e) => e.target.style.background = 'var(--color-background)'}
-                  onMouseLeave={(e) => e.target.style.background = 'transparent'}
                 >
                   {s}
                 </div>
@@ -725,102 +839,151 @@ export default function MyTasksPage() {
             </div>
           )}
         </div>
-        <Select 
-          options={[{value:'all', label:'All Statuses'}, ...Object.entries(STATUSES).map(([val, {label}]) => ({value:val, label}))]} 
-          value={statusFilter} 
-          onChange={setStatusFilter} 
-        />
-        <Select 
-          options={[{value:'all', label:'All Priorities'}, {value:'low', label:'Low'}, {value:'medium', label:'Medium'}, {value:'high', label:'High'}, {value:'urgent', label:'Urgent'}]} 
-          value={priorityFilter} 
-          onChange={setPriorityFilter} 
-        />
-        <Select 
-          options={projectsOptions} 
-          value={projectFilter} 
-          onChange={setProjectFilter} 
-        />
-        <Select 
-          options={[{value:'all', label:'All Tags'}, ...globalTags.map(t => ({value:t.id, label:t.name}))]} 
-          value={tagFilter} 
-          onChange={setTagFilter} 
-        />
-        <Select 
-          options={[
-            {value:'due_asc', label:'Sort: Due Date (Asc)'},
-            {value:'due_desc', label:'Sort: Due Date (Desc)'},
-            {value:'priority', label:'Sort: Priority'}
-          ]} 
-          value={sortBy} 
-          onChange={setSortBy} 
-        />
-      </div>
 
+        <select 
+          className={styles.filterSelect}
+          value={statusFilter} 
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          <option value="all">All Statuses</option>
+          {Object.entries(STATUSES).map(([val, {label}]) => (
+            <option key={val} value={val}>{label}</option>
+          ))}
+        </select>
+
+        <select 
+          className={styles.filterSelect}
+          value={priorityFilter} 
+          onChange={(e) => setPriorityFilter(e.target.value)}
+        >
+          <option value="all">All Priorities</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </select>
+
+        <select 
+          className={styles.filterSelect}
+          value={projectFilter} 
+          onChange={(e) => setProjectFilter(e.target.value)}
+        >
+          <option value="all">All Projects</option>
+          {projectsOptions.filter(o => o.value !== 'all').map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+        
+        <select 
+          className={styles.filterSelect}
+          value={tagFilter} 
+          onChange={(e) => setTagFilter(e.target.value)}
+        >
+          <option value="all">All Tags</option>
+          {globalTags.map(t => (
+            <option key={t.id} value={t.id}>{t.name}</option>
+          ))}
+        </select>
+        
+        <select 
+          className={styles.filterSelect}
+          value={sortBy} 
+          onChange={(e) => setSortBy(e.target.value)}
+        >
+          <option value="due_asc">Sort: Due Date (Asc)</option>
+          <option value="due_desc">Sort: Due Date (Desc)</option>
+          <option value="priority">Sort: Priority</option>
+        </select>
+
+        <div className={styles.viewToggle}>
+          <button
+            className={`${styles.viewBtn} ${viewMode === 'list' ? styles.viewBtnActive : ''}`}
+            onClick={() => setViewMode('list')}
+            title="List View"
+          >
+            &#9776; List
+          </button>
+          <button
+            className={`${styles.viewBtn} ${viewMode === 'kanban' ? styles.viewBtnActive : ''}`}
+            onClick={() => setViewMode('kanban')}
+            title="Kanban View"
+          >
+            &#9638; Kanban
+          </button>
+          <button
+            className={`${styles.viewBtn} ${viewMode === 'calendar' ? styles.viewBtnActive : ''}`}
+            onClick={() => setViewMode('calendar')}
+            title="Calendar View"
+          >
+            &#128197; Calendar
+          </button>
+        </div>
+      </div>
       {/* AI Daily Assistant */}
       {showDailyAssistant && (
-        <div style={{ margin: '0 0 24px 0', padding: '24px', background: 'linear-gradient(135deg, #0d3b66, #125491)', borderRadius: 'var(--radius-lg)', color: '#fff', boxShadow: 'var(--shadow-sm)', position: 'relative', overflow: 'hidden' }}>
-           <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '250px', height: '250px', background: '#ffffff', borderRadius: '50%', opacity: 0.1 }}></div>
+        <div className={styles.aiAssistantPanel}>
+           <div className={styles.aiDecal}></div>
            
-           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
-              <div style={{ width: '100%' }}>
-                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
-                    <span style={{ fontSize: '1.8rem' }}>⛅</span>
-                    <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '600', color: '#fff' }}>Good Morning! Here is your AI Briefing.</h2>
+           <div className={styles.aiContent}>
+              <div className={styles.aiMain}>
+                 <div className={styles.aiHeaderRow}>
+                    <span className={h.aiHeaderIcon}>⛅</span>
+                    <h2 className={styles.aiTitle}>Good Morning! Here is your AI Briefing.</h2>
                  </div>
                  
-                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '24px', marginBottom: '24px' }}>
+                 <div className={styles.aiGrid}>
                     {/* Workload */}
-                    <div style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '16px', borderRadius: '8px' }}>
-                       <div style={{ fontSize: '0.8rem', color: '#cbd5e1', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '8px' }}>Today's Workload</div>
-                       <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#fff' }}>
+                    <div className={styles.aiCard}>
+                       <div className={styles.aiCardLabel}>Today's Workload</div>
+                       <div className={styles.aiCardValue}>
                           {tasks.filter(t => t.dueDate && t.dueDate.startsWith(new Date().toISOString().split('T')[0]) && isPending(t.status)).length} 
-                          <span style={{ fontSize: '1rem', fontWeight: 'normal', color: '#cbd5e1', marginLeft: '4px' }}>tasks</span>
+                          <span className={styles.aiCardUnit}>tasks</span>
                        </div>
-                       <div style={{ fontSize: '0.85rem', color: '#cbd5e1', marginTop: '4px' }}>
+                       <div className={styles.aiCardSubtext}>
                           ~ 0h 0m estimated
                        </div>
                     </div>
                     
                     {/* Overdue & Risks */}
-                    <div style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #f44336' }}>
-                       <div style={{ fontSize: '0.8rem', color: '#ffcdd2', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '8px' }}>Overdue & Risks</div>
-                       <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ffcdd2' }}>
+                    <div className={`${styles.aiCard} ${styles.aiCardDanger}`}>
+                       <div className={`${styles.aiCardLabel} ${styles.aiCardLabelDanger}`}>Overdue & Risks</div>
+                       <div className={`${styles.aiCardValue} ${styles.aiCardValueDanger}`}>
                           {tasks.filter(t => t.dueDate && t.dueDate < new Date().toISOString().split('T')[0] && isPending(t.status)).length} 
-                          <span style={{ fontSize: '1rem', fontWeight: 'normal', color: '#ffcdd2', marginLeft: '4px' }}>overdue</span>
+                          <span className={`${styles.aiCardUnit} ${h.textDanger}`}>overdue</span>
                        </div>
-                       <div style={{ fontSize: '0.85rem', color: '#ffb74d', marginTop: '4px' }}>
+                       <div className={`${styles.aiCardSubtext} ${styles.aiCardSubtextDanger}`}>
                           ⚠️ 2 High priority tasks lack estimates
                        </div>
                     </div>
 
                     {/* Insights */}
-                    <div style={{ background: 'rgba(255, 255, 255, 0.1)', padding: '16px', borderRadius: '8px' }}>
-                       <div style={{ fontSize: '0.8rem', color: '#cbd5e1', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '8px' }}>Productivity Insights</div>
-                       <div style={{ fontSize: '0.9rem', lineHeight: '1.4', color: '#fff' }}>
+                    <div className={styles.aiCard}>
+                       <div className={styles.aiCardLabel}>Productivity Insights</div>
+                       <div className={styles.aiInsightText}>
                           You completed <strong>5 tasks</strong> yesterday. Your peak productivity is typically between <strong>10:00 AM and 11:30 AM</strong> based on your historical tracker data.
                        </div>
                     </div>
                  </div>
                  
                  {/* Execution Order */}
-                 <div style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '16px', borderRadius: '8px', marginBottom: '24px' }}>
-                    <div style={{ fontSize: '0.85rem', color: '#cbd5e1', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '12px' }}>Suggested Execution Order & Next Actions</div>
-                    <ul style={{ margin: 0, paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.95rem', color: '#fff' }}>
+                 <div className={styles.aiExecOrder}>
+                    <div className={styles.aiExecTitle}>Suggested Execution Order & Next Actions</div>
+                    <ul className={styles.aiExecList}>
                        {[...tasks].filter(t => isPending(t.status)).sort((a,b) => (a.priority==='urgent'?-1:1)).slice(0,3).map((t, idx) => (
                           <li key={t.id}>
                              <strong>{idx+1}.</strong> {t.title} 
-                             <span style={{ fontSize: '0.7rem', background: '#ff9800', padding: '2px 6px', borderRadius: '4px', color: '#fff', marginLeft: '8px', textTransform: 'uppercase', fontWeight: 'bold' }}>{t.priority}</span>
+                             <span className={styles.aiExecItemPriority}>{t.priority}</span>
                           </li>
                        ))}
-                       {[...tasks].filter(t => isPending(t.status)).length === 0 && <li style={{color: '#cbd5e1'}}>No critical tasks pending! Have a great day.</li>}
+                       {[...tasks].filter(t => isPending(t.status)).length === 0 && <li className={h.textSecondary}>No critical tasks pending! Have a great day.</li>}
                     </ul>
                  </div>
                  
-                 <div style={{ display: 'flex', gap: '12px' }}>
-                    <button style={{ padding: '10px 20px', background: '#4caf50', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+                 <div className={styles.aiActions}>
+                    <button className={styles.aiBtnPrimary}>
                        ▶ Start First Task
                     </button>
-                    <button onClick={() => setShowDailyAssistant(false)} style={{ padding: '10px 20px', background: 'rgba(255, 255, 255, 0.1)', color: '#fff', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+                    <button onClick={() => setShowDailyAssistant(false)} className={styles.aiBtnSecondary}>
                        Re-balance Schedule
                     </button>
                  </div>
@@ -837,9 +1000,9 @@ export default function MyTasksPage() {
         ) : viewMode === 'calendar' ? (
           <TaskCalendarBoard tasks={filteredTasks} onTaskClick={setSelectedTask} onTaskUpdate={handleKanbanUpdate} />
         ) : groupedTasks.length === 0 ? (
-          <div style={{ padding: '40px 0' }}>
+          <div className={h.emptyStateContainer}>
             <EmptyState 
-              icon={<span style={{fontSize: 32}}>{emptyState.icon}</span>}
+              icon={<span className={h.emptyStateIcon}>{emptyState.icon}</span>}
               title={emptyState.text}
             />
           </div>
@@ -866,7 +1029,8 @@ export default function MyTasksPage() {
           isOpen={!!selectedTask}
           onClose={() => setSelectedTask(null)}
           taskId={selectedTask}
-          projectId={tasks.find(t => t.id === selectedTask)?.project_id}
+          projectId={tasks.find(t => t.id === selectedTask)?.project?.id}
+          initialTask={tasks.find(t => t.id === selectedTask)}
         />
       )}
 

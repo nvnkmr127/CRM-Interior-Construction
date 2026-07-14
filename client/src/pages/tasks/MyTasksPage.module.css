@@ -1,192 +1,169 @@
-/* ─── Page Shell ─────────────────────────────────────────── */
+/* --- Page Shell ------------------------------------------------------- */
 .page {
   padding: var(--space-6);
   background: var(--color-bg);
   min-height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
 }
 
-/* ─── Header ─────────────────────────────────────────────── */
+/* --- Header ----------------------------------------------------------- */
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--space-5);
-  gap: var(--space-3);
-  flex-wrap: wrap;
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
 }
 
 .title {
   font-size: var(--text-2xl);
-  font-weight: 700;
+  font-weight: 800;
   color: var(--color-text);
-  margin: 0 0 2px 0;
-  line-height: 1.2;
+  margin: 0;
+  letter-spacing: -0.02em;
 }
 
 .subtitle {
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
-  margin: 0;
+  margin-top: 2px;
 }
 
-.actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
-
-/* ─── Stats Bar ───────────────────────────────────────────── */
-.statsBar {
+/* --- Stats Ribbon ----------------------------------------------------- */
+.statsRibbon {
   display: flex;
   flex-direction: row;
-  align-items: center;
-  gap: var(--space-6);
-  padding: var(--space-4) var(--space-5);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  margin-bottom: var(--space-4);
-  box-shadow: var(--shadow-sm);
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
   flex-wrap: wrap;
+  align-items: center;
 }
 
-.stat {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-  flex: 1 1 100px;
-}
-
-.statLabel {
-  font-size: var(--text-xs);
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+.statChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--color-border);
+  cursor: pointer;
+  font-size: var(--text-sm);
   font-weight: 600;
+  transition: var(--transition-base);
+  background: var(--color-surface);
   white-space: nowrap;
+  line-height: 1;
+  font-family: var(--font-sans);
 }
 
-.statValue {
-  font-size: var(--text-xl);
-  font-weight: 700;
-  color: var(--color-text);
-  line-height: 1.2;
+.statChip:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
-.statSep {
-  width: 1px;
-  height: 36px;
-  background: var(--color-border);
+.statChipActive {
+  box-shadow: var(--shadow-sm);
+}
+
+.statDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
   flex-shrink: 0;
 }
 
-@media (max-width: 768px) {
-  .statSep {
-    display: none;
-  }
-  .statsBar {
-    gap: var(--space-4);
-  }
+/* --- Filter Bar ------------------------------------------------------- */
+.filterBar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  flex-wrap: wrap;
 }
 
-/* ─── Filter Row ──────────────────────────────────────────── */
-.filterRow {
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
-  margin-bottom: var(--space-4);
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  padding-bottom: 4px; /* slight padding for scrollbar if needed */
+.searchWrap {
+  position: relative;
+  flex-grow: 1;
+  max-width: 280px;
 }
-.filterRow::-webkit-scrollbar {
-  height: 6px;
-}
-.filterRow::-webkit-scrollbar-track {
-  background: transparent;
-}
-.filterRow::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 4px;
+
+.searchIcon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-secondary);
+  pointer-events: none;
 }
 
 .searchInput {
-  height: 36px;
-  box-sizing: border-box;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--color-border);
+  width: 100%;
+  padding: var(--space-2) var(--space-3) var(--space-2) 30px;
+  border: 1.5px solid var(--color-border);
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
+  font-family: var(--font-sans);
   background: var(--color-surface);
   color: var(--color-text);
-  outline: none;
-  width: 220px;
-  max-width: 100%;
-  flex: 1 1 200px;
-  transition: border-color 0.15s;
+  box-sizing: border-box;
+  transition: var(--transition-fast);
 }
 
 .searchInput::placeholder {
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
 }
 
 .searchInput:focus {
+  outline: none;
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 2px rgba(232, 147, 90, 0.15);
+  box-shadow: 0 0 0 3px rgba(232, 147, 90, 0.12);
 }
 
 .filterSelect {
-  height: 36px;
-  box-sizing: border-box;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--color-border);
+  padding: var(--space-2) var(--space-3);
+  border: 1.5px solid var(--color-border);
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
+  font-family: var(--font-sans);
   background: var(--color-surface);
   color: var(--color-text);
   cursor: pointer;
-  outline: none;
-  width: auto;
-  min-width: 130px;
-  flex: 1 1 120px;
-  transition: border-color 0.15s;
+  transition: var(--transition-fast);
+  height: 36px;
 }
 
 .filterSelect:focus {
+  outline: none;
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 2px rgba(232, 147, 90, 0.15);
 }
 
-/* ─── View Toggle ─────────────────────────────────────────── */
+/* --- View Toggle ------------------------------------------------------ */
 .viewToggle {
   display: flex;
-  height: 36px;
-  box-sizing: border-box;
   gap: var(--space-1);
-  margin-left: auto;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
   border-radius: var(--radius-md);
-  overflow: hidden;
+  padding: 3px;
+  margin-left: auto;
+  border: 1px solid var(--color-border);
 }
 
 .viewBtn {
-  height: 100%;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 0 var(--space-3);
-  font-size: var(--text-sm);
-  background: transparent;
+  gap: 5px;
   border: none;
-  cursor: pointer;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  background: transparent;
   color: var(--color-text-secondary);
-  font-weight: 500;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
   transition: background 0.15s, color 0.15s;
   white-space: nowrap;
   box-sizing: border-box;
@@ -231,12 +208,10 @@
 .skeletonRow { height: 50px; background: var(--color-surface-2); animation: pulse 1.5s infinite; border-top: 1px solid var(--color-border); }
 @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
 
-.summaryStrip { display: flex; gap: var(--space-4); margin-bottom: var(--space-6); flex-wrap: wrap; }
-.statChip { display: flex; align-items: center; gap: 8px; background: var(--color-surface); border: 1px solid var(--color-border); padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
-
+/* ─── Remove old summaryStrip and tabs ─── */
 .tabs { display: flex; gap: var(--space-6); border-bottom: 1px solid var(--color-border); margin-bottom: var(--space-5); overflow-x: auto; scrollbar-width: none; }
 .tabs::-webkit-scrollbar { display: none; }
-.tab { padding: var(--space-3) 0; font-size: var(--text-base); font-weight: 500; color: var(--color-text-secondary); cursor: pointer; border-bottom: 2px solid transparent; transition: var(--transition-fast); white-space: nowrap; }
+.tab { padding: var(--space-3) 0; font-size: var(--text-sm); font-weight: 600; color: var(--color-text-secondary); cursor: pointer; border-bottom: 2px solid transparent; transition: var(--transition-fast); white-space: nowrap; }
 .tab:hover { color: var(--color-text); }
 .tab.active { color: var(--color-accent); border-bottom-color: var(--color-accent); }
 
@@ -285,5 +260,192 @@
 }
 
 .listTr:hover {
+  background: var(--color-surface-2);
+}
+
+/* ─── AI Daily Assistant ──────────────────────────────────── */
+.aiAssistantPanel {
+  margin: 0 0 var(--space-5) 0;
+  padding: var(--space-5);
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-bg));
+  border-radius: var(--radius-lg);
+  color: var(--color-text-h);
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--color-accent-border);
+}
+
+.aiDecal {
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 250px;
+  height: 250px;
+  background: #ffffff;
+  border-radius: 50%;
+  opacity: 0.05;
+}
+
+.aiContent {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.aiMain {
+  width: 100%;
+}
+
+.aiHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+
+.aiTitle {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--color-text-h);
+}
+
+.aiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-5);
+  margin-bottom: var(--space-5);
+}
+
+.aiCard {
+  background: var(--color-surface);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.aiCardDanger {
+  border-left: 4px solid var(--color-danger);
+}
+
+.aiCardLabel {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+
+.aiCardLabelDanger {
+  color: var(--color-danger);
+}
+
+.aiCardValue {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-text-h);
+}
+
+.aiCardValueDanger {
+  color: var(--color-danger);
+}
+
+.aiCardUnit {
+  font-size: var(--text-base);
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  margin-left: 4px;
+}
+
+.aiCardSubtext {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+}
+
+.aiCardSubtextDanger {
+  color: var(--color-warning);
+}
+
+.aiInsightText {
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--color-text);
+}
+
+.aiExecOrder {
+  background: var(--color-surface-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-5);
+  border: 1px solid var(--color-border);
+}
+
+.aiExecTitle {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: var(--space-3);
+}
+
+.aiExecList {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+
+.aiExecItemPriority {
+  font-size: 0.7rem;
+  background: var(--color-warning);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  margin-left: 8px;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.aiActions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.aiBtnPrimary {
+  padding: 10px 20px;
+  background: var(--color-success);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.aiBtnPrimary:hover {
+  filter: brightness(1.1);
+}
+
+.aiBtnSecondary {
+  padding: 10px 20px;
+  background: transparent;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.aiBtnSecondary:hover {
   background: var(--color-surface-2);
 }
