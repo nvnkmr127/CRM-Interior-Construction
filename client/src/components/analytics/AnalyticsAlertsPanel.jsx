@@ -73,7 +73,7 @@ export default function AnalyticsAlertsPanel({ isOpen, onClose, onInvestigate })
       </div>
     } size="md">
       
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '600px', overflowY: 'auto', paddingRight: '8px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '600px', paddingRight: '8px' }}>
         {alerts.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-text-secondary)' }}>
             <div style={{ fontSize: '32px', marginBottom: '8px' }}>📭</div>
@@ -91,7 +91,7 @@ export default function AnalyticsAlertsPanel({ isOpen, onClose, onInvestigate })
                 style={{
                   padding: '16px',
                   borderRadius: '8px',
-                  border: \`1px solid \${styleConfig.border}\`,
+                  border: `1px solid ${styleConfig.border}`,
                   background: isRead ? 'var(--color-surface)' : styleConfig.bg,
                   opacity: isRead ? 0.7 : 1,
                   display: 'flex',

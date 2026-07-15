@@ -21,7 +21,8 @@ const AVAILABLE_WIDGETS = [
   { id: 'forecast', title: 'Revenue Forecasting', desc: 'Expected closings and future projections.' },
   { id: 'executive', title: 'Executive Summary', desc: 'Top level highlights for C-Suite overview.' },
   { id: 'goal_tracking', title: 'Goal Tracking', desc: 'Progress bars for revenue, team, and employee targets.' },
-  { id: 'benchmark_analytics', title: 'Benchmark Analytics', desc: 'Compare performance across time, branches, or employees.' }
+  { id: 'benchmark_analytics', title: 'Benchmark Analytics', desc: 'Compare performance across time, branches, or employees.' },
+  { id: 'project_outcomes', title: 'Lead-to-Project Outcomes', desc: 'Track won lead profitability, CSAT, and snags.' }
 ];
 
 export default function WidgetLibraryModal({ isOpen, onClose, layout, onAddWidget }) {
@@ -35,7 +36,7 @@ export default function WidgetLibraryModal({ isOpen, onClose, layout, onAddWidge
         Add missing widgets to your dashboard. Pinned widgets will appear at the top.
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '500px', overflowY: 'auto', paddingRight: '8px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '500px', paddingRight: '8px' }}>
         {unusedWidgets.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-secondary)' }}>
             All available widgets are already on your dashboard!

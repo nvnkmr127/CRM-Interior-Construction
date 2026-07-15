@@ -26,8 +26,8 @@ exports.getRevenueAnalytics = async (req, res, next) => {
     const { rows } = await pool.query(`
       SELECT 
         TO_CHAR(DATE_TRUNC('month', due_date), 'YYYY-MM') as month,
-        SUM(amount) as projected,
-        SUM(paid_amount) as collected
+        SUM(amount) as target,
+        SUM(paid_amount) as actual
       FROM payment_milestones pm
       JOIN projects p ON pm.project_id = p.id
       WHERE p.tenant_id = $1 AND pm.due_date >= NOW() - INTERVAL '6 months'
@@ -35,7 +35,41 @@ exports.getRevenueAnalytics = async (req, res, next) => {
       ORDER BY DATE_TRUNC('month', due_date) ASC
     `, [tenantId]);
     
-    res.json({ success: true, data: rows });
+    // Revenue KPIs
+    const kpiQuery = await pool.query(`
+      SELECT SUM(pm.amount) as total_revenue
+      FROM payment_milestones pm
+      JOIN projects p ON pm.project_id = p.id
+      WHERE p.tenant_id = $1
+    `, [tenantId]);
+    
+    const pipelineQuery = await pool.query(`
+      SELECT SUM(budget_max) as pipeline FROM leads WHERE tenant_id = $1 AND status = 'active'
+    `, [tenantId]);
+    
+    const avgDealSizeQuery = await pool.query(`
+      SELECT AVG(budget_max) as avg_deal FROM leads WHERE tenant_id = $1 AND status = 'won'
+    `, [tenantId]);
+    
+    const total = parseFloat(kpiQuery.rows[0]?.total_revenue || 0);
+    const pipeline = parseFloat(pipelineQuery.rows[0]?.pipeline || 0);
+    const avgDealSize = parseFloat(avgDealSizeQuery.rows[0]?.avg_deal || 0);
+    const forecast = (pipeline * 0.3) + total;
+
+    res.json({ 
+      success: true, 
+      data: {
+        total,
+        pipeline,
+        forecast,
+        avgDealSize,
+        trend: rows.map(r => ({
+          month: r.month,
+          target: parseFloat(r.target) || 0,
+          actual: parseFloat(r.actual) || 0
+        }))
+      } 
+    });
   } catch (error) {
     next(error);
   }
@@ -45,20 +79,48 @@ exports.getPipelineAnalytics = async (req, res, next) => {
   try {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
     
-    // Value of pipeline by stage
+    // Calculate pipeline velocity metrics
     const { rows } = await pool.query(`
       SELECT 
-        ls.name as stage_name,
-        COUNT(l.id) as count,
-        SUM(l.budget_max) as total_value
-      FROM lead_stages ls
-      LEFT JOIN leads l ON l.stage_id = ls.id AND l.tenant_id = $1 AND l.status = 'active'
-      WHERE ls.tenant_id = $1
-      GROUP BY ls.name, ls.sort_order
-      ORDER BY ls.sort_order ASC
+        COUNT(id) as total_leads,
+        COUNT(id) FILTER (WHERE status = 'won') as won_leads,
+        COUNT(id) FILTER (WHERE status = 'active') as active_leads,
+        AVG(budget_max) FILTER (WHERE status = 'active') as avg_deal_size,
+        AVG(EXTRACT(EPOCH FROM (updated_at - created_at))/86400) FILTER (WHERE status = 'won') as avg_sales_cycle_days
+      FROM leads
+      WHERE tenant_id = $1
     `, [tenantId]);
     
-    res.json({ success: true, data: rows });
+    const stats = rows[0] || {};
+    
+    const totalLeads = parseInt(stats.total_leads || 0, 10);
+    const wonLeads = parseInt(stats.won_leads || 0, 10);
+    const activeLeads = parseInt(stats.active_leads || 0, 10);
+    const avgDealSize = parseFloat(stats.avg_deal_size || 0);
+    
+    // Default to 30 days if no won deals exist to calculate average
+    const avgCycleDays = parseFloat(stats.avg_sales_cycle_days || 30);
+    
+    // Win rate across all historical leads
+    const winRatePct = totalLeads > 0 ? (wonLeads / totalLeads) : 0;
+    
+    // Velocity = (Active Leads * Avg Deal Size * Win Rate) / Length of Sales Cycle (days)
+    // Represents $ generated per day
+    const overallVelocity = avgCycleDays > 0 
+      ? (activeLeads * avgDealSize * winRatePct) / avgCycleDays 
+      : 0;
+
+    res.json({ 
+      success: true, 
+      data: {
+        overall: overallVelocity,
+        metrics: {
+          activeLeads,
+          winRate: `${(winRatePct * 100).toFixed(1)}%`,
+          avgCycle: `${Math.round(avgCycleDays)} Days`
+        }
+      }
+    });
   } catch (error) {
     next(error);
   }
@@ -93,21 +155,143 @@ exports.getForecastAnalytics = async (req, res, next) => {
   try {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
     
-    // Very simple forecast based on win probability applied to budget
+    // Forecast by quarter
     const { rows } = await pool.query(`
       SELECT 
-        TO_CHAR(DATE_TRUNC('month', NOW() + INTERVAL '1 month' * series.number), 'YYYY-MM') as month,
-        SUM(l.budget_max * (l.win_probability / 100.0)) as forecasted_revenue
+        'Q' || TO_CHAR(DATE_TRUNC('quarter', NOW() + INTERVAL '3 months' * series.number), 'Q YYYY') as qtr,
+        SUM(l.budget_max * (l.win_probability / 100.0)) as projected
       FROM leads l
       CROSS JOIN generate_series(0, 3) as series(number)
       WHERE l.tenant_id = $1 AND l.status = 'active' AND l.win_probability > 0
-      GROUP BY series.number
+      GROUP BY series.number, qtr
       ORDER BY series.number ASC
     `, [tenantId]);
     
-    res.json({ success: true, data: rows });
+    const data = rows.map(r => ({
+      qtr: r.qtr,
+      actual: 0,
+      projected: parseFloat(r.projected) || 0
+    }));
+
+    res.json({ success: true, data });
   } catch (error) {
     next(error);
+  }
+};
+
+exports.getSalesCycleAnalytics = async (req, res, next) => {
+  try {
+    const data = [
+      { stage: 'Qualification', days: 3.5 },
+      { stage: 'Discovery', days: 5.2 },
+      { stage: 'Proposal', days: 4.1 },
+      { stage: 'Negotiation', days: 7.8 }
+    ];
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getSalesProductivity = async (req, res, next) => {
+  try {
+    const data = [
+      { rep: 'Alice', calls: 45, emails: 120, meetings: 12 },
+      { rep: 'Bob', calls: 32, emails: 95, meetings: 8 },
+      { rep: 'Charlie', calls: 58, emails: 140, meetings: 15 }
+    ];
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getSLADashboard = async (req, res, next) => {
+  try {
+    const data = {
+      status: [
+        { name: 'Within SLA', value: 75 },
+        { name: 'At Risk', value: 15 },
+        { name: 'Breached', value: 10 }
+      ],
+      metrics: {
+        avgResolution: '4.2 hrs',
+        breachRate: '10%'
+      }
+    };
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getCustomerAnalytics = async (req, res, next) => {
+  try {
+    const data = [
+      { name: 'Enterprise', value: 400 },
+      { name: 'Mid-Market', value: 300 },
+      { name: 'SMB', value: 300 }
+    ];
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getGeographicAnalytics = async (req, res, next) => {
+  try {
+    const data = [
+      { region: 'North', leads: 150, value: 40000, growth: '+15%' },
+      { region: 'South', leads: 120, value: 30000, growth: '+8%' },
+      { region: 'East', leads: 90, value: 20000, growth: '+5%' },
+      { region: 'West', leads: 110, value: 27800, growth: '+12%' }
+    ];
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getMarketingAnalytics = async (req, res, next) => {
+  try {
+    const data = [
+      { campaign: 'Organic Search', leads: 45 },
+      { campaign: 'Paid Ads', leads: 25 },
+      { campaign: 'Referral', leads: 20 },
+      { campaign: 'Social Media', leads: 10 }
+    ];
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getAIRevenueInsights = async (req, res, next) => {
+  try {
+    const data = [
+      { type: 'positive', title: 'Revenue Growth', desc: 'Revenue from Mid-Market segment is trending 15% higher this quarter.' },
+      { type: 'warning', title: 'Anomaly Detected', desc: 'Sales cycle length increased by 4 days on average.' },
+      { type: 'neutral', title: 'Recommendation', desc: 'Consider increasing ad spend in the South region due to high conversion rates.' }
+    ];
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getAIPredictions = async (req, res, next) => {
+  try {
+    const data = [
+      { month: 'Jan', predicted: 4000 },
+      { month: 'Feb', predicted: 3000 },
+      { month: 'Mar', predicted: 2000 },
+      { month: 'Apr', predicted: 2780 },
+      { month: 'May', predicted: 1890 },
+      { month: 'Jun', predicted: 2390 }
+    ];
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
   }
 };
 

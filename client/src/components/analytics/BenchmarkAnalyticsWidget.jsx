@@ -55,7 +55,7 @@ const CustomTooltip = ({ active, payload, label }) => {
     <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '12px', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
       <div style={{ fontWeight: 600, marginBottom: '8px' }}>{label}</div>
       {payload.map((p, i) => {
-        const val = p.name === 'Revenue' || p.value > 10000 ? \`₹\${(p.value/100000).toFixed(2)}L\` : p.value;
+        const val = p.name === 'Revenue' || p.value > 10000 ? `₹${(p.value/100000).toFixed(2)}L` : p.value;
         return (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: p.color }} />
@@ -74,7 +74,7 @@ export default function BenchmarkAnalyticsWidget({ onClick }) {
   const data = MOCK_DATA[comparison];
 
   return (
-    <div style={{ background: 'var(--color-surface)', borderRadius: '12px', padding: '20px', border: '1px solid var(--color-border)', height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ background: 'var(--color-surface)', borderRadius: '12px', padding: '20px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column' }}>
       
       {/* Header & Controls */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
@@ -99,11 +99,11 @@ export default function BenchmarkAnalyticsWidget({ onClick }) {
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-text)', marginBottom: '16px' }}>Aggregate Comparison</h3>
           <div style={{ flex: 1, minHeight: 0 }}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer minWidth={1} minHeight={1} width="100%" height={280}>
               <BarChart data={data.barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'var(--color-text-secondary)' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} axisLine={false} tickLine={false} tickFormatter={v => v >= 100000 ? \`\${v/100000}L\` : v} />
+                <YAxis tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} axisLine={false} tickLine={false} tickFormatter={v => v >= 100000 ? `${v/100000}L` : v} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-surface-2)' }} />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
                 <Bar dataKey="e1" name={data.entity1} fill={ACCENT} radius={[4, 4, 0, 0]} barSize={32} />
@@ -117,11 +117,11 @@ export default function BenchmarkAnalyticsWidget({ onClick }) {
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-text)', marginBottom: '16px' }}>Historical Trend</h3>
           <div style={{ flex: 1, minHeight: 0 }}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer minWidth={1} minHeight={1} width="100%" height={280}>
               <LineChart data={data.trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
                 <XAxis dataKey="month" tick={{ fontSize: 12, fill: 'var(--color-text-secondary)' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} axisLine={false} tickLine={false} tickFormatter={v => v >= 100000 ? \`\${v/100000}L\` : v} />
+                <YAxis tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} axisLine={false} tickLine={false} tickFormatter={v => v >= 100000 ? `${v/100000}L` : v} />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
                 <Line type="monotone" dataKey="e1" name={data.entity1} stroke={ACCENT} strokeWidth={3} dot={{ r: 4, fill: ACCENT, strokeWidth: 0 }} activeDot={{ r: 6 }} />

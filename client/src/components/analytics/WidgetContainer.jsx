@@ -64,7 +64,7 @@ export default function WidgetContainer({ id, isEditMode, layout, setLayout, chi
   };
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--color-surface)', borderRadius: '12px', border: isPinned ? '2px solid var(--color-accent)' : '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'hidden', position: 'relative', transition: 'all 0.3s ease' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--color-surface)', borderRadius: '12px', border: isPinned ? '2px solid var(--color-accent)' : '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', position: 'relative', transition: 'all 0.3s ease' }}>
       
       {/* Widget Header Controls (Visible mainly in Edit Mode or when hovering) */}
       <div 

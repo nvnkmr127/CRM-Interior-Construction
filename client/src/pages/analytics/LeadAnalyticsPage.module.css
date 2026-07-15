@@ -17,6 +17,45 @@
   gap: var(--space-4);
 }
 
+.titleWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.nativeGrid {
+  column-count: 2;
+  column-gap: var(--space-4);
+}
+
+.colSpan12 { 
+  column-span: all; 
+  width: 100%;
+  margin-bottom: var(--space-4);
+}
+.colSpan8, .colSpan6, .colSpan4, .colSpan3 { 
+  break-inside: avoid;
+  margin-bottom: var(--space-4);
+  width: 100%;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .nativeGrid { column-count: 2; }
+}
+
+@media (max-width: 768px) {
+  .nativeGrid { column-count: 1; }
+  .colSpan12 { column-span: none; }
+}
+
 .title {
   font-size: var(--text-2xl);
   font-weight: 700;

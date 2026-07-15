@@ -414,6 +414,14 @@ router.get('/revenue', authenticate, authorize('analytics:read'), analyticsContr
 router.get('/pipeline', authenticate, authorize('analytics:read'), analyticsController.getPipelineAnalytics);
 router.get('/conversion', authenticate, authorize('analytics:read'), analyticsController.getConversionAnalytics);
 router.get('/forecast', authenticate, authorize('analytics:read'), analyticsController.getForecastAnalytics);
+router.get('/sales-cycle', authenticate, authorize('analytics:read'), analyticsController.getSalesCycleAnalytics);
+router.get('/sales-productivity', authenticate, authorize('analytics:read'), analyticsController.getSalesProductivity);
+router.get('/sla', authenticate, authorize('analytics:read'), analyticsController.getSLADashboard);
+router.get('/customer-demographics', authenticate, authorize('analytics:read'), analyticsController.getCustomerAnalytics);
+router.get('/geographic', authenticate, authorize('analytics:read'), analyticsController.getGeographicAnalytics);
+router.get('/marketing', authenticate, authorize('analytics:read'), analyticsController.getMarketingAnalytics);
+router.get('/ai-insights', authenticate, authorize('analytics:read'), analyticsController.getAIRevenueInsights);
+router.get('/ai-predictions', authenticate, authorize('analytics:read'), analyticsController.getAIPredictions);
 router.get('/vendors', authenticate, authorize('analytics:read'), analyticsController.getVendorPerformanceReport);
 router.get('/vendors-capacity', authenticate, authorize('analytics:read'), analyticsController.getVendorCapacityReport);
 router.patch('/vendors-capacity/:vendorName', authenticate, authorize('analytics:read'), analyticsController.updateVendorCapacityProfile);
