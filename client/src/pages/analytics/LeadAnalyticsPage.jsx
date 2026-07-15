@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import WidgetContainer from '../../components/analytics/WidgetContainer';
 import WidgetLibraryModal from '../../components/analytics/WidgetLibraryModal';
+import RemoveWidgetModal from '../../components/analytics/RemoveWidgetModal';
+import CustomDateModal from '../../components/analytics/CustomDateModal';
 import { getLeadAnalytics, getRevenueAnalytics } from '../../api/analytics';
 import { Select, Avatar, Badge, Modal } from '../../components/ui'
 import AnalyticsDrillDownModal from '../../components/analytics/AnalyticsDrillDownModal';
@@ -214,11 +216,13 @@ function Skeleton({ className }) {
 }
 
 const DATE_RANGES = [
-  { value: 'this_week', label: 'This Week' },
-  { value: 'this_month', label: 'This Month' },
-  { value: 'this_quarter', label: 'This Quarter' },
-  { value: 'this_year', label: 'This Year' },
-  { value: 'last_month', label: 'Last Month' },
+  { value: 'Today', label: 'Today' },
+  { value: 'This Week', label: 'This Week' },
+  { value: 'This Month', label: 'This Month' },
+  { value: 'This Quarter', label: 'This Quarter' },
+  { value: 'This Year', label: 'This Year' },
+  { value: 'All Time', label: 'All Time' },
+  { value: 'Custom Range', label: 'Custom Range...' }
 ];
 
 const DEFAULT_FILTERS = {
@@ -282,6 +286,8 @@ export default function LeadAnalyticsPage() {
     }
   });
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [removeLibraryOpen, setRemoveLibraryOpen] = useState(false);
+  const [customDateOpen, setCustomDateOpen] = useState(false);
   const [layout, setLayout] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('crm_dashboard_layout')) || DEFAULT_DASHBOARD_LAYOUT;
@@ -295,6 +301,10 @@ export default function LeadAnalyticsPage() {
     const newWidget = { i: widgetId, x: 0, y: 100, w: 12, h: 4, minW: 6, minH: 3 };
     setLayout(prev => [...prev, newWidget]);
     setLibraryOpen(false);
+  };
+
+  const handleRemoveWidget = (widgetId) => {
+    setLayout(prev => prev.filter(l => l.i !== widgetId));
   };
   
   const saveCustomLayout = () => {
@@ -497,8 +507,14 @@ export default function LeadAnalyticsPage() {
           )}
           <Select
             value={filters.date} 
-            onChange={(e) => setFilters(prev => ({...prev, date: e.target.value}))}
-            options={DATE_RANGES}
+            onChange={(val) => {
+              if (val === 'Custom Range') {
+                setCustomDateOpen(true);
+              } else {
+                setFilters(prev => ({...prev, date: val}));
+              }
+            }}
+            options={DATE_RANGES.some(d => d.value === filters.date) ? DATE_RANGES : [...DATE_RANGES.filter(d => d.value !== 'Custom Range'), { value: filters.date, label: filters.date }, { value: 'Custom Range', label: 'Custom Range...' }]}
           />
         </div>
       </div>
@@ -532,6 +548,7 @@ export default function LeadAnalyticsPage() {
           </select>
           <button className={styles.rangePill} onClick={() => setLayout(DEFAULT_DASHBOARD_LAYOUT)}>Reset Layout</button>
           <button className={`${styles.rangePill} ${styles.rangePillActive}`} onClick={() => setLibraryOpen(true)}>+ Add Widget</button>
+          <button className={`${styles.rangePill} ${styles.rangePillActive}`} onClick={() => setRemoveLibraryOpen(true)}>- Remove Widget</button>
           <button className={`${styles.rangePill} ${styles.rangePillActive}`} onClick={saveLayout}>Save Default</button>
           <button className={`${styles.rangePill} ${styles.rangePillActive}`} onClick={saveCustomLayout}>Save As...</button>
           <button className={styles.clearAllBtn} onClick={() => setIsEditMode(false)}>Exit Edit Mode</button>
@@ -588,8 +605,31 @@ export default function LeadAnalyticsPage() {
         onClose={() => setReportingCenterOpen(false)} 
       />
 
-      {/* ── Widget Library Modal ── */}
-      <WidgetLibraryModal isOpen={libraryOpen} onClose={() => setLibraryOpen(false)} layout={layout} onAddWidget={addWidget} />
+      {/* Add Widget Modal */}
+      <WidgetLibraryModal 
+        isOpen={libraryOpen} 
+        onClose={() => setLibraryOpen(false)} 
+        layout={layout}
+        onAddWidget={addWidget}
+      />
+
+      {/* Remove Widget Modal */}
+      <RemoveWidgetModal 
+        isOpen={removeLibraryOpen} 
+        onClose={() => setRemoveLibraryOpen(false)} 
+        layout={layout}
+        onRemoveWidget={handleRemoveWidget}
+      />
+
+      {/* Custom Date Modal */}
+      <CustomDateModal
+        isOpen={customDateOpen}
+        onClose={() => setCustomDateOpen(false)}
+        onApply={(rangeStr) => {
+          setFilters(prev => ({ ...prev, date: rangeStr }));
+          setCustomDateOpen(false);
+        }}
+      />
 
       {/* ── Advanced Drill-Down Modal ── */}
       <AnalyticsDrillDownModal 

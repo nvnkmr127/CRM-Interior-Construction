@@ -87,20 +87,6 @@ export default function WidgetContainer({ id, isEditMode, layout, setLayout, chi
             >
               📌
             </button>
-            <button 
-              onClick={toggleCollapse}
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', borderRadius: '4px', color: 'var(--color-text-secondary)' }}
-              title={isCollapsed ? "Expand" : "Collapse"}
-            >
-              {isCollapsed ? '🔽' : '🔼'}
-            </button>
-            <button 
-              onClick={removeWidget}
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', borderRadius: '4px', color: '#DC2626' }}
-              title="Remove from Dashboard"
-            >
-              ❌
-            </button>
           </div>
         )}
       </div>
