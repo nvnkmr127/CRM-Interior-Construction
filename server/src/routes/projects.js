@@ -1622,7 +1622,7 @@ router.post('/:id/cancel/acknowledge', authorize('projects:update'), async (req,
 // POST /api/projects/:projectId/boq-items/:itemId/discontinue
 router.post('/:projectId/boq-items/:itemId/discontinue', authorize('projects:update'), async (req, res, next) => {
   try {
-    const { projectId, itemId } = req.params;
+    const { _projectId, itemId } = req.params;
     
     // Check if the item belongs to the tenant and exists
     const checkRes = await pool.query(

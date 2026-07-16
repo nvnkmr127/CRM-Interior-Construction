@@ -582,7 +582,7 @@ exports.getVendorPerformanceDetail = async (req, res, next) => {
     const paymentRes = await pool.query(paymentQuery, [tenantId, vendorName]);
 
     // 5. Fetch Ratings
-    const ratingQuery = `
+    const _ratingQuery = `
       SELECT prv.rating, prv.feedback, prv.created_at, p.name as project_name
       FROM project_retrospective_vendors prv
       JOIN project_vendors pv ON prv.project_vendor_id = pv.id
@@ -1208,7 +1208,7 @@ exports.updateVendorCapacityProfile = async (req, res, next) => {
 
 exports.getTimelineAnalytics = async (req, res, next) => {
   try {
-    const tenantId = req.tenantId || (req.user && req.user.tenantId);
+    const _tenantId = req.tenantId || (req.user && req.user.tenantId);
     
     // As the database connection fails in this sandbox (ENOTFOUND), 
     // we return dynamic mock data so the UI can be developed and showcased.

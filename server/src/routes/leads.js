@@ -1,12 +1,14 @@
 const express = require('express');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
+const validate = require('../middleware/validate');
+const { createLeadSchema, logActivitySchema } = require('../validators/leadValidators');
 const leadController = require('../controllers/leadController');
 const aiRateLimiter = require('../middleware/aiRateLimiter');
 
 const router = express.Router();
 
-router.post('/', authenticate, authorize('leads:create'), leadController.createLeadHandler);
+router.post('/', authenticate, authorize('leads:create'), validate(createLeadSchema), leadController.createLeadHandler);
 router.get('/', authenticate, authorize('leads:read'), leadController.getLeadsHandler);
 router.get('/stats', authenticate, authorize('leads:read'), leadController.getLeadStatsHandler);
 router.post('/public', leadController.createPublicLeadHandler);
@@ -42,7 +44,7 @@ router.post('/bulk/tag', authenticate, authorize('leads:update'), leadController
 router.post('/merge', authenticate, authorize('leads:update'), leadController.mergeLeadsHandler);
 router.post('/:id/stage', authenticate, authorize('leads:update'), leadController.changeStageHandler);
 router.post('/:id/convert-to-project', authenticate, authorize('leads:update'), leadController.convertToProjectHandler);
-router.post('/:id/activities', authenticate, leadController.logActivityHandler);
+router.post('/:id/activities', authenticate, validate(logActivitySchema), leadController.logActivityHandler);
 router.get('/:id/activities', authenticate, leadController.getActivitiesHandler);
 router.patch('/:id/activities/:aid', authenticate, leadController.updateActivityHandler);
 router.get('/:id/timeline', authenticate, leadController.getTimelineHandler);

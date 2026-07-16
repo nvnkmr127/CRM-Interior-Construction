@@ -171,7 +171,7 @@ class PurchaseOrderService {
       if (poCheck.rows.length === 0) {
         throw new Error('Purchase Order not found');
       }
-      const existingPo = poCheck.rows[0];
+      const _existingPo = poCheck.rows[0];
 
       const fields = [];
       const values = [tenantId, poId];

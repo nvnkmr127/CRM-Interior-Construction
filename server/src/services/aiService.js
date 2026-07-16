@@ -1,7 +1,7 @@
 const { GoogleGenAI } = require('@google/genai');
-const pdfParse = require('pdf-parse');
+const _pdfParse = require('pdf-parse');
 const { findLeadById } = require('../repositories/leadRepository');
-const { sanitizePrompt, validateOutput } = require('../utils/aiSecurity');
+const { sanitizePrompt, _validateOutput } = require('../utils/aiSecurity');
 
 /**
  * AI Service
@@ -105,7 +105,7 @@ async function summarizeActivity(text) {
 /**
  * Generate a drafted message using Gemini
  */
-async function draftCommunication(lead, channel, instructions) {
+async function _draftCommunication(lead, channel, instructions) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return `Hello ${lead.name},\n\n[AI disabled - Please configure GEMINI_API_KEY]\n\nBest,`;
 
@@ -179,8 +179,8 @@ async function parseDocument(base64Data, mimeType) {
     
     let text = typeof response.text === 'function' ? response.text() : response.text;
     text = text.trim();
-    if (text.startsWith('\`\`\`json')) {
-      text = text.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '');
+    if (text.startsWith('```json')) {
+      text = text.replace(/^```json\n/, '').replace(/\n```$/, '');
     }
     return JSON.parse(text);
   } catch (error) {
@@ -263,7 +263,7 @@ async function analyzeLeadIntelligence(lead, activities, communications, prefere
 
     let text = typeof response.text === 'function' ? response.text() : response.text;
     text = text.trim();
-    if (text.startsWith('\`\`\`json')) text = text.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '').trim();
+    if (text.startsWith('```json')) text = text.replace(/^```json\n/, '').replace(/\n```$/, '').trim();
     const result = JSON.parse(text);
 
     return {
@@ -415,8 +415,8 @@ async function summarizeMeeting(transcript) {
 
     const text = typeof response.text === 'function' ? response.text() : response.text;
     let cleanText = text.trim();
-    if (cleanText.startsWith('\`\`\`json')) {
-      cleanText = cleanText.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '');
+    if (cleanText.startsWith('```json')) {
+      cleanText = cleanText.replace(/^```json\n/, '').replace(/\n```$/, '');
     }
     const result = JSON.parse(cleanText);
     
@@ -698,7 +698,7 @@ async function generateTasksFromActivity(activityText, activityType) {
     
     let text = typeof response.text === 'function' ? response.text() : response.text;
     text = text.trim();
-    if (text.startsWith('\`\`\`json')) text = text.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '').trim();
+    if (text.startsWith('```json')) text = text.replace(/^```json\n/, '').replace(/\n```$/, '').trim();
     return JSON.parse(text);
   } catch (error) {
     console.error('Gemini Task Generation Error:', error);
@@ -746,7 +746,7 @@ async function generateFollowupRecommendations(lead, lastActivityDate) {
     
     let text = typeof response.text === 'function' ? response.text() : response.text;
     text = text.trim();
-    if (text.startsWith('\`\`\`json')) text = text.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '').trim();
+    if (text.startsWith('```json')) text = text.replace(/^```json\n/, '').replace(/\n```$/, '').trim();
     return JSON.parse(text);
   } catch (error) {
     console.error('Gemini Follow-up Recommendation Error:', error);
@@ -794,7 +794,7 @@ async function analyzeMeetingForCoaching(transcript) {
     
     let text = typeof response.text === 'function' ? response.text() : response.text;
     text = text.trim();
-    if (text.startsWith('\`\`\`json')) text = text.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '').trim();
+    if (text.startsWith('```json')) text = text.replace(/^```json\n/, '').replace(/\n```$/, '').trim();
     return JSON.parse(text);
   } catch (error) {
     console.error('AI Sales Coach Error:', error);
@@ -892,8 +892,8 @@ async function processVoiceNote(base64Audio, mimeType, leadContext) {
     
     let text = typeof response.text === 'function' ? response.text() : response.text;
     text = text.trim();
-    if (text.startsWith('\`\`\`json')) {
-      text = text.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '');
+    if (text.startsWith('```json')) {
+      text = text.replace(/^```json\n/, '').replace(/\n```$/, '');
     }
     return JSON.parse(text);
   } catch (error) {
@@ -933,8 +933,8 @@ async function analyzeObjections(transcript) {
 
     const text = typeof response.text === 'function' ? response.text() : response.text;
     let cleanText = text.trim();
-    if (cleanText.startsWith('\`\`\`json')) {
-      cleanText = cleanText.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '');
+    if (cleanText.startsWith('```json')) {
+      cleanText = cleanText.replace(/^```json\n/, '').replace(/\n```$/, '');
     }
     return JSON.parse(cleanText);
   } catch (error) {
@@ -974,8 +974,8 @@ async function optimizeBudgetBreakdown(totalBudget, requirements) {
 
     const text = typeof response.text === 'function' ? response.text() : response.text;
     let cleanText = text.trim();
-    if (cleanText.startsWith('\`\`\`json')) {
-      cleanText = cleanText.replace(/^\`\`\`json\n/, '').replace(/\n\`\`\`$/, '');
+    if (cleanText.startsWith('```json')) {
+      cleanText = cleanText.replace(/^```json\n/, '').replace(/\n```$/, '');
     }
     return JSON.parse(cleanText);
   } catch (error) {

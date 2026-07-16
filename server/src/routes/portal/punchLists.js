@@ -1,5 +1,5 @@
 const express = require('express');
-const { z } = require('zod');
+const { _z } = require('zod');
 const punchListRepository = require('../../repositories/punchListRepository');
 const authenticatePortal = require('../../middleware/authenticatePortal');
 const { success, fail } = require('../../utils/response');

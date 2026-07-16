@@ -1,5 +1,5 @@
 const pool = require('../config/db');
-const { v4: uuidv4 } = require('uuid'); // assuming uuid is not installed, wait better-sqlite3 handles uuids manually if needed, or we use pool.query to let db handle it or just crypto.randomUUID if node 15+
+const { v4: _uuidv4 } = require('uuid'); // assuming uuid is not installed, wait better-sqlite3 handles uuids manually if needed, or we use pool.query to let db handle it or just crypto.randomUUID if node 15+
 
 // To support Node v14+ natively without extra deps
 const crypto = require('crypto');
@@ -74,12 +74,12 @@ const notifyUser = async (tenantId, userId, notification) => {
       const currentMins = now.getMinutes();
       const currentTimeStr = `${currentHours.toString().padStart(2, '0')}:${currentMins.toString().padStart(2, '0')}`;
       
-      let inDnd = false;
+      let _inDnd = false;
       if (prefs.dnd_start_time > prefs.dnd_end_time) {
         // spans midnight e.g. 22:00 to 08:00
-        if (currentTimeStr >= prefs.dnd_start_time || currentTimeStr <= prefs.dnd_end_time) inDnd = true;
+        if (currentTimeStr >= prefs.dnd_start_time || currentTimeStr <= prefs.dnd_end_time) _inDnd = true;
       } else {
-        if (currentTimeStr >= prefs.dnd_start_time && currentTimeStr <= prefs.dnd_end_time) inDnd = true;
+        if (currentTimeStr >= prefs.dnd_start_time && currentTimeStr <= prefs.dnd_end_time) _inDnd = true;
       }
       
       // If in DND, we could choose to skip pushing altogether or just insert silently.

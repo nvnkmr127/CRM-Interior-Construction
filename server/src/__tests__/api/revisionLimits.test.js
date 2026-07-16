@@ -6,7 +6,7 @@ const pool = require('../../db/pool');
 describe('Design Revision Limits and Change Orders API', () => {
   jest.setTimeout(30000);
   let accessToken;
-  let tenantId;
+  let _tenantId;
   let projectId;
   let drawingNumber = 'ARCH-REV-100';
 

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { useToast } from './toastContext';
 
 const TaskNotificationContext = createContext(null);
@@ -51,15 +51,17 @@ export function TaskNotificationProvider({ children }) {
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
+  const value = useMemo(() => ({
+    notifications,
+    unreadCount,
+    addNotification,
+    markAsRead,
+    markAllAsRead,
+    clearAll
+  }), [notifications, unreadCount]);
+
   return (
-    <TaskNotificationContext.Provider value={{
-      notifications,
-      unreadCount,
-      addNotification,
-      markAsRead,
-      markAllAsRead,
-      clearAll
-    }}>
+    <TaskNotificationContext.Provider value={value}>
       {children}
     </TaskNotificationContext.Provider>
   );

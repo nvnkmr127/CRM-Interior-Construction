@@ -120,15 +120,18 @@ export function TaskGovernanceProvider({ children }) {
   const canDelete = ['admin', 'manager'].includes(role)
   const canConfig = ['admin'].includes(role)
 
+  // Memoize the context value to prevent unnecessary re-renders of consumers
+  const contextValue = React.useMemo(() => ({
+    role, setRole,
+    webhooks, setWebhooks,
+    retentionDays, setRetentionDays,
+    isOffline, pushToSyncQueue, syncQueue,
+    logAuditActivity, getAuditLogs,
+    permissions: { canEdit, canDelete, canConfig }
+  }), [role, webhooks, retentionDays, isOffline, syncQueue, canEdit, canDelete, canConfig])
+
   return (
-    <GovernanceContext.Provider value={{
-      role, setRole,
-      webhooks, setWebhooks,
-      retentionDays, setRetentionDays,
-      isOffline, pushToSyncQueue, syncQueue,
-      logAuditActivity, getAuditLogs,
-      permissions: { canEdit, canDelete, canConfig }
-    }}>
+    <GovernanceContext.Provider value={contextValue}>
       {children}
     </GovernanceContext.Provider>
   )

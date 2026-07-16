@@ -6,7 +6,7 @@ const crypto = require('crypto');
 
 describe('Design, QC, and Handover Approvals API', () => {
   jest.setTimeout(30000);
-  let adminToken;
+  let _adminToken;
   let designerToken;
   let qcToken;
   let pmToken;

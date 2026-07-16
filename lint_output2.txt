@@ -1,0 +1,179 @@
+
+> crm-monorepo@1.0.0 lint
+> eslint .
+
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\auditTrailViewer.test.js
+  66:5  error  'auditLogId' is not defined  no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\clientPortalTransparencyAndRelationships.test.js
+  71:5  error  'portalUserId' is not defined  no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\commercialSupportAndVendorCoordination.test.js
+  22:5  error  'tenantId' is not defined  no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\configurableWorkActivities.test.js
+  152:7  error  'dependencyId' is not defined  no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\conversion.test.js
+  165:7  error  'paymentMilestoneId' is not defined  no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\dailySiteReports.test.js
+  26:5  error  'userId' is not defined  no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\designApprovalReminders.test.js
+   97:5  error  'docControlRecent' is not defined     no-undef
+  105:5  error  'docControlInvisible' is not defined  no-undef
+  113:5  error  'docControlApproved' is not defined   no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\designQcHandoverApprovals.test.js
+  30:5  error  'adminToken' is not defined  no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\designWorkflow.test.js
+  23:5  error  'userId' is not defined  no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\drawingRegister.test.js
+  24:5  error  'tenantId' is not defined  no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\financials.test.js
+  24:5  error  'tenantId' is not defined  no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\handoverReadinessCheck.test.js
+  140:5  error  'docId' is not defined  no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\invoices.test.js
+  24:5  error  'tenantId' is not defined  no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\layoutTracking.test.js
+  22:5  error  'tenantId' is not defined  no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\materialDiscontinuationAndRoomHandovers.test.js
+  72:5  error  'item1Id' is not defined  no-undef
+  80:5  error  'item2Id' is not defined  no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\paymentReminders.test.js
+  123:5  error  'milestonePaid' is not defined         no-undef
+  131:5  error  'milestoneDeferred' is not defined     no-undef
+  139:5  error  'milestoneNoDueDate' is not defined    no-undef
+  147:5  error  'milestoneOtherOffset' is not defined  no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\portalQuotations.test.js
+  23:5  error  'adminToken' is not defined  no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\projectPauseAndCancellation.test.js
+  53:5  error  'milestoneId' is not defined  no-undef
+  62:5  error  'activity1Id' is not defined  no-undef
+  70:5  error  'activity2Id' is not defined  no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\revisionLimits.test.js
+  21:5  error  'tenantId' is not defined  no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\roomProgress.test.js
+  24:5  error  'userId' is not defined  no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\taskDependencies.test.js
+  26:5  error  'userId' is not defined  no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\warrantyExpiryReminders.test.js
+   90:5  error  'warrantyOtherOffset' is not defined  no-undef
+   98:5  error  'warrantyExpired' is not defined      no-undef
+  106:5  error  'warrantyVoided' is not defined       no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\warrantyRepeatsAndBudgetAlerts.test.js
+   74:7  error  'claim1Id' is not defined    no-undef
+   91:7  error  'claim2Id' is not defined    no-undef
+  117:7  error  'expense1Id' is not defined  no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\app.js
+  104:19  error  Empty block statement  no-empty
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\header.js
+  30:1  error  Parsing error: Unexpected token
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js
+   278:20  error  'logActivitySchema' is not defined       no-undef
+   391:20  error  'createLeadSchema' is not defined        no-undef
+   411:24  error  'createLead' is not defined              no-undef
+   436:26  error  'findLeads' is not defined               no-undef
+  1086:16  error  'estimator_reference_id' is not defined  no-undef
+  1092:10  error  'status' is not defined                  no-undef
+  1092:18  error  'total_amount' is not defined            no-undef
+  1092:32  error  'pdf_url' is not defined                 no-undef
+  1092:41  error  'payload' is not defined                 no-undef
+  1098:28  error  'estimator_reference_id' is not defined  no-undef
+  1098:52  error  'status' is not defined                  no-undef
+  1098:60  error  'total_amount' is not defined            no-undef
+  1098:74  error  'pdf_url' is not defined                 no-undef
+  1098:83  error  'payload' is not defined                 no-undef
+  1450:31  error  'updateLead' is not defined              no-undef
+  1706:24  error  'leadRepository' is not defined          no-undef
+  1708:25  error  'aiService' is not defined               no-undef
+  1748:26  error  'aiService' is not defined               no-undef
+  1756:26  error  'aiService' is not defined               no-undef
+  1838:24  error  'leadRepository' is not defined          no-undef
+  1841:28  error  'aiService' is not defined               no-undef
+  1889:24  error  'leadRepository' is not defined          no-undef
+  1891:35  error  'aiService' is not defined               no-undef
+  1899:25  error  'aiService' is not defined               no-undef
+  1909:30  error  'aiService' is not defined               no-undef
+  1924:24  error  'leadRepository' is not defined          no-undef
+  1933:28  error  'aiService' is not defined               no-undef
+  1937:11  error  'activityService' is not defined         no-undef
+  2095:16  error  Redundant double negation                no-extra-boolean-cast
+  2095:44  error  Redundant double negation                no-extra-boolean-cast
+  2095:76  error  Redundant double negation                no-extra-boolean-cast
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\integrations\notificationService.js
+  80:93  error  'inDnd' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+  82:93  error  '_inDnd' is not defined                                                           no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\responseFormatter.js
+  17:23  error  Do not access Object.prototype method 'hasOwnProperty' from target object  no-prototype-builtins
+  17:57  error  Do not access Object.prototype method 'hasOwnProperty' from target object  no-prototype-builtins
+  23:24  error  Do not access Object.prototype method 'hasOwnProperty' from target object  no-prototype-builtins
+  23:58  error  Do not access Object.prototype method 'hasOwnProperty' from target object  no-prototype-builtins
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\queues\workers\aiWorker.js
+  9:5  warning  The value assigned to 'aiWorker' is not used in subsequent statements  no-useless-assignment
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js
+  281:90  warning  The value assigned to 'paramIndex' is not used in subsequent statements  no-useless-assignment
+  512:11  error    'eventBus' is not defined                                                no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\workActivityRepository.js
+  111:44  warning  The value assigned to 'idx' is not used in subsequent statements  no-useless-assignment
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\dashboard.js
+    4:16  error  'express' is not defined       no-undef
+    6:12  error  'authenticate' is not defined  no-undef
+   17:12  error  'success' is not defined       no-undef
+   20:12  error  'fail' is not defined          no-undef
+   29:28  error  'readPool' is not defined      no-undef
+   37:12  error  'success' is not defined       no-undef
+   49:12  error  'fail' is not defined          no-undef
+   58:28  error  'readPool' is not defined      no-undef
+   66:12  error  'success' is not defined       no-undef
+   69:12  error  'fail' is not defined          no-undef
+   79:28  error  'readPool' is not defined      no-undef
+   88:12  error  'success' is not defined       no-undef
+   91:12  error  'fail' is not defined          no-undef
+  100:28  error  'readPool' is not defined      no-undef
+  109:12  error  'success' is not defined       no-undef
+  112:12  error  'fail' is not defined          no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\postSale\snagService.js
+  142:37  warning  The value assigned to 'index' is not used in subsequent statements  no-useless-assignment
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\invoiceService.js
+  344:9  warning  The value assigned to 'taxBreakdown' is not used in subsequent statements          no-useless-assignment
+  348:7  error    'taxSum' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+  351:7  error    '_taxSum' is not defined                                                           no-undef
+  364:9  warning  The value assigned to 'summaryTaxLabel' is not used in subsequent statements       no-useless-assignment
+  365:9  warning  The value assigned to 'summaryTaxVal' is not used in subsequent statements         no-useless-assignment
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\paymentMilestoneService.js
+  143:17  warning  The value assigned to 'paramIdx' is not used in subsequent statements  no-useless-assignment
+
+✖ 101 problems (93 errors, 8 warnings)
+  3 errors and 0 warnings potentially fixable with the `--fix` option.
+

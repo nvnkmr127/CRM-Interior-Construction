@@ -14,13 +14,13 @@ function responseFormatter(req, res, next) {
   // Override res.json
   res.json = function (body) {
     // If the response is already in the standard format (e.g. from errorHandler or already wrapped), skip wrapping
-    if (body && (body.hasOwnProperty('success') && body.hasOwnProperty('meta'))) {
+    if (body && ('success' in body && 'meta' in body)) {
       return originalJson.call(this, body);
     }
     
     // If it's an error response that hasn't been formatted (rare if we use errorHandler), format it
     if (res.statusCode >= 400) {
-      if (body && body.hasOwnProperty('success') && body.hasOwnProperty('error')) {
+      if (body && 'success' in body && 'error' in body) {
          if (!body.meta) {
            body.meta = {
              requestId: req.id,

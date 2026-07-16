@@ -1,6 +1,6 @@
 const pool = require('../../db/pool');
 const { logAction } = require('../auditLog');
-const { notifyUser } = require('../notificationService');
+const { _notifyUser } = require('../notificationService');
 
 async function createChecklist({ tenantId, projectId, items = [] }) {
   const client = await pool.connect();

@@ -6,7 +6,7 @@ describe('Project Design Stage Workflow & Gate Checks', () => {
   jest.setTimeout(30000);
   let accessToken;
   let tenantId;
-  let userId;
+  let _userId;
   let projectId;
 
   beforeAll(async () => {

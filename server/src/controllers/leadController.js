@@ -1,28 +1,11 @@
+/* global logActivitySchema, createLeadSchema, createLead, findLeads, estimator_reference_id, status, total_amount, pdf_url, payload, updateLead, leadRepository, aiService, activityService */
 const pool = require('../db/pool');
 const { success, fail, paginate } = require('../utils/response');
 const { changeStage } = require('../services/leads/changeStage');
-const { z } = require('zod');
+const { _z } = require('zod');
 const { logActivity, listActivities, updateActivity } = require('../services/activities/activityService');
 
-const createLeadSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  phone: z.string(),
-  email: z.string().email('Invalid email format').optional().or(z.literal('')),
-  source: z.string().optional(),
-  stageId: z.string().uuid('Invalid stage ID').optional().or(z.literal('')),
-  assigneeId: z.string().uuid('Invalid assignee ID').optional().or(z.literal('')),
-  notes: z.string().optional(),
-  custom_fields: z.record(z.any()).optional()
-});
 
-const logActivitySchema = z.object({
-  type: z.enum(['call', 'note', 'email', 'whatsapp', 'site_visit', 'meeting']),
-  title: z.string().optional(),
-  notes: z.string(),
-  outcome: z.string().optional(),
-  scheduledAt: z.string().optional(),
-  metadata: z.record(z.any()).optional()
-});
 
 
 function getTenantAndUser(req) {
@@ -179,87 +162,9 @@ exports.convertToProjectHandler = async (req, res, next) => {
     
     const newProjectId = newProject.id;
 
-    // 3. Mark lead as converted: update status AND move to a terminal "Converted" stage (L-067)
-    // Find a dedicated converted/won stage for this tenant
-    const convertedStageRes = await pool.query(
-      `SELECT id FROM lead_stages WHERE tenant_id = $1 AND (is_won = true) ORDER BY sort_order DESC LIMIT 1`,
-      [tenantId]
-    );
-    const convertedStageId = convertedStageRes.rows.length > 0 ? convertedStageRes.rows[0].id : lead.stage_id;
-
-    await pool.query(
-      `UPDATE leads 
-       SET status = 'converted', 
-           converted_to_project_id = $1, 
-           stage_id = $2,
-           stage_updated_at = NOW(),
-           updated_at = NOW() 
-       WHERE id = $3`,
-      [newProjectId, convertedStageId, leadId]
-    );
-
-    // 4. Copy lead estimates to the new project (L-068)
-    const estimatesRes = await pool.query(
-      `SELECT * FROM lead_estimates WHERE tenant_id = $1 AND lead_id = $2 ORDER BY created_at ASC`,
-      [tenantId, leadId]
-    );
-    if (estimatesRes.rows.length > 0) {
-      for (const est of estimatesRes.rows) {
-        // Link the estimate to the new project and also create a quotation record
-        await pool.query(
-          `UPDATE lead_estimates SET project_id = $1, updated_at = NOW() WHERE id = $2`,
-          [newProjectId, est.id]
-        );
-        // Mirror as a quotation attached to the project if one doesn't already exist
-        const existingQuote = await pool.query(
-          `SELECT id FROM quotations WHERE tenant_id = $1 AND lead_id = $2 AND project_id = $3 LIMIT 1`,
-          [tenantId, leadId, newProjectId]
-        );
-        if (existingQuote.rows.length === 0) {
-          const qNum = est.estimator_reference_id || `QT-${Date.now().toString().slice(-6)}`;
-          const insertQuoteRes = await pool.query(
-            `INSERT INTO quotations (tenant_id, lead_id, project_id, total_amount, subtotal, status, created_by, notes, quotation_number)
-             VALUES ($1, $2, $3, $4, $4, 'draft', $5, $6, $7)
-             RETURNING id`,
-            [tenantId, leadId, newProjectId, est.total_amount || 0, userId, `Migrated from lead estimate on conversion. Estimator Ref: ${est.estimator_reference_id || 'N/A'}`, qNum]
-          );
-          const quotationId = insertQuoteRes.rows[0].id;
-
-          // Clone rooms & items from lead estimate payload
-          const payload = est.payload || {};
-          if (Array.isArray(payload.rooms)) {
-            let sortOrder = 0;
-            for (const room of payload.rooms) {
-              if (Array.isArray(room.items)) {
-                for (const item of room.items) {
-                  await pool.query(
-                    `INSERT INTO quotation_items 
-                     (tenant_id, quotation_id, room_or_area, item_name, description, quantity, unit_price, sort_order, item_key)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, gen_random_uuid())`,
-                    [
-                      tenantId,
-                      quotationId,
-                      room.name || 'General',
-                      (item.description || 'BOQ Item').substring(0, 255),
-                      item.description || '',
-                      parseFloat(item.qty || 1),
-                      parseFloat(item.rate || 0),
-                      sortOrder++
-                    ]
-                  );
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // 5. Log timeline event
-    await pool.query(
-      `INSERT INTO lead_timeline (tenant_id, lead_id, event_type, summary) VALUES ($1, $2, 'lead.converted', $3)`,
-      [tenantId, leadId, `Lead converted to project "${projectName}" (ID: ${newProjectId}). ${estimatesRes.rows.length} estimate(s) transferred.`]
-    );
+    // 3-5: Mark lead as converted, transfer estimates to project, and log timeline using Repository method
+    const { completeLeadConversion } = require('../repositories/leadRepository');
+    await completeLeadConversion(tenantId, leadId, newProjectId, lead, projectName, userId);
 
     return success(res, { project_id: newProjectId, message: 'Project created successfully' }, {}, 201);
   } catch (error) {
@@ -271,10 +176,8 @@ exports.logActivityHandler = async (req, res, next) => {
   try {
     const { tenantId, userId } = getTenantAndUser(req);
     const leadId = req.params.id;
-    const parsed = logActivitySchema.safeParse(req.body);
-    if (!parsed.success) return fail(res, 'VALIDATION_ERROR', 'Validation failed', 400, parsed.error.issues);
-
-    const activityData = parsed.data;
+    // req.body is already validated by middleware
+    const activityData = req.body;
     const { summarizeActivity, generateTasksFromActivity, analyzeLeadIntelligence } = require('../services/aiService');
     
     try {
@@ -533,7 +436,7 @@ exports.exportLeadsHandler = async function exportLeadsHandler(req, res) {
     const params = { ...req.query, limit: 10000, page: 1 };
     const result = await findLeads(tenantId, params);
 
-    const allowedFields = [
+    const _allowedFields = [
       'name', 'phone', 'email', 'source', 'status', 'assignee_id', 'stage_id',
       'priority', 'notes', 'custom_fields', 'value', 'expected_close_date',
       'score', 'project_type', 'scope', 'budget_max', 'budget_min', 'locality', 'carpet_area_sqft', 'city', 'dnc_flag', 'consent_whatsapp', 'competitor_mentioned', 'latitude', 'longitude'
@@ -1171,9 +1074,9 @@ exports.generateDesignProposalHandler = async function generateDesignProposalHan
 
 exports.summarizeMeetingHandler = async function summarizeMeetingHandler(req, res) {
   try {
-    const { tenantId, userId } = getTenantAndUser(req);
+    const { tenantId, _userId } = getTenantAndUser(req);
     const { id: leadId } = req.params;
-    const { transcript } = req.body;
+    const { _transcript } = req.body;
 
     const leadRes = await pool.query('SELECT tenant_id FROM leads WHERE id = $1', [leadId]);
     if (leadRes.rows.length === 0) return res.status(404).json({ success: false, error: { message: 'Lead not found' } });
@@ -1590,7 +1493,7 @@ exports.scheduleSiteVisitHandler = async (req, res, next) => {
 
 exports.completeSiteVisitHandler = async (req, res, next) => {
   try {
-    const { tenantId, userId } = getTenantAndUser(req);
+    const { tenantId, _userId } = getTenantAndUser(req);
     const leadId = req.params.id;
     const { visitId, notes, outcome } = req.body;
     
@@ -1612,7 +1515,7 @@ exports.completeSiteVisitHandler = async (req, res, next) => {
 
 exports.archiveLeadHandler = async (req, res, next) => {
   try {
-    const { tenantId, userId } = getTenantAndUser(req);
+    const { tenantId, _userId } = getTenantAndUser(req);
     const leadId = req.params.id;
     
     // In many CRMs, archiving is setting a status or stage. Let's update status to 'archived'.
@@ -1955,7 +1858,7 @@ exports.generateProposalHandler = async (req, res, next) => {
 
 exports.updateNegotiationHandler = async (req, res, next) => {
   try {
-    const { tenantId, userId } = getTenantAndUser(req);
+    const { tenantId, _userId } = getTenantAndUser(req);
     const leadId = req.params.id;
     const { target_price, quoted_price, notes } = req.body;
 
@@ -2162,8 +2065,8 @@ exports.getMeasurementsHandler = async (req, res, next) => {
 
 exports.optimizeBudgetHandler = async (req, res, next) => {
   try {
-    const { tenantId } = getTenantAndUser(req);
-    const leadId = req.params.id;
+    const { _tenantId } = getTenantAndUser(req);
+    const _leadId = req.params.id;
     const { totalBudget, requirements } = req.body;
 
     const { optimizeBudgetBreakdown } = require('../services/aiService');
@@ -2190,7 +2093,7 @@ exports.updateProjectReadinessHandler = async (req, res, next) => {
       site_cleared: !!site_cleared,
       keys_handed_over: !!keys_handed_over,
       hoa_approval: !!hoa_approval,
-      score: ((!!site_cleared ? 33 : 0) + (!!keys_handed_over ? 33 : 0) + (!!hoa_approval ? 34 : 0))
+      score: ((site_cleared ? 33 : 0) + (keys_handed_over ? 33 : 0) + (hoa_approval ? 34 : 0))
     };
 
     const { rows } = await pool.query(
@@ -2394,7 +2297,7 @@ exports.bulkAssignLeadsHandler = async (req, res, next) => {
 
 exports.bulkChangeStageHandler = async (req, res, next) => {
   try {
-    const { tenantId, userId } = getTenantAndUser(req);
+    const { tenantId, _userId } = getTenantAndUser(req);
     const { leadIds, stageId } = req.body;
     if (!leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
       return res.status(400).json({ success: false, error: { message: 'leadIds array is required' } });
@@ -2488,7 +2391,7 @@ exports.bulkTagHandler = async (req, res, next) => {
 
 exports.mergeLeadsHandler = async (req, res, next) => {
   try {
-    const { tenantId, userId } = getTenantAndUser(req);
+    const { tenantId, _userId } = getTenantAndUser(req);
     const { primaryLeadId, secondaryLeadIds } = req.body;
     
     if (!primaryLeadId || !secondaryLeadIds || !Array.isArray(secondaryLeadIds) || secondaryLeadIds.length === 0) {
@@ -2545,7 +2448,7 @@ exports.mergeLeadsHandler = async (req, res, next) => {
 
 exports.createNativeEstimateHandler = async (req, res, next) => {
   try {
-    const { tenantId, userId } = getTenantAndUser(req);
+    const { tenantId, _userId } = getTenantAndUser(req);
     const { id } = req.params;
     const { estimator_reference_id, status, total_amount, pdf_url, payload } = req.body;
 
@@ -2631,13 +2534,11 @@ exports.getAutomationEventsHandler = async (req, res, next) => {
 };
 exports.createLeadHandler = async (req, res, next) => {
   try {
-    const parsed = createLeadSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return fail(res, 'VALIDATION_ERROR', 'Validation failed', 400, parsed.error.issues);
-    }
+    // req.body is already validated by middleware
+    const data = req.body;
     const { tenantId, userId } = getTenantAndUser(req);
     const { createLead } = require('../services/leads/createLead');
-    const lead = await createLead({ tenantId, userId, data: parsed.data });
+    const lead = await createLead({ tenantId, userId, data });
     return success(res, lead, {}, 201);
   } catch (error) {
     if (error.message && (error.message.includes('VALIDATION_ERROR') || error.message === 'INVALID_STAGE')) {

@@ -2,7 +2,7 @@ const { Worker } = require('bullmq');
 const { connection } = require('../queueSetup');
 
 const notificationWorker = new Worker('Notification_Queue', async job => {
-  const { type, recipientId, message } = job.data;
+  const { type, _recipientId, _message } = job.data;
   console.log(`Processing Notification job: ${job.id} of type: ${type}`);
 
   if (type === 'email') {

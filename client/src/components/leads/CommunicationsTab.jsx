@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { getCommunications, createCommunication, draftCommunication } from '../../api/leads';
+import { getCommunications, createCommunication, draftCommunication, syncCommunications } from '../../api/leads';
 import { Button, Input, ContentLoader, EmptyState } from '../ui';
 import { useToast } from '../../store/toastContext';
 
@@ -46,7 +46,6 @@ export default function CommunicationsTab({ leadId, lead }) {
   const handleSyncChat = async () => {
     setIsSyncing(true);
     try {
-      const { syncCommunications } = await import('../../api/leads');
       const res = await syncCommunications(leadId);
       if (res.success) {
         toast.success('WhatsApp chat synchronized');

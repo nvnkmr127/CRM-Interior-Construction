@@ -6,7 +6,7 @@ const pool = require('../../../db/pool');
  */
 async function handle(config, context) {
   const { actionType, prompt, outputField } = config; // config from DB
-  const { record, tenantId } = context;
+  const { record, _tenantId } = context;
 
   console.log(`[Automation - AI] Invoking AI Action '${actionType}' for record ${record.id}`);
 

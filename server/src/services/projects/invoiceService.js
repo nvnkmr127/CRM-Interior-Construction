@@ -342,13 +342,13 @@ function generatePdfBuffer(invoice, milestone, project) {
 
     // Tax description
     let taxBreakdown = '';
-    let taxSum = 0;
+    let _taxSum = 0;
     if (invoice.gst_type === 'cgst_sgst') {
       taxBreakdown = `CGST: ${Number(invoice.cgst_amount).toFixed(2)}\nSGST: ${Number(invoice.sgst_amount).toFixed(2)}`;
-      taxSum = Number(invoice.cgst_amount) + Number(invoice.sgst_amount);
+      _taxSum = Number(invoice.cgst_amount) + Number(invoice.sgst_amount);
     } else {
       taxBreakdown = `IGST: ${Number(invoice.igst_amount).toFixed(2)}`;
-      taxSum = Number(invoice.igst_amount);
+      _taxSum = Number(invoice.igst_amount);
     }
     
     doc.text(taxBreakdown, 410, rowTop + 6, { width: 70, align: 'right' });

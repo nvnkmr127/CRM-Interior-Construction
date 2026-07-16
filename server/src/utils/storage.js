@@ -5,11 +5,11 @@ const path = require('path');
 const fs = require('fs');
 
 class StorageProvider {
-  async getUploadUrl(key, mimeType) { return `https://mock-s3.local/${key}?upload=true`; }
+  async getUploadUrl(key, _mimeType) { return `https://mock-s3.local/${key}?upload=true`; }
   async getDownloadUrl(key) { return `https://mock-s3.local/${key}?download=true`; }
-  async deleteFile(key) { return true; }
-  async validateMagicNumber(key, expectedMime) { return true; } // Mock local validation passing
-  async uploadBuffer(key, buffer, mimeType) { return key; }
+  async deleteFile(_key) { return true; }
+  async validateMagicNumber(_key, _expectedMime) { return true; } // Mock local validation passing
+  async uploadBuffer(key, _buffer, _mimeType) { return key; }
 }
 
 class S3StorageProvider extends StorageProvider {
@@ -108,7 +108,7 @@ class LocalStorageProvider extends StorageProvider {
     }
   }
 
-  async getUploadUrl(key, mimeType) {
+  async getUploadUrl(key, _mimeType) {
     // In a real local provider, you'd generate a local API endpoint url
     // that accepts file uploads, and save it in the uploadDir.
     // We mock it for the interface completeness.
@@ -150,7 +150,7 @@ class LocalStorageProvider extends StorageProvider {
     }
   }
 
-  async uploadBuffer(key, buffer, mimeType) {
+  async uploadBuffer(key, buffer, _mimeType) {
     const filePath = path.join(this.uploadDir, key);
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) {

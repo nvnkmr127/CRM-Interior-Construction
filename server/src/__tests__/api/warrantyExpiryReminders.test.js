@@ -10,9 +10,9 @@ describe('Warranty Expiry Reminder Notifications to Clients', () => {
 
   let warranty90d;
   let warranty30d;
-  let warrantyOtherOffset;
-  let warrantyExpired;
-  let warrantyVoided;
+  let _warrantyOtherOffset;
+  let _warrantyExpired;
+  let _warrantyVoided;
 
   const reminderEvents = [];
   const onReminder = (data) => {

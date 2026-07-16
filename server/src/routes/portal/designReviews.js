@@ -60,7 +60,7 @@ router.get('/rounds/:id/drawings', async (req, res, next) => {
 // POST /api/portal/design-reviews/drawings/:documentId/approve
 router.post('/drawings/:documentId/approve', async (req, res, next) => {
   try {
-    const { projectId, tenantId, id: clientPortalUserId } = req.portalUser;
+    const { projectId, tenantId, id: _clientPortalUserId } = req.portalUser;
     const { documentId } = req.params;
 
     // Verify drawing belongs to project and is visible

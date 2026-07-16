@@ -2,7 +2,7 @@ const pool = require('../../db/pool');
 
 class VendorPaymentService {
   async createVendorPaymentMilestone(tenantId, projectId, milestoneData) {
-    const { vendorId, purchaseOrderId, materialDeliveryId, name, amount, percentage, dueDate, notes } = milestoneData;
+    const { vendorId, purchaseOrderId, materialDeliveryId, name, amount, percentage, dueDate, _notes } = milestoneData;
     
     let finalAmount = Number(amount) || 0.00;
 

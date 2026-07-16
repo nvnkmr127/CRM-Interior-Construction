@@ -217,7 +217,7 @@ async function cancelProject({ projectId, tenantId, userId, reason, settlementNo
 /**
  * Acknowledges the cancellation settlement by the client.
  */
-async function acknowledgeCancellation({ projectId, tenantId, userId }) {
+async function acknowledgeCancellation({ projectId, tenantId, _userId }) {
   const currentRes = await pool.query(
     'SELECT id, status, cancellation_client_acknowledged FROM projects WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
     [projectId, tenantId]

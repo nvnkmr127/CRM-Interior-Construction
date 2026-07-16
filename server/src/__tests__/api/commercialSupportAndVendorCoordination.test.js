@@ -6,7 +6,7 @@ const pool = require('../../db/pool');
 describe('Commercial Project Support & Multi-Vendor Coordination API', () => {
   jest.setTimeout(30000);
   let adminToken;
-  let tenantId;
+  let _tenantId;
   let projectId;
   let complianceItemId;
   let vendorId;

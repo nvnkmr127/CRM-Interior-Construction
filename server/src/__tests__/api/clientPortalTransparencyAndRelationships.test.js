@@ -10,7 +10,7 @@ describe('Client Portal Transparency & Long-Term Customer Relationships API', ()
   let tenantId;
   let projectId;
   let portalToken = 'dummy-portal-token-999';
-  let portalUserId;
+  let _portalUserId;
   let relationshipRecordId;
   let referralId;
 

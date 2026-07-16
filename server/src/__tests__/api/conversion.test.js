@@ -125,7 +125,7 @@ describe('Lead-to-Project Conversion Checklist API', () => {
 
   describe('Booking Amount & Activation Gate', () => {
     let projectId;
-    let paymentMilestoneId;
+    let _paymentMilestoneId;
 
     it('creates a project with booking_amount > 0 and verifies status is pending_booking and Booking Advance milestone is created', async () => {
       const res = await request(app)
@@ -373,7 +373,7 @@ describe('Lead-to-Project Conversion Checklist API', () => {
         VALUES ($1, $2, 'Execution Phase', 2, 'pending', true)
         RETURNING id
       `, [tenantId, projectId]);
-      const phase2Id = phase2Res.rows[0].id;
+      const _phase2Id = phase2Res.rows[0].id;
 
       // 4. Sign off the first phase. It should throw SCOPE_LOCK_REQUIRED because it tries to auto-start next execution phase
       const res = await request(app)

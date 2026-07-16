@@ -944,7 +944,7 @@ class ProductionOrderService {
       }
 
       // 2. Spawn a new production order
-      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const _dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       const randomSuffix = Math.floor(1000 + Math.random() * 9000);
       const newOrderNumber = `REPL-${damage.original_order_number}-${randomSuffix}`;
 

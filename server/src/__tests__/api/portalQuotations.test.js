@@ -7,7 +7,7 @@ const crypto = require('crypto');
 describe('Portal Quotations & BOQ API', () => {
   jest.setTimeout(20000);
 
-  let adminToken;
+  let _adminToken;
   let clientToken = 'portal-boq-client-token-999';
   let tenantId;
   let projectId;

@@ -1,12 +1,15 @@
 const express = require('express');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
+const cacheMiddleware = require('../middleware/cacheMiddleware');
 const { success, fail } = require('../utils/response');
 const pool = require('../config/db');
 
 const router = express.Router();
 
 router.use(authenticate);
+// Cache analytics GET requests for 15 minutes
+router.use(cacheMiddleware(900));
 
 // Helper to parse period into from/to dates
 const getDates = (req) => {
@@ -433,7 +436,7 @@ router.get('/csat', authenticate, authorize('analytics:read'), analyticsControll
 
 router.get('/snags', async (req, res) => {
   try {
-    const { from, to, projectId } = getDates(req);
+    const { from, to, _projectId } = getDates(req);
     // projectId would be in req.query.projectId if provided
     const projId = req.query.projectId;
     const tenantId = req.tenantId;
@@ -628,7 +631,7 @@ router.get('/csat', authenticate, authorize('analytics:read'), analyticsControll
 
 router.get('/snags', async (req, res) => {
   try {
-    const { from, to, projectId } = getDates(req);
+    const { from, to, _projectId } = getDates(req);
     // projectId would be in req.query.projectId if provided
     const projId = req.query.projectId;
     const tenantId = req.tenantId;

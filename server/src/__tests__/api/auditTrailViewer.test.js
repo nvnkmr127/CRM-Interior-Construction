@@ -11,7 +11,7 @@ describe('Audit Trail API', () => {
   let testUserId;
   let testRoleId;
   let testProjectId;
-  let auditLogId;
+  let _auditLogId;
 
   beforeAll(async () => {
     // 1. Login superadmin

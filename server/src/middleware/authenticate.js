@@ -29,20 +29,35 @@ async function authenticate(req, res, next) {
     const decoded = verifyAccessToken(token);
 
     // V4: Continuous Authentication (Zero Trust) - Ensure session still exists
-    // (In production, use Redis for performance instead of Postgres on every request)
     const pool = require('../config/db'); // Get pool reference
+    const { getCache, setCache } = require('../utils/cache');
+    
     if (decoded.sessionId && pool) {
-      const sessionResult = await pool.query(
-        'SELECT ip_address, user_agent FROM sessions WHERE id = $1 AND tenant_id = $2',
-        [decoded.sessionId, decoded.tenantId]
-      );
-      if (sessionResult.rowCount === 0) {
-        // Session was revoked or deleted
-        return res.status(401).json({ success: false, error: 'SESSION_REVOKED', message: 'Your session has been terminated.' });
+      const cacheKey = `session:${decoded.sessionId}`;
+      let session = null;
+      
+      try {
+        session = await getCache(cacheKey);
+      } catch (err) {
+        console.warn('Redis cache miss or error for session validation', err);
+      }
+
+      if (!session) {
+        const sessionResult = await pool.query(
+          'SELECT ip_address, user_agent FROM sessions WHERE id = $1 AND tenant_id = $2',
+          [decoded.sessionId, decoded.tenantId]
+        );
+        if (sessionResult.rowCount === 0) {
+          // Session was revoked or deleted
+          return res.status(401).json({ success: false, error: 'SESSION_REVOKED', message: 'Your session has been terminated.' });
+        }
+        session = sessionResult.rows[0];
+        
+        // Cache the session data for 15 minutes
+        setCache(cacheKey, session, 900).catch(err => console.warn('Failed to cache session', err));
       }
 
       // V3: Risk-Based Authentication & Session Scoring
-      const session = sessionResult.rows[0];
       const currentIp = req.ip || req.connection?.remoteAddress;
       const currentUserAgent = req.headers['user-agent'];
       

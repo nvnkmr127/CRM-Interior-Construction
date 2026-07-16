@@ -17,10 +17,10 @@ describe('Payment Due Reminder Notifications to Clients', () => {
   let milestone14dOverdue;
   
   // Control milestones:
-  let milestonePaid;
-  let milestoneDeferred;
-  let milestoneNoDueDate;
-  let milestoneOtherOffset;
+  let _milestonePaid;
+  let _milestoneDeferred;
+  let _milestoneNoDueDate;
+  let _milestoneOtherOffset;
 
   const reminderEvents = [];
   const onReminder = (data) => {

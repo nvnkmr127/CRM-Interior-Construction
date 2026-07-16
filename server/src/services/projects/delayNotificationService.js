@@ -45,7 +45,7 @@ class DelayNotificationService {
           VALUES ($1, $2, $3, 'milestone_delay', $4, $5, 'Awaiting details', $6, 'draft')
           RETURNING id
         `;
-        const insertRes = await pool.query(insertQuery, [
+        const _insertRes = await pool.query(insertQuery, [
           tenantId, projectId, m.id, m.due_date, revisedDateStr, draftText
         ]);
 

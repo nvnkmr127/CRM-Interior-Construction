@@ -12,7 +12,7 @@ const connection = {
 const createQueue = (name) => {
   if (!useRedis) {
     return {
-      add: async (jobName, data, opts) => console.log(`[Mock Queue ${name}] Added job: ${jobName}`)
+      add: async (jobName, _data, _opts) => console.log(`[Mock Queue ${name}] Added job: ${jobName}`)
     };
   }
   return new Queue(name, { connection });

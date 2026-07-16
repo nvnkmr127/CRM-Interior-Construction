@@ -48,7 +48,7 @@ class WorkflowEngine {
     return true;
   }
 
-  async _executeActions(actions, payload) {
+  async _executeActions(actions, _payload) {
     for (const action of actions) {
       console.log(`[Workflow Engine] Executing Action: ${action.type} ->`, action.payload);
       // In V3/V4, this will plug into email sending, slack notifying, auto-assigning, etc.

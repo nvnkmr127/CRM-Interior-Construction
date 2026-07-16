@@ -11,9 +11,9 @@ describe('Design/Document Approval Reminders', () => {
   let doc48h;
   let doc72h;
   let doc120h;
-  let docControlRecent;
-  let docControlInvisible;
-  let docControlApproved;
+  let _docControlRecent;
+  let _docControlInvisible;
+  let _docControlApproved;
 
   const reminderEvents = [];
   const onReminder = (data) => {

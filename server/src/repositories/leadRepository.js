@@ -1,12 +1,13 @@
 const pool = require('../db/pool');
+const eventBus = require('../services/eventBus');
 
 async function createLead(tenantId, data, txClient = null) {
   const { 
     name, email, phone, source, stage_id, assignee_id, score, custom_fields, notes, status, created_by,
-    builder_name, possession_date, house_status, loan_approved, interior_style, material_preference, 
+    builder_name, possession_date, house_status, _loan_approved, interior_style, material_preference, 
     preferred_communication, preferred_language, referral_source, lifestyle_preferences, additional_contacts,
     win_probability, last_contacted_at, ai_score_breakdown,
-    property_type, scope, locality, budget_max, carpet_area_sqft, dnc_flag, consent_whatsapp, competitor_mentioned, lead_number
+    property_type, _scope, _locality, _budget_max, carpet_area_sqft, _dnc_flag, _consent_whatsapp, _competitor_mentioned, _lead_number
   } = data;
   
   const client = txClient || await pool.connect();
@@ -83,149 +84,60 @@ async function findLeadById(tenantId, leadId) {
     SELECT l.*,
            u.name AS assignee_name, u.avatar_url AS assignee_avatar,
            s.name AS stage_name, s.color AS stage_color,
-           lp.builder AS builder_name, lp.possession_date, lp.house_status,
+           lp.builder AS builder_name, lp.possession_date, lp.house_status, lp.property_type, lp.carpet_area, lp.carpet_area_sqft,
            lpref.interior_style, lpref.material AS material_preference,
            lpref.family_size, lpref.usage_patterns, lpref.storage_priorities,
            lpref.brand_flexibility, lpref.brand_remarks, lpref.existing_furniture,
            lpref.budget_category_allocation,
            COALESCE(EXTRACT(DAY FROM CURRENT_TIMESTAMP - l.updated_at), 0) AS days_in_stage,
-           0 AS follow_up_overdue_days,
-           (
-             SELECT a.metadata->>'status'
-             FROM activities a
-             WHERE a.lead_id = l.id AND a.type = 'whatsapp'
-             ORDER BY a.created_at DESC
-             LIMIT 1
-           ) AS last_whatsapp_status,
-           (
-             SELECT a.notes
-             FROM activities a
-             WHERE a.lead_id = l.id AND a.type = 'whatsapp'
-             ORDER BY a.created_at DESC
-             LIMIT 1
-           ) AS last_whatsapp_message,
-           (
-             SELECT a.metadata->>'direction'
-             FROM activities a
-             WHERE a.lead_id = l.id AND a.type = 'whatsapp'
-             ORDER BY a.created_at DESC
-             LIMIT 1
-           ) AS last_whatsapp_direction,
-           (
-             SELECT a.metadata->>'reaction'
-             FROM activities a
-             WHERE a.lead_id = l.id AND a.type = 'whatsapp'
-             ORDER BY a.created_at DESC
-             LIMIT 1
-           ) AS last_whatsapp_reaction,
-           (
-             SELECT a.created_at
-             FROM activities a
-             WHERE a.lead_id = l.id AND a.type = 'whatsapp'
-             ORDER BY a.created_at DESC
-             LIMIT 1
-           ) AS last_whatsapp_created_at,
-           (
-             SELECT a.id
-             FROM activities a
-             WHERE a.lead_id = l.id 
-               AND a.type = 'meeting' 
-               AND a.scheduled_at IS NOT NULL 
-               AND a.scheduled_at != ''
-               AND a.scheduled_at::timestamp >= NOW()
-               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
-             ORDER BY a.scheduled_at ASC
-             LIMIT 1
-           ) AS next_meeting_id,
-           (
-             SELECT a.scheduled_at
-             FROM activities a
-             WHERE a.lead_id = l.id 
-               AND a.type = 'meeting' 
-               AND a.scheduled_at IS NOT NULL 
-               AND a.scheduled_at != ''
-               AND a.scheduled_at::timestamp >= NOW()
-               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
-             ORDER BY a.scheduled_at ASC
-             LIMIT 1
-           ) AS next_meeting_schedule,
-           (
-             SELECT a.title
-             FROM activities a
-             WHERE a.lead_id = l.id 
-               AND a.type = 'meeting' 
-               AND a.scheduled_at IS NOT NULL 
-               AND a.scheduled_at != ''
-               AND a.scheduled_at::timestamp >= NOW()
-               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
-             ORDER BY a.scheduled_at ASC
-             LIMIT 1
-           ) AS next_meeting_title,
-           (
-             SELECT a.metadata->>'meeting_type'
-             FROM activities a
-             WHERE a.lead_id = l.id 
-               AND a.type = 'meeting' 
-               AND a.scheduled_at IS NOT NULL 
-               AND a.scheduled_at != ''
-               AND a.scheduled_at::timestamp >= NOW()
-               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
-             ORDER BY a.scheduled_at ASC
-             LIMIT 1
-           ) AS next_meeting_type,
-           (
-             SELECT a.metadata->>'meeting_link'
-             FROM activities a
-             WHERE a.lead_id = l.id 
-               AND a.type = 'meeting' 
-               AND a.scheduled_at IS NOT NULL 
-               AND a.scheduled_at != ''
-               AND a.scheduled_at::timestamp >= NOW()
-               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
-             ORDER BY a.scheduled_at ASC
-             LIMIT 1
-           ) AS next_meeting_link,
-           (
-             SELECT a.metadata->>'meeting_host'
-             FROM activities a
-             WHERE a.lead_id = l.id 
-               AND a.type = 'meeting' 
-               AND a.scheduled_at IS NOT NULL 
-               AND a.scheduled_at != ''
-               AND a.scheduled_at::timestamp >= NOW()
-               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
-             ORDER BY a.scheduled_at ASC
-             LIMIT 1
-           ) AS next_meeting_host,
-           (
-             SELECT a.metadata->>'duration'
-             FROM activities a
-             WHERE a.lead_id = l.id 
-               AND a.type = 'meeting' 
-               AND a.scheduled_at IS NOT NULL 
-               AND a.scheduled_at != ''
-               AND a.scheduled_at::timestamp >= NOW()
-               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
-             ORDER BY a.scheduled_at ASC
-             LIMIT 1
-           ) AS next_meeting_duration,
-           (
-             SELECT a.notes
-             FROM activities a
-             WHERE a.lead_id = l.id 
-               AND a.type = 'meeting' 
-               AND a.scheduled_at IS NOT NULL 
-               AND a.scheduled_at != ''
-               AND a.scheduled_at::timestamp >= NOW()
-               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
-             ORDER BY a.scheduled_at ASC
-             LIMIT 1
-           ) AS next_meeting_notes
+           last_wa.status AS last_whatsapp_status,
+           last_wa.message AS last_whatsapp_message,
+           last_wa.direction AS last_whatsapp_direction,
+           last_wa.reaction AS last_whatsapp_reaction,
+           last_wa.created_at AS last_whatsapp_created_at,
+           next_mtg.id AS next_meeting_id,
+           next_mtg.schedule AS next_meeting_schedule,
+           next_mtg.title AS next_meeting_title,
+           next_mtg.meeting_type AS next_meeting_type,
+           next_mtg.meeting_link AS next_meeting_link,
+           next_mtg.meeting_host AS next_meeting_host,
+           next_mtg.duration AS next_meeting_duration,
+           next_mtg.notes AS next_meeting_notes
     FROM leads l
     LEFT JOIN users u ON l.assignee_id = u.id
     LEFT JOIN lead_stages s ON l.stage_id = s.id
     LEFT JOIN lead_properties lp ON l.id = lp.lead_id
     LEFT JOIN lead_preferences lpref ON l.id = lpref.lead_id
+    LEFT JOIN LATERAL (
+      SELECT a.metadata->>'status' AS status,
+             a.notes AS message,
+             a.metadata->>'direction' AS direction,
+             a.metadata->>'reaction' AS reaction,
+             a.created_at
+      FROM activities a
+      WHERE a.lead_id = l.id AND a.type = 'whatsapp'
+      ORDER BY a.created_at DESC
+      LIMIT 1
+    ) AS last_wa ON true
+    LEFT JOIN LATERAL (
+      SELECT a.id,
+             a.scheduled_at AS schedule,
+             a.title,
+             a.metadata->>'meeting_type' AS meeting_type,
+             a.metadata->>'meeting_link' AS meeting_link,
+             a.metadata->>'meeting_host' AS meeting_host,
+             a.metadata->>'duration' AS duration,
+             a.notes
+      FROM activities a
+      WHERE a.lead_id = l.id 
+        AND a.type = 'meeting' 
+        AND a.scheduled_at IS NOT NULL 
+        AND a.scheduled_at != ''
+        AND a.scheduled_at::timestamp >= NOW()
+        AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
+      ORDER BY a.scheduled_at ASC
+      LIMIT 1
+    ) AS next_mtg ON true
     WHERE l.tenant_id = $1 AND l.id = $2 AND l.deleted_at IS NULL
   `;
   
@@ -246,143 +158,55 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
            ai.buying_intent, ai.sentiment,
            COALESCE(EXTRACT(DAY FROM CURRENT_TIMESTAMP - l.updated_at), 0) AS days_in_stage,
            0 AS follow_up_overdue_days,
-           (
-             SELECT a.metadata->>'status'
-             FROM activities a
-             WHERE a.lead_id = l.id AND a.type = 'whatsapp'
-             ORDER BY a.created_at DESC
-             LIMIT 1
-           ) AS last_whatsapp_status,
-           (
-             SELECT a.notes
-             FROM activities a
-             WHERE a.lead_id = l.id AND a.type = 'whatsapp'
-             ORDER BY a.created_at DESC
-             LIMIT 1
-           ) AS last_whatsapp_message,
-           (
-             SELECT a.metadata->>'direction'
-             FROM activities a
-             WHERE a.lead_id = l.id AND a.type = 'whatsapp'
-             ORDER BY a.created_at DESC
-             LIMIT 1
-           ) AS last_whatsapp_direction,
-           (
-             SELECT a.metadata->>'reaction'
-             FROM activities a
-             WHERE a.lead_id = l.id AND a.type = 'whatsapp'
-             ORDER BY a.created_at DESC
-             LIMIT 1
-           ) AS last_whatsapp_reaction,
-           (
-             SELECT a.created_at
-             FROM activities a
-             WHERE a.lead_id = l.id AND a.type = 'whatsapp'
-             ORDER BY a.created_at DESC
-             LIMIT 1
-           ) AS last_whatsapp_created_at,
-           (
-             SELECT a.id
-             FROM activities a
-             WHERE a.lead_id = l.id 
-               AND a.type = 'meeting' 
-               AND a.scheduled_at IS NOT NULL 
-               AND a.scheduled_at != ''
-               AND a.scheduled_at::timestamp >= NOW()
-               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
-             ORDER BY a.scheduled_at ASC
-             LIMIT 1
-           ) AS next_meeting_id,
-           (
-             SELECT a.scheduled_at
-             FROM activities a
-             WHERE a.lead_id = l.id 
-               AND a.type = 'meeting' 
-               AND a.scheduled_at IS NOT NULL 
-               AND a.scheduled_at != ''
-               AND a.scheduled_at::timestamp >= NOW()
-               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
-             ORDER BY a.scheduled_at ASC
-             LIMIT 1
-           ) AS next_meeting_schedule,
-           (
-             SELECT a.title
-             FROM activities a
-             WHERE a.lead_id = l.id 
-               AND a.type = 'meeting' 
-               AND a.scheduled_at IS NOT NULL 
-               AND a.scheduled_at != ''
-               AND a.scheduled_at::timestamp >= NOW()
-               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
-             ORDER BY a.scheduled_at ASC
-             LIMIT 1
-           ) AS next_meeting_title,
-           (
-             SELECT a.metadata->>'meeting_type'
-             FROM activities a
-             WHERE a.lead_id = l.id 
-               AND a.type = 'meeting' 
-               AND a.scheduled_at IS NOT NULL 
-               AND a.scheduled_at != ''
-               AND a.scheduled_at::timestamp >= NOW()
-               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
-             ORDER BY a.scheduled_at ASC
-             LIMIT 1
-           ) AS next_meeting_type,
-           (
-             SELECT a.metadata->>'meeting_link'
-             FROM activities a
-             WHERE a.lead_id = l.id 
-               AND a.type = 'meeting' 
-               AND a.scheduled_at IS NOT NULL 
-               AND a.scheduled_at != ''
-               AND a.scheduled_at::timestamp >= NOW()
-               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
-             ORDER BY a.scheduled_at ASC
-             LIMIT 1
-           ) AS next_meeting_link,
-           (
-             SELECT a.metadata->>'meeting_host'
-             FROM activities a
-             WHERE a.lead_id = l.id 
-               AND a.type = 'meeting' 
-               AND a.scheduled_at IS NOT NULL 
-               AND a.scheduled_at != ''
-               AND a.scheduled_at::timestamp >= NOW()
-               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
-             ORDER BY a.scheduled_at ASC
-             LIMIT 1
-           ) AS next_meeting_host,
-           (
-             SELECT a.metadata->>'duration'
-             FROM activities a
-             WHERE a.lead_id = l.id 
-               AND a.type = 'meeting' 
-               AND a.scheduled_at IS NOT NULL 
-               AND a.scheduled_at != ''
-               AND a.scheduled_at::timestamp >= NOW()
-               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
-             ORDER BY a.scheduled_at ASC
-             LIMIT 1
-           ) AS next_meeting_duration,
-           (
-             SELECT a.notes
-             FROM activities a
-             WHERE a.lead_id = l.id 
-               AND a.type = 'meeting' 
-               AND a.scheduled_at IS NOT NULL 
-               AND a.scheduled_at != ''
-               AND a.scheduled_at::timestamp >= NOW()
-               AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
-             ORDER BY a.scheduled_at ASC
-             LIMIT 1
-           ) AS next_meeting_notes
+           last_wa.status AS last_whatsapp_status,
+           last_wa.message AS last_whatsapp_message,
+           last_wa.direction AS last_whatsapp_direction,
+           last_wa.reaction AS last_whatsapp_reaction,
+           last_wa.created_at AS last_whatsapp_created_at,
+           next_mtg.id AS next_meeting_id,
+           next_mtg.schedule AS next_meeting_schedule,
+           next_mtg.title AS next_meeting_title,
+           next_mtg.meeting_type AS next_meeting_type,
+           next_mtg.meeting_link AS next_meeting_link,
+           next_mtg.meeting_host AS next_meeting_host,
+           next_mtg.duration AS next_meeting_duration,
+           next_mtg.notes AS next_meeting_notes
     FROM leads l
     LEFT JOIN users u ON l.assignee_id = u.id
     LEFT JOIN lead_stages s ON l.stage_id = s.id
     LEFT JOIN lead_properties lp ON l.id = lp.lead_id
     LEFT JOIN lead_preferences lpref ON l.id = lpref.lead_id
     LEFT JOIN lead_ai_insights ai ON l.id = ai.lead_id
+    LEFT JOIN LATERAL (
+      SELECT a.metadata->>'status' AS status,
+             a.notes AS message,
+             a.metadata->>'direction' AS direction,
+             a.metadata->>'reaction' AS reaction,
+             a.created_at
+      FROM activities a
+      WHERE a.lead_id = l.id AND a.type = 'whatsapp'
+      ORDER BY a.created_at DESC
+      LIMIT 1
+    ) AS last_wa ON true
+    LEFT JOIN LATERAL (
+      SELECT a.id,
+             a.scheduled_at AS schedule,
+             a.title,
+             a.metadata->>'meeting_type' AS meeting_type,
+             a.metadata->>'meeting_link' AS meeting_link,
+             a.metadata->>'meeting_host' AS meeting_host,
+             a.metadata->>'duration' AS duration,
+             a.notes
+      FROM activities a
+      WHERE a.lead_id = l.id 
+        AND a.type = 'meeting' 
+        AND a.scheduled_at IS NOT NULL 
+        AND a.scheduled_at != ''
+        AND a.scheduled_at::timestamp >= NOW()
+        AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
+      ORDER BY a.scheduled_at ASC
+      LIMIT 1
+    ) AS next_mtg ON true
     WHERE l.tenant_id = $1 AND l.deleted_at IS NULL
   `;
   
@@ -606,6 +430,103 @@ async function convertLeadToProject(tenantId, leadId, projectId) {
   await pool.query(query, [projectId, tenantId, leadId]);
 }
 
+async function completeLeadConversion(tenantId, leadId, newProjectId, lead, projectName, userId) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const convertedStageRes = await client.query(
+      `SELECT id FROM lead_stages WHERE tenant_id = $1 AND (is_won = true) ORDER BY sort_order DESC LIMIT 1`,
+      [tenantId]
+    );
+    const convertedStageId = convertedStageRes.rows.length > 0 ? convertedStageRes.rows[0].id : lead.stage_id;
+
+    await client.query(
+      `UPDATE leads 
+       SET status = 'converted', 
+           converted_to_project_id = $1, 
+           stage_id = $2,
+           stage_updated_at = NOW(),
+           updated_at = NOW() 
+       WHERE id = $3`,
+      [newProjectId, convertedStageId, leadId]
+    );
+
+    const estimatesRes = await client.query(
+      `SELECT * FROM lead_estimates WHERE tenant_id = $1 AND lead_id = $2 ORDER BY created_at ASC`,
+      [tenantId, leadId]
+    );
+    if (estimatesRes.rows.length > 0) {
+      for (const est of estimatesRes.rows) {
+        await client.query(
+          `UPDATE lead_estimates SET project_id = $1, updated_at = NOW() WHERE id = $2`,
+          [newProjectId, est.id]
+        );
+        const existingQuote = await client.query(
+          `SELECT id FROM quotations WHERE tenant_id = $1 AND lead_id = $2 AND project_id = $3 LIMIT 1`,
+          [tenantId, leadId, newProjectId]
+        );
+        if (existingQuote.rows.length === 0) {
+          const qNum = est.estimator_reference_id || `QT-${Date.now().toString().slice(-6)}`;
+          const insertQuoteRes = await client.query(
+            `INSERT INTO quotations (tenant_id, lead_id, project_id, total_amount, subtotal, status, created_by, notes, quotation_number)
+             VALUES ($1, $2, $3, $4, $4, 'draft', $5, $6, $7)
+             RETURNING id`,
+            [tenantId, leadId, newProjectId, est.total_amount || 0, userId, `Migrated from lead estimate on conversion. Estimator Ref: ${est.estimator_reference_id || 'N/A'}`, qNum]
+          );
+          const quotationId = insertQuoteRes.rows[0].id;
+
+          const payload = est.payload || {};
+          if (Array.isArray(payload.rooms)) {
+            let sortOrder = 0;
+            for (const room of payload.rooms) {
+              if (Array.isArray(room.items)) {
+                for (const item of room.items) {
+                  await client.query(
+                    `INSERT INTO quotation_items 
+                     (tenant_id, quotation_id, room_or_area, item_name, description, quantity, unit_price, sort_order, item_key)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, gen_random_uuid())`,
+                    [
+                      tenantId,
+                      quotationId,
+                      room.name || 'General',
+                      (item.description || 'BOQ Item').substring(0, 255),
+                      item.description || '',
+                      parseFloat(item.qty || 1),
+                      parseFloat(item.rate || 0),
+                      sortOrder++
+                    ]
+                  );
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    await client.query(
+      `INSERT INTO lead_timeline (tenant_id, lead_id, event_type, summary) VALUES ($1, $2, 'lead.converted', $3)`,
+      [tenantId, leadId, `Lead converted to project "${projectName}" (ID: ${newProjectId}). ${estimatesRes.rows.length} estimate(s) transferred.`]
+    );
+
+    await eventBus.emit('lead.converted', {
+      leadId,
+      projectId: newProjectId,
+      userId,
+      tenantId,
+      message: `Lead converted to project "${projectName}" (ID: ${newProjectId}). ${estimatesRes.rows.length} estimate(s) transferred.`
+    });
+
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function getLeadStats(tenantId, assigneeId = null) {
   let query = `
     SELECT
@@ -735,6 +656,7 @@ module.exports = {
   updateLead,
   softDeleteLead,
   convertLeadToProject,
+  completeLeadConversion,
   getLeadStats,
   getLeadTimeline,
   refreshPipelineSummary,

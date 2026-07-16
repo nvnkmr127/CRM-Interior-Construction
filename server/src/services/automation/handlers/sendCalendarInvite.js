@@ -7,7 +7,7 @@ const pool = require('../../../db/pool');
  */
 async function handle(config, context) {
   const { eventTitle, eventDatePath } = config;
-  const { record, tenantId } = context;
+  const { record, _tenantId } = context;
   
   if (!record) return;
 

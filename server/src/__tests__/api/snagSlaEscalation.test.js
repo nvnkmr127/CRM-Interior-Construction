@@ -83,7 +83,7 @@ describe('Snag SLA Escalation Engine', () => {
     expect(levels).toContain('snag_sla_300');
 
     // Run again, deduplication should prevent duplicates
-    const preCount = events.length;
+    const _preCount = events.length;
     await slaEngine.checkSnagSLAs();
     const myEventsAfter = events.filter(e => mySnags.includes(e.snag.id));
     expect(myEventsAfter.length).toBe(4);

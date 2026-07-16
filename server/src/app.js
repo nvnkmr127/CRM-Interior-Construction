@@ -88,7 +88,7 @@ const apiLimiter = rateLimitFn({
   standardHeaders: true,
   legacyHeaders: false,
   validate: { trustProxy: false },
-  keyGenerator: (req, res) => {
+  keyGenerator: (req, _res) => {
     // Use IP for auth routes to prevent credential stuffing
     if (req.originalUrl && req.originalUrl.startsWith('/api/auth')) {
       return req.ip || 'unknown';
@@ -101,7 +101,7 @@ const apiLimiter = rateLimitFn({
         if (decoded && decoded.tenantId && decoded.userId) {
           return `${decoded.tenantId}:${decoded.userId}`;
         }
-      } catch (e) {}
+      } catch (e) { /* ignore */ }
     }
     return req.ip || 'unknown';
   },

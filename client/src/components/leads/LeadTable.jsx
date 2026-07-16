@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pagination, EmptyState, ContentLoader, Button } from '../../components/ui';
+import { syncCommunications } from '../../api/leads';
 import styles from '../../pages/leads/LeadsPage.module.css';
 
 function scoreClass(score) {
@@ -66,7 +67,6 @@ export default function LeadTable({
     newSyncing.add(leadId);
     setSyncingLeadIds(newSyncing);
     try {
-      const { syncCommunications } = await import('../../api/leads');
       await syncCommunications(leadId);
       if (refetch) await refetch();
     } catch (err) {

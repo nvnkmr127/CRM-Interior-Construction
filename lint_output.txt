@@ -1,0 +1,323 @@
+
+> crm-monorepo@1.0.0 lint
+> eslint .
+
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__mocks__\otplib.js
+  5:16  error  'secret' is defined but never used. Allowed unused args must match /^_|^next$/u  no-unused-vars
+  6:23  error  'secret' is defined but never used. Allowed unused args must match /^_|^next$/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\auditTrailViewer.test.js
+  14:7  error  'auditLogId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\clientPortalTransparencyAndRelationships.test.js
+  13:7  error  'portalUserId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\commercialSupportAndVendorCoordination.test.js
+  9:7  error  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\configurableWorkActivities.test.js
+  13:7  error  'dependencyId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\conversion.test.js
+  128:9   error  'paymentMilestoneId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+  376:13  error  'phase2Id' is assigned a value but never used. Allowed unused vars must match /^_/u            no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\dailySiteReports.test.js
+  12:7  error  'userId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\designApprovalReminders.test.js
+  14:7  error  'docControlRecent' is assigned a value but never used. Allowed unused vars must match /^_/u     no-unused-vars
+  15:7  error  'docControlInvisible' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+  16:7  error  'docControlApproved' is assigned a value but never used. Allowed unused vars must match /^_/u   no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\designQcHandoverApprovals.test.js
+  9:7  error  'adminToken' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\designWorkflow.test.js
+  9:7  error  'userId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\drawingRegister.test.js
+  9:7  error  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\financials.test.js
+  9:7  error  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\handoverReadinessCheck.test.js
+  15:7  error  'docId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\invoices.test.js
+  9:7  error  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\layoutTracking.test.js
+  9:7  error  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\materialDiscontinuationAndRoomHandovers.test.js
+  15:7   error  'item1Id' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+  15:16  error  'item2Id' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\paymentReminders.test.js
+  20:7  error  'milestonePaid' is assigned a value but never used. Allowed unused vars must match /^_/u         no-unused-vars
+  21:7  error  'milestoneDeferred' is assigned a value but never used. Allowed unused vars must match /^_/u     no-unused-vars
+  22:7  error  'milestoneNoDueDate' is assigned a value but never used. Allowed unused vars must match /^_/u    no-unused-vars
+  23:7  error  'milestoneOtherOffset' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\portalQuotations.test.js
+  10:7  error  'adminToken' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\projectPauseAndCancellation.test.js
+  12:7   error  'milestoneId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+  13:7   error  'activity1Id' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+  13:20  error  'activity2Id' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\revisionLimits.test.js
+  9:7  error  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\roomProgress.test.js
+  11:7  error  'userId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\snagSlaEscalation.test.js
+  86:11  error  'preCount' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\taskDependencies.test.js
+  11:7  error  'userId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\warrantyExpiryReminders.test.js
+  13:7  error  'warrantyOtherOffset' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+  14:7  error  'warrantyExpired' is assigned a value but never used. Allowed unused vars must match /^_/u      no-unused-vars
+  15:7  error  'warrantyVoided' is assigned a value but never used. Allowed unused vars must match /^_/u       no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\__tests__\api\warrantyRepeatsAndBudgetAlerts.test.js
+  12:7   error  'claim1Id' is assigned a value but never used. Allowed unused vars must match /^_/u    no-unused-vars
+  12:17  error  'claim2Id' is assigned a value but never used. Allowed unused vars must match /^_/u    no-unused-vars
+  13:7   error  'expense1Id' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\app.js
+   91:23  error  'res' is defined but never used. Allowed unused args must match /^_|^next$/u  no-unused-vars
+  104:19  error  Empty block statement                                                         no-empty
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\analyticsController.js
+   585:11  error  'ratingQuery' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+  1211:11  error  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u     no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\header.js
+  30:1  error  Parsing error: Unexpected token
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js
+     4:9   error  'z' is assigned a value but never used. Allowed unused vars must match /^_/u              no-unused-vars
+   278:20  error  'logActivitySchema' is not defined                                                        no-undef
+   391:20  error  'createLeadSchema' is not defined                                                         no-undef
+   411:24  error  'createLead' is not defined                                                               no-undef
+   436:26  error  'findLeads' is not defined                                                                no-undef
+   438:11  error  'allowedFields' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+  1076:23  error  'userId' is assigned a value but never used. Allowed unused vars must match /^_/u         no-unused-vars
+  1078:13  error  'transcript' is assigned a value but never used. Allowed unused vars must match /^_/u     no-unused-vars
+  1086:16  error  'estimator_reference_id' is not defined                                                   no-undef
+  1092:10  error  'status' is not defined                                                                   no-undef
+  1092:18  error  'total_amount' is not defined                                                             no-undef
+  1092:32  error  'pdf_url' is not defined                                                                  no-undef
+  1092:41  error  'payload' is not defined                                                                  no-undef
+  1098:28  error  'estimator_reference_id' is not defined                                                   no-undef
+  1098:52  error  'status' is not defined                                                                   no-undef
+  1098:60  error  'total_amount' is not defined                                                             no-undef
+  1098:74  error  'pdf_url' is not defined                                                                  no-undef
+  1098:83  error  'payload' is not defined                                                                  no-undef
+  1450:31  error  'updateLead' is not defined                                                               no-undef
+  1495:23  error  'userId' is assigned a value but never used. Allowed unused vars must match /^_/u         no-unused-vars
+  1517:23  error  'userId' is assigned a value but never used. Allowed unused vars must match /^_/u         no-unused-vars
+  1706:24  error  'leadRepository' is not defined                                                           no-undef
+  1708:25  error  'aiService' is not defined                                                                no-undef
+  1748:26  error  'aiService' is not defined                                                                no-undef
+  1756:26  error  'aiService' is not defined                                                                no-undef
+  1838:24  error  'leadRepository' is not defined                                                           no-undef
+  1841:28  error  'aiService' is not defined                                                                no-undef
+  1860:23  error  'userId' is assigned a value but never used. Allowed unused vars must match /^_/u         no-unused-vars
+  1889:24  error  'leadRepository' is not defined                                                           no-undef
+  1891:35  error  'aiService' is not defined                                                                no-undef
+  1899:25  error  'aiService' is not defined                                                                no-undef
+  1909:30  error  'aiService' is not defined                                                                no-undef
+  1924:24  error  'leadRepository' is not defined                                                           no-undef
+  1933:28  error  'aiService' is not defined                                                                no-undef
+  1937:11  error  'activityService' is not defined                                                          no-undef
+  2067:13  error  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u       no-unused-vars
+  2068:11  error  'leadId' is assigned a value but never used. Allowed unused vars must match /^_/u         no-unused-vars
+  2095:16  error  Redundant double negation                                                                 no-extra-boolean-cast
+  2095:44  error  Redundant double negation                                                                 no-extra-boolean-cast
+  2095:76  error  Redundant double negation                                                                 no-extra-boolean-cast
+  2299:23  error  'userId' is assigned a value but never used. Allowed unused vars must match /^_/u         no-unused-vars
+  2393:23  error  'userId' is assigned a value but never used. Allowed unused vars must match /^_/u         no-unused-vars
+  2450:23  error  'userId' is assigned a value but never used. Allowed unused vars must match /^_/u         no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\managerController.js
+  419:13  error  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+  435:13  error  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\integrations\notificationService.js
+   2:13  error  'uuidv4' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+  82:93  error  'inDnd' is assigned a value but never used. Allowed unused vars must match /^_/u   no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\abuseDetector.js
+  62:65  error  'err' is defined but never used. Allowed unused args must match /^_|^next$/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\aiRateLimiter.js
+  15:23  error  'res' is defined but never used. Allowed unused args must match /^_|^next$/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\responseFormatter.js
+  17:23  error  Do not access Object.prototype method 'hasOwnProperty' from target object  no-prototype-builtins
+  17:57  error  Do not access Object.prototype method 'hasOwnProperty' from target object  no-prototype-builtins
+  23:24  error  Do not access Object.prototype method 'hasOwnProperty' from target object  no-prototype-builtins
+  23:58  error  Do not access Object.prototype method 'hasOwnProperty' from target object  no-prototype-builtins
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\queues\queueSetup.js
+  15:28  error  'data' is defined but never used. Allowed unused args must match /^_|^next$/u  no-unused-vars
+  15:34  error  'opts' is defined but never used. Allowed unused args must match /^_|^next$/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\queues\workers\aiWorker.js
+  9:5  warning  The value assigned to 'aiWorker' is not used in subsequent statements  no-useless-assignment
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\queues\workers\notificationWorker.js
+  5:17  error  'recipientId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+  5:30  error  'message' is assigned a value but never used. Allowed unused vars must match /^_/u      no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js
+    6:50   error    'loan_approved' is assigned a value but never used. Allowed unused vars must match /^_/u         no-unused-vars
+    9:20   error    'scope' is assigned a value but never used. Allowed unused vars must match /^_/u                 no-unused-vars
+    9:27   error    'locality' is assigned a value but never used. Allowed unused vars must match /^_/u              no-unused-vars
+    9:37   error    'budget_max' is assigned a value but never used. Allowed unused vars must match /^_/u            no-unused-vars
+    9:67   error    'dnc_flag' is assigned a value but never used. Allowed unused vars must match /^_/u              no-unused-vars
+    9:77   error    'consent_whatsapp' is assigned a value but never used. Allowed unused vars must match /^_/u      no-unused-vars
+    9:95   error    'competitor_mentioned' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+    9:117  error    'lead_number' is assigned a value but never used. Allowed unused vars must match /^_/u           no-unused-vars
+  281:90   warning  The value assigned to 'paramIndex' is not used in subsequent statements                          no-useless-assignment
+  512:11   error    'eventBus' is not defined                                                                        no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\workActivityRepository.js
+  111:44  warning  The value assigned to 'idx' is not used in subsequent statements  no-useless-assignment
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\analytics.js
+  439:23  error  'projectId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+  634:23  error  'projectId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auditLogs.js
+  4:7  error  'authorize' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+  5:9  error  'success' is assigned a value but never used. Allowed unused vars must match /^_/u    no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\communications.js
+  93:28  error  'payload_type' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\dashboard.js
+    4:16  error  'express' is not defined       no-undef
+    6:12  error  'authenticate' is not defined  no-undef
+   17:12  error  'success' is not defined       no-undef
+   20:12  error  'fail' is not defined          no-undef
+   29:28  error  'readPool' is not defined      no-undef
+   37:12  error  'success' is not defined       no-undef
+   49:12  error  'fail' is not defined          no-undef
+   58:28  error  'readPool' is not defined      no-undef
+   66:12  error  'success' is not defined       no-undef
+   69:12  error  'fail' is not defined          no-undef
+   79:28  error  'readPool' is not defined      no-undef
+   88:12  error  'success' is not defined       no-undef
+   91:12  error  'fail' is not defined          no-undef
+  100:28  error  'readPool' is not defined      no-undef
+  109:12  error  'success' is not defined       no-undef
+  112:12  error  'fail' is not defined          no-undef
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\portal\designReviews.js
+  63:38  error  'clientPortalUserId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\portal\punchLists.js
+  2:9  error  'z' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\projects.js
+  1625:13  error  'projectId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\qc.js
+  2:7  error  'router' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\sequences.js
+  3:18  error  'fail' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\activities\activityService.js
+  7:98  error  'ai_summary' is defined but never used. Allowed unused args must match /^_|^next$/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\aiService.js
+    2:7   error  'pdfParse' is assigned a value but never used. Allowed unused vars must match /^_/u        no-unused-vars
+    4:25  error  'validateOutput' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+  108:16  error  'draftCommunication' is defined but never used. Allowed unused vars must match /^_/u       no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\automationEngine.js
+  63:16  error  'scheduleJob' is defined but never used. Allowed unused vars must match /^_/u              no-unused-vars
+  63:86  error  'channel' is assigned a value but never used. Allowed unused args must match /^_|^next$/u  no-unused-vars
+  64:9   error  'sentAt' is assigned a value but never used. Allowed unused vars must match /^_/u          no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\automation\handlers\invokeAiAction.js
+  9:19  error  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\automation\handlers\sendCalendarInvite.js
+  10:19  error  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\automation\handlers\sendWhatsapp.js
+  2:7  error  'configEnv' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\leads\pipelineIntelligenceService.js
+  114:13  error  'activityService' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\leads\smartRoutingService.js
+  11:50  error  'leadData' is defined but never used. Allowed unused args must match /^_|^next$/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\notifications\notificationEventHandler.js
+   5:44  error  'tenantId' is defined but never used. Allowed unused args must match /^_|^next$/u  no-unused-vars
+   5:68  error  'oldStage' is defined but never used. Allowed unused args must match /^_|^next$/u  no-unused-vars
+  15:39  error  'tenantId' is defined but never used. Allowed unused args must match /^_|^next$/u  no-unused-vars
+  55:40  error  'tenantId' is defined but never used. Allowed unused args must match /^_|^next$/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\postSale\handoverService.js
+  3:9  error  'notifyUser' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\postSale\snagService.js
+  142:37  warning  The value assigned to 'index' is not used in subsequent statements  no-useless-assignment
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\cancelProject.js
+  220:63  error  'userId' is defined but never used. Allowed unused args must match /^_|^next$/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\delayNotificationService.js
+  48:15  error  'insertRes' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\invoiceService.js
+  344:9  warning  The value assigned to 'taxBreakdown' is not used in subsequent statements          no-useless-assignment
+  351:7  error    'taxSum' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+  364:9  warning  The value assigned to 'summaryTaxLabel' is not used in subsequent statements       no-useless-assignment
+  365:9  warning  The value assigned to 'summaryTaxVal' is not used in subsequent statements         no-useless-assignment
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\paymentMilestoneService.js
+  143:17  warning  The value assigned to 'paramIdx' is not used in subsequent statements  no-useless-assignment
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\productionOrderService.js
+  947:13  error  'dateStr' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\projectEventHandler.js
+  4:68  error  'oldStage' is defined but never used. Allowed unused args must match /^_|^next$/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\purchaseOrderService.js
+  174:13  error  'existingPo' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\vendorPaymentService.js
+  5:95  error  'notes' is assigned a value but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\workflowEngine.js
+  51:34  error  'payload' is defined but never used. Allowed unused args must match /^_|^next$/u  no-unused-vars
+
+D:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\storage.js
+    8:27  error  'mimeType' is defined but never used. Allowed unused args must match /^_|^next$/u      no-unused-vars
+   10:20  error  'key' is defined but never used. Allowed unused args must match /^_|^next$/u           no-unused-vars
+   11:29  error  'key' is defined but never used. Allowed unused args must match /^_|^next$/u           no-unused-vars
+   11:34  error  'expectedMime' is defined but never used. Allowed unused args must match /^_|^next$/u  no-unused-vars
+   12:27  error  'buffer' is defined but never used. Allowed unused args must match /^_|^next$/u        no-unused-vars
+   12:35  error  'mimeType' is defined but never used. Allowed unused args must match /^_|^next$/u      no-unused-vars
+  111:27  error  'mimeType' is defined but never used. Allowed unused args must match /^_|^next$/u      no-unused-vars
+  153:35  error  'mimeType' is defined but never used. Allowed unused args must match /^_|^next$/u      no-unused-vars
+
+✖ 177 problems (169 errors, 8 warnings)
+  3 errors and 0 warnings potentially fixable with the `--fix` option.
+

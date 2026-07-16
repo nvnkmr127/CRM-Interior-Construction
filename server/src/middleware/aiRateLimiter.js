@@ -12,7 +12,7 @@ const aiRateLimiter = rateLimitFn({
   handler: (req, res) => {
     res.status(429).json(fail('Too many AI requests for this lead. Please wait a moment and try again.'));
   },
-  keyGenerator: (req, res) => {
+  keyGenerator: (req, _res) => {
     // Identity is tied to the tenant and the lead being queried
     const tenantId = req.user ? req.user.tenantId : 'unknown_tenant';
     const leadId = req.params.id || req.body.leadId || 'general';

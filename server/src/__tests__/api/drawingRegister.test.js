@@ -6,7 +6,7 @@ const pool = require('../../db/pool');
 describe('Drawing Register API', () => {
   jest.setTimeout(30000);
   let accessToken;
-  let tenantId;
+  let _tenantId;
   let projectId;
   let drawingId1;
   let drawingId2;

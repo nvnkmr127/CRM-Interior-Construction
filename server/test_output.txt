@@ -1,0 +1,3528 @@
+
+> crm-server@1.0.0 test
+> jest --runInBand --forceExit
+
+FAIL src/__tests__/api/snagSlaEscalation.test.js
+  ● Console
+
+    console.log
+      ◇ injected env (5) from ..\.env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+      at _log (../node_modules/dotenv/lib/main.js:131:11)
+
+    console.log
+      ◇ injected env (1) from .env.test // tip: ⌘ override existing { override: true }
+
+      at _log (../node_modules/dotenv/lib/main.js:131:11)
+
+    console.log
+      ◇ injected env (0) from ..\.env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+      at _log (../node_modules/dotenv/lib/main.js:131:11)
+
+    console.log
+      ◇ injected env (0) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+
+      at _log (../node_modules/dotenv/lib/main.js:131:11)
+
+  ● Snag SLA Escalation Engine › should escalate snags at 50%, 100%, 200%, and 300% of their SLA
+
+    getaddrinfo ENOTFOUND pg-2be16d2a-pavankalyangone12-fa89.b.aivencloud.com
+
+    [0m [90m 17 |[39m     eventBus[33m.[39mon([32m'snag.sla_escalated'[39m[33m,[39m onSlaEscalated)[33m;[39m
+     [90m 18 |[39m
+    [31m[1m>[22m[39m[90m 19 |[39m     [36mconst[39m tenantRes [33m=[39m [36mawait[39m pool[33m.[39mquery([32m"SELECT id FROM tenants WHERE slug = 'demo'"[39m)[33m;[39m
+     [90m    |[39m                       [31m[1m^[22m[39m
+     [90m 20 |[39m     tenantId [33m=[39m tenantRes[33m.[39mrows[[35m0[39m][33m.[39mid[33m;[39m
+     [90m 21 |[39m
+     [90m 22 |[39m     [90m// PM user[39m[0m
+
+      at ../node_modules/pg-pool/index.js:45:11
+      at Object.<anonymous> (src/__tests__/api/snagSlaEscalation.test.js:19:23)
+
+FAIL src/__tests__/api/paymentReminders.test.js
+  ● Console
+
+    console.log
+      ◇ injected env (5) from ..\.env // tip: ⌘ suppress logs { quiet: true }
+
+      at _log (../node_modules/dotenv/lib/main.js:131:11)
+
+    console.log
+      ◇ injected env (1) from .env.test // tip: ◈ secrets for agents [www.dotenvx.com]
+
+      at _log (../node_modules/dotenv/lib/main.js:131:11)
+
+    console.log
+      ◇ injected env (0) from ..\.env // tip: ⌘ suppress logs { quiet: true }
+
+      at _log (../node_modules/dotenv/lib/main.js:131:11)
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ enable debugging { debug: true }
+
+      at _log (../node_modules/dotenv/lib/main.js:131:11)
+
+  ● Payment Due Reminder Notifications to Clients › should send reminders for appropriate intervals and avoid sending duplicates or sending for paid/deferred milestones
+
+    getaddrinfo ENOTFOUND pg-2be16d2a-pavankalyangone12-fa89.b.aivencloud.com
+
+    [0m [90m 33 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m 34 |[39m     [90m// 1. Resolve tenant ID[39m
+    [31m[1m>[22m[39m[90m 35 |[39m     [36mconst[39m tenantRes [33m=[39m [36mawait[39m pool[33m.[39mquery([32m"SELECT id FROM tenants WHERE slug = 'demo'"[39m)[33m;[39m
+     [90m    |[39m                       [31m[1m^[22m[39m
+     [90m 36 |[39m     tenantId [33m=[39m tenantRes[33m.[39mrows[[35m0[39m][33m.[39mid[33m;[39m
+     [90m 37 |[39m
+     [90m 38 |[39m     [90m// 2. Fetch a PM user to assign to project (if any exists, else NULL)[39m[0m
+
+      at ../node_modules/pg-pool/index.js:45:11
+      at Object.<anonymous> (src/__tests__/api/paymentReminders.test.js:35:23)
+
+FAIL src/__tests__/api/designApprovalReminders.test.js
+  ● Console
+
+    console.log
+      ◇ injected env (5) from ..\.env // tip: ⌁ auth for agents [www.vestauth.com]
+
+      at _log (../node_modules/dotenv/lib/main.js:131:11)
+
+    console.log
+      ◇ injected env (1) from .env.test // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+      at _log (../node_modules/dotenv/lib/main.js:131:11)
+
+    console.log
+      ◇ injected env (0) from ..\.env // tip: ◈ secrets for agents [www.dotenvx.com]
+
+      at _log (../node_modules/dotenv/lib/main.js:131:11)
+
+    console.log
+      ◇ injected env (0) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+
+      at _log (../node_modules/dotenv/lib/main.js:131:11)
+
+  ● Design/Document Approval Reminders › should send 48h and 72h reminders for pending client reviews and respect deduplication
+
+    getaddrinfo ENOTFOUND pg-2be16d2a-pavankalyangone12-fa89.b.aivencloud.com
+
+    [0m [90m 25 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m 26 |[39m     [90m// 1. Resolve tenant ID[39m
+    [31m[1m>[22m[39m[90m 27 |[39m     [36mconst[39m tenantRes [33m=[39m [36mawait[39m pool[33m.[39mquery([32m"SELECT id FROM tenants WHERE slug = 'demo'"[39m)[33m;[39m
+     [90m    |[39m                       [31m[1m^[22m[39m
+     [90m 28 |[39m     tenantId [33m=[39m tenantRes[33m.[39mrows[[35m0[39m][33m.[39mid[33m;[39m
+     [90m 29 |[39m
+     [90m 30 |[39m     [90m// 2. Fetch a PM user[39m[0m
+
+      at ../node_modules/pg-pool/index.js:45:11
+      at Object.<anonymous> (src/__tests__/api/designApprovalReminders.test.js:27:23)
+
+FAIL src/__tests__/api/warrantyExpiryReminders.test.js
+  ● Console
+
+    console.log
+      ◇ injected env (5) from ..\.env // tip: ◈ encrypted .env [www.dotenvx.com]
+
+      at _log (../node_modules/dotenv/lib/main.js:131:11)
+
+    console.log
+      ◇ injected env (1) from .env.test // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+      at _log (../node_modules/dotenv/lib/main.js:131:11)
+
+    console.log
+      ◇ injected env (0) from ..\.env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+      at _log (../node_modules/dotenv/lib/main.js:131:11)
+
+    console.log
+      ◇ injected env (0) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+      at _log (../node_modules/dotenv/lib/main.js:131:11)
+
+  ● Warranty Expiry Reminder Notifications to Clients › should send expiry reminders for appropriate intervals (90 and 30 days before) and avoid sending duplicates or sending for voided/expired warranties
+
+    getaddrinfo ENOTFOUND pg-2be16d2a-pavankalyangone12-fa89.b.aivencloud.com
+
+    [0m [90m 24 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m 25 |[39m     [90m// 1. Resolve tenant ID[39m
+    [31m[1m>[22m[39m[90m 26 |[39m     [36mconst[39m tenantRes [33m=[39m [36mawait[39m pool[33m.[39mquery([32m"SELECT id FROM tenants WHERE slug = 'demo'"[39m)[33m;[39m
+     [90m    |[39m                       [31m[1m^[22m[39m
+     [90m 27 |[39m     tenantId [33m=[39m tenantRes[33m.[39mrows[[35m0[39m][33m.[39mid[33m;[39m
+     [90m 28 |[39m
+     [90m 29 |[39m     [90m// 2. Fetch a PM user to assign to project (if any exists, else NULL)[39m[0m
+
+      at ../node_modules/pg-pool/index.js:45:11
+      at Object.<anonymous> (src/__tests__/api/warrantyExpiryReminders.test.js:26:23)
+
+FAIL src/__tests__/api/handoverReadiness.test.js
+  ● Console
+
+    console.log
+      ◇ injected env (5) from ..\.env // tip: ◈ secrets for agents [www.dotenvx.com]
+
+      at _log (../node_modules/dotenv/lib/main.js:131:11)
+
+  ● Handover Readiness Notifications › should auto-notify PM, finance, and client only when all checklist items are resolved AND all snags are resolved
+
+    getaddrinfo ENOTFOUND pg-2be16d2a-pavankalyangone12-fa89.b.aivencloud.com
+
+    [0m [90m 22 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m 23 |[39m     [90m// 1. Resolve tenant ID[39m
+    [31m[1m>[22m[39m[90m 24 |[39m     [36mconst[39m tenantRes [33m=[39m [36mawait[39m pool[33m.[39mquery([32m"SELECT id FROM tenants WHERE slug = 'demo'"[39m)[33m;[39m
+     [90m    |[39m                       [31m[1m^[22m[39m
+     [90m 25 |[39m     tenantId [33m=[39m tenantRes[33m.[39mrows[[35m0[39m][33m.[39mid[33m;[39m
+     [90m 26 |[39m
+     [90m 27 |[39m     [90m// 2. Fetch a PM user[39m[0m
+
+      at ../node_modules/pg-pool/index.js:45:11
+      at Object.<anonymous> (src/__tests__/api/handoverReadiness.test.js:24:23)
+
+FAIL src/__tests__/unit/scoreLeadService.test.js
+  ● Console
+
+    console.log
+      ◇ injected env (5) from ..\.env // tip: ◈ encrypted .env [www.dotenvx.com]
+
+      at _log (../node_modules/dotenv/lib/main.js:131:11)
+
+  ● scoreLead › scores 0 for empty lead
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 0
+    Received: {"breakdown": [], "score": 0}
+
+    [0m [90m 12 |[39m describe([32m'scoreLead'[39m[33m,[39m () [33m=>[39m {
+     [90m 13 |[39m   it([32m'scores 0 for empty lead'[39m[33m,[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m 14 |[39m     expect(scoreLead({}[33m,[39m rules))[33m.[39mtoBe([35m0[39m)
+     [90m    |[39m                                  [31m[1m^[22m[39m
+     [90m 15 |[39m   })
+     [90m 16 |[39m
+     [90m 17 |[39m   it([32m'adds weight for matching source'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.toBe (src/__tests__/unit/scoreLeadService.test.js:14:34)
+
+  ● scoreLead › adds weight for matching source
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 35
+    Received: {"breakdown": [{"points": 20, "rule_name": "source eq referral"}, {"points": 15, "rule_name": "phone is_not_empty null"}], "score": 35}
+
+    [0m [90m 16 |[39m
+     [90m 17 |[39m   it([32m'adds weight for matching source'[39m[33m,[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m 18 |[39m     expect(scoreLead({ source[33m:[39m[32m'referral'[39m[33m,[39m phone[33m:[39m[32m'9876543210'[39m }[33m,[39m rules))[33m.[39mtoBe([35m35[39m) [90m// 20+15[39m
+     [90m    |[39m                                                                         [31m[1m^[22m[39m
+     [90m 19 |[39m   })
+     [90m 20 |[39m
+     [90m 21 |[39m   it([32m'adds weight for facebook source'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.toBe (src/__tests__/unit/scoreLeadService.test.js:18:73)
+
+  ● scoreLead › adds weight for facebook source
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 5
+    Received: {"breakdown": [{"points": 5, "rule_name": "source eq facebook"}], "score": 5}
+
+    [0m [90m 20 |[39m
+     [90m 21 |[39m   it([32m'adds weight for facebook source'[39m[33m,[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m 22 |[39m     expect(scoreLead({ source[33m:[39m[32m'facebook'[39m }[33m,[39m rules))[33m.[39mtoBe([35m5[39m)
+     [90m    |[39m                                                     [31m[1m^[22m[39m
+     [90m 23 |[39m   })
+     [90m 24 |[39m
+     [90m 25 |[39m   it([32m'adds weight for non-empty phone'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.toBe (src/__tests__/unit/scoreLeadService.test.js:22:53)
+
+  ● scoreLead › adds weight for non-empty phone
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 15
+    Received: {"breakdown": [{"points": 15, "rule_name": "phone is_not_empty null"}], "score": 15}
+
+    [0m [90m 24 |[39m
+     [90m 25 |[39m   it([32m'adds weight for non-empty phone'[39m[33m,[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m 26 |[39m     expect(scoreLead({ phone[33m:[39m[32m'9876543210'[39m }[33m,[39m rules))[33m.[39mtoBe([35m15[39m)
+     [90m    |[39m                                                      [31m[1m^[22m[39m
+     [90m 27 |[39m   })
+     [90m 28 |[39m
+     [90m 29 |[39m   it([32m'adds weight for budget custom field containing >10L'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.toBe (src/__tests__/unit/scoreLeadService.test.js:26:54)
+
+  ● scoreLead › adds weight for budget custom field containing >10L
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 60
+    Received: {"breakdown": [{"points": 20, "rule_name": "source eq referral"}, {"points": 15, "rule_name": "phone is_not_empty null"}, {"points": 25, "rule_name": "custom_fields.budget contains >10L"}], "score": 60}
+
+    [0m [90m 29 |[39m   it([32m'adds weight for budget custom field containing >10L'[39m[33m,[39m () [33m=>[39m {
+     [90m 30 |[39m     [36mconst[39m lead [33m=[39m { source[33m:[39m[32m'referral'[39m[33m,[39m phone[33m:[39m[32m'9876543210'[39m[33m,[39m custom_fields[33m:[39m{ budget[33m:[39m[32m'>10L'[39m } }
+    [31m[1m>[22m[39m[90m 31 |[39m     expect(scoreLead(lead[33m,[39m rules))[33m.[39mtoBe([35m60[39m) [90m// 20+15+25[39m
+     [90m    |[39m                                    [31m[1m^[22m[39m
+     [90m 32 |[39m   })
+     [90m 33 |[39m
+     [90m 34 |[39m   it([32m'subtracts weight for cold_call source'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.toBe (src/__tests__/unit/scoreLeadService.test.js:31:36)
+
+  ● scoreLead › subtracts weight for cold_call source
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 5
+    Received: {"breakdown": [{"points": 15, "rule_name": "phone is_not_empty null"}, {"points": -10, "rule_name": "source eq cold_call"}], "score": 5}
+
+    [0m [90m 33 |[39m
+     [90m 34 |[39m   it([32m'subtracts weight for cold_call source'[39m[33m,[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m 35 |[39m     expect(scoreLead({ source[33m:[39m[32m'cold_call'[39m[33m,[39m phone[33m:[39m[32m'9876543210'[39m }[33m,[39m rules))[33m.[39mtoBe([35m5[39m) [90m// 15-10[39m
+     [90m    |[39m                                                                          [31m[1m^[22m[39m
+     [90m 36 |[39m   })
+     [90m 37 |[39m
+     [90m 38 |[39m   it([32m'does not apply inactive rules'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.toBe (src/__tests__/unit/scoreLeadService.test.js:35:74)
+
+  ● scoreLead › does not apply inactive rules
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 15
+    Received: {"breakdown": [{"points": 15, "rule_name": "phone is_not_empty null"}], "score": 15}
+
+    [0m [90m 39 |[39m     [90m// email rule is inactive — email should not add 5[39m
+     [90m 40 |[39m     [36mconst[39m lead [33m=[39m { email[33m:[39m[32m'test@test.com'[39m[33m,[39m phone[33m:[39m[32m'9876543210'[39m }
+    [31m[1m>[22m[39m[90m 41 |[39m     expect(scoreLead(lead[33m,[39m rules))[33m.[39mtoBe([35m15[39m) [90m// only phone[39m
+     [90m    |[39m                                    [31m[1m^[22m[39m
+     [90m 42 |[39m   })
+     [90m 43 |[39m
+     [90m 44 |[39m   it([32m'clamps score to 0 minimum'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.toBe (src/__tests__/unit/scoreLeadService.test.js:41:36)
+
+  ● scoreLead › clamps score to 0 minimum
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 0
+    Received: {"breakdown": [{"points": -200, "rule_name": "source eq spam"}], "score": 0}
+
+    [0m [90m 44 |[39m   it([32m'clamps score to 0 minimum'[39m[33m,[39m () [33m=>[39m {
+     [90m 45 |[39m     [36mconst[39m negRules [33m=[39m [{ field[33m:[39m[32m'source'[39m[33m,[39m operator[33m:[39m[32m'eq'[39m[33m,[39m value[33m:[39m[32m'spam'[39m[33m,[39m weight[33m:[39m[33m-[39m[35m200[39m[33m,[39m is_active[33m:[39m[36mtrue[39m }]
+    [31m[1m>[22m[39m[90m 46 |[39m     expect(scoreLead({ source[33m:[39m[32m'spam'[39m }[33m,[39m negRules))[33m.[39mtoBe([35m0[39m)
+     [90m    |[39m                                                    [31m[1m^[22m[39m
+     [90m 47 |[39m   })
+     [90m 48 |[39m
+     [90m 49 |[39m   it([32m'clamps score to 100 maximum'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.toBe (src/__tests__/unit/scoreLeadService.test.js:46:52)
+
+  ● scoreLead › clamps score to 100 maximum
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 100
+    Received: {"breakdown": [{"points": 999, "rule_name": "source eq vip"}], "score": 100}
+
+    [0m [90m 49 |[39m   it([32m'clamps score to 100 maximum'[39m[33m,[39m () [33m=>[39m {
+     [90m 50 |[39m     [36mconst[39m bigRules [33m=[39m [{ field[33m:[39m[32m'source'[39m[33m,[39m operator[33m:[39m[32m'eq'[39m[33m,[39m value[33m:[39m[32m'vip'[39m[33m,[39m weight[33m:[39m[35m999[39m[33m,[39m is_active[33m:[39m[36mtrue[39m }]
+    [31m[1m>[22m[39m[90m 51 |[39m     expect(scoreLead({ source[33m:[39m[32m'vip'[39m }[33m,[39m bigRules))[33m.[39mtoBe([35m100[39m)
+     [90m    |[39m                                                   [31m[1m^[22m[39m
+     [90m 52 |[39m   })
+     [90m 53 |[39m })
+     [90m 54 |[39m[0m
+
+      at Object.toBe (src/__tests__/unit/scoreLeadService.test.js:51:51)
+
+FAIL src/__tests__/api/workActivities.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/workActivities.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/workActivities.test.js:2:13)
+
+FAIL src/__tests__/api/warrantyRepeatsAndBudgetAlerts.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/warrantyRepeatsAndBudgetAlerts.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/warrantyRepeatsAndBudgetAlerts.test.js:3:13)
+
+FAIL src/__tests__/api/warrantyClaim.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/warrantyClaim.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/warrantyClaim.test.js:3:13)
+
+FAIL src/__tests__/api/warranty.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/warranty.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/warranty.test.js:3:13)
+
+FAIL src/__tests__/api/warehouse.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/warehouse.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/warehouse.test.js:2:13)
+
+FAIL src/__tests__/api/vendorPerformance.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/vendorPerformance.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/vendorPerformance.test.js:2:13)
+
+FAIL src/__tests__/api/vendorLeadTime.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/vendorLeadTime.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/vendorLeadTime.test.js:2:13)
+
+FAIL src/__tests__/api/taskDependencies.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/taskDependencies.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/taskDependencies.test.js:2:13)
+
+FAIL src/__tests__/api/snagReworkTracking.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/snagReworkTracking.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/snagReworkTracking.test.js:2:13)
+
+FAIL src/__tests__/api/siteReadiness.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/siteReadiness.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/siteReadiness.test.js:2:13)
+
+FAIL src/__tests__/api/serviceTicket.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/serviceTicket.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/serviceTicket.test.js:3:13)
+
+FAIL src/__tests__/api/revisionLimits.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/revisionLimits.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/revisionLimits.test.js:3:13)
+
+FAIL src/__tests__/api/roomProgress.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/roomProgress.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/roomProgress.test.js:2:13)
+
+FAIL src/__tests__/api/resourceUtilisation.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/resourceUtilisation.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/resourceUtilisation.test.js:2:13)
+
+FAIL src/__tests__/api/quotationVersion.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/quotationVersion.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/quotationVersion.test.js:2:13)
+
+FAIL src/__tests__/api/purchaseRequests.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/purchaseRequests.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/purchaseRequests.test.js:2:13)
+
+FAIL src/__tests__/api/purchaseOrders.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/purchaseOrders.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/purchaseOrders.test.js:2:13)
+
+FAIL src/__tests__/api/punchLists.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/punchLists.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/punchLists.test.js:2:13)
+
+FAIL src/__tests__/api/projectRetrospective.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/projectRetrospective.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/projectRetrospective.test.js:2:13)
+
+FAIL src/__tests__/api/projectReopen.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/projectReopen.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/projectReopen.test.js:2:13)
+
+FAIL src/__tests__/api/projectPauseAndCancellation.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/projectPauseAndCancellation.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/projectPauseAndCancellation.test.js:3:13)
+
+FAIL src/__tests__/api/projectClosure.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/projectClosure.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/projectClosure.test.js:2:13)
+
+FAIL src/__tests__/api/profitability.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/profitability.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/profitability.test.js:2:13)
+
+FAIL src/__tests__/api/productionQCInspection.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/productionQCInspection.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/productionQCInspection.test.js:2:13)
+
+FAIL src/__tests__/api/productionOrders.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/productionOrders.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/productionOrders.test.js:2:13)
+
+FAIL src/__tests__/api/productionDispatchTracking.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/productionDispatchTracking.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/productionDispatchTracking.test.js:2:13)
+
+FAIL src/__tests__/api/portalQuotations.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/portalQuotations.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/portalQuotations.test.js:3:13)
+
+FAIL src/__tests__/api/materialSubstitution.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/materialSubstitution.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/materialSubstitution.test.js:2:13)
+
+FAIL src/__tests__/api/materialSampleApprovals.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/materialSampleApprovals.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/materialSampleApprovals.test.js:2:13)
+
+FAIL src/__tests__/api/materialIncomingInspections.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/materialIncomingInspections.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/materialIncomingInspections.test.js:2:13)
+
+FAIL src/__tests__/api/materialDiscontinuationAndRoomHandovers.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/materialDiscontinuationAndRoomHandovers.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/materialDiscontinuationAndRoomHandovers.test.js:3:13)
+
+FAIL src/__tests__/api/materialArrivalNotifications.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/materialArrivalNotifications.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/materialArrivalNotifications.test.js:2:13)
+
+FAIL src/__tests__/api/leads.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/leads.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/leads.test.js:2:17)
+
+FAIL src/__tests__/api/layoutTracking.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/layoutTracking.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/layoutTracking.test.js:3:13)
+
+FAIL src/__tests__/api/invoices.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/invoices.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/invoices.test.js:3:13)
+
+FAIL src/__tests__/api/handoverReadinessCheck.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/handoverReadinessCheck.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/handoverReadinessCheck.test.js:2:13)
+
+FAIL src/__tests__/api/financialApprovals.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/financialApprovals.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/financialApprovals.test.js:3:13)
+
+FAIL src/__tests__/api/handoverPortal.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/handoverPortal.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/handoverPortal.test.js:3:13)
+
+FAIL src/__tests__/api/financials.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/financials.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/financials.test.js:3:13)
+
+FAIL src/__tests__/api/factorySiteTimelineLinkage.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/factorySiteTimelineLinkage.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/factorySiteTimelineLinkage.test.js:2:13)
+
+FAIL src/__tests__/api/drawingRegister.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/drawingRegister.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/drawingRegister.test.js:3:13)
+
+FAIL src/__tests__/api/designWorkflow.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/designWorkflow.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/designWorkflow.test.js:2:13)
+
+FAIL src/__tests__/api/designRequirements.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/designRequirements.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/designRequirements.test.js:2:13)
+
+FAIL src/__tests__/api/designQcHandoverApprovals.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/designQcHandoverApprovals.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/designQcHandoverApprovals.test.js:3:13)
+
+FAIL src/__tests__/api/dailySiteReports.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/dailySiteReports.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/dailySiteReports.test.js:3:13)
+
+FAIL src/__tests__/api/csat.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/csat.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/csat.test.js:2:13)
+
+FAIL src/__tests__/api/coordination.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/coordination.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/coordination.test.js:2:13)
+
+FAIL src/__tests__/api/conversion.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/conversion.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/conversion.test.js:2:13)
+
+FAIL src/__tests__/api/configurableWorkActivities.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/configurableWorkActivities.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/configurableWorkActivities.test.js:2:13)
+
+FAIL src/__tests__/api/commercialSupportAndVendorCoordination.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/commercialSupportAndVendorCoordination.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/commercialSupportAndVendorCoordination.test.js:3:13)
+
+FAIL src/__tests__/api/commercialApproval.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/commercialApproval.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/commercialApproval.test.js:2:13)
+
+FAIL src/__tests__/api/collectionForecast.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/collectionForecast.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/collectionForecast.test.js:2:13)
+
+FAIL src/__tests__/api/clientPortalTransparencyAndRelationships.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/clientPortalTransparencyAndRelationships.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/clientPortalTransparencyAndRelationships.test.js:4:13)
+
+FAIL src/__tests__/api/clientDocumentSharing.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/clientDocumentSharing.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/clientDocumentSharing.test.js:3:13)
+
+FAIL src/__tests__/api/budget.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/budget.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/budget.test.js:2:13)
+
+FAIL src/__tests__/api/boqVariance.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/boqVariance.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/boqVariance.test.js:2:13)
+
+FAIL src/__tests__/api/booking.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/booking.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/booking.test.js:2:13)
+
+FAIL src/__tests__/api/auth.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/auth.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/auth.test.js:2:17)
+
+FAIL src/__tests__/api/auditTrailViewer.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/auditTrailViewer.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/auditTrailViewer.test.js:3:13)
+
+FAIL src/__tests__/api/afterSalesPostHandover.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/afterSalesPostHandover.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/afterSalesPostHandover.test.js:2:13)
+
+FAIL src/__tests__/api/amc.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/amc.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/amc.test.js:3:13)
+
+PASS src/__tests__/scoreLeadService.test.js
+  ● Console
+
+    console.log
+      ◇ injected env (5) from ..\.env // tip: ⌁ auth for agents [www.vestauth.com]
+
+      at _log (../node_modules/dotenv/lib/main.js:131:11)
+
+PASS src/__tests__/leadScoringService.test.js
+PASS src/__tests__/unit/evaluateTrigger.test.js
+
+Summary of all failing tests
+FAIL src/__tests__/api/snagSlaEscalation.test.js
+  ● Snag SLA Escalation Engine › should escalate snags at 50%, 100%, 200%, and 300% of their SLA
+
+    getaddrinfo ENOTFOUND pg-2be16d2a-pavankalyangone12-fa89.b.aivencloud.com
+
+    [0m [90m 17 |[39m     eventBus[33m.[39mon([32m'snag.sla_escalated'[39m[33m,[39m onSlaEscalated)[33m;[39m
+     [90m 18 |[39m
+    [31m[1m>[22m[39m[90m 19 |[39m     [36mconst[39m tenantRes [33m=[39m [36mawait[39m pool[33m.[39mquery([32m"SELECT id FROM tenants WHERE slug = 'demo'"[39m)[33m;[39m
+     [90m    |[39m                       [31m[1m^[22m[39m
+     [90m 20 |[39m     tenantId [33m=[39m tenantRes[33m.[39mrows[[35m0[39m][33m.[39mid[33m;[39m
+     [90m 21 |[39m
+     [90m 22 |[39m     [90m// PM user[39m[0m
+
+      at ../node_modules/pg-pool/index.js:45:11
+      at Object.<anonymous> (src/__tests__/api/snagSlaEscalation.test.js:19:23)
+
+FAIL src/__tests__/api/paymentReminders.test.js
+  ● Payment Due Reminder Notifications to Clients › should send reminders for appropriate intervals and avoid sending duplicates or sending for paid/deferred milestones
+
+    getaddrinfo ENOTFOUND pg-2be16d2a-pavankalyangone12-fa89.b.aivencloud.com
+
+    [0m [90m 33 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m 34 |[39m     [90m// 1. Resolve tenant ID[39m
+    [31m[1m>[22m[39m[90m 35 |[39m     [36mconst[39m tenantRes [33m=[39m [36mawait[39m pool[33m.[39mquery([32m"SELECT id FROM tenants WHERE slug = 'demo'"[39m)[33m;[39m
+     [90m    |[39m                       [31m[1m^[22m[39m
+     [90m 36 |[39m     tenantId [33m=[39m tenantRes[33m.[39mrows[[35m0[39m][33m.[39mid[33m;[39m
+     [90m 37 |[39m
+     [90m 38 |[39m     [90m// 2. Fetch a PM user to assign to project (if any exists, else NULL)[39m[0m
+
+      at ../node_modules/pg-pool/index.js:45:11
+      at Object.<anonymous> (src/__tests__/api/paymentReminders.test.js:35:23)
+
+FAIL src/__tests__/api/designApprovalReminders.test.js
+  ● Design/Document Approval Reminders › should send 48h and 72h reminders for pending client reviews and respect deduplication
+
+    getaddrinfo ENOTFOUND pg-2be16d2a-pavankalyangone12-fa89.b.aivencloud.com
+
+    [0m [90m 25 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m 26 |[39m     [90m// 1. Resolve tenant ID[39m
+    [31m[1m>[22m[39m[90m 27 |[39m     [36mconst[39m tenantRes [33m=[39m [36mawait[39m pool[33m.[39mquery([32m"SELECT id FROM tenants WHERE slug = 'demo'"[39m)[33m;[39m
+     [90m    |[39m                       [31m[1m^[22m[39m
+     [90m 28 |[39m     tenantId [33m=[39m tenantRes[33m.[39mrows[[35m0[39m][33m.[39mid[33m;[39m
+     [90m 29 |[39m
+     [90m 30 |[39m     [90m// 2. Fetch a PM user[39m[0m
+
+      at ../node_modules/pg-pool/index.js:45:11
+      at Object.<anonymous> (src/__tests__/api/designApprovalReminders.test.js:27:23)
+
+FAIL src/__tests__/api/warrantyExpiryReminders.test.js
+  ● Warranty Expiry Reminder Notifications to Clients › should send expiry reminders for appropriate intervals (90 and 30 days before) and avoid sending duplicates or sending for voided/expired warranties
+
+    getaddrinfo ENOTFOUND pg-2be16d2a-pavankalyangone12-fa89.b.aivencloud.com
+
+    [0m [90m 24 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m 25 |[39m     [90m// 1. Resolve tenant ID[39m
+    [31m[1m>[22m[39m[90m 26 |[39m     [36mconst[39m tenantRes [33m=[39m [36mawait[39m pool[33m.[39mquery([32m"SELECT id FROM tenants WHERE slug = 'demo'"[39m)[33m;[39m
+     [90m    |[39m                       [31m[1m^[22m[39m
+     [90m 27 |[39m     tenantId [33m=[39m tenantRes[33m.[39mrows[[35m0[39m][33m.[39mid[33m;[39m
+     [90m 28 |[39m
+     [90m 29 |[39m     [90m// 2. Fetch a PM user to assign to project (if any exists, else NULL)[39m[0m
+
+      at ../node_modules/pg-pool/index.js:45:11
+      at Object.<anonymous> (src/__tests__/api/warrantyExpiryReminders.test.js:26:23)
+
+FAIL src/__tests__/api/handoverReadiness.test.js
+  ● Handover Readiness Notifications › should auto-notify PM, finance, and client only when all checklist items are resolved AND all snags are resolved
+
+    getaddrinfo ENOTFOUND pg-2be16d2a-pavankalyangone12-fa89.b.aivencloud.com
+
+    [0m [90m 22 |[39m   beforeAll([36masync[39m () [33m=>[39m {
+     [90m 23 |[39m     [90m// 1. Resolve tenant ID[39m
+    [31m[1m>[22m[39m[90m 24 |[39m     [36mconst[39m tenantRes [33m=[39m [36mawait[39m pool[33m.[39mquery([32m"SELECT id FROM tenants WHERE slug = 'demo'"[39m)[33m;[39m
+     [90m    |[39m                       [31m[1m^[22m[39m
+     [90m 25 |[39m     tenantId [33m=[39m tenantRes[33m.[39mrows[[35m0[39m][33m.[39mid[33m;[39m
+     [90m 26 |[39m
+     [90m 27 |[39m     [90m// 2. Fetch a PM user[39m[0m
+
+      at ../node_modules/pg-pool/index.js:45:11
+      at Object.<anonymous> (src/__tests__/api/handoverReadiness.test.js:24:23)
+
+FAIL src/__tests__/unit/scoreLeadService.test.js
+  ● scoreLead › scores 0 for empty lead
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 0
+    Received: {"breakdown": [], "score": 0}
+
+    [0m [90m 12 |[39m describe([32m'scoreLead'[39m[33m,[39m () [33m=>[39m {
+     [90m 13 |[39m   it([32m'scores 0 for empty lead'[39m[33m,[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m 14 |[39m     expect(scoreLead({}[33m,[39m rules))[33m.[39mtoBe([35m0[39m)
+     [90m    |[39m                                  [31m[1m^[22m[39m
+     [90m 15 |[39m   })
+     [90m 16 |[39m
+     [90m 17 |[39m   it([32m'adds weight for matching source'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.toBe (src/__tests__/unit/scoreLeadService.test.js:14:34)
+
+  ● scoreLead › adds weight for matching source
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 35
+    Received: {"breakdown": [{"points": 20, "rule_name": "source eq referral"}, {"points": 15, "rule_name": "phone is_not_empty null"}], "score": 35}
+
+    [0m [90m 16 |[39m
+     [90m 17 |[39m   it([32m'adds weight for matching source'[39m[33m,[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m 18 |[39m     expect(scoreLead({ source[33m:[39m[32m'referral'[39m[33m,[39m phone[33m:[39m[32m'9876543210'[39m }[33m,[39m rules))[33m.[39mtoBe([35m35[39m) [90m// 20+15[39m
+     [90m    |[39m                                                                         [31m[1m^[22m[39m
+     [90m 19 |[39m   })
+     [90m 20 |[39m
+     [90m 21 |[39m   it([32m'adds weight for facebook source'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.toBe (src/__tests__/unit/scoreLeadService.test.js:18:73)
+
+  ● scoreLead › adds weight for facebook source
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 5
+    Received: {"breakdown": [{"points": 5, "rule_name": "source eq facebook"}], "score": 5}
+
+    [0m [90m 20 |[39m
+     [90m 21 |[39m   it([32m'adds weight for facebook source'[39m[33m,[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m 22 |[39m     expect(scoreLead({ source[33m:[39m[32m'facebook'[39m }[33m,[39m rules))[33m.[39mtoBe([35m5[39m)
+     [90m    |[39m                                                     [31m[1m^[22m[39m
+     [90m 23 |[39m   })
+     [90m 24 |[39m
+     [90m 25 |[39m   it([32m'adds weight for non-empty phone'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.toBe (src/__tests__/unit/scoreLeadService.test.js:22:53)
+
+  ● scoreLead › adds weight for non-empty phone
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 15
+    Received: {"breakdown": [{"points": 15, "rule_name": "phone is_not_empty null"}], "score": 15}
+
+    [0m [90m 24 |[39m
+     [90m 25 |[39m   it([32m'adds weight for non-empty phone'[39m[33m,[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m 26 |[39m     expect(scoreLead({ phone[33m:[39m[32m'9876543210'[39m }[33m,[39m rules))[33m.[39mtoBe([35m15[39m)
+     [90m    |[39m                                                      [31m[1m^[22m[39m
+     [90m 27 |[39m   })
+     [90m 28 |[39m
+     [90m 29 |[39m   it([32m'adds weight for budget custom field containing >10L'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.toBe (src/__tests__/unit/scoreLeadService.test.js:26:54)
+
+  ● scoreLead › adds weight for budget custom field containing >10L
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 60
+    Received: {"breakdown": [{"points": 20, "rule_name": "source eq referral"}, {"points": 15, "rule_name": "phone is_not_empty null"}, {"points": 25, "rule_name": "custom_fields.budget contains >10L"}], "score": 60}
+
+    [0m [90m 29 |[39m   it([32m'adds weight for budget custom field containing >10L'[39m[33m,[39m () [33m=>[39m {
+     [90m 30 |[39m     [36mconst[39m lead [33m=[39m { source[33m:[39m[32m'referral'[39m[33m,[39m phone[33m:[39m[32m'9876543210'[39m[33m,[39m custom_fields[33m:[39m{ budget[33m:[39m[32m'>10L'[39m } }
+    [31m[1m>[22m[39m[90m 31 |[39m     expect(scoreLead(lead[33m,[39m rules))[33m.[39mtoBe([35m60[39m) [90m// 20+15+25[39m
+     [90m    |[39m                                    [31m[1m^[22m[39m
+     [90m 32 |[39m   })
+     [90m 33 |[39m
+     [90m 34 |[39m   it([32m'subtracts weight for cold_call source'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.toBe (src/__tests__/unit/scoreLeadService.test.js:31:36)
+
+  ● scoreLead › subtracts weight for cold_call source
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 5
+    Received: {"breakdown": [{"points": 15, "rule_name": "phone is_not_empty null"}, {"points": -10, "rule_name": "source eq cold_call"}], "score": 5}
+
+    [0m [90m 33 |[39m
+     [90m 34 |[39m   it([32m'subtracts weight for cold_call source'[39m[33m,[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m 35 |[39m     expect(scoreLead({ source[33m:[39m[32m'cold_call'[39m[33m,[39m phone[33m:[39m[32m'9876543210'[39m }[33m,[39m rules))[33m.[39mtoBe([35m5[39m) [90m// 15-10[39m
+     [90m    |[39m                                                                          [31m[1m^[22m[39m
+     [90m 36 |[39m   })
+     [90m 37 |[39m
+     [90m 38 |[39m   it([32m'does not apply inactive rules'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.toBe (src/__tests__/unit/scoreLeadService.test.js:35:74)
+
+  ● scoreLead › does not apply inactive rules
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 15
+    Received: {"breakdown": [{"points": 15, "rule_name": "phone is_not_empty null"}], "score": 15}
+
+    [0m [90m 39 |[39m     [90m// email rule is inactive — email should not add 5[39m
+     [90m 40 |[39m     [36mconst[39m lead [33m=[39m { email[33m:[39m[32m'test@test.com'[39m[33m,[39m phone[33m:[39m[32m'9876543210'[39m }
+    [31m[1m>[22m[39m[90m 41 |[39m     expect(scoreLead(lead[33m,[39m rules))[33m.[39mtoBe([35m15[39m) [90m// only phone[39m
+     [90m    |[39m                                    [31m[1m^[22m[39m
+     [90m 42 |[39m   })
+     [90m 43 |[39m
+     [90m 44 |[39m   it([32m'clamps score to 0 minimum'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.toBe (src/__tests__/unit/scoreLeadService.test.js:41:36)
+
+  ● scoreLead › clamps score to 0 minimum
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 0
+    Received: {"breakdown": [{"points": -200, "rule_name": "source eq spam"}], "score": 0}
+
+    [0m [90m 44 |[39m   it([32m'clamps score to 0 minimum'[39m[33m,[39m () [33m=>[39m {
+     [90m 45 |[39m     [36mconst[39m negRules [33m=[39m [{ field[33m:[39m[32m'source'[39m[33m,[39m operator[33m:[39m[32m'eq'[39m[33m,[39m value[33m:[39m[32m'spam'[39m[33m,[39m weight[33m:[39m[33m-[39m[35m200[39m[33m,[39m is_active[33m:[39m[36mtrue[39m }]
+    [31m[1m>[22m[39m[90m 46 |[39m     expect(scoreLead({ source[33m:[39m[32m'spam'[39m }[33m,[39m negRules))[33m.[39mtoBe([35m0[39m)
+     [90m    |[39m                                                    [31m[1m^[22m[39m
+     [90m 47 |[39m   })
+     [90m 48 |[39m
+     [90m 49 |[39m   it([32m'clamps score to 100 maximum'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.toBe (src/__tests__/unit/scoreLeadService.test.js:46:52)
+
+  ● scoreLead › clamps score to 100 maximum
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 100
+    Received: {"breakdown": [{"points": 999, "rule_name": "source eq vip"}], "score": 100}
+
+    [0m [90m 49 |[39m   it([32m'clamps score to 100 maximum'[39m[33m,[39m () [33m=>[39m {
+     [90m 50 |[39m     [36mconst[39m bigRules [33m=[39m [{ field[33m:[39m[32m'source'[39m[33m,[39m operator[33m:[39m[32m'eq'[39m[33m,[39m value[33m:[39m[32m'vip'[39m[33m,[39m weight[33m:[39m[35m999[39m[33m,[39m is_active[33m:[39m[36mtrue[39m }]
+    [31m[1m>[22m[39m[90m 51 |[39m     expect(scoreLead({ source[33m:[39m[32m'vip'[39m }[33m,[39m bigRules))[33m.[39mtoBe([35m100[39m)
+     [90m    |[39m                                                   [31m[1m^[22m[39m
+     [90m 52 |[39m   })
+     [90m 53 |[39m })
+     [90m 54 |[39m[0m
+
+      at Object.toBe (src/__tests__/unit/scoreLeadService.test.js:51:51)
+
+FAIL src/__tests__/api/workActivities.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/workActivities.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/workActivities.test.js:2:13)
+
+FAIL src/__tests__/api/warrantyRepeatsAndBudgetAlerts.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/warrantyRepeatsAndBudgetAlerts.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/warrantyRepeatsAndBudgetAlerts.test.js:3:13)
+
+FAIL src/__tests__/api/warrantyClaim.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/warrantyClaim.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/warrantyClaim.test.js:3:13)
+
+FAIL src/__tests__/api/warranty.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/warranty.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/warranty.test.js:3:13)
+
+FAIL src/__tests__/api/warehouse.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/warehouse.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/warehouse.test.js:2:13)
+
+FAIL src/__tests__/api/vendorPerformance.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/vendorPerformance.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/vendorPerformance.test.js:2:13)
+
+FAIL src/__tests__/api/vendorLeadTime.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/vendorLeadTime.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/vendorLeadTime.test.js:2:13)
+
+FAIL src/__tests__/api/taskDependencies.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/taskDependencies.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/taskDependencies.test.js:2:13)
+
+FAIL src/__tests__/api/snagReworkTracking.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/snagReworkTracking.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/snagReworkTracking.test.js:2:13)
+
+FAIL src/__tests__/api/siteReadiness.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/siteReadiness.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/siteReadiness.test.js:2:13)
+
+FAIL src/__tests__/api/serviceTicket.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/serviceTicket.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/serviceTicket.test.js:3:13)
+
+FAIL src/__tests__/api/revisionLimits.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/revisionLimits.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/revisionLimits.test.js:3:13)
+
+FAIL src/__tests__/api/roomProgress.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/roomProgress.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/roomProgress.test.js:2:13)
+
+FAIL src/__tests__/api/resourceUtilisation.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/resourceUtilisation.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/resourceUtilisation.test.js:2:13)
+
+FAIL src/__tests__/api/quotationVersion.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/quotationVersion.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/quotationVersion.test.js:2:13)
+
+FAIL src/__tests__/api/purchaseRequests.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/purchaseRequests.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/purchaseRequests.test.js:2:13)
+
+FAIL src/__tests__/api/purchaseOrders.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/purchaseOrders.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/purchaseOrders.test.js:2:13)
+
+FAIL src/__tests__/api/punchLists.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/punchLists.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/punchLists.test.js:2:13)
+
+FAIL src/__tests__/api/projectRetrospective.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/projectRetrospective.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/projectRetrospective.test.js:2:13)
+
+FAIL src/__tests__/api/projectReopen.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/projectReopen.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/projectReopen.test.js:2:13)
+
+FAIL src/__tests__/api/projectPauseAndCancellation.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/projectPauseAndCancellation.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/projectPauseAndCancellation.test.js:3:13)
+
+FAIL src/__tests__/api/projectClosure.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/projectClosure.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/projectClosure.test.js:2:13)
+
+FAIL src/__tests__/api/profitability.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/profitability.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/profitability.test.js:2:13)
+
+FAIL src/__tests__/api/productionQCInspection.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/productionQCInspection.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/productionQCInspection.test.js:2:13)
+
+FAIL src/__tests__/api/productionOrders.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/productionOrders.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/productionOrders.test.js:2:13)
+
+FAIL src/__tests__/api/productionDispatchTracking.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/productionDispatchTracking.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/productionDispatchTracking.test.js:2:13)
+
+FAIL src/__tests__/api/portalQuotations.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/portalQuotations.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/portalQuotations.test.js:3:13)
+
+FAIL src/__tests__/api/materialSubstitution.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/materialSubstitution.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/materialSubstitution.test.js:2:13)
+
+FAIL src/__tests__/api/materialSampleApprovals.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/materialSampleApprovals.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/materialSampleApprovals.test.js:2:13)
+
+FAIL src/__tests__/api/materialIncomingInspections.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/materialIncomingInspections.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/materialIncomingInspections.test.js:2:13)
+
+FAIL src/__tests__/api/materialDiscontinuationAndRoomHandovers.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/materialDiscontinuationAndRoomHandovers.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/materialDiscontinuationAndRoomHandovers.test.js:3:13)
+
+FAIL src/__tests__/api/materialArrivalNotifications.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/materialArrivalNotifications.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/materialArrivalNotifications.test.js:2:13)
+
+FAIL src/__tests__/api/leads.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/leads.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/leads.test.js:2:17)
+
+FAIL src/__tests__/api/layoutTracking.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/layoutTracking.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/layoutTracking.test.js:3:13)
+
+FAIL src/__tests__/api/invoices.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/invoices.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/invoices.test.js:3:13)
+
+FAIL src/__tests__/api/handoverReadinessCheck.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/handoverReadinessCheck.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/handoverReadinessCheck.test.js:2:13)
+
+FAIL src/__tests__/api/financialApprovals.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/financialApprovals.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/financialApprovals.test.js:3:13)
+
+FAIL src/__tests__/api/handoverPortal.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/handoverPortal.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/handoverPortal.test.js:3:13)
+
+FAIL src/__tests__/api/financials.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/financials.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/financials.test.js:3:13)
+
+FAIL src/__tests__/api/factorySiteTimelineLinkage.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/factorySiteTimelineLinkage.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/factorySiteTimelineLinkage.test.js:2:13)
+
+FAIL src/__tests__/api/drawingRegister.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/drawingRegister.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/drawingRegister.test.js:3:13)
+
+FAIL src/__tests__/api/designWorkflow.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/designWorkflow.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/designWorkflow.test.js:2:13)
+
+FAIL src/__tests__/api/designRequirements.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/designRequirements.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/designRequirements.test.js:2:13)
+
+FAIL src/__tests__/api/designQcHandoverApprovals.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/designQcHandoverApprovals.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/designQcHandoverApprovals.test.js:3:13)
+
+FAIL src/__tests__/api/dailySiteReports.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/dailySiteReports.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/dailySiteReports.test.js:3:13)
+
+FAIL src/__tests__/api/csat.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/csat.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/csat.test.js:2:13)
+
+FAIL src/__tests__/api/coordination.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/coordination.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/coordination.test.js:2:13)
+
+FAIL src/__tests__/api/conversion.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/conversion.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/conversion.test.js:2:13)
+
+FAIL src/__tests__/api/configurableWorkActivities.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/configurableWorkActivities.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/configurableWorkActivities.test.js:2:13)
+
+FAIL src/__tests__/api/commercialSupportAndVendorCoordination.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/commercialSupportAndVendorCoordination.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/commercialSupportAndVendorCoordination.test.js:3:13)
+
+FAIL src/__tests__/api/commercialApproval.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/commercialApproval.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/commercialApproval.test.js:2:13)
+
+FAIL src/__tests__/api/collectionForecast.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/collectionForecast.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/collectionForecast.test.js:2:13)
+
+FAIL src/__tests__/api/clientPortalTransparencyAndRelationships.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/clientPortalTransparencyAndRelationships.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/clientPortalTransparencyAndRelationships.test.js:4:13)
+
+FAIL src/__tests__/api/clientDocumentSharing.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/clientDocumentSharing.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/clientDocumentSharing.test.js:3:13)
+
+FAIL src/__tests__/api/budget.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/budget.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/budget.test.js:2:13)
+
+FAIL src/__tests__/api/boqVariance.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/boqVariance.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/boqVariance.test.js:2:13)
+
+FAIL src/__tests__/api/booking.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/booking.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/booking.test.js:2:13)
+
+FAIL src/__tests__/api/auth.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/auth.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/auth.test.js:2:17)
+
+FAIL src/__tests__/api/auditTrailViewer.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/auditTrailViewer.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/auditTrailViewer.test.js:3:13)
+
+FAIL src/__tests__/api/afterSalesPostHandover.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/afterSalesPostHandover.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/afterSalesPostHandover.test.js:2:13)
+
+FAIL src/__tests__/api/amc.test.js
+  ● Test suite failed to run
+
+    Cannot find module '../notifications/notificationService' from 'src/services/projects/delayNotificationService.js'
+
+    Require stack:
+      src/services/projects/delayNotificationService.js
+      src/jobs/delayEscalationJob.js
+      src/app.js
+      src/__tests__/api/amc.test.js
+
+    [0m [90m 1 |[39m [36mconst[39m { pool } [33m=[39m require([32m'../../config/db'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mconst[39m { notifyUser } [33m=[39m require([32m'../notifications/notificationService'[39m)[33m;[39m
+     [90m   |[39m                        [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mclass[39m [33mDelayNotificationService[39m {
+     [90m 5 |[39m   [90m/**[39m[0m
+
+      at Resolver._throwModNotFoundError (../node_modules/jest-resolve/build/index.js:895:11)
+      at Object.require (src/services/projects/delayNotificationService.js:2:24)
+      at Object.require (src/jobs/delayEscalationJob.js:2:34)
+      at Object.require (src/app.js:23:28)
+      at Object.require (src/__tests__/api/amc.test.js:3:13)
+
+
+Test Suites: 67 failed, 3 passed, 70 total
+Tests:       14 failed, 17 passed, 31 total
+Snapshots:   0 total
+Time:        48.999 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path D:\Digicloudify softwares\CRM-Interior-Construction\server
+npm error workspace crm-server@1.0.0
+npm error location D:\Digicloudify softwares\CRM-Interior-Construction\server
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c jest --runInBand --forceExit

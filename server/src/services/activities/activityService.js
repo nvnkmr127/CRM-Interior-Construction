@@ -4,7 +4,7 @@ const VALID_TYPES = ['call', 'note', 'email', 'whatsapp', 'site_visit', 'meeting
 
 const { aiQueue } = require('../../queues/queueSetup');
 
-async function logActivity({ tenantId, userId, leadId, type, title, notes, outcome, scheduledAt, ai_summary, metadata }) {
+async function logActivity({ tenantId, userId, leadId, type, title, notes, outcome, scheduledAt, _ai_summary, metadata }) {
   if (!VALID_TYPES.includes(type)) {
     throw new Error(`INVALID_ACTIVITY_TYPE: Type must be one of ${VALID_TYPES.join(', ')}`);
   }

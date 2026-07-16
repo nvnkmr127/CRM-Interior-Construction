@@ -1,4 +1,5 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const { success, fail } = require('../utils/response');

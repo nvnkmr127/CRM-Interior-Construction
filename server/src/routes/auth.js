@@ -308,7 +308,11 @@ router.post('/change-password', authenticate, async (req, res, next) => {
     const newHash = await bcrypt.hash(newPassword, 10);
     
     await pool.query('UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3', [newHash, userId, tenantId]);
-    await pool.query('DELETE FROM sessions WHERE user_id = $1 AND tenant_id = $2', [userId, tenantId]);
+    const delRes = await pool.query('DELETE FROM sessions WHERE user_id = $1 AND tenant_id = $2 RETURNING id', [userId, tenantId]);
+    const { clearCache } = require('../utils/cache');
+    for (const row of delRes.rows) {
+      await clearCache(`session:${row.id}`).catch(() => {});
+    }
     
     res.status(204).send();
   } catch (error) {
@@ -321,7 +325,11 @@ router.delete('/sessions', authenticate, async (req, res, next) => {
     const userId = req.user.id || req.user.userId;
     const tenantId = req.tenantId;
 
-    await pool.query('DELETE FROM sessions WHERE user_id = $1 AND tenant_id = $2', [userId, tenantId]);
+    const delRes = await pool.query('DELETE FROM sessions WHERE user_id = $1 AND tenant_id = $2 RETURNING id', [userId, tenantId]);
+    const { clearCache } = require('../utils/cache');
+    for (const row of delRes.rows) {
+      await clearCache(`session:${row.id}`).catch(() => {});
+    }
     
     res.status(204).send();
   } catch (error) {

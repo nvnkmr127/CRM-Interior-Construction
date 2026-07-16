@@ -12,7 +12,7 @@ describe('Material Discontinuation & Room Handovers API', () => {
   let boqItemId;
   let subId;
   let checklistId;
-  let item1Id, item2Id;
+  let _item1Id, _item2Id;
 
   beforeAll(async () => {
     // 1. Login superadmin

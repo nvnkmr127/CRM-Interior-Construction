@@ -2,7 +2,7 @@ const eventBus = require('../../utils/eventBus');
 const { notificationQueue } = require('../../queues/queueSetup');
 
 // Subscribe to Lead events
-eventBus.on('lead.stage_changed', async ({ tenantId, userId, lead, oldStage, newStage }) => {
+eventBus.on('lead.stage_changed', async ({ _tenantId, userId, lead, _oldStage, newStage }) => {
   if (lead.assignee_id && lead.assignee_id !== userId) {
     await notificationQueue.add('stageChangeNotification', {
       type: 'in-app',
@@ -12,7 +12,7 @@ eventBus.on('lead.stage_changed', async ({ tenantId, userId, lead, oldStage, new
   }
 });
 
-eventBus.on('lead.assigned', async ({ tenantId, lead, assigneeId }) => {
+eventBus.on('lead.assigned', async ({ _tenantId, lead, assigneeId }) => {
   await notificationQueue.add('assignmentNotification', {
     type: 'email',
     recipientId: assigneeId,
@@ -52,7 +52,7 @@ eventBus.on('project.schedule_shifted', async ({ pmId, clientEmail, clientName, 
   }
 });
 
-eventBus.on('task.escalated', async ({ tenantId, task, targetUserId, targetLevel, hoursBlocked, pmId, delayAssessment }) => {
+eventBus.on('task.escalated', async ({ _tenantId, task, targetUserId, targetLevel, hoursBlocked, pmId, delayAssessment }) => {
   try {
     const roles = {
       1: 'Project Manager',

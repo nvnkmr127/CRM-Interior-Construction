@@ -12,7 +12,7 @@ describe('Handover Readiness Checklist Gates & Appointment Scheduling API', () =
   let taskId;
   let snagId;
   let milestoneId;
-  let docId;
+  let _docId;
 
   beforeAll(async () => {
     // 1. Admin login

@@ -8,7 +8,7 @@ const pool = require('../../db/pool');
  * @param {object} leadData 
  * @returns {Promise<string|null>} The assignee user ID, or null if no users found.
  */
-async function assignLeadIntelligently(tenantId, leadData) {
+async function assignLeadIntelligently(tenantId, _leadData) {
   try {
     // 1. Try to find the best rep among sales and management roles
     const query = `

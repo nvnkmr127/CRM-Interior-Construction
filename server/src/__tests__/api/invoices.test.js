@@ -6,7 +6,7 @@ const pool = require('../../db/pool');
 describe('Tax Invoice Generation API', () => {
   jest.setTimeout(30000);
   let accessToken;
-  let tenantId;
+  let _tenantId;
   let projectId;
   let milestoneId;
   let invoiceId;

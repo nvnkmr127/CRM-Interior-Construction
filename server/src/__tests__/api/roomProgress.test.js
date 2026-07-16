@@ -8,7 +8,7 @@ describe('Room-Wise Completion Progress API', () => {
   let accessToken;
   let tenantId;
   let projectId;
-  let userId;
+  let _userId;
 
   beforeAll(async () => {
     // Login to get token

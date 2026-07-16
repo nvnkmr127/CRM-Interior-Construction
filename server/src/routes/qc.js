@@ -1,5 +1,5 @@
 const express = require('express');
-const router = express.Router({ mergeParams: true }); // mergeParams to get projectId from parent route
+const _router = express.Router({ mergeParams: true }); // mergeParams to get projectId from parent route
 const qcController = require('../../controllers/qcController');
 
 // Routes without projectId prefix (mounted directly on /api/v1/qc/templates)

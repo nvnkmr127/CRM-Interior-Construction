@@ -416,7 +416,7 @@ exports.getBenchmarks = async (req, res, next) => {
 
 exports.getDigitalTwin = async (req, res, next) => {
   try {
-    const { tenantId } = getTenantAndUser(req);
+    const { _tenantId } = getTenantAndUser(req);
     res.json({
       success: true,
       data: {
@@ -432,7 +432,7 @@ exports.getDigitalTwin = async (req, res, next) => {
 
 exports.getCommandCenter = async (req, res, next) => {
   try {
-    const { tenantId } = getTenantAndUser(req);
+    const { _tenantId } = getTenantAndUser(req);
     res.json({
       success: true,
       data: {

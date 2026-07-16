@@ -9,7 +9,7 @@ describe('Daily Site Reports (DSR) API', () => {
   let accessToken;
   let tenantId;
   let projectId;
-  let userId;
+  let _userId;
   let reportId;
 
   beforeAll(async () => {

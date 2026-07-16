@@ -8,7 +8,7 @@ describe('Task Dependencies API and sequence enforcement', () => {
   let accessToken;
   let tenantId;
   let projectId;
-  let userId;
+  let _userId;
   let taskIdA;
   let taskIdB;
 

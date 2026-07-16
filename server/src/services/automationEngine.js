@@ -60,8 +60,8 @@ function enforceWorkingHours(inputDate, isUrgent = false) {
  * Logs to automation_logs as queued, and uses setTimeout to fire.
  * In a real robust system, a worker would poll this table.
  */
-async function scheduleJob(leadId, triggerEvent, actionTaken, delayMs, payload = {}, channel = 'system') {
-  const sentAt = new Date(Date.now() + delayMs);
+async function _scheduleJob(leadId, triggerEvent, actionTaken, delayMs, payload = {}, _channel = 'system') {
+  const _sentAt = new Date(Date.now() + delayMs);
   
   // Insert queued log
   const res = await pool.query(`

@@ -10,7 +10,7 @@ describe('Configurable Trade Activities, Dependencies, and Photo Evidence API', 
   let activityAId;
   let activityBId;
   let templateId;
-  let dependencyId;
+  let _dependencyId;
   let photoId;
 
   beforeAll(async () => {

@@ -1,7 +1,7 @@
 const eventBus = require('../../utils/eventBus');
 const { createProject } = require('./createProject');
 
-eventBus.on('lead.stage_changed', async ({ tenantId, userId, lead, oldStage, newStage }) => {
+eventBus.on('lead.stage_changed', async ({ tenantId, userId, lead, _oldStage, newStage }) => {
   try {
     // Construction-Specific Workflow: If the new stage implies execution/handover, automatically spin up a Project.
     const triggerStages = ['booking', 'handover', 'execution'];

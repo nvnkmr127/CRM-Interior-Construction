@@ -9,8 +9,8 @@ describe('Warranty Repeats & Budget Overrun Alerts API', () => {
   let tenantId;
   let projectId;
   let warrantyId;
-  let claim1Id, claim2Id;
-  let expense1Id, expense2Id;
+  let _claim1Id, _claim2Id;
+  let _expense1Id, expense2Id;
 
   beforeAll(async () => {
     // 1. Login superadmin

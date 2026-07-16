@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../api/axios';
-import { getLeads, changeLeadStage, bulkChangeLeadStage } from '../api/leads';
+import { getLeads, changeLeadStage, bulkChangeLeadStage, bulkDeleteLeads } from '../api/leads';
 
 export function useLeads(filters = {}) {
   const [leads, setLeads] = useState([]);
@@ -150,8 +150,7 @@ export function useLeads(filters = {}) {
     
     // 2. Call API
     try {
-      const { bulkDeleteLeads } = await import('../api/leads');
-      await bulkDeleteLeads(leadIds);
+        await bulkDeleteLeads(leadIds);
     } catch (err) {
       // 3. Revert on error
       setLeads(previousLeads);

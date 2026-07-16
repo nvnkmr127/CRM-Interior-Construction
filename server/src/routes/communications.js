@@ -90,7 +90,7 @@ router.post('/lead/:leadId/draft', authenticate, async (req, res, next) => {
 // Inbound webhook for WhatsApp bot
 router.post('/webhook/inbound', async (req, res, next) => {
   try {
-    const { from, message, payload_type } = req.body;
+    const { from, message, _payload_type } = req.body;
     // Note: Adjust the parsing logic based on your specific WhatsApp provider's webhook schema
     
     if (!from || !message) {

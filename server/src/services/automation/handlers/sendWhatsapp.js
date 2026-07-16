@@ -1,5 +1,5 @@
 const axios = require('axios');
-const configEnv = require('../../../config/env');
+const _configEnv = require('../../../config/env');
 
 /**
  * WhatsApp Action Handler

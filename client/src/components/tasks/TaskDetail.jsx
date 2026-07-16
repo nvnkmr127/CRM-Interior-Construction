@@ -5,11 +5,8 @@ import { Modal, Button, Badge, Avatar, Select, RichTextEditor } from '../ui'
 import TaskComments from './TaskComments'
 import TaskAttachments from './TaskAttachments'
 import TaskActivityHistory from './TaskActivityHistory'
-import TaskRecurrenceModal from './TaskRecurrenceModal'
-import EditSeriesModal from './EditSeriesModal'
 import TagInput from './TagInput'
 import TimeTracker from './TimeTracker'
-import TaskReminders from './TaskReminders'
 import { useToast } from '../../store/toastContext'
 import { useTaskNotifications } from '../../store/TaskNotificationContext'
 import { useTaskAutomation } from '../../store/TaskAutomationContext'
@@ -25,9 +22,6 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
   const [title, setTitle] = useState('')
   const [desc, setDesc] = useState('')
   const [saveStatus, setSaveStatus] = useState('')
-  
-  const [isRecurrenceModalOpen, setIsRecurrenceModalOpen] = useState(false)
-  const [isEditSeriesModalOpen, setIsEditSeriesModalOpen] = useState(false)
   
   const [newComment, setNewComment] = useState('')
   const [statusError, setStatusError] = useState(null)
@@ -116,12 +110,6 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
   useEffect(loadTask, [isOpen, taskId, projectId])
 
   const applyUpdate = async (payload, forceMode = null) => {
-    if (task.is_recurring && !forceMode && ['title', 'description', 'priority', 'dueDate', 'recurrence_rule'].some(key => key in payload)) {
-      setPendingUpdate(payload)
-      setIsEditSeriesModalOpen(true)
-      return
-    }
-
     if (payload.status && payload.status !== task.status) {
       addNotification('status_changed', `Status Updated`, `Task "${task.title}" is now ${payload.status}`, task.id)
     }
@@ -172,16 +160,6 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
     } catch (e) {
       toast.error('Failed to save time log')
     }
-  }
-
-  const handleSeriesEditSelect = async (mode) => {
-    if (pendingUpdate) {
-      try {
-        await applyUpdate(pendingUpdate, mode)
-        toast.success('Series updated successfully')
-      } catch (e) {}
-    }
-    setPendingUpdate(null)
   }
 
   const handleTitleBlur = () => {
@@ -346,24 +324,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
     })
   }
 
-  const convertToChecklistSubtask = async (item, idx) => {
-    setTask(t => {
-      const next = t.checklist.filter(c => c.id !== item.id)
-      saveChecklist(next)
-      return { ...t, checklist: next }
-    })
-    try {
-       if (projectId && projectId !== 'lead-tasks' && projectId !== 'general-tasks') {
-         await createTask(projectId, { title: item.title, parent_id: task.id })
-       } else {
-         await createGlobalTask({ title: item.title, parent_id: task.id })
-       }
-       toast.success('Converted to subtask')
-       setTimeout(() => window.location.reload(), 1000)
-    } catch(err) {
-       toast.error('Failed to convert')
-    }
-  }
+
 
   const handleChecklistDragStart = (e, id) => {
     setDraggedChecklistItemId(id)
@@ -465,12 +426,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
                 </div>
               </div>
 
-              <div className={styles.detailRow}>
-                <div className={styles.detailLabel}>Recurring</div>
-                <div className={styles.detailValue} style={{ cursor: 'pointer', color: 'var(--color-primary)' }} onClick={() => setIsRecurrenceModalOpen(true)}>
-                  {task.is_recurring ? `🔄 ${task.recurrence_rule?.frequency} (Series)` : 'None'}
-                </div>
-              </div>
+
 
               <div className={styles.detailRow}>
                 <div className={styles.detailLabel}>Priority</div>
@@ -493,44 +449,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
                 </div>
               </div>
 
-              {/* Custom Fields */}
-              <div className={styles.detailRow}>
-                <div className={styles.detailLabel} style={{ alignSelf: 'flex-start', marginTop: '4px' }}>Custom Fields</div>
-                <div style={{ flex: 1 }}>
-                  {task.customFields?.map((cf, idx) => (
-                    <div key={idx} className={styles.flexGap2} style={{ marginBottom: '8px' }}>
-                      <input 
-                        value={cf.key} 
-                        placeholder="Key (e.g. Client ID)" 
-                        onChange={e => {
-                          if (!permissions.canEdit) return
-                          const next = [...task.customFields]; next[idx].key = e.target.value; setTask(t => ({...t, customFields: next}))
-                        }}
-                        onBlur={() => applyUpdate({ customFields: task.customFields })}
-                        disabled={!permissions.canEdit}
-                        className={styles.customFieldInput}
-                      />
-                      <input 
-                        value={cf.value} 
-                        placeholder="Value" 
-                        onChange={e => {
-                          if (!permissions.canEdit) return
-                          const next = [...task.customFields]; next[idx].value = e.target.value; setTask(t => ({...t, customFields: next}))
-                        }}
-                        onBlur={() => applyUpdate({ customFields: task.customFields })}
-                        disabled={!permissions.canEdit}
-                        className={styles.customFieldInput}
-                      />
-                    </div>
-                  ))}
-                  {permissions.canEdit && (
-                    <Button variant="ghost" size="sm" onClick={() => {
-                      const next = [...(task.customFields || []), { key: '', value: '' }];
-                      setTask(t => ({...t, customFields: next}))
-                    }}>+ Add Field</Button>
-                  )}
-                </div>
-              </div>
+
 
               <div className={styles.detailRow}>
                 <div className={styles.detailLabel}>Status</div>
@@ -590,9 +509,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
                 <TimeTracker task={task} onTimeLogged={handleTimeLogged} disabled={!permissions.canEdit} />
               </div>
 
-              <div className={styles.section}>
-                <TaskReminders task={task} onRemindersChange={(reminders) => applyUpdate({ reminders })} disabled={!permissions.canEdit} />
-              </div>
+
 
               <div className={styles.sectionPadded}>
                 <div className={styles.sectionTitle} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -649,7 +566,6 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
                       />
                       <div className={styles.checklistActions} style={{ display: 'flex', gap: '4px' }}>
                         <button onClick={() => duplicateChecklistItem(s, idx)} title="Duplicate" style={{background:'transparent', border:'none', cursor:'pointer', fontSize:'12px'}}>⎘</button>
-                        <button onClick={() => convertToChecklistSubtask(s, idx)} title="Convert to Subtask" style={{background:'transparent', border:'none', cursor:'pointer', fontSize:'12px'}}>⤴</button>
                       </div>
                     </div>
                   ))}
@@ -671,26 +587,6 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
         </>
       )}
 
-      {isRecurrenceModalOpen && (
-        <TaskRecurrenceModal
-          isOpen={isRecurrenceModalOpen}
-          onClose={() => setIsRecurrenceModalOpen(false)}
-          initialRule={task.recurrence_rule}
-          onSave={(rule) => {
-            const payload = rule ? { is_recurring: true, recurrence_rule: rule } : { is_recurring: false, recurrence_rule: null }
-            setTask(t => ({ ...t, ...payload }))
-            applyUpdate(payload).catch(() => setTask(t => ({ ...t, is_recurring: task.is_recurring, recurrence_rule: task.recurrence_rule })))
-          }}
-        />
-      )}
-
-      {isEditSeriesModalOpen && (
-        <EditSeriesModal
-          isOpen={isEditSeriesModalOpen}
-          onClose={() => setIsEditSeriesModalOpen(false)}
-          onSelect={handleSeriesEditSelect}
-        />
-      )}
     </Modal>
   )
 }

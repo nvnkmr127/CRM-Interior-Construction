@@ -6,7 +6,7 @@ const pool = require('../../db/pool');
 describe('Credit Notes & Refunds Financials API', () => {
   jest.setTimeout(30000);
   let accessToken;
-  let tenantId;
+  let _tenantId;
   let projectId;
   let creditNoteId;
   let refundId;

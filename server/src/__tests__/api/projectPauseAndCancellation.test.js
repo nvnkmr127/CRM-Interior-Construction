@@ -9,8 +9,8 @@ describe('Project Pause and Cancellation Workflows API', () => {
   let tenantId;
   let projectId;
   let teamMemberId;
-  let milestoneId;
-  let activity1Id, activity2Id;
+  let _milestoneId;
+  let _activity1Id, _activity2Id;
 
   beforeAll(async () => {
     // 1. Login superadmin

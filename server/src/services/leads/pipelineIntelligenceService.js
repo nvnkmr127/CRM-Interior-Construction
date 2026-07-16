@@ -111,7 +111,7 @@ async function executeAutonomousFollowups(tenantId) {
     
     let generatedCount = 0;
     const { generateFollowupRecommendations } = require('../../services/aiService');
-    const { activityService } = require('../../services/timeline/activityService');
+    const { _activityService } = require('../../services/timeline/activityService');
 
     for (const lead of res.rows) {
       // Use AI to generate a hyper-personalized email draft
