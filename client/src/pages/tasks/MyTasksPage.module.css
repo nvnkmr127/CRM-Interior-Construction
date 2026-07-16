@@ -3,6 +3,7 @@
   padding: var(--space-6);
   background: var(--color-bg);
   min-height: 100%;
+  position: relative;
 }
 
 /* --- Header ----------------------------------------------------------- */

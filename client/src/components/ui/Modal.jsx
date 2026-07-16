@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import styles from './Modal.module.css'
 
-export default function Modal({ isOpen, onClose, title, size='md', children, footer, closeOnBackdrop=true, hideHeader=false, style={} }) {
+export default function Modal({ isOpen, onClose, title, size='md', children, footer, closeOnBackdrop=true, hideHeader=false, style={}, inline=false }) {
   const panelRef = useRef(null)
 
   // Lock body scroll when open
@@ -28,8 +28,8 @@ export default function Modal({ isOpen, onClose, title, size='md', children, foo
 
   if (!isOpen) return null
 
-  return createPortal(
-    <div className={styles.overlay} onClick={closeOnBackdrop ? onClose : undefined}>
+  const modalContent = (
+    <div className={inline ? styles.inlineOverlay : styles.overlay} onClick={closeOnBackdrop ? onClose : undefined}>
       <div
         ref={panelRef}
         className={`${styles.panel} ${styles[size]} ${hideHeader ? styles.noHeader : ''}`}
@@ -46,7 +46,9 @@ export default function Modal({ isOpen, onClose, title, size='md', children, foo
         <div className={styles.body} style={hideHeader ? { padding: 0 } : {}}>{children}</div>
         {footer && <div className={styles.footer}>{footer}</div>}
       </div>
-    </div>,
-    document.body
-  )
+    </div>
+  );
+
+  if (inline) return modalContent;
+  return createPortal(modalContent, document.body)
 }

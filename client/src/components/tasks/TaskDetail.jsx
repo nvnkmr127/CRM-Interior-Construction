@@ -19,7 +19,7 @@ import { getTask, getGlobalTask, updateTask, addTaskComment, deleteTask, createT
 const PRIORITIES = ['low', 'medium', 'high', 'urgent']
 const PRIORITY_COLORS = { low: 'info', medium: 'warning', high: 'danger', urgent: 'danger' }
 
-export default function TaskDetail({ isOpen, onClose, taskId, projectId, initialTask }) {
+export default function TaskDetail({ isOpen, onClose, taskId, projectId, initialTask, inline = false }) {
   const [task, setTask] = useState(null)
   const [loading, setLoading] = useState(false)
   const [title, setTitle] = useState('')
@@ -101,7 +101,15 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
         setTitle(normalized.title)
         setDesc(normalized.description)
       })
-      .catch(() => toast.error('Failed to load task'))
+      .catch(() => {
+        if (initialTask) {
+          setTask(initialTask);
+          setTitle(initialTask.title || '');
+          setDesc(initialTask.description || '');
+        } else {
+          toast.error('Failed to load task');
+        }
+      })
       .finally(() => setLoading(false))
   }
 
@@ -407,7 +415,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
   if (!isOpen) return null
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="lg" hideHeader={false} title="">
+    <Modal isOpen={isOpen} onClose={onClose} size="full" hideHeader={false} title="" inline={inline}>
       {loading || !task ? (
         <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading task details...</div>
       ) : (

@@ -1,0 +1,109 @@
+/* ─── Base Variables ─────────────────────────────────────────────────── */
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  margin-top: var(--space-8);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-6);
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.sectionTitle {
+  font-size: var(--text-xl);
+  font-weight: 800;
+  color: var(--color-text);
+  margin: 0 0 4px 0;
+}
+
+.sectionDesc {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-4);
+}
+
+/* ─── Filters ────────────────────────────────────────────────────────── */
+.filtersRow {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.filterSelect {
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  outline: none;
+}
+.filterSelect:focus {
+  border-color: var(--color-primary);
+}
+
+/* ─── KPI Strip ──────────────────────────────────────────────────────── */
+.kpiStrip {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+@media (min-width: 640px) { .kpiStrip { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 1024px) { .kpiStrip { grid-template-columns: repeat(8, 1fr); } }
+
+.kpiCard {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+  transition: transform 0.2s;
+}
+.kpiCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.05);
+}
+.kpiTop { display: flex; align-items: center; justify-content: space-between; }
+.kpiLabel { font-size: var(--text-xs); font-weight: 600; color: var(--color-text-secondary); text-transform: uppercase; line-height: 1.2; }
+.kpiValue { font-size: var(--text-2xl); font-weight: 800; line-height: 1; }
+.kpiSub { font-size: 10px; color: var(--color-text-secondary); margin-top: 2px; }
+
+/* ─── Charts Row ─────────────────────────────────────────────────────── */
+.row {
+  display: flex;
+  gap: var(--space-4);
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 300px;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.cardTitle { font-weight: 700; font-size: var(--text-md); }

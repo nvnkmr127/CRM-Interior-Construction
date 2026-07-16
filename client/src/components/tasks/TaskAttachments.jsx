@@ -24,7 +24,7 @@ export default function TaskAttachments({ projectId, taskId, isGlobal = false })
       } else {
         res = await getTaskAttachments(projectId, taskId)
       }
-      setAttachments(res.data)
+      setAttachments(Array.isArray(res?.data?.data) ? res.data.data : (Array.isArray(res?.data) ? res.data : []))
     } catch (e) {
       console.error(e)
       toast.error('Failed to load attachments')

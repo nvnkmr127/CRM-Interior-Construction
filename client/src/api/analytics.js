@@ -8,11 +8,52 @@ export const getLeadPredictions = (params) => api.get('/analytics/lead-predictio
 
 export const getProjectAnalytics = (params) => api.get('/analytics/projects', { params }).then(r=>r.data.data);
 
+export const getTimelineAnalytics = (params) => api.get('/analytics/timeline', { params }).then(r=>r.data.data);
+
+export const getResourceAnalytics = (params) => api.get('/analytics/resource-utilization', { params }).then(r=>r.data.data);
+
+export const getTeamAnalytics = (params) => api.get('/analytics/team-performance', { params }).then(r=>r.data.data);
+
+export const getTaskAnalytics = (params) => api.get('/analytics/task-analytics', { params }).then(r=>r.data.data);
+
+export const getBudgetAnalytics = (params) => api.get('/analytics/budget-analytics', { params }).then(r=>r.data.data);
+
+export const getCashFlowAnalytics = (params) => api.get('/analytics/cash-flow', { params }).then(r=>r.data.data);
+
+export const getProcurementAnalytics = (params) => api.get('/analytics/procurement-analytics', { params }).then(r=>r.data.data);
+
+export const getVendorAnalytics = (params) => api.get('/analytics/vendor-analytics', { params }).then(r=>r.data.data);
+
+export const getMaterialAnalytics = (params) => api.get('/analytics/material-analytics', { params }).then(r=>r.data.data);
+
+export const getInventoryAnalytics = (params) => api.get('/analytics/inventory-analytics', { params }).then(r=>r.data.data);
+
+export const getQualityAnalytics = (params) => api.get('/analytics/quality-analytics', { params }).then(r=>r.data.data);
+
+export const getSiteProgressAnalytics = (params) => api.get('/analytics/site-progress-analytics', { params }).then(r=>r.data.data);
+
+export const getDelayAnalytics = (params) => api.get('/analytics/delay-analytics', { params }).then(r=>r.data.data);
+
+export const getClientAnalytics = (params) => api.get('/analytics/client-analytics', { params }).then(r=>r.data.data);
+
+export const getPaymentAnalytics = (params) => api.get('/analytics/payment-analytics', { params }).then(r=>r.data.data);
+
+export const getChangeOrderAnalytics = (params) => api.get('/analytics/change-order-analytics', { params }).then(r=>r.data.data);
+
+export const getRiskAnalytics = (params) => api.get('/analytics/risk-analytics', { params }).then(r=>r.data.data);
+
+export const getExecutiveAnalytics = (params) => api.get('/analytics/executive-analytics', { params }).then(r=>r.data.data);
+
+export const getAIForecastAnalytics = (params) => api.get('/analytics/ai-forecast-analytics', { params }).then(r=>r.data.data);
+
 export const getVendorPerformanceReport = () => api.get('/analytics/vendors').then(r=>r.data.data);
+
+
 
 export const getVendorPerformanceDetail = (vendorName) => api.get(`/analytics/vendors/${encodeURIComponent(vendorName)}`).then(r=>r.data.data);
 
 export const getCollectionForecast = () => api.get('/analytics/collection-forecast').then(r=>r.data.data);
+
 
 export const getProfitabilityAnalytics = () => api.get('/analytics/profitability').then(r=>r.data.data);
 

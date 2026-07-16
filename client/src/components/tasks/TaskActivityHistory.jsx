@@ -20,7 +20,7 @@ export default function TaskActivityHistory({ projectId, taskId, isGlobal = fals
       } else {
         res = await getTaskActivity(projectId, taskId)
       }
-      setActivities(res.data)
+      setActivities(Array.isArray(res?.data?.data) ? res.data.data : (Array.isArray(res?.data) ? res.data : []))
     } catch (e) {
       console.error(e)
       toast.error('Failed to load activity history')

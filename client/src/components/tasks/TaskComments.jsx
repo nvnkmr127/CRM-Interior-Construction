@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { getTaskComments, addTaskComment, updateTaskComment, deleteTaskComment, reactTaskComment, getGlobalTaskComments, addGlobalTaskComment, updateGlobalTaskComment, deleteGlobalTaskComment, reactGlobalTaskComment } from '../../api/tasks'
 import CommentThread from './CommentThread'
 import CommentEditor from './CommentEditor'
-import { Spinner } from '../ui'
+import { Spinner, Avatar } from '../ui'
 import styles from './TaskComments.module.css'
 
 export default function TaskComments({ projectId, taskId, isGlobal = false }) {

@@ -5,6 +5,20 @@ import styles from './ProjectAnalyticsPage.module.css'
 import { Select, Badge, DataTable, Avatar } from '../../components/ui'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { useBreadcrumbs } from '../../hooks/useBreadcrumbs'
+import TimelineAnalytics from '../../components/analytics/TimelineAnalytics'
+import ResourceAnalytics from '../../components/analytics/ResourceAnalytics'
+import TeamAnalytics from '../../components/analytics/TeamAnalytics'
+import TaskAnalytics from '../../components/analytics/TaskAnalytics'
+import QualityAnalytics from '../../components/analytics/QualityAnalytics'
+import SiteProgressAnalytics from '../../components/analytics/SiteProgressAnalytics'
+import DelayAnalytics from '../../components/analytics/DelayAnalytics'
+import ClientAnalytics from '../../components/analytics/ClientAnalytics'
+import RiskAnalytics from '../../components/analytics/RiskAnalytics'
+
+import ExecutiveAnalytics from '../../components/analytics/ExecutiveAnalytics'
+import AIForecastAnalytics from '../../components/analytics/AIForecastAnalytics'
+import GlobalFilterBar from '../../components/analytics/GlobalFilterBar'
+import { AnalyticsFilterProvider } from '../../context/AnalyticsFilterContext'
 import {
   AreaChart, Area,
   BarChart, Bar,
@@ -163,37 +177,41 @@ export default function ProjectAnalyticsPage() {
 
   const totalProjects = data ? data.statusData.reduce((s, d) => s + d.count, 0) : 0
 
-  /* ── Loading skeleton ─────────────────────────────────────────────── */
-  if (loading) {
-    return (
-      <div className={styles.page}>
-        <div className={styles.headerRow}>
-          <div>
-            <h1 className={styles.title}>Project Analytics</h1>
-            <div className={styles.desc}>Monitor project health, delivery, and revenue.</div>
-          </div>
-        </div>
-        <div className={styles.kpiStrip}>
-          {[1, 2, 3, 4].map(i => <div key={i} className={`${styles.skeleton} ${styles.skeletonKpi}`} />)}
-        </div>
-        <div className={styles.chartsRow}>
-          <div className={`${styles.skeleton} ${styles.skeletonChart}`} style={{ flex: '0 0 60%' }} />
-          <div className={`${styles.skeleton} ${styles.skeletonChart}`} style={{ flex: '0 0 38%' }} />
-        </div>
-        <div className={`${styles.skeleton} ${styles.skeletonChart}`} style={{ height: 240, marginBottom: 'var(--space-6)' }} />
-        <div className={`${styles.skeleton} ${styles.skeletonChart}`} style={{ height: 200 }} />
-      </div>
-    )
-  }
+  const pageContent = (
+    <div className={styles.pageContainer}>
+      {/* ── Global Filters ────────────────────────────────────────────── */}
+      <GlobalFilterBar />
 
-  return (
-    <div className={styles.page}>
-      {/* ── Header ───────────────────────────────────────────────────── */}
-      <div className={styles.headerRow}>
-        <div>
-          <h1 className={styles.title}>Project Analytics</h1>
-          <div className={styles.desc}>Monitor project health, delivery, and revenue performance.</div>
-        </div>
+      {/* ── Executive Dashboard Module ───────────────────────────────── */}
+      <ExecutiveAnalytics />
+
+      {loading ? (
+        <>
+          {/* ── Original Project Health ───────────────────────────────────── */}
+          <div className={styles.headerRow}>
+            <div>
+              <h1 className={styles.title}>Project Analytics</h1>
+              <div className={styles.desc}>Monitor project health, delivery, and revenue.</div>
+            </div>
+          </div>
+          <div className={styles.kpiStrip}>
+            {[1, 2, 3, 4].map(i => <div key={i} className={`${styles.skeleton} ${styles.skeletonKpi}`} />)}
+          </div>
+          <div className={styles.chartsRow}>
+            <div className={`${styles.skeleton} ${styles.skeletonChart}`} style={{ flex: '0 0 60%' }} />
+            <div className={`${styles.skeleton} ${styles.skeletonChart}`} style={{ flex: '0 0 38%' }} />
+          </div>
+          <div className={`${styles.skeleton} ${styles.skeletonChart}`} style={{ height: 240, marginBottom: 'var(--space-6)' }} />
+          <div className={`${styles.skeleton} ${styles.skeletonChart}`} style={{ height: 200 }} />
+        </>
+      ) : (
+        <>
+          {/* ── Header ───────────────────────────────────────────────────── */}
+          <div className={styles.headerRow}>
+            <div>
+              <h1 className={styles.title}>Project Analytics</h1>
+              <div className={styles.desc}>Monitor project health, delivery, and revenue performance.</div>
+            </div>
 
         <div className={styles.dateRangePills}>
           {DATE_RANGES.map(r => (
@@ -464,6 +482,62 @@ export default function ProjectAnalyticsPage() {
           </div>
         )}
       </div>
+
+      {/* ── Timeline Analytics Module ────────────────────────────────── */}
+      <TimelineAnalytics />
+
+      {/* ── Resource Analytics Module ────────────────────────────────── */}
+      <ResourceAnalytics />
+
+      {/* ── Team Performance Analytics Module ────────────────────────── */}
+      <TeamAnalytics />
+
+      {/* ── Task Analytics Module ────────────────────────────────────── */}
+      <TaskAnalytics />
+
+      {/* ── Quality Analytics Module ─────────────────────────────────── */}
+      <QualityAnalytics />
+
+      {/* ── Site Progress Analytics Module ───────────────────────────── */}
+      <SiteProgressAnalytics />
+
+      {/* ── Delay Analytics Module ───────────────────────────────────── */}
+      <DelayAnalytics />
+
+      {/* ── Client Analytics Module ──────────────────────────────────── */}
+      <ClientAnalytics />
+
+
+      {/* ── Risk Analytics Module ────────────────────────────────────── */}
+      <RiskAnalytics />
+
+      {/* ── AI Forecast Analytics Module ─────────────────────────────── */}
+      <AIForecastAnalytics />
+        </>
+      )}
     </div>
   )
+
+  return (
+    <AnalyticsFilterProvider>
+      {pageContent}
+    </AnalyticsFilterProvider>
+  )
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

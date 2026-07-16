@@ -14,6 +14,7 @@ import TaskAutomationsModal from '../../components/tasks/TaskAutomationsModal'
 import AiScheduleAssistantModal from '../../components/tasks/AiScheduleAssistantModal'
 import AiRiskAnalysisModal from '../../components/tasks/AiRiskAnalysisModal'
 import AiTaskCreationModal from '../../components/tasks/AiTaskCreationModal'
+import GlobalTaskFormModal from '../../components/tasks/GlobalTaskFormModal'
 import TaskAnalyticsModal from '../../components/tasks/TaskAnalyticsModal'
 import TaskGovernanceModal from '../../components/tasks/TaskGovernanceModal'
 import { usePageTitle } from '../../hooks/usePageTitle';
@@ -68,6 +69,7 @@ export default function MyTasksPage() {
   const [isAiScheduleOpen, setIsAiScheduleOpen] = useState(false)
   const [isAiRiskOpen, setIsAiRiskOpen] = useState(false)
   const [isAiTaskCreationOpen, setIsAiTaskCreationOpen] = useState(false)
+  const [isGlobalTaskModalOpen, setIsGlobalTaskModalOpen] = useState(false)
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false)
   const [isGovernanceOpen, setIsGovernanceOpen] = useState(false)
 
@@ -738,8 +740,9 @@ export default function MyTasksPage() {
             <option value="contributor">Role: Contributor</option>
             <option value="viewer">Role: Viewer</option>
           </select>
-          <Button variant="primary" onClick={() => {/* Handle Create Global Task */}}>+ New Task</Button>
+          <Button variant="primary" onClick={() => setIsGlobalTaskModalOpen(true)}>+ New Task</Button>
         </div>
+
       </div>
 
       {/* Stats Ribbon */}
@@ -1028,9 +1031,10 @@ export default function MyTasksPage() {
         <TaskDetail
           isOpen={!!selectedTask}
           onClose={() => setSelectedTask(null)}
-          taskId={selectedTask}
-          projectId={tasks.find(t => t.id === selectedTask)?.project?.id}
-          initialTask={tasks.find(t => t.id === selectedTask)}
+          taskId={typeof selectedTask === 'object' ? selectedTask.id : selectedTask}
+          projectId={typeof selectedTask === 'object' ? selectedTask.project?.id : tasks.find(t => t.id === selectedTask)?.project?.id}
+          initialTask={typeof selectedTask === 'object' ? selectedTask : tasks.find(t => t.id === selectedTask)}
+          inline={true}
         />
       )}
 
@@ -1132,6 +1136,14 @@ export default function MyTasksPage() {
       )}
 
       <GlobalTimeTracker />
+
+      <GlobalTaskFormModal 
+        isOpen={isGlobalTaskModalOpen}
+        onClose={() => setIsGlobalTaskModalOpen(false)}
+        onSuccess={loadTasks}
+      />
+
+
     </div>
   )
 }
