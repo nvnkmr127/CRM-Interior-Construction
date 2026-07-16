@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/immutability, react-hooks/exhaustive-deps, no-unused-vars */
 import { useState, useEffect } from 'react'
 import styles from './TemplateBuilder.module.css'
 import { Button, Modal, Input, Select, Badge } from '../../components/ui'

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/immutability, react-hooks/exhaustive-deps */
 import { useState, useEffect } from 'react';
 import styles from './PunchListTab.module.css';
 import { Badge, Button, Input, Select, Card } from '../ui';

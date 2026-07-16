@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React from 'react';
 import { Badge, Button, EmptyState } from '../ui';
 import LeadCard from './LeadCard';

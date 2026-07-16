@@ -1,7 +1,7 @@
+/* eslint-disable no-unused-vars */
 import React from 'react';
 import { Button, Badge } from '../../../ui';
 
-// TODO (API): Replace mock data with fetchQuotationItems(projectId)
 export default function QuotationLineItems({
   mockQuotationItems,
   setMockQuotationItems,

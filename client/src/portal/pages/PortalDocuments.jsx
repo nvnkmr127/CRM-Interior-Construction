@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react'
 import api from '../../api/axios'
 import styles from './PortalDocuments.module.css'

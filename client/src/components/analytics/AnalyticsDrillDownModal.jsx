@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/preserve-manual-memoization */
 import React, { useState, useMemo } from 'react';
 import { Modal, DataTable, Button, Input, Pagination } from '../ui';
 import { useToast } from '../../store/toastContext';

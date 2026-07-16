@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
 import { useState, useEffect, useMemo } from 'react'
 import { Modal, Badge } from '../ui'
 import { getGlobalTasks } from '../../api/tasks'

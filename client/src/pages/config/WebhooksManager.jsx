@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/immutability, react-hooks/exhaustive-deps, no-unused-vars */
 import { useState, useEffect } from 'react'
 import layoutStyles from './ConfigLayout.module.css'
 import styles from './WebhooksManager.module.css'

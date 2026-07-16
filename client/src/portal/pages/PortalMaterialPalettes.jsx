@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/immutability, react-hooks/exhaustive-deps */
 import { useState, useEffect } from 'react';
 import styles from './PortalMaterialPalettes.module.css';
 import { useToast } from '../../store/toastContext';

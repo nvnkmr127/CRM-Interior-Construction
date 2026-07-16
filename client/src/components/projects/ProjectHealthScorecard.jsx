@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/immutability, react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import styles from './ProjectHealthScorecard.module.css';

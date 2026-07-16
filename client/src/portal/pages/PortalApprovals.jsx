@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps, no-unused-vars */
 import { useState, useEffect } from 'react'
 import styles from './PortalApprovals.module.css'
 import { useToast } from '../../store/toastContext'

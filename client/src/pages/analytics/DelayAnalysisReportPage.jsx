@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/static-components */
 import { useState, useEffect } from 'react';
 import { Select } from '../../components/ui';
 import styles from './DelayAnalysisReportPage.module.css';

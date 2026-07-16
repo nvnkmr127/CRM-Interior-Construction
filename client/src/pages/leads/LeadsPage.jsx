@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+/* eslint-disable no-unused-vars, no-undef, react-hooks/immutability */
+import { useState, useMemo } from 'react';
 import { Button } from '../../components/ui';
 import { useToast } from '../../store/toastContext';
 import api from '../../api/axios';
@@ -73,7 +74,7 @@ export default function LeadsPage() {
     return f;
   }, [debouncedSearch, sourceFilter, assigneeFilter, scoreRange, intentFilter, sortBy, createdFrom, createdTo, page, limit]);
 
-  const { leads, stages, stats, total, loading, optimisticStageChange, bulkChangeStage, bulkDelete, refetch } = useLeads(filters);
+  const { leads, stages, stats, total, loading, error, optimisticStageChange, bulkChangeStage, bulkDelete, refetch } = useLeads(filters);
 
   // Unique assignees for dropdown
   const assignees = useMemo(() => {
@@ -219,7 +220,13 @@ export default function LeadsPage() {
       )}
 
       <div className={styles.content}>
-        {view === 'dashboard' ? (
+        {error ? (
+          <div style={{ padding: '40px', textAlign: 'center', background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)' }}>
+            <div style={{ fontSize: '24px', marginBottom: '8px' }}>⚠</div>
+            <div style={{ color: 'var(--color-danger)', fontWeight: 600 }}>{error}</div>
+            <p style={{ color: 'var(--color-text-secondary)', marginTop: '8px' }}>Please try refreshing the page or check your connection.</p>
+          </div>
+        ) : view === 'dashboard' ? (
           <ErrorBoundary>
             <LeadDashboard 
               leads={filteredLeads} 

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '../ui/card';
 import { Button } from '../ui/button';

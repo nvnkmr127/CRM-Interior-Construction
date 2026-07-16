@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/purity */
 import React, { useState, useEffect } from 'react';
 import { Button } from '../ui';
 import { useToast } from '../../store/toastContext';

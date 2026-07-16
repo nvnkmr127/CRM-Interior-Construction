@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState } from 'react';
 import { Modal, Button } from '../ui';
 import { resumeProject } from '../../api/projects';

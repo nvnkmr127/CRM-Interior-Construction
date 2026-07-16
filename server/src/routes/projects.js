@@ -315,6 +315,29 @@ router.post('/contract/upload-url', authorize('projects:create'), async (req, re
   }
 });
 
+/**
+ * @swagger
+ * /api/projects:
+ *   post:
+ *     summary: Create a new project
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - client_name
+ *               - name
+ *     responses:
+ *       201:
+ *         description: Project created successfully
+ *       400:
+ *         description: Validation error
+ */
 router.post('/', authorize('projects:create'), async (req, res, next) => {
   try {
     const data = createProjectSchema.parse(req.body);
@@ -334,6 +357,24 @@ router.post('/', authorize('projects:create'), async (req, res, next) => {
 });
 
 // GET /api/projects
+/**
+ * @swagger
+ * /api/projects:
+ *   get:
+ *     summary: List projects
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *         description: Filter by status
+ *     responses:
+ *       200:
+ *         description: A list of projects
+ */
 router.get('/', authorize('projects:read'), async (req, res, next) => {
   try {
     const { status, pmId, designerId, search, page, limit } = req.query;

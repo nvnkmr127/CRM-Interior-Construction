@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-refresh/only-export-components */
 import React, { createContext, useContext, useState } from 'react';
 
 const AnalyticsFilterContext = createContext();

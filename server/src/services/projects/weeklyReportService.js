@@ -1,5 +1,5 @@
-const { pool } = require('../../config/db');
-const { notifyUser } = require('../notifications/notificationService');
+const pool = require('../../db/pool');
+const { notifyUser } = require('../notificationService');
 
 class WeeklyReportService {
   /**

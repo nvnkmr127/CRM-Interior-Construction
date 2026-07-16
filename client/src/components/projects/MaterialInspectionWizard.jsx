@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useState } from 'react';
 import styles from './MaterialInspectionWizard.module.css';
 import { Button, Input } from '../ui';

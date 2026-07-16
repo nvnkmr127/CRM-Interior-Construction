@@ -9,8 +9,6 @@ export default function Select({
   searchable = false, 
   multi = false,
   disabled = false, 
-  error, 
-  size = 'md', 
   label, 
   required 
 }) {

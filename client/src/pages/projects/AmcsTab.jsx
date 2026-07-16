@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+import { useState, useEffect, useMemo } from 'react';
 import styles from './AmcsTab.module.css';
 import { Button, Input, Modal, FormField, Textarea } from '../../components/ui';
 import { getAmcs, createAmc, updateAmc, deleteAmc, createAmcVisit, updateAmcVisit, deleteAmcVisit } from '../../api/amcs';

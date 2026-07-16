@@ -1,4 +1,3 @@
-import React from 'react';
 import styles from './Pagination.module.css';
 
 export default function Pagination({ currentPage, totalItems, itemsPerPage, onPageChange }) {

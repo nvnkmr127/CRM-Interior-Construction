@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 import { useState, useEffect, useMemo } from 'react'
 import styles from './PortalPayments.module.css'
 import { useToast } from '../../store/toastContext'

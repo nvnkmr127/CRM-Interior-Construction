@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React from 'react';
 import { Button, Input, Select, DataTable, Badge } from '../../../ui';
 import { useToast } from '../../../../store/toastContext';

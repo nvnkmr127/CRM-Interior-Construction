@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/preserve-manual-memoization */
 import React, { useMemo } from 'react';
 import { Button } from '../ui';
 

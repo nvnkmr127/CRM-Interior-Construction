@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/immutability, react-hooks/exhaustive-deps */
 import { useState, useEffect } from 'react';
 import styles from './PortalApprovals.module.css'; // Let's reuse PortalApprovals classes or create unique ones
 import stylesCo from './PortalChangeOrders.module.css';

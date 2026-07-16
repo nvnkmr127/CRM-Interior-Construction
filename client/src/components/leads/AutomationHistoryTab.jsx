@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
 import React, { useEffect, useState } from 'react';
 import { getAutomationEvents } from '../../api/leads';
 

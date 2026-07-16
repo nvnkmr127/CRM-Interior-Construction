@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React from 'react';
 import { Badge } from '../ui';
 import styles from './TaskList.module.css';

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, no-empty, react-hooks/exhaustive-deps */
 import { useState, useEffect, useMemo, useRef } from 'react'
 import styles from './MyTasksPage.module.css'
 import h from './MyTasksPageHelpers.module.css'
@@ -22,7 +23,7 @@ import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import { useToast } from '../../store/toastContext'
 import { useTaskAutomation } from '../../store/TaskAutomationContext'
 import { useGovernance } from '../../store/TaskGovernanceContext'
-import { getGlobalTasks, updateTask, updateGlobalTask, getTags, getTaskViews, createTaskView } from '../../api/tasks'
+import { getGlobalTasks, updateTask, updateGlobalTask, getTags, getTaskViews, createTaskView, createGlobalTask } from '../../api/tasks'
 
 const TABS = [
   { id: 'all', label: 'All' },

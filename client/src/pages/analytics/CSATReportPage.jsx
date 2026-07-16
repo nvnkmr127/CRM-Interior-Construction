@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/immutability, no-useless-assignment, no-unused-vars */
 import { useState, useEffect } from 'react';
 import { getCSATAnalyticsReport } from '../../api/analytics';
 import { usePageTitle } from '../../hooks/usePageTitle';

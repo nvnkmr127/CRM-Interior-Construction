@@ -1,4 +1,3 @@
-import React from 'react';
 import { useAuth } from '../../store/authContext';
 import SalesExecutiveDashboard from './roles/SalesExecutiveDashboard';
 import SalesManagerDashboard from './roles/SalesManagerDashboard';

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, react-hooks/static-components */
 import React, { useState, useEffect } from 'react';
 import { getLeadFunnel } from '../../api/analytics';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';

@@ -8,7 +8,9 @@ Built by DigiCloudify. Stack: React + Node.js + PostgreSQL.
 ### 1. Prerequisites
 - Node.js 20+
 - PostgreSQL 15+ running on localhost:5432
+- Redis (Optional, fallback to in-memory available)
 - AWS account (for S3 document storage)
+- Google Gemini API Key (for AI features)
 
 ### 2. Setup
 
@@ -20,7 +22,7 @@ npm install            # installs all workspaces
 # Configure environment
 cp server/.env.example server/.env
 cp client/.env.example client/.env
-# Edit server/.env — set DATABASE_URL, JWT_SECRET, JWT_REFRESH_SECRET, S3_* vars
+# Edit server/.env — set DATABASE_URL, GEMINI_API_KEY, JWT_SECRET, S3_* vars
 ```
 
 ### 3. Database
@@ -76,6 +78,7 @@ npx playwright test           # E2E tests (requires running app)
 /client          React + Vite frontend
 /server          Node.js + Express backend
 /shared          Shared type definitions
+/docs            Architecture and module documentation
 /tests           Playwright E2E tests
 /.github         CI/CD workflows
 ```
@@ -86,10 +89,13 @@ npx playwright test           # E2E tests (requires running app)
 |------|-------------|
 | /dashboard | Main dashboard |
 | /leads | Lead management (Kanban) |
-| /projects | Project list and detail |
+| /projects | Project execution, milestones, and tasks |
 | /config | Admin configuration centre |
 | /portal/login | Client-facing portal |
 | /analytics/leads | Lead funnel analytics |
+| /analytics/projects | Project performance analytics |
+| /financials | Financial dashboard and invoice tracking |
+| /handover | Handover checklists and sign-offs |
 
 ## Demo Credentials
 
@@ -103,12 +109,13 @@ npx playwright test           # E2E tests (requires running app)
 
 ## Architecture Decisions
 
-- **Tenant isolation**: every DB query includes `WHERE tenant_id = $tenantId`
-- **Refresh token rotation**: each refresh invalidates the previous token
-- **S3 presigned URLs**: client uploads direct to S3, server never handles file bytes
-- **Automation queue**: pg-based polling every 5s — no BullMQ dependency in v1
-- **Config Centre**: zero hardcoded business rules — all stages, fields, templates configurable
-- **Portal auth**: OTP-based, separate from staff JWT — portal token can never access staff routes
+- **Tenant isolation**: Every DB query is scoped with `WHERE tenant_id = $tenantId`.
+- **Modular Monolith**: Organized into domains (Leads, Projects, Analytics, Portal).
+- **AI Integration**: AI-driven insights and workflow assistance via Gemini API.
+- **Automation Queue**: Redis + BullMQ (with in-memory fallback) for background jobs and escalation rules.
+- **Config Centre**: Zero hardcoded business rules — all stages, fields, and templates are configurable.
+- **Portal Auth**: OTP-based, separate from staff JWT — portal token cannot access internal staff routes.
+- **S3 Presigned URLs**: Client uploads directly to S3; server never handles file bytes.
 
 ---
-Built with Claude · DigiCloudify · 2025
+Built with Claude · DigiCloudify · 2026

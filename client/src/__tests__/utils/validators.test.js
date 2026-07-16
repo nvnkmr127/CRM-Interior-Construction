@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import { validators, run } from '../../utils/validators'
 
 describe('validators', () => {

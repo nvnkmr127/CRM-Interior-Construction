@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect } from 'react'
 import layoutStyles from './ConfigLayout.module.css'
 import { Button, Badge, Modal, DataTable, Avatar, Input, Select } from '../../components/ui'

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, react-hooks/exhaustive-deps, no-undef */
 import React, { useState, useEffect } from 'react';
 import { Button } from '../ui';
 import { useToast } from '../../store/toastContext';

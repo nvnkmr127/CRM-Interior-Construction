@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+/* eslint-disable react-hooks/immutability, react-hooks/exhaustive-deps */
+import { useState, useEffect } from 'react';
 import styles from './BaselineAssessmentTab.module.css';
 import { Button, Input, Select } from '../../components/ui';
 import { useToast } from '../../store/toastContext';

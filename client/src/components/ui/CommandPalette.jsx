@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const COMMANDS = [
@@ -44,9 +44,11 @@ export default function CommandPalette() {
     cmd.title.toLowerCase().includes(query.toLowerCase())
   );
 
-  useEffect(() => {
+  const [prevQuery, setPrevQuery] = useState(query);
+  if (query !== prevQuery) {
+    setPrevQuery(query);
     setSelectedIndex(0);
-  }, [query]);
+  }
 
   const executeCommand = (cmd) => {
     if (cmd.path) {

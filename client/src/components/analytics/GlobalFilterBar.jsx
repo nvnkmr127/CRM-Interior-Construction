@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState } from 'react';
 import styles from './GlobalFilterBar.module.css';
 import { useAnalyticsFilters } from '../../context/AnalyticsFilterContext';

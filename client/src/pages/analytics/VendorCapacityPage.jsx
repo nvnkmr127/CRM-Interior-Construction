@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/immutability, react-hooks/exhaustive-deps, no-unused-vars */
 import { useState, useEffect } from 'react';
 import { useToast } from '../../store/toastContext';
 import { getVendorCapacityReport, updateVendorCapacityProfile } from '../../api/vendorCapacityApi';

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from 'react';
 import api from '../api/axios';
 import { getLeads, changeLeadStage, bulkChangeLeadStage, bulkDeleteLeads } from '../api/leads';
@@ -67,7 +68,7 @@ export function useLeads(filters = {}) {
       }
     } catch (err) {
       console.error('Error fetching leads:', err);
-      setError('Failed to fetch leads or stages');
+      setError(err.response?.data?.message || err.message || 'Failed to fetch leads or stages');
     } finally {
       setLoading(false);
     }

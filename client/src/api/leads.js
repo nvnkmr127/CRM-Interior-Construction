@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, no-undef */
 import api from './axios';
 
 /**

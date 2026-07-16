@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/immutability, no-useless-assignment */
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getProfitabilityAnalytics } from '../../api/analytics';

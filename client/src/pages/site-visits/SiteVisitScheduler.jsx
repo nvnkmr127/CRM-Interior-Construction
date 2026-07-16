@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+/* eslint-disable no-unused-vars */
+import { useState } from 'react';
 import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
 

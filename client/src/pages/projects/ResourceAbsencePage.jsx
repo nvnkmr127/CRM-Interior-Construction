@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/immutability, react-hooks/exhaustive-deps, no-unused-vars */
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../store/authContext';
 import { useToast } from '../../store/toastContext';

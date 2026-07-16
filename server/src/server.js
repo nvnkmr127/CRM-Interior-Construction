@@ -4,6 +4,7 @@ const { startQueuePolling } = require('./queues/automationQueue');
 const { startPdfWorker } = require('./queues/pdfWorker');
 const { startSlaTracking } = require('./services/automation/slaTracker');
 require('./queues/workers/aiWorker');
+require('./queues/workers/cronWorker');
 
 app.use('/api/communications', require('./routes/communications'));
 app.use('/api/portal/project', require('./routes/portal/project'));

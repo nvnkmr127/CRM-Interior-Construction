@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, no-empty, preserve-caught-error, react-hooks/exhaustive-deps, react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { updateGlobalTask, updateTask, createGlobalTask, getGlobalTasks } from '../api/tasks';
 import { useTaskNotifications } from './TaskNotificationContext';

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect } from 'react';
 import { getWarehouses, createWarehouse, getWarehouseInventory, getWarehouseQuarantined, getWarehouseTransactions, receiveMaterial, dispatchToSite, returnFromSite, quarantineMaterial, releaseFromQuarantine } from '../../api/warehouse';
 import { getProjects } from '../../api/projects';

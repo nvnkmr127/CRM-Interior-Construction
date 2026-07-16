@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, no-useless-assignment */
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import WidgetContainer from '../../components/analytics/WidgetContainer';

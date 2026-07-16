@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps, no-unused-vars */
 import { useState, useEffect } from 'react'
 import styles from './PortalMeetingNotes.module.css'
 import api from '../../api/axios'

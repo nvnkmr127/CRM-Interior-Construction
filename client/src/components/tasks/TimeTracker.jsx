@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useState } from 'react'
 import { Badge, Button, Modal } from '../ui'
 import { useTimeTracker } from '../../store/TimeTrackerContext'

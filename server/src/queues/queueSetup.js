@@ -21,6 +21,7 @@ const createQueue = (name) => {
 const aiQueue = createQueue('AI_Queue');
 const notificationQueue = createQueue('Notification_Queue');
 const scoreQueue = createQueue('Score_Queue');
+const cronQueue = createQueue('Cron_Queue');
 
 if (useRedis) {
   // Schedule the score decay job to run every 12 hours (43200000 ms)
@@ -29,6 +30,14 @@ if (useRedis) {
       every: 12 * 60 * 60 * 1000 // 12 hours
     }
   }).catch(e => console.error('Failed to schedule decay_scores', e.message));
+
+  // Schedule Cron Jobs
+  cronQueue.add('sla_check', {}, { repeat: { every: 60 * 60 * 1000 } }).catch(e => console.error('Failed to schedule sla_check', e.message));
+  cronQueue.add('delay_escalation', {}, { repeat: { every: 60 * 60 * 1000 } }).catch(e => console.error('Failed to schedule delay_escalation', e.message));
+  cronQueue.add('task_escalation', {}, { repeat: { every: 60 * 60 * 1000 } }).catch(e => console.error('Failed to schedule task_escalation', e.message));
+  cronQueue.add('amc_alert', {}, { repeat: { every: 12 * 60 * 60 * 1000 } }).catch(e => console.error('Failed to schedule amc_alert', e.message));
+  cronQueue.add('payment_reminder', {}, { repeat: { every: 12 * 60 * 60 * 1000 } }).catch(e => console.error('Failed to schedule payment_reminder', e.message));
+  cronQueue.add('weekly_progress_report', {}, { repeat: { pattern: '0 17 * * 5' } }).catch(e => console.error('Failed to schedule weekly_progress_report', e.message));
 }
 
 module.exports = {
@@ -36,5 +45,6 @@ module.exports = {
   useRedis,
   aiQueue,
   notificationQueue,
-  scoreQueue
+  scoreQueue,
+  cronQueue
 };

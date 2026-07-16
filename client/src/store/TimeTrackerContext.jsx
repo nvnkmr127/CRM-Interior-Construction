@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, no-empty, react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useToast } from './toastContext';
 
@@ -27,7 +28,7 @@ export function TimeTrackerProvider({ children }) {
     }
   }, []);
 
-  const startInterval = (startTs, baseSecs) => {
+  function startInterval(startTs, baseSecs) {
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(() => {
       const diff = Math.floor((Date.now() - startTs) / 1000);

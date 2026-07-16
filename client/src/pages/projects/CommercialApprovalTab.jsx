@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+import { useState, useEffect } from 'react';
 import styles from './CommercialApprovalTab.module.css';
 import { getCommercialApprovalChecklist, confirmCommercialApproval } from '../../api/projects';
 import { Button } from '../../components/ui';

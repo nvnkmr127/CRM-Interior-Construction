@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/immutability */
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getVendorPerformanceReport } from '../../api/analytics';

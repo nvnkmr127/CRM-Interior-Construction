@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/immutability, no-empty */
 import { useState, useEffect, useRef } from 'react'
 import { getTags, createTag } from '../../api/tasks'
 import styles from './TagInput.module.css'

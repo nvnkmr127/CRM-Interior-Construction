@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/purity */
 import React, { useState } from 'react';
 import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';

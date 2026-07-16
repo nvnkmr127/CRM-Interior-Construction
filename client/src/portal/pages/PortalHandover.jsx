@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 import { useState, useEffect, useRef } from 'react'
 import styles from './PortalHandover.module.css'
 import api from '../../api/axios'

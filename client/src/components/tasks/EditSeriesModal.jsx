@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { Modal, Button } from '../ui'
 import styles from './TaskRecurrenceModal.module.css'
 

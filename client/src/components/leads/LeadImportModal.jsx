@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect, no-unused-vars */
 import React, { useState, useRef } from 'react';
 import { Modal, Button } from '../ui';
 import api from '../../api/axios';

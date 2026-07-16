@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+/* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+import { useState, useEffect } from 'react';
 import styles from './CustomerRetentionTab.module.css';
 import { getRetentionSchedules, updateRetentionSchedule } from '../../api/handover';
 import { Button } from '../../components/ui';

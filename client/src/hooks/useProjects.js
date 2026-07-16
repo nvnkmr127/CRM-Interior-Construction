@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/use-memo, react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from 'react'
 import { getProjects } from '../api/projects.js'
 

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+import { useState, useEffect } from 'react';
 import styles from './ProjectClosureTab.module.css';
 import { getClosureChecklist, updateClosureChecklist, updateProject } from '../../api/projects';
 import { Badge, Button } from '../../components/ui';

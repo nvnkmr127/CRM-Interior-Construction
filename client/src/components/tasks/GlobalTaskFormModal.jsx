@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
 import React, { useState, useEffect } from 'react';
 import { Modal, Button } from '../ui';
 import { createGlobalTask } from '../../api/tasks';

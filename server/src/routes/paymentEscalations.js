@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router({ mergeParams: true });
-const pool = require('../db');
+const pool = require('../db/pool');
 
 // Get escalations for a project
 router.get('/', async (req, res) => {

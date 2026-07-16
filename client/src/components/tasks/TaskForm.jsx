@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import { createTask, updateTask, bulkCreateTasks, getProject, getTasks, getTaskDependencies, createTaskDependency, deleteTaskDependency } from '../../api/projects';

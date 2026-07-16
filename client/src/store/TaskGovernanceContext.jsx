@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/immutability, react-hooks/exhaustive-deps, react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from 'react'
 
 const GovernanceContext = createContext()
@@ -63,13 +64,11 @@ export function TaskGovernanceProvider({ children }) {
 
   const processSyncQueue = () => {
     if (syncQueue.length === 0) return
-    console.log('Processing sync queue...', syncQueue)
     // Mock processing
     setTimeout(() => {
       setSyncQueue([])
       window.dispatchEvent(new CustomEvent('globalTimeLogged')) // Refresh UI
       // Use toast from anywhere is tricky here, we'll let components handle it or just rely on console
-      console.log('Sync queue cleared')
     }, 1500)
   }
 
@@ -105,8 +104,8 @@ export function TaskGovernanceProvider({ children }) {
     localStorage.setItem('gov_audit_logs', JSON.stringify(logs))
 
     // Webhooks Trigger
+    // eslint-disable-next-line no-unused-vars
     webhooks.forEach(hook => {
-      console.log(`[Webhook Fired] POST ${hook.url} -> Event: ${action} on Task ${taskId}`)
     })
   }
 

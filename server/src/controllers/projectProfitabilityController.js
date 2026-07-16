@@ -1,40 +1,47 @@
 const ProjectProfitabilityService = require('../services/projects/projectProfitabilityService');
-const { catchAsync } = require('../utils/errorHandler');
-const AppError = require('../utils/appError');
+const AppError = require('../utils/AppError');
 
 class ProjectProfitabilityController {
-  static getProjectProfitability = catchAsync(async (req, res) => {
-    const { tenantId } = req.user;
-    const { projectId } = req.params;
+  static getProjectProfitability = async (req, res, next) => {
+    try {
+      const { tenantId } = req.user;
+      const { projectId } = req.params;
 
-    if (!projectId) {
-      throw new AppError('Project ID is required', 400);
+      if (!projectId) {
+        throw new AppError('Project ID is required', 400);
+      }
+
+      const profitability = await ProjectProfitabilityService.getProjectProfitability(tenantId, projectId);
+
+      res.status(200).json({
+        status: 'success',
+        data: profitability || null
+      });
+    } catch (err) {
+      next(err);
     }
+  };
 
-    const profitability = await ProjectProfitabilityService.getProjectProfitability(tenantId, projectId);
+  static getProjectLedger = async (req, res, next) => {
+    try {
+      const { tenantId } = req.user;
+      const { projectId } = req.params;
 
-    res.status(200).json({
-      status: 'success',
-      data: profitability || null
-    });
-  });
+      if (!projectId) {
+        throw new AppError('Project ID is required', 400);
+      }
 
-  static getProjectLedger = catchAsync(async (req, res) => {
-    const { tenantId } = req.user;
-    const { projectId } = req.params;
+      const ledger = await ProjectProfitabilityService.getProjectLedger(tenantId, projectId);
 
-    if (!projectId) {
-      throw new AppError('Project ID is required', 400);
+      res.status(200).json({
+        status: 'success',
+        results: ledger.length,
+        data: ledger
+      });
+    } catch (err) {
+      next(err);
     }
-
-    const ledger = await ProjectProfitabilityService.getProjectLedger(tenantId, projectId);
-
-    res.status(200).json({
-      status: 'success',
-      results: ledger.length,
-      data: ledger
-    });
-  });
+  };
 }
 
 module.exports = ProjectProfitabilityController;

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from 'react'
 import { getTaskActivity, getGlobalTaskActivity } from '../../api/tasks'
 import { Avatar, Spinner, Select, Badge } from '../ui'

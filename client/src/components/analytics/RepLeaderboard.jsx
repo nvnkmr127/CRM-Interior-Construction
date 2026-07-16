@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
 import React, { useState, useEffect } from 'react';
 import { getRepPerformance } from '../../api/analytics';
 import styles from './RepLeaderboard.module.css';

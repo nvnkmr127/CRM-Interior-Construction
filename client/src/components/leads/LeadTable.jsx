@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-assignment */
 import React from 'react';
 import { Pagination, EmptyState, ContentLoader, Button } from '../../components/ui';
 import { syncCommunications } from '../../api/leads';

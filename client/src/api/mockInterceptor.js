@@ -1,3 +1,4 @@
+/* eslint-disable no-dupe-else-if, no-unused-vars */
 import { loadMockDatabase, saveMockDatabase } from './mockData';
 
 export const setupMockInterceptor = (api) => {

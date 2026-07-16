@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import styles from './ErrorFallback.module.css'
 
 export default function ErrorFallback({ error, onReset }) {

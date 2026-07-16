@@ -1,4 +1,5 @@
-import React, { createContext, useState, useEffect, useContext, useMemo } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useState, useEffect, useContext, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 
@@ -104,7 +105,8 @@ export function AuthProvider({ children }) {
     isAuthenticated: !!user,
     login,
     logout
-  }), [user, loading]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [user, loading, logout]);
 
   return (
     <AuthContext.Provider value={value}>

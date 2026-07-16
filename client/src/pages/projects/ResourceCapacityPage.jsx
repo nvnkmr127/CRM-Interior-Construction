@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect, no-unused-vars */
 import { useState, useEffect } from 'react'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { useBreadcrumbs } from '../../hooks/useBreadcrumbs'

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
 import { useState, useRef, useEffect } from 'react'
 import { Button } from '../ui'
 import styles from './AttachmentCard.module.css'

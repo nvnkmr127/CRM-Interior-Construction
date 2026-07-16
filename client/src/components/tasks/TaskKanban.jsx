@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
 import React, { useState, useEffect } from 'react';
 import { Badge, Button, ContentLoader } from '../ui';
 import styles from './TaskKanban.module.css';

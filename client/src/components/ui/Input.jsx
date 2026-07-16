@@ -1,4 +1,3 @@
-import React from 'react';
 import styles from './Input.module.css';
 
 export default function Input({
@@ -14,7 +13,6 @@ export default function Input({
   type = 'text',
   disabled = false,
   required = false,
-  size,
   ...props
 }) {
   return (

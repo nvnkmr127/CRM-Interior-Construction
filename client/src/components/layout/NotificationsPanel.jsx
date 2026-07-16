@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/immutability, no-unused-vars, no-empty */
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../api/axios'

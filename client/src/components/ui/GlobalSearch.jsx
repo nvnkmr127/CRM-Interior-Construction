@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 
@@ -37,6 +37,21 @@ export default function GlobalSearch() {
   }, []);
 
   useEffect(() => {
+    const performSearch = async () => {
+      setLoading(true);
+      try {
+        const res = await api.get(`/search?q=${query}&types=leads,projects,tasks`);
+        if (res.data.success) {
+          setResults(res.data.data);
+          setIsOpen(true);
+        }
+      } catch (e) {
+        console.error('Search failed', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     const delayDebounceFn = setTimeout(() => {
       if (query.length >= 2) {
         performSearch();
@@ -47,21 +62,6 @@ export default function GlobalSearch() {
 
     return () => clearTimeout(delayDebounceFn);
   }, [query]);
-
-  const performSearch = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get(`/search?q=${query}&types=leads,projects,tasks`);
-      if (res.data.success) {
-        setResults(res.data.data);
-        setIsOpen(true);
-      }
-    } catch (e) {
-      console.error('Search failed', e);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const navigateTo = (path) => {
     navigate(path);

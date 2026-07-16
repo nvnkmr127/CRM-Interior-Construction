@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+/* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import styles from './GlobalHandoverDashboard.module.css';
 import { getHandoverReadinessDashboard } from '../../api/handover';

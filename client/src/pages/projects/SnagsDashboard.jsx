@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect, react-hooks/purity */
 import { useState, useEffect, useMemo } from 'react'
 import styles from './SnagsDashboard.module.css'
 import { Badge, Button, Avatar, Modal } from '../../components/ui'

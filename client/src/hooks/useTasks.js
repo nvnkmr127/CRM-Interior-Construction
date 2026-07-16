@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/use-memo, react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from 'react'
 import { getTasks, updateTask } from '../api/projects.js'
 import { useToast } from '../store/toastContext.jsx'
@@ -16,7 +17,7 @@ export function useTasks(projectId, filters = {}) {
       const rawData = res.data?.data || res.data?.results || res.data;
       setTasks(Array.isArray(rawData) ? rawData : []);
     } catch(e) {
-      setError('Failed to load tasks')
+      setError(e.response?.data?.message || e.message || 'Failed to load tasks')
     } finally { setLoading(false) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, JSON.stringify(filters)])

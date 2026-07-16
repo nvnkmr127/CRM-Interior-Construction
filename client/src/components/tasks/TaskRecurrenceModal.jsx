@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react'
 import { Modal, Button, Select } from '../ui'
 import styles from './TaskRecurrenceModal.module.css'

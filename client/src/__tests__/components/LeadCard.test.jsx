@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, no-undef */
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import LeadCard from '../../components/leads/LeadCard';

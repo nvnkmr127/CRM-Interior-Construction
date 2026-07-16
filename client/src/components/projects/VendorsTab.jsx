@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from 'react';
 import styles from './VendorsTab.module.css';
 import { Button, Badge, Modal, Input, Textarea, Select } from '../../components/ui';

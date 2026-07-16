@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+import { useState, useEffect, useMemo } from 'react';
 import styles from './WarrantiesTab.module.css';
 import { Button, Input, Modal, FormField, Textarea } from '../../components/ui';
 import { getWarranties, createWarranty, updateWarranty, deleteWarranty } from '../../api/warranties';

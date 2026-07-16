@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/immutability */
 import React, { useState, useEffect } from 'react';
 import styles from './TimelineAnalytics.module.css';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';

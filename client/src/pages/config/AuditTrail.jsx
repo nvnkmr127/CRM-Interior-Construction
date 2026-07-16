@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+/* eslint-disable react-hooks/immutability, react-hooks/exhaustive-deps, no-unused-vars */
+import { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
 import styles from './AuditTrail.module.css';

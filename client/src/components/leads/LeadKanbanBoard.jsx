@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
 import React, { useState, useMemo, useEffect } from 'react';
 import { DndContext, DragOverlay, closestCorners, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -47,7 +48,6 @@ function KanbanColumn({ stage, leads, activeId, onLeadClick }) {
               lead={lead} 
               onAction={(action) => {
                 if (action === 'view' && onLeadClick) onLeadClick(lead.id);
-                else console.log('Action triggered:', action, lead.id);
               }} 
             />
           ))}

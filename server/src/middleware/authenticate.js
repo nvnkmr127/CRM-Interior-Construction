@@ -29,7 +29,7 @@ async function authenticate(req, res, next) {
     const decoded = verifyAccessToken(token);
 
     // V4: Continuous Authentication (Zero Trust) - Ensure session still exists
-    const pool = require('../config/db'); // Get pool reference
+    const pool = require('../db/pool'); // Get pool reference
     const { getCache, setCache } = require('../utils/cache');
     
     if (decoded.sessionId && pool) {

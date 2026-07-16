@@ -12,7 +12,7 @@ export const validators = {
     !v ? null : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? 'Enter a valid email address' : null,
 
   phone: (v) =>
-    !v ? null : !/^\d{10,15}$/.test(v.replace(/[\s-+]/g,'').replace(/^91/,''))
+    !v ? null : !/^[6-9]\d{9,14}$/.test(v.replace(/[\s-+]/g,'').replace(/^91/,''))
       ? 'Enter a valid phone number (10-15 digits)' : null,
 
   amount: (v) =>

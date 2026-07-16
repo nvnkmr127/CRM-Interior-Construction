@@ -1,4 +1,3 @@
-import React from 'react';
 import Skeleton from './Skeleton';
 
 export default function ContentLoader({ rows = 3, type = 'list' }) {

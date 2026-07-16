@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/immutability, react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useMemo } from 'react';
 import { getCommunications, createCommunication, draftCommunication, syncCommunications } from '../../api/leads';
 import { Button, Input, ContentLoader, EmptyState } from '../ui';

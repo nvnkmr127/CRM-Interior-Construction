@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, no-useless-assignment */
 import React, { useState } from 'react';
 import { Modal, Button } from '../../components/ui';
 import { triggerPaymentEscalation } from '../../api/projects';

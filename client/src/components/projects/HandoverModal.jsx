@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react';
 import { Modal, Input, Select, Button } from '../ui';
 import { useToast } from '../../store/toastContext';

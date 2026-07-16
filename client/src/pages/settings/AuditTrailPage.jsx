@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+/* eslint-disable no-unused-vars, react-hooks/immutability, react-hooks/exhaustive-deps */
+import { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
 import { Button } from '../../components/ui';

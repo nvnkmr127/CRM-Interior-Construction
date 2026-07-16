@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../api/axios';
 import PeriodSelector from '../components/analytics/PeriodSelector';
 import StatsBar from '../components/analytics/StatsBar';

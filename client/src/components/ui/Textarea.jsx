@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import { forwardRef } from 'react';
 import FormField from './FormField';
 import styles from './Textarea.module.css';
 

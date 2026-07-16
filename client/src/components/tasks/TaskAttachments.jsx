@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect, no-unused-vars */
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getTaskAttachments, uploadTaskAttachment, deleteTaskAttachment, replaceTaskAttachment, getGlobalTaskAttachments, uploadGlobalTaskAttachment, deleteGlobalTaskAttachment, replaceGlobalTaskAttachment } from '../../api/tasks'
 import AttachmentCard from './AttachmentCard'

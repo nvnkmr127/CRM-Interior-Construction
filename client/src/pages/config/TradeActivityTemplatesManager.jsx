@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+/* eslint-disable no-unused-vars, react-hooks/immutability, react-hooks/exhaustive-deps */
+import { useState, useEffect } from 'react';
 import layoutStyles from './ConfigLayout.module.css';
 import styles from './TradeActivityTemplatesManager.module.css';
 import { Button, Input } from '../../components/ui';

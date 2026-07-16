@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 import { useState, useEffect } from 'react';
 import { Button, Skeleton, Pagination } from '../../components/ui';
 import ProjectCard from '../../components/projects/ProjectCard';
@@ -90,7 +91,7 @@ export default function ProjectsPage() {
         }
         setError(null);
       })
-      .catch(() => setError('Failed to load projects.'))
+      .catch((err) => setError(err.response?.data?.message || err.message || 'Failed to load projects.'))
       .finally(() => setLoading(false));
   };
 

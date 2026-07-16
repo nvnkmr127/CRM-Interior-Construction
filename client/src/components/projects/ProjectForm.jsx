@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react'
 import styles from './ProjectForm.module.css'
 import { Modal, Input, Select, Button } from '../ui'

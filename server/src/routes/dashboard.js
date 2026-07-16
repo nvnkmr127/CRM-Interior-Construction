@@ -1,7 +1,8 @@
 const express = require('express');
-const { authenticate } = require('../middleware/auth');
+const authenticate = require('../middleware/authenticate');
 const { success, fail } = require('../middleware/responseFormatter');
-const { readPool } = require('../config/database');
+const pool = require('../db/pool');
+const { readPool } = pool;
 const analyticsService = require('../services/analytics/analyticsService');
 const { cacheResponse } = require('../middleware/cache');
 

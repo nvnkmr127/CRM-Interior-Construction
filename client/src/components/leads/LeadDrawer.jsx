@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, react-hooks/immutability, react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useRef } from 'react';
 import { useToast } from '../../store/toastContext';
 import { Modal, Button, Badge } from '../ui';

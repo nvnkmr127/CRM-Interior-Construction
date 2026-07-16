@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, react-hooks/static-components */
 import React, { useState, useEffect } from 'react';
 import { getProfitabilityAnalytics, getVendorPerformanceReport, getCSATAnalyticsReport, getSnagsAnalytics } from '../../api/analytics';
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';

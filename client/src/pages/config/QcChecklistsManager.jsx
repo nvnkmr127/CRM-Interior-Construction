@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+/* eslint-disable react-hooks/immutability, react-hooks/exhaustive-deps, no-unused-vars */
+import { useState, useEffect } from 'react';
 import layoutStyles from './ConfigLayout.module.css';
 import { Button, Input } from '../../components/ui';
 import { useToast } from '../../store/toastContext';

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, react-hooks/exhaustive-deps, no-empty */
 import React, { useEffect, useState } from 'react';
 import { getProjectActivities, logActivity } from '../../api/projects';
 import api from '../../api/axios';

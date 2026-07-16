@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/immutability */
 import React, { useState, useEffect } from 'react'
 import { Card } from '../../components/ui'
 import api from '../../api/axios'

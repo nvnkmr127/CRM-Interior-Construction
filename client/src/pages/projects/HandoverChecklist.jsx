@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
 import { useState, useEffect, useRef } from 'react'
 import styles from './HandoverChecklist.module.css'
 import { Badge, Button, Modal } from '../../components/ui'

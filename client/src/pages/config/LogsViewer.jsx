@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react'
 import layoutStyles from './ConfigLayout.module.css'
 import styles from './LogsViewer.module.css'

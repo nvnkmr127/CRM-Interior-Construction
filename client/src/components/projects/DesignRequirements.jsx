@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/immutability, react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from 'react';
 import { Button, Badge, Card, Modal, Input, Textarea, Select } from '../ui';
 import { useToast } from '../../store/toastContext';

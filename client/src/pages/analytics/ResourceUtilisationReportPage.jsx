@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/immutability */
 import { useState, useEffect } from 'react';
 import { getResourceUtilisationReport } from '../../api/analytics';
 import { usePageTitle } from '../../hooks/usePageTitle';

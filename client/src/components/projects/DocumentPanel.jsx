@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useMemo } from 'react';
 import { Badge, Button, Modal, Spinner } from '../ui';
 import styles from './DocumentPanel.module.css';

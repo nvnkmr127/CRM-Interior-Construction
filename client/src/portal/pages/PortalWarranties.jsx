@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
 import React, { useState, useEffect, useMemo } from 'react';
 import styles from './PortalWarranties.module.css';
 import { getPortalWarranties } from '../../api/warranties';

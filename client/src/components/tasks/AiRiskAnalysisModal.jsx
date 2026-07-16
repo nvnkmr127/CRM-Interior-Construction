@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/immutability, react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from 'react'
 import { Modal, Button } from '../ui'
 import { getGlobalTasks, updateGlobalTask, updateTask } from '../../api/tasks'

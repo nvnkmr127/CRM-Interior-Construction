@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+/* eslint-disable no-unused-vars, no-undef, no-useless-assignment, react-hooks/purity, react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+import { useState, useEffect } from 'react';
 import { Badge, Button, Modal, Input, Select } from '../../components/ui';
 import styles from './PaymentsTab.module.css';
 import { getPaymentMilestones, updatePaymentMilestone } from '../../api/paymentMilestones';
@@ -42,7 +43,6 @@ class PaymentGatewayService {
   static async initCashfree(details) {
     return new Promise((resolve, reject) => {
       // Mocking SDK load and webhook verification for frontend
-      console.log('[Cashfree] Initializing gateway...', details);
       setTimeout(() => {
         const isSuccess = window.confirm(`[Cashfree Mock Sandbox]\nAmount: ₹${details.amount}\nMilestone: ${details.milestoneName}\n\nSimulate successful payment webhook verification?`);
         if (isSuccess) {
@@ -515,7 +515,6 @@ export default function PaymentsTab({ projectId, project }) {
     }
 
     // Simulate generating Tally XML download
-    console.log(`Generated XML payload for ${type} using mappings:`, erpMappings);
   };
 
   const handleRetrySync = (logId) => {

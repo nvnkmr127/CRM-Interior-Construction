@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { getTaskComments, addTaskComment, updateTaskComment, deleteTaskComment, reactTaskComment, getGlobalTaskComments, addGlobalTaskComment, updateGlobalTaskComment, deleteGlobalTaskComment, reactGlobalTaskComment } from '../../api/tasks'
 import CommentThread from './CommentThread'

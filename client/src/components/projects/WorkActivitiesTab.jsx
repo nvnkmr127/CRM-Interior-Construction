@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps, no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { Button, Badge } from '../ui';
 import styles from './WorkActivitiesTab.module.css';

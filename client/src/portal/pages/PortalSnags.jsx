@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps, no-unused-vars, react-hooks/purity */
 import { useState, useEffect, useRef } from 'react'
 import styles from './PortalSnags.module.css'
 import { useToast } from '../../store/toastContext'

@@ -3,8 +3,10 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
+const setupSwagger = require('./config/swagger');
 
 const app = express();
+setupSwagger(app);
 
 // Initialize EventBus Subscribers
 require('./services/notifications/notificationEventHandler');
@@ -13,59 +15,7 @@ require('./services/projects/projectEventHandler');
 require('./services/workflows/workflowEngine');
 require('./services/timeline/timelineWriter');
 
-// Start SLA Engine periodic checks (Runs every 1 hour)
-const slaEngine = require('./services/workflows/slaEngine');
-setInterval(() => {
-  slaEngine.checkSLABreaches();
-}, 60 * 60 * 1000);
-
-// Start Delay Escalation Job (Runs every 1 hour)
-const delayEscalationJob = require('./jobs/delayEscalationJob');
-setInterval(() => {
-  delayEscalationJob.run().catch(err => {
-    console.error('Failed to run delay escalation checks:', err);
-  });
-}, 60 * 60 * 1000);
-
-// Start Estimates Reconciliation Job
-require('./jobs/reconcileEstimatesJob').start();
-
-// Start Task Escalation Job (Runs every 1 hour)
-const taskEscalationJob = require('./jobs/taskEscalationJob');
-setInterval(() => {
-  taskEscalationJob.start();
-}, 60 * 60 * 1000);
-
-// Start AMC Alert Scheduler (Runs every 12 hours)
-const amcService = require('./services/postSale/amcService');
-setInterval(() => {
-  amcService.checkAndNotifyExpiredOrExpiringAMCs().catch(err => {
-    console.error('Failed to run periodic AMC renewal checks:', err);
-  });
-}, 12 * 60 * 60 * 1000);
-
-// Start Payment Reminder Job (Runs every 12 hours)
-const paymentReminderJob = require('./jobs/paymentReminderJob');
-setInterval(() => {
-  paymentReminderJob.run().catch(err => {
-    console.error('Failed to run payment reminder job:', err);
-  });
-}, 12 * 60 * 60 * 1000);
-
-// Start Weekly Progress Report Job
-const weeklyProgressReportJob = require('./jobs/weeklyProgressReportJob');
-let lastWeeklyReportRun = null;
-setInterval(() => {
-  const now = new Date();
-  // Run on Friday (5) at 17:00 (5 PM)
-  if (now.getDay() === 5 && now.getHours() === 17) {
-    const todayStr = now.toDateString();
-    if (lastWeeklyReportRun !== todayStr) {
-      lastWeeklyReportRun = todayStr;
-      weeklyProgressReportJob.run().catch(err => console.error(err));
-    }
-  }
-}, 60 * 60 * 1000); // Check every hour
+// Removed periodic intervals. Jobs are now handled by BullMQ cronWorker.
 
 app.set('trust proxy', 1);
 app.use(helmet());

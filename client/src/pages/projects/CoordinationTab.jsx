@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
+import { useState, useEffect } from 'react';
 import styles from './CoordinationTab.module.css';
 import { getProjectCoordination, updateProjectCoordination } from '../../api/projects';
 import { Button } from '../../components/ui';

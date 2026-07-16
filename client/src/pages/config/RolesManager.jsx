@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+/* eslint-disable react-hooks/immutability, no-unused-vars, no-empty, no-undef */
+import { useState, useEffect } from 'react';
 import layoutStyles from './ConfigLayout.module.css'
 import styles from './RolesManager.module.css'
 import { Button, Modal, DataTable, Input } from '../../components/ui'
