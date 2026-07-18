@@ -1,7 +1,8 @@
 const express = require('express');
 const { z } = require('zod');
+const validate = require('../../middleware/validate');
 const authenticatePortal = require('../../middleware/authenticatePortal');
-const { success, fail } = require('../../utils/response');
+const { success } = require('../../utils/response');
 const warrantyClaimService = require('../../services/postSale/warrantyClaimService');
 
 const router = express.Router();
@@ -24,11 +25,11 @@ router.get('/', async (req, res, next) => {
 });
 
 // POST /api/portal/warranty-claims
-router.post('/', async (req, res, next) => {
+router.post('/', validate(createPortalClaimSchema), async (req, res, next) => {
   try {
     const { projectId, tenantId, id: portalUserId } = req.portalUser;
 
-    const data = createPortalClaimSchema.parse(req.body);
+    const data  = req.body;
     const claimNumber = `CLM-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
 
     const claim = await warrantyClaimService.createClaim({
@@ -43,9 +44,7 @@ router.post('/', async (req, res, next) => {
 
     return success(res, claim, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
+    
     next(err);
   }
 });

@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
+const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const labourAttendanceRepository = require('../repositories/labourAttendanceRepository');
 
@@ -22,9 +23,9 @@ const checkOutSchema = z.object({
 });
 
 // POST /api/projects/:projectId/attendance/check-in
-router.post('/check-in', authorize('projects:manage'), async (req, res) => {
+router.post('/check-in', authorize('projects:manage'), validate(checkInSchema), async (req, res, next) => {
   try {
-    const data = checkInSchema.parse(req.body);
+    const data  = req.body;
     const mappedData = {
       worker_name: data.workerName,
       trade: data.trade,
@@ -49,9 +50,9 @@ router.post('/check-in', authorize('projects:manage'), async (req, res) => {
 });
 
 // PATCH /api/projects/:projectId/attendance/:id/check-out
-router.patch('/:id/check-out', authorize('projects:manage'), async (req, res) => {
+router.patch('/:id/check-out', authorize('projects:manage'), validate(checkOutSchema), async (req, res, next) => {
   try {
-    const data = checkOutSchema.parse(req.body);
+    const data  = req.body;
     const checkOutTime = data.checkOutTime || new Date().toISOString();
 
     const attendance = await labourAttendanceRepository.checkOutWorker(

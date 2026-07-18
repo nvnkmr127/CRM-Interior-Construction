@@ -3,6 +3,7 @@ const { z } = require('zod');
 const { success, fail, paginate } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
+const validate = require('../middleware/validate');
 const { applyTemplate } = require('../services/config/templateService');
 const { createProject } = require('../services/projects/createProject');
 const { updateProject } = require('../services/projects/updateProject');
@@ -292,13 +293,15 @@ const updateProjectSchema = createProjectSchema.partial().extend({
   warranty_terms_acknowledged_by: z.string().optional().nullable()
 });
 
+const uploadUrlSchema = z.object({
+  name: z.string().min(1, 'File name is required'),
+  mimeType: z.string().min(1, 'Mime type is required')
+});
+
 // Route to generate S3 pre-signed upload URL for contract document
-router.post('/contract/upload-url', authorize('projects:create'), async (req, res, next) => {
+router.post('/contract/upload-url', authorize('projects:create'), validate(uploadUrlSchema), async (req, res, next) => {
   try {
-    const { name, mimeType } = z.object({
-      name: z.string().min(1, 'File name is required'),
-      mimeType: z.string().min(1, 'Mime type is required')
-    }).parse(req.body);
+    const { name, mimeType } = req.body;
 
     const { getUploadUrl } = require('../services/documents/documentService');
     const result = await getUploadUrl({
@@ -309,7 +312,6 @@ router.post('/contract/upload-url', authorize('projects:create'), async (req, re
     });
     return success(res, result);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     console.error('[Projects Router] contract upload-url error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to generate contract upload URL.', 500);
   }
@@ -338,9 +340,9 @@ router.post('/contract/upload-url', authorize('projects:create'), async (req, re
  *       400:
  *         description: Validation error
  */
-router.post('/', authorize('projects:create'), async (req, res, next) => {
+router.post('/', authorize('projects:create'), validate(createProjectSchema), async (req, res, next) => {
   try {
-    const data = createProjectSchema.parse(req.body);
+    const data = req.body;
     const project = await createProject({
       tenantId: req.tenantId,
       userId: req.user.userId,
@@ -348,9 +350,6 @@ router.post('/', authorize('projects:create'), async (req, res, next) => {
     });
     return success(res, project, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
     console.error('[Projects Router] Create error:', err);
     return fail(res, 'INTERNAL_ERROR', 'An error occurred while creating the project.', 500);
   }
@@ -469,18 +468,18 @@ router.get('/referrals', authorize('projects:read'), async (req, res, next) => {
   }
 });
 
+const updateReferralSchema = z.object({
+  referralStatus: z.enum(['pending', 'converted', 'closed']).optional(),
+  rewardStatus: z.enum(['unpaid', 'paid', 'not_eligible']).optional(),
+  rewardAmount: z.number().optional(),
+  notes: z.string().optional().nullable()
+});
+
 // PATCH /api/projects/referrals/:id
-router.patch('/referrals/:id', authorize('projects:update'), async (req, res, next) => {
+router.patch('/referrals/:id', authorize('projects:update'), validate(updateReferralSchema), async (req, res, next) => {
   try {
     const { id } = req.params;
-    const schema = z.object({
-      referralStatus: z.enum(['pending', 'converted', 'closed']).optional(),
-      rewardStatus: z.enum(['unpaid', 'paid', 'not_eligible']).optional(),
-      rewardAmount: z.number().optional(),
-      notes: z.string().optional().nullable()
-    });
-
-    const data = schema.parse(req.body);
+    const data = req.body;
 
     const check = await pool.query(
       'SELECT id FROM client_referrals WHERE id = $1 AND tenant_id = $2',
@@ -561,9 +560,9 @@ router.get('/:id', authorize('projects:read'), async (req, res, next) => {
 });
 
 // PATCH /api/projects/:id
-router.patch('/:id', authorize('projects:update'), async (req, res, next) => {
+router.patch('/:id', authorize('projects:update'), validate(updateProjectSchema), async (req, res, next) => {
   try {
-    const data = updateProjectSchema.parse(req.body);
+    const data = req.body;
     const updatedProject = await updateProject({
       tenantId: req.tenantId,
       userId: req.user.userId,
@@ -572,9 +571,6 @@ router.patch('/:id', authorize('projects:update'), async (req, res, next) => {
     });
     return success(res, updatedProject);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
     if (err.code === 'BOOKING_REQUIRED') {
       return fail(res, 'BOOKING_REQUIRED', err.message, 400);
     }
@@ -634,9 +630,9 @@ const cancelProjectSchema = z.object({
 });
 
 // POST /api/projects/:id/cancel
-router.post('/:id/cancel', authorize('projects:manage'), async (req, res, next) => {
+router.post('/:id/cancel', authorize('projects:manage'), validate(cancelProjectSchema), async (req, res, next) => {
   try {
-    const body = cancelProjectSchema.parse(req.body);
+    const body = req.body;
     const { cancelProject } = require('../services/projects/cancelProject');
     const updated = await cancelProject({
       projectId: req.params.id,
@@ -646,9 +642,6 @@ router.post('/:id/cancel', authorize('projects:manage'), async (req, res, next) 
     });
     return success(res, updated);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
     if (err.message === 'PROJECT_NOT_FOUND' || err.status === 404) {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }
@@ -692,16 +685,18 @@ router.get('/:id/retention', authorize('projects:read'), async (req, res, next) 
   }
 });
 
+const updateRetentionSchema = z.object({
+  status: z.enum(['scheduled', 'completed', 'deferred', 'cancelled']).optional(),
+  actualDate: z.string().optional().nullable(),
+  feedback: z.string().optional().nullable(),
+  csatScore: z.number().int().min(1).max(5).optional().nullable(),
+  notes: z.string().optional().nullable()
+});
+
 // PATCH /api/projects/:id/retention/:scheduleId
-router.patch('/:id/retention/:scheduleId', authorize('projects:manage'), async (req, res, next) => {
+router.patch('/:id/retention/:scheduleId', authorize('projects:manage'), validate(updateRetentionSchema), async (req, res, next) => {
   try {
-    const { status, actualDate, feedback, csatScore, notes } = z.object({
-      status: z.enum(['scheduled', 'completed', 'deferred', 'cancelled']).optional(),
-      actualDate: z.string().optional().nullable(),
-      feedback: z.string().optional().nullable(),
-      csatScore: z.number().int().min(1).max(5).optional().nullable(),
-      notes: z.string().optional().nullable()
-    }).parse(req.body);
+    const { status, actualDate, feedback, csatScore, notes } = req.body;
 
     const { updateRetentionSchedule } = require('../services/postSale/retentionService');
     const data = await updateRetentionSchedule(req.params.scheduleId, req.tenantId, {
@@ -710,9 +705,6 @@ router.patch('/:id/retention/:scheduleId', authorize('projects:manage'), async (
 
     return success(res, data, { message: 'Retention schedule updated successfully.' });
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
     if (err.message === 'SCHEDULE_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Retention schedule not found', 404);
     }
@@ -739,13 +731,15 @@ router.post('/:id/archive', authorize('projects:update'), async (req, res, next)
   }
 });
 
+const reopenProjectSchema = z.object({
+  newStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be in YYYY-MM-DD format'),
+  newTargetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Target date must be in YYYY-MM-DD format').optional().nullable()
+});
+
 // POST /api/projects/:id/reopen
-router.post('/:id/reopen', authorize('projects:update'), async (req, res, next) => {
+router.post('/:id/reopen', authorize('projects:update'), validate(reopenProjectSchema), async (req, res, next) => {
   try {
-    const { newStartDate, newTargetDate } = z.object({
-      newStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be in YYYY-MM-DD format'),
-      newTargetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Target date must be in YYYY-MM-DD format').optional().nullable()
-    }).parse(req.body);
+    const { newStartDate, newTargetDate } = req.body;
 
     const { reopenProject } = require('../services/projects/reopenProject');
     const project = await reopenProject({
@@ -757,9 +751,6 @@ router.post('/:id/reopen', authorize('projects:update'), async (req, res, next) 
     });
     return success(res, project, { message: 'Project reopened successfully.' });
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
     if (err.message === 'PROJECT_NOT_FOUND' || err.status === 404) {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }
@@ -862,22 +853,21 @@ router.get('/:id/handover/appointments', authorize('projects:read'), async (req,
   }
 });
 
+const scheduleAppointmentSchema = z.object({
+  appointmentDate: z.string().transform(val => new Date(val)),
+  notes: z.string().optional().nullable()
+});
+
 // POST /api/projects/:id/handover/appointments
-router.post('/:id/handover/appointments', authorize('projects:manage'), async (req, res, next) => {
+router.post('/:id/handover/appointments', authorize('projects:manage'), validate(scheduleAppointmentSchema), async (req, res, next) => {
   try {
-    const { appointmentDate, notes } = z.object({
-      appointmentDate: z.string().transform(val => new Date(val)),
-      notes: z.string().optional().nullable()
-    }).parse(req.body);
+    const { appointmentDate, notes } = req.body;
 
     const { scheduleAppointment } = require('../services/postSale/handoverReadinessService');
     const result = await scheduleAppointment(req.params.id, req.tenantId, appointmentDate, notes, req.user.userId);
     return success(res, result, { message: 'Handover appointment scheduled successfully.' });
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
-    if (err.message === 'PROJECT_NOT_FOUND') {
+    if (err.message === 'PROJECT_NOT_FOUND' || err.status === 404) {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }
     if (err.message === 'READINESS_CHECK_FAILED') {
@@ -1009,10 +999,10 @@ router.get('/:projectId/design-requirements', authorize('projects:read'), async 
 });
 
 // PUT /api/projects/:projectId/design-requirements
-router.put('/:projectId/design-requirements', authorize('projects:update'), async (req, res, next) => {
+router.put('/:projectId/design-requirements', authorize('projects:update'), validate(designRequirementsSchema), async (req, res, next) => {
   try {
     const { projectId } = req.params;
-    const data = designRequirementsSchema.parse(req.body);
+    const data = req.body;
     
     const query = `
       INSERT INTO project_design_requirements (
@@ -1073,10 +1063,10 @@ router.put('/:projectId/design-requirements', authorize('projects:update'), asyn
 });
 
 // POST /api/projects/:projectId/room-requirements
-router.post('/:projectId/room-requirements', authorize('projects:update'), async (req, res, next) => {
+router.post('/:projectId/room-requirements', authorize('projects:update'), validate(roomRequirementSchema), async (req, res, next) => {
   try {
     const { projectId } = req.params;
-    const data = roomRequirementSchema.parse(req.body);
+    const data = req.body;
     
     const query = `
       INSERT INTO project_room_requirements (
@@ -1101,10 +1091,10 @@ router.post('/:projectId/room-requirements', authorize('projects:update'), async
 });
 
 // PUT /api/projects/:projectId/room-requirements/:id
-router.put('/:projectId/room-requirements/:id', authorize('projects:update'), async (req, res, next) => {
+router.put('/:projectId/room-requirements/:id', authorize('projects:update'), validate(roomRequirementSchema), async (req, res, next) => {
   try {
     const { projectId, id } = req.params;
-    const data = roomRequirementSchema.parse(req.body);
+    const data = req.body;
     
     const query = `
       UPDATE project_room_requirements SET
@@ -1150,10 +1140,10 @@ router.delete('/:projectId/room-requirements/:id', authorize('projects:update'),
 });
 
 // POST /api/projects/:projectId/inspirations
-router.post('/:projectId/inspirations', authorize('projects:update'), async (req, res, next) => {
+router.post('/:projectId/inspirations', authorize('projects:update'), validate(inspirationSchema), async (req, res, next) => {
   try {
     const { projectId } = req.params;
-    const data = inspirationSchema.parse(req.body);
+    const data = req.body;
     
     const query = `
       INSERT INTO project_inspirations (
@@ -1485,20 +1475,20 @@ router.get('/:projectId/schedule-revisions', authorize('projects:read'), async (
   }
 });
 
+const replaceResourceSchema = z.object({
+  role: z.enum(['pm', 'designer']),
+  newResourceId: z.string().uuid(),
+  handoverNotes: z.string().min(1, 'Handover notes are required'),
+  clientNotified: z.boolean().optional().default(false)
+});
+
 // POST /api/projects/:projectId/replace-resource
-router.post('/:projectId/replace-resource', authorize('projects:update'), async (req, res, next) => {
+router.post('/:projectId/replace-resource', authorize('projects:manage'), validate(replaceResourceSchema), async (req, res, next) => {
   try {
     const { projectId } = req.params;
     const { replaceResource } = require('../services/projects/replaceResourceService');
     
-    const schema = z.object({
-      role: z.enum(['pm', 'designer']),
-      newResourceId: z.string().uuid(),
-      handoverNotes: z.string().min(1, 'Handover notes are required'),
-      clientNotified: z.boolean().optional().default(false)
-    });
-    
-    const data = schema.parse(req.body);
+    const data = req.body;
     
     const handover = await replaceResource({
       tenantId: req.tenantId,
@@ -1511,7 +1501,6 @@ router.post('/:projectId/replace-resource', authorize('projects:update'), async 
     
     return success(res, handover, {}, 200);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     if (err.status) return fail(res, err.message, err.message, err.status);
     next(err);
   }
@@ -1541,24 +1530,24 @@ router.get('/:projectId/handovers', authorize('projects:read'), async (req, res,
   }
 });
 
+const pauseProjectSchema = z.object({
+  reason: z.enum(['client_request', 'payment_pending', 'site_issue', 'force_majeure', 'other']),
+  expectedResumeDate: z.string().optional().nullable(),
+  clientCommunication: z.object({
+    channel: z.enum(['whatsapp', 'email', 'sms', 'call']),
+    direction: z.enum(['inbound', 'outbound']).optional(),
+    subject: z.string().optional().nullable(),
+    body: z.string().min(1, 'Body is required')
+  }).optional().nullable(),
+  resourceReleaseInstructions: z.string().optional().nullable(),
+  siteSecurityPlan: z.string().optional().nullable()
+});
+
 // POST /api/projects/:id/pause
-router.post('/:id/pause', authorize('projects:update'), async (req, res, next) => {
+router.post('/:id/pause', authorize('projects:update'), validate(pauseProjectSchema), async (req, res, next) => {
   try {
     const { id } = req.params;
-    const schema = z.object({
-      reason: z.string().min(1, 'Reason is required'),
-      expectedResumeDate: z.string().optional().nullable(),
-      clientCommunication: z.object({
-        channel: z.enum(['whatsapp', 'email', 'sms', 'call']),
-        direction: z.enum(['inbound', 'outbound']).optional(),
-        subject: z.string().optional().nullable(),
-        body: z.string().min(1, 'Body is required')
-      }).optional().nullable(),
-      resourceReleaseInstructions: z.string().optional().nullable(),
-      siteSecurityPlan: z.string().optional().nullable()
-    });
-
-    const { reason, expectedResumeDate, clientCommunication, resourceReleaseInstructions, siteSecurityPlan } = schema.parse(req.body);
+    const { reason, expectedResumeDate, clientCommunication, resourceReleaseInstructions, siteSecurityPlan } = req.body;
     const { pauseProject } = require('../services/projects/pauseProject');
 
     const project = await pauseProject({
@@ -1580,17 +1569,16 @@ router.post('/:id/pause', authorize('projects:update'), async (req, res, next) =
   }
 });
 
+const resumeProjectSchema = z.object({
+  siteConditionVerified: z.boolean().optional(),
+  materialStatusVerified: z.boolean().optional()
+});
+
 // POST /api/projects/:id/resume
-router.post('/:id/resume', authorize('projects:update'), async (req, res, next) => {
+router.post('/:id/resume', authorize('projects:update'), validate(resumeProjectSchema), async (req, res, next) => {
   try {
     const { id } = req.params;
-    
-    const schema = z.object({
-      siteConditionVerified: z.boolean(),
-      materialStatusVerified: z.boolean()
-    });
-    
-    const { siteConditionVerified, materialStatusVerified } = schema.parse(req.body);
+    const { siteConditionVerified, materialStatusVerified } = req.body;
     const { resumeProject } = require('../services/projects/pauseProject');
 
     const project = await resumeProject({
@@ -1603,62 +1591,12 @@ router.post('/:id/resume', authorize('projects:update'), async (req, res, next) 
 
     return success(res, project, { message: 'Project resumed successfully.' });
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     if (err.status) return fail(res, err.message, err.message, err.status);
     next(err);
   }
 });
 
-// POST /api/projects/:id/cancel
-router.post('/:id/cancel', authorize('projects:update'), async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const schema = z.object({
-      reason: z.string().min(1, 'Reason is required'),
-      settlementNotes: z.string().optional().nullable(),
-      refundOverride: z.number().optional().nullable(),
-      recoverOverride: z.number().optional().nullable()
-    });
 
-    const { reason, settlementNotes, refundOverride, recoverOverride } = schema.parse(req.body);
-    const { cancelProject } = require('../services/projects/cancelProject');
-
-    const project = await cancelProject({
-      projectId: id,
-      tenantId: req.tenantId,
-      userId: req.user.userId,
-      reason,
-      settlementNotes,
-      refundOverride,
-      recoverOverride
-    });
-
-    return success(res, project, { message: 'Project cancelled successfully and settlement calculated.' });
-  } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    if (err.status) return fail(res, err.message, err.message, err.status);
-    next(err);
-  }
-});
-
-// POST /api/projects/:id/cancel/acknowledge
-router.post('/:id/cancel/acknowledge', authorize('projects:update'), async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { acknowledgeCancellation } = require('../services/projects/cancelProject');
-
-    const project = await acknowledgeCancellation({
-      projectId: id,
-      tenantId: req.tenantId,
-      userId: req.user.userId
-    });
-
-    return success(res, project, { message: 'Project cancellation settlement acknowledged successfully.' });
-  } catch (err) {
-    if (err.status) return fail(res, err.message, err.message, err.status);
-    next(err);
-  }
-});
 
 // POST /api/projects/:projectId/boq-items/:itemId/discontinue
 router.post('/:projectId/boq-items/:itemId/discontinue', authorize('projects:update'), async (req, res, next) => {
@@ -1745,20 +1683,20 @@ router.get('/:projectId/room-handovers', authorize('projects:read'), async (req,
   }
 });
 
-// POST /api/projects/:projectId/room-handovers/sign-off
-router.post('/:projectId/room-handovers/sign-off', authorize('projects:update'), async (req, res, next) => {
+const handoverSignOffSchema = z.object({
+  checklistId: z.string().uuid(),
+  roomName: z.string().min(1),
+  clientName: z.string().min(1),
+  clientSignatureData: z.string().optional().nullable(),
+  otp: z.string().min(4)
+});
+
+// POST /api/projects/:projectId/handover/sign-off
+router.post('/:projectId/handover/sign-off', authorize('projects:update'), validate(handoverSignOffSchema), async (req, res, next) => {
   const client = await pool.connect();
   try {
     const { projectId } = req.params;
-    const schema = z.object({
-      checklistId: z.string().uuid(),
-      roomName: z.string().min(1),
-      clientName: z.string().min(1),
-      clientSignatureData: z.string().optional().nullable(),
-      otp: z.string().min(4)
-    });
-
-    const { checklistId, roomName, clientName, clientSignatureData, otp } = schema.parse(req.body);
+    const { checklistId, roomName, clientName, clientSignatureData, otp } = req.body;
 
     await client.query('BEGIN');
 
@@ -1835,7 +1773,6 @@ router.post('/:projectId/room-handovers/sign-off', authorize('projects:update'),
     return success(res, handoverRes.rows[0], { message: `Room ${roomName} successfully handed over.` });
   } catch (err) {
     await client.query('ROLLBACK');
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     next(err);
   } finally {
     client.release();
@@ -1858,16 +1795,16 @@ router.get('/:projectId/compliance', authorize('projects:read'), async (req, res
   }
 });
 
+const updateComplianceSchema = z.object({
+  status: z.enum(['pending', 'in_progress', 'approved', 'not_applicable']),
+  notes: z.string().optional().nullable()
+});
+
 // PATCH /api/projects/:projectId/compliance/:itemId
-router.patch('/:projectId/compliance/:itemId', authorize('projects:update'), async (req, res, next) => {
+router.patch('/:projectId/compliance/:itemId', authorize('projects:update'), validate(updateComplianceSchema), async (req, res, next) => {
   try {
     const { projectId, itemId } = req.params;
-    const schema = z.object({
-      status: z.enum(['pending', 'in_progress', 'approved', 'not_applicable']),
-      notes: z.string().optional().nullable()
-    });
-
-    const { status, notes } = schema.parse(req.body);
+    const { status, notes } = req.body;
 
     const checkRes = await pool.query(
       'SELECT id, status, notes FROM project_compliance_checklists WHERE id = $1 AND project_id = $2 AND tenant_id = $3',
@@ -1965,17 +1902,17 @@ router.get('/:projectId/mep-checklist', authorize('projects:read'), async (req, 
   }
 });
 
+const updateMepChecklistSchema = z.object({
+  status: z.enum(['pending', 'in_progress', 'approved', 'not_applicable']),
+  notes: z.string().optional().nullable()
+});
+
 // PATCH /api/projects/:projectId/mep-checklist/:itemId
-router.patch('/:projectId/mep-checklist/:itemId', authorize('projects:update'), async (req, res, next) => {
+router.patch('/:projectId/mep-checklist/:itemId', authorize('projects:update'), validate(updateMepChecklistSchema), async (req, res, next) => {
   try {
     const { projectId, itemId } = req.params;
     const tenantId = req.tenantId;
-    const schema = z.object({
-      status: z.enum(['pending', 'in_progress', 'approved', 'not_applicable']),
-      notes: z.string().optional().nullable()
-    });
-
-    const { status, notes } = schema.parse(req.body);
+    const { status, notes } = req.body;
 
     const checkRes = await pool.query(
       'SELECT id, status, notes FROM project_mep_checklists WHERE id = $1 AND project_id = $2 AND tenant_id = $3',
@@ -2057,18 +1994,18 @@ router.get('/:projectId/vendor-coordination', authorize('projects:read'), async 
   }
 });
 
+const updateVendorCoordinationSchema = z.object({
+  scheduledStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  scheduledFinishDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  blockerDescription: z.string().optional().nullable(),
+  currentStatus: z.enum(['pending', 'active', 'blocked', 'completed']).optional()
+});
+
 // PATCH /api/projects/:projectId/vendor-coordination/:vendorId
-router.patch('/:projectId/vendor-coordination/:vendorId', authorize('projects:update'), async (req, res, next) => {
+router.patch('/:projectId/vendor-coordination/:vendorId', authorize('projects:update'), validate(updateVendorCoordinationSchema), async (req, res, next) => {
   try {
     const { projectId, vendorId } = req.params;
-    const schema = z.object({
-      scheduledStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
-      scheduledFinishDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
-      blockerDescription: z.string().optional().nullable(),
-      currentStatus: z.enum(['pending', 'active', 'blocked', 'completed']).optional()
-    });
-
-    const data = schema.parse(req.body);
+    const data = req.body;
 
     const checkRes = await pool.query(
       `SELECT id, scheduled_start_date, scheduled_finish_date, blocker_description, current_status 
@@ -2118,16 +2055,16 @@ router.patch('/:projectId/vendor-coordination/:vendorId', authorize('projects:up
   }
 });
 
+const vendorRecoverySchema = z.object({
+  financialRecoveryStatus: z.enum(['pending', 'recovered', 'written_off']),
+  financialRecoveryAmount: z.number().min(0).optional()
+});
+
 // PATCH /api/projects/:projectId/vendors/:vendorId/recovery
-router.patch('/:projectId/vendors/:vendorId/recovery', authorize('projects:manage'), async (req, res, next) => {
+router.patch('/:projectId/vendors/:vendorId/recovery', authorize('projects:manage'), validate(vendorRecoverySchema), async (req, res, next) => {
   try {
     const { projectId, vendorId } = req.params;
-    const schema = z.object({
-      financialRecoveryStatus: z.enum(['pending', 'recovered', 'written_off']),
-      financialRecoveryAmount: z.number().min(0).optional()
-    });
-
-    const data = schema.parse(req.body);
+    const data = req.body;
 
     const checkRes = await pool.query(
       `SELECT id FROM project_vendors WHERE id = $1 AND project_id = $2 AND tenant_id = $3 AND (status = 'defaulted' OR current_status = 'defaulted')`,
@@ -2174,24 +2111,24 @@ router.get('/:id/booking', authorize('projects:read'), async (req, res, next) =>
     next(err);
   }
 });
+const confirmBookingSchema = z.object({
+  advance_amount: z.number().min(0, 'Advance amount cannot be negative'),
+  payment_method: z.enum(['bank_transfer', 'cash', 'card', 'upi', 'cheque']),
+  agreement_file_key: z.string().optional().nullable(),
+  agreement_file_name: z.string().optional().nullable(),
+  agreement_file_size: z.number().optional().nullable(),
+  agreement_file_mime: z.string().optional().nullable(),
+  agreed_scope_summary: z.string().min(1, 'Agreed scope summary is required'),
+  design_freeze_target_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format for design freeze target date'),
+  project_start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format for project start date'),
+  assigned_designer_id: z.string().uuid('Invalid assigned designer ID')
+});
 
-// POST /api/projects/:id/booking
-router.post('/:id/booking', authorize('projects:update'), async (req, res, next) => {
+// POST /api/projects/:id/booking/confirm
+router.post('/:id/booking/confirm', authenticate, authorize('projects:manage'), validate(confirmBookingSchema), async (req, res, next) => {
+
   try {
-    const confirmBookingSchema = z.object({
-      advance_amount: z.number().min(0, 'Advance amount cannot be negative'),
-      payment_method: z.enum(['bank_transfer', 'cash', 'card', 'upi', 'cheque']),
-      agreement_file_key: z.string().optional().nullable(),
-      agreement_file_name: z.string().optional().nullable(),
-      agreement_file_size: z.number().optional().nullable(),
-      agreement_file_mime: z.string().optional().nullable(),
-      agreed_scope_summary: z.string().min(1, 'Agreed scope summary is required'),
-      design_freeze_target_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format for design freeze target date'),
-      project_start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format for project start date'),
-      assigned_designer_id: z.string().uuid('Invalid assigned designer ID')
-    });
-
-    const data = confirmBookingSchema.parse(req.body);
+    const data = req.body;
     const projectId = req.params.id;
     const tenantId = req.tenantId;
     const userId = req.user.userId;
@@ -2478,14 +2415,16 @@ router.get('/:id/coordination', authenticate, authorize('projects:read'), async 
   }
 });
 
+const coordinationSchema = z.object({
+  siteReadinessDate: z.string().nullable().transform(val => val ? new Date(val) : null)
+});
+
 // PATCH /api/projects/:id/coordination
-router.patch('/:id/coordination', authenticate, authorize('projects:manage'), async (req, res, next) => {
+router.patch('/:id/coordination', authenticate, authorize('projects:manage'), validate(coordinationSchema), async (req, res, next) => {
   try {
     const projectId = req.params.id;
     const tenantId = req.tenantId;
-    const { siteReadinessDate } = z.object({
-      siteReadinessDate: z.string().nullable().transform(val => val ? new Date(val) : null)
-    }).parse(req.body);
+    const { siteReadinessDate } = req.body;
 
     await pool.query(
       'UPDATE projects SET site_readiness_date = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND tenant_id = $3',

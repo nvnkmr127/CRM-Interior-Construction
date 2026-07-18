@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
+const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const pool = require('../db/pool');
 const { updateItem, clientSignOff } = require('../services/postSale/handoverService');
@@ -22,9 +23,9 @@ const updateItemSchema = z.object({
   key_details: z.string().optional().nullable()
 });
 
-router.patch('/items/:itemId', authorize('handover:authorize'), async (req, res, next) => {
+router.patch('/items/:itemId', authorize('handover:authorize'), validate(updateItemSchema), async (req, res, next) => {
   try {
-    const data = updateItemSchema.parse(req.body);
+    const data  = req.body;
     const item = await updateItem({
       checklistId: data.checklistId,
       itemId: req.params.itemId,
@@ -40,9 +41,7 @@ router.patch('/items/:itemId', authorize('handover:authorize'), async (req, res,
     });
     return success(res, item);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
+    
     next(err);
   }
 });

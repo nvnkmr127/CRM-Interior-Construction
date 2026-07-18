@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
+const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const pool = require('../config/db');
 const quotationService = require('../services/projects/quotationService');
@@ -64,11 +65,11 @@ router.get('/', authorize('projects:read'), async (req, res) => {
 });
 
 // POST /api/projects/:projectId/change-orders
-router.post('/', authorize('projects:update'), async (req, res) => {
+router.post('/', authorize('projects:update'), validate(changeOrderSchema), async (req, res, next) => {
   try {
     const { projectId } = req.params;
     const tenantId = req.tenantId;
-    const data = changeOrderSchema.parse(req.body);
+    const data  = req.body;
 
     const { rows } = await pool.query(
       `INSERT INTO project_change_orders 
@@ -105,20 +106,18 @@ router.post('/', authorize('projects:update'), async (req, res) => {
 
     return success(res, rows[0], {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
+    
     console.error('[ChangeOrders Router] Create error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create change order.', 500);
   }
 });
 
 // PATCH /api/projects/:projectId/change-orders/:id
-router.patch('/:id', authorize('projects:update'), async (req, res) => {
+router.patch('/:id', authorize('projects:update'), validate(updateChangeOrderSchema), async (req, res, next) => {
   try {
     const { projectId, id } = req.params;
     const tenantId = req.tenantId;
-    const data = updateChangeOrderSchema.parse(req.body);
+    const data  = req.body;
 
     const fields = [];
     const values = [tenantId, projectId, id];
@@ -167,9 +166,7 @@ router.patch('/:id', authorize('projects:update'), async (req, res) => {
 
     return success(res, rows[0]);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
+    
     console.error('[ChangeOrders Router] Update error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update change order.', 500);
   }

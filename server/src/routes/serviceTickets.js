@@ -3,6 +3,7 @@ const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
+const validate = require('../middleware/validate');
 const serviceTicketService = require('../services/postSale/serviceTicketService');
 
 const router = express.Router({ mergeParams: true });
@@ -60,13 +61,13 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
 });
 
 // POST /api/projects/:projectId/service-tickets
-router.post('/', authorize('support:manage'), async (req, res, next) => {
+router.post('/', authorize('support:manage'), validate(createTicketSchema), async (req, res, next) => {
   try {
     const { projectId } = req.params;
     const tenantId = req.tenantId;
     const userId = req.user.userId;
 
-    const data = createTicketSchema.parse(req.body);
+    const data = req.body;
     const ticket = await serviceTicketService.createTicket({
       tenantId,
       projectId,
@@ -81,9 +82,6 @@ router.post('/', authorize('support:manage'), async (req, res, next) => {
 
     return success(res, ticket, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
     next(err);
   }
 });
@@ -115,13 +113,13 @@ router.get('/:id', authorize('projects:read'), async (req, res, next) => {
 });
 
 // PUT /api/projects/:projectId/service-tickets/:id
-router.put('/:id', authorize('support:manage'), async (req, res, next) => {
+router.put('/:id', authorize('support:manage'), validate(updateTicketSchema), async (req, res, next) => {
   try {
     const { id } = req.params;
     const tenantId = req.tenantId;
     const userId = req.user.userId;
 
-    const data = updateTicketSchema.parse(req.body);
+    const data = req.body;
 
     const updateData = {};
     if (data.title !== undefined) updateData.title = data.title;
@@ -137,9 +135,6 @@ router.put('/:id', authorize('support:manage'), async (req, res, next) => {
     const ticket = await serviceTicketService.updateTicket(id, tenantId, updateData, userId);
     return success(res, ticket);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
     if (err.message === 'TICKET_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Service ticket not found.', 404);
     }
@@ -165,13 +160,13 @@ router.delete('/:id', authorize('support:manage'), async (req, res, next) => {
 });
 
 // POST /api/projects/:projectId/service-tickets/:id/visits
-router.post('/:id/visits', authorize('support:manage'), async (req, res, next) => {
+router.post('/:id/visits', authorize('support:manage'), validate(createVisitSchema), async (req, res, next) => {
   try {
     const { id } = req.params;
     const tenantId = req.tenantId;
     const userId = req.user.userId;
 
-    const data = createVisitSchema.parse(req.body);
+    const data = req.body;
     const visit = await serviceTicketService.scheduleVisit({
       tenantId,
       ticketId: id,
@@ -183,9 +178,6 @@ router.post('/:id/visits', authorize('support:manage'), async (req, res, next) =
 
     return success(res, visit, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
     if (err.message === 'TICKET_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Service ticket not found.', 404);
     }
@@ -194,13 +186,13 @@ router.post('/:id/visits', authorize('support:manage'), async (req, res, next) =
 });
 
 // PUT /api/projects/:projectId/service-tickets/:id/visits/:visitId
-router.put('/:id/visits/:visitId', authorize('support:manage'), async (req, res, next) => {
+router.put('/:id/visits/:visitId', authorize('support:manage'), validate(updateVisitSchema), async (req, res, next) => {
   try {
     const { id, visitId } = req.params;
     const tenantId = req.tenantId;
     const userId = req.user.userId;
 
-    const data = updateVisitSchema.parse(req.body);
+    const data = req.body;
 
     const updateData = {};
     if (data.scheduledDate !== undefined) updateData.scheduled_date = data.scheduledDate;
@@ -216,9 +208,6 @@ router.put('/:id/visits/:visitId', authorize('support:manage'), async (req, res,
     const visit = await serviceTicketService.updateVisit(visitId, id, tenantId, updateData, userId);
     return success(res, visit);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
     if (err.message === 'VISIT_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Service visit not found.', 404);
     }
@@ -251,13 +240,13 @@ const addPartSchema = z.object({
 });
 
 // POST /api/projects/:projectId/service-tickets/:id/parts
-router.post('/:id/parts', authorize('support:manage'), async (req, res, next) => {
+router.post('/:id/parts', authorize('support:manage'), validate(addPartSchema), async (req, res, next) => {
   try {
     const { id } = req.params;
     const tenantId = req.tenantId;
     const userId = req.user.userId;
 
-    const data = addPartSchema.parse(req.body);
+    const data = req.body;
     const part = await serviceTicketService.addPartUsed({
       tenantId,
       ticketId: id,
@@ -270,9 +259,6 @@ router.post('/:id/parts', authorize('support:manage'), async (req, res, next) =>
 
     return success(res, part, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
     if (err.message === 'TICKET_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Service ticket not found.', 404);
     }

@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
+const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const { createPaymentMilestone, updatePaymentMilestone } = require('../services/projects/paymentMilestoneService');
 
@@ -47,9 +48,9 @@ const createSchema = z.object({
 });
 
 // POST /api/payment-milestones
-router.post('/', authorize('finance:payments'), async (req, res, next) => {
+router.post('/', authorize('finance:payments'), validate(createSchema), async (req, res, next) => {
   try {
-    const data = createSchema.parse(req.body);
+    const data  = req.body;
     // map percent -> percentage for service layer
     const mappedData = { 
       ...data, 
@@ -65,9 +66,7 @@ router.post('/', authorize('finance:payments'), async (req, res, next) => {
     });
     return success(res, milestone, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
+    
     next(err);
   }
 });
@@ -84,9 +83,9 @@ const updateSchema = z.object({
 });
 
 // PATCH /api/payment-milestones/:id
-router.patch('/:id', authorize('finance:payments'), async (req, res, next) => {
+router.patch('/:id', authorize('finance:payments'), validate(updateSchema), async (req, res, next) => {
   try {
-    const data = updateSchema.parse(req.body);
+    const data  = req.body;
     
     const milestone = await updatePaymentMilestone({
       tenantId: req.tenantId,
@@ -97,9 +96,7 @@ router.patch('/:id', authorize('finance:payments'), async (req, res, next) => {
     
     return success(res, milestone);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
+    
     if (err.message === 'NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Payment milestone not found', 404);
     }

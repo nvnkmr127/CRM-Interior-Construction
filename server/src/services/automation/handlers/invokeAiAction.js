@@ -14,14 +14,16 @@ async function handle(config, context) {
     if (actionType === 'generate_summary') {
       const summary = await aiService.generateSummary(record); // Example function
       if (outputField && summary) {
+        const safeOutputField = outputField.replace(/[^a-zA-Z0-9_]/g, '');
         // Assume record is a lead for now
-        await pool.query(`UPDATE leads SET ${outputField} = $1 WHERE id = $2`, [summary, record.id]);
+        await pool.query(`UPDATE leads SET ${safeOutputField} = $1 WHERE id = $2`, [summary, record.id]);
       }
     } else if (actionType === 'custom_prompt') {
        // Could be used for custom evaluation
        const result = await aiService.generateCustom(prompt, record);
        if (outputField && result) {
-         await pool.query(`UPDATE leads SET ${outputField} = $1 WHERE id = $2`, [result, record.id]);
+         const safeOutputField = outputField.replace(/[^a-zA-Z0-9_]/g, '');
+         await pool.query(`UPDATE leads SET ${safeOutputField} = $1 WHERE id = $2`, [result, record.id]);
        }
     }
   } catch (error) {

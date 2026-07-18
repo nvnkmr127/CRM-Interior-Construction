@@ -1,5 +1,5 @@
-const pool = require('../../config/db');
-const eventBus = require('../../utils/eventBus');
+const pool = require('../db/pool');
+const eventBus = require('../utils/eventBus');
 
 class TaskEscalationJob {
   async start() {

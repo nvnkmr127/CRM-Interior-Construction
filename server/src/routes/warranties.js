@@ -3,6 +3,7 @@ const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
+const validate = require('../middleware/validate');
 const warrantyService = require('../services/postSale/warrantyService');
 
 const router = express.Router({ mergeParams: true });
@@ -50,13 +51,13 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
 });
 
 // POST /api/projects/:projectId/warranties
-router.post('/', authorize('support:manage'), async (req, res, next) => {
+router.post('/', authorize('support:manage'), validate(createWarrantySchema), async (req, res, next) => {
   try {
     const { projectId } = req.params;
     const tenantId = req.tenantId;
     const userId = req.user.userId;
 
-    const data = createWarrantySchema.parse(req.body);
+    const data = req.body;
     const warranty = await warrantyService.createWarranty({
       tenantId,
       projectId,
@@ -75,21 +76,18 @@ router.post('/', authorize('support:manage'), async (req, res, next) => {
 
     return success(res, warranty, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
     next(err);
   }
 });
 
 // PUT /api/projects/:projectId/warranties/:id
-router.put('/:id', authorize('support:manage'), async (req, res, next) => {
+router.put('/:id', authorize('support:manage'), validate(updateWarrantySchema), async (req, res, next) => {
   try {
     const { id } = req.params;
     const tenantId = req.tenantId;
     const userId = req.user.userId;
 
-    const data = updateWarrantySchema.parse(req.body);
+    const data = req.body;
     
     // Map camelCase to snake_case for service
     const updateData = {};
@@ -108,9 +106,6 @@ router.put('/:id', authorize('support:manage'), async (req, res, next) => {
     const warranty = await warrantyService.updateWarranty(id, tenantId, updateData, userId);
     return success(res, warranty);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
     if (err.message === 'WARRANTY_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Warranty record not found.', 404);
     }

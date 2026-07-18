@@ -1,5 +1,6 @@
 const express = require('express');
 const { z } = require('zod');
+const validate = require('../../middleware/validate');
 const { success, fail } = require('../../utils/response');
 const authenticate = require('../../middleware/authenticate');
 const authorize = require('../../middleware/authorize');
@@ -36,9 +37,9 @@ router.get('/', async (req, res, next) => {
 });
 
 // POST /api/config/trade-activity-templates
-router.post('/', async (req, res, next) => {
+router.post('/', validate(createTemplateSchema), async (req, res, next) => {
   try {
-    const parsed = createTemplateSchema.parse(req.body);
+    const parsed  = req.body;
     const template = await workActivityRepository.createTemplate(req.tenantId, parsed);
     return success(res, template, {}, 201);
   } catch (error) {
@@ -48,9 +49,9 @@ router.post('/', async (req, res, next) => {
 });
 
 // PATCH /api/config/trade-activity-templates/:id
-router.patch('/:id', async (req, res, next) => {
+router.patch('/:id', validate(updateTemplateSchema), async (req, res, next) => {
   try {
-    const parsed = updateTemplateSchema.parse(req.body);
+    const parsed  = req.body;
     const template = await workActivityRepository.updateTemplate(req.params.id, req.tenantId, parsed);
     return success(res, template);
   } catch (error) {

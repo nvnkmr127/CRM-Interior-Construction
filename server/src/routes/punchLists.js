@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const punchListRepository = require('../repositories/punchListRepository');
 const { success, fail } = require('../utils/response');
+const validate = require('../middleware/validate');
 
 const router = express.Router({ mergeParams: true });
 
@@ -45,9 +46,9 @@ router.get('/', async (req, res, next) => {
 });
 
 // POST /api/projects/:projectId/punch-lists
-router.post('/', async (req, res, next) => {
+router.post('/', validate(createPunchListSchema), async (req, res, next) => {
   try {
-    const data = createPunchListSchema.parse(req.body);
+    const data = req.body;
     const pl = await punchListRepository.createPunchList(
       req.tenantId,
       req.params.projectId,
@@ -56,7 +57,6 @@ router.post('/', async (req, res, next) => {
     );
     return success(res, pl, {}, 201);
   } catch (error) {
-    if (error instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', error.errors, 400);
     next(error);
   }
 });
@@ -73,14 +73,13 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // PATCH /api/projects/:projectId/punch-lists/:id
-router.patch('/:id', async (req, res, next) => {
+router.patch('/:id', validate(updatePunchListSchema), async (req, res, next) => {
   try {
-    const updates = updatePunchListSchema.parse(req.body);
+    const updates = req.body;
     const pl = await punchListRepository.updatePunchList(req.tenantId, req.params.id, updates);
     if (!pl) return fail(res, 'NOT_FOUND', 'Punch list not found', 404);
     return success(res, pl);
   } catch (error) {
-    if (error instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', error.errors, 400);
     next(error);
   }
 });
@@ -97,21 +96,20 @@ router.delete('/:id', async (req, res, next) => {
 });
 
 // POST /api/projects/:projectId/punch-lists/:id/items
-router.post('/:id/items', async (req, res, next) => {
+router.post('/:id/items', validate(createItemSchema), async (req, res, next) => {
   try {
-    const itemData = createItemSchema.parse(req.body);
+    const itemData = req.body;
     const item = await punchListRepository.createPunchListItem(req.tenantId, req.params.id, itemData);
     return success(res, item, {}, 201);
   } catch (error) {
-    if (error instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', error.errors, 400);
     next(error);
   }
 });
 
 // PATCH /api/projects/:projectId/punch-lists/:id/items/:itemId
-router.patch('/:id/items/:itemId', async (req, res, next) => {
+router.patch('/:id/items/:itemId', validate(updateItemSchema), async (req, res, next) => {
   try {
-    const updates = updateItemSchema.parse(req.body);
+    const updates = req.body;
     const item = await punchListRepository.updatePunchListItem(
       req.tenantId,
       req.params.itemId,
@@ -120,7 +118,6 @@ router.patch('/:id/items/:itemId', async (req, res, next) => {
     );
     return success(res, item);
   } catch (error) {
-    if (error instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', error.errors, 400);
     if (error.status === 400) return fail(res, error.code || 'BAD_REQUEST', error.message, 400);
     next(error);
   }

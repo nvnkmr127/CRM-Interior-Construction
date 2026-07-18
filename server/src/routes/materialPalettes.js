@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
+const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const pool = require('../config/db');
 
@@ -84,11 +85,11 @@ router.get('/boq-items', authorize('projects:read'), async (req, res, next) => {
 });
 
 // POST /api/projects/:projectId/material-palettes
-router.post('/', authorize('design:manage'), async (req, res, next) => {
+router.post('/', authorize('design:manage'), validate(createPaletteSchema), async (req, res, next) => {
   try {
     const { projectId } = req.params;
     const tenantId = req.tenantId;
-    const data = createPaletteSchema.parse(req.body);
+    const data  = req.body;
 
     const clientApprovedAt = data.client_decision === 'approved' ? new Date() : null;
     const status = data.status || (data.client_decision === 'approved' ? 'approved' : data.client_decision === 'rejected' ? 'revision_requested' : 'pending_approval');
@@ -121,18 +122,18 @@ router.post('/', authorize('design:manage'), async (req, res, next) => {
 
     return success(res, rows[0], {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    
     console.error('[MaterialPalettes Router] Create error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create material palette item.', 500);
   }
 });
 
 // PUT /api/projects/:projectId/material-palettes/:id
-router.put('/:id', authorize('design:manage'), async (req, res, next) => {
+router.put('/:id', authorize('design:manage'), validate(updatePaletteSchema), async (req, res, next) => {
   try {
     const { projectId, id } = req.params;
     const tenantId = req.tenantId;
-    const data = updatePaletteSchema.parse(req.body);
+    const data  = req.body;
 
     const { rows: existCheck } = await pool.query(
       `SELECT * FROM project_material_palettes WHERE id = $1 AND project_id = $2 AND tenant_id = $3`,
@@ -234,7 +235,7 @@ router.put('/:id', authorize('design:manage'), async (req, res, next) => {
     const { rows } = await pool.query(query, values);
     return success(res, rows[0]);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    
     console.error('[MaterialPalettes Router] Update error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update material palette item.', 500);
   }

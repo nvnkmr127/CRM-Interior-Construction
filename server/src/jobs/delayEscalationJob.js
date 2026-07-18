@@ -1,4 +1,4 @@
-const { pool } = require('../config/db');
+const pool = require('../db/pool');
 const delayNotificationService = require('../services/projects/delayNotificationService');
 
 async function runDelayEscalation() {

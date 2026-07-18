@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
+const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const milestoneRepository = require('../repositories/milestoneRepository');
 const pool = require('../config/db');
@@ -34,9 +35,9 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
 });
 
 // POST /api/phases/:phaseId/milestones
-router.post('/', authorize('projects:manage'), async (req, res, next) => {
+router.post('/', authorize('projects:manage'), validate(createMilestoneSchema), async (req, res, next) => {
   try {
-    const data = createMilestoneSchema.parse(req.body);
+    const data  = req.body;
     
     // Verify parent phase existence & extract linked project_id
     const { rows } = await pool.query(
@@ -63,20 +64,20 @@ router.post('/', authorize('projects:manage'), async (req, res, next) => {
     
     return success(res, milestone, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    
     console.error('[Milestones Router] Create error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create milestone.', 500);
   }
 });
 
 // PATCH /api/phases/:phaseId/milestones/:mid
-router.patch('/:mid', authorize('projects:manage'), async (req, res, next) => {
+router.patch('/:mid', authorize('projects:manage'), validate(updateMilestoneSchema), async (req, res, next) => {
   try {
-    const data = updateMilestoneSchema.parse(req.body);
+    const data  = req.body;
     const updated = await milestoneRepository.updateMilestone(req.params.mid, req.tenantId, data);
     return success(res, updated);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    
     if (err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Milestone not found.', 404);
     console.error('[Milestones Router] Update error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update milestone.', 500);

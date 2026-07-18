@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const { success, fail, paginate } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
+const validate = require('../middleware/validate');
 const pool = require('../config/db');
 const taskRepository = require('../repositories/taskRepository');
 const { createTask } = require('../services/tasks/createTask');
@@ -80,9 +81,9 @@ router.get('/', async (req, res, next) => {
 });
 
 // POST /api/tasks
-router.post('/', async (req, res, next) => {
+router.post('/', validate(createTaskSchema), async (req, res, next) => {
   try {
-    const parsed = createTaskSchema.parse(req.body);
+    const parsed = req.body;
     
     const data = {
       title: parsed.title,
@@ -102,7 +103,6 @@ router.post('/', async (req, res, next) => {
     const task = await createTask({ tenantId: req.tenantId, userId: req.user.userId, data });
     return success(res, task, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     if (err.status === 400) return fail(res, 'BAD_REQUEST', err.details || err.message, 400);
     console.error('[Global Tasks Router] Create error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create task.', 500);
@@ -122,9 +122,9 @@ router.get('/:tid', async (req, res, next) => {
 });
 
 // PATCH /api/tasks/:tid
-router.patch('/:tid', async (req, res, next) => {
+router.patch('/:tid', validate(updateTaskSchema), async (req, res, next) => {
   try {
-    const data = updateTaskSchema.parse(req.body);
+    const data = req.body;
     
     const mappedData = {};
     if (data.status) mappedData.status = data.status;
@@ -147,7 +147,6 @@ router.patch('/:tid', async (req, res, next) => {
     });
     return success(res, task);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     if (err.status === 400) return fail(res, 'BAD_REQUEST', err.details || err.message, 400);
     if (err.status === 404 || err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Task not found', 404);
     console.error('[Global Tasks Router] Update error:', err);
@@ -185,9 +184,9 @@ router.get('/:tid/comments', async (req, res, next) => {
 });
 
 // POST /api/tasks/:tid/comments
-router.post('/:tid/comments', async (req, res, next) => {
+router.post('/:tid/comments', validate(commentSchema), async (req, res, next) => {
   try {
-    const { content } = commentSchema.parse(req.body);
+    const { content } = req.body;
 
     const task = await taskRepository.findTaskById(req.tenantId, req.params.tid);
     if (!task) return fail(res, 'NOT_FOUND', 'Task not found', 404);
@@ -202,7 +201,6 @@ router.post('/:tid/comments', async (req, res, next) => {
 
     return success(res, comment, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     console.error('[Global Tasks Router] Create comment error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create comment.', 500);
   }

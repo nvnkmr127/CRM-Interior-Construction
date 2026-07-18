@@ -7,6 +7,7 @@ export default function GlobalSearch() {
   const [results, setResults] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const searchRef = useRef(null);
   const navigate = useNavigate();
 
@@ -40,6 +41,7 @@ export default function GlobalSearch() {
     const performSearch = async () => {
       setLoading(true);
       try {
+        setError(null);
         const res = await api.get(`/search?q=${query}&types=leads,projects,tasks`);
         if (res.data.success) {
           setResults(res.data.data);
@@ -47,6 +49,8 @@ export default function GlobalSearch() {
         }
       } catch (e) {
         console.error('Search failed', e);
+        setError('Failed to fetch search results. Please try again.');
+        setIsOpen(true);
       } finally {
         setLoading(false);
       }
@@ -103,7 +107,7 @@ export default function GlobalSearch() {
                   <li 
                     key={lead.id} 
                     className="cursor-pointer hover:bg-gray-100 p-2 rounded-md transition-colors"
-                    onClick={() => navigateTo(`/leads`)} // Assuming drawer takes over in /leads
+                    onClick={() => navigateTo(`/leads?id=${lead.id}`)}
                   >
                     <div className="font-medium text-gray-900">{lead.name}</div>
                     <div className="text-xs text-gray-500 flex gap-2">
@@ -154,7 +158,11 @@ export default function GlobalSearch() {
             </div>
           )}
 
-          {(!results.leads?.length && !results.projects?.length && !results.tasks?.length) && (
+          {error ? (
+            <div className="px-4 py-8 text-center text-red-500">
+              {error}
+            </div>
+          ) : (!results.leads?.length && !results.projects?.length && !results.tasks?.length) && (
             <div className="px-4 py-8 text-center text-gray-500">
               No results found for "{query}"
             </div>

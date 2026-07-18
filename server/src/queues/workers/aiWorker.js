@@ -6,7 +6,7 @@ const aiService = require('../../services/aiService');
 const eventBus = require('../../services/eventBus');
 const pool = require('../../db/pool');
 
-let aiWorker = null;
+let aiWorker;
 
 if (useRedis) {
   aiWorker = new Worker('AI_Queue', async job => {

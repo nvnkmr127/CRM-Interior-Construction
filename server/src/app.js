@@ -24,6 +24,15 @@ app.use(morgan('dev'));
 
 const { rateLimit, default: defaultRateLimit } = require('express-rate-limit');
 const rateLimitFn = rateLimit || defaultRateLimit || require('express-rate-limit');
+// Some versions of express-rate-limit export ipKeyGenerator or defaultKeyGenerator
+// We will extract it safely if available to prevent IPv6 bypass warnings
+// Usually it's exported as 'defaultKeyGenerator' in older versions, or 'ipKeyGenerator' in v7+
+let ipGen = (req) => req.ip || 'unknown';
+try {
+  const erl = require('express-rate-limit');
+  if (typeof erl.defaultKeyGenerator === 'function') ipGen = erl.defaultKeyGenerator;
+  if (typeof erl.ipKeyGenerator === 'function') ipGen = erl.ipKeyGenerator;
+} catch (e) { /* ignore */ }
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -41,7 +50,7 @@ const apiLimiter = rateLimitFn({
   keyGenerator: (req, _res) => {
     // Use IP for auth routes to prevent credential stuffing
     if (req.originalUrl && req.originalUrl.startsWith('/api/auth')) {
-      return req.ip || 'unknown';
+      return ipGen(req, _res);
     }
     
     const token = req.cookies?.accessToken || req.headers.authorization?.split(' ')[1];
@@ -53,7 +62,7 @@ const apiLimiter = rateLimitFn({
         }
       } catch (e) { /* ignore */ }
     }
-    return req.ip || 'unknown';
+    return ipGen(req, _res);
   },
   message: { success: false, message: 'Too many requests, please try again later.' }
 });
@@ -143,10 +152,8 @@ const rolesRoutes = require('./routes/roles');
 const dashboardRoutes = require('./routes/dashboard');
 const errorHandler = require('./middleware/errorHandler');
 
-const dashboardRouter = require('./routes/dashboard');
 const searchRouter = require('./routes/search');
 const notificationsRouter = require('./routes/notifications');
-const usersRouter = require('./routes/users');
 const siteVisitRoutes = require('./routes/siteVisits');
 const quotationRoutes = require('./routes/quotations');
 const aiRoutes = require('./routes/ai');
@@ -188,7 +195,14 @@ app.get('/api/local-download', (req, res) => {
   }
   const path = require('path');
   const fs = require('fs');
-  const filePath = path.join(__dirname, '../uploads', key);
+  const uploadsDir = path.resolve(__dirname, '../uploads');
+  const filePath = path.resolve(uploadsDir, key);
+  
+  // Enterprise Security: Prevent absolute path traversal and directory escape
+  if (!filePath.startsWith(uploadsDir)) {
+    return res.status(403).send('Invalid file path');
+  }
+
   if (!fs.existsSync(filePath)) {
     return res.status(404).send('File not found');
   }
@@ -232,10 +246,8 @@ app.use('/api/portal/quotations', portalQuotationsRoutes);
 
 
 
-app.use('/api/dashboard', dashboardRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/notifications', notificationsRouter);
-app.use('/api/users', usersRouter);
 app.use('/api/site-visits', siteVisitRoutes);
 app.use('/api/quotations', quotationRoutes);
 app.use('/api/communications', require('./routes/communications'));

@@ -1,40 +1,36 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useReducer, useCallback } from 'react'
-import { ToastContainer } from '../components/ui/Toast'
+import { create } from 'zustand';
+import { ToastContainer } from '../components/ui/Toast';
 
-const ToastCtx = createContext(null)
-
-function reducer(state, action) {
-  switch(action.type) {
-    case 'ADD':    return [...state, action.toast]
-    case 'REMOVE': return state.filter(t => t.id !== action.id)
-    default: return state
+export const useToastStore = create((set, get) => ({
+  toasts: [],
+  addToast: (toast) => set(state => ({ toasts: [...state.toasts, toast] })),
+  removeToast: (id) => set(state => ({ toasts: state.toasts.filter(t => t.id !== id) })),
+  show: (type, message, duration) => {
+    const id = Date.now() + Math.random();
+    const d = duration ?? (type === 'error' ? 6000 : type === 'warning' ? 5000 : type === 'info' ? 4000 : 3000);
+    get().addToast({ id, type, message });
+    setTimeout(() => get().removeToast(id), d);
   }
-}
+}));
 
-export function ToastProvider({ children }) {
-  const [toasts, dispatch] = useReducer(reducer, [])
-
-  const show = useCallback((type, message, duration) => {
-    const id = Date.now() + Math.random()
-    const d = duration ?? (type==='error' ? 6000 : type==='warning' ? 5000 : type==='info' ? 4000 : 3000)
-    dispatch({ type:'ADD', toast:{ id, type, message } })
-    setTimeout(() => dispatch({ type:'REMOVE', id }), d)
-  }, [])
-
-  const toast = {
+export const useToast = () => {
+  const show = useToastStore(state => state.show);
+  return {
     success: (msg, d) => show('success', msg, d),
     error:   (msg, d) => show('error',   msg, d),
     warning: (msg, d) => show('warning', msg, d),
     info:    (msg, d) => show('info',    msg, d),
-  }
+  };
+};
 
-  return (
-    <ToastCtx.Provider value={toast}>
-      <ToastContainer toasts={toasts} dispatch={dispatch} />
-      {children}
-    </ToastCtx.Provider>
-  )
+export function GlobalToast() {
+  const toasts = useToastStore(state => state.toasts);
+  const removeToast = useToastStore(state => state.removeToast);
+  
+  const dispatch = (action) => {
+    if (action.type === 'REMOVE') removeToast(action.id);
+  };
+  
+  return <ToastContainer toasts={toasts} dispatch={dispatch} />;
 }
-
-export const useToast = () => useContext(ToastCtx)

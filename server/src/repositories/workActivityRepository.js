@@ -108,7 +108,7 @@ class WorkActivityRepository {
       values.push(roomName);
     }
     if (status) {
-      whereClause += ` AND pwa.status = $${idx++}`;
+      whereClause += ` AND pwa.status = $${idx}`;
       values.push(status);
     }
 

@@ -1,97 +1,102 @@
-/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, no-empty, react-refresh/only-export-components */
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { useToast } from './toastContext';
+import { create } from 'zustand';
 
-const TimeTrackerContext = createContext(null);
+export const useTimeTrackerStore = create((set, get) => ({
+  activeTimer: null,
+  elapsedSecs: 0,
+  intervalRef: null,
 
-export function TimeTrackerProvider({ children }) {
-  const [activeTimer, setActiveTimer] = useState(null); // { taskId, projectId, title, startTime, accumulatedSecs }
-  const [elapsedSecs, setElapsedSecs] = useState(0);
-  const intervalRef = useRef(null);
-  const toast = useToast();
-
-  // Load from local storage
-  useEffect(() => {
+  init: () => {
     const saved = localStorage.getItem('myTasksActiveTimer');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        setActiveTimer(parsed);
+        set({ activeTimer: parsed });
         if (parsed.startTime) {
           const diff = Math.floor((Date.now() - parsed.startTime) / 1000);
-          setElapsedSecs((parsed.accumulatedSecs || 0) + diff);
-          startInterval(parsed.startTime, parsed.accumulatedSecs || 0);
+          set({ elapsedSecs: (parsed.accumulatedSecs || 0) + diff });
+          get().startInterval(parsed.startTime, parsed.accumulatedSecs || 0);
         } else {
-          setElapsedSecs(parsed.accumulatedSecs || 0);
+          set({ elapsedSecs: parsed.accumulatedSecs || 0 });
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error('Failed to parse active timer', e);
+      }
     }
-  }, []);
+  },
 
-  function startInterval(startTs, baseSecs) {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(() => {
+  startInterval: (startTs, baseSecs) => {
+    const currentInterval = get().intervalRef;
+    if (currentInterval) clearInterval(currentInterval);
+    
+    const intervalRef = setInterval(() => {
       const diff = Math.floor((Date.now() - startTs) / 1000);
-      setElapsedSecs(baseSecs + diff);
+      set({ elapsedSecs: baseSecs + diff });
     }, 1000);
-  };
+    
+    set({ intervalRef });
+  },
 
-  const persist = (data) => {
+  persist: (data) => {
     if (!data) {
       localStorage.removeItem('myTasksActiveTimer');
-      setActiveTimer(null);
+      set({ activeTimer: null });
     } else {
       localStorage.setItem('myTasksActiveTimer', JSON.stringify(data));
-      setActiveTimer(data);
+      set({ activeTimer: data });
     }
-  };
+  },
 
-  const startTimer = (taskId, projectId, title) => {
+  startTimer: (taskId, projectId, title) => {
+    const { activeTimer } = get();
+    // Assuming useToast is used by the caller to show the warning if needed
     if (activeTimer && activeTimer.taskId !== taskId) {
-      toast.warning('Please stop the current timer first.');
-      return;
+      return false; // Indicating failure to start
     }
     const ts = Date.now();
     const accumulated = activeTimer ? activeTimer.accumulatedSecs : 0;
     const newData = { taskId, projectId, title, startTime: ts, accumulatedSecs: accumulated };
-    persist(newData);
-    startInterval(ts, accumulated);
-  };
+    get().persist(newData);
+    get().startInterval(ts, accumulated);
+    return true;
+  },
 
-  const pauseTimer = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
+  pauseTimer: () => {
+    const { intervalRef, activeTimer, elapsedSecs } = get();
+    if (intervalRef) clearInterval(intervalRef);
     if (!activeTimer) return;
     const newData = { ...activeTimer, startTime: null, accumulatedSecs: elapsedSecs };
-    persist(newData);
-  };
+    get().persist(newData);
+  },
 
-  const stopTimer = async () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
+  stopTimer: async () => {
+    const { intervalRef, activeTimer, elapsedSecs } = get();
+    if (intervalRef) clearInterval(intervalRef);
     if (!activeTimer) return 0;
     const finalSecs = elapsedSecs;
-    persist(null);
-    setElapsedSecs(0);
+    get().persist(null);
+    set({ elapsedSecs: 0 });
     return finalSecs;
+  },
+
+  discardTimer: () => {
+    const { intervalRef } = get();
+    if (intervalRef) clearInterval(intervalRef);
+    get().persist(null);
+    set({ elapsedSecs: 0 });
+  }
+}));
+
+// Initialize on load
+useTimeTrackerStore.getState().init();
+
+export const useTimeTracker = () => {
+  const store = useTimeTrackerStore();
+  return {
+    activeTimer: store.activeTimer,
+    elapsedSecs: store.elapsedSecs,
+    startTimer: store.startTimer,
+    pauseTimer: store.pauseTimer,
+    stopTimer: store.stopTimer,
+    discardTimer: store.discardTimer
   };
-
-  const discardTimer = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    persist(null);
-    setElapsedSecs(0);
-  };
-
-  return (
-    <TimeTrackerContext.Provider value={{
-      activeTimer,
-      elapsedSecs,
-      startTimer,
-      pauseTimer,
-      stopTimer,
-      discardTimer
-    }}>
-      {children}
-    </TimeTrackerContext.Provider>
-  );
-}
-
-export const useTimeTracker = () => useContext(TimeTrackerContext);
+};

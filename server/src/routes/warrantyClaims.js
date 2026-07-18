@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
+const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const warrantyClaimService = require('../services/postSale/warrantyClaimService');
 
@@ -43,13 +44,13 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
 });
 
 // POST /api/projects/:projectId/warranty-claims
-router.post('/', authorize('support:manage'), async (req, res, next) => {
+router.post('/', authorize('support:manage'), validate(createClaimSchema), async (req, res, next) => {
   try {
     const { projectId } = req.params;
     const tenantId = req.tenantId;
     const userId = req.user.userId;
 
-    const data = createClaimSchema.parse(req.body);
+    const data  = req.body;
     const claim = await warrantyClaimService.createClaim({
       tenantId,
       projectId,
@@ -63,21 +64,19 @@ router.post('/', authorize('support:manage'), async (req, res, next) => {
 
     return success(res, claim, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
+    
     next(err);
   }
 });
 
 // PUT /api/projects/:projectId/warranty-claims/:id
-router.put('/:id', authorize('support:manage'), async (req, res, next) => {
+router.put('/:id', authorize('support:manage'), validate(updateClaimSchema), async (req, res, next) => {
   try {
     const { id } = req.params;
     const tenantId = req.tenantId;
     const userId = req.user.userId;
 
-    const data = updateClaimSchema.parse(req.body);
+    const data  = req.body;
 
     const updateData = {};
     if (data.warrantyId !== undefined) updateData.warranty_id = data.warrantyId;
@@ -93,9 +92,7 @@ router.put('/:id', authorize('support:manage'), async (req, res, next) => {
     const claim = await warrantyClaimService.updateClaim(id, tenantId, updateData, userId);
     return success(res, claim);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
+    
     if (err.message === 'CLAIM_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Warranty claim not found.', 404);
     }

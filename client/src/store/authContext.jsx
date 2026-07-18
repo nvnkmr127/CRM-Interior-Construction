@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useState, useEffect, useContext, useMemo } from 'react';
+import { createContext, useState, useEffect, useContext, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 
@@ -45,7 +45,7 @@ export function AuthProvider({ children }) {
     restoreSession();
   }, []);
 
-  const login = async (email, password, tenantSlug) => {
+  const login = useCallback(async (email, password, tenantSlug) => {
     // Dev-only mock login bypass — stripped in production builds
     if (import.meta.env.DEV && email === 'admin@mock.com' && password === 'password') {
       const mockUser = {
@@ -77,9 +77,9 @@ export function AuthProvider({ children }) {
                       'Login failed. Please check your credentials.';
       return { success: false, message };
     }
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     // Dev-only mock logout bypass — stripped in production builds
     if (import.meta.env.DEV && localStorage.getItem('mockSession')) {
       localStorage.removeItem('mockSession');
@@ -97,7 +97,7 @@ export function AuthProvider({ children }) {
       setUser(null);
       navigate('/login');
     }
-  };
+  }, [navigate]);
 
   const value = useMemo(() => ({
     user,
@@ -105,8 +105,7 @@ export function AuthProvider({ children }) {
     isAuthenticated: !!user,
     login,
     logout
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [user, loading, logout]);
+  }), [user, loading, login, logout]);
 
   return (
     <AuthContext.Provider value={value}>

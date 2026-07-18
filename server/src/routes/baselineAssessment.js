@@ -1,7 +1,8 @@
 const express = require('express');
 const { z } = require('zod');
-const { success, fail } = require('../utils/response');
+const { success } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
+const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const baselineAssessmentRepository = require('../repositories/baselineAssessmentRepository');
 
@@ -23,7 +24,7 @@ const saveAssessmentSchema = z.object({
 });
 
 // GET /api/projects/:projectId/baseline-assessment
-router.get('/', authorize('projects:read'), async (req, res) => {
+router.get('/', authorize('projects:read'), async (req, res, next) => {
   try {
     const assessment = await baselineAssessmentRepository.findAssessment(
       req.tenantId,
@@ -31,15 +32,14 @@ router.get('/', authorize('projects:read'), async (req, res) => {
     );
     return success(res, assessment);
   } catch (err) {
-    console.error('[BaselineAssessment Router] Fetch error:', err);
-    return fail(res, 'INTERNAL_ERROR', 'Failed to fetch baseline assessment.', 500);
+    next(err);
   }
 });
 
 // POST /api/projects/:projectId/baseline-assessment
-router.post('/', authorize('projects:manage'), async (req, res) => {
+router.post('/', authorize('projects:manage'), validate(saveAssessmentSchema), async (req, res, next) => {
   try {
-    const body = saveAssessmentSchema.parse(req.body);
+    const body  = req.body;
     const assessment = await baselineAssessmentRepository.saveAssessment(
       req.tenantId,
       req.params.projectId,
@@ -48,11 +48,7 @@ router.post('/', authorize('projects:manage'), async (req, res) => {
     );
     return success(res, assessment);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
-    console.error('[BaselineAssessment Router] Save error:', err);
-    return fail(res, 'INTERNAL_ERROR', 'Failed to save baseline assessment.', 500);
+    next(err);
   }
 });
 

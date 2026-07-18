@@ -139,7 +139,7 @@ async function updateSnagStatus({
     params.push(rootCauseCategory);
   }
   if (vendorId !== undefined) {
-    setClauses.push(`vendor_id = $${index++}`);
+    setClauses.push(`vendor_id = $${index}`);
     params.push(vendorId);
   }
 

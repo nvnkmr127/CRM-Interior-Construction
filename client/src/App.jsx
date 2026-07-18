@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './store/authContext'
-import { ToastProvider } from './store/toastContext'
+import { GlobalToast } from './store/toastContext'
 import { BreadcrumbsProvider } from './store/breadcrumbsContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Shell from './components/layout/Shell'
@@ -10,8 +10,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import OfflineBanner from './components/layout/OfflineBanner'
 import CommandPalette from './components/ui/CommandPalette'
 
-import { TimeTrackerProvider } from './store/TimeTrackerContext'
-import { TaskNotificationProvider } from './store/TaskNotificationContext'
+// Removed TimeTrackerProvider and TaskNotificationProvider as they are now Zustand stores
 import { TaskAutomationProvider } from './store/TaskAutomationContext'
 import { TaskGovernanceProvider } from './store/TaskGovernanceContext'
 
@@ -56,15 +55,13 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <ToastProvider>
-          <BreadcrumbsProvider>
-            <TimeTrackerProvider>
-              <TaskNotificationProvider>
-                <TaskAutomationProvider>
+        <BreadcrumbsProvider>
+          <TaskAutomationProvider>
                   <TaskGovernanceProvider>
                     <ErrorBoundary>
               <OfflineBanner />
               <CommandPalette />
+              <GlobalToast />
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path='/login' element={<Login />} />
@@ -110,10 +107,7 @@ export default function App() {
             </ErrorBoundary>
                   </TaskGovernanceProvider>
                 </TaskAutomationProvider>
-              </TaskNotificationProvider>
-            </TimeTrackerProvider>
           </BreadcrumbsProvider>
-        </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
   )

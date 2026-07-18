@@ -1,4 +1,4 @@
-const { pool } = require('../config/db');
+const pool = require('../db/pool');
 const weeklyReportService = require('../services/projects/weeklyReportService');
 
 async function runWeeklyReports() {

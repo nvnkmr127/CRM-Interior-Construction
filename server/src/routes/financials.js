@@ -1,7 +1,8 @@
 const express = require('express');
 const { z } = require('zod');
-const { success, fail } = require('../utils/response');
+const { success } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
+const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const {
   getCreditNotes,
@@ -47,9 +48,9 @@ router.get('/projects/:projectId/credit-notes', authorize('projects:read'), asyn
 });
 
 // POST /api/financials/credit-notes
-router.post('/credit-notes', authorize('finance:credits'), async (req, res, next) => {
+router.post('/credit-notes', authorize('finance:credits'), validate(createCreditNoteSchema), async (req, res, next) => {
   try {
-    const data = createCreditNoteSchema.parse(req.body);
+    const data  = req.body;
     const creditNote = await createCreditNote({
       tenantId: req.tenantId,
       userId: req.user.userId,
@@ -57,9 +58,7 @@ router.post('/credit-notes', authorize('finance:credits'), async (req, res, next
     });
     return success(res, creditNote, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
+    
     next(err);
   }
 });
@@ -75,9 +74,9 @@ router.get('/projects/:projectId/refunds', authorize('projects:read'), async (re
 });
 
 // POST /api/financials/refunds
-router.post('/refunds', authorize('finance:credits'), async (req, res, next) => {
+router.post('/refunds', authorize('finance:credits'), validate(createRefundSchema), async (req, res, next) => {
   try {
-    const data = createRefundSchema.parse(req.body);
+    const data  = req.body;
     const refund = await createRefund({
       tenantId: req.tenantId,
       userId: req.user.userId,
@@ -85,9 +84,7 @@ router.post('/refunds', authorize('finance:credits'), async (req, res, next) => 
     });
     return success(res, refund, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
+    
     next(err);
   }
 });

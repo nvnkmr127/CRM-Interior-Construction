@@ -209,8 +209,8 @@ export default function MyTasksPage() {
           checklist: Array.isArray(t.checklist) ? t.checklist : (Array.isArray(t.subtasks) ? t.subtasks : []),
         }))
 
-        // Inject Mock Data if no tasks exist
-        if (normalized.length === 0) {
+        // Inject Mock Data if no tasks exist (Dev only)
+        if (normalized.length === 0 && import.meta.env.DEV) {
           const today = new Date();
           const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
           const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
@@ -403,12 +403,14 @@ export default function MyTasksPage() {
   const isPending = (status) => !['done', 'cancelled'].includes(status)
 
   const isToday = (d) => {
-    const date = new Date(d)
+    if (!d) return false;
+    const date = new Date(d.includes('T') ? d : d + 'T00:00:00')
     const today = new Date()
     return date.getDate() === today.getDate() && date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()
   }
   const isOverdue = (d) => {
-    const date = new Date(d); date.setHours(0,0,0,0)
+    if (!d) return false;
+    const date = new Date(d.includes('T') ? d : d + 'T00:00:00'); date.setHours(0,0,0,0)
     const today = new Date(); today.setHours(0,0,0,0)
     return date < today
   }

@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
+const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const {
   getInvoiceByMilestone,
@@ -96,9 +97,9 @@ router.get('/milestone/:milestoneId/draft', authorize('projects:read'), async (r
 });
 
 // POST /api/invoices
-router.post('/', authorize('finance:invoices'), async (req, res, next) => {
+router.post('/', authorize('finance:invoices'), validate(createInvoiceSchema), async (req, res, next) => {
   try {
-    const data = createInvoiceSchema.parse(req.body);
+    const data  = req.body;
     
     const invoice = await createInvoice({
       tenantId: req.tenantId,
@@ -109,9 +110,7 @@ router.post('/', authorize('finance:invoices'), async (req, res, next) => {
     
     return success(res, invoice, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
+    
     if (err.message === 'INVOICE_ALREADY_EXISTS') {
       return fail(res, 'CONFLICT', 'An invoice has already been generated for this milestone.', 409);
     }

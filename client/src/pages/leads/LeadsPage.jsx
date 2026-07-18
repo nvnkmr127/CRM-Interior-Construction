@@ -1,5 +1,5 @@
-/* eslint-disable no-unused-vars, no-undef, react-hooks/immutability */
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui';
 import { useToast } from '../../store/toastContext';
 import api from '../../api/axios';
@@ -21,20 +21,43 @@ import styles from './LeadsPage.module.css';
 export default function LeadsPage() {
   const toast = useToast();
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const isAdmin = user?.role === 'admin' || user?.role?.name === 'admin' || user?.role === 'superadmin' || user?.role?.name === 'superadmin';
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  React.useEffect(() => {
+  useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
     }, 400);
     return () => clearTimeout(timer);
   }, [search]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setPage(1);
   }, [debouncedSearch]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    let changed = false;
+    
+    if (params.get('new') === 'true') {
+      setIsFormOpen(true);
+      params.delete('new');
+      changed = true;
+    }
+    
+    if (params.get('id')) {
+      setSelectedLeadId(params.get('id'));
+      params.delete('id');
+      changed = true;
+    }
+
+    if (changed) {
+      navigate({ search: params.toString() }, { replace: true });
+    }
+  }, [location.search, navigate]);
 
   const [assigneeFilter, setAssigneeFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('All Sources');
@@ -42,7 +65,7 @@ export default function LeadsPage() {
   const [intentFilter, setIntentFilter] = useState('all');
   const [sortBy, setSortBy] = useState(() => localStorage.getItem('crm_leads_sortBy') || 'latest');
 
-  React.useEffect(() => {
+  useEffect(() => {
     localStorage.setItem('crm_leads_sortBy', sortBy);
   }, [sortBy]);
   const [view, setView] = useState('dashboard');

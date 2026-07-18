@@ -1,6 +1,10 @@
 const { Pool } = require('pg');
 const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') }); // It is 3 levels up from server/src/db/pool.js: 1(db)->2(src)->3(server)->root
+if (process.env.NODE_ENV === 'test') {
+  require('dotenv').config({ path: path.resolve(__dirname, '../../.env.test'), override: true });
+} else {
+  require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
+}
 
 const useSSL = process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost') && !process.env.DATABASE_URL.includes('127.0.0.1');
 

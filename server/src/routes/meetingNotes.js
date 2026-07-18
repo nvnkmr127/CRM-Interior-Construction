@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
+const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const pool = require('../db/pool');
 
@@ -61,12 +62,12 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
 });
 
 // POST /api/projects/:projectId/meeting-notes
-router.post('/', authorize('projects:manage'), async (req, res, next) => {
+router.post('/', authorize('projects:manage'), validate(meetingNoteSchema), async (req, res, next) => {
   const client = await pool.connect();
   try {
     const { projectId } = req.params;
     const { tenantId } = req;
-    const body = meetingNoteSchema.parse(req.body);
+    const body  = req.body;
 
     await client.query('BEGIN');
 
@@ -128,12 +129,12 @@ router.post('/', authorize('projects:manage'), async (req, res, next) => {
 });
 
 // PATCH /api/projects/:projectId/meeting-notes/:id
-router.patch('/:id', authorize('projects:manage'), async (req, res, next) => {
+router.patch('/:id', authorize('projects:manage'), validate(meetingNoteSchema), async (req, res, next) => {
   const client = await pool.connect();
   try {
     const { projectId, id } = req.params;
     const { tenantId } = req;
-    const body = meetingNoteSchema.parse(req.body);
+    const body  = req.body;
 
     await client.query('BEGIN');
 

@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authorize = require('../middleware/authorize');
+const validate = require('../middleware/validate');
 const { getOrCreateClosureChecklist, updateClosureChecklist } = require('../services/postSale/projectClosureService');
 
 const router = express.Router({ mergeParams: true });
@@ -36,19 +37,17 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
 });
 
 // PATCH /api/projects/:projectId/closure-checklist
-router.patch('/', authorize('projects:manage'), async (req, res, next) => {
+router.patch('/', authorize('projects:manage'), validate(updateClosureChecklistSchema), async (req, res, next) => {
   try {
     const { projectId } = req.params;
     const tenantId = req.tenantId;
     const userId = req.user.userId;
 
-    const data = updateClosureChecklistSchema.parse(req.body);
+    const data  = req.body;
     const result = await updateClosureChecklist(projectId, tenantId, userId, data);
     return success(res, result);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
+    
     if (err.message === 'PROJECT_NOT_FOUND' || err.status === 404) {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }

@@ -1,6 +1,7 @@
 const express = require('express');
 const { z } = require('zod');
 const authenticatePortal = require('../../middleware/authenticatePortal');
+const validate = require('../../middleware/validate');
 const { success, fail } = require('../../utils/response');
 const serviceTicketService = require('../../services/postSale/serviceTicketService');
 
@@ -31,11 +32,11 @@ router.get('/', async (req, res, next) => {
 });
 
 // POST /api/portal/service-tickets
-router.post('/', async (req, res, next) => {
+router.post('/', validate(createPortalTicketSchema), async (req, res, next) => {
   try {
     const { projectId, tenantId, id: portalUserId } = req.portalUser;
 
-    const data = createPortalTicketSchema.parse(req.body);
+    const data = req.body;
     const ticket = await serviceTicketService.createTicket({
       tenantId,
       projectId,
@@ -79,12 +80,12 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // POST /api/portal/service-tickets/:id/feedback
-router.post('/:id/feedback', async (req, res, next) => {
+router.post('/:id/feedback', validate(feedbackSchema), async (req, res, next) => {
   try {
     const { id } = req.params;
     const { tenantId, id: portalUserId } = req.portalUser;
 
-    const data = feedbackSchema.parse(req.body);
+    const data = req.body;
 
     try {
       const ticket = await serviceTicketService.submitClientFeedback(
@@ -147,11 +148,10 @@ const csatSchema = z.object({
   comments: z.string().optional().nullable()
 });
 
-// POST /api/portal/service-tickets/csat
-router.post('/csat', async (req, res, next) => {
+router.post('/csat', validate(csatSchema), async (req, res, next) => {
   try {
     const { projectId, tenantId, id: portalUserId } = req.portalUser;
-    const data = csatSchema.parse(req.body);
+    const data = req.body;
 
     const csat = await serviceTicketService.submitCsat({
       tenantId,
@@ -165,9 +165,6 @@ router.post('/csat', async (req, res, next) => {
 
     return success(res, csat, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
     if (err.message === 'PROJECT_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Project not found.', 404);
     }

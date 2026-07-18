@@ -4,6 +4,7 @@ const { success, fail, paginate } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const pool = require('../config/db');
+const validate = require('../middleware/validate');
 const taskRepository = require('../repositories/taskRepository');
 const { createTask } = require('../services/tasks/createTask');
 const { updateTask } = require('../services/tasks/updateTask');
@@ -81,15 +82,14 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
 });
 
 // POST /api/projects/:projectId/tasks
-router.post('/', authorize('projects:manage'), async (req, res, next) => {
+router.post('/', authorize('projects:manage'), validate(createTaskSchema), async (req, res, next) => {
   try {
-    const data = createTaskSchema.parse(req.body);
+    const data = req.body;
     data.projectId = req.params.projectId;
 
     const task = await createTask({ tenantId: req.tenantId, userId: req.user.userId, data });
     return success(res, task, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     if (err.status === 400) return fail(res, err.code || 'BAD_REQUEST', err.details || err.message, 400);
     console.error('[Tasks Router] Create error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create task.', 500);
@@ -97,9 +97,9 @@ router.post('/', authorize('projects:manage'), async (req, res, next) => {
 });
 
 // POST /api/projects/:projectId/tasks/bulk
-router.post('/bulk', authorize('projects:manage'), async (req, res, next) => {
+router.post('/bulk', authorize('projects:manage'), validate(bulkSchema), async (req, res, next) => {
   try {
-    const { tasks } = bulkSchema.parse(req.body);
+    const { tasks } = req.body;
     const createdTasks = await bulkCreateTasks({
       tenantId: req.tenantId,
       userId: req.user.userId,
@@ -108,7 +108,6 @@ router.post('/bulk', authorize('projects:manage'), async (req, res, next) => {
     });
     return success(res, { created: createdTasks, count: createdTasks.length }, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     if (err.status === 400) return fail(res, err.code || 'BAD_REQUEST', err.details || err.message, 400);
     console.error('[Tasks Router] Bulk create error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to bulk create tasks.', 500);
@@ -116,13 +115,12 @@ router.post('/bulk', authorize('projects:manage'), async (req, res, next) => {
 });
 
 // PATCH /api/projects/:projectId/tasks/reorder
-router.patch('/reorder', authorize('projects:manage'), async (req, res, next) => {
+router.patch('/reorder', authorize('projects:manage'), validate(reorderSchema), async (req, res, next) => {
   try {
-    const { orderedIds } = reorderSchema.parse(req.body);
+    const { orderedIds } = req.body;
     await taskRepository.reorderTasks(req.params.projectId, req.tenantId, orderedIds);
     return success(res, { message: 'Tasks reordered successfully' });
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     console.error('[Tasks Router] Reorder error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to reorder tasks.', 500);
   }
@@ -189,9 +187,9 @@ router.get('/:tid', authorize('projects:read'), async (req, res, next) => {
 });
 
 // PATCH /api/projects/:projectId/tasks/:tid
-router.patch('/:tid', authorize('projects:manage'), async (req, res, next) => {
+router.patch('/:tid', authorize('projects:manage'), validate(updateTaskSchema), async (req, res, next) => {
   try {
-    const data = updateTaskSchema.parse(req.body);
+    const data = req.body;
     
     // Explicit map camelCase payload into service payload keys safely
     const mappedData = {};
@@ -212,7 +210,6 @@ router.patch('/:tid', authorize('projects:manage'), async (req, res, next) => {
     });
     return success(res, task);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     if (err.status === 400) return fail(res, err.code || 'BAD_REQUEST', err.details || err.message, 400);
     if (err.status === 404 || err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Task not found', 404);
     console.error('[Tasks Router] Update error:', err);
@@ -250,9 +247,9 @@ router.get('/:tid/comments', authorize('projects:read'), async (req, res, next) 
 });
 
 // POST /api/projects/:projectId/tasks/:tid/comments
-router.post('/:tid/comments', authorize('projects:read'), async (req, res, next) => {
+router.post('/:tid/comments', authorize('projects:read'), validate(commentSchema), async (req, res, next) => {
   try {
-    const { content } = commentSchema.parse(req.body);
+    const { content } = req.body;
 
     const task = await taskRepository.findTaskById(req.tenantId, req.params.tid);
     if (!task) return fail(res, 'NOT_FOUND', 'Task not found', 404);
@@ -268,7 +265,6 @@ router.post('/:tid/comments', authorize('projects:read'), async (req, res, next)
 
     return success(res, comment, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     console.error('[Tasks Router] Create comment error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create comment.', 500);
   }

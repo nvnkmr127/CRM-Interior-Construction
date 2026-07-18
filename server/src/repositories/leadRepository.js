@@ -279,10 +279,10 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
 
   const offset = (page - 1) * limit;
   if (cursor) {
-    query += ` ORDER BY ${orderField} ${orderDirection}, l.id ${orderDirection} LIMIT $${paramIndex++}`;
+    query += ` ORDER BY ${orderField} ${orderDirection}, l.id ${orderDirection} LIMIT $${paramIndex}`;
     values.push(limit);
   } else {
-    query += ` ORDER BY ${orderField} ${orderDirection}, l.id ${orderDirection} LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
+    query += ` ORDER BY ${orderField} ${orderDirection}, l.id ${orderDirection} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     values.push(limit, offset);
   }
   
@@ -370,11 +370,12 @@ async function updateLead(tenantId, leadId, updates) {
 
     // 2. Update Properties
     if (Object.keys(propUpdates).length > 0) {
-      const propSet = Object.keys(propUpdates).map((key, idx) => `${key} = $${idx + 3}`).join(', ');
+      const propKeys = Object.keys(propUpdates).map(k => k.replace(/[^a-zA-Z0-9_]/g, ''));
+      const propSet = propKeys.map((key, idx) => `${key} = $${idx + 3}`).join(', ');
       const propValues = Object.values(propUpdates);
       
       // Upsert: Create if it doesn't exist
-      const propInsertCols = ['tenant_id', 'lead_id', ...Object.keys(propUpdates)].join(', ');
+      const propInsertCols = ['tenant_id', 'lead_id', ...propKeys].join(', ');
       const propInsertVals = ['$1', '$2', ...Object.values(propUpdates).map((_, idx) => `$${idx + 3}`)].join(', ');
       
       // Unfortunately we can't easily ON CONFLICT DO UPDATE here if lead_id isn't marked UNIQUE. Let's just do standard UPSERT pattern manually.
@@ -388,14 +389,15 @@ async function updateLead(tenantId, leadId, updates) {
 
     // 3. Update Preferences
     if (Object.keys(prefUpdates).length > 0) {
-      const prefSet = Object.keys(prefUpdates).map((key, idx) => `${key} = $${idx + 3}`).join(', ');
+      const prefKeys = Object.keys(prefUpdates).map(k => k.replace(/[^a-zA-Z0-9_]/g, ''));
+      const prefSet = prefKeys.map((key, idx) => `${key} = $${idx + 3}`).join(', ');
       const prefValues = Object.values(prefUpdates);
       
       const existingPref = await client.query('SELECT id FROM lead_preferences WHERE lead_id = $1 AND tenant_id = $2', [leadId, tenantId]);
       if (existingPref.rows.length > 0) {
          await client.query(`UPDATE lead_preferences SET ${prefSet}, updated_at = NOW() WHERE lead_id = $1 AND tenant_id = $2`, [leadId, tenantId, ...prefValues]);
       } else {
-         const prefInsertCols = ['tenant_id', 'lead_id', ...Object.keys(prefUpdates)].join(', ');
+         const prefInsertCols = ['tenant_id', 'lead_id', ...prefKeys].join(', ');
          const prefInsertVals = ['$1', '$2', ...Object.values(prefUpdates).map((_, idx) => `$${idx + 3}`)].join(', ');
          await client.query(`INSERT INTO lead_preferences (${prefInsertCols}) VALUES (${prefInsertVals})`, [tenantId, leadId, ...prefValues]);
       }

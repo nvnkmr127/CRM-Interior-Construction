@@ -3,6 +3,7 @@ const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
+const validate = require('../middleware/validate');
 const workActivityRepository = require('../repositories/workActivityRepository');
 
 const router = express.Router({ mergeParams: true });
@@ -80,24 +81,23 @@ router.get('/templates', authorize('projects:read'), async (req, res) => {
 });
 
 // POST /api/projects/:projectId/work-activities
-router.post('/', authorize('projects:manage'), async (req, res) => {
+router.post('/', authorize('projects:manage'), validate(createActivitySchema), async (req, res) => {
   try {
-    const data = createActivitySchema.parse(req.body);
+    const data = req.body;
     data.project_id = req.params.projectId;
 
     const activity = await workActivityRepository.createActivity(req.tenantId, data);
     return success(res, activity, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     console.error('[WorkActivities Router] Create error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create work activity.', 500);
   }
 });
 
 // POST /api/projects/:projectId/work-activities/generate
-router.post('/generate', authorize('projects:manage'), async (req, res) => {
+router.post('/generate', authorize('projects:manage'), validate(generateSchema), async (req, res) => {
   try {
-    const { phaseId, roomName, trade } = generateSchema.parse(req.body);
+    const { phaseId, roomName, trade } = req.body;
     const created = await workActivityRepository.generateActivities(
       req.tenantId,
       req.params.projectId,
@@ -107,16 +107,15 @@ router.post('/generate', authorize('projects:manage'), async (req, res) => {
     );
     return success(res, created, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     console.error('[WorkActivities Router] Generate error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to generate activities.', 500);
   }
 });
 
 // PATCH /api/projects/:projectId/work-activities/:id
-router.patch('/:id', authorize('projects:manage'), async (req, res) => {
+router.patch('/:id', authorize('projects:manage'), validate(updateActivitySchema), async (req, res) => {
   try {
-    const updates = updateActivitySchema.parse(req.body);
+    const updates = req.body;
 
     if (updates.status === 'completed' && req.user?.role !== 'superadmin') {
       const perms = req.user?.permissions || [];
@@ -133,7 +132,6 @@ router.patch('/:id', authorize('projects:manage'), async (req, res) => {
     );
     return success(res, activity);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     if (err.status === 400) return fail(res, err.code || 'BAD_REQUEST', err.message, 400);
     if (err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Work activity not found.', 404);
     console.error('[WorkActivities Router] Update error:', err);
@@ -204,9 +202,9 @@ const createDependencySchema = z.object({
 });
 
 // POST /api/projects/:projectId/work-activities/dependencies
-router.post('/dependencies', authorize('projects:manage'), async (req, res) => {
+router.post('/dependencies', authorize('projects:manage'), validate(createDependencySchema), async (req, res) => {
   try {
-    const { activityId, dependsOnActivityId, dependencyType = 'finish-to-start' } = createDependencySchema.parse(req.body);
+    const { activityId, dependsOnActivityId, dependencyType = 'finish-to-start' } = req.body;
 
     if (activityId === dependsOnActivityId) {
       return fail(res, 'VALIDATION_ERROR', 'An activity cannot depend on itself.', 400);
@@ -225,7 +223,6 @@ router.post('/dependencies', authorize('projects:manage'), async (req, res) => {
 
     return success(res, rows[0], {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     if (err.code === '23505') {
       return fail(res, 'DUPLICATE_DEPENDENCY', 'This dependency already exists.', 400);
     }

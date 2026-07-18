@@ -27,6 +27,7 @@ async function reseed() {
       { name:'Priya Sharma',  email:'priya@demo.com',  role:'Project Manager' },
       { name:'Rahul Mehta',   email:'rahul@demo.com',  role:'Designer' },
       { name:'Ananya Reddy',  email:'ananya@demo.com', role:'Sales' },
+      { name:'Admin User',    email:'admin@demo.com',  role:'admin' },
     ];
     const userIds = {};
     for (const u of users) {

@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
+const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const taskDependencyRepository = require('../repositories/taskDependencyRepository');
 const pool = require('../config/db');
@@ -30,9 +31,9 @@ router.get('/', authorize('projects:read'), async (req, res) => {
 });
 
 // POST /api/projects/:projectId/task-dependencies
-router.post('/', authorize('projects:manage'), async (req, res) => {
+router.post('/', authorize('projects:manage'), validate(createDependencySchema), async (req, res, next) => {
   try {
-    const data = createDependencySchema.parse(req.body);
+    const data  = req.body;
     
     if (data.taskId === data.dependsOnTaskId) {
       return fail(res, 'VALIDATION_ERROR', 'A task cannot depend on itself.', 400);
@@ -58,7 +59,7 @@ router.post('/', authorize('projects:manage'), async (req, res) => {
 
     return success(res, dependency, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    
     console.error('[TaskDependencies Router] Create error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create task dependency.', 500);
   }

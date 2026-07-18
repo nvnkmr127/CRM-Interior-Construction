@@ -3,6 +3,7 @@ const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
+const validate = require('../middleware/validate');
 const amcService = require('../services/postSale/amcService');
 
 const router = express.Router({ mergeParams: true });
@@ -68,13 +69,13 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
 });
 
 // POST /api/projects/:projectId/amcs
-router.post('/', authorize('support:manage'), async (req, res, next) => {
+router.post('/', authorize('support:manage'), validate(createAmcSchema), async (req, res, next) => {
   try {
     const { projectId } = req.params;
     const tenantId = req.tenantId;
     const userId = req.user.userId;
 
-    const data = createAmcSchema.parse(req.body);
+    const data = req.body;
     const amc = await amcService.createAmc({
       tenantId,
       projectId,
@@ -95,21 +96,18 @@ router.post('/', authorize('support:manage'), async (req, res, next) => {
 
     return success(res, amc, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
     next(err);
   }
 });
 
 // PUT /api/projects/:projectId/amcs/:id
-router.put('/:id', authorize('support:manage'), async (req, res, next) => {
+router.put('/:id', authorize('support:manage'), validate(updateAmcSchema), async (req, res, next) => {
   try {
     const { id } = req.params;
     const tenantId = req.tenantId;
     const userId = req.user.userId;
 
-    const data = updateAmcSchema.parse(req.body);
+    const data = req.body;
 
     const updateData = {};
     if (data.contractNumber !== undefined) updateData.contract_number = data.contractNumber;
@@ -157,13 +155,13 @@ router.delete('/:id', authorize('support:manage'), async (req, res, next) => {
 });
 
 // POST /api/projects/:projectId/amcs/:amcId/visits
-router.post('/:amcId/visits', authorize('support:manage'), async (req, res, next) => {
+router.post('/:amcId/visits', authorize('support:manage'), validate(createVisitSchema), async (req, res, next) => {
   try {
     const { amcId } = req.params;
     const tenantId = req.tenantId;
     const userId = req.user.userId;
 
-    const data = createVisitSchema.parse(req.body);
+    const data = req.body;
     const visit = await amcService.scheduleAmcVisit({
       tenantId,
       amcId,
@@ -186,13 +184,13 @@ router.post('/:amcId/visits', authorize('support:manage'), async (req, res, next
 });
 
 // PUT /api/projects/:projectId/amcs/:amcId/visits/:visitId
-router.put('/:amcId/visits/:visitId', authorize('support:manage'), async (req, res, next) => {
+router.put('/:amcId/visits/:visitId', authorize('support:manage'), validate(updateVisitSchema), async (req, res, next) => {
   try {
     const { amcId, visitId } = req.params;
     const tenantId = req.tenantId;
     const userId = req.user.userId;
 
-    const data = updateVisitSchema.parse(req.body);
+    const data = req.body;
 
     const updateData = {};
     if (data.scheduledDate !== undefined) updateData.scheduled_date = data.scheduledDate;
@@ -204,9 +202,6 @@ router.put('/:amcId/visits/:visitId', authorize('support:manage'), async (req, r
     const visit = await amcService.updateAmcVisit(visitId, amcId, tenantId, updateData, userId);
     return success(res, visit);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
     if (err.message === 'AMC_VISIT_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'AMC visit schedule not found.', 404);
     }

@@ -140,7 +140,7 @@ async function updatePaymentMilestone({ tenantId, userId, milestoneId, data, byp
   if (updateFields.length === 0) return current;
 
   const tenantIdx = paramIdx++;
-  const idIdx = paramIdx++;
+  const idIdx = paramIdx;
   values.push(tenantId, milestoneId);
   const updateQuery = `
     UPDATE payment_milestones

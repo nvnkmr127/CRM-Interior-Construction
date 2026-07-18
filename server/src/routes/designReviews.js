@@ -3,6 +3,7 @@ const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
+const validate = require('../middleware/validate');
 const pool = require('../config/db');
 const { getDocumentUrl } = require('../services/documents/documentService');
 const { notifyUser } = require('../services/notificationService');
@@ -48,12 +49,11 @@ router.get('/rounds', authorize('projects:read'), async (req, res, next) => {
   }
 });
 
-// POST /api/projects/:projectId/design-reviews/rounds
-router.post('/rounds', authorize('design:manage'), async (req, res, next) => {
+router.post('/rounds', authorize('design:manage'), validate(createRoundSchema), async (req, res, next) => {
   try {
     const { projectId } = req.params;
     const tenantId = req.tenantId;
-    const data = createRoundSchema.parse(req.body);
+    const data = req.body;
 
     const query = `
       INSERT INTO design_review_rounds (tenant_id, project_id, name, status)
@@ -64,7 +64,6 @@ router.post('/rounds', authorize('design:manage'), async (req, res, next) => {
     const { rows } = await pool.query(query, [tenantId, projectId, data.name]);
     return success(res, rows[0], {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     console.error('[DesignReviews Router] Create round error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create design review round.', 500);
   }
@@ -140,12 +139,11 @@ router.get('/drawings', authorize('projects:read'), async (req, res, next) => {
   }
 });
 
-// PUT /api/projects/:projectId/design-reviews/drawings/:documentId
-router.put('/drawings/:documentId', authorize('design:manage'), async (req, res, next) => {
+router.put('/drawings/:documentId', authorize('design:manage'), validate(associateDrawingSchema), async (req, res, next) => {
   try {
     const { projectId, documentId } = req.params;
     const tenantId = req.tenantId;
-    const data = associateDrawingSchema.parse(req.body);
+    const data = req.body;
 
     const query = `
       UPDATE documents
@@ -161,7 +159,6 @@ router.put('/drawings/:documentId', authorize('design:manage'), async (req, res,
 
     return success(res, rows[0]);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     console.error('[DesignReviews Router] Associate drawing error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to associate drawing with round.', 500);
   }
@@ -187,12 +184,11 @@ router.get('/drawings/:documentId/comments', authorize('projects:read'), async (
   }
 });
 
-// POST /api/projects/:projectId/design-reviews/drawings/:documentId/comments
-router.post('/drawings/:documentId/comments', authorize('design:manage'), async (req, res, next) => {
+router.post('/drawings/:documentId/comments', authorize('design:manage'), validate(createCommentSchema), async (req, res, next) => {
   try {
     const { documentId } = req.params;
     const tenantId = req.tenantId;
-    const data = createCommentSchema.parse(req.body);
+    const data = req.body;
     const creatorName = req.user?.name || req.user?.username || 'Project Team';
 
     const query = `
@@ -204,7 +200,6 @@ router.post('/drawings/:documentId/comments', authorize('design:manage'), async 
     const { rows } = await pool.query(query, [tenantId, documentId, data.comment, creatorName]);
     return success(res, rows[0], {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     console.error('[DesignReviews Router] Add comment error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to add comment.', 500);
   }

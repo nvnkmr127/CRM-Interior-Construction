@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
+const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const siteExpenseRepository = require('../repositories/siteExpenseRepository');
 
@@ -21,9 +22,9 @@ const updateStatusSchema = z.object({
 });
 
 // POST /api/projects/:projectId/site-expenses
-router.post('/', authorize('projects:manage'), async (req, res) => {
+router.post('/', authorize('projects:manage'), validate(submitExpenseSchema), async (req, res, next) => {
   try {
-    const data = submitExpenseSchema.parse(req.body);
+    const data  = req.body;
     const mappedData = {
       phase_id: data.phaseId,
       expense_type: data.expenseType,
@@ -48,9 +49,9 @@ router.post('/', authorize('projects:manage'), async (req, res) => {
 });
 
 // PATCH /api/projects/:projectId/site-expenses/:id/status
-router.patch('/:id/status', authorize('projects:manage'), async (req, res) => {
+router.patch('/:id/status', authorize('projects:manage'), validate(updateStatusSchema), async (req, res, next) => {
   try {
-    const { status } = updateStatusSchema.parse(req.body);
+    const { status }  = req.body;
 
     const expense = await siteExpenseRepository.updateExpenseStatus(
       req.tenantId,

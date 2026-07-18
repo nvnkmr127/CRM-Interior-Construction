@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
+const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const dailySiteReportRepository = require('../repositories/dailySiteReportRepository');
 
@@ -55,11 +56,11 @@ router.get('/:id', authorize('projects:read'), async (req, res) => {
 });
 
 // POST /api/projects/:projectId/daily-reports
-router.post('/', authorize('projects:manage'), async (req, res) => {
+router.post('/', authorize('projects:manage'), validate(createReportSchema), async (req, res, next) => {
   try {
-    const data = createReportSchema.parse(req.body);
+    const data  = req.body;
     
-    const pool = require('../config/db');
+    const pool = require('../db/pool');
 
     // End-of-day cutoff check
     const tenantRes = await pool.query('SELECT config FROM tenants WHERE id = $1', [req.tenantId]);

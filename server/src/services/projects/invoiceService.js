@@ -341,7 +341,7 @@ function generatePdfBuffer(invoice, milestone, project) {
     doc.text(Number(invoice.subtotal).toFixed(2), 330, rowTop + 10, { width: 70, align: 'right' });
 
     // Tax description
-    let taxBreakdown = '';
+    let taxBreakdown;
     let _taxSum = 0;
     if (invoice.gst_type === 'cgst_sgst') {
       taxBreakdown = `CGST: ${Number(invoice.cgst_amount).toFixed(2)}\nSGST: ${Number(invoice.sgst_amount).toFixed(2)}`;
@@ -361,8 +361,8 @@ function generatePdfBuffer(invoice, milestone, project) {
     doc.text(`Subtotal:`, 350, summaryTop, { width: 90, align: 'right' });
     doc.text(`INR ${Number(invoice.subtotal).toFixed(2)}`, 450, summaryTop, { width: 90, align: 'right' });
 
-    let summaryTaxLabel = '';
-    let summaryTaxVal = '';
+    let summaryTaxLabel;
+    let summaryTaxVal;
     if (invoice.gst_type === 'cgst_sgst') {
       summaryTaxLabel = `CGST (${(invoice.gst_rate / 2).toFixed(2)}%):\nSGST (${(invoice.gst_rate / 2).toFixed(2)}%):`;
       summaryTaxVal = `INR ${Number(invoice.cgst_amount).toFixed(2)}\nINR ${Number(invoice.sgst_amount).toFixed(2)}`;

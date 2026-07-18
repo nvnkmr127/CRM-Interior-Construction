@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
+const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const materialUsageRepository = require('../repositories/materialUsageRepository');
 
@@ -20,9 +21,9 @@ const logUsageSchema = z.object({
 });
 
 // POST /api/projects/:projectId/material-usages
-router.post('/', authorize('projects:manage'), async (req, res) => {
+router.post('/', authorize('projects:manage'), validate(logUsageSchema), async (req, res, next) => {
   try {
-    const data = logUsageSchema.parse(req.body);
+    const data  = req.body;
     const mappedData = {
       po_item_id: data.poItemId,
       boq_item_id: data.boqItemId,

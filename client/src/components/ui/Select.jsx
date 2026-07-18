@@ -14,6 +14,7 @@ export default function Select({
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const wrapperRef = useRef(null)
 
   useEffect(() => {
@@ -25,6 +26,16 @@ export default function Select({
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  useEffect(() => {
+    if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setHighlightedIndex(0)
+    } else {
+      setHighlightedIndex(-1)
+      setSearchTerm('')
+    }
+  }, [isOpen])
 
   const filteredOptions = searchable 
     ? options.filter(opt => opt.label.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -42,7 +53,6 @@ export default function Select({
       onChange(option.value)
       setIsOpen(false)
     }
-    setSearchTerm('')
   }
 
   const removeChip = (e, valToRemove) => {
@@ -76,8 +86,39 @@ export default function Select({
     }
   }
 
+  const handleKeyDown = (e) => {
+    if (disabled) return
+    if (!isOpen) {
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+        e.preventDefault()
+        setIsOpen(true)
+      }
+      return
+    }
+
+    if (e.key === 'Escape') {
+      setIsOpen(false)
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setHighlightedIndex(prev => (prev + 1) % filteredOptions.length)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setHighlightedIndex(prev => (prev - 1 + filteredOptions.length) % filteredOptions.length)
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      if (filteredOptions[highlightedIndex]) {
+        handleSelect(filteredOptions[highlightedIndex])
+      }
+    }
+  }
+
   return (
-    <div className={`${styles.field} ${isOpen ? styles.open : ''}`} ref={wrapperRef}>
+    <div 
+      className={`${styles.field} ${isOpen ? styles.open : ''}`} 
+      ref={wrapperRef}
+      onKeyDown={handleKeyDown}
+      tabIndex={disabled ? -1 : 0}
+    >
       {label && <label className={styles.label}>{label} {required && '*'}</label>}
       <div 
         className={styles.trigger} 
@@ -103,7 +144,7 @@ export default function Select({
             </div>
           )}
           <div className={styles.options}>
-            {filteredOptions.length > 0 ? filteredOptions.map(opt => {
+            {filteredOptions.length > 0 ? filteredOptions.map((opt, index) => {
               const isSelected = multi 
                 ? (value || []).includes(opt.value) 
                 : value === opt.value
@@ -111,8 +152,10 @@ export default function Select({
               return (
                 <div 
                   key={opt.value} 
-                  className={`${styles.option} ${isSelected ? styles.selected : ''}`}
+                  className={`${styles.option} ${isSelected ? styles.selected : ''} ${highlightedIndex === index ? styles.highlighted : ''}`}
+                  style={highlightedIndex === index ? { backgroundColor: 'var(--color-primary-light, #f0f9ff)' } : {}}
                   onClick={() => handleSelect(opt)}
+                  onMouseEnter={() => setHighlightedIndex(index)}
                 >
                   {opt.icon && <span>{opt.icon}</span>}
                   {opt.label}

@@ -3,6 +3,7 @@ const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
+const validate = require('../middleware/validate');
 const pool = require('../config/db');
 
 const router = express.Router({ mergeParams: true });
@@ -71,11 +72,11 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
 });
 
 // POST /api/projects/:projectId/design-assets
-router.post('/', authorize('design:manage'), async (req, res, next) => {
+router.post('/', authorize('design:manage'), validate(createAssetSchema), async (req, res, next) => {
   try {
     const { projectId } = req.params;
     const tenantId = req.tenantId;
-    const data = createAssetSchema.parse(req.body);
+    const data = req.body;
     const userId = req.user.userId;
 
     const query = `
@@ -98,7 +99,6 @@ router.post('/', authorize('design:manage'), async (req, res, next) => {
 
     return success(res, asset, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     console.error('[DesignAssets Router] Create error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create design asset.', 500);
   }
@@ -135,11 +135,11 @@ router.get('/:id', authorize('projects:read'), async (req, res, next) => {
 });
 
 // PUT /api/projects/:projectId/design-assets/:id
-router.put('/:id', authorize('design:manage'), async (req, res, next) => {
+router.put('/:id', authorize('design:manage'), validate(updateAssetSchema), async (req, res, next) => {
   try {
     const { projectId, id } = req.params;
     const tenantId = req.tenantId;
-    const data = updateAssetSchema.parse(req.body);
+    const data = req.body;
 
     const { rows: existCheck } = await pool.query(
       `SELECT * FROM design_assets WHERE id = $1 AND project_id = $2 AND tenant_id = $3`,
@@ -191,7 +191,6 @@ router.put('/:id', authorize('design:manage'), async (req, res, next) => {
     const { rows } = await pool.query(query, values);
     return success(res, rows[0]);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     console.error('[DesignAssets Router] Update error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update design asset.', 500);
   }
@@ -220,11 +219,11 @@ router.delete('/:id', authorize('design:manage'), async (req, res, next) => {
 });
 
 // POST /api/projects/:projectId/design-assets/:id/items
-router.post('/:id/items', authorize('design:manage'), async (req, res, next) => {
+router.post('/:id/items', authorize('design:manage'), validate(createItemSchema), async (req, res, next) => {
   try {
     const { projectId, id } = req.params;
     const tenantId = req.tenantId;
-    const data = createItemSchema.parse(req.body);
+    const data = req.body;
 
     const { rows: assetCheck } = await pool.query(
       `SELECT id FROM design_assets WHERE id = $1 AND project_id = $2 AND tenant_id = $3`,
@@ -249,7 +248,6 @@ router.post('/:id/items', authorize('design:manage'), async (req, res, next) => 
 
     return success(res, rows[0], {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     console.error('[DesignAssets Router] Add item error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to add item to design asset.', 500);
   }

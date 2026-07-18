@@ -1,7 +1,7 @@
 module.exports = {
   testEnvironment: 'node',
   testMatch: ['**/__tests__/**/*.test.js'],
-  setupFilesAfterEnv: [],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   moduleNameMapper: {
     '^otplib$': '<rootDir>/src/__mocks__/otplib.js',
     '^uuid$': '<rootDir>/src/__mocks__/uuid.js'

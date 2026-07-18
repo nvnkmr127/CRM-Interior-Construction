@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
+const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const siteReadinessRepository = require('../repositories/siteReadinessRepository');
 
@@ -26,9 +27,9 @@ router.get('/', authorize('projects:read'), async (req, res) => {
 });
 
 // PATCH /api/projects/:projectId/site-readiness/:itemId
-router.patch('/:itemId', authorize('projects:manage'), async (req, res) => {
+router.patch('/:itemId', authorize('projects:manage'), validate(updateItemSchema), async (req, res, next) => {
   try {
-    const updates = updateItemSchema.parse(req.body);
+    const updates  = req.body;
     const item = await siteReadinessRepository.updateChecklistItem(
       req.params.itemId,
       req.tenantId,
@@ -37,7 +38,7 @@ router.patch('/:itemId', authorize('projects:manage'), async (req, res) => {
     );
     return success(res, item);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    
     if (err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Checklist item not found.', 404);
     console.error('[SiteReadiness Router] Update error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update checklist item.', 500);

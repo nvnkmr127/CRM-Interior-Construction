@@ -1,5 +1,6 @@
 const express = require('express');
 const { z } = require('zod');
+const validate = require('../../middleware/validate');
 const pool = require('../../db/pool');
 const authenticatePortal = require('../../middleware/authenticatePortal');
 const { success, fail } = require('../../utils/response');
@@ -84,9 +85,9 @@ const signOffSchema = z.object({
   otp: z.string().length(6, 'OTP must be exactly 6 digits')
 });
 
-router.post('/sign-off', async (req, res, next) => {
+router.post('/sign-off', validate(signOffSchema), async (req, res, next) => {
   try {
-    const { otp } = signOffSchema.parse(req.body);
+    const { otp }  = req.body;
     const { projectId, tenantId, phone, name: clientName, id: portalUserId } = req.portalUser;
 
     // 1. Fetch active checklist and verify internal authorization first

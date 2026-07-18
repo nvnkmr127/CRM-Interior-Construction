@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authorize = require('../middleware/authorize');
+const validate = require('../middleware/validate');
 const phaseRepository = require('../repositories/phaseRepository');
 const { completePhase, checkScopeLock } = require('../services/projects/completePhase');
 
@@ -41,42 +42,39 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
 });
 
 // POST /api/projects/:projectId/phases
-router.post('/', authorize('projects:manage'), async (req, res, next) => {
+router.post('/', authorize('projects:manage'), validate(createPhaseSchema), async (req, res, next) => {
   try {
-    const data = createPhaseSchema.parse(req.body);
+    const data = req.body;
     const phase = await phaseRepository.createPhase(req.tenantId, req.params.projectId, data);
     return success(res, phase, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     console.error('[Phases Router] Create error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create phase.', 500);
   }
 });
 
 // PATCH /api/projects/:projectId/phases/reorder
-router.patch('/reorder', authorize('projects:manage'), async (req, res, next) => {
+router.patch('/reorder', authorize('projects:manage'), validate(reorderSchema), async (req, res, next) => {
   try {
-    const { orderedIds } = reorderSchema.parse(req.body);
+    const { orderedIds } = req.body;
     await phaseRepository.reorderPhases(req.params.projectId, req.tenantId, orderedIds);
     return success(res, { message: 'Phases reordered successfully' });
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     console.error('[Phases Router] Reorder error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to reorder phases.', 500);
   }
 });
 
 // PUT /api/projects/:projectId/phases/:phaseId
-router.put('/:phaseId', authorize('projects:manage'), async (req, res, next) => {
+router.put('/:phaseId', authorize('projects:manage'), validate(updatePhaseSchema), async (req, res, next) => {
   try {
-    const data = updatePhaseSchema.parse(req.body);
+    const data = req.body;
     if (data.status && (data.status === 'in_progress' || data.status === 'active')) {
       await checkScopeLock(req.tenantId, req.params.projectId, req.params.phaseId);
     }
     const phase = await phaseRepository.updatePhase(req.params.phaseId, req.tenantId, data);
     return success(res, phase);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     if (err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Phase not found', 404);
     if (err.code === 'COMMERCIAL_APPROVAL_REQUIRED' || err.message === 'COMMERCIAL_APPROVAL_REQUIRED' || err.message.includes('Commercial approval has not been completed')) {
       return fail(res, 'COMMERCIAL_APPROVAL_REQUIRED', err.message, 400);

@@ -1368,14 +1368,15 @@ async function upsertLeadAiInsights(tenantId, leadId, data) {
     const values = [];
     let i = 1;
     for (const [key, value] of Object.entries(data)) {
-      sets.push(`${key} = $${i}`);
+      const safeKey = key.replace(/[^a-zA-Z0-9_]/g, '');
+      sets.push(`${safeKey} = $${i}`);
       values.push(value);
       i++;
     }
     values.push(existing.rows[0].id);
     await pool.query(`UPDATE lead_ai_insights SET ${sets.join(', ')}, generated_at = NOW() WHERE id = $${i}`, values);
   } else {
-    const keys = Object.keys(data);
+    const keys = Object.keys(data).map(k => k.replace(/[^a-zA-Z0-9_]/g, ''));
     const values = Object.values(data);
     const placeholders = keys.map((_, idx) => `$${idx + 3}`);
     await pool.query(`

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import DOMPurify from 'dompurify'
 import { Avatar } from '../ui'
 import CommentEditor from './CommentEditor'
 import styles from './CommentThread.module.css'
@@ -54,7 +55,7 @@ export default function CommentThread({
           ) : (
             <div 
               className={styles.htmlContent} 
-              dangerouslySetInnerHTML={{ __html: comment.content }} 
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(comment.content) }} 
             />
           )}
 

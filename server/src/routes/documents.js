@@ -3,6 +3,7 @@ const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
+const validate = require('../middleware/validate');
 const pool = require('../config/db');
 const { getUploadUrl, registerDocument, getDocumentUrl } = require('../services/documents/documentService');
 const { addVersion, approveDocument, requestRevision } = require('../services/documents/documentVersionService');
@@ -66,9 +67,9 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
 });
 
 // POST /api/projects/:projectId/documents/upload-url
-router.post('/upload-url', authorize('projects:manage'), async (req, res, next) => {
+router.post('/upload-url', authorize('projects:manage'), validate(uploadUrlSchema), async (req, res, next) => {
   try {
-    const data = uploadUrlSchema.parse(req.body);
+    const data = req.body;
     const result = await getUploadUrl({
       tenantId: req.tenantId,
       projectId: req.params.projectId,
@@ -79,16 +80,15 @@ router.post('/upload-url', authorize('projects:manage'), async (req, res, next) 
     });
     return success(res, result);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     console.error('[Documents Router] upload-url error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to generate AWS upload URL.', 500);
   }
 });
 
 // POST /api/projects/:projectId/documents/register
-router.post('/register', authorize('projects:manage'), async (req, res, next) => {
+router.post('/register', authorize('projects:manage'), validate(registerSchema), async (req, res, next) => {
   try {
-    const data = registerSchema.parse(req.body);
+    const data = req.body;
 
     // V2 Security: Validate File Magic Number against claimed MimeType
     const storage = require('../utils/storage');
@@ -115,7 +115,6 @@ router.post('/register', authorize('projects:manage'), async (req, res, next) =>
     });
     return success(res, doc, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     console.error('[Documents Router] register error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to register document in database.', 500);
   }
@@ -165,13 +164,12 @@ router.post('/:did/approve', authorize('projects:manage'), async (req, res, next
 });
 
 // POST /api/projects/:projectId/documents/:did/revision
-router.post('/:did/revision', authorize('projects:manage'), async (req, res, next) => {
+router.post('/:did/revision', authorize('projects:manage'), validate(revisionSchema), async (req, res, next) => {
   try {
-    const { note } = revisionSchema.parse(req.body);
+    const { note } = req.body;
     const doc = await requestRevision(req.tenantId, req.params.did, note, req.user.userId);
     return success(res, doc);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     if (err.message === 'NOT_FOUND' || err.status === 404) return fail(res, 'NOT_FOUND', 'Document not found.', 404);
     console.error('[Documents Router] revision error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to process revision request.', 500);
@@ -179,9 +177,9 @@ router.post('/:did/revision', authorize('projects:manage'), async (req, res, nex
 });
 
 // POST /api/projects/:projectId/documents/:did/version
-router.post('/:did/version', authorize('projects:manage'), async (req, res, next) => {
+router.post('/:did/version', authorize('projects:manage'), validate(versionSchema), async (req, res, next) => {
   try {
-    const data = versionSchema.parse(req.body);
+    const data = req.body;
     const doc = await addVersion(req.tenantId, req.params.did, {
       storageKey: data.storageKey,
       uploadedBy: req.user.userId,
@@ -190,7 +188,6 @@ router.post('/:did/version', authorize('projects:manage'), async (req, res, next
     });
     return success(res, doc, {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
     if (err.message === 'NOT_FOUND' || err.status === 404) return fail(res, 'NOT_FOUND', 'Original document not found.', 404);
     console.error('[Documents Router] add version error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to instantiate document version.', 500);

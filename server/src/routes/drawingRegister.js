@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
+const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const pool = require('../config/db');
 const { incrementProjectStageRevision } = require('../services/projects/revisionTracker');
@@ -65,14 +66,14 @@ router.get('/', authorize('projects:read'), async (req, res) => {
 });
 
 // POST /api/projects/:projectId/drawing-register
-router.post('/', authorize('design:manage'), async (req, res) => {
+router.post('/', authorize('design:manage'), validate(drawingRegisterSchema), async (req, res, next) => {
   const client = await pool.connect();
   try {
     const { projectId } = req.params;
     const tenantId = req.tenantId;
     const userId = req.user.userId;
 
-    const data = drawingRegisterSchema.parse(req.body);
+    const data  = req.body;
 
     if (data.status === 'issued_for_construction') {
       try {
@@ -143,7 +144,7 @@ router.post('/', authorize('design:manage'), async (req, res) => {
     return success(res, rows[0], {}, 201);
   } catch (err) {
     await client.query('ROLLBACK');
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    
     console.error('[DrawingRegister Router] Create error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to register drawing.', 500);
   } finally {
@@ -152,13 +153,13 @@ router.post('/', authorize('design:manage'), async (req, res) => {
 });
 
 // PUT /api/projects/:projectId/drawing-register/:id
-router.put('/:id', authorize('design:manage'), async (req, res) => {
+router.put('/:id', authorize('design:manage'), validate(updateDrawingRegisterSchema), async (req, res, next) => {
   const client = await pool.connect();
   try {
     const { projectId, id } = req.params;
     const tenantId = req.tenantId;
 
-    const data = updateDrawingRegisterSchema.parse(req.body);
+    const data  = req.body;
 
     await client.query('BEGIN');
 
@@ -265,7 +266,7 @@ router.put('/:id', authorize('design:manage'), async (req, res) => {
     return success(res, record);
   } catch (err) {
     await client.query('ROLLBACK');
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+    
     console.error('[DrawingRegister Router] Update error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update drawing.', 500);
   } finally {

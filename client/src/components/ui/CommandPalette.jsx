@@ -44,11 +44,10 @@ export default function CommandPalette() {
     cmd.title.toLowerCase().includes(query.toLowerCase())
   );
 
-  const [prevQuery, setPrevQuery] = useState(query);
-  if (query !== prevQuery) {
-    setPrevQuery(query);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedIndex(0);
-  }
+  }, [query]);
 
   const executeCommand = (cmd) => {
     if (cmd.path) {

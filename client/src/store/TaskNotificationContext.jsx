@@ -1,30 +1,24 @@
-/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, no-empty, react-hooks/exhaustive-deps, react-refresh/only-export-components */
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { useToast } from './toastContext';
+import { create } from 'zustand';
+import { useToastStore } from './toastContext';
 
-const TaskNotificationContext = createContext(null);
-
-export function TaskNotificationProvider({ children }) {
-  const [notifications, setNotifications] = useState([]);
-  const toast = useToast();
-
-  useEffect(() => {
+export const useTaskNotificationStore = create((set) => ({
+  notifications: [],
+  
+  init: () => {
     const saved = localStorage.getItem('myTaskNotifications');
     if (saved) {
       try {
-        setNotifications(JSON.parse(saved));
-      } catch (e) {}
+        set({ notifications: JSON.parse(saved) });
+      } catch (e) {
+        console.error('Failed to parse notifications', e);
+      }
     }
-  }, []);
+  },
 
-  useEffect(() => {
-    localStorage.setItem('myTaskNotifications', JSON.stringify(notifications));
-  }, [notifications]);
-
-  const addNotification = (type, title, message, taskId) => {
+  addNotification: (type, title, message, taskId) => {
     const newNotif = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
-      type, // 'assigned', 'mentioned', 'commented', 'due_soon', 'overdue', 'status_changed'
+      type,
       title,
       message,
       taskId,
@@ -32,40 +26,51 @@ export function TaskNotificationProvider({ children }) {
       createdAt: new Date().toISOString()
     };
     
-    setNotifications(prev => [newNotif, ...prev]);
+    set(state => {
+      const updated = [newNotif, ...state.notifications];
+      localStorage.setItem('myTaskNotifications', JSON.stringify(updated));
+      return { notifications: updated };
+    });
     
-    // Check if the user wants Push/In-App (Mocking it via toast for in-app)
-    toast.info(`🔔 ${title}: ${message}`);
-  };
+    // Trigger toast using the store directly
+    useToastStore.getState().show('info', `🔔 ${title}: ${message}`, 4000);
+  },
 
-  const markAsRead = (id) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
-  };
+  markAsRead: (id) => {
+    set(state => {
+      const updated = state.notifications.map(n => n.id === id ? { ...n, isRead: true } : n);
+      localStorage.setItem('myTaskNotifications', JSON.stringify(updated));
+      return { notifications: updated };
+    });
+  },
 
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-  };
+  markAllAsRead: () => {
+    set(state => {
+      const updated = state.notifications.map(n => ({ ...n, isRead: true }));
+      localStorage.setItem('myTaskNotifications', JSON.stringify(updated));
+      return { notifications: updated };
+    });
+  },
   
-  const clearAll = () => {
-    setNotifications([]);
-  };
+  clearAll: () => {
+    set({ notifications: [] });
+    localStorage.removeItem('myTaskNotifications');
+  }
+}));
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+// Initialize on load
+useTaskNotificationStore.getState().init();
 
-  const value = useMemo(() => ({
-    notifications,
+export const useTaskNotifications = () => {
+  const store = useTaskNotificationStore();
+  const unreadCount = store.notifications.filter(n => !n.isRead).length;
+
+  return {
+    notifications: store.notifications,
     unreadCount,
-    addNotification,
-    markAsRead,
-    markAllAsRead,
-    clearAll
-  }), [notifications, unreadCount]);
-
-  return (
-    <TaskNotificationContext.Provider value={value}>
-      {children}
-    </TaskNotificationContext.Provider>
-  );
-}
-
-export const useTaskNotifications = () => useContext(TaskNotificationContext);
+    addNotification: store.addNotification,
+    markAsRead: store.markAsRead,
+    markAllAsRead: store.markAllAsRead,
+    clearAll: store.clearAll
+  };
+};

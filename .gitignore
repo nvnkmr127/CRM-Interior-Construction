@@ -11,3 +11,5 @@ build/
 /playwright/.cache/
 /playwright/.auth/
 .claude/
+.env.*
+token.json

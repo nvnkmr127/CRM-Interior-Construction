@@ -3,6 +3,7 @@ const { z } = require('zod');
 const pool = require('../config/db');
 const { success, fail } = require('../utils/response');
 const authorize = require('../middleware/authorize');
+const validate = require('../middleware/validate');
 
 const router = express.Router({ mergeParams: true });
 
@@ -85,11 +86,11 @@ router.get('/', authorize('projects:read'), async (req, res) => {
 
 // POST /api/projects/:projectId/budget
 // Sets or updates a category budget allocation
-router.post('/', authorize('projects:update'), async (req, res) => {
+router.post('/', authorize('projects:update'), validate(budgetAllocationSchema), async (req, res, next) => {
   try {
     const { projectId } = req.params;
     const tenantId = req.tenantId;
-    const { category, budgetedCost } = budgetAllocationSchema.parse(req.body);
+    const { category, budgetedCost }  = req.body;
 
     const query = `
       INSERT INTO project_budgets (tenant_id, project_id, category, budgeted_cost, updated_at)
@@ -102,9 +103,7 @@ router.post('/', authorize('projects:update'), async (req, res) => {
     const { rows } = await pool.query(query, [tenantId, projectId, category, budgetedCost]);
     return success(res, rows[0]);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
+    
     console.error('[Budget Router] Allocation error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to set budget allocation.', 500);
   }
@@ -131,11 +130,11 @@ router.get('/expenses', authorize('projects:read'), async (req, res) => {
 });
 
 // POST /api/projects/:projectId/budget/expenses
-router.post('/expenses', authorize('projects:update'), async (req, res) => {
+router.post('/expenses', authorize('projects:update'), validate(expenseSchema), async (req, res, next) => {
   try {
     const { projectId } = req.params;
     const tenantId = req.tenantId;
-    const data = expenseSchema.parse(req.body);
+    const data  = req.body;
 
     const query = `
       INSERT INTO project_expenses (tenant_id, project_id, category, type, description, amount, incurred_date)
@@ -157,9 +156,7 @@ router.post('/expenses', authorize('projects:update'), async (req, res) => {
 
     return success(res, rows[0], {}, 201);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
+    
     console.error('[Budget Router] Log expense error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to log cost item.', 500);
   }

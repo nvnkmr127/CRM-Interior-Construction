@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
 const authorize = require('../middleware/authorize');
+const validate = require('../middleware/validate');
 const { getRetrospective, saveRetrospective } = require('../services/postSale/projectRetrospectiveService');
 
 const router = express.Router({ mergeParams: true });
@@ -35,19 +36,17 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
 });
 
 // POST /api/projects/:projectId/retrospective
-router.post('/', authorize('projects:manage'), async (req, res, next) => {
+router.post('/', authorize('projects:manage'), validate(saveRetrospectiveSchema), async (req, res, next) => {
   try {
     const { projectId } = req.params;
     const tenantId = req.tenantId;
     const userId = req.user.userId;
 
-    const data = saveRetrospectiveSchema.parse(req.body);
+    const data  = req.body;
     const result = await saveRetrospective(projectId, tenantId, userId, data);
     return success(res, result, { message: 'Retrospective saved successfully.' });
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    }
+    
     if (err.message === 'PROJECT_NOT_FOUND' || err.status === 404) {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }
