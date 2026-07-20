@@ -145,4 +145,17 @@ router.get('/inbox', async (req, res) => {
   }
 });
 
+
+router.put('/read-all', async (req, res) => {
+  const tenantId = req.tenantId;
+  const userId = req.user.id;
+  try {
+    await pool.query('UPDATE notifications SET is_read = true WHERE tenant_id = $1 AND user_id = $2', [tenantId, userId]);
+    return success(res, { message: 'All notifications marked as read' });
+  } catch (error) {
+    return fail(res, 'INTERNAL_ERROR', 'Failed to update notifications', 500);
+  }
+});
+
 module.exports = router;
+

@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars, no-undef, no-useless-assignment, react-hooks/purity, react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Badge, Button, Modal, Input, Select } from '../../components/ui';
 import styles from './PaymentsTab.module.css';
 import { getPaymentMilestones, updatePaymentMilestone } from '../../api/paymentMilestones';

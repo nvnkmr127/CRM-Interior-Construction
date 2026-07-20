@@ -1,3 +1,7 @@
+const { getConstructionFinancialSummary } = require('../utils/constructionValidator');
+const { analyzeFinancialRisk } = require('../utils/riskAnalyzer');
+const { getProjectBudgetValidation } = require('../utils/budgetValidator');
+const { sendNotification } = require('../utils/notifications');
 const express = require('express');
 const pool = require('../db/pool');
 const authenticate = require('../middleware/authenticate');
@@ -80,6 +84,12 @@ router.get('/', async (req, res, next) => {
       paramIndex += 2;
     }
 
+    
+    if (req.query.priority) {
+      const pList = req.query.priority.split(',').map(s => s.trim());
+      conditions.push(`fa.priority = ANY(${params.length + 1})`);
+      params.push(pList);
+    }
     if (status) {
       const statuses = status.split(',');
       conditions.push(`fa.status = ANY($${paramIndex})`);
@@ -164,34 +174,34 @@ router.get('/', async (req, res, next) => {
 
     const whereClause = conditions.join(' AND ');
 
-    let orderByClause = 'ORDER BY fa.created_at DESC, fa.id DESC'; // default
+    let orderByClause = 'ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC'; // default
     if (sort_by) {
       switch (sort_by) {
         case 'newest':
         case 'requested_date':
         case 'priority': // Mocked mapping
-          orderByClause = 'ORDER BY fa.created_at DESC, fa.id DESC';
+          orderByClause = 'ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC';
           break;
         case 'oldest':
-          orderByClause = 'ORDER BY fa.created_at ASC, fa.id ASC';
+          orderByClause = 'ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id ASC';
           break;
         case 'amount_desc':
-          orderByClause = 'ORDER BY fa.amount DESC, fa.id DESC';
+          orderByClause = 'ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC';
           break;
         case 'amount_asc':
-          orderByClause = 'ORDER BY fa.amount ASC, fa.id ASC';
+          orderByClause = 'ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id ASC';
           break;
         case 'project_name':
-          orderByClause = 'ORDER BY p.name ASC, fa.id DESC';
+          orderByClause = 'ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC';
           break;
         case 'customer_name':
-          orderByClause = 'ORDER BY p.client_name ASC, fa.id DESC';
+          orderByClause = 'ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC';
           break;
         case 'approval_date':
-          orderByClause = 'ORDER BY fa.updated_at DESC, fa.id DESC';
+          orderByClause = 'ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC';
           break;
         default:
-          orderByClause = 'ORDER BY fa.created_at DESC, fa.id DESC';
+          orderByClause = 'ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC';
       }
     }
 
@@ -275,6 +285,13 @@ router.get('/', async (req, res, next) => {
 router.post('/:id/approve', async (req, res, next) => {
   const client = await pool.connect();
   try {
+    const tenantId = req.tenantId || (req.user && req.user.tenantId);
+    // Budget Validation Hard-Block
+    const validation = await getProjectBudgetValidation(req.params.id, tenantId);
+    if (validation.status === 'exceeded' && req.body.force !== true) {
+      return fail(res, 'BAD_REQUEST', 'Budget exceeded. Approval blocked.', 400);
+    }
+
     const tenantId = req.tenantId;
     const userId = req.user.id || req.user.userId;
     const { id } = req.params;
@@ -547,7 +564,7 @@ router.get('/:id/comments', async (req, res, next) => {
       FROM financial_approval_comments c
       JOIN users u ON c.user_id = u.id
       WHERE c.tenant_id = $1 AND c.approval_id = $2
-      ORDER BY c.created_at ASC
+      ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC
     `;
     const { rows } = await pool.query(query, [tenantId, id]);
 
@@ -730,7 +747,7 @@ router.post('/:id/view', async (req, res, next) => {
     const { rows } = await pool.query(
       `SELECT created_at FROM audit_logs 
        WHERE entity = 'financial_approval' AND entity_id = $1 AND user_id = $2 AND action = $3
-       ORDER BY created_at DESC LIMIT 1`,
+       ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC LIMIT 1`,
       [id, req.user?.id || req.user?.userId, actionType]
     );
     
@@ -840,7 +857,7 @@ router.get('/:id/activity', async (req, res, next) => {
        FROM audit_logs a
        LEFT JOIN users u ON a.user_id = u.id
        WHERE a.tenant_id = $1 AND a.entity = 'financial_approval' AND a.entity_id = $2
-       ORDER BY a.created_at ASC`,
+       ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC`,
       [tenantId, id]
     );
     return success(res, rows);
@@ -881,7 +898,7 @@ router.get('/:id/attachments', async (req, res, next) => {
       FROM financial_approval_attachments a
       LEFT JOIN users u ON a.uploaded_by = u.id
       WHERE a.approval_id = $1 AND a.tenant_id = $2 AND a.status = 'active'
-      ORDER BY a.created_at DESC
+      ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC
     `;
     const { rows } = await pool.query(query, [id, tenantId]);
     return success(res, rows);
@@ -1012,7 +1029,7 @@ router.get('/:id/attachments/:attachmentId/history', async (req, res, next) => {
       SELECT a.*, u.name as uploaded_by_name 
       FROM attachment_tree a
       LEFT JOIN users u ON a.uploaded_by = u.id
-      ORDER BY a.version DESC
+      ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC
     `;
     
     const { rows } = await pool.query(query, [attachmentId, id, tenantId]);
@@ -1054,6 +1071,10 @@ router.post('/bulk', async (req, res, next) => {
         // Simple permission check (can be expanded)
         await client.query("UPDATE financial_approvals SET status = 'approved', approved_by = $1, approved_at = CURRENT_TIMESTAMP WHERE id = $2", [userId, id]);
         logActivity(req, 'financial_approval', id, 'Approved', null, null);
+    const { rows: tmp } = await pool.query('SELECT requested_by FROM financial_approvals WHERE id = $1', [id]);
+    if (tmp.length > 0) {
+      await sendNotification(tenantId, tmp[0].requested_by, 'Approved', `Your financial approval request has been approved.`, `/finance/approvals?id=${id}`, userId);
+    }
       } 
       else if (action === 'reject') {
         if (approval.status !== 'pending') throw new Error('Not in pending status');
@@ -1130,6 +1151,90 @@ router.post('/:id/activity', async (req, res, next) => {
     return success(res, { success: true });
   } catch (error) {
     next(error);
+  }
+});
+
+
+// POST /api/financial-approvals/:id/priority
+router.post('/:id/priority', async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId || (req.user && req.user.tenantId);
+    const { id } = req.params;
+    const { priority } = req.body;
+    
+    if (!['low', 'medium', 'high', 'critical'].includes(priority)) {
+      return fail(res, 'BAD_REQUEST', 'Invalid priority', 400);
+    }
+
+    const { rows } = await pool.query('UPDATE financial_approvals SET priority = $1 WHERE id = $2 AND tenant_id = $3 RETURNING *', [priority, id, tenantId]);
+    if (rows.length === 0) return fail(res, 'NOT_FOUND', 'Approval not found', 404);
+    
+    logActivity(req, 'financial_approval', id, 'Priority Updated', null, JSON.stringify({ priority }));
+    return success(res, { success: true, priority });
+  } catch (error) {
+    next(error);
+  }
+});
+
+
+// POST /api/financial-approvals/:id/remind
+router.post('/:id/remind', async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId || (req.user && req.user.tenantId);
+    const userId = req.user.id;
+    const { id } = req.params;
+    
+    const { rows } = await pool.query('SELECT * FROM financial_approvals WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+    if (rows.length === 0) return fail(res, 'NOT_FOUND', 'Approval not found', 404);
+    const app = rows[0];
+    
+    if (app.assigned_to) {
+      await sendNotification(tenantId, app.assigned_to, 'Reminder', `Reminder: Please review pending ${app.transaction_type} request.`, `/finance/approvals?id=${id}`, userId);
+    }
+    
+    logActivity(req, 'financial_approval', id, 'Reminder Sent', null, JSON.stringify({ sent_to: app.assigned_to }));
+    return success(res, { success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+
+// GET /api/financial-approvals/:id/budget-validation
+router.get('/:id/budget-validation', async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId || (req.user && req.user.tenantId);
+    const data = await getProjectBudgetValidation(req.params.id, tenantId);
+    return success(res, data);
+  } catch (err) {
+    if (err.message === 'Approval not found') return fail(res, 'NOT_FOUND', err.message, 404);
+    next(err);
+  }
+});
+
+
+// GET /api/financial-approvals/:id/risk-analysis
+router.get('/:id/risk-analysis', async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId || (req.user && req.user.tenantId);
+    const data = await analyzeFinancialRisk(req.params.id, tenantId);
+    return success(res, data);
+  } catch (err) {
+    if (err.message === 'Approval not found') return fail(res, 'NOT_FOUND', err.message, 404);
+    next(err);
+  }
+});
+
+
+// GET /api/financial-approvals/:id/construction-summary
+router.get('/:id/construction-summary', async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId || (req.user && req.user.tenantId);
+    const data = await getConstructionFinancialSummary(req.params.id, tenantId);
+    return success(res, data);
+  } catch (err) {
+    if (err.message === 'Approval not found') return fail(res, 'NOT_FOUND', err.message, 404);
+    next(err);
   }
 });
 

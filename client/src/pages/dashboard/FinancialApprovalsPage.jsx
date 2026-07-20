@@ -11,6 +11,9 @@ import HighlightText from '../../components/common/HighlightText';
 import Pagination from '../../components/ui/Pagination';
 import AdvancedFilters from '../../components/finance/AdvancedFilters';
 import SortDropdown from '../../components/common/SortDropdown';
+import ConstructionSummary from '../../components/finance/ConstructionSummary';
+import RiskSummary from '../../components/finance/RiskSummary';
+import BudgetValidator from '../../components/finance/BudgetValidator';
 import ApprovalTimeline from '../../components/common/ApprovalTimeline';
 import ApprovalComments from '../../components/finance/ApprovalComments';
 import UnreadBadge from '../../components/finance/UnreadBadge';
@@ -20,7 +23,110 @@ import AttachmentManager from '../../components/finance/AttachmentManager';
 import BulkActionBar from '../../components/finance/BulkActionBar';
 import AssignmentModal from '../../components/finance/AssignmentModal';
 
+
+function SLATracker({ approval }) {
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    if (approval.status !== 'pending') return;
+    const interval = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(interval);
+  }, [approval.status]);
+
+  if (approval.status !== 'pending') return null;
+
+  const targetDate = new Date(approval.target_resolution_date || new Date(new Date(approval.created_at).getTime() + 72 * 60 * 60 * 1000));
+  const diffMs = targetDate.getTime() - now.getTime();
+  const diffHours = diffMs / (1000 * 60 * 60);
+  
+  const isOverdue = diffHours < 0;
+  
+  let color = '#059669'; // Green (under 24h)
+  let level = 0;
+  
+  const hoursElapsed = (now.getTime() - new Date(approval.created_at).getTime()) / (1000 * 60 * 60);
+  if (hoursElapsed >= 72) { color = '#dc2626'; level = 3; } // Red
+  else if (hoursElapsed >= 48) { color = '#ea580c'; level = 2; } // Orange
+  else if (hoursElapsed >= 24) { color = '#d97706'; level = 1; } // Yellow
+
+  // Format remaining time
+  const absHours = Math.floor(Math.abs(diffHours));
+  const absMins = Math.floor((Math.abs(diffMs) % (1000 * 60 * 60)) / (1000 * 60));
+  const timeString = `${absHours}h ${absMins}m`;
+
+  return (
+    <div style={{ marginTop: '12px', padding: '12px', borderRadius: '6px', border: `1px solid ${color}40`, backgroundColor: `${color}10` }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>SLA Tracking</span>
+        {level > 0 && (
+          <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', backgroundColor: color, color: '#fff' }}>
+            Escalation L${level}
+          </span>
+        )}
+      </div>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.8rem' }}>
+        <div>
+          <div style={{ color: 'var(--text-tertiary)', fontSize: '0.7rem' }}>Created Time</div>
+          <div style={{ fontWeight: 500 }}>{new Date(approval.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</div>
+        </div>
+        <div>
+          <div style={{ color: 'var(--text-tertiary)', fontSize: '0.7rem' }}>Target Resolution</div>
+          <div style={{ fontWeight: 500 }}>{targetDate.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</div>
+        </div>
+      </div>
+      
+      <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, color }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        {isOverdue ? (
+          <span>Overdue by {timeString}</span>
+        ) : (
+          <span>{timeString} remaining</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+function PriorityBadge({ approval, onUpdate }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const { priority } = approval;
+  
+  let color = '#6b7280'; // Low: gray
+  if (priority === 'medium') color = '#3b82f6'; // Blue
+  else if (priority === 'high') color = '#f97316'; // Orange
+  else if (priority === 'critical') color = '#dc2626'; // Red
+
+  const handleUpdate = (newP) => {
+    setIsOpen(false);
+    if (onUpdate) onUpdate(approval.id, newP);
+  };
+
+  return (
+    <div style={{ position: 'relative', display: 'inline-block' }}>
+      <span 
+        onClick={() => setIsOpen(!isOpen)}
+        style={{ cursor: 'pointer', padding: '2px 8px', borderRadius: '4px', backgroundColor: `${color}20`, color, fontSize: '0.75rem', fontWeight: 600, textTransform: 'capitalize' }}
+      >
+        {priority || 'low'}
+      </span>
+      {isOpen && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 10, background: '#fff', border: '1px solid #e5e7eb', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', minWidth: '100px' }}>
+          {['low', 'medium', 'high', 'critical'].map(p => (
+            <div key={p} onClick={() => handleUpdate(p)} style={{ padding: '6px 12px', fontSize: '0.75rem', cursor: 'pointer', textTransform: 'capitalize', color: '#374151' }}>
+              {p}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function FinancialApprovalsPage() {
+  const [budgetStates, setBudgetStates] = useState({});
+  const [constructionStates, setConstructionStates] = useState({});
   const [pendingList, setPendingList] = useState([]);
   const [historyList, setHistoryList] = useState([]);
   const [pendingTotal, setPendingTotal] = useState(0);
@@ -47,6 +153,7 @@ export default function FinancialApprovalsPage() {
 
   // Reset pagination when search or filters change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPendingPage(1);
     setHistoryPage(1);
   }, [searchQuery, filterType, advancedFilters, sortOption]);
@@ -219,6 +326,18 @@ export default function FinancialApprovalsPage() {
     setRejectModalOpen(true);
   };
 
+  
+  const handleUpdatePriority = async (id, newPriority) => {
+    try {
+      await api.post(`/financial-approvals/${id}/priority`, { priority: newPriority });
+      toast.success('Priority updated');
+      fetchPendingApprovals();
+      fetchHistoryApprovals();
+    } catch (err) {
+      toast.error('Failed to update priority');
+    }
+  };
+
   const handleRejectConfirm = async (e) => {
     e.preventDefault();
     if (!rejectionReason.trim()) {
@@ -283,7 +402,8 @@ export default function FinancialApprovalsPage() {
             </Link>
           )}
           <SortDropdown 
-            options={[
+              options={[
+                
               { value: 'newest', label: 'Newest First' },
               { value: 'oldest', label: 'Oldest First' },
               { value: 'amount_desc', label: 'Highest Amount' },
@@ -293,7 +413,10 @@ export default function FinancialApprovalsPage() {
               { value: 'priority', label: 'Priority' },
               { value: 'approval_date', label: 'Approval Date' },
               { value: 'requested_date', label: 'Requested Date' }
-            ]}
+            ,
+                { value: 'priority_desc', label: 'Priority (High to Low)' },
+                { value: 'priority_asc', label: 'Priority (Low to High)' }
+              ]}
             value={sortOption}
             onChange={setSortOption}
           />
@@ -426,7 +549,7 @@ export default function FinancialApprovalsPage() {
                               ];
 
                               if (chain && chain.length > 0) {
-                                chain.forEach(c => {
+                                chain.forEach((c, i) => {
                                   let tStatus = c.status === 'approved' ? 'completed' : c.status === 'rejected' ? 'rejected' : 'pending';
                                   if (tStatus === 'pending' && c.stage === (app.current_stage || 1)) {
                                      tStatus = 'current';
@@ -472,7 +595,8 @@ export default function FinancialApprovalsPage() {
                     </div>
 
                     <div className={styles.detailsList}>
-                    <div className={styles.detailRow}>
+                    <SLATracker approval={app} />
+                      <div className={styles.detailRow}>
                       <span className={styles.detailLabel}>Project:</span>
                       <span className={styles.detailValue}>
                         <HighlightText text={app.project_name || 'N/A'} highlight={searchQuery} />
@@ -514,7 +638,7 @@ export default function FinancialApprovalsPage() {
                   {hasPermission(app) && (
                     <div className={styles.cardActions}>
                         <button 
-                          onClick={() => { setSelectedApproval(app); setCommentsModalOpen(true); }}
+                          onClick={() => { setSelectedApproval(app); setCommentsApprovalId(app.id); }}
                           className={styles.secondaryBtn}
                         >
                           Comments & Activity
@@ -782,9 +906,10 @@ export default function FinancialApprovalsPage() {
             </div>
             <ActivityLogTimeline approvalId={activityApprovalId} />
           </div>
-        )}
+        </div>
+      )}
 
-        {attachmentApprovalId && (
+      {attachmentApprovalId && (
           <div className={styles.modalOverlay}>
             <div className={styles.modal} style={{ maxWidth: '800px', width: '100%', padding: '0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', borderBottom: '1px solid var(--border-color)' }}>

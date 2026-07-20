@@ -7,6 +7,11 @@ import Avatar from '../ui/Avatar'
 import { useAuth } from '../../store/authContext'
 
 export default function NotificationsPanel() {
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+      Notification.requestPermission();
+    }
+  }, []);
   const [isOpen, setIsOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [notifications, setNotifications] = useState([])
@@ -35,6 +40,12 @@ export default function NotificationsPanel() {
           if (newNotification.id) {
             setNotifications(prev => [newNotification, ...prev].slice(0, 20));
             setUnreadCount(c => c + 1);
+            if ('Notification' in window && Notification.permission === 'granted') {
+              new Notification(newNotification.type || 'New Notification', {
+                body: newNotification.message,
+                icon: '/vite.svg'
+              });
+            }
           }
         } catch (err) {}
       }

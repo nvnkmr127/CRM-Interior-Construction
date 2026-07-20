@@ -1,113 +1,107 @@
 import React, { useState, useEffect } from 'react';
-import styles from './BulkActionBar.module.css'; // Re-use modal styles
-import api from '../../../utils/api';
-import { useToast } from '../../../contexts/ToastContext';
+import api from '../../api/axios';
+import { useToast } from '../../store/toastContext';
+import styles from './ApprovalComments.module.css'; // Reusing modal styles
 
-export default function AssignmentModal({ isOpen, onClose, approval, onSuccess }) {
-  const [assignedTo, setAssignedTo] = useState('');
-  const [backupApprover, setBackupApprover] = useState('');
-  const [assignmentNotes, setAssignmentNotes] = useState('');
+export default function AssignmentModal({ isOpen, approval, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
-  const [usersList, setUsersList] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [selectedUser, setSelectedUser] = useState('');
+  const [comments, setComments] = useState('');
   const toast = useToast();
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const { data } = await api.get('/api/users?limit=50');
-        setUsersList(data.data || data);
-      } catch (err) {
-        console.error('Failed to fetch users', err);
-      }
-    };
-    if (isOpen) fetchUsers();
+    if (isOpen) {
+      fetchUsers();
+    }
   }, [isOpen]);
 
-  useEffect(() => {
-    if (approval && isOpen) {
-      setAssignedTo(approval.assigned_to || '');
-      setBackupApprover(approval.backup_approver || '');
-      setAssignmentNotes(approval.assignment_notes || '');
+  const fetchUsers = async () => {
+    try {
+      const res = await api.get('/api/users?role=finance'); // Adjust endpoint to your actual users list
+      setUsers(res.data.data || []);
+    } catch (e) {
+      console.error('Failed to fetch users');
     }
-  }, [approval, isOpen]);
+  };
 
   if (!isOpen || !approval) return null;
 
-  const handleSubmit = async () => {
-    if (!assignedTo) return toast.error('Primary Assignee is required.');
-    
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedUser) {
+      toast.error('Please select a user to assign to.');
+      return;
+    }
+
     setLoading(true);
     try {
       await api.post(`/api/financial-approvals/${approval.id}/assign`, {
-        assigned_to: assignedTo,
-        backup_approver: backupApprover,
-        assignment_notes: assignmentNotes
+        assigned_to: selectedUser,
+        comments: comments
       });
-      toast.success('Assignment updated and notification dispatched!');
-      onSuccess();
+      toast.success('Approval reassigned successfully.');
+      if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
-      toast.error('Failed to assign approval.');
+      toast.error(err.response?.data?.error || 'Failed to reassign.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className={styles.overlay} style={{ zIndex: 10000 }}>
-      <div className={styles.modal} style={{ maxWidth: '500px' }}>
-        <h3>Assign Approval</h3>
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-          Select the Primary and Backup approvers for {approval.transaction_type} #{approval.id.slice(0, 8)}.
+    <div className={styles.modalOverlay}>
+      <div className={styles.modal} style={{ maxWidth: '400px' }}>
+        <h3 style={{ marginTop: 0 }}>Reassign Approval</h3>
+        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+          Assigning {approval.transaction_type} #{approval.reference_id} to another reviewer.
         </p>
-        
-        <div style={{ marginTop: '16px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Primary Assignee <span style={{color:'red'}}>*</span></label>
-          <select 
-            value={assignedTo} 
-            onChange={e => setAssignedTo(e.target.value)}
-            className={styles.textarea}
-            style={{ minHeight: '40px', marginTop: 0 }}
-          >
-            <option value="">-- Select Assignee --</option>
-            {usersList.map(u => (
-              <option key={u.id} value={u.id}>{u.name} ({u.role_name || 'User'})</option>
-            ))}
-          </select>
-        </div>
 
-        <div style={{ marginTop: '16px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Backup Approver</label>
-          <select 
-            value={backupApprover} 
-            onChange={e => setBackupApprover(e.target.value)}
-            className={styles.textarea}
-            style={{ minHeight: '40px', marginTop: 0 }}
-          >
-            <option value="">-- None --</option>
-            {usersList.map(u => (
-              <option key={u.id} value={u.id}>{u.name} ({u.role_name || 'User'})</option>
-            ))}
-          </select>
-        </div>
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Assign To</label>
+            <select 
+              value={selectedUser} 
+              onChange={(e) => setSelectedUser(e.target.value)}
+              className={styles.input}
+              style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border-color)' }}
+              required
+            >
+              <option value="">-- Select Finance User --</option>
+              {users.map(u => (
+                <option key={u.id} value={u.id}>{u.first_name} {u.last_name}</option>
+              ))}
+              {/* Fallback mock users if API is empty */}
+              {users.length === 0 && (
+                <>
+                  <option value="991">Finance Manager (Mock)</option>
+                  <option value="992">CFO (Mock)</option>
+                </>
+              )}
+            </select>
+          </div>
 
-        <div style={{ marginTop: '16px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Assignment Notes</label>
-          <textarea 
-            value={assignmentNotes} 
-            onChange={e => setAssignmentNotes(e.target.value)} 
-            placeholder="Add context for the approver..." 
-            className={styles.textarea} 
-            style={{ marginTop: 0 }}
-          />
-        </div>
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Reason / Notes</label>
+            <textarea
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+              className={styles.input}
+              style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border-color)', minHeight: '80px' }}
+              placeholder="Why is this being reassigned?"
+            ></textarea>
+          </div>
 
-        <div className={styles.modalActions}>
-          <button onClick={onClose} disabled={loading}>Cancel</button>
-          <button onClick={handleSubmit} className={styles.approve} disabled={loading || !assignedTo}>
-            {loading ? 'Saving...' : 'Save Assignment'}
-          </button>
-        </div>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <button type="button" onClick={onClose} className={styles.secondaryBtn} disabled={loading}>
+              Cancel
+            </button>
+            <button type="submit" className={styles.primaryBtn} disabled={loading}>
+              {loading ? 'Assigning...' : 'Confirm Assignment'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

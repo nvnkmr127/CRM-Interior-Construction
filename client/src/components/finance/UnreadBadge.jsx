@@ -10,7 +10,7 @@ export default function UnreadBadge({ approvalId, refreshCounter }) {
 
   const fetchUnread = async () => {
     try {
-      const res = await api.get(/api/financial-approvals//comments/unread);
+      const res = await api.get(`/api/financial-approvals/${approvalId}/comments/unread`);
       setUnread(res.data.data?.unread_count || 0);
     } catch (e) {
       console.error(e);

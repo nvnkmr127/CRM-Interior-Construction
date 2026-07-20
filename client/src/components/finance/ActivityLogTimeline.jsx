@@ -12,7 +12,7 @@ export default function ActivityLogTimeline({ approvalId }) {
 
   const fetchLogs = async () => {
     try {
-      const res = await api.get(\/api/financial-approvals/\/activity\);
+      const res = await api.get(`/api/financial-approvals/${approvalId}/activity`);
       setLogs(res.data.data || []);
     } catch (e) {
       console.error(e);
@@ -21,7 +21,7 @@ export default function ActivityLogTimeline({ approvalId }) {
     }
   };
 
-  const getInitials = (f, l) => \\\\.toUpperCase();
+  const getInitials = (f, l) => `${f ? f[0] : ''}${l ? l[0] : ''}`.toUpperCase();
 
   const getActionColor = (action) => {
     switch(action) {
@@ -65,7 +65,7 @@ export default function ActivityLogTimeline({ approvalId }) {
           <div style={{ position: 'absolute', left: '15px', top: '0', bottom: '0', width: '2px', background: 'var(--border-color)' }}></div>
           {logs.map((log, i) => (
             <div key={log.id} style={{ display: 'flex', gap: '12px', position: 'relative', zIndex: 1 }}>
-              <div className={styles.avatar} style={{ background: getActionColor(log.action), width: '32px', height: '32px' }}>
+              <div className={styles.avatar} style={{ background: getActionColor(log.action), width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', borderRadius: '50%' }}>
                 {getInitials(log.first_name, log.last_name)}
               </div>
               <div style={{ flex: 1, background: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '12px' }}>
@@ -78,8 +78,8 @@ export default function ActivityLogTimeline({ approvalId }) {
                 </div>
                 {renderDiff(log.old_value, log.new_value)}
                 <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', gap: '8px' }}>
-                  <span title=\IP Address\>?? {log.ip_address || 'Unknown IP'}</span>
-                  <span title=\Browser\>?? {log.browser || 'Unknown Browser'}</span>
+                  <span title="IP Address">🌐 {log.ip_address || 'Unknown IP'}</span>
+                  <span title="Browser">🖥️ {log.browser || 'Unknown Browser'}</span>
                 </div>
               </div>
             </div>

@@ -140,6 +140,7 @@ export default function AdvancedFilters({ onApply, onReset, appliedFilters }) {
   ];
 
   const priorityOptions = [
+    { value: 'critical', label: 'Critical' },
     { value: 'high', label: 'High' },
     { value: 'medium', label: 'Medium' },
     { value: 'low', label: 'Low' }
@@ -256,7 +257,7 @@ export default function AdvancedFilters({ onApply, onReset, appliedFilters }) {
         />
 
         <Select 
-          label="Priority (Mock)"
+          label="Priority"
           options={priorityOptions}
           value={filters.priority}
           onChange={(v) => setFilters({...filters, priority: v})}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import api from '../../services/api';
-import toast from 'react-hot-toast';
+import api from '../../api/axios';
+import { useToast } from '../../store/toastContext';
 import styles from './ApprovalMatrixPage.module.css';
 
 const TRANSACTION_TYPES = [
@@ -24,6 +24,7 @@ const AVAILABLE_ROLES = [
 ];
 
 export default function ApprovalMatrixPage() {
+  const toast = useToast();
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -42,20 +43,22 @@ export default function ApprovalMatrixPage() {
     required_roles: ['finance:manager']
   });
 
-  useEffect(() => {
-    fetchRules();
-  }, []);
-
   const fetchRules = async () => {
     try {
       const res = await api.get('/approval-matrix');
       setRules(res.data.data || []);
     } catch (err) {
+      console.error(err);
       toast.error('Failed to load approval matrix rules');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchRules();
+  }, []);
 
   const handleOpenModal = (rule = null) => {
     if (rule) {
@@ -113,6 +116,7 @@ export default function ApprovalMatrixPage() {
         try {
           parsedValidation = JSON.parse(formData.validation_rules);
         } catch (e) {
+          console.error(e);
           toast.error('Validation Rules must be valid JSON');
           return;
         }
@@ -148,6 +152,7 @@ export default function ApprovalMatrixPage() {
       toast.success('Rule deleted successfully');
       fetchRules();
     } catch (err) {
+      console.error(err);
       toast.error('Failed to delete rule');
     }
   };

@@ -1,5 +1,5 @@
 /* eslint-disable no-undef, react-hooks/set-state-in-effect */
-import { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Badge } from '../../components/ui';
 import styles from './ProjectDetail.module.css';

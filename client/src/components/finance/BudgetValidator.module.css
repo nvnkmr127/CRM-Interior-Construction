@@ -1,0 +1,85 @@
+.container {
+  margin-top: 16px;
+  padding: 16px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  color: #fff;
+}
+
+.progressContainer {
+  height: 8px;
+  background-color: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.progressBar {
+  height: 100%;
+  display: flex;
+  width: 100%;
+}
+
+.progressConsumed {
+  height: 100%;
+  background-color: #9ca3af;
+  transition: width 0.3s ease;
+}
+
+.progressRequest {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.gridItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.label {
+  font-size: 0.7rem;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.value {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.loader {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-top: 16px;
+  text-align: center;
+}
