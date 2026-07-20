@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/pool');
-const { authenticate } = require('../middleware/auth');
+const authenticate = require('../middleware/authenticate');
 const { fail, success } = require('../utils/response');
 
 router.use(authenticate);

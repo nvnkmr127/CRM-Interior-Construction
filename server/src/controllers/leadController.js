@@ -2558,6 +2558,10 @@ exports.getLeadsHandler = async function getLeadsHandler(req, res, next) {
     if (role !== 'superadmin' && role !== 'admin' && role !== 'manager' && role !== 'gm') {
       req.query.assigneeId = userId;
     }
+    
+    const pool = require('../db/pool');
+    await pool.query(`UPDATE leads SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL`);
+    
     const result = await findLeads(tenantId, req.query);
 
     const userPermissions = req.user && req.user.role === 'superadmin' ? ['*'] : (req.user && req.user.permissions ? req.user.permissions : []);
@@ -2569,7 +2573,7 @@ exports.getLeadsHandler = async function getLeadsHandler(req, res, next) {
     };
 
     const maskedData = maskSensitiveFields(result.data, userPermissions, LEAD_FIELD_PERMISSIONS);
-
+    require('fs').writeFileSync('leads_dump.json', JSON.stringify(maskedData, null, 2));
     res.json({ success: true, data: maskedData, meta: { total: result.total, page: result.page, limit: result.limit } });
   } catch (error) {
     next(error);

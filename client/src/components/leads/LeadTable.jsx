@@ -283,7 +283,7 @@ export default function LeadTable({
                 </td>
                 <td className={styles.listTd}>
                   <span className="text-gray-500 font-medium">
-                    {total ? total - (page - 1) * limit - idx : filteredLeads.length - idx}
+                    {total ? total - ((page - 1) * limit + idx) : (page - 1) * limit + idx + 1}
                   </span>
                 </td>
                 <td className={styles.listTd}>

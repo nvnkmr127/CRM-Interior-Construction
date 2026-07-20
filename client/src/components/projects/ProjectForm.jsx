@@ -147,6 +147,9 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
   })
 
   const [teamMembers, setTeamMembers] = useState([])
+  const [clientNames, setClientNames] = useState([])
+  const [clientDetailsMap, setClientDetailsMap] = useState({})
+  
   useEffect(() => {
     if (isOpen) {
       api.get('/users?limit=100')
@@ -155,6 +158,40 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
           setTeamMembers(Array.isArray(u) ? u : [])
         })
         .catch(err => console.error('Failed to fetch team members', err))
+
+      Promise.all([
+        api.get('/leads?limit=1000').catch(() => ({ data: { data: [] } })),
+        api.get('/projects?limit=1000').catch(() => ({ data: { data: [] } }))
+      ]).then(([leadsRes, projectsRes]) => {
+        const leads = leadsRes.data?.data || leadsRes.data?.results || leadsRes.data || [];
+        const projects = projectsRes.data?.data || projectsRes.data || [];
+        const names = new Set();
+        const detailsMap = {};
+
+        if (Array.isArray(leads)) {
+          leads.forEach(l => {
+            if (l.name) {
+              names.add(l.name);
+              if (!detailsMap[l.name]) {
+                detailsMap[l.name] = { phone: l.phone || '', email: l.email || '' };
+              }
+            }
+          });
+        }
+        if (Array.isArray(projects)) {
+          projects.forEach(p => {
+            const cName = p.client_name || p.clientName;
+            if (cName) {
+              names.add(cName);
+              if (!detailsMap[cName]) {
+                detailsMap[cName] = { phone: p.client_phone || p.clientPhone || '', email: p.client_email || p.clientEmail || '' };
+              }
+            }
+          });
+        }
+        setClientNames(Array.from(names).sort());
+        setClientDetailsMap(detailsMap);
+      });
     }
   }, [isOpen])
 
@@ -474,9 +511,24 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
           <Input 
             label="Client Name *" 
             value={formData.clientName} 
-            onChange={e => setFormData({...formData, clientName: e.target.value})} 
+            onChange={e => {
+              const val = e.target.value;
+              const newFormData = { ...formData, clientName: val };
+              if (clientDetailsMap[val]) {
+                const { phone, email } = clientDetailsMap[val];
+                if (phone && !newFormData.clientPhone) newFormData.clientPhone = phone;
+                if (email && !newFormData.clientEmail) newFormData.clientEmail = email;
+              }
+              setFormData(newFormData);
+            }} 
             error={errors.clientName}
+            list={formData.clientName && formData.clientName.length > 0 ? "clientsList" : undefined}
           />
+          <datalist id="clientsList">
+            {clientNames.map(name => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
           <div style={{ marginTop: 16 }}>
             <Input 
               label="Client Phone" 

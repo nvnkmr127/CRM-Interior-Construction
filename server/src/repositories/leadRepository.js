@@ -263,7 +263,10 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
   if (sortBy === 'score') orderField = 'l.score';
   else if (sortBy === 'name') orderField = 'l.name';
   
-  const orderDirection = sortDesc === 'false' || sortDesc === false ? 'ASC' : 'DESC';
+  let orderDirection = sortDesc === 'false' || sortDesc === false ? 'ASC' : 'DESC';
+  if (orderField === 'l.created_at') {
+    orderDirection = 'DESC'; // ALWAYS newest first
+  }
 
   if (cursor) {
     // Basic cursor implementation: assuming sort order is descending ID (or ascending ID)

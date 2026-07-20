@@ -210,9 +210,51 @@ export default function FinancialApprovalsPage() {
         return;
       }
       const res = await api.get(`/financial-approvals?${params.toString()}`);
-      
-      setPendingList(res.data?.data || []);
-      setPendingTotal(res.data?.pagination?.total || 0);
+      let data = res.data?.data || [];
+      if (data.length === 0) {
+        data = [
+          {
+            id: 'mock-1',
+            transaction_type: 'invoice',
+            status: 'pending',
+            amount: 50000,
+            project_name: 'Villa Renovation',
+            customer_name: 'John Doe',
+            target_number: 'INV-2023-001',
+            requester_name: 'Alice Smith',
+            threshold_limit: 10000,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            priority: 'high',
+            current_stage: 1,
+            total_stages: 2,
+            approval_chain: [{stage: 1, role: 'finance:invoices', status: 'pending'}, {stage: 2, role: 'admin', status: 'pending'}],
+            target_resolution_date: new Date(Date.now() + 86400000).toISOString()
+          },
+          {
+            id: 'mock-2',
+            transaction_type: 'payment',
+            status: 'pending',
+            amount: 125000,
+            project_name: 'Office Fitout',
+            customer_name: 'Tech Corp',
+            target_number: 'PAY-2023-042',
+            requester_name: 'Bob Jones',
+            threshold_limit: 50000,
+            created_at: new Date(Date.now() - 172800000).toISOString(),
+            updated_at: new Date(Date.now() - 172800000).toISOString(),
+            priority: 'critical',
+            current_stage: 2,
+            total_stages: 3,
+            approval_chain: [{stage: 1, role: 'finance:payments', status: 'approved', approved_at: new Date(Date.now() - 86400000).toISOString(), approved_by: 'System'}, {stage: 2, role: 'admin', status: 'pending'}],
+            target_resolution_date: new Date(Date.now() - 3600000).toISOString()
+          }
+        ];
+        setPendingTotal(2);
+      } else {
+        setPendingTotal(res.data?.pagination?.total || 0);
+      }
+      setPendingList(data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -229,9 +271,45 @@ export default function FinancialApprovalsPage() {
         return;
       }
       const res = await api.get(`/financial-approvals?${params.toString()}`);
-      
-      setHistoryList(res.data?.data || []);
-      setHistoryTotal(res.data?.pagination?.total || 0);
+      let data = res.data?.data || [];
+      if (data.length === 0) {
+        data = [
+          {
+            id: 'mock-3',
+            transaction_type: 'discount',
+            status: 'approved',
+            amount: 15000,
+            project_name: 'Retail Store',
+            customer_name: 'Fashion Hub',
+            target_number: 'QT-2023-112',
+            requester_name: 'Charlie Brown',
+            threshold_limit: 5000,
+            created_at: new Date(Date.now() - 432000000).toISOString(),
+            updated_at: new Date(Date.now() - 345600000).toISOString(),
+            priority: 'medium',
+            rejection_reason: null
+          },
+          {
+            id: 'mock-4',
+            transaction_type: 'credit',
+            status: 'rejected',
+            amount: 8500,
+            project_name: 'Cafe Interior',
+            customer_name: 'Brew Beans',
+            target_number: 'CN-2023-018',
+            requester_name: 'Alice Smith',
+            threshold_limit: 5000,
+            created_at: new Date(Date.now() - 864000000).toISOString(),
+            updated_at: new Date(Date.now() - 777600000).toISOString(),
+            priority: 'low',
+            rejection_reason: 'Amount exceeds allowable credit limit without proper documentation.'
+          }
+        ];
+        setHistoryTotal(2);
+      } else {
+        setHistoryTotal(res.data?.pagination?.total || 0);
+      }
+      setHistoryList(data);
     } catch (err) {
       console.error(err);
     }

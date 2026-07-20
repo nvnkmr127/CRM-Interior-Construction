@@ -108,7 +108,27 @@ export default function LeadsPage() {
     return Object.entries(map);
   }, [leads]);
 
-  const filteredLeads = leads;
+  // Calculate filteredLeads without useMemo to guarantee it runs on every render
+  const filteredLeads = (() => {
+    const arr = [...leads];
+    const getTime = (l) => {
+      // If missing or invalid, treat as Infinity (newest) so they go to the top
+      if (!l.created_at && !l.createdAt) return Infinity;
+      const d = new Date(l.created_at || l.createdAt);
+      if (isNaN(d.getTime())) return Infinity;
+      return d.getTime();
+    };
+    
+    // Always apply chronological sort as a fallback to guarantee newest is at top
+    if (sortBy === 'score') {
+      arr.sort((a, b) => (b.score || 0) - (a.score || 0) || getTime(b) - getTime(a));
+    } else if (sortBy === 'name') {
+      arr.sort((a, b) => (a.name || '').localeCompare(b.name || '') || getTime(b) - getTime(a));
+    } else {
+      arr.sort((a, b) => getTime(b) - getTime(a));
+    }
+    return arr;
+  })();
 
   // Group for kanban
   const leadsByStage = useMemo(() => {
@@ -305,7 +325,11 @@ export default function LeadsPage() {
       {isFormOpen && (
         <LeadForm 
           onClose={() => setIsFormOpen(false)} 
-          onSave={() => refetch()}
+          onSave={() => {
+            setSortBy('latest');
+            setPage(1);
+            refetch();
+          }}
         />
       )}
       {isImportModalOpen && (

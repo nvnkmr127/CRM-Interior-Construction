@@ -4,18 +4,20 @@ import { useAuth } from '../../store/authContext'
 import styles from './Sidebar.module.css'
 
 const NAV_ITEMS = [
-  { group: 'MAIN', items: [
+  { group: 'WORKSPACE', items: [
     { to: '/dashboard',  icon: '⊞', label: 'Dashboard' },
     { to: '/leads',      icon: '◎', label: 'Leads' },
-    { label: 'Projects', icon: '◈', subItems: [
-        { to: '/projects', icon: '◈', label: 'All Projects' },
+    { to: '/projects', icon: '◈', label: 'Projects' },
+    { to: '/tasks',      icon: '◻', label: 'My Tasks' },
+  ]},
+  { group: 'OPERATIONS', items: [
+    { label: 'Project Operations', icon: '⚙️', subItems: [
         { to: '/projects/resources', icon: '👥', label: 'Resource Capacity' },
         { to: '/projects/absences', icon: '🌴', label: 'Absence Management' },
         { to: '/projects/coordination', icon: '🔄', label: 'Production Coordination' },
         { to: '/projects/handover-dashboard', icon: '📋', label: 'Handover Dashboard' },
         { to: '/projects/retention-dashboard', icon: '🤝', label: 'Retention Dashboard' },
     ]},
-    { to: '/tasks',      icon: '◻', label: 'My Tasks' },
   ]},
   { group: 'ANALYTICS', items: [
     { to: '/analytics/leads',    icon: '▲', label: 'Lead Analytics' },

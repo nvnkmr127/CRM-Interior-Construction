@@ -9,9 +9,9 @@ export default function AttachmentCard({ attachment, onDelete, onUpdateVersion }
   const fileInputRef = useRef(null)
 
   useEffect(() => {
-    if (attachment.type.startsWith('image/')) {
+    if (attachment.type && attachment.type.startsWith('image/')) {
       setThumbnailUrl(attachment.url)
-    } else if (attachment.type.startsWith('video/')) {
+    } else if (attachment.type && attachment.type.startsWith('video/')) {
       // Simulate video thumbnail by creating a hidden video element
       const video = document.createElement('video')
       video.src = attachment.url

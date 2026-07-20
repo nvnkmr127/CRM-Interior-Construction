@@ -174,34 +174,34 @@ router.get('/', async (req, res, next) => {
 
     const whereClause = conditions.join(' AND ');
 
-    let orderByClause = 'ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC'; // default
+    let orderByClause = `ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC`; // default
     if (sort_by) {
       switch (sort_by) {
         case 'newest':
         case 'requested_date':
         case 'priority': // Mocked mapping
-          orderByClause = 'ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC';
+          orderByClause = `ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC`;
           break;
         case 'oldest':
-          orderByClause = 'ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id ASC';
+          orderByClause = `ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id ASC`;
           break;
         case 'amount_desc':
-          orderByClause = 'ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC';
+          orderByClause = `ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC`;
           break;
         case 'amount_asc':
-          orderByClause = 'ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id ASC';
+          orderByClause = `ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id ASC`;
           break;
         case 'project_name':
-          orderByClause = 'ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC';
+          orderByClause = `ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC`;
           break;
         case 'customer_name':
-          orderByClause = 'ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC';
+          orderByClause = `ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC`;
           break;
         case 'approval_date':
-          orderByClause = 'ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC';
+          orderByClause = `ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC`;
           break;
         default:
-          orderByClause = 'ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC';
+          orderByClause = `ORDER BY CASE WHEN '${sort || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC`;
       }
     }
 
@@ -292,7 +292,6 @@ router.post('/:id/approve', async (req, res, next) => {
       return fail(res, 'BAD_REQUEST', 'Budget exceeded. Approval blocked.', 400);
     }
 
-    const tenantId = req.tenantId;
     const userId = req.user.id || req.user.userId;
     const { id } = req.params;
 
@@ -440,7 +439,6 @@ router.post('/:id/approve', async (req, res, next) => {
 router.post('/:id/reject', async (req, res, next) => {
   const client = await pool.connect();
   try {
-    const tenantId = req.tenantId;
     const userId = req.user.id || req.user.userId;
     const { id } = req.params;
     const { rejectionReason } = req.body;
@@ -614,7 +612,6 @@ router.post('/:id/comments', async (req, res, next) => {
 // PUT /api/financial-approvals/:id/comments/:commentId
 router.put('/:id/comments/:commentId', async (req, res, next) => {
   try {
-    const tenantId = req.tenantId;
     const userId = req.user.id || req.user.userId;
     const { commentId } = req.params;
     const { content } = req.body;
@@ -637,7 +634,6 @@ router.put('/:id/comments/:commentId', async (req, res, next) => {
 // DELETE /api/financial-approvals/:id/comments/:commentId
 router.delete('/:id/comments/:commentId', async (req, res, next) => {
   try {
-    const tenantId = req.tenantId;
     const userId = req.user.id || req.user.userId;
     const { commentId } = req.params;
 
@@ -658,7 +654,6 @@ router.delete('/:id/comments/:commentId', async (req, res, next) => {
 // POST /api/financial-approvals/:id/comments/:commentId/reactions
 router.post('/:id/comments/:commentId/reactions', async (req, res, next) => {
   try {
-    const tenantId = req.tenantId;
     const userId = req.user.id || req.user.userId;
     const { commentId } = req.params;
     const { emoji } = req.body;
@@ -805,10 +800,6 @@ router.post('/:id/assign', async (req, res, next) => {
     
     logActivity(req, 'financial_approval', id, action, null, JSON.stringify({ assigned_to, backup_approver, notes: assignment_notes }));
     return success(res, { success: true });
-  } catch (error) {
-    next(error);
-  }
-});
   } catch (error) {
     next(error);
   }
