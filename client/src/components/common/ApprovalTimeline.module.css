@@ -1,0 +1,163 @@
+.timelineContainer {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 0;
+  width: 100%;
+}
+
+.timelineItem {
+  display: flex;
+  position: relative;
+  min-height: 80px;
+}
+
+.timelineItem:last-child .timelineLine {
+  display: none;
+}
+
+.timelineLeft {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 16px;
+  position: relative;
+  min-width: 40px;
+}
+
+.timelineIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  font-size: 16px;
+}
+
+.iconCompleted {
+  background-color: #10b981;
+  color: white;
+}
+
+.iconPending {
+  background-color: #e5e7eb;
+  color: #9ca3af;
+}
+
+.iconRejected {
+  background-color: #ef4444;
+  color: white;
+}
+
+.iconCurrent {
+  background-color: #3b82f6;
+  color: white;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
+.timelineLine {
+  position: absolute;
+  top: 32px;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  background-color: #e5e7eb;
+  z-index: 1;
+}
+
+.lineCompleted {
+  background-color: #10b981;
+}
+
+.lineRejected {
+  background-color: #ef4444;
+}
+
+.timelineContent {
+  flex: 1;
+  padding-bottom: 24px;
+}
+
+.timelineHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #f3f4f6;
+  color: #4b5563;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  border: 1px solid #e5e7eb;
+}
+
+.nameRole {
+  display: flex;
+  flex-direction: column;
+}
+
+.name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #111827;
+}
+
+.role {
+  font-size: 12px;
+  color: #6b7280;
+  text-transform: capitalize;
+}
+
+.dateTime {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.date {
+  font-weight: 500;
+}
+
+.duration {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+.comments {
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #374151;
+  margin-top: 8px;
+  border-left: 3px solid #d1d5db;
+}
+
+.commentsRejected {
+  border-left-color: #ef4444;
+  background-color: #fef2f2;
+}
+
+.commentsCompleted {
+  border-left-color: #10b981;
+}

@@ -453,6 +453,24 @@ export default function AuditTrailPage() {
                   <span className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Action</span>
                   <span className="font-medium text-gray-800 font-mono text-xs">{selectedLog.action}</span>
                 </div>
+                <div>
+                  <span className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">IP Address</span>
+                  <span className="font-medium text-gray-800 font-mono text-xs">{selectedLog.ip_address || '-'}</span>
+                </div>
+                <div>
+                  <span className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Device & Browser</span>
+                  <span className="font-medium text-gray-800 text-xs">
+                    {selectedLog.device || 'Unknown'} - {selectedLog.browser ? (selectedLog.browser.length > 30 ? selectedLog.browser.substring(0,30) + '...' : selectedLog.browser) : 'Unknown'}
+                  </span>
+                </div>
+                <div>
+                  <span className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Location</span>
+                  <span className="font-medium text-gray-800 text-xs">{selectedLog.location || 'Unknown'}</span>
+                </div>
+                <div>
+                  <span className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Reason</span>
+                  <span className="font-medium text-gray-800 text-xs">{selectedLog.reason || '-'}</span>
+                </div>
               </div>
 
               <div className="h-px bg-gray-150"></div>

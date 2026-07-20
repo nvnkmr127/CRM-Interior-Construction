@@ -130,8 +130,8 @@ router.get('/export', checkAuditAccess, async (req, res, next) => {
     const dataResult = await pool.query(dataQuery, queryParams);
     
     // Create CSV string
-    const headers = ['Date', 'User Name', 'User Email', 'IP Address', 'Action', 'Entity', 'Entity ID', 'Old Value', 'New Value'];
-    let csvString = headers.map(h => `"${h}"`).join(',') + '\\n';
+    const headers = ['Date', 'User Name', 'User Email', 'IP Address', 'Action', 'Entity', 'Entity ID', 'Old Value', 'New Value', 'Device', 'Location', 'Reason'];
+    let csvString = headers.map(h => `"${h}"`).join(',') + '\n';
     
     for (const row of dataResult.rows) {
       const date = new Date(row.created_at).toISOString();
@@ -141,10 +141,13 @@ router.get('/export', checkAuditAccess, async (req, res, next) => {
       const action = row.action || '';
       const entityName = row.entity || '';
       const entityId = row.entity_id || '';
+      const device = row.device || '';
+      const location = row.location || '';
       
       // Escape quotes for CSV
       const oldVal = row.old_value ? row.old_value.replace(/"/g, '""') : '';
       const newVal = row.new_value ? row.new_value.replace(/"/g, '""') : '';
+      const reason = row.reason ? row.reason.replace(/"/g, '""') : '';
       
       const csvRow = [
         `"${date}"`, 
@@ -155,9 +158,12 @@ router.get('/export', checkAuditAccess, async (req, res, next) => {
         `"${entityName}"`, 
         `"${entityId}"`,
         `"${oldVal}"`,
-        `"${newVal}"`
+        `"${newVal}"`,
+        `"${device}"`,
+        `"${location}"`,
+        `"${reason}"`
       ];
-      csvString += csvRow.join(',') + '\\n';
+      csvString += csvRow.join(',') + '\n';
     }
     
     res.setHeader('Content-Type', 'text/csv');

@@ -1,6 +1,7 @@
 const pool = require('../../db/pool');
 const { getTenantThreshold, isUserSuperadmin } = require('../../utils/finance');
 const { logAction } = require('../auditLog');
+const { buildApprovalChain } = require('../../utils/ApprovalChainBuilder');
 
 async function getCreditNotes(tenantId, projectId) {
   const query = `
@@ -121,11 +122,13 @@ async function createCreditNote({ tenantId, userId, data, bypassApproval = false
   const creditNote = result.rows[0];
 
   if (requiresApproval) {
+    const { current_stage, total_stages, approval_chain } = await buildApprovalChain(tenantId, 'credit', totalAmount);
     await pool.query(
       `INSERT INTO financial_approvals (
-         tenant_id, transaction_type, target_id, amount, requested_by, requested_changes, status, threshold_limit
-       ) VALUES ($1, 'credit', $2, $3, $4, $5, 'pending', $6)`,
-      [tenantId, creditNote.id, totalAmount, userId, JSON.stringify({ type: 'credit' }), threshold]
+         tenant_id, transaction_type, target_id, amount, requested_by, requested_changes, status, threshold_limit,
+         current_stage, total_stages, approval_chain
+       ) VALUES ($1, 'credit', $2, $3, $4, $5, 'pending', $6, $7, $8, $9)`,
+      [tenantId, creditNote.id, totalAmount, userId, JSON.stringify({ type: 'credit' }), threshold, current_stage, total_stages, JSON.stringify(approval_chain)]
     );
   }
 
@@ -169,11 +172,13 @@ async function createRefund({ tenantId, userId, data, bypassApproval = false }) 
   const refund = result.rows[0];
 
   if (requiresApproval) {
+    const { current_stage, total_stages, approval_chain } = await buildApprovalChain(tenantId, 'refund', amount);
     await pool.query(
       `INSERT INTO financial_approvals (
-         tenant_id, transaction_type, target_id, amount, requested_by, requested_changes, status, threshold_limit
-       ) VALUES ($1, 'refund', $2, $3, $4, $5, 'pending', $6)`,
-      [tenantId, refund.id, amount, userId, JSON.stringify({ type: 'refund' }), threshold]
+         tenant_id, transaction_type, target_id, amount, requested_by, requested_changes, status, threshold_limit,
+         current_stage, total_stages, approval_chain
+       ) VALUES ($1, 'refund', $2, $3, $4, $5, 'pending', $6, $7, $8, $9)`,
+      [tenantId, refund.id, amount, userId, JSON.stringify({ type: 'refund' }), threshold, current_stage, total_stages, JSON.stringify(approval_chain)]
     );
   }
 

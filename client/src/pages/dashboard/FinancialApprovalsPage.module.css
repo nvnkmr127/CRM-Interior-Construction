@@ -344,3 +344,66 @@
   text-align: center;
   color: var(--color-text-muted);
 }
+
+.filterContainer { display: flex; align-items: center; margin-left: auto; }
+.selectFilter { padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background-color: white; font-size: 14px; color: #334155; outline: none; transition: border-color 0.2s; }
+.selectFilter:focus { border-color: #3b82f6; box-shadow: 0 0 0 1px #3b82f6; }
+.activeFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.activeFiltersLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.filterChip {
+  background: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  padding: 4px 12px;
+  font-size: 13px;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.chipRemoveBtn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.chipRemoveBtn:hover {
+  color: #ef4444;
+}
+
+.clearAllBtn {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.clearAllBtn:hover {
+  text-decoration: underline;
+}

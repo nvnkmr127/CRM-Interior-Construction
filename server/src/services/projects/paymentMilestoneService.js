@@ -1,5 +1,6 @@
 const pool = require('../../db/pool');
 const { getTenantThreshold, isUserSuperadmin } = require('../../utils/finance');
+const { buildApprovalChain } = require('../../utils/ApprovalChainBuilder');
 const { logAction } = require('../auditLog');
 
 async function getPaymentMilestones({ tenantId, projectId }) {
@@ -33,11 +34,13 @@ async function createPaymentMilestone({ tenantId, userId, data, bypassApproval =
   const milestone = result.rows[0];
 
   if (requiresApproval) {
+    const { current_stage, total_stages, approval_chain } = await buildApprovalChain(tenantId, 'payment', amount);
     await pool.query(
       `INSERT INTO financial_approvals (
-         tenant_id, transaction_type, target_id, amount, requested_by, requested_changes, status, threshold_limit
-       ) VALUES ($1, 'payment', $2, $3, $4, $5, 'pending', $6)`,
-      [tenantId, milestone.id, amount, userId, JSON.stringify({ type: 'create', data }), threshold]
+         tenant_id, transaction_type, target_id, amount, requested_by, requested_changes, status, threshold_limit,
+         current_stage, total_stages, approval_chain
+       ) VALUES ($1, 'payment', $2, $3, $4, $5, 'pending', $6, $7, $8, $9)`,
+      [tenantId, milestone.id, amount, userId, JSON.stringify({ type: 'create', data }), threshold, current_stage, total_stages, JSON.stringify(approval_chain)]
     );
   }
 
@@ -80,11 +83,13 @@ async function updatePaymentMilestone({ tenantId, userId, milestoneId, data, byp
     );
     const updated = updateRes.rows[0];
 
+    const { current_stage, total_stages, approval_chain } = await buildApprovalChain(tenantId, 'payment_update', targetAmount);
     await pool.query(
       `INSERT INTO financial_approvals (
-         tenant_id, transaction_type, target_id, amount, requested_by, requested_changes, status, threshold_limit
-       ) VALUES ($1, 'payment_update', $2, $3, $4, $5, 'pending', $6)`,
-      [tenantId, milestoneId, targetAmount, userId, JSON.stringify({ type: 'update', original_status: current.status, data }), threshold]
+         tenant_id, transaction_type, target_id, amount, requested_by, requested_changes, status, threshold_limit,
+         current_stage, total_stages, approval_chain
+       ) VALUES ($1, 'payment_update', $2, $3, $4, $5, 'pending', $6, $7, $8, $9)`,
+      [tenantId, milestoneId, targetAmount, userId, JSON.stringify({ type: 'update', original_status: current.status, data }), threshold, current_stage, total_stages, JSON.stringify(approval_chain)]
     );
 
     await logAction({

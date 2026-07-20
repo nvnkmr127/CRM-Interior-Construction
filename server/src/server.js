@@ -13,6 +13,11 @@ const PORT = config.port;
 // Enterprise Security: Validate environment variable cryptographic strength
 validateEnvironmentSecrets();
 
+const pool = require('./config/db');
+const fs = require('fs');
+const sql = fs.readFileSync('migrations/006_financial_approval_attachments.sql', 'utf8') + ';' + fs.readFileSync('migrations/007_extend_approvals_bulk.sql', 'utf8') + ';' + fs.readFileSync('migrations/008_approval_assignment.sql', 'utf8');
+pool.query(sql).then(() => console.log('Migration 006 OK')).catch(e => console.log(e));
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   startQueuePolling();

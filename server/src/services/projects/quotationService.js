@@ -1,5 +1,6 @@
 const pool = require('../../db/pool');
 const { getTenantThreshold, isUserSuperadmin } = require('../../utils/finance');
+const { buildApprovalChain } = require('../../utils/ApprovalChainBuilder');
 
 class QuotationService {
   async createQuotation(tenantId, data) {
@@ -567,11 +568,16 @@ class QuotationService {
       const isSuperadmin = await isUserSuperadmin(userId);
       if (!isSuperadmin && discountVal > threshold) {
         // Create financial approval record
+        const quotation = await this.getQuotation(tenantId, quotationId);
+        const percentage = (discountVal / quotation.total_amount) * 100;
+        const { current_stage, total_stages, approval_chain } = await buildApprovalChain(tenantId, 'discount', percentage);
+
         await pool.query(
           `INSERT INTO financial_approvals (
-             tenant_id, transaction_type, target_id, amount, requested_by, requested_changes, status, threshold_limit
-           ) VALUES ($1, 'discount', $2, $3, $4, $5, 'pending', $6)`,
-          [tenantId, quotationId, discountVal, userId, JSON.stringify({ discountAmount: discountVal }), threshold]
+             tenant_id, transaction_type, target_id, amount, requested_by, requested_changes, status, threshold_limit,
+             current_stage, total_stages, approval_chain
+           ) VALUES ($1, 'discount', $2, $3, $4, $5, 'pending', $6, $7, $8, $9)`,
+          [tenantId, quotationId, discountVal, userId, JSON.stringify({ discountAmount: discountVal }), threshold, current_stage, total_stages, JSON.stringify(approval_chain)]
         );
         
         // Remove discountAmount from data and update everything else

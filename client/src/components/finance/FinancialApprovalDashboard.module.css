@@ -1,0 +1,145 @@
+.dashboardContainer {
+  margin-bottom: 24px;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 1024px) {
+  .kpiGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .kpiGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.kpiCard {
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.kpiCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.kpiHeader {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.kpiIcon {
+  font-size: 20px;
+  margin-right: 8px;
+}
+
+.kpiTitle {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+  margin: 0;
+}
+
+.kpiBody {
+  display: flex;
+  flex-direction: column;
+}
+
+.kpiValue {
+  font-size: 24px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.kpiDesc {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* Specific Card Styles */
+.kpiCard_warning .kpiValue { color: #eab308; }
+.kpiCard_success .kpiValue { color: #22c55e; }
+.kpiCard_danger .kpiValue { color: #ef4444; }
+.kpiCard_info .kpiValue { color: #3b82f6; }
+
+/* Skeleton Loading States */
+.skeleton {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+}
+
+.skeletonIcon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: #e2e8f0;
+  margin-bottom: 12px;
+}
+
+.skeletonTitle {
+  height: 16px;
+  width: 60%;
+  background-color: #e2e8f0;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.skeletonValue {
+  height: 28px;
+  width: 80%;
+  background-color: #e2e8f0;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.skeletonDesc {
+  height: 12px;
+  width: 40%;
+  background-color: #e2e8f0;
+  border-radius: 4px;
+}
+
+.errorState {
+  padding: 16px;
+  background-color: #fee2e2;
+  color: #991b1b;
+  border-radius: 8px;
+  border: 1px solid #f87171;
+  text-align: center;
+}
+
+.emptyState {
+  padding: 16px;
+  background-color: #f8fafc;
+  color: #64748b;
+  border-radius: 8px;
+  border: 1px dashed #cbd5e1;
+  text-align: center;
+}
+
+.kpiTrend { margin-top: 8px; font-size: 12px; font-weight: 500; display: flex; align-items: center; gap: 4px; }
+.kpiTrend_positive { color: #22c55e; }
+.kpiTrend_negative { color: #ef4444; }
+.kpiTrend_neutral { color: #64748b; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+.fadeIn { animation: fadeIn 0.4s ease-out forwards; }

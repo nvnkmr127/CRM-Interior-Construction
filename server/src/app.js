@@ -18,9 +18,12 @@ require('./services/timeline/timelineWriter');
 // Removed periodic intervals. Jobs are now handled by BullMQ cronWorker.
 
 app.set('trust proxy', 1);
-app.use(helmet());
+app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true }));
 app.use(morgan('dev'));
+
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 const { rateLimit, default: defaultRateLimit } = require('express-rate-limit');
 const rateLimitFn = rateLimit || defaultRateLimit || require('express-rate-limit');
@@ -183,6 +186,7 @@ app.use('/api/payment-milestones', paymentMilestonesRoutes);
 app.use('/api/invoices', invoicesRoutes);
 app.use('/api/financials', financialsRoutes);
 app.use('/api/financial-approvals', financialApprovalsRoutes);
+app.use('/api/approval-matrix', require('./routes/approvalMatrix'));
 app.use('/api/handover', handoverRoutes);
 app.use('/api/audit-logs', require('./routes/auditLogs'));
 

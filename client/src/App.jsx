@@ -41,6 +41,7 @@ const ResourceCapacityPage = lazy(() => import('./pages/projects/ResourceCapacit
 const ProfilePage    = lazy(() => import('./pages/settings/ProfilePage'))
 const PreferencesPage= lazy(() => import('./pages/settings/PreferencesPage'))
 const AuditTrailPage  = lazy(() => import('./pages/settings/AuditTrailPage'))
+const ApprovalMatrixPage = lazy(() => import('./pages/settings/ApprovalMatrixPage'))
 const ConfigPage     = lazy(() => import('./pages/config/ConfigPage'))
 const PortalApp      = lazy(() => import('./portal/PortalApp'))
 const FinancialApprovalsPage = lazy(() => import('./pages/dashboard/FinancialApprovalsPage'))
@@ -97,6 +98,7 @@ export default function App() {
                     <Route path='/settings/profile' element={<ProfilePage />} />
                     <Route path='/settings/preferences' element={<PreferencesPage />} />
                     <Route path='/settings/audit-trail' element={<AuditTrailPage />} />
+                    <Route path='/settings/approval-matrix' element={<ApprovalMatrixPage />} />
                     <Route path='/config/*' element={<ConfigPage />} />
                     <Route path='/financial-approvals' element={<FinancialApprovalsPage />} />
                     <Route path='/warehouse' element={<WarehousePage />} />

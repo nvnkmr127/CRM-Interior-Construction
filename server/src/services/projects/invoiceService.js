@@ -1,5 +1,6 @@
 const pool = require('../../db/pool');
 const { getTenantThreshold, isUserSuperadmin } = require('../../utils/finance');
+const { buildApprovalChain } = require('../../utils/ApprovalChainBuilder');
 const { logAction } = require('../auditLog');
 const storage = require('../../utils/storage');
 const PDFDocument = require('pdfkit');
@@ -200,11 +201,13 @@ async function createInvoice({ tenantId, userId, milestoneId, data }) {
 
   if (requiresApproval) {
     // Log approval request
+    const { current_stage, total_stages, approval_chain } = await buildApprovalChain(tenantId, 'invoice', totalAmount);
     await pool.query(
       `INSERT INTO financial_approvals (
-         tenant_id, transaction_type, target_id, amount, requested_by, requested_changes, status, threshold_limit
-       ) VALUES ($1, 'invoice', $2, $3, $4, $5, 'pending', $6)`,
-      [tenantId, invoice.id, totalAmount, userId, JSON.stringify({ milestoneId, invoiceNumber }), threshold]
+         tenant_id, transaction_type, target_id, amount, requested_by, requested_changes, status, threshold_limit,
+         current_stage, total_stages, approval_chain
+       ) VALUES ($1, 'invoice', $2, $3, $4, $5, 'pending', $6, $7, $8, $9)`,
+      [tenantId, invoice.id, totalAmount, userId, JSON.stringify({ milestoneId, invoiceNumber }), threshold, current_stage, total_stages, JSON.stringify(approval_chain)]
     );
   } else {
     // Update Milestone Status
