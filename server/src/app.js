@@ -176,6 +176,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/leads/manager', require('./routes/manager'));
 app.use('/api/leads', leadsRoutes);
 app.use('/api/config', configRoutes);
+app.use('/api/lead-forms', require('./routes/leadForms'));
+app.use('/api/public/forms', require('./routes/publicForms'));
 app.use('/api/public-portal', require('./routes/portal'));
 app.use('/api/projects', projectsRoutes);
 app.use('/api/warehouses', require('./routes/warehouses'));
@@ -262,6 +264,10 @@ app.use('/api/partners', require('./routes/partners'));
 app.use('/api/leaves', require('./routes/leaves'));
 app.use('/api/ai', aiRoutes);
 app.use('/api/mobile', mobileRoutes);
+app.use('/api/developer/keys', require('./routes/apiKeys'));
+
+// Mount Versioned API
+app.use('/api/v1', require('./routes/api/v1'));
 
 require('./routes/qc')(app);
 

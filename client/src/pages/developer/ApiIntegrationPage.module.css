@@ -1,0 +1,306 @@
+.container {
+  padding: 32px 48px;
+  background-color: #f1f3f4; /* Light gray background from image */
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.header {
+  margin-bottom: 24px;
+}
+.header h2 { margin: 0; font-size: 24px; color: #111827; }
+.header p { margin: 4px 0 0; color: #6b7280; font-size: 14px; }
+
+.dashboardStats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.statCard {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.statCard h4 { margin: 0 0 8px 0; color: #6b7280; font-size: 14px; font-weight: 500; }
+.statValue { margin: 0; font-size: 28px; font-weight: 600; color: #111827; }
+.successText { color: #10b981; }
+.errorText { color: #ef4444; }
+
+.statusBadge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+  text-transform: capitalize;
+}
+.success { background: #d1fae5; color: #065f46; }
+.error { background: #fee2e2; color: #991b1b; }
+
+.permissionPill {
+  background: #f3f4f6;
+  color: #374151;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.topToolbar {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 24px;
+}
+
+.newUserBtn {
+  background-color: #3b82f6; /* Blue pill button */
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.newUserBtn:hover {
+  background-color: #2563eb;
+}
+
+.tableContainer {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.tableControls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.tableControlsLeft {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.pageSizeSelect {
+  padding: 6px 24px 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background-color: white;
+  color: #4b5563;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.exportBtn {
+  padding: 6px 16px;
+  background-color: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  color: #4b5563;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.exportBtn:hover {
+  background-color: #e5e7eb;
+}
+
+.searchInputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 10px;
+  color: #9ca3af;
+  font-size: 18px;
+}
+
+.searchInput {
+  padding: 6px 12px 6px 32px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 14px;
+  width: 250px;
+  outline: none;
+}
+
+.searchInput:focus {
+  border-color: #9ca3af;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 24px;
+}
+
+.table th {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 2px solid #e5e7eb;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 500;
+  background: #fafafa;
+}
+
+.thSortable {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.sortArrows {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 4px solid #9ca3af;
+  margin-bottom: 2px;
+  position: relative;
+}
+.sortArrows::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: -4px;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid #9ca3af;
+}
+
+.table td {
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+  color: #4b5563;
+  vertical-align: middle;
+}
+
+.tokenCell {
+  color: #9ca3af !important;
+  font-family: monospace;
+  font-size: 12px;
+  word-break: break-all;
+  max-width: 250px;
+}
+
+.options {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.editBtn, .deleteBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+}
+
+.editBtn {
+  background-color: #f3f4f6;
+  border: 1px solid #d1d5db;
+}
+
+.editBtn:hover {
+  background-color: #e5e7eb;
+}
+
+.deleteBtn {
+  background-color: #ef4444; /* Red square */
+}
+
+.deleteBtn:hover {
+  background-color: #dc2626;
+}
+
+.tableFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.pagination {
+  display: flex;
+  gap: 4px;
+  background: white;
+  border-radius: 4px;
+}
+
+.pageBtn {
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.pageBtn:hover:not(.pageBtnActive) {
+  background-color: #f3f4f6;
+}
+
+.pageBtnActive {
+  background-color: #e5e7eb;
+  color: #111827;
+  font-weight: 500;
+  border-radius: 4px;
+}
+
+/* Modals */
+.modalOverlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modalContent {
+  background: white;
+  padding: 24px;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.formGroup { margin-bottom: 16px; }
+.formGroup label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; color: #111827; }
+.formGroup input[type="text"], .formGroup textarea { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; }
+.permissionsGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+.permissionCheckbox { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.modalActions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+.cancelBtn { padding: 8px 16px; background: white; border: 1px solid #d1d5db; border-radius: 4px; cursor: pointer; }
+.primaryBtn { padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; }
+.primaryBtn:hover { background: #2563eb; }
+.secretBox { background: #f3f4f6; border: 1px solid #d1d5db; padding: 16px; border-radius: 4px; margin: 16px 0; font-family: monospace; font-size: 16px; word-break: break-all; }
+.warningBox { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 12px; border-radius: 4px; font-size: 14px; margin-bottom: 16px; }

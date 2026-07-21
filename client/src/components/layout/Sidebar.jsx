@@ -43,6 +43,11 @@ const NAV_ITEMS = [
   ]},
   { group: 'FINANCE', financeOnly: true, items: [
     { to: '/financial-approvals', icon: '📝', label: 'Financial Approvals' }
+  ]},
+  { group: 'DEVELOPER', items: [
+    { to: '/developer/webhooks', icon: '🪝', label: 'Webhooks' },
+    { to: '/developer/api', icon: '🔌', label: 'API Integration' },
+    { to: '/leads/forms', icon: '📝', label: 'Lead Forms' }
   ]}
 ]
 

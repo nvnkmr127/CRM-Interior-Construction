@@ -21,6 +21,10 @@ const NotFound       = lazy(() => import('./pages/NotFound'))
 const Forbidden      = lazy(() => import('./pages/Forbidden'))
 const Dashboard      = lazy(() => import('./pages/dashboard/DashboardPage'))
 const LeadsPage      = lazy(() => import('./pages/leads/LeadsPage'))
+const LeadFormsListPage = lazy(() => import('./pages/leads/forms/LeadFormsListPage'))
+const LeadFormBuilderPage = lazy(() => import('./pages/leads/forms/LeadFormBuilderPage'))
+const LeadFormSubmissionsPage = lazy(() => import('./pages/leads/forms/LeadFormSubmissionsPage'))
+const PublicLeadFormPage = lazy(() => import('./pages/public/PublicLeadFormPage'))
 const ProjectsPage   = lazy(() => import('./pages/projects/ProjectsPage'))
 const ProjectDetail  = lazy(() => import('./pages/projects/ProjectDetail'))
 const MyTasksPage    = lazy(() => import('./pages/tasks/MyTasksPage'))
@@ -51,6 +55,7 @@ const GlobalRetentionDashboard = lazy(() => import('./pages/projects/GlobalReten
 const ResourceAbsencePage = lazy(() => import('./pages/projects/ResourceAbsencePage'))
 const WarehousePage = lazy(() => import('./pages/warehouse/WarehousePage'))
 const GlobalFactoryProductionPage = lazy(() => import('./pages/factory/GlobalFactoryProductionPage'))
+const ApiIntegrationPage = lazy(() => import('./pages/developer/ApiIntegrationPage'))
 
 export default function App() {
   return (
@@ -68,11 +73,16 @@ export default function App() {
                   <Route path='/login' element={<Login />} />
                   <Route path='/register' element={<Register />} />
                   <Route path='/forbidden' element={<Forbidden />} />
+                  <Route path='/forms/:slug' element={<PublicLeadFormPage />} />
                   <Route path='/portal/*' element={<PortalApp />} />
                   <Route element={<ProtectedRoute><Shell /></ProtectedRoute>}>
                     <Route index element={<Navigate to='/dashboard' replace />} />
                     <Route path='/dashboard' element={<Dashboard />} />
                     <Route path='/leads' element={<LeadsPage />} />
+                    <Route path='/leads/forms' element={<LeadFormsListPage />} />
+                    <Route path='/leads/forms/new' element={<LeadFormBuilderPage />} />
+                    <Route path='/leads/forms/:id/edit' element={<LeadFormBuilderPage />} />
+                    <Route path='/leads/forms/:id/submissions' element={<LeadFormSubmissionsPage />} />
                     <Route path='/leads/manager' element={<ManagerDashboard />} />
                     <Route path='/projects' element={<ProjectsPage />} />
                     <Route path='/projects/resources' element={<ResourceCapacityPage />} />
@@ -102,6 +112,7 @@ export default function App() {
                     <Route path='/config/*' element={<ConfigPage />} />
                     <Route path='/financial-approvals' element={<FinancialApprovalsPage />} />
                     <Route path='/warehouse' element={<WarehousePage />} />
+                    <Route path="developer/api" element={<ApiIntegrationPage />} />
                   </Route>
                   <Route path='*' element={<NotFound />} />
                 </Routes>

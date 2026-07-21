@@ -3107,6 +3107,56 @@ export const setupMockInterceptor = (api) => {
               responseData.data = { success: true };
             }
           }
+          // DEVELOPER API KEYS
+          else if (url.includes('/api/developer/keys')) {
+            if (!mockDatabase.apiKeys) {
+              mockDatabase.apiKeys = [
+                { id: 'key-1', name: 'Zapier Integration', description: 'Used for lead sync', permissions: ['Leads Read', 'Leads Write'], status: 'active', last_used_at: new Date().toISOString(), created_at: new Date(Date.now() - 86400000).toISOString() }
+              ];
+            }
+            if (url.includes('/dashboard')) {
+              responseData.data = { stats: { total_requests: 12450, successful_requests: 12400, failed_requests: 50, last_request_at: new Date().toISOString() } };
+            } else if (url.includes('/logs')) {
+              responseData.data = { rows: [
+                { id: 'log-1', endpoint: '/api/v1/leads', method: 'GET', status_code: 200, ip_address: '192.168.1.1', execution_time_ms: 45, created_at: new Date().toISOString() }
+              ]};
+            } else if (method === 'get') {
+              responseData.data = mockDatabase.apiKeys;
+            } else if (method === 'post') {
+              if (url.includes('/regenerate')) {
+                responseData.data = { rawSecret: 'sk_live_' + Math.random().toString(36).substring(2) };
+              } else {
+                const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                const newKey = {
+                  id: `key-${Date.now()}`,
+                  name: payload.name,
+                  description: payload.description,
+                  permissions: payload.permissions || [],
+                  status: 'active',
+                  created_at: new Date().toISOString()
+                };
+                mockDatabase.apiKeys.push(newKey);
+                persistDb();
+                responseData.data = { ...newKey, rawSecret: 'sk_live_' + Math.random().toString(36).substring(2) };
+              }
+            } else if (method === 'put') {
+              const parts = url.split('/');
+              const id = parts[parts.length - 1];
+              const updates = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const idx = mockDatabase.apiKeys.findIndex(k => k.id === id);
+              if (idx !== -1) {
+                mockDatabase.apiKeys[idx] = { ...mockDatabase.apiKeys[idx], ...updates };
+                persistDb();
+              }
+              responseData.data = { success: true };
+            } else if (method === 'delete') {
+              const parts = url.split('/');
+              const id = parts[parts.length - 1];
+              mockDatabase.apiKeys = mockDatabase.apiKeys.filter(k => k.id !== id);
+              persistDb();
+              responseData.data = { success: true };
+            }
+          }
           else if (isMutation) {
             console.warn(
               `[MockSession] ${method.toUpperCase()} ${config.url} intercepted — request NOT sent to server.`
