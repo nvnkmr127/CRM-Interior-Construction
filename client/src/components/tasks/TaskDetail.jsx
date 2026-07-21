@@ -5,9 +5,6 @@ import styles from './TaskDetail.module.css'
 import { Modal, Button, Badge, Avatar, Select, RichTextEditor } from '../ui'
 import TaskComments from './TaskComments'
 import TaskAttachments from './TaskAttachments'
-import TaskActivityHistory from './TaskActivityHistory'
-import TagInput from './TagInput'
-import TimeTracker from './TimeTracker'
 import { useToast } from '../../store/toastContext'
 import { useTaskNotifications } from '../../store/TaskNotificationContext'
 import { useTaskAutomation } from '../../store/TaskAutomationContext'
@@ -29,6 +26,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
   
   const [draggedChecklistItemId, setDraggedChecklistItemId] = useState(null)
   const [dragOverChecklistItemId, setDragOverChecklistItemId] = useState(null)
+  const [dragHandleActiveId, setDragHandleActiveId] = useState(null)
   const [pendingUpdate, setPendingUpdate] = useState(null)
   
   const checklistSaveTimer = useRef(null)
@@ -143,25 +141,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
     await applyUpdate(updates)
   }
 
-  const handleTimeLogged = async (mins, isBillable, isManual) => {
-    try {
-      const logs = Array.isArray(task.timeLogs) ? [...task.timeLogs] : []
-      logs.push({
-        id: Date.now().toString(),
-        date: new Date().toISOString(),
-        durationMinutes: mins,
-        isManual,
-        isBillable
-      })
-      const newActual = (task.actualTime || 0) + mins
-      const newBillable = (task.billableHours || 0) + (isBillable ? (mins / 60) : 0)
 
-      setTask(t => ({ ...t, timeLogs: logs, actualTime: newActual, billableHours: newBillable }))
-      await applyUpdate({ timeLogs: logs, actualTime: newActual, billableHours: newBillable })
-    } catch (e) {
-      toast.error('Failed to save time log')
-    }
-  }
 
   const handleTitleBlur = () => {
     if (title.trim() && title !== task.title) {
@@ -315,16 +295,6 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
     })
   }
 
-  const duplicateChecklistItem = (item, idx) => {
-    const newItem = { id: Date.now().toString() + Math.random(), title: item.title, done: false }
-    setTask(t => {
-      const next = [...t.checklist]
-      next.splice(idx + 1, 0, newItem)
-      saveChecklist(next)
-      return { ...t, checklist: next }
-    })
-  }
-
 
 
   const handleChecklistDragStart = (e, id) => {
@@ -412,62 +382,60 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
           <div className={`${styles.grid} ${styles.section}`}>
             {/* Left Col: Details */}
             <div>
-              <div className={styles.detailRow}>
-                <div className={styles.detailLabel}>Assignee</div>
-                <div className={styles.detailValue}>
-                  <Avatar name={task.assignee?.name} size="xs" />
-                  {task.assignee?.name || 'Unassigned'}
+              <div className={styles.detailsGrid}>
+                <div className={styles.detailItem}>
+                  <div className={styles.detailLabel}>Assignee</div>
+                  <div className={styles.detailValue}>
+                    <Avatar name={task.assignee?.name} size="xs" />
+                    {task.assignee?.name || 'Unassigned'}
+                  </div>
                 </div>
-              </div>
 
-              <div className={styles.detailRow}>
-                <div className={styles.detailLabel}>Due Date</div>
-                <div className={`${styles.detailValue} ${new Date(task.dueDate || task.due_date) < new Date() && task.status !== 'done' ? styles.overdue : ''}`}>
-                  {(task.dueDate || task.due_date) ? new Date(task.dueDate || task.due_date).toLocaleDateString() : 'Set date'}
+                <div className={styles.detailItem}>
+                  <div className={styles.detailLabel}>Due Date</div>
+                  <div className={`${styles.detailValue} ${new Date(task.dueDate || task.due_date) < new Date() && task.status !== 'done' ? styles.overdue : ''}`}>
+                    {(task.dueDate || task.due_date) ? new Date(task.dueDate || task.due_date).toLocaleDateString() : 'Set date'}
+                  </div>
                 </div>
-              </div>
 
-
-
-              <div className={styles.detailRow}>
-                <div className={styles.detailLabel}>Priority</div>
-                <div className={styles.detailValue} onClick={cyclePriority}>
-                  <Badge variant={PRIORITY_COLORS[task.priority]} style={{ textTransform: 'capitalize' }}>{task.priority}</Badge>
+                <div className={styles.detailItem}>
+                  <div className={styles.detailLabel}>Priority</div>
+                  <div className={styles.detailValue} onClick={cyclePriority}>
+                    <Badge variant={PRIORITY_COLORS[task.priority]} style={{ textTransform: 'capitalize' }}>{task.priority}</Badge>
+                  </div>
                 </div>
-              </div>
 
-              <div className={styles.detailRow}>
-                <div className={styles.detailLabel}>Project</div>
-                <div className={styles.detailValue}>
-                  <Link to={`/projects/${task.project.id}`} className={styles.link}>{task.project.name}</Link>
+                <div className={styles.detailItem}>
+                  <div className={styles.detailLabel}>Project</div>
+                  <div className={styles.detailValue}>
+                    <Link to={`/projects/${task.project.id}`} className={styles.link}>{task.project.name}</Link>
+                  </div>
                 </div>
-              </div>
 
-              <div className={styles.detailRow}>
-                <div className={styles.detailLabel}>Room / Area</div>
-                <div className={styles.detailValue}>
-                  {task.roomName || 'General (No room tag)'}
+                <div className={styles.detailItem}>
+                  <div className={styles.detailLabel}>Room / Area</div>
+                  <div className={styles.detailValue}>
+                    {task.roomName || 'General (No room tag)'}
+                  </div>
                 </div>
-              </div>
 
-
-
-              <div className={styles.detailRow}>
-                <div className={styles.detailLabel}>Status</div>
-                <div style={{ flex: 1, marginLeft: -8 }}>
-                  <Select 
-                    value={task.status} 
-                    disabled={!permissions.canEdit}
-                    options={[
-                      {value: 'todo', label: 'To Do'},
-                      {value: 'in_progress', label: 'In Progress'},
-                      {value: 'blocked', label: 'Blocked'},
-                      {value: 'done', label: 'Done'},
-                      {value: 'soft_deleted', label: 'Deleted (Trash)'},
-                      {value: 'archived', label: 'Archived'}
-                    ]}
-                    onChange={handleStatusChange}
-                  />
+                <div className={styles.detailItem}>
+                  <div className={styles.detailLabel}>Status</div>
+                  <div style={{ flex: 1, marginLeft: -8 }}>
+                    <Select 
+                      value={task.status} 
+                      disabled={!permissions.canEdit}
+                      options={[
+                        {value: 'todo', label: 'To Do'},
+                        {value: 'in_progress', label: 'In Progress'},
+                        {value: 'blocked', label: 'Blocked'},
+                        {value: 'done', label: 'Done'},
+                        {value: 'soft_deleted', label: 'Deleted (Trash)'},
+                        {value: 'archived', label: 'Archived'}
+                      ]}
+                      onChange={handleStatusChange}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -483,32 +451,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
                 </div>
               )}
 
-              <div className={styles.detailRow}>
-                <div className={styles.detailLabel}>Tags</div>
-                <div className={styles.detailValue}>
-                  <TagInput 
-                    selectedTagIds={task.tags || []} 
-                    onChange={tags => handleSave({ tags })}
-                  />
-                </div>
-              </div>
 
-              <div className={styles.detailRow}>
-                <div className={styles.detailLabel}>Estimated</div>
-                <div className={styles.detailValue}>
-                    <input 
-                      type="number" 
-                      placeholder="Minutes"
-                      value={task.estimatedTime || ''}
-                      onChange={e => handleSave({ estimatedTime: parseInt(e.target.value) || 0 })}
-                      className={styles.estimatedInput}
-                    /> min
-                </div>
-              </div>
-
-              <div className={styles.section}>
-                <TimeTracker task={task} onTimeLogged={handleTimeLogged} disabled={!permissions.canEdit} />
-              </div>
 
 
 
@@ -536,25 +479,26 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
                   <span>Checklist</span>
                   <Badge variant="neutral">{task.checklist.filter(s => s.done).length}/{task.checklist.length}</Badge>
                 </div>
-                <div className={styles.progressBg}>
-                  <div 
-                    className={styles.progressFill} 
-                    style={{ width: `${task.checklist.length ? (task.checklist.filter(s => s.done).length / task.checklist.length) * 100 : 0}%`, transition: 'width 0.3s' }}
-                  />
-                </div>
+
                 <div>
                   {task.checklist.map((s, idx) => (
                     <div 
                       key={s.id} 
                       className={styles.subtaskRow}
-                      style={{ borderTop: dragOverChecklistItemId === s.id ? '2px solid var(--color-primary)' : 'none', cursor: 'grab' }}
-                      draggable
+                      style={{ borderTop: dragOverChecklistItemId === s.id ? '2px solid var(--color-primary)' : 'none' }}
+                      draggable={dragHandleActiveId === s.id}
                       onDragStart={(e) => handleChecklistDragStart(e, s.id)}
                       onDragOver={(e) => handleChecklistDragOver(e, s.id)}
                       onDragLeave={() => setDragOverChecklistItemId(null)}
                       onDrop={(e) => handleChecklistDrop(e, s.id)}
                     >
-                      <span style={{color: 'var(--color-text-muted)', cursor: 'grab'}}>⋮⋮</span>
+                      <span 
+                        style={{color: 'var(--color-text-muted)', cursor: 'grab', padding: '0 4px'}}
+                        onMouseEnter={() => setDragHandleActiveId(s.id)}
+                        onMouseLeave={() => setDragHandleActiveId(null)}
+                      >
+                        ⋮⋮
+                      </span>
                       <input type="checkbox" checked={s.done} disabled={!permissions.canEdit} onChange={() => handleChecklistToggle(s.id)} />
                       <input
                         autoFocus={s.title === ''}
@@ -565,9 +509,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
                         style={{ border: 'none', background: 'transparent', flex: 1, textDecoration: s.done ? 'line-through' : 'none', color: s.done ? 'var(--color-text-muted)' : 'var(--color-text)', outline: 'none' }}
                         placeholder="Checklist item..."
                       />
-                      <div className={styles.checklistActions} style={{ display: 'flex', gap: '4px' }}>
-                        <button onClick={() => duplicateChecklistItem(s, idx)} title="Duplicate" style={{background:'transparent', border:'none', cursor:'pointer', fontSize:'12px'}}>⎘</button>
-                      </div>
+
                     </div>
                   ))}
                   <div className={styles.subtaskRow} style={{ marginTop: '8px', cursor: 'pointer' }} onClick={handleChecklistAdd}>
@@ -577,11 +519,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
                 <div className={styles.section}>
                   <TaskComments taskId={task.id} projectId={projectId} isGlobal={!projectId} />
                 </div>            
-                <div className={styles.sectionBordered}>
-                  <div className={styles.sectionTitle}>Immutable Audit Log</div>
-                  <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '12px' }}>A permanent record of all modifications to this task, enforced by governance policy.</div>
-                  <TaskActivityHistory taskId={task.id} projectId={projectId} isGlobal={!projectId} />
-                </div>
+
               </div>
             </div>
           </div>

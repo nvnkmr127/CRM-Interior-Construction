@@ -181,7 +181,7 @@ export default function TaskKanbanBoard({ tasks, onTaskClick, onTaskDrop, onTask
                             <div 
                               key={t.id}
                               className={`${styles.card} ${isDragging ? styles.dragging : ''}`}
-                              draggable
+                              draggable={editingTaskId !== t.id}
                               onDragStart={(e) => handleDragStart(e, t.id)}
                               onDragEnd={handleDragEnd}
                               onClick={() => onTaskClick(t.id)}

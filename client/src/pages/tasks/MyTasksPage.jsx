@@ -605,12 +605,13 @@ export default function MyTasksPage() {
     const hasSubtasks = task.subtasks && task.subtasks.length > 0
     const isExpanded = expandedTaskIds.has(task.id)
     const progress = calculateProgress(task)
+    const [dragHandleTaskId, setDragHandleTaskId] = useState(null)
 
     return (
       <div 
         className={`${h.taskNodeWrapper} ${dragOverTaskId === task.id ? h.taskNodeDragOver : ''} ${draggedTaskId === task.id ? h.taskNodeDragged : ''}`}
         style={{ marginLeft: `${level * 24}px` }}
-        draggable
+        draggable={dragHandleTaskId === task.id}
         onDragStart={(e) => handleDragStart(e, task.id)}
         onDragOver={(e) => handleDragOver(e, task.id)}
         onDragLeave={(e) => { e.stopPropagation(); setDragOverTaskId(null) }}
@@ -626,7 +627,14 @@ export default function MyTasksPage() {
                  {isExpanded ? '▼' : '▶'}
                </button>
             ) : <div className={h.expandPlaceholder} />}
-            
+            <span 
+              style={{ cursor: 'grab', color: 'var(--color-text-muted)', padding: '0 4px' }}
+              onMouseEnter={() => setDragHandleTaskId(task.id)}
+              onMouseLeave={() => setDragHandleTaskId(null)}
+              title="Drag to move"
+            >
+              ⋮⋮
+            </span>
             <input 
               type="checkbox" 
               className={`${styles.taskCheckbox} ${updatingTaskId === task.id ? styles.loading : ''}`}
@@ -710,7 +718,6 @@ export default function MyTasksPage() {
           <p className={styles.subtitle}>{new Date().toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' })}</p>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Button variant="outline" onClick={() => setIsTimeReportsOpen(true)}>⏱️ Time Reports</Button>
           <Button variant="outline" onClick={() => setIsAiTaskCreationOpen(true)}>✨ AI Task</Button>
           <select 
             className={styles.filterSelect}

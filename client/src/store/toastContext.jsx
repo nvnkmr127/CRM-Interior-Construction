@@ -1,4 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
+import { useMemo } from 'react';
 import { create } from 'zustand';
 import { ToastContainer } from '../components/ui/Toast';
 
@@ -16,12 +17,12 @@ export const useToastStore = create((set, get) => ({
 
 export const useToast = () => {
   const show = useToastStore(state => state.show);
-  return {
+  return useMemo(() => ({
     success: (msg, d) => show('success', msg, d),
     error:   (msg, d) => show('error',   msg, d),
     warning: (msg, d) => show('warning', msg, d),
     info:    (msg, d) => show('info',    msg, d),
-  };
+  }), [show]);
 };
 
 export function GlobalToast() {
