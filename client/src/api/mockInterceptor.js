@@ -3107,11 +3107,11 @@ export const setupMockInterceptor = (api) => {
               responseData.data = { success: true };
             }
           }
-          // DEVELOPER API KEYS
-          else if (url.includes('/api/developer/keys')) {
-            if (!mockDatabase.apiKeys) {
-              mockDatabase.apiKeys = [
-                { id: 'key-1', name: 'Zapier Integration', description: 'Used for lead sync', permissions: ['Leads Read', 'Leads Write'], status: 'active', last_used_at: new Date().toISOString(), created_at: new Date(Date.now() - 86400000).toISOString() }
+          // DEVELOPER API TOKENS
+          else if (url.includes('/api/developer/tokens')) {
+            if (!mockDatabase.apiTokens) {
+              mockDatabase.apiTokens = [
+                { id: 'token-1', name: 'Zapier Integration', description: 'Used for lead sync', permissions: ['Leads Read', 'Leads Write'], status: 'active', last_used_at: new Date().toISOString(), created_at: new Date(Date.now() - 86400000).toISOString() }
               ];
             }
             if (url.includes('/dashboard')) {
@@ -3121,38 +3121,78 @@ export const setupMockInterceptor = (api) => {
                 { id: 'log-1', endpoint: '/api/v1/leads', method: 'GET', status_code: 200, ip_address: '192.168.1.1', execution_time_ms: 45, created_at: new Date().toISOString() }
               ]};
             } else if (method === 'get') {
-              responseData.data = mockDatabase.apiKeys;
+              responseData.data = mockDatabase.apiTokens;
             } else if (method === 'post') {
               if (url.includes('/regenerate')) {
                 responseData.data = { rawSecret: 'sk_live_' + Math.random().toString(36).substring(2) };
               } else {
                 const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
-                const newKey = {
-                  id: `key-${Date.now()}`,
+                const newToken = {
+                  id: `token-${Date.now()}`,
                   name: payload.name,
                   description: payload.description,
                   permissions: payload.permissions || [],
                   status: 'active',
                   created_at: new Date().toISOString()
                 };
-                mockDatabase.apiKeys.push(newKey);
+                mockDatabase.apiTokens.push(newToken);
                 persistDb();
-                responseData.data = { ...newKey, rawSecret: 'sk_live_' + Math.random().toString(36).substring(2) };
+                responseData.data = { token: newToken, rawSecret: 'sk_live_' + Math.random().toString(36).substring(2) };
               }
             } else if (method === 'put') {
               const parts = url.split('/');
               const id = parts[parts.length - 1];
               const updates = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
-              const idx = mockDatabase.apiKeys.findIndex(k => k.id === id);
+              const idx = mockDatabase.apiTokens.findIndex(t => t.id === id);
               if (idx !== -1) {
-                mockDatabase.apiKeys[idx] = { ...mockDatabase.apiKeys[idx], ...updates };
+                mockDatabase.apiTokens[idx] = { ...mockDatabase.apiTokens[idx], ...updates };
                 persistDb();
               }
               responseData.data = { success: true };
             } else if (method === 'delete') {
               const parts = url.split('/');
               const id = parts[parts.length - 1];
-              mockDatabase.apiKeys = mockDatabase.apiKeys.filter(k => k.id !== id);
+              mockDatabase.apiTokens = mockDatabase.apiTokens.filter(t => t.id !== id);
+              persistDb();
+              responseData.data = { success: true };
+            }
+          }
+          else if (url.includes('/config/webhooks')) {
+            if (!mockDatabase.webhooks) {
+              mockDatabase.webhooks = [];
+            }
+            if (method === 'get') {
+              responseData.data = mockDatabase.webhooks;
+            } else if (method === 'post') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const newWebhook = {
+                id: `webhook-${Date.now()}`,
+                name: payload.name,
+                url: payload.url,
+                events: payload.events || [],
+                custom_headers: payload.custom_headers || {},
+                retry_count: payload.retry_count || 3,
+                is_active: payload.is_active !== undefined ? payload.is_active : true,
+                is_debug_mode: payload.is_debug_mode || false,
+                created_at: new Date().toISOString()
+              };
+              mockDatabase.webhooks.push(newWebhook);
+              persistDb();
+              responseData.data = newWebhook;
+            } else if (method === 'put') {
+              const parts = url.split('/');
+              const id = parts[parts.length - 1];
+              const updates = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const idx = mockDatabase.webhooks.findIndex(w => w.id === id);
+              if (idx !== -1) {
+                mockDatabase.webhooks[idx] = { ...mockDatabase.webhooks[idx], ...updates };
+                persistDb();
+              }
+              responseData.data = { success: true };
+            } else if (method === 'delete') {
+              const parts = url.split('/');
+              const id = parts[parts.length - 1];
+              mockDatabase.webhooks = mockDatabase.webhooks.filter(w => w.id !== id);
               persistDb();
               responseData.data = { success: true };
             }

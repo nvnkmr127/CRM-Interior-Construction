@@ -37,7 +37,6 @@ const CONFIG_NAV = [
   ]},
   { group: 'INTEGRATIONS', items: [
     { to: 'api-keys',      icon: '⊙', label: 'API Keys',    desc: 'Connect external tools' },
-    { to: 'webhooks',      icon: '↗', label: 'Webhooks',    desc: 'Send events to your systems' },
     { to: 'logs',          icon: '≡', label: 'Logs',        desc: 'Delivery history & retries' },
   ]},
   { group: 'TEAM', items: [
@@ -101,7 +100,6 @@ export default function ConfigPage() {
             <Route path='qc-checklists' element={<QcChecklistsManager />} />
             <Route path='trade-activities' element={<TradeActivityTemplatesManager />} />
             <Route path='api-keys'      element={<ApiKeysManager />} />
-            <Route path='webhooks'      element={<WebhooksManager />} />
             <Route path='logs'          element={<LogsViewer />} />
             <Route path='users'         element={<UsersManager />} />
             <Route path='roles'         element={<RolesManager />} />

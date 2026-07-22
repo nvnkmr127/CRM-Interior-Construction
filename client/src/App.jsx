@@ -56,6 +56,7 @@ const ResourceAbsencePage = lazy(() => import('./pages/projects/ResourceAbsenceP
 const WarehousePage = lazy(() => import('./pages/warehouse/WarehousePage'))
 const GlobalFactoryProductionPage = lazy(() => import('./pages/factory/GlobalFactoryProductionPage'))
 const ApiIntegrationPage = lazy(() => import('./pages/developer/ApiIntegrationPage'))
+const WebhooksManager = lazy(() => import('./pages/config/WebhooksManager'))
 
 export default function App() {
   return (
@@ -113,6 +114,7 @@ export default function App() {
                     <Route path='/financial-approvals' element={<FinancialApprovalsPage />} />
                     <Route path='/warehouse' element={<WarehousePage />} />
                     <Route path="developer/api" element={<ApiIntegrationPage />} />
+                    <Route path="developer/webhooks" element={<WebhooksManager />} />
                   </Route>
                   <Route path='*' element={<NotFound />} />
                 </Routes>

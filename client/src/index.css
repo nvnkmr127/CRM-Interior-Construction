@@ -73,6 +73,32 @@ body {
   margin: 0;
 }
 
+/* Global Table Styles */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+@media print {
+  /* Hide application chrome globally during printing */
+  header, aside, nav, .command-palette {
+    display: none !important;
+  }
+  
+  /* Reset layout constraints for proper printing */
+  body, html, #root {
+    height: auto !important;
+    overflow: visible !important;
+    background-color: white !important;
+  }
+  
+  main, .content {
+    padding: 0 !important;
+    margin: 0 !important;
+    background-color: white !important;
+  }
+}
+
 #root {
   width: 100%;
   min-height: 100svh;

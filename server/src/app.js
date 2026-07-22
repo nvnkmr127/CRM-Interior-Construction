@@ -264,7 +264,7 @@ app.use('/api/partners', require('./routes/partners'));
 app.use('/api/leaves', require('./routes/leaves'));
 app.use('/api/ai', aiRoutes);
 app.use('/api/mobile', mobileRoutes);
-app.use('/api/developer/keys', require('./routes/apiKeys'));
+app.use('/api/developer/tokens', require('./routes/apiTokens'));
 
 // Mount Versioned API
 app.use('/api/v1', require('./routes/api/v1'));

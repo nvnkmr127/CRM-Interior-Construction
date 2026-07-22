@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import layoutStyles from './ConfigLayout.module.css'
 import styles from './LogsViewer.module.css'
-import { Badge, DataTable, Select, Input, Button } from '../../components/ui'
+import { Badge, DataTable, Select, Input, Button, Modal } from '../../components/ui'
 import { useToast } from '../../store/toastContext'
 import { configApi } from '../../api/config'
 
@@ -11,14 +11,26 @@ export default function LogsViewer() {
   const [deliveries, setDeliveries] = useState([])
   const [automations, setAutomations] = useState([])
   const [inbounds, setInbounds] = useState([])
+  const [selectedLog, setSelectedLog] = useState(null)
   const toast = useToast()
 
   useEffect(() => {
     if (activeTab === 'deliveries') {
       configApi.getWebhookLogs().then(data => {
         setDeliveries(data.data.map(l => ({
-          id: l.id, timestamp: l.created_at, event: l.event, webhook: l.webhook_id, 
-          status: l.status_code, latency: l.latency_ms, attempt: l.attempt_count, payload: l.payload
+          id: l.id, 
+          timestamp: l.created_at, 
+          event: l.event, 
+          webhook: l.webhook_id || l.webhook?.name || 'Unknown', 
+          status: l.status_code, 
+          latency: l.latency_ms, 
+          attempt: l.attempt_number || l.attempt_count, 
+          payload: l.payload,
+          reqHeaders: l.request_headers,
+          resHeaders: l.response_headers,
+          responseBody: l.response_body,
+          error: l.error || null,
+          debugMode: !!l.request_headers
         })))
       }).catch(() => toast.error('Failed to load webhook logs'))
     } else if (activeTab === 'inbound') {
@@ -48,29 +60,42 @@ export default function LogsViewer() {
   }
 
   const deliveryColumns = [
-    { key: 'timestamp', label: 'Timestamp', render: (r) => new Date(r.timestamp).toLocaleString() },
-    { key: 'event', label: 'Event' },
-    { key: 'webhook', label: 'Webhook' },
+    { key: 'webhook', label: 'Webhook', render: (r) => <div style={{fontWeight:500}}>{r.webhook}</div> },
+    { key: 'event', label: 'Event', render: (r) => <Badge variant="neutral">{r.event}</Badge> },
+    { key: 'timestamp', label: 'Date', render: (r) => <div style={{fontSize:'var(--text-sm)'}}>{new Date(r.timestamp).toLocaleString()}</div> },
     { 
-      key: 'status', label: 'Status', 
+      key: 'status', label: 'Response Code', 
       render: (r) => {
+        if (!r.status) return <Badge variant="neutral">Pending</Badge>
         if (r.status >= 200 && r.status < 300) return <Badge variant="success">{r.status}</Badge>
         if (r.status >= 400 && r.status < 500) return <Badge variant="warning">{r.status}</Badge>
         return <Badge variant="danger">{r.status}</Badge>
       }
     },
     { 
-      key: 'latency', label: 'Latency', 
+      key: 'deliveryStatus', label: 'Delivery Status', 
       render: (r) => {
-        const cls = r.latency < 100 ? styles.latencySuccess : r.latency <= 500 ? styles.latencyWarning : styles.latencyDanger
-        return <span className={cls}>{r.latency}ms</span>
+        if (!r.status) return <span style={{fontSize:'var(--text-sm)', color:'var(--color-text-muted)'}}>In Progress</span>
+        return r.status >= 200 && r.status < 300 
+          ? <span style={{fontSize:'var(--text-sm)', color:'var(--color-success)'}}>Success</span> 
+          : <span style={{fontSize:'var(--text-sm)', color:'var(--color-danger)'}}>Failed</span>
       }
     },
-    { key: 'attempt', label: 'Attempt', render: (r) => `${r.attempt}/3` },
     { 
-      key: 'actions', label: '', align: 'right',
-      render: (r) => r.status >= 400 && (
-        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleRetry(r.id) }}>Retry</Button>
+      key: 'latency', label: 'Duration', 
+      render: (r) => <span style={{fontSize:'var(--text-sm)'}}>{r.latency}ms</span>
+    },
+    { key: 'attempt', label: 'Attempt', render: (r) => <span style={{fontSize:'var(--text-sm)'}}>{r.attempt}</span> },
+    { key: 'debug', label: 'Debug Status', render: (r) => r.debugMode ? <Badge variant="warning">ON</Badge> : <span style={{fontSize:'var(--text-sm)', color:'var(--color-text-muted)'}}>OFF</span> },
+    { 
+      key: 'actions', label: 'Actions', align: 'right',
+      render: (r) => (
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <Button variant="ghost" size="sm" onClick={() => setSelectedLog(r)}>Inspect</Button>
+          {r.status >= 400 && (
+            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleRetry(r.id) }}>Retry</Button>
+          )}
+        </div>
       )
     }
   ]
@@ -123,17 +148,12 @@ export default function LogsViewer() {
             />
             <Input label="Date range" type="date" value="" onChange={()=>{}} />
           </div>
-          <DataTable 
-            columns={deliveryColumns} 
-            data={deliveries} 
-            expandable 
-            renderExpandedRow={(row) => (
-              <div className={styles.expandedContent}>
-                <div style={{fontWeight:500, marginBottom:8, fontSize:'var(--text-sm)'}}>Payload</div>
-                <div className={styles.codeBlock}>{JSON.stringify(row.payload, null, 2)}</div>
-              </div>
-            )}
-          />
+          <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
+            <DataTable 
+              columns={deliveryColumns} 
+              data={deliveries} 
+            />
+          </div>
         </div>
       )}
 
@@ -179,6 +199,79 @@ export default function LogsViewer() {
           Inbound Webhook logs are currently empty.
         </div>
       )}
+
+      {/* Log Inspector Modal */}
+      <Modal
+        isOpen={!!selectedLog}
+        onClose={() => setSelectedLog(null)}
+        title="Webhook Delivery Details"
+        size="xl"
+      >
+        {selectedLog && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div style={{ padding: 16, background: 'var(--color-background)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Webhook & Event</div>
+                <div style={{ fontWeight: 500 }}>{selectedLog.webhook} — {selectedLog.event}</div>
+              </div>
+              <div style={{ padding: 16, background: 'var(--color-background)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Execution Info</div>
+                <div style={{ fontWeight: 500 }}>{new Date(selectedLog.timestamp).toLocaleString()} • {selectedLog.latency}ms • Attempt {selectedLog.attempt}</div>
+              </div>
+            </div>
+
+            <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+              <div style={{ background: 'var(--color-background)', padding: '8px 16px', fontWeight: 500, borderBottom: '1px solid var(--color-border)' }}>Request Payload</div>
+              <pre className={styles.codeBlock} style={{ margin: 0, border: 'none', borderRadius: 0, maxHeight: 300, overflow: 'auto' }}>
+                {typeof selectedLog.payload === 'object' ? JSON.stringify(selectedLog.payload, null, 2) : selectedLog.payload}
+              </pre>
+            </div>
+
+            {selectedLog.debugMode && selectedLog.reqHeaders && (
+              <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+                <div style={{ background: 'var(--color-background)', padding: '8px 16px', fontWeight: 500, borderBottom: '1px solid var(--color-border)' }}>Request Headers (Debug)</div>
+                <pre className={styles.codeBlock} style={{ margin: 0, border: 'none', borderRadius: 0, maxHeight: 200, overflow: 'auto' }}>
+                  {typeof selectedLog.reqHeaders === 'string' ? JSON.stringify(JSON.parse(selectedLog.reqHeaders), null, 2) : JSON.stringify(selectedLog.reqHeaders, null, 2)}
+                </pre>
+              </div>
+            )}
+
+            <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+              <div style={{ background: 'var(--color-background)', padding: '8px 16px', fontWeight: 500, borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between' }}>
+                <span>Response Body</span>
+                <span>Status: {selectedLog.status}</span>
+              </div>
+              <pre className={styles.codeBlock} style={{ margin: 0, border: 'none', borderRadius: 0, maxHeight: 300, overflow: 'auto' }}>
+                {(() => {
+                  try {
+                    return JSON.stringify(JSON.parse(selectedLog.responseBody), null, 2);
+                  } catch {
+                    return selectedLog.responseBody || 'No response body';
+                  }
+                })()}
+              </pre>
+            </div>
+
+            {selectedLog.debugMode && selectedLog.resHeaders && (
+              <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+                <div style={{ background: 'var(--color-background)', padding: '8px 16px', fontWeight: 500, borderBottom: '1px solid var(--color-border)' }}>Response Headers (Debug)</div>
+                <pre className={styles.codeBlock} style={{ margin: 0, border: 'none', borderRadius: 0, maxHeight: 200, overflow: 'auto' }}>
+                  {typeof selectedLog.resHeaders === 'string' ? JSON.stringify(JSON.parse(selectedLog.resHeaders), null, 2) : JSON.stringify(selectedLog.resHeaders, null, 2)}
+                </pre>
+              </div>
+            )}
+
+            {selectedLog.error && (
+              <div style={{ border: '1px solid var(--color-danger)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+                <div style={{ background: '#fef2f2', color: 'var(--color-danger)', padding: '8px 16px', fontWeight: 500, borderBottom: '1px solid var(--color-danger)' }}>Error Information</div>
+                <pre className={styles.codeBlock} style={{ margin: 0, border: 'none', borderRadius: 0, maxHeight: 200, overflow: 'auto', color: 'var(--color-danger)', background: '#fff' }}>
+                  {typeof selectedLog.error === 'object' ? JSON.stringify(selectedLog.error, null, 2) : selectedLog.error}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

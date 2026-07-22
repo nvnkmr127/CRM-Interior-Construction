@@ -14,64 +14,64 @@ function generateSecret() {
   return 'sk_live_' + crypto.randomBytes(32).toString('base64url');
 }
 
-exports.getKeys = async (req, res, next) => {
+exports.getTokens = async (req, res, next) => {
   try {
     const { tenantId } = getTenantAndUser(req);
-    const keys = await apiKeyRepository.getKeys(tenantId);
+    const tokens = await apiKeyRepository.getKeys(tenantId);
     // Parse permissions for frontend
-    const parsedKeys = keys.map(k => ({
-      ...k,
-      permissions: typeof k.permissions === 'string' ? JSON.parse(k.permissions) : k.permissions
+    const parsedTokens = tokens.map(t => ({
+      ...t,
+      permissions: typeof t.permissions === 'string' ? JSON.parse(t.permissions) : t.permissions
     }));
-    return success(res, parsedKeys);
+    return success(res, parsedTokens);
   } catch (error) {
     next(error);
   }
 };
 
-exports.createKey = async (req, res, next) => {
+exports.createToken = async (req, res, next) => {
   try {
     const { tenantId, userId } = getTenantAndUser(req);
     const { name, description, permissions } = req.body;
     
-    if (!name) return fail(res, 'BAD_REQUEST', 'Key name is required', 400);
+    if (!name) return fail(res, 'BAD_REQUEST', 'Token name is required', 400);
 
     const rawSecret = generateSecret();
     const secretHash = hashApiKey(rawSecret);
 
-    const key = await apiKeyRepository.createKey(tenantId, userId, {
+    const token = await apiKeyRepository.createKey(tenantId, userId, {
       name,
       description,
       permissions,
       secretHash
     });
 
-    key.permissions = typeof key.permissions === 'string' ? JSON.parse(key.permissions) : key.permissions;
+    token.permissions = typeof token.permissions === 'string' ? JSON.parse(token.permissions) : token.permissions;
 
     // Return the raw secret ONLY ONCE
-    return success(res, { key, rawSecret }, 201);
+    return success(res, { token, rawSecret }, 201);
   } catch (error) {
     next(error);
   }
 };
 
-exports.updateKey = async (req, res, next) => {
+exports.updateToken = async (req, res, next) => {
   try {
     const { tenantId } = getTenantAndUser(req);
     const { id } = req.params;
     const { name, description, permissions, status } = req.body;
 
-    const key = await apiKeyRepository.updateKey(tenantId, id, { name, description, permissions, status });
-    if (!key) return fail(res, 'NOT_FOUND', 'API Key not found', 404);
+    const token = await apiKeyRepository.updateKey(tenantId, id, { name, description, permissions, status });
+    if (!token) return fail(res, 'NOT_FOUND', 'API Token not found', 404);
 
-    key.permissions = typeof key.permissions === 'string' ? JSON.parse(key.permissions) : key.permissions;
-    return success(res, key);
+    token.permissions = typeof token.permissions === 'string' ? JSON.parse(token.permissions) : token.permissions;
+    return success(res, token);
   } catch (error) {
     next(error);
   }
 };
 
-exports.regenerateKey = async (req, res, next) => {
+exports.regenerateToken = async (req, res, next) => {
   try {
     const { tenantId } = getTenantAndUser(req);
     const { id } = req.params;
@@ -79,8 +79,8 @@ exports.regenerateKey = async (req, res, next) => {
     const rawSecret = generateSecret();
     const secretHash = hashApiKey(rawSecret);
 
-    const key = await apiKeyRepository.updateKeySecret(tenantId, id, secretHash);
-    if (!key) return fail(res, 'NOT_FOUND', 'API Key not found', 404);
+    const token = await apiKeyRepository.updateKeySecret(tenantId, id, secretHash);
+    if (!token) return fail(res, 'NOT_FOUND', 'API Token not found', 404);
 
     // Return the raw secret ONLY ONCE
     return success(res, { rawSecret });
@@ -89,12 +89,12 @@ exports.regenerateKey = async (req, res, next) => {
   }
 };
 
-exports.deleteKey = async (req, res, next) => {
+exports.deleteToken = async (req, res, next) => {
   try {
     const { tenantId } = getTenantAndUser(req);
     const { id } = req.params;
     await apiKeyRepository.deleteKey(tenantId, id);
-    return success(res, { message: 'API Key deleted successfully' });
+    return success(res, { message: 'API Token deleted successfully' });
   } catch (error) {
     next(error);
   }
