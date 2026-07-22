@@ -7,6 +7,10 @@ import { useToast } from '../../store/toastContext';
 export default function DesignPresentationModal({ isOpen, onClose, leadId, onLogged }) {
   const [outcome, setOutcome] = useState('Revisions Needed');
   const [notes, setNotes] = useState('');
+  const [presentationDate, setPresentationDate] = useState(new Date().toISOString().split('T')[0]);
+  const [duration, setDuration] = useState(60);
+  const [attendees, setAttendees] = useState('');
+  const [nextSteps, setNextSteps] = useState('');
   const [loading, setLoading] = useState(false);
   const toast = useToast();
 
@@ -23,7 +27,7 @@ export default function DesignPresentationModal({ isOpen, onClose, leadId, onLog
     try {
       const payload = {
         type: 'meeting',
-        notes: `**Design Presentation Logged**\n\n**Outcome:** ${outcome}\n\n**Notes:**\n${notes}`,
+        notes: `**Design Presentation Logged**\n\n**Date:** ${presentationDate}\n**Duration:** ${duration} mins\n**Attendees:** ${attendees}\n**Outcome:** ${outcome}\n\n**Notes:**\n${notes}\n\n**Next Steps:**\n${nextSteps}`,
       };
       
       const res = await api.post(`/leads/${leadId}/activities`, payload);
@@ -41,7 +45,7 @@ export default function DesignPresentationModal({ isOpen, onClose, leadId, onLog
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-indigo-50">
           <h3 className="text-lg font-bold text-indigo-900 flex items-center gap-2">
             <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" /></svg>
@@ -52,27 +56,71 @@ export default function DesignPresentationModal({ isOpen, onClose, leadId, onLog
         
         <form onSubmit={handleSubmit} className="p-6">
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Presentation Outcome</label>
-              <select 
-                value={outcome}
-                onChange={e => setOutcome(e.target.value)}
-                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-              >
-                <option value="Approved - Move to Quote">Approved - Move to Quote</option>
-                <option value="Revisions Needed">Revisions Needed</option>
-                <option value="Rejected - Needs New Concept">Rejected - Needs New Concept</option>
-                <option value="Customer Unsure / Delayed">Customer Unsure / Delayed</option>
-              </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Presentation Date</label>
+                <input 
+                  type="date"
+                  value={presentationDate}
+                  onChange={e => setPresentationDate(e.target.value)}
+                  className="w-full border border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Duration (mins)</label>
+                <input 
+                  type="number"
+                  value={duration}
+                  onChange={e => setDuration(e.target.value)}
+                  className="w-full border border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Attendees</label>
+                <input 
+                  type="text"
+                  value={attendees}
+                  onChange={e => setAttendees(e.target.value)}
+                  placeholder="Who was present?"
+                  className="w-full border border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Presentation Outcome</label>
+                <select 
+                  value={outcome}
+                  onChange={e => setOutcome(e.target.value)}
+                  className="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                >
+                  <option value="Approved - Move to Quote">Approved - Move to Quote</option>
+                  <option value="Revisions Needed">Revisions Needed</option>
+                  <option value="Rejected - Needs New Concept">Rejected - Needs New Concept</option>
+                  <option value="Customer Unsure / Delayed">Customer Unsure / Delayed</option>
+                </select>
+              </div>
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Meeting Notes & Feedback</label>
               <textarea 
-                rows={4}
+                rows={3}
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
                 placeholder="What did the customer like? What needs changing?"
+                className="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              ></textarea>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Next Steps / Action Items</label>
+              <textarea 
+                rows={2}
+                value={nextSteps}
+                onChange={e => setNextSteps(e.target.value)}
+                placeholder="What needs to happen next?"
                 className="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
               ></textarea>
             </div>

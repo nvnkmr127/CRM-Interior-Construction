@@ -57,6 +57,8 @@ const WarehousePage = lazy(() => import('./pages/warehouse/WarehousePage'))
 const GlobalFactoryProductionPage = lazy(() => import('./pages/factory/GlobalFactoryProductionPage'))
 const ApiIntegrationPage = lazy(() => import('./pages/developer/ApiIntegrationPage'))
 const WebhooksManager = lazy(() => import('./pages/config/WebhooksManager'))
+const UsersManager = lazy(() => import('./pages/config/UsersManager'))
+const RolesManager = lazy(() => import('./pages/config/RolesManager'))
 
 export default function App() {
   return (
@@ -111,6 +113,8 @@ export default function App() {
                     <Route path='/settings/audit-trail' element={<AuditTrailPage />} />
                     <Route path='/settings/approval-matrix' element={<ApprovalMatrixPage />} />
                     <Route path='/config/*' element={<ConfigPage />} />
+                    <Route path='/team/members' element={<UsersManager />} />
+                    <Route path='/team/roles' element={<RolesManager />} />
                     <Route path='/financial-approvals' element={<FinancialApprovalsPage />} />
                     <Route path='/warehouse' element={<WarehousePage />} />
                     <Route path="developer/api" element={<ApiIntegrationPage />} />

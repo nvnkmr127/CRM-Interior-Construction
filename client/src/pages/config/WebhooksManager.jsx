@@ -417,6 +417,123 @@ export default function WebhooksManager() {
     }
   ]
 
+  if (isEditOpen) {
+    return (
+      <div className={layoutStyles.configSection}>
+        <div className={layoutStyles.sectionHeader}>
+          <div>
+            <h2 className={layoutStyles.sectionTitle}>{editTarget?.id ? 'Edit Webhook' : 'Add Webhook'}</h2>
+            <p className={layoutStyles.sectionDesc}>Configure your webhook endpoint and events.</p>
+          </div>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <Button variant="ghost" onClick={() => setIsEditOpen(false)}>Cancel</Button>
+            <Button variant="primary" onClick={saveWebhook}>Save Webhook</Button>
+          </div>
+        </div>
+        <div className={styles.modalBody} style={{ background: 'var(--color-surface)', padding: 24, borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
+          {/* Left Col */}
+          <div className={styles.col}>
+            <Input label="Webhook Name" value={editTarget.name} onChange={e => setEditTarget({...editTarget, name: e.target.value})} required />
+            <Input label="Description" value={editTarget.description || ''} onChange={e => setEditTarget({...editTarget, description: e.target.value})} />
+            
+            <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ width: 120 }}>
+                <Select 
+                  label="Request Method" 
+                  options={[{value:'POST',label:'POST'},{value:'PUT',label:'PUT'},{value:'PATCH',label:'PATCH'},{value:'GET',label:'GET'},{value:'DELETE',label:'DELETE'}]} 
+                  value={editTarget.method || 'POST'} 
+                  onChange={v => setEditTarget({...editTarget, method: v})} 
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Input label="Endpoint URL" value={editTarget.url} onChange={e => setEditTarget({...editTarget, url: e.target.value})} required />
+              </div>
+            </div>
+
+            <div>
+              <label style={{display: 'block', fontSize: 'var(--text-sm)', fontWeight: 500, marginBottom: 4}}>Secret Key (used for HMAC signing)</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <Input value={editTarget.secret} onChange={e => setEditTarget({...editTarget, secret: e.target.value})} placeholder="Auto-generate if empty" />
+                </div>
+                <Button variant="secondary" onClick={generateSecret}>Generate</Button>
+              </div>
+            </div>
+            
+            <div>
+              <div style={{fontSize:'var(--text-sm)', fontWeight:500, marginBottom:8}}>Custom Headers (Optional)</div>
+              <div className={styles.headersList}>
+                {editTarget.headers.map((h, i) => (
+                  <div key={i} className={styles.headerRow}>
+                    <Input placeholder="Key" value={h.key} onChange={e => {
+                      const newHeaders = [...editTarget.headers]
+                      newHeaders[i].key = e.target.value
+                      setEditTarget({...editTarget, headers: newHeaders})
+                    }} />
+                    <Input placeholder="Value" value={h.value} onChange={e => {
+                      const newHeaders = [...editTarget.headers]
+                      newHeaders[i].value = e.target.value
+                      setEditTarget({...editTarget, headers: newHeaders})
+                    }} />
+                    <Button variant="ghost" size="sm" onClick={() => setEditTarget({...editTarget, headers: editTarget.headers.filter((_, idx) => idx !== i)})}>✕</Button>
+                  </div>
+                ))}
+                <Button variant="ghost" size="sm" onClick={() => setEditTarget({...editTarget, headers: [...editTarget.headers, {key:'', value:''}]})}>+ Add Header</Button>
+              </div>
+            </div>
+
+            <Select 
+              label="Retry Count" 
+              options={[{value:1,label:'1'},{value:2,label:'2'},{value:3,label:'3'},{value:5,label:'5'}]} 
+              value={editTarget.retryCount} 
+              onChange={v => setEditTarget({...editTarget, retryCount: v})} 
+            />
+            
+            <Input label="Notes" value={editTarget.notes || ''} onChange={e => setEditTarget({...editTarget, notes: e.target.value})} />
+
+            <div style={{ display: 'flex', gap: 24, marginTop: 16 }}>
+              <label style={{display:'flex', alignItems:'center', gap:8, fontSize:'var(--text-sm)', cursor:'pointer'}}>
+                <div className={`${styles.toggle} ${editTarget.active ? styles.active : ''}`}>
+                  <input style={{display:'none'}} type="checkbox" checked={editTarget.active} onChange={e => setEditTarget({...editTarget, active: e.target.checked})} />
+                  <div className={styles.toggleHandle} />
+                </div>
+                Status (Active)
+              </label>
+              
+              <label style={{display:'flex', alignItems:'center', gap:8, fontSize:'var(--text-sm)', cursor:'pointer'}}>
+                <div className={`${styles.toggle} ${editTarget.debugMode ? styles.active : ''}`}>
+                  <input style={{display:'none'}} type="checkbox" checked={editTarget.debugMode} onChange={e => setEditTarget({...editTarget, debugMode: e.target.checked})} />
+                  <div className={styles.toggleHandle} />
+                </div>
+                Debug Mode
+              </label>
+            </div>
+          </div>
+
+          {/* Right Col */}
+          <div className={styles.col}>
+            <div style={{fontSize:'var(--text-sm)', fontWeight:500}}>Events</div>
+            <div className={styles.eventsGrid}>
+              {eventRegistry.getEventGroups().map(group => (
+                <div key={group.label} className={styles.eventGroup}>
+                  <div className={styles.eventTitle}>{group.label}</div>
+                  {group.events.map(ev => (
+                    <label key={ev} className={styles.eventRow} style={{display:'flex', alignItems:'center', gap: 8, padding: '4px 0'}}>
+                      <input type="checkbox" checked={editTarget.events.has(ev)} onChange={() => toggleEvent(ev)} />
+                      <span>
+                        {ev} <span style={{color: 'var(--color-text-muted)', fontSize: '0.9em', marginLeft: 4}}>- Triggered on all {ev} activities</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={layoutStyles.configSection}>
       <div className={layoutStyles.sectionHeader}>
@@ -537,122 +654,7 @@ export default function WebhooksManager() {
         onSort={handleSort}
       />
 
-      {/* Editor Modal */}
-      <Modal
-        isOpen={isEditOpen}
-        onClose={() => setIsEditOpen(false)}
-        title={editTarget?.id ? 'Edit Webhook' : 'Add Webhook'}
-        size="xl"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setIsEditOpen(false)}>Cancel</Button>
-            <Button variant="primary" onClick={saveWebhook}>Save Webhook</Button>
-          </>
-        }
-      >
-        {editTarget && (
-          <div className={styles.modalBody}>
-            {/* Left Col */}
-            <div className={styles.col}>
-              <Input label="Webhook Name" value={editTarget.name} onChange={e => setEditTarget({...editTarget, name: e.target.value})} required />
-              <Input label="Description" value={editTarget.description || ''} onChange={e => setEditTarget({...editTarget, description: e.target.value})} />
-              
-              <div style={{ display: 'flex', gap: 12 }}>
-                <div style={{ width: 120 }}>
-                  <Select 
-                    label="Request Method" 
-                    options={[{value:'POST',label:'POST'},{value:'PUT',label:'PUT'},{value:'PATCH',label:'PATCH'},{value:'GET',label:'GET'},{value:'DELETE',label:'DELETE'}]} 
-                    value={editTarget.method || 'POST'} 
-                    onChange={v => setEditTarget({...editTarget, method: v})} 
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <Input label="Endpoint URL" value={editTarget.url} onChange={e => setEditTarget({...editTarget, url: e.target.value})} required />
-                </div>
-              </div>
 
-              <div>
-                <label style={{display: 'block', fontSize: 'var(--text-sm)', fontWeight: 500, marginBottom: 4}}>Secret Key (used for HMAC signing)</label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <div style={{ flex: 1 }}>
-                    <Input value={editTarget.secret} onChange={e => setEditTarget({...editTarget, secret: e.target.value})} placeholder="Auto-generate if empty" />
-                  </div>
-                  <Button variant="secondary" onClick={generateSecret}>Generate</Button>
-                </div>
-              </div>
-              
-              <div>
-                <div style={{fontSize:'var(--text-sm)', fontWeight:500, marginBottom:8}}>Custom Headers (Optional)</div>
-                <div className={styles.headersList}>
-                  {editTarget.headers.map((h, i) => (
-                    <div key={i} className={styles.headerRow}>
-                      <Input placeholder="Key" value={h.key} onChange={e => {
-                        const newHeaders = [...editTarget.headers]
-                        newHeaders[i].key = e.target.value
-                        setEditTarget({...editTarget, headers: newHeaders})
-                      }} />
-                      <Input placeholder="Value" value={h.value} onChange={e => {
-                        const newHeaders = [...editTarget.headers]
-                        newHeaders[i].value = e.target.value
-                        setEditTarget({...editTarget, headers: newHeaders})
-                      }} />
-                      <Button variant="ghost" size="sm" onClick={() => setEditTarget({...editTarget, headers: editTarget.headers.filter((_, idx) => idx !== i)})}>✕</Button>
-                    </div>
-                  ))}
-                  <Button variant="ghost" size="sm" onClick={() => setEditTarget({...editTarget, headers: [...editTarget.headers, {key:'', value:''}]})}>+ Add Header</Button>
-                </div>
-              </div>
-
-              <Select 
-                label="Retry Count" 
-                options={[{value:1,label:'1'},{value:2,label:'2'},{value:3,label:'3'},{value:5,label:'5'}]} 
-                value={editTarget.retryCount} 
-                onChange={v => setEditTarget({...editTarget, retryCount: v})} 
-              />
-              
-              <Input label="Notes" value={editTarget.notes || ''} onChange={e => setEditTarget({...editTarget, notes: e.target.value})} />
-
-              <div style={{ display: 'flex', gap: 24, marginTop: 16 }}>
-                <label style={{display:'flex', alignItems:'center', gap:8, fontSize:'var(--text-sm)', cursor:'pointer'}}>
-                  <div className={`${styles.toggle} ${editTarget.active ? styles.active : ''}`}>
-                    <input style={{display:'none'}} type="checkbox" checked={editTarget.active} onChange={e => setEditTarget({...editTarget, active: e.target.checked})} />
-                    <div className={styles.toggleHandle} />
-                  </div>
-                  Status (Active)
-                </label>
-                
-                <label style={{display:'flex', alignItems:'center', gap:8, fontSize:'var(--text-sm)', cursor:'pointer'}}>
-                  <div className={`${styles.toggle} ${editTarget.debugMode ? styles.active : ''}`}>
-                    <input style={{display:'none'}} type="checkbox" checked={editTarget.debugMode} onChange={e => setEditTarget({...editTarget, debugMode: e.target.checked})} />
-                    <div className={styles.toggleHandle} />
-                  </div>
-                  Debug Mode
-                </label>
-              </div>
-            </div>
-
-            {/* Right Col */}
-            <div className={styles.col}>
-              <div style={{fontSize:'var(--text-sm)', fontWeight:500}}>Events</div>
-              <div className={styles.eventsGrid}>
-                {eventRegistry.getEventGroups().map(group => (
-                  <div key={group.label} className={styles.eventGroup}>
-                    <div className={styles.eventTitle}>{group.label}</div>
-                    {group.events.map(ev => (
-                      <label key={ev} className={styles.eventRow} style={{display:'flex', alignItems:'center', gap: 8, padding: '4px 0'}}>
-                        <input type="checkbox" checked={editTarget.events.has(ev)} onChange={() => toggleEvent(ev)} />
-                        <span>
-                          {ev} <span style={{color: 'var(--color-text-muted)', fontSize: '0.9em', marginLeft: 4}}>- Triggered on all {ev} activities</span>
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </Modal>
 
       {/* Delete Modal */}
       <Modal

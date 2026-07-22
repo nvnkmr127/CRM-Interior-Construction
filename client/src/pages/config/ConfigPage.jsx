@@ -39,11 +39,7 @@ const CONFIG_NAV = [
     { to: 'api-keys',      icon: '⊙', label: 'API Keys',    desc: 'Connect external tools' },
     { to: 'logs',          icon: '≡', label: 'Logs',        desc: 'Delivery history & retries' },
   ]},
-  { group: 'TEAM', items: [
-    { to: 'users',         icon: '◉', label: 'Team Members', desc: 'Invite and manage access' },
-    { to: 'roles',         icon: '🔑', label: 'Roles & Permissions', desc: 'Manage access levels' },
-    { to: 'audit-trail',   icon: '📜', label: 'Audit Trail', desc: 'View system logs and changes' },
-  ]},
+
   { group: 'FINANCE', items: [
     { to: 'financial-settings', icon: '💰', label: 'Financial Thresholds', desc: 'Configurable approval thresholds' },
   ]},
@@ -101,9 +97,7 @@ export default function ConfigPage() {
             <Route path='trade-activities' element={<TradeActivityTemplatesManager />} />
             <Route path='api-keys'      element={<ApiKeysManager />} />
             <Route path='logs'          element={<LogsViewer />} />
-            <Route path='users'         element={<UsersManager />} />
-            <Route path='roles'         element={<RolesManager />} />
-            <Route path='audit-trail'   element={<AuditTrail />} />
+
             <Route path='financial-settings' element={<FinancialSettings />} />
             <Route path='vendor-lead-times' element={<LeadTimesManager />} />
             <Route path='*'             element={<Navigate to='/config/lead-stages' replace />} />

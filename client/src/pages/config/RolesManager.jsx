@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/immutability, no-unused-vars, no-empty, no-undef */
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import layoutStyles from './ConfigLayout.module.css'
 import styles from './RolesManager.module.css'
 import { Button, Modal, DataTable, Input } from '../../components/ui'
@@ -9,14 +9,25 @@ import api from '../../api/axios'
 const DEFAULT_PERMISSIONS = [
   { id: 'leads:read', label: 'View Leads', group: 'Leads' },
   { id: 'leads:write', label: 'Manage Leads', group: 'Leads' },
+  { id: 'leads:manager', label: 'Leads Manager Dashboard', group: 'Leads' },
   { id: 'projects:read', label: 'View Projects', group: 'Projects' },
   { id: 'projects:write', label: 'Manage Projects', group: 'Projects' },
+  { id: 'projects:dashboards', label: 'View Global Dashboards', group: 'Projects' },
+  { id: 'tasks:read', label: 'View Tasks', group: 'Tasks' },
+  { id: 'tasks:write', label: 'Manage Tasks', group: 'Tasks' },
   { id: 'finance:invoices', label: 'Manage Invoices', group: 'Finance' },
   { id: 'finance:payments', label: 'Manage Payments', group: 'Finance' },
   { id: 'finance:discounts', label: 'Approve Discounts', group: 'Finance' },
   { id: 'finance:credits', label: 'Manage Credits', group: 'Finance' },
+  { id: 'finance:approvals', label: 'Financial Approvals', group: 'Finance' },
+  { id: 'warehouse:read', label: 'View Warehouse', group: 'Operations' },
+  { id: 'warehouse:write', label: 'Manage Warehouse', group: 'Operations' },
+  { id: 'factory:read', label: 'View Factory Production', group: 'Operations' },
+  { id: 'factory:write', label: 'Manage Factory Production', group: 'Operations' },
+  { id: 'analytics:read', label: 'View Analytics & Reports', group: 'Analytics' },
   { id: 'settings:manage', label: 'Manage Settings', group: 'Admin' },
   { id: 'users:manage', label: 'Manage Users', group: 'Admin' },
+  { id: 'developer:manage', label: 'Manage API & Webhooks', group: 'Admin' },
 ]
 
 export default function RolesManager() {
@@ -157,92 +168,94 @@ export default function RolesManager() {
   }, {})
 
   return (
-    <div className={layoutStyles.configSection}>
-      <div className={layoutStyles.sectionHeader}>
-        <div>
-          <h2 className={layoutStyles.sectionTitle}>Roles & Permissions</h2>
-          <p className={layoutStyles.sectionDesc}>Define roles and their specific access permissions.</p>
+    <div className="mx-auto max-w-7xl p-4 sm:p-8 space-y-8">
+      <div className={layoutStyles.configSection}>
+        <div className={layoutStyles.sectionHeader}>
+          <div>
+            <h2 className={layoutStyles.sectionTitle}>Roles & Permissions</h2>
+            <p className={layoutStyles.sectionDesc}>Define roles and their specific access permissions.</p>
+          </div>
+          <Button variant="primary" onClick={() => handleOpenModal()}>+ Create Role</Button>
         </div>
-        <Button variant="primary" onClick={() => handleOpenModal()}>+ Create Role</Button>
-      </div>
 
-      <DataTable columns={columns} data={roles} />
+        <DataTable columns={columns} data={roles} />
 
-      {/* Create/Edit Modal */}
-      {isModalOpen && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalContent}>
-            <div className={styles.modalHeader}>
-              <h3 className={styles.title}>{editingRole ? 'Edit Role' : 'Create Role'}</h3>
-              <button className={styles.closeBtn} onClick={() => setIsModalOpen(false)}>×</button>
-            </div>
-            <div style={{ marginTop: '0px' }}>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Role Name</label>
-                <Input 
-                  value={formData.name} 
-                  onChange={e => setFormData({...formData, name: e.target.value})} 
-                  placeholder="e.g. Sales Manager"
-                  disabled={formData.name === 'superadmin'}
-                />
+        {/* Create/Edit Modal */}
+        {isModalOpen && (
+          <div className={styles.modalOverlay}>
+            <div className={styles.modalContent}>
+              <div className={styles.modalHeader}>
+                <h3 className={styles.title}>{editingRole ? 'Edit Role' : 'Create Role'}</h3>
+                <button className={styles.closeBtn} onClick={() => setIsModalOpen(false)}>×</button>
               </div>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Description</label>
-                <Input 
-                  value={formData.description} 
-                  onChange={e => setFormData({...formData, description: e.target.value})} 
-                  placeholder="Optional description"
-                />
+              <div style={{ marginTop: '0px' }}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Role Name</label>
+                  <Input 
+                    value={formData.name} 
+                    onChange={e => setFormData({...formData, name: e.target.value})} 
+                    placeholder="e.g. Sales Manager"
+                    disabled={formData.name === 'superadmin'}
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Description</label>
+                  <Input 
+                    value={formData.description} 
+                    onChange={e => setFormData({...formData, description: e.target.value})} 
+                    placeholder="Optional description"
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Permissions</label>
+                  {formData.permissions.includes('*') ? (
+                    <div style={{ padding: '12px', background: 'var(--color-accent-light)', color: 'var(--color-accent-dark)', borderRadius: 'var(--radius-md)' }}>
+                      This role has full access (*).
+                    </div>
+                  ) : (
+                    <div className={styles.permissionGrid}>
+                      {Object.entries(groupedPermissions).map(([group, perms]) => (
+                        <React.Fragment key={group}>
+                          <div className={styles.permissionGroupTitle}>{group}</div>
+                          {perms.map(p => (
+                            <label key={p.id} className={styles.checkboxContainer}>
+                              <input 
+                                type="checkbox" 
+                                checked={formData.permissions.includes(p.id)} 
+                                onChange={() => handleTogglePermission(p.id)}
+                              />
+                              {p.label}
+                            </label>
+                          ))}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Permissions</label>
-                {formData.permissions.includes('*') ? (
-                  <div style={{ padding: '12px', background: 'var(--color-accent-light)', color: 'var(--color-accent-dark)', borderRadius: 'var(--radius-md)' }}>
-                    This role has full access (*).
-                  </div>
-                ) : (
-                  <div className={styles.permissionGrid}>
-                    {Object.entries(groupedPermissions).map(([group, perms]) => (
-                      <React.Fragment key={group}>
-                        <div className={styles.permissionGroupTitle}>{group}</div>
-                        {perms.map(p => (
-                          <label key={p.id} className={styles.checkboxContainer}>
-                            <input 
-                              type="checkbox" 
-                              checked={formData.permissions.includes(p.id)} 
-                              onChange={() => handleTogglePermission(p.id)}
-                            />
-                            {p.label}
-                          </label>
-                        ))}
-                      </React.Fragment>
-                    ))}
-                  </div>
-                )}
+              <div className={styles.modalActions}>
+                <button className={styles.cancelBtn} onClick={() => setIsModalOpen(false)}>Cancel</button>
+                <button className={styles.saveBtn} onClick={handleSave}>Save</button>
               </div>
-            </div>
-            <div className={styles.modalActions}>
-              <button className={styles.cancelBtn} onClick={() => setIsModalOpen(false)}>Cancel</button>
-              <button className={styles.saveBtn} onClick={handleSave}>Save</button>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Delete Confirmation Modal */}
-      <Modal
-        isOpen={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        title="Delete Role"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-            <Button variant="primary" style={{background:'var(--color-danger)', borderColor:'var(--color-danger)'}} onClick={confirmDelete}>Confirm Delete</Button>
-          </>
-        }
-      >
-        <p>Are you sure you want to delete the role <strong>{deleteTarget?.name}</strong>? This cannot be undone.</p>
-      </Modal>
+        {/* Delete Confirmation Modal */}
+        <Modal
+          isOpen={!!deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          title="Delete Role"
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+              <Button variant="primary" style={{background:'var(--color-danger)', borderColor:'var(--color-danger)'}} onClick={confirmDelete}>Confirm Delete</Button>
+            </>
+          }
+        >
+          <p>Are you sure you want to delete the role <strong>{deleteTarget?.name}</strong>? This cannot be undone.</p>
+        </Modal>
+      </div>
     </div>
   )
 }

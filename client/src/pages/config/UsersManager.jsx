@@ -1,7 +1,7 @@
-/* eslint-disable no-unused-vars */
 import { useState, useEffect } from 'react'
 import layoutStyles from './ConfigLayout.module.css'
-import { Button, Badge, Modal, DataTable, Avatar, Input, Select } from '../../components/ui'
+import { Button, Badge, Modal, DataTable, Avatar, Input, Select, EmptyState } from '../../components/ui'
+import Toggle from '../../components/ui/Toggle'
 import { useToast } from '../../store/toastContext'
 import api from '../../api/axios'
 
@@ -18,7 +18,21 @@ export default function UsersManager() {
   const [inviteData, setInviteData] = useState({ name: '', email: '', role: 'designer' })
   const [roleChangeTarget, setRoleChangeTarget] = useState(null)
   const [statusChangeTarget, setStatusChangeTarget] = useState(null)
+  const [selectedIds, setSelectedIds] = useState(new Set())
   const toast = useToast()
+
+  const handleBulkStatusChange = async (newStatus) => {
+    if (selectedIds.size === 0) return
+    const ids = Array.from(selectedIds)
+    setUsers(prev => prev.map(u => ids.includes(u.id || u._id || u.user_id) ? { ...u, status: newStatus } : u))
+    try {
+      await Promise.all(ids.map(id => api.patch(`/users/${id}`, { status: newStatus })))
+      toast.success(`Successfully updated ${ids.length} users to ${newStatus}`)
+    } catch {
+      toast.error(`Some updates failed, please refresh the page`)
+    }
+    setSelectedIds(new Set())
+  }
 
   const [roles, setRoles] = useState([])
   const roleOptions = roles.length > 0 
@@ -81,10 +95,10 @@ export default function UsersManager() {
       key: 'user', label: 'User', 
       render: (u) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Avatar name={u.name} size="sm" />
+          <Avatar name={u.name || '?'} size="sm" />
           <div>
-            <div style={{ fontWeight: 500, color: 'var(--color-text)' }}>{u.name}</div>
-            <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>{u.email}</div>
+            <div style={{ fontWeight: 500, color: 'var(--color-text)' }}>{u.name || 'Unknown User'}</div>
+            <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>{u.email || '-'}</div>
           </div>
         </div>
       )
@@ -92,10 +106,10 @@ export default function UsersManager() {
     {
       key: 'role', label: 'Role',
       render: (u) => {
-        const roleColors = { superadmin: 'accent', pm: 'info', designer: 'neutral', sales: 'success' }
+        const roleLabel = u.role_name || roleOptions.find(r => r.value === u.role)?.label || u.role || 'No Role'
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Badge variant="neutral">{u.role_name || roleOptions.find(r => r.value === u.role)?.label || u.role}</Badge>
+            <Badge variant="neutral">{roleLabel}</Badge>
           </div>
         )
       }
@@ -104,7 +118,8 @@ export default function UsersManager() {
       key: 'status', label: 'Status',
       render: (u) => {
         const statusColors = { active: 'success', inactive: 'neutral', invited: 'warning' }
-        return <Badge variant={statusColors[u.status]}>{u.status}</Badge>
+        const statusVal = u.status || 'inactive'
+        return <Badge variant={statusColors[statusVal] || 'neutral'}>{statusVal}</Badge>
       }
     },
     {
@@ -112,110 +127,127 @@ export default function UsersManager() {
       render: (u) => u.lastActive ? new Date(u.lastActive).toLocaleString() : <span style={{color:'var(--color-text-muted)'}}>Never</span>
     },
     {
-      key: 'actions', label: 'Actions', align: 'right',
+      key: 'actions', label: 'Activate', align: 'right',
       render: (u) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}>
-          <Select 
-            value={u.role_id || u.role} 
-            options={roleOptions} 
-            onChange={(val) => setRoleChangeTarget({ user: u, newRole: val })}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', justifyContent: 'flex-end' }}>
+          <div style={{ minWidth: '160px', textAlign: 'left' }}>
+            <Select 
+              value={u.role_id || u.role} 
+              options={roleOptions} 
+              onChange={(val) => setRoleChangeTarget({ user: u, newRole: val })}
+            />
+          </div>
+          <Toggle 
+            checked={u.status === 'active'} 
+            onChange={() => setStatusChangeTarget({ user: u })} 
           />
-          {u.status === 'active' ? (
-            <Button variant="ghost" size="sm" style={{color:'var(--color-danger)'}} onClick={() => setStatusChangeTarget({ user: u })}>
-              Deactivate
-            </Button>
-          ) : u.status === 'inactive' ? (
-            <Button variant="ghost" size="sm" style={{color:'var(--color-success)'}} onClick={() => setStatusChangeTarget({ user: u })}>
-              Activate
-            </Button>
-          ) : null}
         </div>
       )
     }
   ]
 
   return (
-    <div className={layoutStyles.configSection}>
-      <div className={layoutStyles.sectionHeader}>
-        <div>
-          <h2 className={layoutStyles.sectionTitle}>Team Members</h2>
-          <p className={layoutStyles.sectionDesc}>Manage who has access to this workspace.</p>
+    <div className="mx-auto max-w-7xl p-4 sm:p-8 space-y-8">
+      <div className={layoutStyles.configSection}>
+        <div className={layoutStyles.sectionHeader}>
+          <div>
+            <h2 className={layoutStyles.sectionTitle}>Team Members</h2>
+            <p className={layoutStyles.sectionDesc}>Manage who has access to this workspace.</p>
+          </div>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            {selectedIds.size > 0 && (
+              <>
+                <Button variant="ghost" style={{color:'var(--color-success)'}} onClick={() => handleBulkStatusChange('active')}>
+                  Activate Selected ({selectedIds.size})
+                </Button>
+                <Button variant="ghost" style={{color:'var(--color-danger)'}} onClick={() => handleBulkStatusChange('inactive')}>
+                  Deactivate Selected ({selectedIds.size})
+                </Button>
+              </>
+            )}
+            <Button variant="primary" onClick={() => setIsInviteOpen(true)}>+ Invite Member</Button>
+          </div>
         </div>
-        <Button variant="primary" onClick={() => setIsInviteOpen(true)}>+ Invite Member</Button>
+
+        <DataTable 
+          columns={columns} 
+          data={users} 
+          selectable={true}
+          selectedIds={selectedIds}
+          onSelectChange={setSelectedIds}
+        />
+
+        {/* Invite Modal */}
+        <Modal 
+          isOpen={isInviteOpen} 
+          onClose={() => setIsInviteOpen(false)} 
+          title="Invite Member"
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setIsInviteOpen(false)}>Cancel</Button>
+              <Button variant="primary" onClick={handleInvite}>Send Invite</Button>
+            </>
+          }
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <Input 
+              label="Full Name" 
+              value={inviteData.name} 
+              onChange={e => setInviteData({...inviteData, name: e.target.value})} 
+              required 
+            />
+            <Input 
+              label="Email Address" 
+              type="email" 
+              value={inviteData.email} 
+              onChange={e => setInviteData({...inviteData, email: e.target.value})} 
+              required 
+            />
+            <Select 
+              label="Role" 
+              options={roleOptions} 
+              value={inviteData.role} 
+              onChange={val => setInviteData({...inviteData, role: val})} 
+            />
+          </div>
+        </Modal>
+
+        {/* Role Change Modal */}
+        <Modal
+          isOpen={!!roleChangeTarget}
+          onClose={() => setRoleChangeTarget(null)}
+          title="Change Role"
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setRoleChangeTarget(null)}>Cancel</Button>
+              <Button variant="primary" onClick={confirmRoleChange}>Confirm</Button>
+            </>
+          }
+        >
+          <p>Change {roleChangeTarget?.user.name}'s role to {roleOptions.find(r => r.value === roleChangeTarget?.newRole)?.label}?</p>
+        </Modal>
+
+        {/* Status Change Modal */}
+        <Modal
+          isOpen={!!statusChangeTarget}
+          onClose={() => setStatusChangeTarget(null)}
+          title={statusChangeTarget?.user.status === 'active' ? 'Deactivate User' : 'Activate User'}
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setStatusChangeTarget(null)}>Cancel</Button>
+              <Button 
+                variant="primary" 
+                style={statusChangeTarget?.user.status === 'active' ? {background:'var(--color-danger)', borderColor:'var(--color-danger)'} : {}}
+                onClick={confirmStatusChange}
+              >
+                Confirm
+              </Button>
+            </>
+          }
+        >
+          <p>Are you sure you want to {statusChangeTarget?.user.status === 'active' ? 'deactivate' : 'activate'} {statusChangeTarget?.user.name}?</p>
+        </Modal>
       </div>
-
-      <DataTable columns={columns} data={users} />
-
-      {/* Invite Modal */}
-      <Modal 
-        isOpen={isInviteOpen} 
-        onClose={() => setIsInviteOpen(false)} 
-        title="Invite Member"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setIsInviteOpen(false)}>Cancel</Button>
-            <Button variant="primary" onClick={handleInvite}>Send Invite</Button>
-          </>
-        }
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <Input 
-            label="Full Name" 
-            value={inviteData.name} 
-            onChange={e => setInviteData({...inviteData, name: e.target.value})} 
-            required 
-          />
-          <Input 
-            label="Email Address" 
-            type="email" 
-            value={inviteData.email} 
-            onChange={e => setInviteData({...inviteData, email: e.target.value})} 
-            required 
-          />
-          <Select 
-            label="Role" 
-            options={roleOptions} 
-            value={inviteData.role} 
-            onChange={val => setInviteData({...inviteData, role: val})} 
-          />
-        </div>
-      </Modal>
-
-      {/* Role Change Modal */}
-      <Modal
-        isOpen={!!roleChangeTarget}
-        onClose={() => setRoleChangeTarget(null)}
-        title="Change Role"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setRoleChangeTarget(null)}>Cancel</Button>
-            <Button variant="primary" onClick={confirmRoleChange}>Confirm</Button>
-          </>
-        }
-      >
-        <p>Change {roleChangeTarget?.user.name}'s role to {roleOptions.find(r => r.value === roleChangeTarget?.newRole)?.label}?</p>
-      </Modal>
-
-      {/* Status Change Modal */}
-      <Modal
-        isOpen={!!statusChangeTarget}
-        onClose={() => setStatusChangeTarget(null)}
-        title={statusChangeTarget?.user.status === 'active' ? 'Deactivate User' : 'Activate User'}
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setStatusChangeTarget(null)}>Cancel</Button>
-            <Button 
-              variant="primary" 
-              style={statusChangeTarget?.user.status === 'active' ? {background:'var(--color-danger)', borderColor:'var(--color-danger)'} : {}}
-              onClick={confirmStatusChange}
-            >
-              Confirm
-            </Button>
-          </>
-        }
-      >
-        <p>Are you sure you want to {statusChangeTarget?.user.status === 'active' ? 'deactivate' : 'activate'} {statusChangeTarget?.user.name}?</p>
-      </Modal>
     </div>
   )
 }

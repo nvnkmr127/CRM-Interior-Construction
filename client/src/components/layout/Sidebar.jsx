@@ -37,9 +37,13 @@ const NAV_ITEMS = [
     { to: '/analytics/collection-forecast', icon: '📈', label: 'Collection Forecast' },
     { to: '/analytics/csat', icon: '⭐', label: 'Client Satisfaction' },
   ]},
+  { group: 'TEAM', adminOnly: true, items: [
+    { to: '/team/members', icon: '◉', label: 'Team Members' },
+    { to: '/team/roles', icon: '🔑', label: 'Roles & Permissions' },
+    { to: '/settings/audit-trail', icon: '📜', label: 'Audit Trail' }
+  ]},
   { group: 'ADMIN', adminOnly: true, items: [
-    { to: '/config',     icon: '⊙', label: 'Config Centre' },
-    { to: '/settings/audit-trail', icon: '📋', label: 'Audit Trail' }
+    { to: '/config',     icon: '⊙', label: 'Config Centre' }
   ]},
   { group: 'FINANCE', financeOnly: true, items: [
     { to: '/financial-approvals', icon: '📝', label: 'Financial Approvals' }

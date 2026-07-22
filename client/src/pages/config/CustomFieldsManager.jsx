@@ -268,6 +268,7 @@ export default function CustomFieldsManager() {
                 className={styles.select}
                 value={formData.field_type}
                 onChange={(e) => setFormData({...formData, field_type: e.target.value})}
+                disabled={!!editingField}
               >
                 <option value="text">Text</option>
                 <option value="number">Number</option>

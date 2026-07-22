@@ -102,20 +102,21 @@ export default function DataTable({
               </td>
             </tr>
           ) : (
-            data.map(row => {
-              const isExpanded = expandedKeys.has(row.id)
+            data.map((row, index) => {
+              const rowId = row.id || row._id || row.user_id || `row-${index}`
+              const isExpanded = expandedKeys.has(rowId)
               return (
-                <Fragment key={row.id}>
+                <Fragment key={rowId}>
                   <tr 
                     className={`
                       ${styles.tr} 
                       ${onRowClick ? styles.clickable : ''} 
-                      ${selectedIds.has(row.id) ? styles.selected : ''}
+                      ${selectedIds.has(rowId) ? styles.selected : ''}
                     `}
                     onClick={() => onRowClick && onRowClick(row)}
                   >
                     {expandable && (
-                      <td className={styles.td} style={{width:40}} onClick={(e) => toggleExpand(e, row.id)}>
+                      <td className={styles.td} style={{width:40}} onClick={(e) => toggleExpand(e, rowId)}>
                         <button className={styles.expandBtn}>{isExpanded ? '▼' : '▶'}</button>
                       </td>
                     )}
@@ -123,8 +124,8 @@ export default function DataTable({
                       <td className={`${styles.td} ${styles.checkbox}`} onClick={e => e.stopPropagation()}>
                         <input 
                           type="checkbox" 
-                          checked={selectedIds.has(row.id)}
-                          onChange={(e) => handleSelectRow(e, row.id)}
+                          checked={selectedIds.has(rowId)}
+                          onChange={(e) => handleSelectRow(e, rowId)}
                         />
                       </td>
                     )}

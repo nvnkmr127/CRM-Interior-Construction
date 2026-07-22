@@ -51,7 +51,7 @@ async function addField(tenantId, fieldData) {
  * Prevents changing the machine 'name' or 'entity' to avoid schema collisions on existing data.
  */
 async function updateField(tenantId, fieldId, updates) {
-  const allowedFields = ['label', 'options', 'is_required', 'visible_to_roles', 'sort_order'];
+  const allowedFields = ['label', 'options', 'is_required', 'visible_to_roles', 'sort_order', 'is_active'];
   const sets = [];
   const values = [tenantId, fieldId];
   let paramIndex = 3;

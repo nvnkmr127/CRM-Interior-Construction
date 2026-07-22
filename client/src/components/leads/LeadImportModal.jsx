@@ -5,14 +5,23 @@ import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
 
 const STANDARD_FIELDS = [
-  { key: 'name', label: 'Lead Name', required: true, example: 'Rohan Sharma' },
-  { key: 'email', label: 'Email', required: false, example: 'rohan@example.com' },
-  { key: 'phone', label: 'Phone Number', required: false, example: '+91 9876543210' },
-  { key: 'property_type', label: 'Property Type', required: false, example: 'Villa' },
-  { key: 'scope', label: 'Project Scope', required: false, example: 'Full Home' },
-  { key: 'locality', label: 'Locality/City', required: false, example: 'Indiranagar' },
-  { key: 'budget_max', label: 'Budget (Max)', required: false, example: '2500000' },
-  { key: 'source', label: 'Lead Source', required: false, example: 'Facebook Ads' },
+  { key: 'name', label: 'Full Name', required: true, example: 'Rohan Sharma' },
+  { key: 'phone', label: 'Phone Number', required: true, example: '+91 9876543210' },
+  { key: 'email', label: 'Email Address', required: false, example: 'rohan@example.com' },
+  { key: 'source', label: 'Lead Source', required: false, example: 'Facebook' },
+  { key: 'builder_name', label: 'Builder Name', required: false, example: 'Prestige Group' },
+  { key: 'possession_date', label: 'Possession Date', required: false, example: '2024-12-01' },
+  { key: 'house_status', label: 'House Status', required: false, example: 'Under Construction' },
+  { key: 'loan_approved', label: 'Loan Approved (Yes/No)', required: false, example: 'Yes' },
+  { key: 'interior_style', label: 'Interior Style', required: false, example: 'Modern' },
+  { key: 'material_preference', label: 'Material Preference', required: false, example: 'Wood' },
+  { key: 'preferred_communication', label: 'Preferred Comm.', required: false, example: 'Call' },
+  { key: 'preferred_language', label: 'Preferred Lang.', required: false, example: 'English' },
+  { key: 'dnc_flag', label: 'DNC (Yes/No)', required: false, example: 'No' },
+  { key: 'consent_whatsapp', label: 'WhatsApp Consent', required: false, example: 'Yes' },
+  { key: 'stageId', label: 'Lead Stage ID', required: false, example: 'stage_123' },
+  { key: 'assigneeId', label: 'Assignee ID', required: false, example: 'user_456' },
+  { key: 'notes', label: 'Notes', required: false, example: 'Looking for premium finish' },
 ];
 
 export default function LeadImportModal({ isOpen, onClose, onImportSuccess }) {
@@ -244,7 +253,7 @@ export default function LeadImportModal({ isOpen, onClose, onImportSuccess }) {
               <span>Currently only .csv files are supported.</span>
             </div>
             <a 
-              href="data:text/csv;charset=utf-8,Lead Name,Email,Phone Number,Property Type,Project Scope,Locality/City,Budget (Max),Lead Source%0ARohan Sharma,rohan@example.com,+91 9876543210,Villa,Full Home,Indiranagar,2500000,Facebook Ads%0AAnita Desai,anita.d@example.com,+91 9123456789,Flat,Modular Kitchen,Whitefield,1200000,Referral" 
+              href="data:text/csv;charset=utf-8,Full Name,Phone Number,Email Address,Lead Source,Builder Name,Possession Date,House Status,Loan Approved,Interior Style,Material Preference,Preferred Comm.,Preferred Lang.,DNC,WhatsApp Consent,Lead Stage ID,Assignee ID,Notes%0ARohan Sharma,+91 9876543210,rohan@example.com,Facebook,Prestige Group,2024-12-01,Under Construction,Yes,Modern,Wood,Call,English,No,Yes,,,Looking for premium finish%0AAnita Desai,+91 9123456789,anita.d@example.com,Referral,Sobha,2024-10-15,Ready to Move,No,Minimalist,Modular,WhatsApp,Hindi,No,No,,,Needs quick design" 
               download="lead_import_template.csv"
               className="text-xs text-blue-600 hover:text-blue-800 hover:underline font-medium flex items-center gap-1"
             >
