@@ -1275,7 +1275,15 @@ export const setupMockInterceptor = (api) => {
             if (!mockDatabase.offboarding) mockDatabase.offboarding = [];
             
             if (method === 'get') {
-              responseData.data = [...mockDatabase.offboarding];
+              if (mockDatabase.users && mockDatabase.offboarding) {
+                mockDatabase.offboarding = mockDatabase.offboarding.filter(o => {
+                  const u = mockDatabase.users.find(user => user.id === o.user_id);
+                  // Keep record if user doesn't exist (rare) or if their status isn't active
+                  return !u || (u.status !== 'active' && u.status !== 'probation' && u.status !== 'onboarding');
+                });
+                persistDb();
+              }
+              responseData.data = [...(mockDatabase.offboarding || [])];
             } else if (url.includes('/initiate') && method === 'post') {
               const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
               const targetUser = mockDatabase.users?.find(u => u.id === payload.user_id) || {};
