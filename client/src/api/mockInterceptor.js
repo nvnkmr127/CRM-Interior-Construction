@@ -1229,8 +1229,61 @@ export const setupMockInterceptor = (api) => {
           }
           // USERS
           else if (url.includes('/users')) {
-            if (method === 'get') {
+            if (url.includes('/approval-history')) {
+              responseData.data = [];
+            } else if (url.includes('/approve') || url.includes('/reject') || url.includes('/request-changes')) {
+              responseData.data = { success: true };
+            } else if (method === 'get') {
               responseData.data = [...(mockDatabase.users || [])];
+            } else if (url.includes('/add-member') && method === 'post') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const newUser = {
+                id: `mock-user-${Date.now()}`,
+                name: payload.name || 'Mock User',
+                email: payload.email,
+                role_id: payload.roleId,
+                status: 'pending_approval',
+                created_at: new Date().toISOString()
+              };
+              if (!mockDatabase.users) mockDatabase.users = [];
+              mockDatabase.users.unshift(newUser);
+              persistDb();
+              responseData.data = newUser;
+            }
+          }
+          // OFFBOARDING
+          else if (url.includes('/offboarding')) {
+            if (!mockDatabase.offboarding) mockDatabase.offboarding = [];
+            
+            if (method === 'get') {
+              responseData.data = [...mockDatabase.offboarding];
+            } else if (url.includes('/initiate') && method === 'post') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const targetUser = mockDatabase.users?.find(u => u.id === payload.user_id) || {};
+              const newRecord = {
+                id: `mock-off-${Date.now()}`,
+                user_id: payload.user_id,
+                first_name: targetUser.name ? targetUser.name.split(' ')[0] : 'Mock',
+                last_name: targetUser.name ? targetUser.name.split(' ').slice(1).join(' ') : 'User',
+                email: targetUser.email || 'mock@example.com',
+                status: 'pending_manager',
+                resignation_date: payload.resignation_date || new Date().toISOString(),
+                last_working_day: payload.last_working_day || new Date().toISOString(),
+                created_at: new Date().toISOString()
+              };
+              mockDatabase.offboarding.unshift(newRecord);
+              persistDb();
+              responseData.data = newRecord;
+            } else if (method === 'put' || method === 'patch') {
+              const parts = url.split('/');
+              const id = parts[parts.length - 1];
+              const updates = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const idx = mockDatabase.offboarding.findIndex(o => o.id === id);
+              if (idx !== -1) {
+                mockDatabase.offboarding[idx] = { ...mockDatabase.offboarding[idx], ...updates };
+                persistDb();
+                responseData.data = mockDatabase.offboarding[idx];
+              }
             }
           }
           // CUSTOM FIELDS

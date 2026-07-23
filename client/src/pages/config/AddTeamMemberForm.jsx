@@ -5,7 +5,6 @@ import { useToast } from '../../store/toastContext'
 
 const SECTIONS = [
   'Basic Information',
-  'Contact Information',
   'Company Information',
   'Security',
   'Permissions',
@@ -64,24 +63,8 @@ export default function AddTeamMemberForm({ onCancel, onSuccess, roleOptions }) 
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
-  const validateSection = (sectionIndex) => {
-    // Basic validation
-    if (sectionIndex === 0) {
-      if (!formData.firstName) { toast.error('First Name is required'); return false; }
-    }
-    if (sectionIndex === 1) {
-      if (!formData.officialEmail) { toast.error('Official Email is required'); return false; }
-    }
-    if (sectionIndex === 2) {
-      if (!formData.role) { toast.error('Role is required'); return false; }
-    }
-    return true
-  }
-
   const handleNext = () => {
-    if (validateSection(activeSection)) {
-      setActiveSection(prev => Math.min(prev + 1, SECTIONS.length - 1))
-    }
+    setActiveSection(prev => Math.min(prev + 1, SECTIONS.length - 1))
   }
 
   const handleBack = () => {
@@ -89,7 +72,9 @@ export default function AddTeamMemberForm({ onCancel, onSuccess, roleOptions }) 
   }
 
   const handleSubmit = async () => {
-    if (!validateSection(activeSection)) return
+    if (!formData.firstName) { toast.error('First Name is required'); setActiveSection(0); return; }
+    if (!formData.officialEmail) { toast.error('Official Email is required'); setActiveSection(0); return; }
+    if (!formData.role) { toast.error('Role is required'); setActiveSection(1); return; }
     setIsSubmitting(true)
     try {
       // In a real scenario, documents would be uploaded first and URLs attached here
@@ -119,7 +104,7 @@ export default function AddTeamMemberForm({ onCancel, onSuccess, roleOptions }) 
         {SECTIONS.map((sec, idx) => (
           <div 
             key={sec}
-            onClick={() => { if (idx < activeSection || validateSection(activeSection)) setActiveSection(idx) }}
+            onClick={() => setActiveSection(idx)}
             style={{ 
               padding: '12px 16px', 
               cursor: 'pointer',
@@ -135,22 +120,19 @@ export default function AddTeamMemberForm({ onCancel, onSuccess, roleOptions }) 
       </div>
 
       {/* Form Content */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div style={{ flex: 1, overflow: 'visible', padding: '0 8px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {activeSection === 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            <Input label="Employee ID" value={formData.employeeId} disabled />
+
             <Input label="First Name *" value={formData.firstName} onChange={e => handleInputChange('firstName', e.target.value)} />
-            <Input label="Middle Name" value={formData.middleName} onChange={e => handleInputChange('middleName', e.target.value)} />
+
             <Input label="Last Name" value={formData.lastName} onChange={e => handleInputChange('lastName', e.target.value)} />
             <Input label="Display Name" value={formData.displayName} onChange={e => handleInputChange('displayName', e.target.value)} />
             <Select label="Gender" options={[{value:'Male',label:'Male'}, {value:'Female',label:'Female'}, {value:'Other',label:'Other'}]} value={formData.gender} onChange={v => handleInputChange('gender', v)} />
             <Input type="date" label="Date of Birth" value={formData.dob} onChange={e => handleInputChange('dob', e.target.value)} />
             <Input type="file" label="Profile Photo" onChange={e => handleInputChange('profilePhoto', e.target.files[0])} />
-          </div>
-        )}
 
-        {activeSection === 1 && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            {/* Contact Info (Merged) */}
             <Input type="email" label="Official Email *" value={formData.officialEmail} onChange={e => handleInputChange('officialEmail', e.target.value)} />
             <Input type="email" label="Personal Email" value={formData.personalEmail} onChange={e => handleInputChange('personalEmail', e.target.value)} />
             <Input type="tel" label="Mobile Number" value={formData.mobileNumber} onChange={e => handleInputChange('mobileNumber', e.target.value)} />
@@ -165,7 +147,7 @@ export default function AddTeamMemberForm({ onCancel, onSuccess, roleOptions }) 
           </div>
         )}
 
-        {activeSection === 2 && (
+        {activeSection === 1 && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <Select label="Role *" options={roleOptions} value={formData.role} onChange={v => handleInputChange('role', v)} />
             <Input label="Department" value={formData.department} onChange={e => handleInputChange('department', e.target.value)} />
@@ -180,7 +162,7 @@ export default function AddTeamMemberForm({ onCancel, onSuccess, roleOptions }) 
           </div>
         )}
 
-        {activeSection === 3 && (
+        {activeSection === 2 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <Input label="Username" value={formData.username} onChange={e => handleInputChange('username', e.target.value)} />
             <Input type="password" label="Temporary Password" value={formData.tempPassword} onChange={e => handleInputChange('tempPassword', e.target.value)} />
@@ -195,7 +177,7 @@ export default function AddTeamMemberForm({ onCancel, onSuccess, roleOptions }) 
           </div>
         )}
 
-        {activeSection === 4 && (
+        {activeSection === 3 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <Select 
               label="Accessible Modules" 
@@ -223,7 +205,7 @@ export default function AddTeamMemberForm({ onCancel, onSuccess, roleOptions }) 
           </div>
         )}
 
-        {activeSection === 5 && (
+        {activeSection === 4 && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <Input type="file" label="Resume" onChange={e => handleInputChange('resume', e.target.files[0])} />
             <Input type="file" label="Aadhaar Card" onChange={e => handleInputChange('aadhaar', e.target.files[0])} />
@@ -235,7 +217,7 @@ export default function AddTeamMemberForm({ onCancel, onSuccess, roleOptions }) 
           </div>
         )}
 
-        {activeSection === 6 && (
+        {activeSection === 5 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <Textarea label="Internal Notes" value={formData.internalNotes} onChange={e => handleInputChange('internalNotes', e.target.value)} rows={6} />
           </div>

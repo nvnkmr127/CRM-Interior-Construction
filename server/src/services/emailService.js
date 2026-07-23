@@ -2,12 +2,22 @@ const pool = require('../config/db')
 const nodemailer = require('nodemailer')
 const templates = require('../utils/emailTemplates')
 
-// Mock SMTP Transporter (Prints to console instead of sending actual emails)
-const transporter = nodemailer.createTransport({
-  streamTransport: true,
-  newline: 'windows',
-  logger: false
-})
+// Initialize Ethereal Transporter
+let transporter = null;
+nodemailer.createTestAccount().then(account => {
+  transporter = nodemailer.createTransport({
+    host: account.smtp.host,
+    port: account.smtp.port,
+    secure: account.smtp.secure,
+    auth: {
+      user: account.user,
+      pass: account.pass
+    }
+  });
+  console.log('[Email] Ethereal SMTP configured for testing.');
+}).catch(err => {
+  console.error('[Email] Failed to create Ethereal account', err);
+});
 
 /**
  * Queue an email to be sent asynchronously.
@@ -58,6 +68,10 @@ async function processEmailJob(job) {
       });
     }
 
+    if (!transporter) {
+      throw new Error("Transporter not initialized yet");
+    }
+
     const info = await transporter.sendMail({
       from: '"CRM System" <no-reply@crm.local>',
       to: job.recipient_email,
@@ -65,8 +79,8 @@ async function processEmailJob(job) {
       html: htmlContent
     })
     
-    // In streamTransport, the message is buffered in info.message
-    console.log(`\n=== 📧 EMAIL SENT to ${job.recipient_email} ===\nSubject: ${job.subject}\nTemplate: ${job.template_name}\n===================================`)
+    console.log(`\n=== 📧 EMAIL SENT to ${job.recipient_email} ===\nSubject: ${job.subject}\nTemplate: ${job.template_name}`)
+    console.log(`Preview URL: ${nodemailer.getTestMessageUrl(info)}\n===================================`)
 
     await pool.query(
       `UPDATE email_queue SET status = 'sent', sent_at = NOW() WHERE id = $1`,

@@ -223,7 +223,7 @@ export default function EmployeeProfilePage({ userId, onBack }) {
                       </div>
                     </div>
                     <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
-                      {format(new Date(event.timestamp), 'PP p')}
+                      {event.timestamp && !isNaN(new Date(event.timestamp).getTime()) ? format(new Date(event.timestamp), 'PP p') : '-'}
                     </div>
                   </div>
                 </div>
@@ -237,26 +237,28 @@ export default function EmployeeProfilePage({ userId, onBack }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <h3 style={{ fontSize: '18px', fontWeight: 600 }}>Assigned Projects</h3>
             {projects.length === 0 ? <p>No projects assigned.</p> : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
-                    <th style={{ padding: '8px' }}>Project Name</th>
-                    <th style={{ padding: '8px' }}>Type</th>
-                    <th style={{ padding: '8px' }}>Status</th>
-                    <th style={{ padding: '8px' }}>Start Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {projects.map(p => (
-                    <tr key={p.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                      <td style={{ padding: '12px 8px' }}>{p.name}</td>
-                      <td style={{ padding: '12px 8px' }}>{p.project_type}</td>
-                      <td style={{ padding: '12px 8px' }}><Badge>{p.status}</Badge></td>
-                      <td style={{ padding: '12px 8px' }}>{p.start_date ? format(new Date(p.start_date), 'PP') : '-'}</td>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
+                      <th style={{ padding: '8px' }}>Project Name</th>
+                      <th style={{ padding: '8px' }}>Type</th>
+                      <th style={{ padding: '8px' }}>Status</th>
+                      <th style={{ padding: '8px' }}>Start Date</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {projects.map(p => (
+                      <tr key={p.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                        <td style={{ padding: '12px 8px' }}>{p.name}</td>
+                        <td style={{ padding: '12px 8px' }}>{p.project_type}</td>
+                        <td style={{ padding: '12px 8px' }}><Badge>{p.status}</Badge></td>
+                        <td style={{ padding: '12px 8px' }}>{p.start_date ? format(new Date(p.start_date), 'PP') : '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )
@@ -266,26 +268,28 @@ export default function EmployeeProfilePage({ userId, onBack }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <h3 style={{ fontSize: '18px', fontWeight: 600 }}>Assigned Tasks</h3>
             {tasks.length === 0 ? <p>No tasks assigned.</p> : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
-                    <th style={{ padding: '8px' }}>Task</th>
-                    <th style={{ padding: '8px' }}>Project</th>
-                    <th style={{ padding: '8px' }}>Status</th>
-                    <th style={{ padding: '8px' }}>Priority</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tasks.map(t => (
-                    <tr key={t.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                      <td style={{ padding: '12px 8px' }}>{t.title}</td>
-                      <td style={{ padding: '12px 8px' }}>{t.project_name || 'N/A'}</td>
-                      <td style={{ padding: '12px 8px' }}><Badge>{t.status}</Badge></td>
-                      <td style={{ padding: '12px 8px' }}>{t.priority}</td>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
+                      <th style={{ padding: '8px' }}>Task</th>
+                      <th style={{ padding: '8px' }}>Project</th>
+                      <th style={{ padding: '8px' }}>Status</th>
+                      <th style={{ padding: '8px' }}>Priority</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {tasks.map(t => (
+                      <tr key={t.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                        <td style={{ padding: '12px 8px' }}>{t.title}</td>
+                        <td style={{ padding: '12px 8px' }}>{t.project_name || 'N/A'}</td>
+                        <td style={{ padding: '12px 8px' }}><Badge>{t.status}</Badge></td>
+                        <td style={{ padding: '12px 8px' }}>{t.priority}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )
@@ -312,54 +316,56 @@ export default function EmployeeProfilePage({ userId, onBack }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <h3 style={{ fontSize: '18px', fontWeight: 600 }}>Login History</h3>
             {loginHistory.length === 0 ? <p>No login history found.</p> : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
-                    <th style={{ padding: '8px' }}>Date</th>
-                    <th style={{ padding: '8px' }}>IP / Location</th>
-                    <th style={{ padding: '8px' }}>Device & OS</th>
-                    <th style={{ padding: '8px' }}>Duration</th>
-                    <th style={{ padding: '8px' }}>Status</th>
-                    <th style={{ padding: '8px' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loginHistory.map(lh => (
-                    <tr key={lh.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                      <td style={{ padding: '12px 8px' }}>{format(new Date(lh.login_time), 'PP p')}</td>
-                      <td style={{ padding: '12px 8px' }}>
-                        <div>{lh.ip_address || '-'}</div>
-                        <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>Unknown</div>
-                      </td>
-                      <td style={{ padding: '12px 8px' }}>
-                        <div>{lh.device} - {lh.os}</div>
-                        <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>{lh.browser}</div>
-                      </td>
-                      <td style={{ padding: '12px 8px' }}>
-                        {!lh.logout_time ? (
-                          lh.active_session_id ? <span style={{ color: 'var(--color-success)' }}>Active Session</span> : <span style={{ color: 'var(--color-text-secondary)' }}>Expired</span>
-                        ) : 
-                        `${Math.floor((lh.duration_seconds || 0) / 60)}m ${(lh.duration_seconds || 0) % 60}s`}
-                      </td>
-                      <td style={{ padding: '12px 8px' }}>
-                        {lh.status === 'success' ? <Badge variant="success">Success</Badge> : 
-                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                           <Badge variant="danger">Failed</Badge>
-                           <span style={{ fontSize: '11px', color: 'var(--color-danger)' }}>{lh.failure_reason}</span>
-                         </div>
-                        }
-                      </td>
-                      <td style={{ padding: '12px 8px' }}>
-                        {lh.status === 'success' && !lh.logout_time && lh.active_session_id && (
-                          <Button variant="danger" size="small" onClick={() => handleRevokeSession(lh.active_session_id)}>
-                            Revoke
-                          </Button>
-                        )}
-                      </td>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
+                      <th style={{ padding: '8px' }}>Date</th>
+                      <th style={{ padding: '8px' }}>IP / Location</th>
+                      <th style={{ padding: '8px' }}>Device & OS</th>
+                      <th style={{ padding: '8px' }}>Duration</th>
+                      <th style={{ padding: '8px' }}>Status</th>
+                      <th style={{ padding: '8px' }}>Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {loginHistory.map(lh => (
+                      <tr key={lh.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                        <td style={{ padding: '12px 8px' }}>{lh.login_time && !isNaN(new Date(lh.login_time).getTime()) ? format(new Date(lh.login_time), 'PP p') : '-'}</td>
+                        <td style={{ padding: '12px 8px' }}>
+                          <div>{lh.ip_address || '-'}</div>
+                          <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>Unknown</div>
+                        </td>
+                        <td style={{ padding: '12px 8px' }}>
+                          <div>{lh.device} - {lh.os}</div>
+                          <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>{lh.browser}</div>
+                        </td>
+                        <td style={{ padding: '12px 8px' }}>
+                          {!lh.logout_time ? (
+                            lh.active_session_id ? <span style={{ color: 'var(--color-success)' }}>Active Session</span> : <span style={{ color: 'var(--color-text-secondary)' }}>Expired</span>
+                          ) : 
+                          `${Math.floor((lh.duration_seconds || 0) / 60)}m ${(lh.duration_seconds || 0) % 60}s`}
+                        </td>
+                        <td style={{ padding: '12px 8px' }}>
+                          {lh.status === 'success' ? <Badge variant="success">Success</Badge> : 
+                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                             <Badge variant="danger">Failed</Badge>
+                             <span style={{ fontSize: '11px', color: 'var(--color-danger)' }}>{lh.failure_reason}</span>
+                           </div>
+                          }
+                        </td>
+                        <td style={{ padding: '12px 8px' }}>
+                          {lh.status === 'success' && !lh.logout_time && lh.active_session_id && (
+                            <Button variant="danger" size="small" onClick={() => handleRevokeSession(lh.active_session_id)}>
+                              Revoke
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )
@@ -369,38 +375,40 @@ export default function EmployeeProfilePage({ userId, onBack }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <h3 style={{ fontSize: '18px', fontWeight: 600 }}>Active Devices</h3>
             {sessions.length === 0 ? <p>No session data found.</p> : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
-                    <th style={{ padding: '8px' }}>IP Address</th>
-                    <th style={{ padding: '8px' }}>Device / Browser</th>
-                    <th style={{ padding: '8px' }}>Last Active</th>
-                    <th style={{ padding: '8px' }}>Status</th>
-                    <th style={{ padding: '8px' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sessions.map(s => (
-                    <tr key={s.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                      <td style={{ padding: '12px 8px' }}>{s.ip_address || 'Unknown'}</td>
-                      <td style={{ padding: '12px 8px', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.user_agent}</td>
-                      <td style={{ padding: '12px 8px' }}>{format(new Date(s.last_active_at), 'PP p')}</td>
-                      <td style={{ padding: '12px 8px' }}>
-                        <Badge variant={new Date(s.expires_at) > new Date() ? 'success' : 'secondary'}>
-                          {new Date(s.expires_at) > new Date() ? 'Active' : 'Expired'}
-                        </Badge>
-                      </td>
-                      <td style={{ padding: '12px 8px' }}>
-                        {new Date(s.expires_at) > new Date() && (
-                          <Button variant="danger" size="small" onClick={() => handleRevokeSession(s.id)}>
-                            Revoke
-                          </Button>
-                        )}
-                      </td>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
+                      <th style={{ padding: '8px' }}>IP Address</th>
+                      <th style={{ padding: '8px' }}>Device / Browser</th>
+                      <th style={{ padding: '8px' }}>Last Active</th>
+                      <th style={{ padding: '8px' }}>Status</th>
+                      <th style={{ padding: '8px' }}>Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {sessions.map(s => (
+                      <tr key={s.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                        <td style={{ padding: '12px 8px' }}>{s.ip_address || 'Unknown'}</td>
+                        <td style={{ padding: '12px 8px', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.user_agent}</td>
+                        <td style={{ padding: '12px 8px' }}>{s.last_active_at && !isNaN(new Date(s.last_active_at).getTime()) ? format(new Date(s.last_active_at), 'PP p') : '-'}</td>
+                        <td style={{ padding: '12px 8px' }}>
+                          <Badge variant={new Date(s.expires_at) > new Date() ? 'success' : 'secondary'}>
+                            {new Date(s.expires_at) > new Date() ? 'Active' : 'Expired'}
+                          </Badge>
+                        </td>
+                        <td style={{ padding: '12px 8px' }}>
+                          {new Date(s.expires_at) > new Date() && (
+                            <Button variant="danger" size="small" onClick={() => handleRevokeSession(s.id)}>
+                              Revoke
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )
@@ -410,33 +418,35 @@ export default function EmployeeProfilePage({ userId, onBack }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <h3 style={{ fontSize: '18px', fontWeight: 600 }}>Recent Activity</h3>
             {auditLogs.length === 0 ? <p>No audit logs found for this user.</p> : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
-                    <th style={{ padding: '8px' }}>Action</th>
-                    <th style={{ padding: '8px' }}>Entity</th>
-                    <th style={{ padding: '8px' }}>Changes</th>
-                    <th style={{ padding: '8px' }}>Device & IP</th>
-                    <th style={{ padding: '8px' }}>Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {auditLogs.map(l => (
-                    <tr key={l.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                      <td style={{ padding: '12px 8px', fontWeight: 500 }}>{l.action}</td>
-                      <td style={{ padding: '12px 8px' }}>{l.entity} {l.entity_id ? `(${l.entity_id.substring(0,8)}...)` : ''}</td>
-                      <td style={{ padding: '12px 8px', fontSize: '12px', color: 'var(--color-text-secondary)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {l.old_value || l.new_value ? 'Data changed (See Audit Trail)' : '-'}
-                      </td>
-                      <td style={{ padding: '12px 8px', fontSize: '12px' }}>
-                        <div style={{ fontWeight: 500 }}>{l.browser || l.device ? `${l.browser || ''} ${l.device || ''}`.trim() : 'Unknown Device'}</div>
-                        <div style={{ color: 'var(--color-text-secondary)' }}>{l.ip_address || '-'}</div>
-                      </td>
-                      <td style={{ padding: '12px 8px' }}>{format(new Date(l.created_at), 'PP p')}</td>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
+                      <th style={{ padding: '8px' }}>Action</th>
+                      <th style={{ padding: '8px' }}>Entity</th>
+                      <th style={{ padding: '8px' }}>Changes</th>
+                      <th style={{ padding: '8px' }}>Device & IP</th>
+                      <th style={{ padding: '8px' }}>Date</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {auditLogs.map(l => (
+                      <tr key={l.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                        <td style={{ padding: '12px 8px', fontWeight: 500 }}>{l.action}</td>
+                        <td style={{ padding: '12px 8px' }}>{l.entity} {l.entity_id ? `(${l.entity_id.substring(0,8)}...)` : ''}</td>
+                        <td style={{ padding: '12px 8px', fontSize: '12px', color: 'var(--color-text-secondary)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {l.old_value || l.new_value ? 'Data changed (See Audit Trail)' : '-'}
+                        </td>
+                        <td style={{ padding: '12px 8px', fontSize: '12px' }}>
+                          <div style={{ fontWeight: 500 }}>{l.browser || l.device ? `${l.browser || ''} ${l.device || ''}`.trim() : 'Unknown Device'}</div>
+                          <div style={{ color: 'var(--color-text-secondary)' }}>{l.ip_address || '-'}</div>
+                        </td>
+                        <td style={{ padding: '12px 8px' }}>{l.created_at && !isNaN(new Date(l.created_at).getTime()) ? format(new Date(l.created_at), 'PP p') : '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )
@@ -486,11 +496,8 @@ export default function EmployeeProfilePage({ userId, onBack }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
-      {/* Sticky Header */}
+      {/* Header (Name Card) */}
       <div style={{ 
-        position: 'sticky', 
-        top: '64px', 
-        zIndex: 10, 
         background: 'var(--color-background)', 
         border: '1px solid var(--color-border)', 
         borderRadius: '12px', 
@@ -498,15 +505,16 @@ export default function EmployeeProfilePage({ userId, onBack }) {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+        color: 'black'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--color-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: 'bold' }}>
             {user?.name?.charAt(0)?.toUpperCase() || '?'}
           </div>
           <div>
-            <h1 style={{ fontSize: '24px', fontWeight: 700, margin: '0 0 4px 0' }}>{user?.name || 'Unknown User'}</h1>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', fontSize: '14px', color: 'var(--color-text-secondary)' }}>
+            <h1 style={{ fontSize: '24px', fontWeight: 700, margin: '0 0 4px 0', color: 'black' }}>{user?.name || 'Unknown User'}</h1>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', fontSize: '14px', color: 'black' }}>
               <span>{user?.email || 'No email'}</span>
               <span>•</span>
               <span>{user?.role_name || 'No Role'}</span>
@@ -524,7 +532,7 @@ export default function EmployeeProfilePage({ userId, onBack }) {
       <div style={{ display: 'grid', gridTemplateColumns: '250px 1fr', gap: '32px' }}>
         
         {/* Left Navigation */}
-        <div style={{ position: 'sticky', top: '180px', alignSelf: 'start', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div className="hide-scrollbar" style={{ position: 'sticky', top: '24px', alignSelf: 'start', display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: 'calc(100vh - 48px)', overflowY: 'auto', paddingRight: '8px' }}>
           {SECTIONS.map(s => (
             <button
               key={s.id}

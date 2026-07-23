@@ -71,7 +71,7 @@ export default function OffboardingModal({ record, onClose, onUpdated }) {
   const isAllDone = isTransfersDone && checklist.assets_returned;
 
   return (
-    <Modal title={`Offboarding: ${record.first_name} ${record.last_name}`} onClose={onClose}>
+    <Modal isOpen={true} title={`Offboarding: ${record.first_name} ${record.last_name}`} onClose={onClose}>
       <div className={styles.container}>
         <div className={styles.headerInfo}>
           <div>

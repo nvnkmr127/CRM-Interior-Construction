@@ -49,7 +49,10 @@ export default function UsersManager() {
   const [departments, setDepartments] = useState([])
   const [branches, setBranches] = useState([])
   const [filters, setFilters] = useState({})
+  const [injectedUsers, setInjectedUsers] = useState([])
   
+  const allUsers = [...injectedUsers, ...users].filter((v, i, a) => a.findIndex(v2 => v2.id === v.id) === i)
+
   const roleOptions = roles.length > 0 
     ? roles.map(r => ({ value: r.id, label: r.name })) 
     : DEFAULT_ROLE_OPTIONS
@@ -110,8 +113,13 @@ export default function UsersManager() {
     Object.keys(currentFilters).forEach(k => {
       if (currentFilters[k]) params.append(k, currentFilters[k])
     })
+    params.append('_t', Date.now())
     api.get(`/users?${params.toString()}`)
-      .then(res => { const r = res.data?.data || res.data; setUsers(Array.isArray(r) ? r : []); })
+      .then(res => { 
+        const r = res.data?.data || res.data; 
+        console.log("FETCHED USERS:", r);
+        setUsers(Array.isArray(r) ? r : []); 
+      })
       .catch(() => setUsers([]))
   }
 
@@ -218,11 +226,9 @@ export default function UsersManager() {
                   onChange={(val) => setRoleChangeTarget({ user: u, newRole: val })}
                 />
               </div>
-              <Button variant="ghost" onClick={() => setStatusChangeTarget(u)}>
-                Change Status
-              </Button>
+
               <Button variant="danger" onClick={() => setOffboardingTarget(u)}>
-                Offboard
+                Deactivate
               </Button>
             </>
           )}
@@ -235,6 +241,36 @@ export default function UsersManager() {
     return <EmployeeProfilePage userId={selectedUserId} onBack={() => setSelectedUserId(null)} />;
   }
 
+  if (isAddMemberOpen) {
+    return (
+      <div className={layoutStyles.configSection} style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', overflowY: 'auto' }}>
+        <div className={layoutStyles.sectionHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <div>
+            <h2 className={layoutStyles.sectionTitle}>Add Team Member</h2>
+            <p className={layoutStyles.sectionDesc}>Create a new employee profile and set permissions.</p>
+          </div>
+          <Button variant="ghost" onClick={() => setIsAddMemberOpen(false)}>Back to List</Button>
+        </div>
+        <div style={{ background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+          <AddTeamMemberForm 
+            onCancel={() => setIsAddMemberOpen(false)} 
+            onSuccess={(newUser) => {
+              setIsAddMemberOpen(false);
+              setActiveTab('approvals');
+              if (newUser) {
+                setInjectedUsers(prev => {
+                  if (prev.some(u => u.id === newUser.id)) return prev;
+                  return [newUser, ...prev];
+                });
+              }
+            }} 
+            roleOptions={roleOptions}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-7xl p-4 sm:p-8 space-y-8">
       <div className={layoutStyles.configSection}>
@@ -244,7 +280,6 @@ export default function UsersManager() {
             <p className={layoutStyles.sectionDesc}>Manage who has access to this workspace.</p>
           </div>
           
-    
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <AIInsightsPanel />
         </div>
@@ -288,7 +323,7 @@ export default function UsersManager() {
             departments={departments}
             roles={roles}
             branches={branches}
-            managers={users.filter(u => u.status !== 'pending_approval' && u.status !== 'changes_requested' && u.status !== 'rejected')}
+            managers={allUsers.filter(u => u.status !== 'pending_approval' && u.status !== 'changes_requested' && u.status !== 'rejected')}
             onFilterChange={(newFilters) => {
               setFilters(newFilters);
               fetchUsers(newFilters);
@@ -307,7 +342,7 @@ export default function UsersManager() {
             style={{ paddingBottom: '8px', cursor: 'pointer', fontWeight: activeTab === 'approvals' ? 600 : 400, color: activeTab === 'approvals' ? 'var(--color-primary)' : 'var(--color-text-secondary)', borderBottom: activeTab === 'approvals' ? '2px solid var(--color-primary)' : '2px solid transparent' }} 
             onClick={() => { setActiveTab('approvals'); setSelectedIds(new Set()); }}
           >
-            Pending Approvals ({users.filter(u => u.status === 'pending_approval' || u.status === 'changes_requested').length})
+            Pending Approvals ({allUsers.filter(u => u.status === 'pending_approval' || u.status === 'changes_requested').length})
           </div>
           <div 
             style={{ paddingBottom: '8px', cursor: 'pointer', fontWeight: activeTab === 'emails' ? 600 : 400, color: activeTab === 'emails' ? 'var(--color-primary)' : 'var(--color-text-secondary)', borderBottom: activeTab === 'emails' ? '2px solid var(--color-primary)' : '2px solid transparent' }} 
@@ -327,7 +362,7 @@ export default function UsersManager() {
         {activeTab === 'directory' || activeTab === 'approvals' ? (
           viewMode === 'grid' ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-              {(activeTab === 'directory' ? users.filter(u => u.status !== 'pending_approval' && u.status !== 'changes_requested') : users.filter(u => u.status === 'pending_approval' || u.status === 'changes_requested')).map(u => (
+              {(activeTab === 'directory' ? allUsers.filter(u => u.status !== 'pending_approval' && u.status !== 'changes_requested') : allUsers.filter(u => u.status === 'pending_approval' || u.status === 'changes_requested')).map(u => (
                 <UserGridCard 
                   key={u.id} 
                   user={u} 
@@ -352,7 +387,7 @@ export default function UsersManager() {
           ) : (
           <DataTable 
             columns={columns} 
-            data={activeTab === 'directory' ? users.filter(u => u.status !== 'pending_approval' && u.status !== 'changes_requested') : users.filter(u => u.status === 'pending_approval' || u.status === 'changes_requested')} 
+            data={activeTab === 'directory' ? allUsers.filter(u => u.status !== 'pending_approval' && u.status !== 'changes_requested') : allUsers.filter(u => u.status === 'pending_approval' || u.status === 'changes_requested')} 
             selectable={activeTab === 'directory'}
             selectedIds={selectedIds}
             onSelectChange={setSelectedIds}
@@ -373,17 +408,7 @@ export default function UsersManager() {
           <OffboardingDashboard />
         ) : null}
 
-        <Modal
-          isOpen={isAddMemberOpen}
-          onClose={() => setIsAddMemberOpen(false)}
-          title="Add Team Member"
-          size="full"
-          style={{ width: '90vw', height: '90vh' }}
-        >
-          <AddTeamMemberForm onClose={() => setIsAddMemberOpen(false)} onSave={() => {
-            api.get('/users').then(res => setUsers(res.data.data)).catch(() => {})
-          }} />
-        </Modal>
+
 
         {/* Role Change Modal */}
         <Modal
@@ -406,6 +431,7 @@ export default function UsersManager() {
           user={approvalTarget}
           onStatusChange={(userId, newStatus) => {
             setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u))
+            setInjectedUsers(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u))
           }}
         />
 
@@ -415,6 +441,7 @@ export default function UsersManager() {
           user={statusChangeTarget}
           onStatusChange={(userId, newStatus) => {
             setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u))
+            setInjectedUsers(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u))
           }}
         />
 
@@ -468,7 +495,7 @@ export default function UsersManager() {
               { label: 'View Profile', onClick: () => navigate(`/config/team-members/${contextMenu.user.id}`) },
               { label: 'Change Status', onClick: () => setStatusChangeTarget(contextMenu.user) },
               
-              { label: 'Offboard Employee', danger: true, onClick: () => setOffboardingTarget(contextMenu.user) },
+              { label: 'Deactivate', danger: true, onClick: () => setOffboardingTarget(contextMenu.user) },
               { divider: true },
               { label: '🔥 Login as User (Impersonate)', onClick: async () => {
                 if(window.confirm('WARNING: All actions performed will be logged against your audit trail. Proceed?')) {

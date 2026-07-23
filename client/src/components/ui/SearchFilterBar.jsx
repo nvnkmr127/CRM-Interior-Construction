@@ -51,8 +51,14 @@ export default function SearchFilterBar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const isFirstRender = useRef(true);
+
   // Debounced search
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     const handler = setTimeout(() => {
       onFilterChange({ search, ...filters });
     }, 300);

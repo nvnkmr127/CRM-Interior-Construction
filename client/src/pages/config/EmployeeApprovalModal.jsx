@@ -147,7 +147,7 @@ export default function EmployeeApprovalModal({ isOpen, onClose, user, onStatusC
                   </div>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <Badge variant={item.status === 'approved' ? 'success' : item.status === 'rejected' ? 'danger' : 'warning'}>
-                      {item.status.toUpperCase()}
+                      {item.status ? item.status.toUpperCase() : 'UNKNOWN'}
                     </Badge>
                     <span style={{ color: 'var(--color-text-secondary)' }}>{item.comments || 'No comment provided.'}</span>
                   </div>

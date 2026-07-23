@@ -29,7 +29,7 @@ export default function InitiateOffboardingModal({ user, onClose, onSuccess }) {
   };
 
   return (
-    <Modal title={`Initiate Offboarding: ${user.first_name} ${user.last_name}`} onClose={onClose}>
+    <Modal isOpen={true} title={`Initiate Offboarding: ${user.first_name || user.name} ${user.last_name || ''}`} onClose={onClose}>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px', margin: 0 }}>
           This will start the formal offboarding process for the employee, tracking approvals and asset returns.

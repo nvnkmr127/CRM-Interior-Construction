@@ -195,6 +195,8 @@ router.get('/', async (req, res) => {
       return rest;
     });
 
+    console.log(`[DEBUG] GET /users for tenant ${tenantId}. Total fetched: ${safeUsers.length}. Pending approvals count: ${safeUsers.filter(u => u.status === 'pending_approval').length}`);
+
     return success(res, safeUsers);
   } catch (error) {
     return fail(res, 'INTERNAL_ERROR', 'Users fetch failed', 500);
