@@ -227,9 +227,15 @@ export default function UsersManager() {
                 />
               </div>
 
-              <Button variant="danger" onClick={() => setOffboardingTarget(u)}>
-                Deactivate
-              </Button>
+              {u.status === 'inactive' || u.status === 'archived' || u.status === 'resigned' || u.status === 'terminated' ? (
+                <Button variant="primary" onClick={() => setStatusChangeTarget(u)}>
+                  Reactivate
+                </Button>
+              ) : (
+                <Button variant="danger" onClick={() => setOffboardingTarget(u)}>
+                  Deactivate
+                </Button>
+              )}
             </>
           )}
         </div>

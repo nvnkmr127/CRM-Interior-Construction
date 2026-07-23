@@ -59,7 +59,7 @@ export default function OffboardingModal({ record, onClose, onUpdated }) {
     try {
       await api.post(`/offboarding/${record.id}/finalize`);
       toast.success('Offboarding finalized and account disabled');
-      onUpdated();
+      onUpdated(true);
     } catch (e) {
       toast.error('Failed to finalize');
     } finally {
@@ -69,6 +69,69 @@ export default function OffboardingModal({ record, onClose, onUpdated }) {
 
   const isTransfersDone = checklist.knowledge_transfer_done && checklist.project_transfer_done && checklist.task_transfer_done;
   const isAllDone = isTransfersDone && checklist.assets_returned;
+
+  if (record.status === 'archived') {
+    return (
+      <Modal isOpen={true} title={`Offboarding Summary: ${record.first_name} ${record.last_name}`} onClose={onClose}>
+        <div className={styles.container}>
+          <div className={styles.headerInfo}>
+            <div>
+              <strong>Resignation Date:</strong> {new Date(record.resignation_date).toLocaleDateString()}
+            </div>
+            <div>
+              <strong>Last Working Day:</strong> {new Date(record.last_working_day).toLocaleDateString()}
+            </div>
+            <div>
+              <strong>Status:</strong> <Badge variant="neutral">ARCHIVED</Badge>
+            </div>
+          </div>
+
+          <OffboardingStepper status={record.status} />
+
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            textAlign: 'center', 
+            padding: '24px 20px', 
+            background: 'linear-gradient(145deg, rgba(34, 197, 94, 0.05) 0%, rgba(34, 197, 94, 0.15) 100%)', 
+            borderRadius: '12px', 
+            border: '1px solid rgba(34, 197, 94, 0.2)',
+            boxShadow: '0 4px 16px rgba(34, 197, 94, 0.08)',
+            margin: '16px 0'
+          }}>
+             <div style={{ 
+               display: 'flex',
+               alignItems: 'center',
+               justifyContent: 'center',
+               width: '56px',
+               height: '56px',
+               background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+               borderRadius: '50%',
+               color: 'white',
+               marginBottom: '12px',
+               boxShadow: '0 6px 12px rgba(34, 197, 94, 0.25)'
+             }}>
+               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                 <polyline points="22 4 12 14.01 9 11.01"></polyline>
+               </svg>
+             </div>
+             <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: 'var(--color-text-primary)' }}>
+               Offboarding Finalized
+             </h3>
+             <p style={{ color: 'var(--color-text-secondary)', margin: 0, lineHeight: '1.5', fontSize: '14px', maxWidth: '400px' }}>
+               All approvals, knowledge transfers, and asset returns were successfully completed. The employee's account has been deactivated and safely archived.
+             </p>
+          </div>
+          
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+            <Button variant="secondary" onClick={onClose}>Close Window</Button>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
 
   return (
     <Modal isOpen={true} title={`Offboarding: ${record.first_name} ${record.last_name}`} onClose={onClose}>

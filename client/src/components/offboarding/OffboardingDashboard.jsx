@@ -19,6 +19,7 @@ export default function OffboardingDashboard() {
       const res = await api.get('/offboarding');
       if (res.data?.success) {
         setRecords(res.data.data);
+        return res.data.data;
       }
     } catch (err) {
       toast.error('Failed to load offboarding records');
@@ -95,9 +96,14 @@ export default function OffboardingDashboard() {
         <OffboardingModal 
           record={selectedRecord} 
           onClose={() => setSelectedRecord(null)} 
-          onUpdated={() => {
-            fetchRecords();
-            setSelectedRecord(null);
+          onUpdated={async (shouldClose = false) => {
+            const freshRecords = await fetchRecords();
+            if (shouldClose) {
+              setSelectedRecord(null);
+            } else if (freshRecords && selectedRecord) {
+              const freshRecord = freshRecords.find(r => r.id === selectedRecord.id);
+              if (freshRecord) setSelectedRecord(freshRecord);
+            }
           }}
         />
       )}

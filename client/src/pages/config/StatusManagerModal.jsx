@@ -16,7 +16,7 @@ const VALID_TRANSITIONS = {
   'inactive': ['active', 'archived'],
   'resigned': ['archived'],
   'terminated': ['archived'],
-  'archived': []
+  'archived': ['active']
 };
 
 const STATUS_LABELS = {

@@ -1249,6 +1249,25 @@ export const setupMockInterceptor = (api) => {
               mockDatabase.users.unshift(newUser);
               persistDb();
               responseData.data = newUser;
+            } else if (method === 'patch') {
+              const parts = url.split('/');
+              const id = parts[parts.length - 1];
+              const updates = typeof config.data === 'string' ? JSON.parse(config.data || '{}') : (config.data || {});
+              
+              if (mockDatabase.users) {
+                const idx = mockDatabase.users.findIndex(u => u.id === id);
+                if (idx !== -1) {
+                  mockDatabase.users[idx] = { ...mockDatabase.users[idx], ...updates };
+                  
+                  // Clear offboarding record if user is reactivated
+                  if (updates.status === 'active' && mockDatabase.offboarding) {
+                    mockDatabase.offboarding = mockDatabase.offboarding.filter(o => o.user_id !== id);
+                  }
+                  
+                  persistDb();
+                  responseData.data = mockDatabase.users[idx];
+                }
+              }
             }
           }
           // OFFBOARDING
@@ -1274,15 +1293,58 @@ export const setupMockInterceptor = (api) => {
               mockDatabase.offboarding.unshift(newRecord);
               persistDb();
               responseData.data = newRecord;
-            } else if (method === 'put' || method === 'patch') {
+            } else if (url.includes('/finalize') && method === 'post') {
               const parts = url.split('/');
-              const id = parts[parts.length - 1];
-              const updates = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const id = parts.includes('offboarding') ? parts[parts.indexOf('offboarding') + 1] : parts[parts.length - 1];
               const idx = mockDatabase.offboarding.findIndex(o => o.id === id);
               if (idx !== -1) {
-                mockDatabase.offboarding[idx] = { ...mockDatabase.offboarding[idx], ...updates };
+                mockDatabase.offboarding[idx] = { ...mockDatabase.offboarding[idx], status: 'archived' };
+                
+                // Also archive the associated user account
+                const userId = mockDatabase.offboarding[idx].user_id;
+                const userIdx = mockDatabase.users?.findIndex(u => u.id === userId);
+                if (userIdx !== -1 && mockDatabase.users) {
+                  mockDatabase.users[userIdx].status = 'archived';
+                }
+                
                 persistDb();
                 responseData.data = mockDatabase.offboarding[idx];
+              }
+            } else if (method === 'put' || method === 'patch') {
+              const parts = url.split('/');
+              // URL format: /offboarding/:id or /offboarding/:id/manager-approve
+              const id = parts.includes('offboarding') ? parts[parts.indexOf('offboarding') + 1] : parts[parts.length - 1];
+              
+              const updates = typeof config.data === 'string' ? JSON.parse(config.data || '{}') : (config.data || {});
+              
+              if (url.includes('manager-approve')) {
+                updates.status = 'pending_hr';
+                updates.manager_approved_at = new Date().toISOString();
+              }
+              if (url.includes('hr-approve')) {
+                updates.status = 'active_transfer';
+                updates.hr_approved_at = new Date().toISOString();
+              }
+              if (url.includes('finalize')) updates.status = 'archived';
+              
+              const idx = mockDatabase.offboarding.findIndex(o => o.id === id);
+              if (idx !== -1) {
+                const updatedRecord = { ...mockDatabase.offboarding[idx], ...updates };
+                
+                if (url.includes('/step')) {
+                  const isTransfersDone = updatedRecord.knowledge_transfer_done && updatedRecord.project_transfer_done && updatedRecord.task_transfer_done;
+                  if (isTransfersDone && !updatedRecord.assets_returned) {
+                    updatedRecord.status = 'pending_asset_return';
+                  } else if (isTransfersDone && updatedRecord.assets_returned) {
+                    updatedRecord.status = 'completed';
+                  } else if (!isTransfersDone && mockDatabase.offboarding[idx].status !== 'pending_manager' && mockDatabase.offboarding[idx].status !== 'pending_hr') {
+                    updatedRecord.status = 'active_transfer';
+                  }
+                }
+                
+                mockDatabase.offboarding[idx] = updatedRecord;
+                persistDb();
+                responseData.data = updatedRecord;
               }
             }
           }
