@@ -4,6 +4,7 @@ export default function Button({
   variant = 'primary',
   size = 'md',
   loading = false,
+  isLoading = false,
   disabled = false,
   leftIcon,
   rightIcon,
@@ -20,18 +21,20 @@ export default function Button({
     customClassName
   ].filter(Boolean).join(' ');
 
+  const isBtnLoading = loading || isLoading;
+
   return (
     <button
       className={className}
       onClick={onClick}
       type={type}
-      disabled={disabled || loading}
+      disabled={disabled || isBtnLoading}
       {...props}
     >
-      {loading && <span className={styles.spinner} />}
-      {!loading && leftIcon}
+      {isBtnLoading && <span className={styles.spinner} />}
+      {!isBtnLoading && leftIcon}
       {children}
-      {!loading && rightIcon}
+      {!isBtnLoading && rightIcon}
     </button>
   );
 }

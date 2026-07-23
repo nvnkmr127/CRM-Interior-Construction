@@ -20,8 +20,9 @@ const SECTIONS = [
   { id: 'performance', label: 'Performance', icon: '⭐' },
 ]
 
-export default function EmployeeProfilePage() {
-  const { id } = useParams()
+export default function EmployeeProfilePage({ userId, onBack }) {
+  const params = useParams()
+  const id = userId || params.id
   const navigate = useNavigate()
   const toast = useToast()
 
@@ -501,21 +502,21 @@ export default function EmployeeProfilePage() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--color-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: 'bold' }}>
-            {user.name.charAt(0).toUpperCase()}
+            {user?.name?.charAt(0)?.toUpperCase() || '?'}
           </div>
           <div>
-            <h1 style={{ fontSize: '24px', fontWeight: 700, margin: '0 0 4px 0' }}>{user.name}</h1>
+            <h1 style={{ fontSize: '24px', fontWeight: 700, margin: '0 0 4px 0' }}>{user?.name || 'Unknown User'}</h1>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', fontSize: '14px', color: 'var(--color-text-secondary)' }}>
-              <span>{user.email}</span>
+              <span>{user?.email || 'No email'}</span>
               <span>•</span>
-              <span>{user.role_name}</span>
+              <span>{user?.role_name || 'No Role'}</span>
               <span>•</span>
-              <Badge variant={user.status === 'active' ? 'success' : 'secondary'}>{user.status.toUpperCase()}</Badge>
+              <Badge variant={user?.status === 'active' ? 'success' : 'secondary'}>{user?.status?.toUpperCase() || 'UNKNOWN'}</Badge>
             </div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <Button variant="ghost" onClick={() => navigate('/config/team-members')}>Back to List</Button>
+          <Button variant="ghost" onClick={() => onBack ? onBack() : navigate('/config/team-members')}>Back to List</Button>
           <Button variant="secondary" onClick={() => navigate(`/config/team-members/${user.id}/settings`)}>Account Settings</Button>
         </div>
       </div>

@@ -15,6 +15,7 @@ import ContextMenu from '../../components/ui/ContextMenu'
 import UserGridCard from '../../components/ui/UserGridCard'
 import AIInsightsPanel from '../../components/ui/AIInsightsPanel'
 import api from '../../api/axios'
+import EmployeeProfilePage from './EmployeeProfilePage'
 
 const DEFAULT_ROLE_OPTIONS = [
   { value: 'superadmin', label: 'Super Admin' },
@@ -26,6 +27,7 @@ const DEFAULT_ROLE_OPTIONS = [
 export default function UsersManager() {
   const navigate = useNavigate()
   const [users, setUsers] = useState([])
+  const [selectedUserId, setSelectedUserId] = useState(null)
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
   const [roleChangeTarget, setRoleChangeTarget] = useState(null)
   const [statusChangeTarget, setStatusChangeTarget] = useState(null)
@@ -170,7 +172,7 @@ export default function UsersManager() {
     {
       key: 'user', label: 'User', 
       render: (u) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => navigate(`/config/team-members/${u.id}`)}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setSelectedUserId(u.id)}>
           <Avatar name={u.name || '?'} size="sm" />
           <div>
             <div style={{ fontWeight: 500, color: 'var(--color-primary)', textDecoration: 'underline' }}>{u.name || 'Unknown User'}</div>
@@ -219,9 +221,6 @@ export default function UsersManager() {
               <Button variant="ghost" onClick={() => setStatusChangeTarget(u)}>
                 Change Status
               </Button>
-              <Button variant="ghost" onClick={() => navigate(`/config/team-members/${u.id}`)}>
-                View Profile
-              </Button>
               <Button variant="danger" onClick={() => setOffboardingTarget(u)}>
                 Offboard
               </Button>
@@ -231,6 +230,10 @@ export default function UsersManager() {
       )
     }
   ]
+
+    if (selectedUserId) {
+    return <EmployeeProfilePage userId={selectedUserId} onBack={() => setSelectedUserId(null)} />;
+  }
 
   return (
     <div className="mx-auto max-w-7xl p-4 sm:p-8 space-y-8">
@@ -259,7 +262,7 @@ export default function UsersManager() {
               </div>
               <Button variant="secondary" onClick={() => setShowImportExport(true)}>Import / Export</Button>
               <Button variant="secondary" onClick={() => setBulkModalType('add')}>Bulk Add</Button>
-              <Button variant="primary" onClick={() => setIsAddMemberOpen(true)}>+ Add Team Member (Cmd+N)</Button>
+              <Button variant="primary" onClick={() => setIsAddMemberOpen(true)}>+ Add Team Member</Button>
             </div>
 
         </div>
