@@ -67,8 +67,12 @@ export function AuthProvider({ children }) {
     try {
       const response = await api.post('/auth/login', { email, password, tenantSlug });
       if (response.data.success) {
-        setUser(response.data.data.user);
-        return { success: true };
+        const payload = response.data.data;
+        if (payload.mfaRequired || payload.passwordExpired) {
+          return { success: true, payload };
+        }
+        setUser(payload.user);
+        return { success: true, payload };
       }
       return { success: false, message: 'Unknown login error' };
     } catch (error) {

@@ -81,6 +81,7 @@ export default function AuditTrailPage() {
   const [userId, setUserId] = useState('');
   const [entity, setEntity] = useState('');
   const [action, setAction] = useState('');
+  const [search, setSearch] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -118,12 +119,14 @@ export default function AuditTrailPage() {
     setLoading(true);
     try {
       const params = {
+        page,
         limit,
         offset: (page - 1) * limit,
         projectId: projectId || undefined,
         userId: userId || undefined,
         entity: entity || undefined,
         action: action || undefined,
+        search: search || undefined,
         startDate: startDate ? new Date(startDate).toISOString() : undefined,
         endDate: endDate ? new Date(endDate).toISOString() : undefined
       };
@@ -149,6 +152,7 @@ export default function AuditTrailPage() {
         userId: userId || undefined,
         entity: entity || undefined,
         action: action || undefined,
+        search: search || undefined,
         startDate: startDate ? new Date(startDate).toISOString() : undefined,
         endDate: endDate ? new Date(endDate).toISOString() : undefined
       };
@@ -176,6 +180,7 @@ export default function AuditTrailPage() {
     setUserId('');
     setEntity('');
     setAction('');
+    setSearch('');
     setStartDate('');
     setEndDate('');
     setPage(1);
@@ -225,7 +230,18 @@ export default function AuditTrailPage() {
 
       {/* Filter Panel */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">Search & Filter Filters</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h2 className="text-lg font-semibold text-gray-900">Search & Filters</h2>
+          <div className="w-full sm:w-72">
+            <input
+              type="text"
+              placeholder="Search actions, IPs, devices..."
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1); }}
+              className="w-full rounded-lg border border-gray-300 text-sm p-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {/* Project */}
           <div className="flex flex-col gap-1.5">
@@ -343,6 +359,7 @@ export default function AuditTrailPage() {
                   <th className="p-4">User</th>
                   <th className="p-4">Entity</th>
                   <th className="p-4">Action</th>
+                  <th className="p-4">Browser & Device</th>
                   <th className="p-4">IP Address</th>
                   <th className="p-4 pr-6 text-right">Actions</th>
                 </tr>
@@ -366,6 +383,12 @@ export default function AuditTrailPage() {
                       <code className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded font-mono border border-gray-150">
                         {log.action}
                       </code>
+                    </td>
+                    <td className="p-4 text-xs text-gray-500">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-medium text-gray-700">{log.browser || 'Unknown'}</span>
+                        <span className="text-[10px] text-gray-400 uppercase tracking-wider">{log.device || 'Unknown'}</span>
+                      </div>
                     </td>
                     <td className="p-4 text-xs text-gray-500 font-mono">
                       {log.ip_address || '-'}

@@ -1,23 +1,10 @@
 import styles from './Skeleton.module.css';
 
-export default function Skeleton({
-  variant = 'text', // 'text', 'circle', 'rect'
-  width,
-  height,
-  className = '',
-  ...props
-}) {
-  const skeletonClassName = [
-    styles.skeleton,
-    styles[variant],
-    className
-  ].filter(Boolean).join(' ');
-
+export default function Skeleton({ width, height, borderRadius = '4px', className = '' }) {
   return (
-    <div
-      className={skeletonClassName}
-      style={{ width, height }}
-      {...props}
+    <div 
+      className={`${styles.skeleton} ${className}`} 
+      style={{ width, height, borderRadius }} 
     />
   );
 }

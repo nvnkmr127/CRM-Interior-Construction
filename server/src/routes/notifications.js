@@ -11,14 +11,15 @@ router.get('/', async (req, res) => {
   const tenantId = req.tenantId;
   const userId = req.user.id;
   const limit = parseInt(req.query.limit, 10) || 20;
+  const isArchived = req.query.archived === 'true';
 
   try {
     const { rows } = await pool.query(`
       SELECT n.*, u.avatar_url as actor_avatar
       FROM notifications n LEFT JOIN users u ON u.id=n.actor_id
-      WHERE n.tenant_id=$1 AND n.user_id=$2
+      WHERE n.tenant_id=$1 AND n.user_id=$2 AND n.is_archived = $4
       ORDER BY n.created_at DESC LIMIT $3
-    `, [tenantId, userId, limit]);
+    `, [tenantId, userId, limit, isArchived]);
 
     return success(res, rows);
   } catch (error) {
@@ -33,7 +34,7 @@ router.get('/unread-count', async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT COUNT(*) FROM notifications
-      WHERE tenant_id=$1 AND user_id=$2 AND is_read=false
+      WHERE tenant_id=$1 AND user_id=$2 AND is_read=false AND is_archived=false
     `, [tenantId, userId]);
 
     return success(res, { count: parseInt(rows[0].count, 10) });
@@ -63,6 +64,29 @@ router.post('/mark-read', async (req, res) => {
     res.status(204).send();
   } catch (error) {
     return fail(res, 'INTERNAL_ERROR', 'Mark read failed', 500);
+  }
+});
+
+router.post('/archive', async (req, res) => {
+  const tenantId = req.tenantId;
+  const userId = req.user.id;
+  const { ids, all } = req.body;
+
+  try {
+    if (all) {
+      await pool.query(`
+        UPDATE notifications SET is_archived=true
+        WHERE user_id=$2 AND tenant_id=$1
+      `, [tenantId, userId]);
+    } else if (Array.isArray(ids) && ids.length > 0) {
+      await pool.query(`
+        UPDATE notifications SET is_archived=true
+        WHERE id=ANY($3::uuid[]) AND user_id=$2 AND tenant_id=$1
+      `, [tenantId, userId, ids]);
+    }
+    res.status(204).send();
+  } catch (error) {
+    return fail(res, 'INTERNAL_ERROR', 'Archive failed', 500);
   }
 });
 
@@ -124,7 +148,7 @@ router.get('/inbox', async (req, res) => {
       pool.query(`
         SELECT id, type, '' as title, message, is_read, created_at, 'notification' as item_type
         FROM notifications
-        WHERE tenant_id=$1 AND user_id=$2
+        WHERE tenant_id=$1 AND user_id=$2 AND is_archived=false
         ORDER BY created_at DESC LIMIT $3
       `, [tenantId, userId, limit]),
       pool.query(`
@@ -158,4 +182,3 @@ router.put('/read-all', async (req, res) => {
 });
 
 module.exports = router;
-

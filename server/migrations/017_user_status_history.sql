@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS user_status_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  changed_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  old_status VARCHAR(50),
+  new_status VARCHAR(50) NOT NULL,
+  reason TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);

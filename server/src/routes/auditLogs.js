@@ -22,7 +22,7 @@ router.get('/', checkAuditAccess, async (req, res, next) => {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
     if (!tenantId) return fail(res, 'UNAUTHORIZED', 'Tenant context missing', 401);
 
-    const { page = 1, limit = 50, date_from, date_to, user_id, entity, entity_id } = req.query;
+    const { page = 1, limit = 50, date_from, date_to, user_id, entity, entity_id, search } = req.query;
     
     const offset = (Number(page) - 1) * Number(limit);
     
@@ -49,10 +49,25 @@ router.get('/', checkAuditAccess, async (req, res, next) => {
       queryParams.push(entity_id);
       queryConditions.push(`al.entity_id = $${queryParams.length}`);
     }
+    if (search) {
+      queryParams.push(`%${search}%`);
+      queryConditions.push(`(
+        al.action ILIKE $${queryParams.length} OR
+        al.entity ILIKE $${queryParams.length} OR
+        al.ip_address ILIKE $${queryParams.length} OR
+        al.browser ILIKE $${queryParams.length} OR
+        al.device ILIKE $${queryParams.length} OR
+        u.name ILIKE $${queryParams.length} OR
+        u.email ILIKE $${queryParams.length}
+      )`);
+    }
 
     const whereClause = queryConditions.length > 0 ? `WHERE ${queryConditions.join(' AND ')}` : '';
-
-    const countQuery = `SELECT COUNT(*) FROM audit_logs al ${whereClause}`;
+    const countQuery = `
+      SELECT COUNT(*) FROM audit_logs al
+      LEFT JOIN users u ON al.user_id = u.id
+      ${whereClause}
+    `;
     const dataQuery = `
       SELECT al.*, u.name as user_name, u.email as user_email
       FROM audit_logs al
@@ -90,7 +105,7 @@ router.get('/export', checkAuditAccess, async (req, res, next) => {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
     if (!tenantId) return fail(res, 'UNAUTHORIZED', 'Tenant context missing', 401);
 
-    const { date_from, date_to, user_id, entity, entity_id } = req.query;
+    const { date_from, date_to, user_id, entity, entity_id, search } = req.query;
     
     let queryParams = [tenantId];
     let queryConditions = ['al.tenant_id = $1'];
@@ -114,6 +129,18 @@ router.get('/export', checkAuditAccess, async (req, res, next) => {
     if (entity_id) {
       queryParams.push(entity_id);
       queryConditions.push(`al.entity_id = $${queryParams.length}`);
+    }
+    if (search) {
+      queryParams.push(`%${search}%`);
+      queryConditions.push(`(
+        al.action ILIKE $${queryParams.length} OR
+        al.entity ILIKE $${queryParams.length} OR
+        al.ip_address ILIKE $${queryParams.length} OR
+        al.browser ILIKE $${queryParams.length} OR
+        al.device ILIKE $${queryParams.length} OR
+        u.name ILIKE $${queryParams.length} OR
+        u.email ILIKE $${queryParams.length}
+      )`);
     }
 
     const whereClause = queryConditions.length > 0 ? `WHERE ${queryConditions.join(' AND ')}` : '';

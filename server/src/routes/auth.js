@@ -6,6 +6,7 @@ const { loginUser } = require('../services/auth/login');
 const { refreshTokens } = require('../services/auth/refresh');
 const { logoutUser } = require('../services/auth/logout');
 const authenticate = require('../middleware/authenticate');
+const { queueEmail } = require('../services/emailService');
 const { success, fail } = require('../utils/response');
 
 const router = express.Router();
@@ -334,6 +335,64 @@ router.delete('/sessions', authenticate, async (req, res, next) => {
     res.status(204).send();
   } catch (error) {
     next(error);
+  }
+});
+
+// Mock Password Reset Trigger
+router.post('/reset-password-request', async (req, res) => {
+  const { email, tenantSlug } = req.body;
+  if (!email || !tenantSlug) return fail(res, 'VALIDATION_ERROR', 'Email and tenantSlug required', 400);
+  
+  try {
+    const tenantResult = await pool.query('SELECT id FROM tenants WHERE slug = $1 LIMIT 1', [tenantSlug]);
+    if (tenantResult.rows.length === 0) return success(res, { message: 'If email exists, reset sent' });
+    
+    const userResult = await pool.query('SELECT id, name FROM users WHERE email=$1 AND tenant_id=$2 LIMIT 1', [email, tenantResult.rows[0].id]);
+    if (userResult.rows.length > 0) {
+      const u = userResult.rows[0];
+      const resetUrl = `http://localhost:5173/reset-password?token=mock_token`;
+      queueEmail(tenantResult.rows[0].id, u.id, email, 'Password Reset Request', 'password_reset', { name: u.name, resetUrl });
+    }
+    return success(res, { message: 'If email exists, reset sent' });
+  } catch(e) {
+    return fail(res, 'INTERNAL_ERROR', 'Error processing reset', 500);
+  }
+});
+
+// Mock Password Change Trigger
+router.post('/change-password', authenticate, async (req, res) => {
+  const { newPassword } = req.body;
+  if (!newPassword) return fail(res, 'VALIDATION_ERROR', 'newPassword required', 400);
+  try {
+    const userResult = await pool.query('SELECT name, email FROM users WHERE id=$1 AND tenant_id=$2', [req.user.userId, req.tenantId]);
+    if (userResult.rows.length > 0) {
+      queueEmail(req.tenantId, req.user.userId, userResult.rows[0].email, 'Password Changed', 'password_changed', { name: userResult.rows[0].name });
+    }
+    return success(res, { message: 'Password changed successfully (mock)' });
+  } catch(e) {
+    return fail(res, 'INTERNAL_ERROR', 'Error changing password', 500);
+  }
+});
+
+const { validatePasswordPolicy, hashPassword, recordPasswordChange } = require('../services/auth/password');
+
+router.post('/force-reset-password', async (req, res) => {
+  const { userId, newPassword } = req.body;
+  if (!userId || !newPassword) return res.status(400).json({ success: false, message: 'Invalid payload' });
+  try {
+    const userRes = await pool.query('SELECT tenant_id FROM users WHERE id = $1', [userId]);
+    if (userRes.rowCount === 0) return res.status(404).json({ success: false, message: 'User not found' });
+    const tenantId = userRes.rows[0].tenant_id;
+    
+    await validatePasswordPolicy(newPassword, tenantId, userId);
+    const passwordHash = await hashPassword(newPassword);
+    
+    await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
+    await recordPasswordChange(userId, passwordHash);
+    
+    return res.json({ success: true, message: 'Password updated successfully' });
+  } catch(e) {
+    return res.status(400).json({ success: false, message: e.message });
   }
 });
 

@@ -38,16 +38,26 @@ router.delete('/:sessionId', authenticate, async (req, res, next) => {
     const tenantId = req.tenantId;
     const sessionId = req.params.sessionId;
 
-    const result = await pool.query(
-      `DELETE FROM sessions 
-       WHERE id = $1 AND user_id = $2 AND tenant_id = $3
-       RETURNING id`,
+    // First, verify session exists
+    const checkResult = await pool.query(
+      `SELECT id FROM sessions WHERE id = $1 AND user_id = $2 AND tenant_id = $3`,
       [sessionId, userId, tenantId]
     );
 
-    if (result.rowCount === 0) {
+    if (checkResult.rowCount === 0) {
       return res.status(404).json(fail('Session not found or unauthorized'));
     }
+
+    // Update login history FIRST
+    await pool.query(`
+      UPDATE login_history 
+      SET logout_time = NOW(), 
+          duration_seconds = EXTRACT(EPOCH FROM (NOW() - login_time))
+      WHERE session_id = $1
+    `, [sessionId]).catch(err => console.warn('Failed to update login history on revoke', err));
+
+    // Then delete session
+    await pool.query(`DELETE FROM sessions WHERE id = $1`, [sessionId]);
 
     return success(res, { message: 'Session revoked successfully' });
   } catch (err) {

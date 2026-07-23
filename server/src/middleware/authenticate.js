@@ -44,7 +44,7 @@ async function authenticate(req, res, next) {
 
       if (!session) {
         const sessionResult = await pool.query(
-          'SELECT ip_address, user_agent FROM sessions WHERE id = $1 AND tenant_id = $2',
+          'SELECT id, ip_address, user_agent, last_active_at FROM sessions WHERE id = $1 AND tenant_id = $2',
           [decoded.sessionId, decoded.tenantId]
         );
         if (sessionResult.rowCount === 0) {
@@ -53,8 +53,41 @@ async function authenticate(req, res, next) {
         }
         session = sessionResult.rows[0];
         
-        // Cache the session data for 15 minutes
-        setCache(cacheKey, session, 900).catch(err => console.warn('Failed to cache session', err));
+        // Cache the session data for 5 minutes (reduced from 15 to allow last_active_at updates to sync better)
+        setCache(cacheKey, session, 300).catch(err => console.warn('Failed to cache session', err));
+      }
+
+      // Check session timeout from tenant settings
+      const settingsCacheKey = `tenant_security:${decoded.tenantId}`;
+      let securitySettings = await getCache(settingsCacheKey).catch(() => null);
+      
+      if (!securitySettings) {
+        const settingsRes = await pool.query('SELECT session_timeout_minutes FROM tenant_security_settings WHERE tenant_id = $1', [decoded.tenantId]);
+        if (settingsRes.rowCount > 0) {
+          securitySettings = settingsRes.rows[0];
+          setCache(settingsCacheKey, securitySettings, 3600).catch(() => {});
+        } else {
+          securitySettings = { session_timeout_minutes: 120 };
+        }
+      }
+
+      const timeoutMinutes = securitySettings.session_timeout_minutes || 120;
+      const lastActive = session.last_active_at ? new Date(session.last_active_at) : new Date();
+      const diffMinutes = (Date.now() - lastActive.getTime()) / 60000;
+
+      if (diffMinutes > timeoutMinutes) {
+        // Session expired due to inactivity
+        await pool.query('DELETE FROM sessions WHERE id = $1', [decoded.sessionId]);
+        const { clearCache } = require('../utils/cache');
+        await clearCache(cacheKey).catch(() => {});
+        return res.status(401).json({ success: false, error: 'SESSION_TIMEOUT', message: 'Session expired due to inactivity.' });
+      }
+
+      // Periodically update last_active_at (e.g. if older than 5 minutes) to avoid thrashing DB
+      if (diffMinutes > 5) {
+        pool.query('UPDATE sessions SET last_active_at = NOW() WHERE id = $1', [decoded.sessionId]).catch(() => {});
+        session.last_active_at = new Date().toISOString();
+        setCache(cacheKey, session, 300).catch(() => {});
       }
 
       // V3: Risk-Based Authentication & Session Scoring

@@ -1,13 +1,9 @@
 const fs = require('fs');
-let data = fs.readFileSync('src/routes/financialApprovals.js', 'utf8');
+let f = fs.readFileSync('src/routes/users.js', 'utf8');
 
-// The bad line starts with: 'ORDER BY CASE WHEN '${
-data = data.split("'ORDER BY CASE WHEN '${").join("`ORDER BY CASE WHEN '${");
+const target = `queueEmail(tenantId, userIdToUpdate, targetUser.email, 'Role Updated', 'role_changed', { name: targetUser.name, newRole: roleRows[0].name });`;
+const replacement = target + `\n         const { logAction } = require('../services/auditLog');\n         await logAction({ tenantId, userId: reviewerId, action: 'employee.role_changed', entity: 'user', entityId: userIdToUpdate, newValue: { role: roleRows[0].name } });`;
 
-// The bad line ends with: END ${sort === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC';
-data = data.split("fa.id DESC';").join("fa.id DESC`;");
-data = data.split("fa.id ASC';").join("fa.id ASC`;");
-data = data.split("fa.updated_at DESC';").join("fa.updated_at DESC`;");
-
-fs.writeFileSync('src/routes/financialApprovals.js', data);
-console.log('Fixed syntax errors in financialApprovals.js');
+f = f.replace(target, replacement);
+fs.writeFileSync('src/routes/users.js', f);
+console.log('Fixed users.js');

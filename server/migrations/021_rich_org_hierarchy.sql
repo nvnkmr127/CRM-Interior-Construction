@@ -1,0 +1,10 @@
+ALTER TABLE departments ADD COLUMN IF NOT EXISTS code VARCHAR(50);
+ALTER TABLE departments ADD COLUMN IF NOT EXISTS manager_id UUID REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE departments ADD COLUMN IF NOT EXISTS description TEXT;
+
+ALTER TABLE branches ADD COLUMN IF NOT EXISTS location VARCHAR(255);
+ALTER TABLE branches ADD COLUMN IF NOT EXISTS timezone VARCHAR(100);
+ALTER TABLE branches ADD COLUMN IF NOT EXISTS manager_id UUID REFERENCES users(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_departments_manager ON departments(manager_id);
+CREATE INDEX IF NOT EXISTS idx_branches_manager ON branches(manager_id);

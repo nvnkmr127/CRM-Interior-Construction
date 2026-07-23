@@ -1,6 +1,7 @@
-import { useState, Fragment } from 'react'
+import { useState, Fragment, useRef, useCallback, useEffect } from 'react'
 import styles from './DataTable.module.css'
 import EmptyState from './EmptyState'
+import Skeleton from './Skeleton'
 
 export default function DataTable({
   columns = [],
@@ -16,13 +17,23 @@ export default function DataTable({
   emptyMessage,
   emptyAction,
   expandable = false,
-  renderExpandedRow
+  renderExpandedRow,
+  visibleColumns,
+  onContextMenu
 }) {
   const [expandedKeys, setExpandedKeys] = useState(new Set())
+  const [colWidths, setColWidths] = useState({})
+  
+  // Track resizing state
+  const resizingRef = useRef(null)
+
+  const activeColumns = visibleColumns 
+    ? columns.filter(c => visibleColumns.includes(c.key) || visibleColumns.includes(c.label))
+    : columns
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      onSelectChange(new Set(data.map(row => row.id)))
+      onSelectChange(new Set(data.map(row => row.id || row._id || row.user_id)))
     } else {
       onSelectChange(new Set())
     }
@@ -44,6 +55,33 @@ export default function DataTable({
     setExpandedKeys(next)
   }
 
+  const handleResizeStart = (e, colKey) => {
+    e.stopPropagation()
+    e.preventDefault()
+    const th = e.target.closest('th')
+    resizingRef.current = {
+      colKey,
+      startX: e.clientX,
+      startWidth: th.getBoundingClientRect().width
+    }
+    document.addEventListener('mousemove', handleResizeMove)
+    document.addEventListener('mouseup', handleResizeEnd)
+  }
+
+  const handleResizeMove = useCallback((e) => {
+    if (!resizingRef.current) return
+    const { colKey, startX, startWidth } = resizingRef.current
+    const diff = e.clientX - startX
+    const newWidth = Math.max(50, startWidth + diff)
+    setColWidths(prev => ({ ...prev, [colKey]: newWidth }))
+  }, [])
+
+  const handleResizeEnd = useCallback(() => {
+    resizingRef.current = null
+    document.removeEventListener('mousemove', handleResizeMove)
+    document.removeEventListener('mouseup', handleResizeEnd)
+  }, [handleResizeMove])
+
   return (
     <div className={styles.wrapper}>
       <table className={styles.table}>
@@ -59,19 +97,26 @@ export default function DataTable({
                 />
               </th>
             )}
-            {columns.map(col => (
+            {activeColumns.map(col => (
               <th 
                 key={col.key} 
                 className={`${styles.th} ${col.sortable ? styles.sortable : ''}`}
-                style={{ width: col.width, textAlign: col.align || 'left' }}
+                style={{ width: colWidths[col.key] || col.width, textAlign: col.align || 'left' }}
                 onClick={() => col.sortable && onSort && onSort(col.key)}
               >
-                {col.label}
-                {col.sortable && (
-                  <span className={`${styles.sortIcon} ${sortBy?.key === col.key ? styles.active : ''}`}>
-                    {sortBy?.key === col.key && sortBy?.dir === 'desc' ? '▼' : '▲'}
-                  </span>
-                )}
+                <div className={styles.thContent}>
+                  {col.label}
+                  {col.sortable && (
+                    <span className={`${styles.sortIcon} ${sortBy?.key === col.key ? styles.active : ''}`}>
+                      {sortBy?.key === col.key && sortBy?.dir === 'desc' ? '-' : '-'}
+                    </span>
+                  )}
+                  <div 
+                    className={styles.resizer} 
+                    onMouseDown={(e) => handleResizeStart(e, col.key)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
               </th>
             ))}
           </tr>
@@ -80,21 +125,21 @@ export default function DataTable({
           {loading ? (
             Array.from({ length: 5 }).map((_, i) => (
               <tr key={`skel-${i}`} className={styles.tr}>
-                {expandable && <td className={styles.td}><div className={styles.skeletonCell} style={{width: 16}} /></td>}
-                {selectable && <td className={styles.td}><div className={styles.skeletonCell} style={{width: 16}} /></td>}
-                {columns.map(col => (
+                {expandable && <td className={styles.td}><Skeleton width="16px" height="16px" /></td>}
+                {selectable && <td className={styles.td}><Skeleton width="16px" height="16px" /></td>}
+                {activeColumns.map(col => (
                   <td key={`skel-${col.key}`} className={styles.td}>
-                    <div className={styles.skeletonCell} />
+                    <Skeleton height="20px" width="80%" />
                   </td>
                 ))}
               </tr>
             ))
           ) : data.length === 0 ? (
             <tr>
-              <td colSpan={columns.length + (selectable ? 1 : 0) + (expandable ? 1 : 0)}>
+              <td colSpan={activeColumns.length + (selectable ? 1 : 0) + (expandable ? 1 : 0)}>
                 <div style={{ padding: '40px 0' }}>
                   <EmptyState 
-                    icon={<span style={{fontSize: 32}}>⊡</span>}
+                    icon={<span style={{fontSize: 32}}>S</span>}
                     title={emptyMessage || 'No data found'} 
                     action={emptyAction} 
                   />
@@ -114,10 +159,16 @@ export default function DataTable({
                       ${selectedIds.has(rowId) ? styles.selected : ''}
                     `}
                     onClick={() => onRowClick && onRowClick(row)}
+                    onContextMenu={(e) => {
+                      if (onContextMenu) {
+                        e.preventDefault()
+                        onContextMenu(e, row)
+                      }
+                    }}
                   >
                     {expandable && (
                       <td className={styles.td} style={{width:40}} onClick={(e) => toggleExpand(e, rowId)}>
-                        <button className={styles.expandBtn}>{isExpanded ? '▼' : '▶'}</button>
+                        <button className={styles.expandBtn}>{isExpanded ? '-' : '- '}</button>
                       </td>
                     )}
                     {selectable && (
@@ -129,7 +180,7 @@ export default function DataTable({
                         />
                       </td>
                     )}
-                    {columns.map(col => (
+                    {activeColumns.map(col => (
                       <td key={col.key} className={styles.td} style={{ textAlign: col.align || 'left' }}>
                         {col.render ? col.render(row) : row[col.key]}
                       </td>
@@ -137,7 +188,7 @@ export default function DataTable({
                   </tr>
                   {isExpanded && renderExpandedRow && (
                     <tr className={styles.expandedRow}>
-                      <td colSpan={columns.length + (selectable ? 1 : 0) + (expandable ? 1 : 0)} style={{padding:0}}>
+                      <td colSpan={activeColumns.length + (selectable ? 1 : 0) + (expandable ? 1 : 0)} style={{padding:0}}>
                         {renderExpandedRow(row)}
                       </td>
                     </tr>
@@ -177,4 +228,3 @@ export default function DataTable({
     </div>
   )
 }
-

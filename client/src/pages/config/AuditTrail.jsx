@@ -13,7 +13,8 @@ export default function AuditTrail() {
     date_to: '',
     user_id: '',
     entity: '',
-    entity_id: ''
+    entity_id: '',
+    search: ''
   });
   const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0 });
   const [users, setUsers] = useState([]);
@@ -135,6 +136,11 @@ export default function AuditTrail() {
       key: 'ip',
       label: 'IP Address',
       render: (log) => log.ip_address || '-'
+    },
+    {
+      key: 'device',
+      label: 'Device & Browser',
+      render: (log) => (log.browser || log.device) ? `${log.browser || ''} ${log.device || ''}`.trim() : '-'
     }
   ];
 
@@ -189,6 +195,13 @@ export default function AuditTrail() {
           placeholder="Filter by ID..." 
           value={filters.entity_id} 
           onChange={(e) => handleFilterChange('entity_id', e.target.value)} 
+        />
+        <Input 
+          type="text" 
+          label="Search" 
+          placeholder="Search logs..." 
+          value={filters.search} 
+          onChange={(e) => handleFilterChange('search', e.target.value)} 
         />
       </div>
 

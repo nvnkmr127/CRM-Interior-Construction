@@ -10,10 +10,13 @@ const CustomFieldsManager = lazy(() => import('./CustomFieldsManager'))
 const LeadStagesManager   = lazy(() => import('./LeadStagesManager'))
 const TemplateBuilder     = lazy(() => import('./TemplateBuilder'))
 const AutomationBuilder   = lazy(() => import('./AutomationBuilder'))
+const EmailTemplateBuilder = lazy(() => import('./EmailTemplateBuilder'))
 const ApiKeysManager      = lazy(() => import('./ApiKeysManager'))
 const WebhooksManager     = lazy(() => import('./WebhooksManager'))
 const LogsViewer          = lazy(() => import('./LogsViewer'))
 const UsersManager        = lazy(() => import('./UsersManager'))
+const EmployeeProfilePage = lazy(() => import('./EmployeeProfilePage'))
+const OrganizationManager = lazy(() => import('./OrganizationManager'))
 const ConversionChecklistManager = lazy(() => import('./ConversionChecklistManager'))
 const QcChecklistsManager = lazy(() => import('./QcChecklistsManager'))
 const FinancialSettings = lazy(() => import('./FinancialSettings'))
@@ -21,8 +24,16 @@ const LeadTimesManager = lazy(() => import('./LeadTimesManager'))
 const TradeActivityTemplatesManager = lazy(() => import('./TradeActivityTemplatesManager'))
 const AuditTrail = lazy(() => import('./AuditTrail'))
 const RolesManager = lazy(() => import('./RolesManager'))
+const LoginHistoryPage = lazy(() => import('./LoginHistoryPage'))
+const SecuritySettingsPage = lazy(() => import('./SecuritySettingsPage'))
 
 const CONFIG_NAV = [
+  { group: 'ACCESS', items: [
+    { to: 'team-members',  icon: '👥', label: 'Team Members', desc: 'Manage user access' },
+    { to: 'organization',  icon: '🏢', label: 'Organization', desc: 'Hierarchy & Departments' },
+    { to: 'security',      icon: '🔒', label: 'Security', desc: 'Enterprise Security Settings' },
+    { to: 'login-history', icon: '🛡️', label: 'Login History', desc: 'Track authentication & sessions' },
+  ]},
   { group: 'PIPELINE', items: [
     { to: 'lead-stages',   icon: '◎', label: 'Lead Stages',   desc: 'Sales pipeline stages' },
     { to: 'custom-fields', icon: '⊡', label: 'Custom Fields', desc: 'Add fields to leads & projects' },
@@ -37,6 +48,7 @@ const CONFIG_NAV = [
   ]},
   { group: 'INTEGRATIONS', items: [
     { to: 'api-keys',      icon: '⊙', label: 'API Keys',    desc: 'Connect external tools' },
+    { to: 'email-templates', icon: '📧', label: 'Email Templates', desc: 'Custom branding & emails' },
     { to: 'logs',          icon: '≡', label: 'Logs',        desc: 'Delivery history & retries' },
   ]},
 
@@ -89,6 +101,12 @@ export default function ConfigPage() {
           <Routes>
             <Route index element={<Navigate to='/config/lead-stages' replace />} />
             <Route path='lead-stages'   element={<LeadStagesManager />} />
+            <Route path="team-members" element={<UsersManager />} />
+            <Route path="team-members/:id" element={<EmployeeProfilePage />} />
+            <Route path="organization" element={<OrganizationManager />} />
+            <Route path="security" element={<SecuritySettingsPage />} />
+            <Route path="login-history" element={<LoginHistoryPage />} />
+            <Route path="audit-logs" element={<AuditTrail />} />
             <Route path='custom-fields' element={<CustomFieldsManager />} />
             <Route path='templates'     element={<TemplateBuilder />} />
             <Route path='automations'   element={<AutomationBuilder />} />
@@ -96,6 +114,7 @@ export default function ConfigPage() {
             <Route path='qc-checklists' element={<QcChecklistsManager />} />
             <Route path='trade-activities' element={<TradeActivityTemplatesManager />} />
             <Route path='api-keys'      element={<ApiKeysManager />} />
+            <Route path='email-templates' element={<EmailTemplateBuilder />} />
             <Route path='logs'          element={<LogsViewer />} />
 
             <Route path='financial-settings' element={<FinancialSettings />} />

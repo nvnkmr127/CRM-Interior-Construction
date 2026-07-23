@@ -56,4 +56,9 @@ export const configApi = {
   getTradeDependencyTemplates: () => api.get('/config/trade-dependency-templates').then(r=>r.data.data),
   createTradeDependencyTemplate: (data) => api.post('/config/trade-dependency-templates', data).then(r=>r.data.data),
   deleteTradeDependencyTemplate: (id) => api.delete(`/config/trade-dependency-templates/${id}`),
+
+  // Email Templates
+  getEmailTemplates: () => api.get('/email-templates').then(r=>r.data.data),
+  saveEmailTemplate: (data) => api.post('/email-templates', data).then(r=>r.data.data),
+  testEmailTemplate: (data) => api.post('/email-templates/test', data).then(r=>r.data.data),
 }

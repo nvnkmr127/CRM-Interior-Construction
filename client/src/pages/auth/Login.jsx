@@ -5,10 +5,12 @@ import { useToast } from '../../store/toastContext';
 import { useForm } from '../../hooks/useForm';
 import { validators, run } from '../../utils/validators';
 import { Button } from '../../components/ui';
+import MfaVerificationModal from '../../components/auth/MfaVerificationModal';
+import ForcePasswordResetModal from '../../components/auth/ForcePasswordResetModal';
 import styles from './Login.module.css';
 
 export default function Login() {
-  const { login, isAuthenticated, loading } = useAuth();
+  const { login, isAuthenticated, loading, setUser } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -27,6 +29,12 @@ export default function Login() {
   const [errorType, setErrorType] = useState(''); // 'shake' | 'inactive' | 'network'
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
+
+  // Security Modals State
+  const [showMfa, setShowMfa] = useState(false);
+  const [mfaData, setMfaData] = useState(null);
+  const [showForceReset, setShowForceReset] = useState(false);
+  const [forceResetUserId, setForceResetUserId] = useState(null);
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
@@ -48,8 +56,16 @@ export default function Login() {
       setIsSubmitting(false);
 
       if (result.success) {
-        toast.success('Welcome back!');
-        navigate('/dashboard', { replace: true });
+        if (result.payload?.mfaRequired) {
+          setMfaData(result.payload);
+          setShowMfa(true);
+        } else if (result.payload?.passwordExpired) {
+          setForceResetUserId(result.payload.userId);
+          setShowForceReset(true);
+        } else {
+          toast.success('Welcome back!');
+          navigate('/dashboard', { replace: true });
+        }
       } else {
         // Mock error handling for redesign requirements based on common messages
         if (result.message?.toLowerCase().includes('inactive')) {
@@ -215,6 +231,35 @@ export default function Login() {
           </div>
         </div>
       </div>
+
+      <MfaVerificationModal 
+        isOpen={showMfa}
+        mfaMethod={mfaData?.mfaMethod}
+        tempToken={mfaData?.tempToken}
+        onCancel={() => { setShowMfa(false); setMfaData(null); }}
+        onVerified={(data) => {
+          setShowMfa(false);
+          setMfaData(null);
+          // Manually update user context since we handled mfa intercept
+          // The /validate endpoint sets the cookies and returns { accessToken, refreshToken, user }
+          if (data.data?.user) {
+             setUser(data.data.user);
+             toast.success('MFA Verified. Welcome back!');
+             navigate('/dashboard', { replace: true });
+          }
+        }}
+      />
+
+      <ForcePasswordResetModal 
+        isOpen={showForceReset}
+        userId={forceResetUserId}
+        onCancel={() => { setShowForceReset(false); setForceResetUserId(null); }}
+        onReset={() => {
+          setShowForceReset(false);
+          setForceResetUserId(null);
+          toast.success('Password updated! Please login with your new password.');
+        }}
+      />
     </div>
   );
 }

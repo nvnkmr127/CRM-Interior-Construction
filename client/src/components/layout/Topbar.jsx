@@ -93,7 +93,8 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed,
         </button>
         {userMenuOpen && (
           <div className={styles.userMenu}>
-            <button onClick={() => navigate('/settings/profile')}>My Profile</button>
+            <button onClick={() => { navigate('/settings/profile'); setUserMenuOpen(false); }}>My Profile</button>
+            <button onClick={() => { navigate('/settings/security'); setUserMenuOpen(false); }}>My Security</button>
             <hr />
             <button onClick={logout} className={styles.logout}>Sign Out</button>
           </div>

@@ -1,11 +1,19 @@
 .skeleton {
-  background: linear-gradient(90deg, var(--color-surface-2) 25%, var(--color-surface-3) 50%, var(--color-surface-2) 75%);
+  background: linear-gradient(
+    90deg,
+    var(--color-background-soft) 25%,
+    var(--color-border) 50%,
+    var(--color-background-soft) 75%
+  );
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-  border-radius: var(--radius-sm);
+  animation: pulse 1.5s infinite ease-in-out;
 }
-@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-.text { height: 14px; width: 100%; margin-bottom: var(--space-2); border-radius: var(--radius-sm); }
-.text:last-child { width: 60%; }
-.circle { border-radius: var(--radius-full); }
-.rect { border-radius: var(--radius-md); }
+
+@keyframes pulse {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}

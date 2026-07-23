@@ -12,10 +12,12 @@ export { default as Avatar } from './Avatar';
 export { default as Select } from './Select';
 export { default as Spinner } from './Spinner';
 export { default as DataTable } from './DataTable';
-
 export { default as Pagination } from './Pagination';
 export { default as Textarea } from './Textarea';
 export { default as FormField } from './FormField';
 export { default as Toggle } from './Toggle';
 export { default as RichTextEditor } from './RichTextEditor';
-
+export { default as SearchFilterBar } from './SearchFilterBar';
+export { default as AdvancedImportExportModal } from './AdvancedImportExportModal';
+export { default as PageHeader } from './PageHeader';
+export { default as Checkbox } from './Checkbox';

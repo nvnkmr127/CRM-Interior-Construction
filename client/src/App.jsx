@@ -43,6 +43,7 @@ const CSATReportPage = lazy(() => import('./pages/analytics/CSATReportPage'))
 const DelayAnalysisReportPage = lazy(() => import('./pages/analytics/DelayAnalysisReportPage'))
 const ResourceCapacityPage = lazy(() => import('./pages/projects/ResourceCapacityPage'))
 const ProfilePage    = lazy(() => import('./pages/settings/ProfilePage'))
+const MySecurityPage = lazy(() => import('./pages/profile/MySecurityPage'))
 const PreferencesPage= lazy(() => import('./pages/settings/PreferencesPage'))
 const AuditTrailPage  = lazy(() => import('./pages/settings/AuditTrailPage'))
 const ApprovalMatrixPage = lazy(() => import('./pages/settings/ApprovalMatrixPage'))
@@ -59,6 +60,8 @@ const ApiIntegrationPage = lazy(() => import('./pages/developer/ApiIntegrationPa
 const WebhooksManager = lazy(() => import('./pages/config/WebhooksManager'))
 const UsersManager = lazy(() => import('./pages/config/UsersManager'))
 const RolesManager = lazy(() => import('./pages/config/RolesManager'))
+const SuperAdminSettings = lazy(() => import('./pages/config/SuperAdminSettings'))
+
 
 export default function App() {
   return (
@@ -109,6 +112,7 @@ export default function App() {
                     <Route path='/analytics/csat' element={<CSATReportPage />} />
                     <Route path='/analytics/delay-analysis' element={<DelayAnalysisReportPage />} />
                     <Route path='/settings/profile' element={<ProfilePage />} />
+                    <Route path='/settings/security' element={<MySecurityPage />} />
                     <Route path='/settings/preferences' element={<PreferencesPage />} />
                     <Route path='/settings/audit-trail' element={<AuditTrailPage />} />
                     <Route path='/settings/approval-matrix' element={<ApprovalMatrixPage />} />

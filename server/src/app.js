@@ -109,6 +109,13 @@ app.use(express.json({
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+const asyncLocalStorage = require('./utils/requestContext');
+app.use((req, res, next) => {
+  asyncLocalStorage.run({ req }, () => {
+    next();
+  });
+});
+
 const responseFormatter = require('./middleware/responseFormatter');
 app.use(responseFormatter);
 
@@ -126,7 +133,8 @@ const handoverRoutes = require('./routes/handover');
 const milestonesRoutes = require('./routes/milestones');
 const globalTasksRoutes = require('./routes/globalTasks');
 const analyticsRoutes = require('./routes/analytics');
-const logsRoutes = require('./routes/logs');
+
+const orgRoutes = require('./routes/org');
 const webhooksRoutes = require('./routes/webhooks');
 const eventsRoutes = require('./routes/events');
 const webhooksInboundRoutes = require('./routes/webhooks/inbound');
@@ -151,6 +159,8 @@ const portalQuotationsRoutes = require('./routes/portal/quotations');
 
 
 const usersRoutes = require('./routes/users');
+const savedFiltersRoutes = require('./routes/savedFilters');
+const usersBulkRoutes = require('./routes/usersBulk');
 const rolesRoutes = require('./routes/roles');
 const dashboardRoutes = require('./routes/dashboard');
 const errorHandler = require('./middleware/errorHandler');
@@ -174,6 +184,9 @@ app.use('/api/auth/webauthn', require('./routes/webauthn'));
 app.use('/api/auth/mfa', require('./routes/mfa'));
 app.use('/api/auth', authRoutes);
 app.use('/api/leads/manager', require('./routes/manager'));
+app.use('/api/sessions', require('./routes/sessions'));
+app.use('/api/login-history', require('./routes/loginHistory'));
+app.use('/api/security', require('./routes/security'));
 app.use('/api/leads', leadsRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/lead-forms', require('./routes/leadForms'));
@@ -191,6 +204,7 @@ app.use('/api/financial-approvals', financialApprovalsRoutes);
 app.use('/api/approval-matrix', require('./routes/approvalMatrix'));
 app.use('/api/handover', handoverRoutes);
 app.use('/api/audit-logs', require('./routes/auditLogs'));
+app.use('/api/login-history', require('./routes/loginHistory'));
 
 // Safe fallback for local file downloads
 app.get('/api/local-download', (req, res) => {
@@ -224,10 +238,14 @@ app.use('/api/projects/:id/handover', handoverRoutes);
 app.use('/api/phases/:phaseId/milestones', milestonesRoutes);
 app.use('/api/tasks', globalTasksRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/users/bulk', usersBulkRoutes);
 app.use('/api/users', usersRoutes);
-app.use('/api/roles', rolesRoutes);
+app.use('/api/offboarding', require('./routes/offboarding'));
+app.use('/api/filters', savedFiltersRoutes);
+app.use('/api/org', orgRoutes);
+app.use('/api/projects', projectsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/logs', logsRoutes);
+app.use('/api/logs', require('./routes/logs'));
 app.use('/api/webhooks', webhooksRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/webhooks/inbound', webhooksInboundRoutes);
@@ -249,6 +267,8 @@ app.use('/api/portal/warranty-claims', portalWarrantyClaimsRoutes);
 app.use('/api/projects/:projectId/service-tickets', serviceTicketsRoutes);
 app.use('/api/portal/service-tickets', portalServiceTicketsRoutes);
 app.use('/api/portal/quotations', portalQuotationsRoutes);
+app.use('/api/emails', require('./routes/emails'));
+app.use('/api/email-templates', require('./routes/emailTemplates'));
 
 
 

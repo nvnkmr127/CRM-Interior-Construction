@@ -1,7 +1,7 @@
 const pool = require('../db/pool');
 
 function convertToCSV(data) {
-  const headers = ['Timestamp', 'User Name', 'User Email', 'Action', 'Entity', 'Entity ID', 'Old Value', 'New Value', 'IP Address'];
+  const headers = ['Timestamp', 'User Name', 'User Email', 'Action', 'Entity', 'Entity ID', 'Old Value', 'New Value', 'IP Address', 'Browser', 'Device'];
   const rows = data.map(row => [
     row.created_at ? new Date(row.created_at).toISOString() : '',
     row.user_name || 'System',
@@ -11,7 +11,9 @@ function convertToCSV(data) {
     row.entity_id || '',
     row.old_value || '',
     row.new_value || '',
-    row.ip_address || ''
+    row.ip_address || '',
+    row.browser || '',
+    row.device || ''
   ]);
   
   const escapeCsv = val => {
@@ -44,6 +46,7 @@ exports.getEvents = async (req, res, next) => {
     const action = req.query.action;
     const startDate = req.query.startDate;
     const endDate = req.query.endDate;
+    const search = req.query.search;
     const exportFormat = req.query.export;
 
     let baseFilter = ` WHERE al.tenant_id = $1 `;
@@ -89,6 +92,19 @@ exports.getEvents = async (req, res, next) => {
       filterValues.push(endDate);
     }
 
+    if (search) {
+      baseFilter += ` AND (
+        al.action ILIKE $${filterValues.length + 1} OR
+        al.entity ILIKE $${filterValues.length + 1} OR
+        al.ip_address ILIKE $${filterValues.length + 1} OR
+        al.browser ILIKE $${filterValues.length + 1} OR
+        al.device ILIKE $${filterValues.length + 1} OR
+        u.name ILIKE $${filterValues.length + 1} OR
+        u.email ILIKE $${filterValues.length + 1}
+      ) `;
+      filterValues.push(`%${search}%`);
+    }
+
     // Handle CSV Export
     if (exportFormat === 'csv') {
       const exportQuery = `
@@ -109,6 +125,7 @@ exports.getEvents = async (req, res, next) => {
     // Standard pagination: Count total matching rows
     const countQuery = `
       SELECT COUNT(*)::int FROM audit_logs al
+      LEFT JOIN users u ON al.user_id = u.id
       ${baseFilter}
     `;
     const countRes = await pool.query(countQuery, filterValues);

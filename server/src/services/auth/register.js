@@ -1,5 +1,5 @@
 const pool = require('../../db/pool');
-const { hashPassword } = require('./password');
+const { hashPassword, validatePasswordPolicy, recordPasswordChange } = require('./password');
 
 /**
  * Registers a new user for a specific tenant.
@@ -16,6 +16,9 @@ async function registerUser({ tenantId, email, name, password, roleId }) {
   if (existingUserResult.rows.length > 0) {
     throw new Error('EMAIL_EXISTS');
   }
+
+  // 1.5 Validate Password Policy
+  await validatePasswordPolicy(password, tenantId, null);
 
   // 2. Hash the password
   const hashedPassword = await hashPassword(password);
@@ -35,7 +38,13 @@ async function registerUser({ tenantId, email, name, password, roleId }) {
     hashedPassword,
   ]);
 
-  return result.rows[0];
+  const newUser = result.rows[0];
+
+  // Create initial user_security and password history
+  await pool.query('INSERT INTO user_security (user_id) VALUES ($1)', [newUser.id]);
+  await recordPasswordChange(newUser.id, hashedPassword);
+
+  return newUser;
 }
 
 module.exports = {
