@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/immutability, no-unused-vars, no-empty, no-undef */
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import layoutStyles from './ConfigLayout.module.css'
 import styles from './RolesManager.module.css'
 import { Button, Modal, DataTable, Input } from '../../components/ui'
@@ -31,12 +32,28 @@ const DEFAULT_PERMISSIONS = [
 ]
 
 export default function RolesManager() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [roles, setRoles] = useState([])
-  const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingRole, setEditingRole] = useState(null)
   const [formData, setFormData] = useState({ name: '', description: '', permissions: [] })
   const [deleteTarget, setDeleteTarget] = useState(null)
   const toast = useToast()
+
+  const isModalOpen = searchParams.has('action') || searchParams.has('edit');
+  
+  useEffect(() => {
+    if (searchParams.has('edit') && roles.length > 0) {
+      const roleId = searchParams.get('edit');
+      const role = roles.find(r => r.id === roleId);
+      if (role) {
+        setEditingRole(role);
+        setFormData({ name: role.name, description: role.description || '', permissions: [...(role.permissions || [])] });
+      }
+    } else if (searchParams.has('action') && searchParams.get('action') === 'new') {
+      setEditingRole(null);
+      setFormData({ name: '', description: '', permissions: [] });
+    }
+  }, [searchParams, roles]);
 
   useEffect(() => {
     fetchRoles()
@@ -60,13 +77,10 @@ export default function RolesManager() {
 
   const handleOpenModal = (role = null) => {
     if (role) {
-      setEditingRole(role)
-      setFormData({ name: role.name, description: role.description || '', permissions: [...(role.permissions || [])] })
+      setSearchParams({ edit: role.id });
     } else {
-      setEditingRole(null)
-      setFormData({ name: '', description: '', permissions: [] })
+      setSearchParams({ action: 'new' });
     }
-    setIsModalOpen(true)
   }
 
   const handleTogglePermission = (permId) => {
@@ -99,7 +113,7 @@ export default function RolesManager() {
         setRoles(prev => [...prev, newRole])
         toast.success('Role created successfully')
       }
-      setIsModalOpen(false)
+      setSearchParams({})
     } catch (err) {
       toast.error('Failed to save role')
     }
@@ -170,72 +184,74 @@ export default function RolesManager() {
   return (
     <div className="mx-auto max-w-7xl p-4 sm:p-8 space-y-8">
       <div className={layoutStyles.configSection}>
-        <div className={layoutStyles.sectionHeader}>
+        {!isModalOpen ? (
+          <>
+            <div className={layoutStyles.sectionHeader}>
+              <div>
+                <h2 className={layoutStyles.sectionTitle}>Roles & Permissions</h2>
+                <p className={layoutStyles.sectionDesc}>Define roles and their specific access permissions.</p>
+              </div>
+              <Button variant="primary" onClick={() => handleOpenModal()}>+ Create Role</Button>
+            </div>
+            <DataTable columns={columns} data={roles} />
+          </>
+        ) : (
           <div>
-            <h2 className={layoutStyles.sectionTitle}>Roles & Permissions</h2>
-            <p className={layoutStyles.sectionDesc}>Define roles and their specific access permissions.</p>
-          </div>
-          <Button variant="primary" onClick={() => handleOpenModal()}>+ Create Role</Button>
-        </div>
-
-        <DataTable columns={columns} data={roles} />
-
-        {/* Create/Edit Modal */}
-        {isModalOpen && (
-          <div className={styles.modalOverlay}>
-            <div className={styles.modalContent}>
-              <div className={styles.modalHeader}>
-                <h3 className={styles.title}>{editingRole ? 'Edit Role' : 'Create Role'}</h3>
-                <button className={styles.closeBtn} onClick={() => setIsModalOpen(false)}>×</button>
+            <div className={layoutStyles.sectionHeader} style={{ marginBottom: '24px' }}>
+              <div>
+                <h2 className={layoutStyles.sectionTitle}>{editingRole ? 'Edit Role' : 'Create Role'}</h2>
+                <p className={layoutStyles.sectionDesc}>Configure role details and permissions below.</p>
               </div>
-              <div style={{ marginTop: '0px' }}>
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Role Name</label>
-                  <Input 
-                    value={formData.name} 
-                    onChange={e => setFormData({...formData, name: e.target.value})} 
-                    placeholder="e.g. Sales Manager"
-                    disabled={formData.name === 'superadmin'}
-                  />
-                </div>
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Description</label>
-                  <Input 
-                    value={formData.description} 
-                    onChange={e => setFormData({...formData, description: e.target.value})} 
-                    placeholder="Optional description"
-                  />
-                </div>
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Permissions</label>
-                  {formData.permissions.includes('*') ? (
-                    <div style={{ padding: '12px', background: 'var(--color-accent-light)', color: 'var(--color-accent-dark)', borderRadius: 'var(--radius-md)' }}>
-                      This role has full access (*).
-                    </div>
-                  ) : (
-                    <div className={styles.permissionGrid}>
-                      {Object.entries(groupedPermissions).map(([group, perms]) => (
-                        <React.Fragment key={group}>
-                          <div className={styles.permissionGroupTitle}>{group}</div>
-                          {perms.map(p => (
-                            <label key={p.id} className={styles.checkboxContainer}>
-                              <input 
-                                type="checkbox" 
-                                checked={formData.permissions.includes(p.id)} 
-                                onChange={() => handleTogglePermission(p.id)}
-                              />
-                              {p.label}
-                            </label>
-                          ))}
-                        </React.Fragment>
-                      ))}
-                    </div>
-                  )}
-                </div>
+            </div>
+            
+            <div style={{ maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Role Name</label>
+                <Input 
+                  value={formData.name} 
+                  onChange={e => setFormData({...formData, name: e.target.value})} 
+                  placeholder="e.g. Sales Manager"
+                  disabled={formData.name === 'superadmin'}
+                />
               </div>
-              <div className={styles.modalActions}>
-                <button className={styles.cancelBtn} onClick={() => setIsModalOpen(false)}>Cancel</button>
-                <button className={styles.saveBtn} onClick={handleSave}>Save</button>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Description</label>
+                <Input 
+                  value={formData.description} 
+                  onChange={e => setFormData({...formData, description: e.target.value})} 
+                  placeholder="Optional description"
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Permissions</label>
+                {formData.permissions.includes('*') ? (
+                  <div style={{ padding: '12px', background: 'var(--color-accent-light)', color: 'var(--color-accent-dark)', borderRadius: 'var(--radius-md)' }}>
+                    This role has full access (*).
+                  </div>
+                ) : (
+                  <div className={styles.permissionGrid}>
+                    {Object.entries(groupedPermissions).map(([group, perms]) => (
+                      <Fragment key={group}>
+                        <div className={styles.permissionGroupTitle}>{group}</div>
+                        {perms.map(p => (
+                          <label key={p.id} className={styles.checkboxContainer}>
+                            <input 
+                              type="checkbox" 
+                              checked={formData.permissions.includes(p.id)} 
+                              onChange={() => handleTogglePermission(p.id)}
+                            />
+                            {p.label}
+                          </label>
+                        ))}
+                      </Fragment>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-start', marginTop: '16px' }}>
+                <Button variant="primary" onClick={handleSave}>Save Role</Button>
+                <Button variant="ghost" onClick={() => setSearchParams({})}>Cancel</Button>
               </div>
             </div>
           </div>

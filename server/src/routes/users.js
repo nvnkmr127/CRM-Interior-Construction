@@ -129,7 +129,7 @@ router.get('/', async (req, res) => {
 
     if (search) {
       params.push(`%${search}%`);
-      query += ` AND (u.name ILIKE $${params.length} OR u.email ILIKE $${params.length} OR u.profile_data->>'employeeId' ILIKE $${params.length})`;
+      query += ` AND (u.name ILIKE $${params.length} OR u.email ILIKE $${params.length} OR CAST(u.profile_data AS TEXT) ILIKE $${params.length})`;
     }
 
     if (role) {

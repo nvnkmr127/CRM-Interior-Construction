@@ -1234,7 +1234,40 @@ export const setupMockInterceptor = (api) => {
             } else if (url.includes('/approve') || url.includes('/reject') || url.includes('/request-changes')) {
               responseData.data = { success: true };
             } else if (method === 'get') {
-              responseData.data = [...(mockDatabase.users || [])];
+              const getParam = (name) => {
+                if (config.params && config.params[name] !== undefined) {
+                  return config.params[name];
+                }
+                const urlParts = url.split('?');
+                if (urlParts[1]) {
+                  const searchParams = new URLSearchParams(urlParts[1]);
+                  return searchParams.get(name);
+                }
+                return undefined;
+              };
+              let filtered = [...(mockDatabase.users || [])];
+              
+              const searchVal = getParam('search');
+              if (searchVal) {
+                const s = searchVal.toLowerCase().trim();
+                filtered = filtered.filter(u => {
+                  const name = String(u.name || '').toLowerCase();
+                  const email = String(u.email || '').toLowerCase();
+                  return name.includes(s) || email.includes(s);
+                });
+              }
+              
+              const roleVal = getParam('role');
+              if (roleVal) {
+                filtered = filtered.filter(u => u.role_name === roleVal || u.role_id === roleVal);
+              }
+              
+              const statusVal = getParam('status');
+              if (statusVal) {
+                filtered = filtered.filter(u => u.status === statusVal);
+              }
+
+              responseData.data = filtered;
             } else if (url.includes('/add-member') && method === 'post') {
               const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
               const newUser = {
