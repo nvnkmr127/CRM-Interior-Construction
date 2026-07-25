@@ -65,4 +65,45 @@ router.delete('/:sessionId', authenticate, async (req, res, next) => {
   }
 });
 
+/**
+ * DELETE /api/auth/sessions/force-logout/:sessionId
+ * Admin revokes a specific session for any user
+ */
+const authorize = require('../middleware/authorize');
+router.delete('/force-logout/:sessionId', authorize('users:force_logout'), async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId;
+    const sessionId = req.params.sessionId;
+
+    // First, verify session exists
+    const checkResult = await pool.query(
+      `SELECT id FROM sessions WHERE id = $1 AND tenant_id = $2`,
+      [sessionId, tenantId]
+    );
+
+    if (checkResult.rowCount === 0) {
+      return res.status(404).json(fail('Session not found or unauthorized'));
+    }
+
+    // Update login history FIRST
+    await pool.query(`
+      UPDATE login_history 
+      SET logout_time = NOW(), 
+          duration_seconds = EXTRACT(EPOCH FROM (NOW() - login_time)),
+          status = 'forced_logout'
+      WHERE session_id = $1
+    `, [sessionId]).catch(err => console.warn('Failed to update login history on force logout', err));
+
+    // Then delete session
+    await pool.query(`DELETE FROM sessions WHERE id = $1`, [sessionId]);
+
+    const { logAction } = require('../services/auditLog');
+    await logAction({ tenantId, userId: req.user.userId, action: 'user.force_logout', entity: 'session', entityId: sessionId });
+
+    return success(res, { message: 'Session forcefully revoked' });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

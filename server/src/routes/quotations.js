@@ -5,36 +5,36 @@ const authorize = require('../middleware/authorize');
 const quotationController = require('../controllers/quotationController');
 
 // List quotations for a project
-router.get('/', authenticate, authorize('projects:read'), quotationController.getProjectQuotations);
+router.get('/', authenticate, authorize('quotations:view'), quotationController.getProjectQuotations);
 
 // Create a new quotation for a project
-router.post('/', authenticate, authorize('projects:update'), quotationController.createQuotation);
+router.post('/', authenticate, authorize('quotations:create'), quotationController.createQuotation);
 
 // Get a quotation with BOQ items
-router.get('/:id', authenticate, authorize('projects:read'), quotationController.getQuotation);
+router.get('/:id', authenticate, authorize('quotations:view'), quotationController.getQuotation);
 
 // Update a quotation config/details
-router.put('/:id', authenticate, authorize('projects:update'), quotationController.updateQuotation);
+router.put('/:id', authenticate, authorize('quotations:edit'), quotationController.updateQuotation);
 
 // Add a BOQ item to a quotation
-router.post('/:id/items', authenticate, authorize('projects:update'), quotationController.addBOQItem);
+router.post('/:id/items', authenticate, authorize('boq:create'), quotationController.addBOQItem);
 
 // Update a BOQ item
-router.put('/:id/items/:itemId', authenticate, authorize('projects:update'), quotationController.updateBOQItem);
+router.put('/:id/items/:itemId', authenticate, authorize('boq:edit'), quotationController.updateBOQItem);
 
 // Delete a BOQ item
-router.delete('/:id/items/:itemId', authenticate, authorize('projects:update'), quotationController.deleteBOQItem);
+router.delete('/:id/items/:itemId', authenticate, authorize('boq:delete'), quotationController.deleteBOQItem);
 
 // Revise a quotation (create a new version)
-router.post('/:id/revise', authenticate, authorize('projects:update'), quotationController.reviseQuotation);
+router.post('/:id/revise', authenticate, authorize('boq:edit'), quotationController.reviseQuotation);
 
 // Compare two quotation versions
-router.get('/:id/compare/:targetId', authenticate, authorize('projects:read'), quotationController.compareQuotations);
+router.get('/:id/compare/:targetId', authenticate, authorize('boq:compare_versions'), quotationController.compareQuotations);
 
 // Send, accept, and reject quotations
-router.post('/:id/send', authenticate, authorize('projects:update'), quotationController.sendQuotation);
-router.post('/:id/accept', authenticate, authorize('projects:update'), quotationController.acceptQuotation);
-router.post('/:id/reject', authenticate, authorize('projects:update'), quotationController.rejectQuotation);
+router.post('/:id/send', authenticate, authorize('quotations:edit'), quotationController.sendQuotation);
+router.post('/:id/accept', authenticate, authorize('quotations:approve'), quotationController.acceptQuotation);
+router.post('/:id/reject', authenticate, authorize('quotations:approve'), quotationController.rejectQuotation);
 
 module.exports = router;
 

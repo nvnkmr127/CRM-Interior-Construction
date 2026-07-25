@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Button } from '../../components/ui';
+import { Button, PermissionButton } from '../../components/ui';
 import { useToast } from '../../store/toastContext';
 import api from '../../api/axios';
 import LeadKanbanBoard from '../../components/leads/LeadKanbanBoard';
@@ -232,15 +232,15 @@ export default function LeadsPage() {
           
 
 
-          {isAdmin && (
-            <Button 
-              variant="outline" 
-              onClick={handleExport}
-              title="Export Leads to CSV"
-            >&#8593; Export</Button>
-          )}
-          <Button variant="outline" onClick={() => setIsImportModalOpen(true)}>&#8595; Import</Button>
-          <Button variant="primary" onClick={() => setIsFormOpen(true)}>+ New Lead</Button>
+          <PermissionButton 
+            module="leads"
+            action="export_csv"
+            variant="outline" 
+            onClick={handleExport}
+            title="Export Leads to CSV"
+          >&#8593; Export</PermissionButton>
+          <PermissionButton module="leads" action="import" variant="outline" onClick={() => setIsImportModalOpen(true)}>&#8595; Import</PermissionButton>
+          <PermissionButton module="leads" action="create" variant="primary" onClick={() => setIsFormOpen(true)}>+ New Lead</PermissionButton>
         </div>
       </div>
 

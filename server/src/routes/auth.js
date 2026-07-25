@@ -213,10 +213,18 @@ router.get('/me', authenticate, async (req, res, next) => {
     const result = await pool.query(query, [userId]);
 
     if (result.rows.length === 0) {
-      return fail(res, 'NOT_FOUND', 'User not found', 404);
+      return fail(res, 'NOT_FOUND', 'User not found', 404);
     }
 
     const row = result.rows[0];
+
+    let actions = [];
+    let enabledModules = [];
+    if (row.role_permissions) {
+      const p = typeof row.role_permissions === 'string' ? JSON.parse(row.role_permissions) : row.role_permissions;
+      actions = Array.isArray(p) ? p : (p.actions || []);
+      enabledModules = Array.isArray(p) ? [] : (p.modules || []);
+    }
 
     const user = {
       id: row.id,
@@ -228,19 +236,20 @@ router.get('/me', authenticate, async (req, res, next) => {
       role: row.role_id ? {
         id: row.role_id,
         name: row.role_name,
-        permissions: row.role_permissions
+        permissions: actions,
+        enabled_modules: enabledModules
       } : null
     };
 
     // Attach permissions to req.user for downstream use if needed
-    req.user.permissions = row.role_permissions || [];
+    req.user.permissions = actions;
+    req.user.enabled_modules = enabledModules;
 
     return success(res, { user });
   } catch (error) {
     next(error);
   }
 });
-
 router.patch('/me', authenticate, async (req, res, next) => {
   try {
     const userId = req.user.id || req.user.userId;

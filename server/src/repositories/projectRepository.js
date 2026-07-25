@@ -266,10 +266,10 @@ class ProjectRepository {
     return project;
   }
 
-  async findProjects(tenantId, { status, pmId, designerId, search, page = 1, limit = 20 }) {
+  async findProjects(tenantId, { status, pmId, designerId, search, page = 1, limit = 20, scopeFilter = '1=1' }) {
     const offset = (page - 1) * limit;
     const values = [tenantId];
-    let whereClause = `p.tenant_id = $1 AND p.deleted_at IS NULL`;
+    let whereClause = `p.tenant_id = $1 AND p.deleted_at IS NULL AND (${scopeFilter})`;
     let idx = 2;
 
     if (status) {

@@ -18,8 +18,8 @@ function authorize(requiredPermission) {
     // 1. req.user.permissions should be an array of strings
     const permissions = req.user.permissions || [];
 
-    // 3. If the required permission is present, proceed
-    if (permissions.includes(requiredPermission)) {
+    // 3. If the required permission is present, or wildcard '*' is present, proceed
+    if (permissions.includes(requiredPermission) || permissions.includes('*')) {
       return next();
     }
 

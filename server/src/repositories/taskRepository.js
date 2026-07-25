@@ -66,10 +66,10 @@ class TaskRepository {
     return task;
   }
 
-  async findTasks(tenantId, { projectId, milestoneId, assigneeId, status, priority, dueWithin, page = 1, limit = 20, leadId, allTasks }) {
+  async findTasks(tenantId, { projectId, milestoneId, assigneeId, status, priority, dueWithin, page = 1, limit = 20, leadId, allTasks, scopeFilter = '1=1' }) {
     const offset = (page - 1) * limit;
     const values = [tenantId];
-    let whereClause = `t.tenant_id = $1 AND t.deleted_at IS NULL`;
+    let whereClause = `t.tenant_id = $1 AND t.deleted_at IS NULL AND (${scopeFilter})`;
     let idx = 2;
 
     if (projectId) {

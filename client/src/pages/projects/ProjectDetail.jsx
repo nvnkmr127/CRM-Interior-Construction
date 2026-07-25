@@ -1,7 +1,8 @@
 /* eslint-disable no-undef, react-hooks/set-state-in-effect */
 import React, { useState, useEffect, Suspense } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Badge } from '../../components/ui';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { Button, Badge, PermissionButton } from '../../components/ui';
+import { usePagePermissions } from '../../hooks/usePagePermissions';
 import styles from './ProjectDetail.module.css';
 import { getProject, deleteProject, updateProject, archiveProject } from '../../api/projects';
 import ProjectForm from '../../components/projects/ProjectForm';
@@ -810,7 +811,16 @@ function OverviewTab({ project, onRefresh, onEdit }) {
 export default function ProjectDetail() {
   const { id: projectId } = useParams();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('Overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { canAccessPage, getAllowedPages } = usePagePermissions('projects');
+  const allowedTabs = getAllowedPages().map(t => t.id);
+  const currentTabParam = searchParams.get('tab');
+  const activeTab = currentTabParam || (allowedTabs.length > 0 ? allowedTabs[0] : 'Overview');
+  
+  const setActiveTab = (tab) => {
+    setSearchParams({ tab });
+  };
+  
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -859,7 +869,8 @@ export default function ProjectDetail() {
     }
   };
 
-  const tabs = ['Overview', 'Booking', 'Meeting Notes', 'Site Visits', 'Baseline Assessment', 'Delay Notifications', 'Handovers', 'Design Brief', 'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 'Commercial Approval', 'Change Orders', 'BOQ Variance', 'Budget', 'Purchase Requests', 'Purchase Orders', 'Material Deliveries', 'Vendors', 'Vendor Payments', 'Substitutions', 'Factory Production', 'Coordination', 'Phases', 'Gantt Chart', 'Work Activities', 'Room Progress', 'Tasks', 'Daily Site Reports', 'Weekly Reports', 'Documents', 'Drawing Register', 'MEP Checklist', 'Payments', 'Execution QC', 'Snags', 'Punch List', 'Handover', 'Warranties', 'AMCs', 'Handover Readiness', 'Service Tickets', 'Customer Retention', 'Project Closure', 'Retrospective', 'Activity Logs'];
+  const allTabs = ['Overview', 'Team & Roles', 'Client Profile', 'Site Details', 'Vendors & Consultants', 'Settings', 'Financial Overview', 'Booking', 'Meeting Notes', 'Site Visits', 'Baseline Assessment', 'Delay Notifications', 'Handovers', 'Design Brief', 'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 'Commercial Approval', 'Change Orders', 'BOQ Variance', 'Budget', 'Purchase Requests', 'Purchase Orders', 'Material Deliveries', 'Vendors', 'Vendor Payments', 'Substitutions', 'Factory Production', 'Coordination', 'Phases', 'Gantt Chart', 'Work Activities', 'Room Progress', 'Tasks', 'Daily Site Reports', 'Weekly Reports', 'Documents', 'Drawing Register', 'MEP Checklist', 'Payments', 'Execution QC', 'Snags', 'Punch List', 'Handover', 'Warranties', 'AMCs', 'Handover Readiness', 'Service Tickets', 'Customer Retention', 'Project Closure', 'Retrospective', 'Activity Logs'];
+  const tabs = allTabs.filter(tab => canAccessPage(tab));
 
   const reloadProject = () => {
     if (!projectId) return;
@@ -1047,6 +1058,29 @@ export default function ProjectDetail() {
     || project.phases?.[project.phases.length - 1]?.name
     || '—';
 
+  if (!canAccessPage(activeTab)) {
+    return (
+      <div className={styles.page}>
+        <div style={{ padding: '40px', textAlign: 'center' }}>
+          <h2 style={{ color: 'var(--color-danger)', marginBottom: '16px' }}>Access Denied</h2>
+          <p style={{ color: 'var(--color-text-secondary)', marginBottom: '24px' }}>
+            You do not have permission to view the <strong>{activeTab}</strong> page.
+          </p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            {allowedTabs.length > 0 && (
+              <Button variant="primary" onClick={() => setActiveTab(allowedTabs[0])}>
+                Go to {allowedTabs[0]}
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => navigate('/projects')}>
+              Back to Projects
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.page}>
       <div className={styles.breadcrumb}>
@@ -1072,9 +1106,11 @@ export default function ProjectDetail() {
           <div className={styles.headerRight}>
             <div className={styles.value}>{formatValue(project.contract_value)}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                ✏️ Edit
-              </Button>
+              <PermissionButton module="projects" action="edit">
+                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                  ✏️ Edit
+                </Button>
+              </PermissionButton>
               
               <div style={{ position: 'relative' }}>
                 <Button 
@@ -1125,9 +1161,11 @@ export default function ProjectDetail() {
                       }
                     `}</style>
                     {!project.is_scope_locked && project.status === 'active' && (
-                      <button className="action-dropdown-item" onClick={() => { setActionsOpen(false); handleLockScope(); }}>
-                        🔒 Lock Scope
-                      </button>
+                      <PermissionButton module="projects" action="edit">
+                        <button className="action-dropdown-item" onClick={() => { setActionsOpen(false); handleLockScope(); }}>
+                          🔒 Lock Scope
+                        </button>
+                      </PermissionButton>
                     )}
                     {project.status === 'active' && (
                       <button className="action-dropdown-item" onClick={() => { setActionsOpen(false); setIsPauseModalOpen(true); }}>
@@ -1140,9 +1178,11 @@ export default function ProjectDetail() {
                       </button>
                     )}
                     {(project.status === 'completed' || project.status === 'cancelled') && (
-                      <button className="action-dropdown-item" onClick={() => { setActionsOpen(false); handleArchive(); }} disabled={archiving}>
-                        📦 {archiving ? 'Archiving...' : 'Archive Project'}
-                      </button>
+                      <PermissionButton module="projects" action="archive">
+                        <button className="action-dropdown-item" onClick={() => { setActionsOpen(false); handleArchive(); }} disabled={archiving}>
+                          📦 {archiving ? 'Archiving...' : 'Archive Project'}
+                        </button>
+                      </PermissionButton>
                     )}
                     {(project.status === 'completed' || project.status === 'cancelled' || project.status === 'archived') && (
                       <button className="action-dropdown-item" onClick={() => { setActionsOpen(false); setIsReopenModalOpen(true); }}>
@@ -1153,13 +1193,17 @@ export default function ProjectDetail() {
                     <div style={{ height: '1px', background: 'var(--color-border)', margin: '4px 0' }} />
                     
                     {(project.status === 'active' || project.status === 'on_hold') && (
-                      <button className="action-dropdown-item" style={{ color: 'var(--color-danger)' }} onClick={() => { setActionsOpen(false); setIsCancelModalOpen(true); }}>
-                        🚫 Cancel Project
-                      </button>
+                      <PermissionButton module="projects" action="cancel">
+                        <button className="action-dropdown-item" style={{ color: 'var(--color-danger)' }} onClick={() => { setActionsOpen(false); setIsCancelModalOpen(true); }}>
+                          🚫 Cancel Project
+                        </button>
+                      </PermissionButton>
                     )}
-                    <button className="action-dropdown-item" style={{ color: 'var(--color-danger)' }} onClick={() => { setActionsOpen(false); handleDelete(); }}>
-                        🗑️ Delete Project
-                    </button>
+                    <PermissionButton module="projects" action="delete">
+                      <button className="action-dropdown-item" style={{ color: 'var(--color-danger)' }} onClick={() => { setActionsOpen(false); handleDelete(); }}>
+                          🗑️ Delete Project
+                      </button>
+                    </PermissionButton>
                   </div>
                 </>
               )}
@@ -1257,18 +1301,13 @@ export default function ProjectDetail() {
             { id: 'Financial Overview', icon: '💰', label: 'Financial Overview' },
             { id: 'Payments', icon: '💸', label: 'Payments' },
             { id: 'Activity Logs', icon: '📋', label: 'Activity Logs' }
-          ].map(tab => {
+          ].filter(tab => canAccessPage(tab.id)).map(tab => {
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
                 className={`${styles.headerNavItem} ${isActive ? styles.headerNavItemActive : ''}`}
-                onClick={() => {
-                  if (!tabs.includes(tab.id)) {
-                    tabs.push(tab.id);
-                  }
-                  setActiveTab(tab.id);
-                }}
+                onClick={() => setActiveTab(tab.id)}
               >
                 <span className={styles.headerNavIcon}>{tab.icon}</span>
                 {tab.label}

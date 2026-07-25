@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import layoutStyles from './ConfigLayout.module.css'
-import { Button, Badge, Modal, DataTable, Avatar, Input, Select, EmptyState } from '../../components/ui'
+import { Button, Badge, Modal, DataTable, Avatar, Input, Select, EmptyState, PermissionButton } from '../../components/ui'
 import AddTeamMemberForm from './AddTeamMemberForm'
 import EmployeeApprovalModal from './EmployeeApprovalModal'
 import StatusManagerModal, { STATUS_COLORS } from './StatusManagerModal'
@@ -138,7 +138,7 @@ export default function UsersManager() {
   }, [])
 
   const handleBulkDelete = async () => {
-    if (!window.confirm(`Are you sure you want to delete ${selectedIds.size} users?`)) return;
+    if (!window.confirm(`WARNING: Are you sure you want to permanently delete ${selectedIds.size} users? This action cannot be undone.`)) return;
     try {
       await api.delete('/users/bulk/delete', { data: { userIds: Array.from(selectedIds) } })
       toast.success('Users deleted')
@@ -150,6 +150,7 @@ export default function UsersManager() {
   }
 
   const handleBulkPasswordReset = async () => {
+    if (!window.confirm(`Are you sure you want to send password reset emails to ${selectedIds.size} users?`)) return;
     try {
       await api.post('/users/bulk/reset-password', { userIds: Array.from(selectedIds) })
       toast.success('Password reset emails sent')
@@ -220,21 +221,27 @@ export default function UsersManager() {
           ) : (
             <>
               <div style={{ minWidth: '160px', textAlign: 'left' }}>
-                <Select 
-                  value={u.role_id || u.role} 
-                  options={roleOptions} 
-                  onChange={(val) => setRoleChangeTarget({ user: u, newRole: val })}
-                />
+                <PermissionButton permission="users:assign_roles" variant="ghost" className="p-0 border-0">
+                  <Select 
+                    value={u.role_id || u.role} 
+                    options={roleOptions} 
+                    onChange={(val) => setRoleChangeTarget({ user: u, newRole: val })}
+                  />
+                </PermissionButton>
               </div>
 
               {u.status === 'inactive' || u.status === 'archived' || u.status === 'resigned' || u.status === 'terminated' ? (
-                <Button variant="primary" onClick={() => setStatusChangeTarget(u)}>
+                <PermissionButton permission="users:activate_user" variant="primary" onClick={() => {
+                  if (window.confirm(`Are you sure you want to reactivate ${u.name}?`)) setStatusChangeTarget(u)
+                }}>
                   Reactivate
-                </Button>
+                </PermissionButton>
               ) : (
-                <Button variant="danger" onClick={() => setOffboardingTarget(u)}>
+                <PermissionButton permission="users:deactivate_user" variant="danger" onClick={() => {
+                  if (window.confirm(`WARNING: Deactivating ${u.name} will immediately revoke their access. Continue?`)) setOffboardingTarget(u)
+                }}>
                   Deactivate
-                </Button>
+                </PermissionButton>
               )}
             </>
           )}
@@ -302,8 +309,8 @@ export default function UsersManager() {
                 >Grid</button>
               </div>
               <Button variant="secondary" onClick={() => setShowImportExport(true)}>Import / Export</Button>
-              <Button variant="secondary" onClick={() => setBulkModalType('add')}>Bulk Add</Button>
-              <Button variant="primary" onClick={() => setIsAddMemberOpen(true)}>+ Add Team Member</Button>
+              <PermissionButton permission="users:invite_user" variant="secondary" onClick={() => setBulkModalType('add')}>Bulk Add</PermissionButton>
+              <PermissionButton permission="users:invite_user" variant="primary" onClick={() => setIsAddMemberOpen(true)}>+ Add Team Member</PermissionButton>
             </div>
 
         </div>
@@ -312,13 +319,13 @@ export default function UsersManager() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--color-surface-hover)', borderRadius: '8px', border: '1px solid var(--color-border)', marginBottom: '16px' }}>
             <div style={{ fontWeight: 500 }}>{selectedIds.size} users selected</div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <Button size="small" variant="ghost" onClick={() => setBulkModalType('role')}>Change Role</Button>
-              <Button size="small" variant="ghost" onClick={() => setBulkModalType('department')}>Change Dept</Button>
-              <Button size="small" variant="ghost" onClick={() => setBulkModalType('manager')}>Change Manager</Button>
-              <Button size="small" variant="ghost" onClick={() => setBulkModalType('status')}>Change Status</Button>
-              <Button size="small" variant="ghost" onClick={handleBulkPasswordReset}>Reset Password</Button>
+              <PermissionButton permission="users:assign_roles" size="small" variant="ghost" onClick={() => setBulkModalType('role')}>Change Role</PermissionButton>
+              <PermissionButton permission="users:change_department" size="small" variant="ghost" onClick={() => setBulkModalType('department')}>Change Dept</PermissionButton>
+              <PermissionButton permission="users:change_department" size="small" variant="ghost" onClick={() => setBulkModalType('manager')}>Change Manager</PermissionButton>
+              <PermissionButton permission="users:activate_user||users:deactivate_user" size="small" variant="ghost" onClick={() => setBulkModalType('status')}>Change Status</PermissionButton>
+              <PermissionButton permission="users:reset_password" size="small" variant="ghost" onClick={handleBulkPasswordReset}>Reset Password</PermissionButton>
               <Button size="small" variant="ghost" onClick={handleBulkExport}>Export CSV</Button>
-              <Button size="small" variant="danger" onClick={handleBulkDelete}>Delete</Button>
+              <PermissionButton permission="users:delete_user" size="small" variant="danger" onClick={handleBulkDelete}>Delete</PermissionButton>
             </div>
           </div>
         )}

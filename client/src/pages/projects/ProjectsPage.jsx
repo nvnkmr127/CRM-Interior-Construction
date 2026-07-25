@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 import { useState, useEffect } from 'react';
-import { Button, Skeleton, Pagination } from '../../components/ui';
+import { Button, Skeleton, Pagination, PermissionButton } from '../../components/ui';
 import ProjectCard from '../../components/projects/ProjectCard';
 import ProjectForm from '../../components/projects/ProjectForm';
 import styles from './ProjectsPage.module.css';
@@ -156,7 +156,9 @@ export default function ProjectsPage() {
       {/* Header */}
       <div className={styles.header}>
         <h1 className={styles.title}>Projects</h1>
-        <Button variant="primary" onClick={() => setIsFormOpen(true)}>+ New Project</Button>
+        <PermissionButton module="projects" action="create">
+          <Button variant="primary" onClick={() => setIsFormOpen(true)}>+ New Project</Button>
+        </PermissionButton>
       </div>
 
       {/* Stats Ribbon */}

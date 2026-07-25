@@ -83,7 +83,7 @@ router.post('/:id/activities', authorize('projects:write'), async (req, res, nex
 });
 
 // Global factory production endpoints (must be defined before parameterized nested routes to prevent UUID conflict)
-router.get('/factory/production-orders', authorize('projects:read'), async (req, res, next) => {
+router.get('/factory/production-orders', authorize('factory:production_status'), async (req, res, next) => {
   try {
     const productionOrderController = require('../controllers/productionOrderController');
     await productionOrderController.getGlobalProductionOrders(req, res, next);
@@ -92,7 +92,7 @@ router.get('/factory/production-orders', authorize('projects:read'), async (req,
   }
 });
 
-router.get('/factory/cnc-requests', authorize('projects:read'), async (req, res, next) => {
+router.get('/factory/cnc-requests', authorize('factory:production_status'), async (req, res, next) => {
   try {
     const productionOrderController = require('../controllers/productionOrderController');
     await productionOrderController.getGlobalCNCRequests(req, res, next);
@@ -342,18 +342,27 @@ router.post('/contract/upload-url', authorize('projects:create'), validate(uploa
  */
 router.post('/', authorize('projects:create'), validate(createProjectSchema), async (req, res, next) => {
   try {
-    const data = req.body;
+    const { stripUnauthorizedEdits } = require('../utils/fieldMasker');
+    const data = stripUnauthorizedEdits(req.body, 'projects', req.user.field_permissions);
+
     const project = await createProject({
       tenantId: req.tenantId,
       userId: req.user.userId,
       data
     });
-    return success(res, project, {}, 201);
+    
+    // Also filter outgoing project response just in case
+    const { filterAllowedFields } = require('../utils/fieldMasker');
+    const safeProject = filterAllowedFields(project, 'projects', req.user.field_permissions);
+
+    return success(res, safeProject, {}, 201);
   } catch (err) {
     console.error('[Projects Router] Create error:', err);
     return fail(res, 'INTERNAL_ERROR', 'An error occurred while creating the project.', 500);
   }
 });
+
+const dataScope = require('../middleware/dataScope');
 
 // GET /api/projects
 /**
@@ -374,7 +383,7 @@ router.post('/', authorize('projects:create'), validate(createProjectSchema), as
  *       200:
  *         description: A list of projects
  */
-router.get('/', authorize('projects:read'), async (req, res, next) => {
+router.get('/', authorize('projects:read'), dataScope('projects', 'pm_id', 'p'), async (req, res, next) => {
   try {
     const { status, pmId, designerId, search, page, limit } = req.query;
     
@@ -387,8 +396,12 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
       designerId,
       search,
       page: parsedPage,
-      limit: parsedLimit
+      limit: parsedLimit,
+      scopeFilter: req.scopeFilter
     });
+
+    const { filterAllowedFields } = require('../utils/fieldMasker');
+    result.data = filterAllowedFields(result.data, 'projects', req.user.field_permissions);
 
     return paginate(res, result.data, result.total, result.page, result.limit);
   } catch (err) {
@@ -552,7 +565,10 @@ router.get('/:id', authorize('projects:read'), async (req, res, next) => {
 
     const stats = await projectRepository.getProjectStats(req.tenantId, req.params.id);
     
-    return success(res, { ...project, stats });
+    const { filterAllowedFields } = require('../utils/fieldMasker');
+    const safeProject = filterAllowedFields({ ...project, stats }, 'projects', req.user.field_permissions);
+
+    return success(res, safeProject);
   } catch (err) {
     console.error('[Projects Router] Get by ID error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to retrieve project details.', 500);
@@ -562,14 +578,20 @@ router.get('/:id', authorize('projects:read'), async (req, res, next) => {
 // PATCH /api/projects/:id
 router.patch('/:id', authorize('projects:update'), validate(updateProjectSchema), async (req, res, next) => {
   try {
-    const data = req.body;
+    const { stripUnauthorizedEdits } = require('../utils/fieldMasker');
+    const data = stripUnauthorizedEdits(req.body, 'projects', req.user.field_permissions);
+
     const updatedProject = await updateProject({
       tenantId: req.tenantId,
       userId: req.user.userId,
       projectId: req.params.id,
       data
     });
-    return success(res, updatedProject);
+
+    const { filterAllowedFields } = require('../utils/fieldMasker');
+    const safeProject = filterAllowedFields(updatedProject, 'projects', req.user.field_permissions);
+
+    return success(res, safeProject);
   } catch (err) {
     if (err.code === 'BOOKING_REQUIRED') {
       return fail(res, 'BOOKING_REQUIRED', err.message, 400);

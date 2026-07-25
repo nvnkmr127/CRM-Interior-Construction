@@ -30,6 +30,7 @@ const SecuritySettingsPage = lazy(() => import('./SecuritySettingsPage'))
 const CONFIG_NAV = [
   { group: 'ACCESS', items: [
     { to: 'team-members',  icon: '👥', label: 'Team Members', desc: 'Manage user access' },
+    { to: 'roles-permissions', icon: '🔑', label: 'Roles & Permissions', desc: 'Granular access control' },
     { to: 'organization',  icon: '🏢', label: 'Organization', desc: 'Hierarchy & Departments' },
     { to: 'security',      icon: '🔒', label: 'Security', desc: 'Enterprise Security Settings' },
     { to: 'login-history', icon: '🛡️', label: 'Login History', desc: 'Track authentication & sessions' },
@@ -103,6 +104,7 @@ export default function ConfigPage() {
             <Route path='lead-stages'   element={<LeadStagesManager />} />
             <Route path="team-members" element={<UsersManager />} />
             <Route path="team-members/:id" element={<EmployeeProfilePage />} />
+            <Route path="roles-permissions" element={<RolesManager />} />
             <Route path="organization" element={<OrganizationManager />} />
             <Route path="security" element={<SecuritySettingsPage />} />
             <Route path="login-history" element={<LoginHistoryPage />} />

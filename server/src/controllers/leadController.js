@@ -2536,11 +2536,17 @@ exports.getAutomationEventsHandler = async (req, res, next) => {
 exports.createLeadHandler = async (req, res, next) => {
   try {
     // req.body is already validated by middleware
-    const data = req.body;
+    const { stripUnauthorizedEdits } = require('../utils/fieldMasker');
+    const data = stripUnauthorizedEdits(req.body, 'leads', req.user.field_permissions);
+
     const { tenantId, userId } = getTenantAndUser(req);
     const { createLead } = require('../services/leads/createLead');
     const lead = await createLead({ tenantId, userId, data });
-    return success(res, lead, {}, 201);
+    
+    const { filterAllowedFields } = require('../utils/fieldMasker');
+    const safeLead = filterAllowedFields(lead, 'leads', req.user.field_permissions);
+
+    return success(res, safeLead, {}, 201);
   } catch (error) {
     if (error.message && (error.message.includes('VALIDATION_ERROR') || error.message === 'INVALID_STAGE')) {
       return fail(res, 'VALIDATION_ERROR', error.message, 400);
@@ -2555,13 +2561,12 @@ exports.getLeadsHandler = async function getLeadsHandler(req, res, next) {
     const { findLeads } = require('../repositories/leadRepository');
     const { maskSensitiveFields } = require('../utils/fieldMasker');
     
-    if (role !== 'superadmin' && role !== 'admin' && role !== 'manager' && role !== 'gm') {
-      req.query.assigneeId = userId;
-    }
-    
     const pool = require('../db/pool');
     await pool.query(`UPDATE leads SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL`);
     
+    // Apply data scope filter
+    req.query.scopeFilter = req.scopeFilter;
+
     const result = await findLeads(tenantId, req.query);
 
     const userPermissions = req.user && req.user.role === 'superadmin' ? ['*'] : (req.user && req.user.permissions ? req.user.permissions : []);
@@ -2572,7 +2577,11 @@ exports.getLeadsHandler = async function getLeadsHandler(req, res, next) {
       budget_max: 'leads:read_sensitive'
     };
 
-    const maskedData = maskSensitiveFields(result.data, userPermissions, LEAD_FIELD_PERMISSIONS);
+    let maskedData = maskSensitiveFields(result.data, userPermissions, LEAD_FIELD_PERMISSIONS);
+    
+    const { filterAllowedFields } = require('../utils/fieldMasker');
+    maskedData = filterAllowedFields(maskedData, 'leads', req.user.field_permissions);
+
     require('fs').writeFileSync('leads_dump.json', JSON.stringify(maskedData, null, 2));
     res.json({ success: true, data: maskedData, meta: { total: result.total, page: result.page, limit: result.limit } });
   } catch (error) {
@@ -2606,7 +2615,11 @@ exports.getLeadByIdHandler = async (req, res, next) => {
       budget_max: 'leads:read_sensitive'
     };
 
-    const maskedLead = maskSensitiveFields(lead, userPermissions, LEAD_FIELD_PERMISSIONS);
+    let maskedLead = maskSensitiveFields(lead, userPermissions, LEAD_FIELD_PERMISSIONS);
+    
+    const { filterAllowedFields } = require('../utils/fieldMasker');
+    maskedLead = filterAllowedFields(maskedLead, 'leads', req.user.field_permissions);
+
     res.json({ success: true, data: maskedLead });
   } catch (error) {
     next(error);
@@ -2617,8 +2630,14 @@ exports.updateLeadHandler = async (req, res, next) => {
     const { tenantId, userId } = getTenantAndUser(req);
     const leadId = req.params.id;
     const { updateLead } = require('../services/leads/updateLead');
-    const updatedLead = await updateLead({ tenantId, userId, leadId, data: req.body });
-    return success(res, updatedLead);
+    
+    const { stripUnauthorizedEdits, filterAllowedFields } = require('../utils/fieldMasker');
+    const data = stripUnauthorizedEdits(req.body, 'leads', req.user.field_permissions);
+
+    const updatedLead = await updateLead({ tenantId, userId, leadId, data });
+    
+    const safeLead = filterAllowedFields(updatedLead, 'leads', req.user.field_permissions);
+    return success(res, safeLead);
   } catch (error) {
     if (error.message && error.message.includes('NOT_FOUND')) return fail(res, 'NOT_FOUND', 'Lead not found', 404);
     if (error.code === 'STAGE_GATE_FAILED') return res.status(422).json({ success: false, error: { code: 'STAGE_GATE_FAILED', message: 'Missing mandatory fields', missing: error.missing } });

@@ -134,11 +134,20 @@ async function loginUser({ email, password, tenantId, ip, userAgent, trustedDevi
     // Fetch role name and permissions
     let roleName = null;
     let rolePermissions = [];
+    let enabledModules = [];
     if (user.role_id) {
       const roleResult = await pool.query('SELECT name, permissions FROM roles WHERE id = $1', [user.role_id]);
       if (roleResult.rows.length > 0) {
         roleName = roleResult.rows[0].name;
-        rolePermissions = roleResult.rows[0].permissions || [];
+        const p = typeof roleResult.rows[0].permissions === 'string' ? JSON.parse(roleResult.rows[0].permissions) : (roleResult.rows[0].permissions || []);
+        rolePermissions = Array.isArray(p) ? p : (p.actions || []);
+        enabledModules = Array.isArray(p) ? [] : (p.modules || []);
+        user.role = {
+          id: user.role_id,
+          name: roleName,
+          permissions: rolePermissions,
+          enabled_modules: enabledModules
+        };
       }
     }
 

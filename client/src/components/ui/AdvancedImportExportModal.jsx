@@ -2,11 +2,11 @@ import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { Modal, Button, Badge } from './index';
+import { Modal, Button, Badge, PermissionButton } from './index';
 import { useToast } from '../../store/toastContext';
 import api from '../../api/axios';
 
-const AdvancedImportExportModal = ({ isOpen, onClose, onSuccess, dataToExport = [] }) => {
+const AdvancedImportExportModal = ({ isOpen, onClose, onSuccess, dataToExport = [], module = 'users' }) => {
   const [activeTab, setActiveTab] = useState('import'); // 'import' or 'export'
   const [file, setFile] = useState(null);
   const [previewData, setPreviewData] = useState(null);
@@ -175,14 +175,16 @@ const AdvancedImportExportModal = ({ isOpen, onClose, onSuccess, dataToExport = 
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <Button variant="ghost" onClick={() => setPreviewData(null)}>Cancel</Button>
-                  <Button 
+                  <PermissionButton 
+                    module={module}
+                    action="import"
                     variant="primary" 
                     onClick={handleCommitImport} 
                     isLoading={isLoading}
                     disabled={previewData.validRows.length === 0}
                   >
                     Commit {previewData.validRows.length} Rows
-                  </Button>
+                  </PermissionButton>
                 </div>
               </div>
 
@@ -239,9 +241,9 @@ const AdvancedImportExportModal = ({ isOpen, onClose, onSuccess, dataToExport = 
             Export {dataToExport.length} selected record(s).
           </p>
           <div style={{ display: 'flex', gap: '12px' }}>
-            <Button onClick={handleExportCSV} style={{ flex: 1 }}>Export as CSV</Button>
-            <Button onClick={handleExportExcel} style={{ flex: 1, backgroundColor: '#217346', color: 'white', border: 'none' }}>Export as Excel</Button>
-            <Button onClick={handleExportPDF} style={{ flex: 1, backgroundColor: '#F40F02', color: 'white', border: 'none' }}>Export as PDF</Button>
+            <PermissionButton module={module} action="export_csv" onClick={handleExportCSV} style={{ flex: 1 }}>Export as CSV</PermissionButton>
+            <PermissionButton module={module} action="export_excel" onClick={handleExportExcel} style={{ flex: 1, backgroundColor: '#217346', color: 'white', border: 'none' }}>Export as Excel</PermissionButton>
+            <PermissionButton module={module} action="export_pdf" onClick={handleExportPDF} style={{ flex: 1, backgroundColor: '#F40F02', color: 'white', border: 'none' }}>Export as PDF</PermissionButton>
           </div>
         </div>
       )}

@@ -1,34 +1,59 @@
 /**
- * Utility to mask sensitive fields based on user permissions.
- * @param {Object|Array} data - The object or array of objects to mask
- * @param {Array<string>} userPermissions - The permissions array of the user
- * @param {Object} fieldPermissionMap - Mapping of fields to required permissions
- * @returns {Object|Array} The masked data
+ * Utility to enforce field-level permissions (Hidden, Read Only)
  */
-function maskSensitiveFields(data, userPermissions = [], fieldPermissionMap = {}) {
+
+/**
+ * Removes 'hidden' fields from outgoing API responses.
+ * @param {Object|Array} data - The object or array of objects to filter
+ * @param {string} moduleName - The module name (e.g., 'projects')
+ * @param {Object} userFieldPermissions - User's field permissions (e.g., req.user.field_permissions)
+ * @returns {Object|Array} The filtered data
+ */
+function filterAllowedFields(data, moduleName, userFieldPermissions = {}) {
   if (!data) return data;
 
-  const permissionsSet = new Set(userPermissions);
-  // Superadmin bypass
-  if (permissionsSet.has('*')) return data;
+  const modulePerms = userFieldPermissions[moduleName] || {};
 
-  const maskObject = (obj) => {
-    const maskedObj = { ...obj };
-    for (const [field, requiredPerm] of Object.entries(fieldPermissionMap)) {
-      if (maskedObj[field] !== undefined && !permissionsSet.has(requiredPerm)) {
-        maskedObj[field] = '*** MASKED ***';
+  const filterObject = (obj) => {
+    const filteredObj = { ...obj };
+    for (const [field, perm] of Object.entries(modulePerms)) {
+      if (perm === 'hidden') {
+        delete filteredObj[field];
       }
     }
-    return maskedObj;
+    return filteredObj;
   };
 
   if (Array.isArray(data)) {
-    return data.map(maskObject);
+    return data.map(filterObject);
   }
 
-  return maskObject(data);
+  return filterObject(data);
+}
+
+/**
+ * Strips 'read_only' and 'hidden' fields from incoming req.body payloads.
+ * @param {Object} body - The request body to sanitize
+ * @param {string} moduleName - The module name (e.g., 'projects')
+ * @param {Object} userFieldPermissions - User's field permissions
+ * @returns {Object} Sanitized body
+ */
+function stripUnauthorizedEdits(body, moduleName, userFieldPermissions = {}) {
+  if (!body) return body;
+
+  const modulePerms = userFieldPermissions[moduleName] || {};
+  const sanitizedBody = { ...body };
+
+  for (const [field, perm] of Object.entries(modulePerms)) {
+    if (perm === 'hidden' || perm === 'read_only') {
+      delete sanitizedBody[field];
+    }
+  }
+
+  return sanitizedBody;
 }
 
 module.exports = {
-  maskSensitiveFields
+  filterAllowedFields,
+  stripUnauthorizedEdits
 };

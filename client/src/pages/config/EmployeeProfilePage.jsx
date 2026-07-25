@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
 import { useToast } from '../../store/toastContext'
-import { Button, Input, Select, Badge, Modal, Textarea } from '../../components/ui'
+import { Button, Input, Select, Badge, Modal, Textarea, PermissionButton } from '../../components/ui'
 import { format } from 'date-fns'
 
 const SECTIONS = [
@@ -98,9 +98,9 @@ export default function EmployeeProfilePage({ userId, onBack }) {
   }
 
   const handleRevokeSession = async (sessionId) => {
-    if (!window.confirm('Are you sure you want to revoke this active session? The user will be immediately logged out.')) return;
+    if (!window.confirm('WARNING: Are you sure you want to forcefully revoke this active session? The user will be immediately logged out.')) return;
     try {
-      await api.delete(`/login-history/sessions/${sessionId}`);
+      await api.delete(`/sessions/force-logout/${sessionId}`);
       toast.success('Session revoked successfully');
       fetchSessions();
       fetchLoginHistory();
@@ -356,9 +356,9 @@ export default function EmployeeProfilePage({ userId, onBack }) {
                         </td>
                         <td style={{ padding: '12px 8px' }}>
                           {lh.status === 'success' && !lh.logout_time && lh.active_session_id && (
-                            <Button variant="danger" size="small" onClick={() => handleRevokeSession(lh.active_session_id)}>
+                            <PermissionButton permission="users:force_logout" variant="danger" size="small" onClick={() => handleRevokeSession(lh.active_session_id)}>
                               Revoke
-                            </Button>
+                            </PermissionButton>
                           )}
                         </td>
                       </tr>
@@ -399,9 +399,9 @@ export default function EmployeeProfilePage({ userId, onBack }) {
                         </td>
                         <td style={{ padding: '12px 8px' }}>
                           {new Date(s.expires_at) > new Date() && (
-                            <Button variant="danger" size="small" onClick={() => handleRevokeSession(s.id)}>
+                            <PermissionButton permission="users:force_logout" variant="danger" size="small" onClick={() => handleRevokeSession(s.id)}>
                               Revoke
-                            </Button>
+                            </PermissionButton>
                           )}
                         </td>
                       </tr>

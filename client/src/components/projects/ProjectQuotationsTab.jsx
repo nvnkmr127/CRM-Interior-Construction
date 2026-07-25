@@ -1,6 +1,9 @@
 /* eslint-disable no-unused-vars, react-hooks/immutability, react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from 'react';
 import { Button, Badge, Modal, Input, Textarea, EmptyState, Spinner } from '../ui';
+import { ApprovalBadge } from '../ui';
+import PermissionButton from '../ui/PermissionButton';
+import { ApprovalActions, ApprovalHistory } from '../approvals';
 import { useToast } from '../../store/toastContext';
 import styles from './ProjectQuotationsTab.module.css';
 import {
@@ -761,7 +764,7 @@ export default function ProjectQuotationsTab({ projectId }) {
                 <h3>Quotation Number: {activeQuotation.quotation_number}</h3>
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginTop: '4px' }}>
                   <span className="text-xs text-gray-500">
-                    Version {activeQuotation.version} &bull; Status: <strong className="text-capitalize">{activeQuotation.status}</strong>
+                    Version {activeQuotation.version} &bull; Status: <strong className="text-capitalize">{activeQuotation.status}</strong> &bull; <ApprovalBadge status={activeQuotation.approval_status} />
                   </span>
                   {activeQuotation.status === 'draft' ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '8px' }}>
@@ -830,50 +833,61 @@ export default function ProjectQuotationsTab({ projectId }) {
                 </div>
               </div>
               <div className={styles.detailActions}>
+                <ApprovalActions 
+                  module="quotations" 
+                  id={activeQuotation.id} 
+                  status={activeQuotation.approval_status} 
+                  onActionComplete={() => fetchQuotations(activeQuotation.id)} 
+                />
                 {activeQuotation.status === 'draft' && (
                   <>
-                    <Button 
+                    <PermissionButton 
+                      permission="boq:edit"
                       variant="outline" 
                       size="sm" 
                       onClick={() => setEditMode(!editMode)}
                     >
                       {editMode ? 'Finish Editing' : 'Edit BOQ Items'}
-                    </Button>
-                    <Button 
+                    </PermissionButton>
+                    <PermissionButton 
+                      permission="quotations:edit"
                       variant="outline" 
                       size="sm" 
                       onClick={handleSend}
                     >
                       Mark as Sent
-                    </Button>
+                    </PermissionButton>
                   </>
                 )}
                 {activeQuotation.status === 'sent' && (
                   <>
-                    <Button 
+                    <PermissionButton 
+                      permission="quotations:approve"
                       variant="primary" 
                       size="sm" 
                       onClick={handleAccept}
                     >
                       Client Accept
-                    </Button>
-                    <Button 
+                    </PermissionButton>
+                    <PermissionButton 
+                      permission="quotations:approve"
                       variant="outline" 
                       size="sm" 
                       onClick={handleReject}
                       style={{ color: 'red', borderColor: 'red' }}
                     >
                       Reject
-                    </Button>
+                    </PermissionButton>
                   </>
                 )}
-                <Button 
+                <PermissionButton 
+                  permission="boq:edit"
                   variant="primary" 
                   size="sm" 
                   onClick={() => setShowReviseModal(true)}
                 >
                   Revise (New Version)
-                </Button>
+                </PermissionButton>
               </div>
             </div>
 
@@ -891,6 +905,14 @@ export default function ProjectQuotationsTab({ projectId }) {
               </div>
             )}
 
+            {/* Approval History */}
+            {activeQuotation.id && (
+              <div style={{ marginTop: '16px', marginBottom: '16px', padding: '16px', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>Approval Timeline</h4>
+                <ApprovalHistory module="quotations" id={activeQuotation.id} />
+              </div>
+            )}
+
             {/* BOQ Items Listing */}
             {itemsLoading ? (
               <div className={styles.loadingState}>
@@ -901,14 +923,15 @@ export default function ProjectQuotationsTab({ projectId }) {
               <div className={styles.emptyState}>
                 <p className="text-sm text-gray-500 italic">This version has no items in the Bill of Quantities yet.</p>
                 {activeQuotation.status === 'draft' && (
-                  <Button 
+                  <PermissionButton 
+                    permission="boq:create"
                     variant="primary" 
                     size="sm" 
                     className="mt-3"
                     onClick={() => setShowAddItem(true)}
                   >
                     + Add First BOQ Item
-                  </Button>
+                  </PermissionButton>
                 )}
               </div>
             ) : (

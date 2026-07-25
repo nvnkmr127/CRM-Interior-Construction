@@ -145,7 +145,7 @@ async function findLeadById(tenantId, leadId) {
   return result.rows[0] || null;
 }
 
-async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy, sortDesc, page = 1, limit = 20, createdFrom, createdTo, scoreMin, scoreMax, intent, cursor }) {
+async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy, sortDesc, page = 1, limit = 20, createdFrom, createdTo, scoreMin, scoreMax, intent, cursor, scopeFilter = '1=1' }) {
   let query = `
     SELECT l.*,
            u.name AS assignee_name, u.avatar_url AS assignee_avatar,
@@ -207,7 +207,7 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
       ORDER BY a.scheduled_at ASC
       LIMIT 1
     ) AS next_mtg ON true
-    WHERE l.tenant_id = $1 AND l.deleted_at IS NULL
+    WHERE l.tenant_id = $1 AND l.deleted_at IS NULL AND (${scopeFilter})
   `;
   
   const values = [tenantId];

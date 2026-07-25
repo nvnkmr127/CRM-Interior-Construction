@@ -5,13 +5,20 @@ import styles from './Sidebar.module.css'
 
 const NAV_ITEMS = [
   { group: 'WORKSPACE', items: [
-    { to: '/dashboard',  icon: '⊞', label: 'Dashboard' },
-    { to: '/leads',      icon: '◎', label: 'Leads' },
-    { to: '/projects', icon: '◈', label: 'Projects' },
-    { to: '/tasks',      icon: '◻', label: 'My Tasks' },
+    { label: 'Dashboards', icon: '⊞', module: 'dashboards', subItems: [
+        { to: '/dashboard/sales', icon: '📈', label: 'Sales Dashboard', permission: 'dashboards:view_sales_dashboard' },
+        { to: '/dashboard/project', icon: '🏗️', label: 'Project Dashboard', permission: 'dashboards:view_project_dashboard' },
+        { to: '/dashboard/finance', icon: '💰', label: 'Finance Dashboard', permission: 'dashboards:view_finance_dashboard' },
+        { to: '/dashboard/factory', icon: '🏭', label: 'Factory Dashboard', permission: 'dashboards:view_factory_dashboard' },
+        { to: '/dashboard/warehouse', icon: '📦', label: 'Warehouse Dashboard', permission: 'dashboards:view_warehouse_dashboard' },
+        { to: '/dashboard/management', icon: '👑', label: 'Management Dashboard', permission: 'dashboards:view_management_dashboard' },
+    ]},
+    { to: '/leads',      icon: '◎', label: 'Leads', module: 'leads' },
+    { to: '/projects', icon: '◈', label: 'Projects', module: 'projects' },
+    { to: '/tasks',      icon: '◻', label: 'My Tasks', module: 'tasks' },
   ]},
   { group: 'OPERATIONS', items: [
-    { label: 'Project Operations', icon: '⚙️', subItems: [
+    { label: 'Project Operations', icon: '⚙️', module: 'projects', subItems: [
         { to: '/projects/resources', icon: '👥', label: 'Resource Capacity' },
         { to: '/projects/absences', icon: '🌴', label: 'Absence Management' },
         { to: '/projects/coordination', icon: '🔄', label: 'Production Coordination' },
@@ -20,38 +27,41 @@ const NAV_ITEMS = [
     ]},
   ]},
   { group: 'ANALYTICS', items: [
-    { to: '/analytics/leads',    icon: '▲', label: 'Lead Analytics' },
-    { label: 'Project Analytics', icon: '◉', subItems: [
+    { to: '/analytics/leads',    icon: '▲', label: 'Lead Analytics', module: 'analytics', permission: 'analytics:view_lead_analytics' },
+    { label: 'Project Analytics', icon: '◉', module: 'analytics', permission: 'analytics:view_project_analytics', subItems: [
         { to: '/analytics/projects', icon: '◉', label: 'Project Health' },
         { to: '/analytics/boq-variance', icon: '📊', label: 'BOQ Variance' },
         { to: '/analytics/profitability', icon: '💎', label: 'Project Profitability' },
     ]},
-    { label: 'Resource Analytics', icon: '👤', subItems: [
+    { label: 'Resource Analytics', icon: '👤', module: 'analytics', subItems: [
         { to: '/analytics/resources', icon: '👤', label: 'Resource Utilisation' },
         { to: '/analytics/resource-workload', icon: '👥', label: 'Resource Workload' },
     ]},
-    { label: 'Vendor Analytics', icon: '🤝', subItems: [
+    { label: 'Vendor Analytics', icon: '🤝', module: 'analytics', subItems: [
         { to: '/analytics/vendors', icon: '🤝', label: 'Vendor Performance' },
         { to: '/analytics/vendors-capacity', icon: '⚖️', label: 'Vendor Capacity' },
     ]},
-    { to: '/analytics/collection-forecast', icon: '📈', label: 'Collection Forecast' },
-    { to: '/analytics/csat', icon: '⭐', label: 'Client Satisfaction' },
+    { to: '/analytics/collection-forecast', icon: '📈', label: 'Finance Analytics', module: 'analytics', permission: 'analytics:view_finance_analytics' },
+    { to: '/analytics/inventory', icon: '📦', label: 'Inventory Analytics', module: 'analytics', permission: 'analytics:view_inventory_analytics' },
+    { to: '/analytics/csat', icon: '⭐', label: 'Client Satisfaction', module: 'analytics' },
   ]},
-  { group: 'TEAM', adminOnly: true, items: [
-    { to: '/team/members', icon: '◉', label: 'Team Members' },
-    { to: '/team/roles', icon: '🔑', label: 'Roles & Permissions' },
-    { to: '/settings/audit-trail', icon: '📜', label: 'Audit Trail' }
+  { group: 'TEAM & ACCESS', adminOnly: true, items: [
+    { label: 'Team Management', icon: '👥', module: 'settings', subItems: [
+        { to: '/team/members', icon: '◉', label: 'Team Members' },
+        { to: '/team/roles', icon: '🔑', label: 'Roles & Permissions' },
+    ]},
+    { to: '/settings/audit-trail', icon: '📜', label: 'Audit Trail', module: 'settings' }
   ]},
   { group: 'ADMIN', adminOnly: true, items: [
-    { to: '/config',     icon: '⊙', label: 'Config Centre' }
+    { to: '/config',     icon: '⊙', label: 'Config Centre', module: 'settings' }
   ]},
   { group: 'FINANCE', financeOnly: true, items: [
-    { to: '/financial-approvals', icon: '📝', label: 'Financial Approvals' }
+    { to: '/financial-approvals', icon: '📝', label: 'Financial Approvals', module: 'finance' }
   ]},
   { group: 'DEVELOPER', items: [
-    { to: '/developer/webhooks', icon: '🪝', label: 'Webhooks' },
-    { to: '/developer/api', icon: '🔌', label: 'API Integration' },
-    { to: '/leads/forms', icon: '📝', label: 'Lead Forms' }
+    { to: '/developer/webhooks', icon: '🪝', label: 'Webhooks', module: 'settings' },
+    { to: '/developer/api', icon: '🔌', label: 'API Integration', module: 'settings' },
+    { to: '/leads/forms', icon: '📝', label: 'Lead Forms', module: 'leads' }
   ]}
 ]
 
@@ -132,10 +142,35 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
         {NAV_ITEMS.map(group => {
           if (group.adminOnly && !isAdmin) return null
           if (group.financeOnly && !hasFinancePermission) return null
+
+          const filterItem = (item) => {
+            if (isAdmin) return true;
+            if (item.permission) {
+              const [mod] = item.permission.split(':');
+              return user?.role?.permissions?.includes(item.permission) || user?.role?.permissions?.includes(`${mod}:*`);
+            }
+            if (item.module) {
+              return user?.role?.enabled_modules?.includes(item.module);
+            }
+            return true;
+          };
+
+          const visibleItems = group.items.map(item => {
+            if (item.subItems) {
+              return { ...item, subItems: item.subItems.filter(filterItem) };
+            }
+            return item;
+          }).filter(item => {
+            if (item.subItems && item.subItems.length === 0) return false;
+            return filterItem(item);
+          });
+
+          if (visibleItems.length === 0) return null;
+
           return (
             <div key={group.group} className={styles.navGroup}>
               {!collapsed && <span className={styles.groupLabel}>{group.group}</span>}
-              {group.items.map((item, i) => (
+              {visibleItems.map((item, i) => (
                   <NavItem key={item.to || item.label || i} item={item} collapsed={collapsed} onClose={onClose} />
               ))}
             </div>

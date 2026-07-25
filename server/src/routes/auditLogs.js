@@ -100,7 +100,7 @@ router.get('/', checkAuditAccess, async (req, res, next) => {
 });
 
 // GET /api/audit-logs/export
-router.get('/export', checkAuditAccess, async (req, res, next) => {
+router.get('/export', _authorize('settings:export_csv'), async (req, res, next) => {
   try {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
     if (!tenantId) return fail(res, 'UNAUTHORIZED', 'Tenant context missing', 401);

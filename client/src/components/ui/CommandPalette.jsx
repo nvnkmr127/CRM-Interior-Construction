@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { useAuth } from '../../store/authContext';
+
 const COMMANDS = [
-  { id: 'nav-dashboard', title: 'Go to Dashboard', icon: '📊', path: '/dashboard' },
-  { id: 'nav-leads', title: 'Go to Leads', icon: '👥', path: '/leads' },
-  { id: 'nav-projects', title: 'Go to Projects', icon: '🏗️', path: '/projects' },
-  { id: 'nav-tasks', title: 'My Tasks', icon: '✅', path: '/tasks' },
-  { id: 'nav-analytics', title: 'Lead Analytics', icon: '📈', path: '/analytics/leads' },
-  { id: 'nav-settings', title: 'Preferences', icon: '⚙️', path: '/settings/preferences' },
-  { id: 'action-new-lead', title: 'Create New Lead', icon: '✨', action: 'CREATE_LEAD' },
+  { id: 'nav-dashboard', title: 'Go to Dashboard', icon: '📊', path: '/dashboard', module: 'dashboard' },
+  { id: 'nav-leads', title: 'Go to Leads', icon: '👥', path: '/leads', module: 'leads' },
+  { id: 'nav-projects', title: 'Go to Projects', icon: '🏗️', path: '/projects', module: 'projects' },
+  { id: 'nav-tasks', title: 'My Tasks', icon: '✅', path: '/tasks', module: 'tasks' },
+  { id: 'nav-analytics', title: 'Lead Analytics', icon: '📈', path: '/analytics/leads', module: 'analytics' },
+  { id: 'nav-settings', title: 'Preferences', icon: '⚙️', path: '/settings/preferences', module: 'settings' },
+  { id: 'action-new-lead', title: 'Create New Lead', icon: '✨', action: 'CREATE_LEAD', module: 'leads' },
 ];
 
 export default function CommandPalette() {
@@ -40,9 +42,14 @@ export default function CommandPalette() {
     }
   }, [isOpen]);
 
-  const filteredCommands = COMMANDS.filter(cmd => 
-    cmd.title.toLowerCase().includes(query.toLowerCase())
-  );
+  const { user } = useAuth();
+  const isAdmin = user?.role?.name === 'superadmin';
+  const enabledModules = user?.role?.enabled_modules || [];
+
+  const filteredCommands = COMMANDS.filter(cmd => {
+    if (cmd.module && !isAdmin && !enabledModules.includes(cmd.module)) return false;
+    return cmd.title.toLowerCase().includes(query.toLowerCase());
+  });
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

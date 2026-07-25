@@ -2,6 +2,7 @@ const express = require('express');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const validate = require('../middleware/validate');
+const dataScope = require('../middleware/dataScope');
 const { createLeadSchema, logActivitySchema } = require('../validators/leadValidators');
 const leadController = require('../controllers/leadController');
 const aiRateLimiter = require('../middleware/aiRateLimiter');
@@ -9,7 +10,7 @@ const aiRateLimiter = require('../middleware/aiRateLimiter');
 const router = express.Router();
 
 router.post('/', authenticate, authorize('leads:create'), validate(createLeadSchema), leadController.createLeadHandler);
-router.get('/', authenticate, authorize('leads:read'), leadController.getLeadsHandler);
+router.get('/', authenticate, authorize('leads:read'), dataScope('leads', 'assignee_id', 'l'), leadController.getLeadsHandler);
 router.get('/stats', authenticate, authorize('leads:read'), leadController.getLeadStatsHandler);
 router.post('/public', leadController.createPublicLeadHandler);
 router.get('/check-duplicate', leadController.checkDuplicateHandler);
@@ -28,8 +29,8 @@ router.get('/manager/predictive-revenue', authenticate, requireRole(['manager', 
 router.get('/manager/heat-map', authenticate, requireRole(['manager', 'gm']), managerController.getHeatMapData);
 router.post('/manager/approvals/:id/decide', authenticate, requireRole(['manager', 'gm']), managerController.decideApproval);
 
-router.get('/export', authenticate, authorize('leads:read'), leadController.exportLeadsHandler);
-router.post('/import', authenticate, authorize('leads:create'), leadController.importLeadsHandler);
+router.get('/export', authenticate, authorize('leads:export_csv'), leadController.exportLeadsHandler);
+router.post('/import', authenticate, authorize('leads:import'), leadController.importLeadsHandler);
 
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });

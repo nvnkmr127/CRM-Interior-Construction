@@ -302,7 +302,7 @@ router.get('/:id/tasks', async (req, res) => {
 });
 
 // Get User Sessions (Login History & Devices)
-router.get('/:id/sessions', async (req, res) => {
+router.get('/:id/sessions', authorize('users:view_login_history'), async (req, res) => {
   const tenantId = req.tenantId;
   const userId = req.params.id;
   try {
@@ -319,7 +319,7 @@ router.get('/:id/sessions', async (req, res) => {
 });
 
 // Get User Login History
-router.get('/:id/login-history', async (req, res) => {
+router.get('/:id/login-history', authorize('users:view_login_history'), async (req, res) => {
   const tenantId = req.tenantId;
   const userId = req.params.id;
   try {
@@ -465,11 +465,15 @@ router.get('/:id/audit', async (req, res) => {
   }
 });
 
-router.patch('/:id', authorize('users:manage'), async (req, res) => {
+router.patch('/:id', authenticate, async (req, res) => {
   const tenantId = req.tenantId;
   const userIdToUpdate = req.params.id;
   const reviewerId = req.user.userId;
-  const { name, roleId, status, status_reason, avatar_url, weekly_capacity } = req.body;
+  const { name, roleId, status, status_reason, avatar_url, weekly_capacity, departmentId } = req.body;
+
+  const permissions = req.user.permissions || [];
+  const isAdmin = req.user.role === 'superadmin';
+  const hasPerm = (p) => isAdmin || permissions.includes(p) || permissions.includes('*') || permissions.includes('users:*') || permissions.includes('users:manage');
 
   try {
     const { rows: currentUserRows } = await pool.query('SELECT status FROM users WHERE id=$1 AND tenant_id=$2', [userIdToUpdate, tenantId]);
@@ -478,6 +482,12 @@ router.patch('/:id', authorize('users:manage'), async (req, res) => {
     const oldStatus = currentUserRows[0].status;
 
     if (status && status !== oldStatus) {
+      if (['active', 'probation', 'onboarding'].includes(status) && !hasPerm('users:activate_user')) {
+        return fail(res, 'FORBIDDEN', 'Insufficient permissions to activate user', 403);
+      }
+      if (['inactive', 'suspended', 'locked', 'terminated'].includes(status) && !hasPerm('users:deactivate_user')) {
+        return fail(res, 'FORBIDDEN', 'Insufficient permissions to deactivate user', 403);
+      }
       const allowed = VALID_TRANSITIONS[oldStatus] || [];
       if (!allowed.includes(status)) {
         return fail(res, 'VALIDATION_ERROR', `Invalid status transition from '${oldStatus}' to '${status}'`, 400);
@@ -492,8 +502,14 @@ router.patch('/:id', authorize('users:manage'), async (req, res) => {
       updates.push(`name = $${params.length}`);
     }
     if (roleId) {
+      if (!hasPerm('users:assign_roles')) return fail(res, 'FORBIDDEN', 'Insufficient permissions to assign roles', 403);
       params.push(roleId);
       updates.push(`role_id = $${params.length}`);
+    }
+    if (departmentId) {
+      if (!hasPerm('users:change_department')) return fail(res, 'FORBIDDEN', 'Insufficient permissions to change department', 403);
+      params.push(departmentId);
+      updates.push(`department_id = $${params.length}`);
     }
     if (status) {
       params.push(status);
@@ -554,7 +570,7 @@ router.patch('/:id', authorize('users:manage'), async (req, res) => {
   }
 });
 
-router.post('/add-member', authorize('users:manage'), async (req, res) => {
+router.post('/add-member', authorize('users:invite_user'), async (req, res) => {
   const tenantId = req.tenantId;
   const { name, email, roleId, ...profile_data } = req.body;
 
@@ -595,7 +611,7 @@ router.post('/add-member', authorize('users:manage'), async (req, res) => {
   }
 });
 
-router.delete('/:id', authorize('users:manage'), async (req, res) => {
+router.delete('/:id', authorize('users:delete_user'), async (req, res) => {
   const tenantId = req.tenantId;
   const userIdToDelete = req.params.id;
 
@@ -617,7 +633,7 @@ router.delete('/:id', authorize('users:manage'), async (req, res) => {
   }
 });
 
-router.post('/:id/approve', authorize('users:manage'), async (req, res) => {
+router.post('/:id/approve', authorize('users:activate_user'), async (req, res) => {
   const tenantId = req.tenantId;
   const userId = req.params.id;
   const reviewerId = req.user.userId;
@@ -663,7 +679,7 @@ router.post('/:id/approve', authorize('users:manage'), async (req, res) => {
   }
 });
 
-router.post('/:id/reject', authorize('users:manage'), async (req, res) => {
+router.post('/:id/reject', authorize('users:activate_user'), async (req, res) => {
   const tenantId = req.tenantId;
   const userId = req.params.id;
   const reviewerId = req.user.userId;
@@ -693,7 +709,7 @@ router.post('/:id/reject', authorize('users:manage'), async (req, res) => {
   }
 });
 
-router.post('/:id/request-changes', authorize('users:manage'), async (req, res) => {
+router.post('/:id/request-changes', authorize('users:activate_user'), async (req, res) => {
   const tenantId = req.tenantId;
   const userId = req.params.id;
   const reviewerId = req.user.userId;
@@ -722,7 +738,7 @@ router.post('/:id/request-changes', authorize('users:manage'), async (req, res) 
   }
 });
 
-router.get('/:id/approval-history', authorize('users:manage'), async (req, res) => {
+router.get('/:id/approval-history', authenticate, async (req, res) => {
   const tenantId = req.tenantId;
   const userId = req.params.id;
 
@@ -741,7 +757,7 @@ router.get('/:id/approval-history', authorize('users:manage'), async (req, res) 
   }
 });
 
-router.get('/:id/status-history', authorize('users:manage'), async (req, res) => {
+router.get('/:id/status-history', authenticate, async (req, res) => {
   const tenantId = req.tenantId;
   const userId = req.params.id;
 
@@ -757,6 +773,34 @@ router.get('/:id/status-history', authorize('users:manage'), async (req, res) =>
     return success(res, rows);
   } catch (error) {
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch status history', 500);
+  }
+});
+
+router.post('/:id/reset-password', authorize('users:reset_password'), async (req, res) => {
+  const tenantId = req.tenantId;
+  const userId = req.params.id;
+
+  try {
+    const { rows } = await pool.query(`SELECT email, name FROM users WHERE id=$1 AND tenant_id=$2`, [userId, tenantId]);
+    if (rows.length === 0) return fail(res, 'NOT_FOUND', 'User not found', 404);
+
+    const tempPasswordPlain = crypto.randomBytes(8).toString('hex') + '!A';
+    const tempPasswordHash = await bcrypt.hash(tempPasswordPlain, 10);
+
+    await pool.query(
+      `UPDATE users SET password_hash = $1 WHERE id = $2 AND tenant_id = $3`,
+      [tempPasswordHash, userId, tenantId]
+    );
+
+    const setupUrl = `http://localhost:5173/set-password?token=${tempPasswordPlain}`;
+    queueEmail(tenantId, userId, rows[0].email, 'Password Reset', 'create_password', { name: rows[0].name, email: rows[0].email, setupUrl });
+
+    const { logAction } = require('../services/auditLog');
+    await logAction({ tenantId, userId: req.user.userId, action: 'user.password_reset', entity: 'user', entityId: userId });
+
+    return success(res, { message: 'Password reset instructions sent' });
+  } catch (error) {
+    return fail(res, 'INTERNAL_ERROR', 'Failed to reset password', 500);
   }
 });
 

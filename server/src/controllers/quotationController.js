@@ -1,4 +1,5 @@
 const quotationService = require('../services/projects/quotationService');
+const { stripUnauthorizedEdits, filterAllowedFields } = require('../utils/fieldMasker');
 
 const getTenantId = (req) => req.tenantId || (req.tenant ? req.tenant.id : null);
 const getUserId = (req) => req.user ? req.user.id : null;
@@ -8,8 +9,10 @@ exports.createQuotation = async (req, res, next) => {
     const tenantId = getTenantId(req);
     const userId = getUserId(req);
     const { projectId } = req.params;
-    const data = { ...req.body, createdBy: userId, projectId: projectId || req.body.projectId };
-    const quotation = await quotationService.createQuotation(tenantId, data);
+    let data = { ...req.body, createdBy: userId, projectId: projectId || req.body.projectId };
+    data = stripUnauthorizedEdits(data, req.user, 'quotations');
+    let quotation = await quotationService.createQuotation(tenantId, data);
+    quotation = filterAllowedFields(quotation, req.user, 'quotations');
     res.status(201).json({ success: true, data: quotation });
   } catch (error) {
     next(error);
@@ -19,10 +22,11 @@ exports.createQuotation = async (req, res, next) => {
 exports.getQuotation = async (req, res, next) => {
   try {
     const tenantId = getTenantId(req);
-    const quotation = await quotationService.getQuotationWithItems(tenantId, req.params.id);
+    let quotation = await quotationService.getQuotationWithItems(tenantId, req.params.id);
     if (!quotation) {
       return res.status(404).json({ success: false, message: 'Quotation not found' });
     }
+    quotation = filterAllowedFields(quotation, req.user, 'quotations');
     res.status(200).json({ success: true, data: quotation });
   } catch (error) {
     next(error);
@@ -33,7 +37,8 @@ exports.getProjectQuotations = async (req, res, next) => {
   try {
     const tenantId = getTenantId(req);
     const { projectId } = req.params;
-    const quotations = await quotationService.getQuotationsByProjectId(tenantId, projectId);
+    let quotations = await quotationService.getQuotationsByProjectId(tenantId, projectId);
+    quotations = quotations.map(q => filterAllowedFields(q, req.user, 'quotations'));
     res.status(200).json({ success: true, data: quotations });
   } catch (error) {
     next(error);
@@ -165,10 +170,13 @@ exports.updateQuotation = async (req, res, next) => {
       }
     }
 
-    const quotation = await quotationService.updateQuotation(tenantId, id, req.body, userId);
+    let bodyData = stripUnauthorizedEdits(req.body, req.user, 'quotations');
+
+    let quotation = await quotationService.updateQuotation(tenantId, id, bodyData, userId);
     if (!quotation) {
       return res.status(404).json({ success: false, message: 'Quotation not found' });
     }
+    quotation = filterAllowedFields(quotation, req.user, 'quotations');
     res.status(200).json({ success: true, data: quotation });
   } catch (error) {
     next(error);

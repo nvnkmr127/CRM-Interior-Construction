@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import api from '../../api/axios'
+import { useAuth } from '../../store/authContext'
 import styles from './GlobalSearch.module.css'
 
 export default function GlobalSearch({ isOpen, onClose }) {
@@ -13,6 +14,12 @@ export default function GlobalSearch({ isOpen, onClose }) {
   
   const inputRef = useRef(null)
   const navigate = useNavigate()
+  
+  const { user } = useAuth()
+  const isAdmin = user?.role?.name === 'superadmin'
+  const enabledModules = user?.role?.enabled_modules || []
+  
+  const canSearch = (moduleName) => isAdmin || enabledModules.includes(moduleName)
 
   useEffect(() => {
     if (isOpen) {
@@ -27,9 +34,20 @@ export default function GlobalSearch({ isOpen, onClose }) {
       setResults({ leads:[], projects:[], tasks:[] })
       return
     }
+
+    const searchTypes = []
+    if (canSearch('leads')) searchTypes.push('leads')
+    if (canSearch('projects')) searchTypes.push('projects')
+    if (canSearch('tasks')) searchTypes.push('tasks')
+    
+    if (searchTypes.length === 0) {
+      setResults({ leads:[], projects:[], tasks:[] })
+      return
+    }
+
     const timer = setTimeout(() => {
       setLoading(true)
-      api.get(`/search?q=${encodeURIComponent(query)}&types=leads,projects,tasks`)
+      api.get(`/search?q=${encodeURIComponent(query)}&types=${searchTypes.join(',')}`)
         .then(r => {
           const data = r.data || {}
           setResults({

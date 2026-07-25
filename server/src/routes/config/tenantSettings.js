@@ -33,6 +33,16 @@ router.patch('/', authorize('config:manage'), async (req, res, next) => {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
     if (!tenantId) return fail(res, 'UNAUTHORIZED', 'Tenant context missing', 401);
 
+    // Enterprise Finance Validations
+    const perms = req.user.permissions || [];
+    const isSuper = perms.includes('*');
+    if (req.body.gst_settings && !isSuper && !perms.includes('finance:manage_gst')) {
+      return fail(res, 'FORBIDDEN', 'Lacks finance:manage_gst permission', 403);
+    }
+    if (req.body.tax_settings && !isSuper && !perms.includes('finance:manage_taxes')) {
+      return fail(res, 'FORBIDDEN', 'Lacks finance:manage_taxes permission', 403);
+    }
+
     // Get current config
     const result = await pool.query('SELECT config FROM tenants WHERE id = $1', [tenantId]);
     if (result.rows.length === 0) {

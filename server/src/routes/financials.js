@@ -48,7 +48,7 @@ router.get('/projects/:projectId/credit-notes', authorize('projects:read'), asyn
 });
 
 // POST /api/financials/credit-notes
-router.post('/credit-notes', authorize('finance:credits'), validate(createCreditNoteSchema), async (req, res, next) => {
+router.post('/credit-notes', authorize('payments:refund'), validate(createCreditNoteSchema), async (req, res, next) => {
   try {
     const data  = req.body;
     const creditNote = await createCreditNote({
@@ -64,7 +64,7 @@ router.post('/credit-notes', authorize('finance:credits'), validate(createCredit
 });
 
 // GET /api/financials/projects/:projectId/refunds
-router.get('/projects/:projectId/refunds', authorize('projects:read'), async (req, res, next) => {
+router.get('/projects/:projectId/refunds', authorize('payments:view'), async (req, res, next) => {
   try {
     const refunds = await getRefunds(req.tenantId, req.params.projectId);
     return success(res, refunds);
@@ -74,7 +74,7 @@ router.get('/projects/:projectId/refunds', authorize('projects:read'), async (re
 });
 
 // POST /api/financials/refunds
-router.post('/refunds', authorize('finance:credits'), validate(createRefundSchema), async (req, res, next) => {
+router.post('/refunds', authorize('payments:refund'), validate(createRefundSchema), async (req, res, next) => {
   try {
     const data  = req.body;
     const refund = await createRefund({

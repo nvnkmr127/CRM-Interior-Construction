@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
-import { Button } from '../../components/ui';
+import { Button, PermissionButton } from '../../components/ui';
 
 function DiffViewer({ oldValue, newValue }) {
   let oldObj = {};
@@ -217,14 +217,16 @@ export default function AuditTrailPage() {
           <p className="mt-2 text-sm text-gray-500">Track and monitor security modifications, user actions, and status updates.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button
+          <PermissionButton
+            module="settings"
+            action="export_csv"
             onClick={handleExport}
             disabled={exporting || logs.length === 0}
             variant="outline"
             className="flex items-center gap-2 border-gray-250 hover:bg-gray-50 font-medium"
           >
             {exporting ? 'Exporting...' : 'Export to CSV'}
-          </Button>
+          </PermissionButton>
         </div>
       </div>
 

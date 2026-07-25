@@ -3,9 +3,11 @@ const { z } = require('zod');
 const { success, fail, paginate } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
+const dataScope = require('../middleware/dataScope');
 const pool = require('../config/db');
 const validate = require('../middleware/validate');
 const taskRepository = require('../repositories/taskRepository');
+const { stripUnauthorizedEdits, filterAllowedFields } = require('../utils/fieldMasker');
 const { createTask } = require('../services/tasks/createTask');
 const { updateTask } = require('../services/tasks/updateTask');
 const { bulkCreateTasks } = require('../services/tasks/bulkCreateTask');
@@ -55,7 +57,7 @@ const commentSchema = z.object({
 });
 
 // GET /api/projects/:projectId/tasks
-router.get('/', authorize('projects:read'), async (req, res, next) => {
+router.get('/', authorize('projects:read'), dataScope('tasks', 'assignee_id', 't'), async (req, res, next) => {
   try {
     const { milestoneId, assigneeId, status, priority, page, limit, allTasks } = req.query;
     
@@ -71,10 +73,13 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
       priority,
       page: parsedPage,
       limit: parsedLimit,
-      allTasks: allTasks === 'true'
+      allTasks: allTasks === 'true',
+      scopeFilter: req.scopeFilter
     });
 
-    return paginate(res, result.data, result.total, result.page, result.limit);
+    const maskedData = result.data.map(task => filterAllowedFields(task, req.user, 'tasks'));
+
+    return paginate(res, maskedData, result.total, result.page, result.limit);
   } catch (err) {
     console.error('[Tasks Router] List error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch tasks.', 500);
@@ -84,10 +89,12 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
 // POST /api/projects/:projectId/tasks
 router.post('/', authorize('projects:manage'), validate(createTaskSchema), async (req, res, next) => {
   try {
-    const data = req.body;
+    let data = req.body;
+    data = stripUnauthorizedEdits(data, req.user, 'tasks');
     data.projectId = req.params.projectId;
 
-    const task = await createTask({ tenantId: req.tenantId, userId: req.user.userId, data });
+    let task = await createTask({ tenantId: req.tenantId, userId: req.user.userId, data });
+    task = filterAllowedFields(task, req.user, 'tasks');
     return success(res, task, {}, 201);
   } catch (err) {
     if (err.status === 400) return fail(res, err.code || 'BAD_REQUEST', err.details || err.message, 400);
@@ -177,8 +184,9 @@ router.patch('/bulk-update', authorize('projects:manage'), async (req, res, next
 // GET /api/projects/:projectId/tasks/:tid
 router.get('/:tid', authorize('projects:read'), async (req, res, next) => {
   try {
-    const task = await taskRepository.findTaskById(req.tenantId, req.params.tid);
+    let task = await taskRepository.findTaskById(req.tenantId, req.params.tid);
     if (!task) return fail(res, 'NOT_FOUND', 'Task not found', 404);
+    task = filterAllowedFields(task, req.user, 'tasks');
     return success(res, task);
   } catch (err) {
     console.error('[Tasks Router] Get ID error:', err);
@@ -189,7 +197,8 @@ router.get('/:tid', authorize('projects:read'), async (req, res, next) => {
 // PATCH /api/projects/:projectId/tasks/:tid
 router.patch('/:tid', authorize('projects:manage'), validate(updateTaskSchema), async (req, res, next) => {
   try {
-    const data = req.body;
+    let data = req.body;
+    data = stripUnauthorizedEdits(data, req.user, 'tasks');
     
     // Explicit map camelCase payload into service payload keys safely
     const mappedData = {};
@@ -202,12 +211,13 @@ router.patch('/:tid', authorize('projects:manage'), validate(updateTaskSchema), 
     if (data.title) mappedData.title = data.title;
     if (data.roomName !== undefined) mappedData.room_name = data.roomName;
 
-    const task = await updateTask({
+    let task = await updateTask({
       tenantId: req.tenantId,
       userId: req.user.userId,
       taskId: req.params.tid,
       data: mappedData
     });
+    task = filterAllowedFields(task, req.user, 'tasks');
     return success(res, task);
   } catch (err) {
     if (err.status === 400) return fail(res, err.code || 'BAD_REQUEST', err.details || err.message, 400);

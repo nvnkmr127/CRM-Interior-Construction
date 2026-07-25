@@ -46,7 +46,7 @@ router.get('/milestone/:milestoneId', authorize('projects:read'), async (req, re
 });
 
 // GET /api/invoices/milestone/:milestoneId/download
-router.get('/milestone/:milestoneId/download', authorize('projects:read'), async (req, res, next) => {
+router.get('/milestone/:milestoneId/download', authorize('invoices:print'), async (req, res, next) => {
   try {
     const invoice = await getInvoiceByMilestone(req.tenantId, req.params.milestoneId);
     if (!invoice) {
@@ -97,7 +97,7 @@ router.get('/milestone/:milestoneId/draft', authorize('projects:read'), async (r
 });
 
 // POST /api/invoices
-router.post('/', authorize('finance:invoices'), validate(createInvoiceSchema), async (req, res, next) => {
+router.post('/', authorize('invoices:create'), validate(createInvoiceSchema), async (req, res, next) => {
   try {
     const data  = req.body;
     
@@ -125,7 +125,7 @@ router.post('/', authorize('finance:invoices'), validate(createInvoiceSchema), a
 });
 
 // GET /api/invoices/:id/download
-router.get('/:id/download', authorize('projects:read'), async (req, res, next) => {
+router.get('/:id/download', authorize('invoices:print'), async (req, res, next) => {
   try {
     const invoice = await getInvoiceById(req.tenantId, req.params.id);
     if (!invoice) {

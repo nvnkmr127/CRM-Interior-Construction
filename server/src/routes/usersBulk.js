@@ -9,7 +9,7 @@ const auditLog = require('../services/auditLog');
 const router = express.Router();
 
 // Utility for creating multiple users
-router.post('/import-preview', authorize('users:manage'), async (req, res, next) => {
+router.post('/import-preview', authorize('users:import'), async (req, res, next) => {
   const tenantId = req.tenantId;
   const { users } = req.body;
   if (!Array.isArray(users)) return fail(res, 'BAD_REQUEST', 'Invalid users array', 400);
@@ -48,7 +48,7 @@ router.post('/import-preview', authorize('users:manage'), async (req, res, next)
   }
 });
 
-router.post('/import', authorize('users:manage'), async (req, res, next) => {
+router.post('/import', authorize('users:import'), async (req, res, next) => {
   const tenantId = req.tenantId;
   const { users } = req.body; // Array of { name, email, role_id, department_id, manager_id }
   
@@ -254,7 +254,7 @@ router.delete('/delete', authorize('users:manage'), async (req, res, next) => {
   }
 });
 
-router.post('/export', authorize('users:manage'), async (req, res, next) => {
+router.post('/export', authorize('users:export_csv'), async (req, res, next) => {
   const tenantId = req.tenantId;
   const { userIds } = req.body; // Can be empty to export all
   

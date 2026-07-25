@@ -1,6 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../../store/authContext';
 import styles from './BottomNav.module.css';
 
 const GridIcon = () => (
@@ -36,28 +37,42 @@ const MenuIcon = () => (
 );
 
 export default function BottomNav({ onMoreClick }) {
+  const { user } = useAuth();
+  const isAdmin = user?.role?.name === 'superadmin';
+  const enabledModules = user?.role?.enabled_modules || [];
+  
+  const canSee = (moduleName) => isAdmin || enabledModules.includes(moduleName);
+
   const getNavClass = ({ isActive }) => {
     return isActive ? `${styles.navItem} ${styles.navItemActive}` : styles.navItem;
   };
 
   return (
     <nav className={`${styles.bottomNav} mobile-only`}>
-      <NavLink to="/dashboard" className={getNavClass}>
-        <span className={styles.icon}><GridIcon /></span>
-        <span>Dashboard</span>
-      </NavLink>
-      <NavLink to="/leads" className={getNavClass}>
-        <span className={styles.icon}><UsersIcon /></span>
-        <span>Leads</span>
-      </NavLink>
-      <NavLink to="/projects" className={getNavClass}>
-        <span className={styles.icon}><BriefcaseIcon /></span>
-        <span>Projects</span>
-      </NavLink>
-      <NavLink to="/tasks" className={getNavClass}>
-        <span className={styles.icon}><CheckSquareIcon /></span>
-        <span>Tasks</span>
-      </NavLink>
+      {canSee('dashboard') && (
+        <NavLink to="/dashboard" className={getNavClass}>
+          <span className={styles.icon}><GridIcon /></span>
+          <span>Dashboard</span>
+        </NavLink>
+      )}
+      {canSee('leads') && (
+        <NavLink to="/leads" className={getNavClass}>
+          <span className={styles.icon}><UsersIcon /></span>
+          <span>Leads</span>
+        </NavLink>
+      )}
+      {canSee('projects') && (
+        <NavLink to="/projects" className={getNavClass}>
+          <span className={styles.icon}><BriefcaseIcon /></span>
+          <span>Projects</span>
+        </NavLink>
+      )}
+      {canSee('tasks') && (
+        <NavLink to="/tasks" className={getNavClass}>
+          <span className={styles.icon}><CheckSquareIcon /></span>
+          <span>Tasks</span>
+        </NavLink>
+      )}
       <button onClick={onMoreClick} className={styles.navItem}>
         <span className={styles.icon}><MenuIcon /></span>
         <span>More</span>

@@ -5,11 +5,13 @@ import { createLead, updateLead } from '../../api/leads';
 import { useForm } from '../../hooks/useForm';
 import { useToast } from '../../store/toastContext';
 import { validators, run } from '../../utils/validators';
+import { useFieldPermissions } from '../../hooks/useFieldPermissions';
 import styles from './LeadForm.module.css';
 
 export default function LeadForm({ lead, onSave, onClose }) {
   const isEdit = !!lead;
   const toast = useToast();
+  const { isHidden, isReadOnly } = useFieldPermissions('leads');
 
   // ── 1. Independent state (no circular deps) ──────────────────────────
   const [stages, setStages] = useState([]);
@@ -169,19 +171,21 @@ export default function LeadForm({ lead, onSave, onClose }) {
                 onChange={onChange} onBlur={onBlur}
                 error={touched.email && errors.email}
               />
-              <div>
-                <label className={styles.fieldLabel}>Lead Source{isReq('source') ? ' *' : ''}</label>
-                <select name="source" value={values.source} onChange={onChange} className={styles.selectInput}>
-                  <option value="">Select source</option>
-                  <option value="Facebook">Facebook</option>
-                  <option value="IndiaMART">IndiaMART</option>
-                  <option value="Referral">Referral</option>
-                  <option value="Website">Website</option>
-                  <option value="Direct">Direct</option>
-                  <option value="Other">Other</option>
-                </select>
-                {touched.source && errors.source && <span className={styles.errorText}>{errors.source}</span>}
-              </div>
+              {!isHidden('source') && (
+                <div>
+                  <label className={styles.fieldLabel}>Lead Source{isReq('source') ? ' *' : ''}</label>
+                  <select name="source" value={values.source} onChange={onChange} className={styles.selectInput} disabled={isReadOnly('source')}>
+                    <option value="">Select source</option>
+                    <option value="Facebook">Facebook</option>
+                    <option value="IndiaMART">IndiaMART</option>
+                    <option value="Referral">Referral</option>
+                    <option value="Website">Website</option>
+                    <option value="Direct">Direct</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  {touched.source && errors.source && <span className={styles.errorText}>{errors.source}</span>}
+                </div>
+              )}
             </div>
           </div>
 
@@ -253,14 +257,17 @@ export default function LeadForm({ lead, onSave, onClose }) {
                 </select>
               </div>
 
-              <div className={styles.fullWidth}>
-                <label className={styles.fieldLabel}>Notes / Requirements</label>
-                <textarea 
-                  name="notes" value={values.notes} onChange={onChange}
-                  className={styles.textAreaInput}
-                  placeholder="Any initial notes or specific requirements about the lead..."
-                />
-              </div>
+              {!isHidden('internal_notes') && (
+                <div className={styles.fullWidth}>
+                  <label className={styles.fieldLabel}>Notes / Requirements</label>
+                  <textarea 
+                    name="notes" value={values.notes} onChange={onChange}
+                    className={styles.textAreaInput}
+                    placeholder="Any initial notes or specific requirements about the lead..."
+                    disabled={isReadOnly('internal_notes')}
+                  />
+                </div>
+              )}
             </div>
           </div>
 

@@ -16,13 +16,15 @@ router.use(authenticate);
 // Helper to check specific finance permissions
 function checkPermissionForType(user, type) {
   if (user.role === 'superadmin') return true;
+  if (user.permissions && user.permissions.includes('*')) return true;
+  
   const perms = user.permissions || [];
   
-  if (type === 'invoice') return perms.includes('finance:invoices');
-  if (type === 'payment' || type === 'payment_update') return perms.includes('finance:payments');
-  if (type === 'discount') return perms.includes('finance:discounts');
-  if (type === 'credit' || type === 'refund') return perms.includes('finance:credits');
-  if (type === 'change_order') return perms.includes('finance:change_orders') || perms.includes('projects:change_orders');
+  if (type === 'invoice') return perms.includes('invoices:approve');
+  if (type === 'payment' || type === 'payment_update') return perms.includes('payments:approve');
+  if (type === 'discount') return perms.includes('finance:approve_discount');
+  if (type === 'credit' || type === 'refund') return perms.includes('payments:refund');
+  if (type === 'change_order') return perms.includes('change_orders:approve');
   return false;
 }
 
@@ -806,7 +808,7 @@ router.post('/:id/assign', async (req, res, next) => {
 });
 
 // POST /api/financial-approvals/:id/export
-router.post('/:id/export', async (req, res, next) => {
+router.post('/:id/export', authorize('finance:export_finance'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const { format } = req.body;

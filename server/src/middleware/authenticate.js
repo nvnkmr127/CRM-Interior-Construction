@@ -119,6 +119,17 @@ async function authenticate(req, res, next) {
 
     // 6. Set request context
     req.user = decoded;
+    
+    // Normalize user permissions for the new schema (actions, scopes, fields)
+    if (req.user.permissions && !Array.isArray(req.user.permissions) && req.user.permissions.actions) {
+      req.user.data_scopes = req.user.permissions.scopes || {};
+      req.user.field_permissions = req.user.permissions.fields || {};
+      req.user.permissions = req.user.permissions.actions; // backward compatibility for authorize()
+    } else {
+      req.user.data_scopes = {};
+      req.user.field_permissions = {};
+    }
+
     // Normalize user ID property
     if (!req.user.id && req.user.userId) {
       req.user.id = req.user.userId;

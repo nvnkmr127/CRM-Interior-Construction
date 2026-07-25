@@ -6,6 +6,7 @@ import { useToast } from '../../store/toastContext'
 import { createProject, updateProject } from '../../api/projects'
 import api from '../../api/axios'
 import { useS3Upload } from '../../hooks/useS3Upload'
+import { useFieldPermissions } from '../../hooks/useFieldPermissions'
 
 const PROJECT_TYPES = [
   { id: 'full_interior', icon: '🏠', label: 'Full Interior' },
@@ -18,6 +19,7 @@ const PROJECT_TYPES = [
 export default function ProjectForm({ project, onSave, onClose, isOpen }) {
   const toast = useToast()
   const { uploadContract, uploading, progress } = useS3Upload()
+  const { isHidden, isReadOnly } = useFieldPermissions('projects')
   const [contractFile, setContractFile] = useState(null)
   
   const [formData, setFormData] = useState({
@@ -1557,13 +1559,16 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
                 value={newVendor.scope_of_work}
                 onChange={e => setNewVendor({...newVendor, scope_of_work: e.target.value})}
               />
-              <Input 
-                label="Agreed Rate / Value (₹)" 
-                type="number"
-                placeholder="e.g. 75000"
-                value={newVendor.agreed_rate}
-                onChange={e => setNewVendor({...newVendor, agreed_rate: e.target.value})}
-              />
+              {!isHidden('vendor_cost') && (
+                <Input 
+                  label="Agreed Rate / Value (₹)" 
+                  type="number"
+                  placeholder="e.g. 75000"
+                  value={newVendor.agreed_rate}
+                  onChange={e => setNewVendor({...newVendor, agreed_rate: e.target.value})}
+                  disabled={isReadOnly('vendor_cost')}
+                />
+              )}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr auto', gap: '12px', alignItems: 'end' }}>
               <Input 
@@ -1928,26 +1933,31 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
         </div>
 
         <div className={styles.fullWidth} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-          <div>
-            <Input 
-              label="Contract Value (₹)" 
-              type="number"
-              placeholder="e.g. 500000"
-              value={formData.contractValue} 
-              onChange={e => setFormData({...formData, contractValue: e.target.value})} 
-              error={errors.contractValue}
-            />
-          </div>
-          <div>
+          {!isHidden('budget') && (
+            <div>
+              <Input 
+                label="Contract Value (₹)" 
+                type="number"
+                placeholder="e.g. 500000"
+                value={formData.contractValue} 
+                onChange={e => setFormData({...formData, contractValue: e.target.value})} 
+                error={errors.contractValue}
+                disabled={isReadOnly('budget')}
+              />
+            </div>
+          )}
+          {!isHidden('budget') && (
+            <div>
             <Input 
               label="Booking Amount (₹)" 
               type="number"
               placeholder="e.g. 50000"
               value={formData.bookingAmount} 
               onChange={e => setFormData({...formData, bookingAmount: e.target.value})} 
-              disabled={!!project}
+              disabled={!!project || isReadOnly('budget')}
             />
           </div>
+          )}
         </div>
 
         <div className={styles.fullWidth} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>

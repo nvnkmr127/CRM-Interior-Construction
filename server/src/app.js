@@ -202,6 +202,7 @@ app.use('/api/invoices', invoicesRoutes);
 app.use('/api/financials', financialsRoutes);
 app.use('/api/financial-approvals', financialApprovalsRoutes);
 app.use('/api/approval-matrix', require('./routes/approvalMatrix'));
+app.use('/api/approvals', require('./routes/approvals'));
 app.use('/api/handover', handoverRoutes);
 app.use('/api/audit-logs', require('./routes/auditLogs'));
 app.use('/api/login-history', require('./routes/loginHistory'));

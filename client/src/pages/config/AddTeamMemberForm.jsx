@@ -7,7 +7,7 @@ const SECTIONS = [
   'Basic Information',
   'Company Information',
   'Security',
-  'Permissions',
+  'Permissions Sync',
   'Documents',
   'Notes'
 ]
@@ -22,8 +22,7 @@ const INITIAL_DATA = {
   department: '', designation: '', role: '', reportingManager: '', branch: '', officeLocation: '', joiningDate: '', employmentType: '', workMode: '', probationEndDate: '',
   // Security
   username: '', tempPassword: '', forcePasswordReset: true, twoFactorAuth: false,
-  // Permissions
-  accessibleModules: [], crudPermissions: false, exportPermission: false, printPermission: false, approvalPermission: false,
+  // Permissions (synced via Roles Manager now)
   // Documents (We will store file names/references here)
   resume: null, aadhaar: null, pan: null, passport: null, offerLetter: null, nda: null, employmentAgreement: null,
   // Notes
@@ -178,30 +177,13 @@ export default function AddTeamMemberForm({ onCancel, onSuccess, roleOptions }) 
         )}
 
         {activeSection === 3 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <Select 
-              label="Accessible Modules" 
-              options={[{value:'leads',label:'Leads'}, {value:'projects',label:'Projects'}, {value:'finance',label:'Finance'}, {value:'inventory',label:'Inventory'}, {value:'reports',label:'Reports'}]} 
-              value={formData.accessibleModules} 
-              onChange={v => handleInputChange('accessibleModules', v)} 
-              multi
-            />
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
-              <Toggle checked={formData.crudPermissions} onChange={() => handleInputChange('crudPermissions', !formData.crudPermissions)} />
-              <span>Allow CRUD Operations (Create, Read, Update, Delete)</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <Toggle checked={formData.exportPermission} onChange={() => handleInputChange('exportPermission', !formData.exportPermission)} />
-              <span>Allow Data Export</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <Toggle checked={formData.printPermission} onChange={() => handleInputChange('printPermission', !formData.printPermission)} />
-              <span>Allow Printing Records</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <Toggle checked={formData.approvalPermission} onChange={() => handleInputChange('approvalPermission', !formData.approvalPermission)} />
-              <span>Can Approve Financials & Stages</span>
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '24px', backgroundColor: 'var(--color-surface-hover)', borderRadius: 'var(--radius-lg)' }}>
+            <h3 style={{ margin: 0, color: 'var(--color-primary)' }}>Permissions are managed via Roles</h3>
+            <p style={{ color: 'var(--color-text-secondary)', lineHeight: '1.5' }}>
+              The old manual permission toggles have been deprecated to ensure strict synchronization with the <strong>Roles & Permissions</strong> system. 
+              <br/><br/>
+              By assigning this user the <strong>{roleOptions.find(r => r.value === formData.role)?.label || 'selected'}</strong> role (chosen in Step 2), they will automatically inherit all Data Scopes, Field-Level Permissions, and Action-Level Capabilities defined for that role in the CRM.
+            </p>
           </div>
         )}
 
