@@ -21,12 +21,14 @@ export default function RolesManager() {
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedModules, setExpandedModules] = useState({})
   
-  // New states for Cloning and Templates
   const [isTemplateLibOpen, setIsTemplateLibOpen] = useState(false)
   const [templates, setTemplates] = useState([])
   const [cloneSource, setCloneSource] = useState(null)
   const [cloneName, setCloneName] = useState('')
   const [isCloneModalOpen, setIsCloneModalOpen] = useState(false)
+  const [showSelectedOnly, setShowSelectedOnly] = useState(false)
+
+  const searchInputRef = useRef(null)
 
   const toast = useToast()
 
@@ -45,9 +47,21 @@ export default function RolesManager() {
       setFormData({ name: '', description: '', permissions: [], data_scopes: {}, field_permissions: {}, enabled_modules: [], page_permissions: {} });
     }
     
-    // Reset search when modal opens/closes
+    // Reset search and filters when modal opens/closes
     setSearchQuery('');
+    setShowSelectedOnly(false);
   }, [searchParams, roles]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f' && isModalOpen) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isModalOpen]);
 
   useEffect(() => {
     fetchRolesAndSchema()
@@ -110,16 +124,37 @@ export default function RolesManager() {
     });
   }
 
-  const handleClearAllModule = (moduleId, filteredActions) => {
+  const handleClearAllModule = (moduleId, actions) => {
     if (formData.permissions.includes('*')) return;
     
     setFormData(prev => {
       const perms = new Set(prev.permissions);
-      filteredActions.forEach(action => {
+      actions.forEach(action => {
         perms.delete(`${moduleId}:${action.id}`);
       });
       return { ...prev, permissions: Array.from(perms) };
     });
+  }
+
+  const expandAll = () => {
+    const allExpanded = {};
+    schemaModules.forEach(m => allExpanded[m.id] = true);
+    setExpandedModules(allExpanded);
+  }
+
+  const collapseAll = () => {
+    const allCollapsed = {};
+    schemaModules.forEach(m => allCollapsed[m.id] = false);
+    setExpandedModules(allCollapsed);
+  }
+
+  const highlightText = (text, query) => {
+    if (!query || !query.trim()) return text;
+    const regex = new RegExp(`(${query.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
+    const parts = text.split(regex);
+    return parts.map((part, i) => 
+      regex.test(part) ? <mark key={i} style={{ backgroundColor: 'var(--color-primary-light)', color: 'var(--color-primary-dark)', padding: '0 2px', borderRadius: '2px' }}>{part}</mark> : part
+    );
   }
 
   const handleSelectAllGlobal = () => {
@@ -282,28 +317,53 @@ export default function RolesManager() {
     }
   ]
 
-  // Filter modules based on search query
+  // Filter modules based on search query and selected filter
   const filteredModules = useMemo(() => {
-    if (!searchQuery.trim()) return schemaModules.map(m => ({ ...m, actions: schemaActions }));
+    let result = schemaModules;
+    
+    // 1. Filter by selected only
+    if (showSelectedOnly) {
+      result = result.map(module => {
+        const selectedActions = schemaActions.filter(action => formData.permissions.includes(`${module.id}:${action.id}`));
+        if (selectedActions.length > 0) {
+          return { ...module, actions: selectedActions };
+        }
+        return null;
+      }).filter(Boolean);
+    } else {
+      result = result.map(m => ({ ...m, actions: schemaActions }));
+    }
+
+    // 2. Filter by search query
+    if (!searchQuery.trim()) return result;
     
     const query = searchQuery.toLowerCase();
     
-    return schemaModules.map(module => {
+    return result.map(module => {
       const moduleMatch = module.label.toLowerCase().includes(query);
       
-      const matchedActions = schemaActions.filter(action => {
+      const matchedActions = module.actions.filter(action => {
         return moduleMatch || action.label.toLowerCase().includes(query) || `${module.id}:${action.id}`.toLowerCase().includes(query);
       });
       
       if (moduleMatch || matchedActions.length > 0) {
         return {
           ...module,
-          actions: matchedActions.length > 0 ? matchedActions : schemaActions
+          actions: matchedActions.length > 0 ? matchedActions : module.actions
         };
       }
       return null;
     }).filter(Boolean);
-  }, [searchQuery, schemaModules, schemaActions]);
+  }, [searchQuery, schemaModules, schemaActions, showSelectedOnly, formData.permissions]);
+
+  // Auto-expand matched modules during search
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      const expanded = {};
+      filteredModules.forEach(m => expanded[m.id] = true);
+      setExpandedModules(expanded);
+    }
+  }, [searchQuery]);
 
   return (
     <div className="mx-auto max-w-7xl p-4 sm:p-8 space-y-8">
@@ -388,12 +448,29 @@ export default function RolesManager() {
                 </div>
                 
                 {!formData.permissions.includes('*') && (
-                  <div style={{ marginBottom: '16px', maxWidth: '400px' }}>
-                    <Input 
-                      placeholder="Search permissions..." 
-                      value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
-                    />
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center', marginBottom: '16px', maxWidth: '800px', background: 'var(--color-surface)', padding: '12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                    <div style={{ flex: '1 1 300px' }}>
+                      <Input 
+                        ref={searchInputRef}
+                        placeholder="Search permissions (Ctrl+F)..." 
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                      />
+                    </div>
+                    
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={showSelectedOnly}
+                        onChange={(e) => setShowSelectedOnly(e.target.checked)}
+                      />
+                      <span style={{ fontSize: '14px', fontWeight: 500 }}>Selected Only</span>
+                    </label>
+
+                    <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+                      <Button variant="ghost" size="sm" onClick={expandAll}>Expand All</Button>
+                      <Button variant="ghost" size="sm" onClick={collapseAll}>Collapse All</Button>
+                    </div>
                   </div>
                 )}
                 
@@ -418,12 +495,13 @@ export default function RolesManager() {
                               style={{ 
                                 display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
                                 padding: '12px 16px', background: 'var(--color-surface)', cursor: 'pointer',
-                                borderBottom: isExpanded ? '1px solid var(--color-border)' : 'none'
+                                borderBottom: isExpanded ? '1px solid var(--color-border)' : 'none',
+                                position: 'sticky', top: '0', zIndex: 10
                               }}
                               onClick={() => toggleModuleAccordion(module.id)}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <span style={{ fontWeight: 600 }}>{module.label}</span>
+                                <span style={{ fontWeight: 600 }}>{highlightText(module.label, searchQuery)}</span>
                                 <span style={{ 
                                   background: modulePermsCount > 0 ? 'var(--color-accent)' : 'var(--color-bg)', 
                                   color: modulePermsCount > 0 ? '#fff' : 'var(--color-text-secondary)',
@@ -481,7 +559,7 @@ export default function RolesManager() {
                                           checked={formData.permissions.includes(permId)} 
                                           onChange={() => handleTogglePermission(permId)}
                                         />
-                                        {action.label}
+                                        {highlightText(action.label, searchQuery)}
                                       </label>
                                     )
                                   })}
