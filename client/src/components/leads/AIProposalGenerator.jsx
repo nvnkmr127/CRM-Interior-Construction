@@ -85,7 +85,8 @@ export default function AIProposalGenerator({ leadId, lead }) {
                        <div 
                          key={p.id} 
                          onClick={() => selectProposal(p)}
-                         className={`p-3 rounded-md cursor-pointer border text-sm transition-colors ${selectedProposalId === p.id ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-100'}`}
+                         className={`p-3 rounded-md cursor-pointer border text-sm transition-all ${selectedProposalId === p.id ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'border-gray-200 text-gray-700 hover:bg-gray-100'}`}
+                         style={selectedProposalId !== p.id ? { background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' } : {}}
                        >
                          <div className="font-semibold">{new Date(p.created_at).toLocaleDateString()} {new Date(p.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
                          <div className="text-xs opacity-75">Budget: ₹{p.target_budget?.toLocaleString() || 'N/A'}</div>
@@ -117,7 +118,7 @@ export default function AIProposalGenerator({ leadId, lead }) {
             </div>
 
             {proposalText ? (
-                <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex-1">
+                <div className="border border-gray-200 rounded-xl shadow-sm overflow-hidden flex-1 transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
                 <div className="bg-gray-100 border-b border-gray-200 px-4 py-2 flex justify-between items-center">
                     <span className="text-xs font-bold text-gray-600 uppercase">Draft Proposal (Markdown)</span>
                     <Button variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(proposalText).then(() => toast.success('Copied to clipboard!'))}>
@@ -131,7 +132,7 @@ export default function AIProposalGenerator({ leadId, lead }) {
                 ></textarea>
                 </div>
             ) : (
-                <div className="text-center py-16 text-gray-400 bg-white border border-dashed border-gray-300 rounded-lg flex-1">
+                <div className="text-center py-16 text-gray-400 border border-dashed border-gray-300 rounded-xl flex-1 transition-all" style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(5px)' }}>
                 <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                 <p className="text-sm font-medium">No proposal selected.</p>
                 <p className="text-xs mt-1">Generate a new one or select from history.</p>

@@ -250,36 +250,41 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white border border-gray-200 rounded-lg shadow-sm transition-all">
-        <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border-b rounded-t-lg justify-between items-center">
+      <div className="rounded-xl transition-all shadow-sm" style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.3)' }}>
+        <div className="flex flex-wrap gap-2 p-4 border-b rounded-t-xl justify-between items-center" style={{ background: 'rgba(255, 255, 255, 0.5)', borderColor: 'rgba(0, 0, 0, 0.05)' }}>
           <div className="flex flex-wrap gap-2">
             <button 
               onClick={() => setActiveForm(activeForm === 'email' ? null : 'email')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm ${activeForm === 'email' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'bg-white border text-gray-700 hover:bg-gray-100'}`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all shadow-sm ${activeForm === 'email' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'border text-gray-700 hover:bg-gray-100'}`}
+              style={activeForm !== 'email' ? { background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' } : {}}
             >
               <Icons.email /> Log Email
             </button>
             <button 
               onClick={() => setActiveForm(activeForm === 'note' ? null : 'note')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm ${activeForm === 'note' ? 'bg-gray-200 text-gray-800 border-gray-400' : 'bg-white border text-gray-700 hover:bg-gray-100'}`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all shadow-sm ${activeForm === 'note' ? 'bg-gray-200 text-gray-800 border-gray-400' : 'border text-gray-700 hover:bg-gray-100'}`}
+              style={activeForm !== 'note' ? { background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' } : {}}
             >
               <Icons.note /> Add Note
             </button>
             <button 
               onClick={() => setActiveForm(activeForm === 'task' ? null : 'task')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm ${activeForm === 'task' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-white border text-gray-700 hover:bg-gray-100'}`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all shadow-sm ${activeForm === 'task' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'border text-gray-700 hover:bg-gray-100'}`}
+              style={activeForm !== 'task' ? { background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' } : {}}
             >
               <Icons.task /> Schedule Task
             </button>
             <button 
               onClick={() => setActiveForm(activeForm === 'site_visit' ? null : 'site_visit')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm ${activeForm === 'site_visit' ? 'bg-green-100 text-green-700 border-green-300' : 'bg-white border text-gray-700 hover:bg-gray-100'}`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all shadow-sm ${activeForm === 'site_visit' ? 'bg-green-100 text-green-700 border-green-300' : 'border text-gray-700 hover:bg-gray-100'}`}
+              style={activeForm !== 'site_visit' ? { background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' } : {}}
             >
               <Icons.site_visit /> Site Visit
             </button>
             <button 
               onClick={() => setActiveForm(activeForm === 'meeting' ? null : 'meeting')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm ${activeForm === 'meeting' ? 'bg-orange-100 text-orange-700 border-orange-300' : 'bg-white border text-gray-700 hover:bg-gray-100'}`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all shadow-sm ${activeForm === 'meeting' ? 'bg-orange-100 text-orange-700 border-orange-300' : 'border text-gray-700 hover:bg-gray-100'}`}
+              style={activeForm !== 'meeting' ? { background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' } : {}}
             >
               <Icons.meeting /> Schedule Meeting
             </button>
@@ -294,15 +299,17 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
           </div>
         </div>
         
-        {/* Filters */}
-        <div className="flex gap-2 p-2 px-3 border-b border-gray-100 bg-white overflow-x-auto">
+        <div className="flex gap-2 p-3 px-4 border-b overflow-x-auto custom-scrollbar" style={{ background: 'rgba(255, 255, 255, 0.3)', borderColor: 'rgba(0,0,0,0.05)' }}>
           {['all', 'note', 'email', 'site_visit', 'task', 'system'].map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
-                filter === f ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+              className="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all shadow-sm"
+              style={
+                filter === f 
+                  ? { background: 'var(--accent)', color: '#fff' } 
+                  : { background: 'rgba(255,255,255,0.7)', color: 'var(--color-text-secondary)', border: '1px solid rgba(255,255,255,0.4)' }
+              }
             >
               {f === 'site_visit' ? 'Site Visits' : f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
@@ -534,7 +541,8 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
               <button
                 type="button"
                 onClick={() => setActiveForm(null)}
-                className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-800 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50"
+                className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-800 border border-gray-300 rounded shadow-sm hover:bg-gray-50 transition-all"
+                style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' }}
               >
                 Cancel
               </button>
@@ -550,7 +558,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
         )}
       </div>
 
-      <div className="relative pl-4 sm:pl-6 border-l-2 border-gray-100 space-y-6 pb-4">
+      <div className="relative pl-4 sm:pl-6 space-y-6 pb-4" style={{ borderLeft: '2px solid rgba(170, 59, 255, 0.2)' }}>
         {loading && activities.length === 0 ? (
           <div className="animate-pulse space-y-4 pt-2">
             <div className="h-24 bg-gray-100 rounded-lg w-full"></div>
@@ -574,11 +582,11 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
 
               return (
                 <div key={activity.id} className="relative group">
-                  <div className={`absolute -left-[27px] sm:-left-[35px] top-1.5 flex h-7 w-7 items-center justify-center rounded-full border-2 shadow-sm ${getTypeStyle(activity.type, isSystem)}`}>
+                  <div className={`absolute -left-[27px] sm:-left-[35px] top-1.5 flex h-7 w-7 items-center justify-center rounded-full border shadow-sm transition-transform group-hover:scale-110 ${getTypeStyle(activity.type, isSystem)}`}>
                     <Icon />
                   </div>
                   
-                  <div className={`border rounded-lg p-3.5 shadow-sm hover:shadow transition-shadow group-hover:border-gray-300 ${isSystem ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-100'}`}>
+                  <div className="rounded-xl p-4 shadow-sm hover:shadow-md transition-all group-hover:-translate-y-0.5" style={{ background: isSystem ? 'rgba(0,0,0,0.02)' : 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
                     <div className="flex justify-between items-start mb-2">
                       <div className="text-sm">
                         <span className="font-bold capitalize text-gray-800">{typeLabel}</span>
@@ -627,7 +635,8 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
                           <button
                             type="button"
                             onClick={() => setEditingActivityId(null)}
-                            className="px-3 py-1.5 text-xs font-semibold text-gray-600 hover:text-gray-800 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50"
+                            className="px-3 py-1.5 text-xs font-semibold text-gray-600 hover:text-gray-800 border border-gray-300 rounded shadow-sm hover:bg-gray-50 transition-all"
+                            style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' }}
                           >
                             Cancel
                           </button>
@@ -665,7 +674,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
                         </h4>
                         <div className="space-y-2">
                           {activity.metadata.suggested_tasks.map((task, idx) => (
-                            <div key={idx} className="flex justify-between items-center text-sm bg-white p-2 border border-blue-100 rounded">
+                            <div key={idx} className="flex justify-between items-center text-sm p-2 border border-blue-100 rounded transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' }}>
                               <span className="text-gray-700">{task.title}</span>
                               <button 
                                 onClick={async () => {

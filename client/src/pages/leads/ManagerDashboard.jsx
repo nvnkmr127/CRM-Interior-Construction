@@ -69,7 +69,7 @@ export default function ManagerDashboard() {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 bg-gray-50 min-h-screen">
+    <div className="p-8 max-w-7xl mx-auto space-y-8 min-h-screen transition-all" style={{ background: 'rgba(255, 255, 255, 0.1)' }}>
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Manager Ops View</h1>
@@ -94,7 +94,7 @@ export default function ManagerDashboard() {
           <Badge variant="danger">{slaBreaches.length}</Badge>
         </h2>
         {slaBreaches.length === 0 ? (
-          <div className="bg-white p-4 rounded-lg shadow-sm text-sm text-gray-500 border border-gray-100">All SLAs met. Great job team!</div>
+          <div className="p-4 rounded-xl shadow-sm text-sm text-gray-500 border transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>All SLAs met. Great job team!</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {slaBreaches.map(b => (
@@ -118,7 +118,7 @@ export default function ManagerDashboard() {
           { label: 'Hot Leads', count: scoreDistribution.hot || 0, color: 'text-red-600', bg: 'bg-red-50' },
           { label: 'Warm Leads', count: scoreDistribution.warm || 0, color: 'text-amber-600', bg: 'bg-amber-50' },
           { label: 'Cold Leads', count: scoreDistribution.cold || 0, color: 'text-blue-600', bg: 'bg-blue-50' },
-          { label: 'Dead Leads', count: scoreDistribution.dead || 0, color: 'text-gray-600', bg: 'bg-gray-100' }
+          { label: 'Dead Leads', count: scoreDistribution.dead || 0, color: 'text-gray-600', bg: 'bg-white/40 backdrop-blur-md' }
         ].map(kpi => (
           <div key={kpi.label} className={`rounded-xl p-4 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-all ${kpi.bg}`}>
             <div className="text-sm font-medium text-gray-600">{kpi.label}</div>
@@ -131,8 +131,8 @@ export default function ManagerDashboard() {
         {/* SECTION 3: REP CAPACITY HEATMAP */}
         <section>
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Rep Capacity Heatmap</h2>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 divide-y overflow-hidden">
-            <div className="grid grid-cols-4 p-3 bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
+          <div className="rounded-xl shadow-sm border divide-y overflow-hidden transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
+            <div className="grid grid-cols-4 p-3 text-xs font-semibold text-gray-500 uppercase transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)' }}>
               <div className="col-span-2">Sales Rep</div>
               <div className="text-center">Active Load</div>
               <div className="text-center">Contacted Today</div>
@@ -140,7 +140,7 @@ export default function ManagerDashboard() {
             {repCapacity.map(rep => {
               const loadColor = rep.active_leads > 35 ? 'text-red-600 bg-red-100' : rep.active_leads >= 20 ? 'text-amber-600 bg-amber-100' : 'text-green-600 bg-green-100';
               return (
-                <div key={rep.rep_id} className="grid grid-cols-4 p-3 items-center hover:bg-gray-50 transition-colors">
+                <div key={rep.rep_id} className="grid grid-cols-4 p-3 items-center hover:bg-white/50 transition-colors">
                   <div className="col-span-2 flex items-center gap-3">
                     {rep.avatar_url ? (
                       <img src={rep.avatar_url} alt="" className="w-8 h-8 rounded-full" />
@@ -162,19 +162,19 @@ export default function ManagerDashboard() {
         {/* SECTION 5: DISCOUNT QUEUE */}
         <section>
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Discount Approval Queue</h2>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="rounded-xl shadow-sm border overflow-hidden transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
             {pendingApprovals.length === 0 ? (
               <div className="p-6 text-center text-gray-500 text-sm">No pending approvals.</div>
             ) : (
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
+                <thead className="text-xs font-semibold text-gray-500 uppercase transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)' }}>
                   <tr>
                     <th className="px-4 py-3 text-left">Lead & Rep</th>
                     <th className="px-4 py-3 text-left">Request</th>
                     <th className="px-4 py-3 text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="divide-y divide-gray-200" style={{ background: 'rgba(255, 255, 255, 0.2)' }}>
                   {pendingApprovals.map(req => (
                     <tr key={req.id}>
                       <td className="px-4 py-3 text-sm">
@@ -202,12 +202,12 @@ export default function ManagerDashboard() {
         {/* SECTION 6: TODAY'S VISITS */}
         <section>
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Today's Scheduled Visits</h2>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 divide-y overflow-hidden">
+          <div className="rounded-xl shadow-sm border divide-y overflow-hidden transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
             {scheduledVisits.length === 0 ? (
               <div className="p-4 text-sm text-gray-500">No visits scheduled today.</div>
             ) : (
               scheduledVisits.map(v => (
-                <div key={v.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
+                <div key={v.id} className="p-4 flex items-center justify-between hover:bg-white/50 transition-colors">
                   <div>
                     <div className="font-medium text-gray-900 text-sm">{v.lead_name}</div>
                     <div className="text-gray-500 text-xs">{v.title}</div>
@@ -225,7 +225,7 @@ export default function ManagerDashboard() {
         {/* SECTION 2: PIPELINE MOVEMENT */}
         <section>
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Today's Pipeline Movement</h2>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 max-h-96 overflow-y-auto">
+          <div className="rounded-xl shadow-sm border p-4 max-h-96 overflow-y-auto transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
             {pipelineMovement.length === 0 ? (
               <div className="text-sm text-gray-500 text-center py-4">No stage transitions today yet.</div>
             ) : (

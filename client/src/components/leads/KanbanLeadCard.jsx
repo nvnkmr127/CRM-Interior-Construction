@@ -58,14 +58,15 @@ export default function KanbanLeadCard({ lead, onAction }) {
       ref={setNodeRef} 
       style={{
         ...style,
-        background: 'var(--color-surface)',
-        borderColor: 'var(--color-border)',
+        background: 'rgba(255, 255, 255, 0.7)',
+        backdropFilter: 'blur(16px)',
+        borderColor: 'rgba(255, 255, 255, 0.5)',
         color: 'var(--color-text)'
       }} 
       {...attributes} 
       {...listeners}
       onClick={() => { if (lead.id && onAction) onAction('view', lead); }}
-      className={`p-4 rounded-lg shadow-sm border mb-3 cursor-grab hover:shadow-md transition-shadow relative ${isDragging ? 'ring-2 ring-primary cursor-grabbing' : ''}`}
+      className={`p-4 rounded-xl shadow-sm border mb-3 cursor-grab hover:shadow-md transition-all relative ${isDragging ? 'ring-2 ring-primary cursor-grabbing' : ''}`}
     >
       <div className="flex justify-between items-start mb-2">
         <h4 className="font-semibold line-clamp-1" title={lead.name}>{lead.name}</h4>
@@ -94,7 +95,7 @@ export default function KanbanLeadCard({ lead, onAction }) {
             </span>
           )}
           {lead.custom_fields.ai_recommendation.sentiment && (
-            <span className={`px-1.5 py-0.5 rounded border ${lead.custom_fields.ai_recommendation.sentiment === 'Positive' ? 'bg-blue-50 text-blue-700 border-blue-200' : lead.custom_fields.ai_recommendation.sentiment === 'Negative' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+            <span className={`px-1.5 py-0.5 rounded border transition-all ${lead.custom_fields.ai_recommendation.sentiment === 'Positive' ? 'text-blue-700 border-blue-200' : lead.custom_fields.ai_recommendation.sentiment === 'Negative' ? 'text-red-700 border-red-200' : 'text-gray-700 border-gray-200'}`} style={{ background: 'rgba(255, 255, 255, 0.4)' }}>
               Sentiment: {lead.custom_fields.ai_recommendation.sentiment}
             </span>
           )}
@@ -108,7 +109,7 @@ export default function KanbanLeadCard({ lead, onAction }) {
       <div className="text-xs mb-3 space-y-1" style={{ color: 'var(--color-text-secondary)' }}>
         <div className="flex flex-col gap-1">
           {aiRec ? (
-            <div className="flex items-start gap-1 p-1.5 rounded" style={{ background: 'var(--color-info-bg)', borderColor: 'var(--color-border)', borderWidth: '1px' }}>
+            <div className="flex items-start gap-1 p-1.5 rounded transition-all" style={{ background: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.2)', borderWidth: '1px' }}>
               <span style={{ color: 'var(--color-info)' }} className="mt-0.5">
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
               </span>
@@ -143,7 +144,7 @@ export default function KanbanLeadCard({ lead, onAction }) {
         </div>
         
         {aiRec?.objections && aiRec.objections.length > 0 && (
-          <div className="mt-2 inline-flex flex-col gap-1 text-xs px-2 py-1.5 rounded-md border w-full" style={{ background: 'var(--color-danger-bg)', borderColor: 'var(--color-danger)', color: 'var(--color-danger)' }}>
+          <div className="mt-2 inline-flex flex-col gap-1 text-xs px-2 py-1.5 rounded-md border w-full transition-all" style={{ background: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.2)', color: 'var(--color-danger)' }}>
             <span className="font-bold flex items-center gap-1"><span style={{ color: 'var(--color-danger)' }}>⚠</span> Active Objections</span>
             <ul className="list-disc pl-4 text-[10px] space-y-0.5">
               {aiRec.objections.map((obj, i) => <li key={i}>{obj}</li>)}
@@ -152,7 +153,7 @@ export default function KanbanLeadCard({ lead, onAction }) {
         )}
         
         {lead.budget_concern && !aiRec?.objections && (
-          <div className="mt-2 inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border" style={{ background: 'var(--color-danger-bg)', borderColor: 'var(--color-danger)', color: 'var(--color-danger)' }}>
+          <div className="mt-2 inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border transition-all" style={{ background: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.2)', color: 'var(--color-danger)' }}>
             ⚠ Budget Concern
           </div>
         )}
@@ -164,7 +165,7 @@ export default function KanbanLeadCard({ lead, onAction }) {
             <span>{aging.dot}</span> {aging.label} ({lead.days_in_stage || 0}d)
           </div>
           {isOverdue && (
-            <div className="text-[10px] px-2 py-0.5 rounded text-red-600 bg-red-50 border border-red-200 font-bold flex items-center gap-1">
+            <div className="text-[10px] px-2 py-0.5 rounded border font-bold flex items-center gap-1 transition-all" style={{ color: 'rgba(220, 38, 38, 1)', background: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
               Overdue {lead.follow_up_overdue_days}d
             </div>
@@ -175,7 +176,7 @@ export default function KanbanLeadCard({ lead, onAction }) {
           {lead.assignee_avatar ? (
             <img src={lead.assignee_avatar} alt="avatar" className="w-6 h-6 rounded-full" title={lead.assignee_name} />
           ) : (
-            <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: 'var(--color-info-bg)', color: 'var(--color-info)' }} title={lead.assignee_name}>
+            <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all" style={{ background: 'rgba(59, 130, 246, 0.2)', color: 'var(--color-info)' }} title={lead.assignee_name}>
               {(lead.assignee_name || '?').charAt(0).toUpperCase()}
             </div>
           )}
@@ -199,10 +200,10 @@ export default function KanbanLeadCard({ lead, onAction }) {
              </button>
 
              {showMenu && (
-                <div className="absolute right-0 bottom-full mb-1 w-32 border shadow-lg rounded-md overflow-hidden z-10 text-sm" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
-                   <button className="w-full text-left px-3 py-2" onClick={(e) => handleAction(e, 'reassign')}>Reassign</button>
-                   <button className="w-full text-left px-3 py-2" onClick={(e) => handleAction(e, 'park')}>Park Lead</button>
-                   <button className="w-full text-left px-3 py-2" style={{ color: 'var(--color-danger)' }} onClick={(e) => handleAction(e, 'lost')}>Mark Lost</button>
+                <div className="absolute right-0 bottom-full mb-1 w-32 border shadow-lg rounded-md overflow-hidden z-10 text-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(10px)', borderColor: 'rgba(255, 255, 255, 0.5)' }}>
+                   <button className="w-full text-left px-3 py-2 hover:bg-black/5" onClick={(e) => handleAction(e, 'reassign')}>Reassign</button>
+                   <button className="w-full text-left px-3 py-2 hover:bg-black/5" onClick={(e) => handleAction(e, 'park')}>Park Lead</button>
+                   <button className="w-full text-left px-3 py-2 hover:bg-black/5" style={{ color: 'var(--color-danger)' }} onClick={(e) => handleAction(e, 'lost')}>Mark Lost</button>
                 </div>
              )}
           </div>

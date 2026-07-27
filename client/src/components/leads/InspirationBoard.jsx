@@ -113,10 +113,11 @@ export default function InspirationBoard({ leadId }) {
       ) : (
         <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
           {inspirations.map(insp => (
-            <div key={insp.id} className="relative break-inside-avoid group rounded-lg overflow-hidden border border-gray-200 bg-white shadow-sm">
+            <div key={insp.id} className="relative break-inside-avoid group rounded-xl overflow-hidden border transition-all shadow-sm" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
               <button 
                 onClick={() => handleDelete(insp.id)}
-                className="absolute top-2 right-2 bg-white rounded-full w-6 h-6 flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                className="absolute top-2 right-2 rounded-full w-6 h-6 flex items-center justify-center text-gray-700 hover:text-red-500 hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-all z-10 shadow-sm"
+                style={{ background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(5px)' }}
                 title="Delete"
               >&times;</button>
               
@@ -128,7 +129,7 @@ export default function InspirationBoard({ leadId }) {
                 />
                 
                 {/* AI Extracted Metadata Overlay */}
-                <div className="absolute bottom-2 left-2 right-2 bg-white/90 backdrop-blur-sm p-2 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1.5">
+                <div className="absolute bottom-2 left-2 right-2 p-2 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1.5" style={{ background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(4px)' }}>
                   <div className="flex items-center gap-1 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     AI Extracted
@@ -148,7 +149,7 @@ export default function InspirationBoard({ leadId }) {
               </div>
               
               {(insp.room_type || insp.notes) && (
-                <div className="p-3 border-t border-gray-100 bg-white">
+                <div className="p-3 border-t border-gray-100" style={{ background: 'rgba(255, 255, 255, 0.4)' }}>
                   {insp.room_type && <Badge variant="secondary" className="mb-2">{insp.room_type}</Badge>}
                   {insp.notes && <p className="text-sm text-gray-700">{insp.notes}</p>}
                 </div>

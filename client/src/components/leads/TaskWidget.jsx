@@ -448,11 +448,11 @@ export default function TaskWidget({ leadId, reps }) {
       
       {/* Task Statistics Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center shadow-sm">
+        <div className="border rounded-xl p-3 text-center shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(10px)', borderColor: 'rgba(255, 255, 255, 0.3)' }}>
           <div className="text-[10px] text-slate-500 uppercase font-extrabold tracking-wider">Total</div>
           <div className="text-xl font-bold text-slate-800 mt-1">{stats.total}</div>
         </div>
-        <div className="bg-slate-100/50 border border-slate-200 rounded-xl p-3 text-center shadow-sm">
+        <div className="border rounded-xl p-3 text-center shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.2)', backdropFilter: 'blur(5px)', borderColor: 'rgba(255, 255, 255, 0.3)' }}>
           <div className="text-[10px] text-slate-600 uppercase font-extrabold tracking-wider">To Do</div>
           <div className="text-xl font-bold text-slate-700 mt-1">{stats.todo}</div>
         </div>
@@ -471,7 +471,7 @@ export default function TaskWidget({ leadId, reps }) {
       </div>
 
       {/* Control Filters & Toggle bar */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm space-y-4">
+      <div className="rounded-xl p-4 shadow-sm space-y-4" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <h3 className="text-base font-bold text-gray-800 flex items-center gap-2">
             <span>📋 Lead Tasks</span>
@@ -537,7 +537,7 @@ export default function TaskWidget({ leadId, reps }) {
 
       {/* Task Creation/Editing Form */}
       {isAdding && (
-        <form onSubmit={handleSaveTask} className="bg-slate-50/70 border border-slate-200 rounded-xl p-5 shadow-sm space-y-4 animate-in slide-in-from-top-4 duration-200">
+        <form onSubmit={handleSaveTask} className="rounded-xl p-5 shadow-sm space-y-4 animate-in slide-in-from-top-4 duration-200" style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
           <div className="flex justify-between items-center border-b border-slate-200 pb-3">
             <h4 className="text-sm font-bold text-gray-800">
               {editingTask ? '🔧 Task Details' : '✨ New ClickUp Task Instance'}
@@ -746,7 +746,7 @@ export default function TaskWidget({ leadId, reps }) {
 
       {/* Task Listing View */}
       {filteredTasks.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+        <div className="text-center py-12 rounded-xl border border-dashed border-gray-300 transition-all" style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(5px)' }}>
           <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
           </svg>
@@ -771,9 +771,14 @@ export default function TaskWidget({ leadId, reps }) {
             return (
               <div 
                 key={task.id} 
-                className={`bg-white rounded-xl border transition-all duration-200 overflow-hidden shadow-sm hover:shadow-md ${
-                  isExpanded ? 'border-blue-400 ring-1 ring-blue-400' : isOverdue ? 'border-red-300 bg-red-50/20' : 'border-gray-200'
+                className={`rounded-xl transition-all duration-200 overflow-hidden shadow-sm hover:shadow-md ${
+                  isExpanded ? 'border-blue-400 ring-1 ring-blue-400' : isOverdue ? 'border-red-300' : ''
                 }`}
+                style={{
+                  background: isOverdue ? 'rgba(254, 226, 226, 0.5)' : 'rgba(255, 255, 255, 0.6)',
+                  backdropFilter: 'blur(10px)',
+                  border: isExpanded ? '1px solid var(--accent)' : isOverdue ? '1px solid rgba(248, 113, 113, 0.5)' : '1px solid rgba(255, 255, 255, 0.4)'
+                }}
               >
                 
                 {/* Task Row Card Header */}
@@ -892,7 +897,7 @@ export default function TaskWidget({ leadId, reps }) {
 
                 {/* Expanded Details Section */}
                 {isExpanded && (
-                  <div className="border-t border-gray-150 bg-slate-50/50 p-5 space-y-5 animate-in fade-in duration-200">
+                  <div className="border-t border-gray-150 p-5 space-y-5 animate-in fade-in duration-200 transition-all" style={{ background: 'rgba(255, 255, 255, 0.3)', backdropFilter: 'blur(10px)' }}>
                     {detailsLoading || !expandedTaskDetails ? (
                       <div className="text-center text-xs text-gray-500 py-6">Loading details...</div>
                     ) : (
@@ -903,7 +908,7 @@ export default function TaskWidget({ leadId, reps }) {
                           {/* Task Description */}
                           <div>
                             <h5 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 mb-1">Description</h5>
-                            <p className="text-xs text-gray-750 bg-white p-3 rounded-lg border border-gray-200 whitespace-pre-wrap min-h-[50px]">
+                            <p className="text-xs text-gray-750 p-3 rounded-lg border whitespace-pre-wrap min-h-[50px] transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(5px)', border: '1px solid rgba(255, 255, 255, 0.3)' }}>
                               {expandedTaskDetails.description || <span className="italic text-gray-450">No description provided.</span>}
                             </p>
                           </div>
@@ -919,11 +924,11 @@ export default function TaskWidget({ leadId, reps }) {
 
                             {/* Subtask list */}
                             {(!expandedTaskDetails.subtasks || expandedTaskDetails.subtasks.length === 0) ? (
-                              <p className="text-xs text-gray-400 italic bg-white p-3 rounded-lg border border-gray-150">
+                              <p className="text-xs text-gray-600 italic p-3 rounded-lg border transition-all" style={{ background: 'rgba(255, 255, 255, 0.4)', borderColor: 'rgba(255, 255, 255, 0.3)' }}>
                                 No checklist subtasks yet. Add one below!
                               </p>
                             ) : (
-                              <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-150">
+                              <div className="rounded-xl border divide-y divide-gray-150 transition-all shadow-sm" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
                                 {expandedTaskDetails.subtasks.map(sub => (
                                   <div key={sub.id} className="flex items-center justify-between gap-3 px-3 py-2 text-xs">
                                     <label className="flex items-center gap-2 cursor-pointer select-none flex-1 min-w-0">
@@ -969,7 +974,7 @@ export default function TaskWidget({ leadId, reps }) {
                         {/* Column 3: Custom fields details and comments */}
                         <div className="space-y-5">
                           {/* Premium Custom Fields Box */}
-                          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-3">
+                          <div className="p-4 rounded-xl border shadow-sm space-y-3 transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
                             <h5 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 border-b pb-1.5 mb-2">ClickUp Custom Fields</h5>
                             
                             <div className="grid grid-cols-2 gap-y-2.5 gap-x-2 text-xs">
@@ -1019,7 +1024,7 @@ export default function TaskWidget({ leadId, reps }) {
                           </div>
 
                           {/* Task Comments Section */}
-                          <div className="space-y-3 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                          <div className="space-y-3 p-4 rounded-xl border shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
                             <h5 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 border-b pb-1.5 mb-2">Discussion Activity</h5>
                             
                             {/* Comments list */}

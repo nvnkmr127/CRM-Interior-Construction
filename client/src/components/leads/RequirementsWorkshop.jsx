@@ -86,13 +86,13 @@ export default function RequirementsWorkshop({ leadId, lead, onUpdate }) {
 
       <div className="space-y-4">
         {rooms.length === 0 ? (
-          <div className="text-center py-8 text-gray-500 bg-gray-50 rounded border border-dashed border-gray-300">
+          <div className="text-center py-8 text-gray-500 rounded border border-dashed border-gray-300 transition-all" style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(10px)' }}>
             No rooms added yet.
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {rooms.map(room => (
-              <div key={room.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 relative group">
+              <div key={room.id} className="rounded-xl shadow-sm border transition-all p-4 relative group" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
                 <button 
                   onClick={() => removeRoom(room.id)}
                   className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -129,13 +129,13 @@ export default function RequirementsWorkshop({ leadId, lead, onUpdate }) {
         {!isAdding ? (
           <button 
             onClick={() => setIsAdding(true)}
-            className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 font-medium hover:bg-gray-50 hover:border-gray-400 transition-colors flex items-center justify-center gap-2"
+            className="w-full py-3 border-2 border-dashed rounded-lg font-medium transition-all flex items-center justify-center gap-2" style={{ background: 'rgba(255, 255, 255, 0.2)', borderColor: 'rgba(255, 255, 255, 0.5)', color: 'var(--color-text)' }}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
             Add Room to Scope
           </button>
         ) : (
-          <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 mt-4">
+          <div className="rounded-lg border p-4 mt-4 transition-all" style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(10px)', borderColor: 'rgba(255, 255, 255, 0.3)' }}>
             <h4 className="font-semibold text-gray-800 mb-3">Add New Room</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>

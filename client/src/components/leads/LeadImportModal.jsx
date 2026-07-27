@@ -197,7 +197,8 @@ export default function LeadImportModal({ isOpen, onClose, onImportSuccess }) {
           </p>
 
           <div
-            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:bg-gray-50 transition-colors cursor-pointer bg-white"
+            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:bg-white/40 transition-all cursor-pointer"
+            style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(5px)' }}
             onClick={() => fileInputRef.current?.click()}
             onDragOver={e => e.preventDefault()}
             onDrop={handleDrop}
@@ -239,7 +240,7 @@ export default function LeadImportModal({ isOpen, onClose, onImportSuccess }) {
               <div className="text-gray-500 font-bold tracking-widest mb-2 uppercase text-[10px]">Example Row</div>
               <div className="flex gap-2 min-w-max">
                 {STANDARD_FIELDS.map((field) => (
-                  <span key={field.key} className="px-3 py-1.5 bg-white border border-gray-200 rounded text-gray-700 font-mono text-xs shadow-sm">
+                  <span key={field.key} className="px-3 py-1.5 border border-gray-200 rounded text-gray-700 font-mono text-xs shadow-sm" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' }}>
                     {field.example}
                   </span>
                 ))}
@@ -275,7 +276,7 @@ export default function LeadImportModal({ isOpen, onClose, onImportSuccess }) {
             </div>
           </div>
 
-          <div className="bg-white border rounded-lg overflow-x-auto flex-1 shadow-sm">
+          <div className="border rounded-xl overflow-x-auto flex-1 shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
             <table className="w-full text-left border-collapse">
               <thead className="bg-[#fcfbf9] border-b text-gray-700 sticky top-0 z-10">
                 <tr>
@@ -306,7 +307,7 @@ export default function LeadImportModal({ isOpen, onClose, onImportSuccess }) {
                   });
 
                   return (
-                    <tr key={rowIndex} className="hover:bg-gray-50 transition-colors">
+                    <tr key={rowIndex} className="hover:bg-white/40 transition-colors">
                       <td className="px-3 py-2 border-r text-center align-middle">
                         {isValid ? (
                           <svg className="w-5 h-5 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -359,7 +360,7 @@ export default function LeadImportModal({ isOpen, onClose, onImportSuccess }) {
             <p className="text-sm">Successfully imported {importStats?.created} leads, but {importStats?.skipped} rows failed validation.</p>
           </div>
           
-          <div className="bg-white border rounded-lg overflow-hidden flex-1 shadow-sm mt-4 max-h-[300px] overflow-y-auto">
+          <div className="border rounded-xl overflow-hidden flex-1 shadow-sm mt-4 max-h-[300px] overflow-y-auto transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
             <table className="w-full text-left border-collapse">
               <thead className="bg-[#fcfbf9] border-b text-gray-700 sticky top-0 z-10">
                 <tr>

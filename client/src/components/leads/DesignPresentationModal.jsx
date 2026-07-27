@@ -45,7 +45,7 @@ export default function DesignPresentationModal({ isOpen, onClose, leadId, onLog
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden">
+      <div className="rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border transition-all" style={{ background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255, 255, 255, 0.4)' }}>
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-indigo-50">
           <h3 className="text-lg font-bold text-indigo-900 flex items-center gap-2">
             <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" /></svg>

@@ -26,7 +26,7 @@ export default function PredictiveRevenueWidget() {
   };
 
   if (loading) {
-    return <div className="p-4 bg-white rounded-lg shadow border border-gray-200 animate-pulse h-48"></div>;
+    return <div className="p-4 rounded-xl shadow border transition-all animate-pulse h-48" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}></div>;
   }
 
   const totalRevenue = data.reduce((sum, item) => sum + Number(item.expected_revenue), 0);

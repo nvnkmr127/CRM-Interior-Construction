@@ -35,7 +35,7 @@ export default function AITwinTab({ leadId, lead }) {
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-white">
+    <div className="flex flex-col h-full overflow-hidden transition-all" style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(10px)' }}>
       <div className="p-4 border-b border-gray-200 bg-blue-50/50">
         <h3 className="font-semibold text-gray-900 flex items-center gap-2">
           <span className="relative flex h-3 w-3">
@@ -49,16 +49,19 @@ export default function AITwinTab({ leadId, lead }) {
         </p>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{ background: 'rgba(255, 255, 255, 0.2)' }}>
         {messages.map((msg, idx) => (
           <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[80%] rounded-lg p-3 text-sm ${
-              msg.role === 'user' 
-                ? 'bg-blue-600 text-white rounded-br-none' 
-                : msg.role === 'system'
-                  ? 'bg-gray-200 text-gray-600 text-xs w-full text-center'
-                  : 'bg-white border border-gray-200 text-gray-800 shadow-sm rounded-bl-none'
-            }`}>
+            <div 
+              className={`max-w-[80%] rounded-lg p-3 text-sm transition-all shadow-sm ${
+                msg.role === 'user' 
+                  ? 'bg-blue-600 text-white rounded-br-none' 
+                  : msg.role === 'system'
+                    ? 'text-gray-600 text-xs w-full text-center'
+                    : 'border text-gray-800 rounded-bl-none'
+              }`}
+              style={msg.role === 'system' ? {} : (msg.role !== 'user' ? { background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(5px)', border: '1px solid rgba(255, 255, 255, 0.5)' } : {})}
+            >
               {msg.role === 'twin' && <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{lead?.name || 'Customer'} (Simulated)</div>}
               {msg.role === 'user' && <div className="text-[10px] font-bold text-blue-200 uppercase tracking-wider mb-1">You</div>}
               {msg.content}
@@ -67,14 +70,14 @@ export default function AITwinTab({ leadId, lead }) {
         ))}
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-white border border-gray-200 text-gray-500 rounded-lg rounded-bl-none p-3 shadow-sm text-sm italic">
+            <div className="border border-gray-200 text-gray-500 rounded-lg rounded-bl-none p-3 shadow-sm text-sm italic transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' }}>
               Thinking...
             </div>
           </div>
         )}
       </div>
 
-      <div className="p-4 bg-white border-t border-gray-200">
+      <div className="p-4 border-t border-gray-200 transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)' }}>
         <form onSubmit={handleSend} className="flex gap-2">
           <input
             type="text"

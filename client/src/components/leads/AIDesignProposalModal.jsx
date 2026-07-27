@@ -35,7 +35,7 @@ export default function AIDesignProposalModal({ isOpen, onClose, leadId }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900 bg-opacity-50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] border transition-all" style={{ background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255, 255, 255, 0.4)' }}>
         
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 bg-gray-50">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">

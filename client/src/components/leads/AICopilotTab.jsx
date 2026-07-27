@@ -82,7 +82,7 @@ export default function AICopilotTab({ leadId }) {
         </div>
 
         {/* Sentiment */}
-        <div className="bg-white border rounded-xl p-5 shadow-sm">
+        <div className="border rounded-xl p-5 shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
           <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Overall Sentiment</h4>
           <div className={`inline-flex items-center px-4 py-2 rounded-full border text-lg font-medium ${getSentimentColor(insights.sentiment)}`}>
             {insights.sentiment}
@@ -90,7 +90,7 @@ export default function AICopilotTab({ leadId }) {
         </div>
 
         {/* Buying Signals */}
-        <div className="bg-white border rounded-xl p-5 shadow-sm">
+        <div className="border rounded-xl p-5 shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
           <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
             <span>📈</span> Buying Signals
           </h4>
@@ -109,7 +109,7 @@ export default function AICopilotTab({ leadId }) {
         </div>
 
         {/* Objections */}
-        <div className="bg-white border rounded-xl p-5 shadow-sm">
+        <div className="border rounded-xl p-5 shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
           <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
             <span>🛡️</span> Detected Objections
           </h4>

@@ -789,7 +789,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
             )}
 
             {/* Form to add a new room measurement */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+            <div className="border rounded-xl p-4 space-y-3 shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
               <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Add Room Measurement</div>
               <div className="grid grid-cols-4 gap-4">
                 <Input 
@@ -927,7 +927,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
             )}
 
             {/* Add stakeholder fields */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+            <div className="border rounded-xl p-4 space-y-3 shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
               <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Add Stakeholder / Contact</div>
               <div className="grid grid-cols-3 gap-4">
                 <Input 
@@ -1053,7 +1053,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
             )}
 
             {/* Add vendor fields */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+            <div className="border rounded-xl p-4 space-y-3 shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
               <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Add Vendor Engagement</div>
               <div className="grid grid-cols-3 gap-4">
                 <Input 
@@ -1168,7 +1168,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
             )}
 
             {/* Add consultant fields */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+            <div className="border rounded-xl p-4 space-y-3 shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
               <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Assign Consultant</div>
               <div className="grid grid-cols-3 gap-4">
                 <Input 

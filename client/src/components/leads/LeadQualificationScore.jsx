@@ -39,7 +39,7 @@ export default function LeadQualificationScore({ lead }) {
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm mb-4">
+    <div className="p-5 rounded-xl shadow-sm mb-4 transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
       <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
         <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
         AI Qualification Score

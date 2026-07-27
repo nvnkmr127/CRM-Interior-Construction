@@ -96,44 +96,44 @@ export default function LeadTable({
     if (direction === 'inbound') {
       icon = '📥';
       statusText = 'Received';
-      colorClass = 'text-green-600 bg-green-50 border-green-200';
+      colorClass = 'text-green-700 border-green-200 bg-green-500/10 backdrop-blur-md';
     } else {
       switch (status) {
         case 'sent':
           icon = '✓';
           statusText = 'Sent';
-          colorClass = 'text-gray-500 bg-gray-50 border-gray-200';
+          colorClass = 'text-gray-700 border-gray-200 bg-white/40 backdrop-blur-md';
           break;
         case 'delivered':
           icon = '✓✓';
           statusText = 'Delivered';
-          colorClass = 'text-gray-600 bg-gray-100 border-gray-300';
+          colorClass = 'text-gray-600 border-gray-300 bg-white/40 backdrop-blur-md';
           break;
         case 'read':
         case 'seen':
           icon = '✓✓';
           statusText = 'Seen';
-          colorClass = 'text-blue-600 bg-blue-50 border-blue-200';
+          colorClass = 'text-blue-700 border-blue-200 bg-blue-500/10 backdrop-blur-md';
           break;
         case 'reacted':
           icon = reaction || '❤️';
           statusText = 'Reacted';
-          colorClass = 'text-purple-600 bg-purple-50 border-purple-200';
+          colorClass = 'text-purple-700 border-purple-200 bg-purple-500/10 backdrop-blur-md';
           break;
         case 'replied':
           icon = '💬';
           statusText = 'Replied';
-          colorClass = 'text-indigo-600 bg-indigo-50 border-indigo-200';
+          colorClass = 'text-indigo-700 border-indigo-200 bg-indigo-500/10 backdrop-blur-md';
           break;
         case 'failed':
           icon = '⚠️';
           statusText = 'Failed';
-          colorClass = 'text-red-600 bg-red-50 border-red-200';
+          colorClass = 'text-red-700 border-red-200 bg-red-500/10 backdrop-blur-md';
           break;
         default:
           icon = '✓';
           statusText = status;
-          colorClass = 'text-gray-500 bg-gray-50 border-gray-200';
+          colorClass = 'text-gray-700 border-gray-200 bg-white/40 backdrop-blur-md';
       }
     }
 
@@ -146,7 +146,7 @@ export default function LeadTable({
           <button
             onClick={(e) => handleSyncWhatsApp(e, lead.id)}
             disabled={isSyncing}
-            className={`${styles.actionIconBtn} p-0.5 hover:bg-gray-100 rounded`}
+            className={`${styles.actionIconBtn} p-0.5 hover:bg-white/40 rounded transition-colors`}
             title="Sync WhatsApp chat status"
             style={{ width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
@@ -324,10 +324,10 @@ export default function LeadTable({
                 <td className={styles.listTd}>
                   {lead.buying_intent ? (
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                      lead.buying_intent === 'Hot' ? 'bg-red-50 text-red-700 border border-red-200' :
-                      lead.buying_intent === 'Warm' ? 'bg-orange-50 text-orange-700 border border-orange-200' :
-                      lead.buying_intent === 'Cold' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
-                      'bg-gray-50 text-gray-700 border border-gray-200'
+                      lead.buying_intent === 'Hot' ? 'bg-red-500/10 backdrop-blur-md text-red-700 border border-red-200' :
+                      lead.buying_intent === 'Warm' ? 'bg-orange-500/10 backdrop-blur-md text-orange-700 border border-orange-200' :
+                      lead.buying_intent === 'Cold' ? 'bg-blue-500/10 backdrop-blur-md text-blue-700 border border-blue-200' :
+                      'bg-white/40 backdrop-blur-md text-gray-700 border border-gray-200'
                     }`}>
                       {lead.buying_intent === 'Hot' && '🔥 '}
                       {lead.buying_intent === 'Warm' && '☀️ '}
@@ -358,7 +358,7 @@ export default function LeadTable({
                 </td>
                 <td className={styles.listTd}>
                   {lead.next_meeting_schedule ? (
-                    <span className="font-semibold text-xs text-orange-700 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded flex items-center gap-1 w-max">
+                    <span className="font-semibold text-xs text-orange-700 bg-orange-500/10 backdrop-blur-md border border-orange-200 px-2 py-0.5 rounded flex items-center gap-1 w-max">
                       📅 {formatMeetingSchedule(lead.next_meeting_schedule)}
                     </span>
                   ) : (

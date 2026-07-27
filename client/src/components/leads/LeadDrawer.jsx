@@ -473,10 +473,10 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
       {loading || !lead ? (
         <div className="p-6 flex items-center justify-center text-gray-500">Loading lead details...</div>
       ) : (
-        <div className="flex flex-col h-full bg-gray-50">
+        <div className="flex flex-col h-full transition-all" style={{ background: 'rgba(255, 255, 255, 0.3)', backdropFilter: 'blur(10px)' }}>
 
           {/* HEADER */}
-          <div className="bg-white border-b border-gray-200 px-6 pt-6 pb-4 shrink-0 shadow-sm relative z-10">
+          <div className="border-b border-gray-200 px-6 pt-6 pb-4 shrink-0 shadow-sm relative z-10" style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(16px)' }}>
             <div className="flex items-center justify-between mb-3 gap-4">
               <div className="flex-1">
                 <input
@@ -580,7 +580,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
           </div>
 
           {/* TABS NAVIGATION */}
-          <div className="bg-white px-6 border-b border-gray-200 shrink-0">
+          <div className="px-6 border-b border-gray-200 shrink-0" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(16px)' }}>
             <nav 
               ref={tabsRef}
               className="flex px-6 gap-6 overflow-x-auto custom-scrollbar"
@@ -613,7 +613,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                 <div className="space-y-6 flex flex-col">
                   {/* Upcoming Meeting */}
                   {lead.next_meeting_schedule && (
-                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-4 rounded-lg shadow-sm border border-orange-200">
+                    <div className="p-5 rounded-xl shadow-sm transition-all" style={{ background: 'rgba(255, 165, 0, 0.15)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 165, 0, 0.3)' }}>
                       <div className="flex justify-between items-center mb-3">
                         <h4 className="text-xs font-bold text-orange-800 uppercase tracking-wider flex items-center gap-1">
                           <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
@@ -667,7 +667,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   )}
 
                   {/* Contact Info */}
-                  <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                  <div className="p-5 rounded-xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
                     <div className="flex justify-between items-center mb-3">
                       <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Contact Info</h4>
                       <button onClick={() => setIsLeadFormOpen(true)} className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
@@ -700,7 +700,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   </div>
 
                   {/* Property & Scope */}
-                  <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                  <div className="p-5 rounded-xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
                     <div className="flex justify-between items-center mb-3">
                       <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Property Details</h4>
                       <button onClick={() => setIsLeadFormOpen(true)} className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
@@ -857,7 +857,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   </div>
 
                   {/* Preferences & Tracking */}
-                  <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                  <div className="p-5 rounded-xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
                     <div className="flex justify-between items-center mb-3">
                       <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Preferences</h4>
                       <button onClick={() => setIsLeadFormOpen(true)} className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
@@ -934,19 +934,19 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       </div>
                       
                       <div className="grid grid-cols-2 gap-3 mt-4">
-                        <div className="bg-white p-2 rounded shadow-sm border border-blue-50">
+                        <div className="p-2 rounded shadow-sm border transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
                           <div className="text-[10px] text-gray-500 uppercase font-semibold">Next Action</div>
                           <div className="text-sm font-medium text-gray-800">{lead.ai_recommendation || 'Follow up'}</div>
                         </div>
-                        <div className="bg-white p-2 rounded shadow-sm border border-blue-50">
+                        <div className="p-2 rounded shadow-sm border transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
                           <div className="text-[10px] text-gray-500 uppercase font-semibold">Budget Confidence</div>
                           <div className="text-sm font-medium text-gray-800">{lead.budget_confidence || 'High'}</div>
                         </div>
-                        <div className="bg-white p-2 rounded shadow-sm border border-blue-50">
+                        <div className="p-2 rounded shadow-sm border transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
                           <div className="text-[10px] text-gray-500 uppercase font-semibold">Decision Maker</div>
                           <div className="text-sm font-medium text-gray-800">{lead.decision_maker || 'Spouse'}</div>
                         </div>
-                        <div className="bg-white p-2 rounded shadow-sm border border-blue-50">
+                        <div className="p-2 rounded shadow-sm border transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
                           <div className="text-[10px] text-gray-500 uppercase font-semibold">Risk Level</div>
                           <div className="text-sm font-medium text-gray-800">{lead.risk_level || 'Low'}</div>
                         </div>
@@ -966,7 +966,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       </Button>
                     </div>
                     {buyingIntent ? (
-                      <div className="bg-white p-3 rounded border border-orange-50 flex items-center justify-between">
+                      <div className="p-3 rounded border flex items-center justify-between shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
                         <div>
                           <div className="text-xs text-gray-500 uppercase font-semibold">Predicted Intent</div>
                           <div className={`text-lg font-bold flex items-center gap-2 ${
@@ -1070,7 +1070,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                     </Button>
                   </div>
                   {mood ? (
-                    <div className="bg-white p-3 rounded border border-pink-50">
+                    <div className="p-3 rounded border shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
                       <div className="flex items-center gap-3 mb-2">
                         <div className="text-3xl">{mood.emoji}</div>
                         <div>
@@ -1106,7 +1106,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
             {activeTab === 'meeting-schedule' && (
               <div className="space-y-6">
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                <div className="p-6 rounded-xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
                   <div className="flex items-center justify-between border-b pb-4 mb-6">
                     <div>
                       <h3 className="text-base font-bold text-gray-900">Upcoming Meeting Schedule</h3>
@@ -1434,7 +1434,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                    <div className="text-center py-12 rounded-xl border border-dashed border-gray-200 transition-all" style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(5px)' }}>
                       <span className="text-4xl block mb-3">📅</span>
                       <h4 className="text-base font-bold text-gray-700">No Meetings Scheduled</h4>
                       <p className="text-sm text-gray-400 mt-1 max-w-sm mx-auto">There are no upcoming meetings scheduled for this lead at the moment.</p>
@@ -1475,8 +1475,8 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   <p className="mt-2 text-sm font-medium text-gray-900">Drag &amp; drop or click to upload</p>
                   <p className="text-xs text-gray-500">Floor plans, reference images, or proposal PDFs. Max 10MB.</p>
                 </div>
-                <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
-                  <div className="px-4 py-3 border-b text-sm font-semibold text-gray-700 bg-gray-50">Uploaded Files</div>
+                <div className="rounded-xl overflow-hidden shadow-sm border transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
+                  <div className="px-4 py-3 border-b text-sm font-semibold text-gray-700 transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(5px)' }}>Uploaded Files</div>
                   <ul className="divide-y divide-gray-200 text-sm">
                     {files.length === 0 ? (
                       <li className="p-4 text-center text-gray-500">No files uploaded yet.</li>
@@ -1524,7 +1524,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   </div>
                 )}
                 {estimates.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500 bg-gray-50 rounded border border-dashed border-gray-300">
+                  <div className="text-center py-8 text-gray-500 rounded border border-dashed border-gray-300 transition-all" style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(5px)' }}>
                     <p className="text-sm">No estimates generated yet.</p>
                     <p className="text-xs mt-1">Click "Generate Estimate" to create a new BOQ.</p>
                   </div>
@@ -1570,7 +1570,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
           </div>
 
           {/* STICKY FOOTER */}
-          <div className="bg-white border-t border-gray-200 p-4 shrink-0 flex items-center justify-between">
+          <div className="border-t border-gray-200 p-4 shrink-0 flex items-center justify-between relative z-10" style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(16px)' }}>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => setIsAssignModalOpen(true)}>Reassign</Button>
               <Button variant="outline" size="sm" onClick={() => {}}>Park</Button>

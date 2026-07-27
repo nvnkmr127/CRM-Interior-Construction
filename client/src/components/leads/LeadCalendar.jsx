@@ -36,7 +36,7 @@ export default function LeadCalendar({ leads, onLeadClick }) {
   }, [leads]);
 
   return (
-    <div className="rounded-xl shadow-sm border p-6" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+    <div className="rounded-xl p-6" style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255, 255, 255, 0.5)', boxShadow: '0 10px 30px -10px rgba(0, 0, 0, 0.05)' }}>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>
           {currentDate.toLocaleString('default', { month: 'long' })} {currentYear}
@@ -46,31 +46,31 @@ export default function LeadCalendar({ leads, onLeadClick }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-px border rounded-lg overflow-hidden" style={{ background: 'var(--color-border)', borderColor: 'var(--color-border)' }}>
+      <div className="grid grid-cols-7 gap-px rounded-xl overflow-hidden" style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(255,255,255,0.4)' }}>
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-          <div key={day} className="py-2 text-center text-sm font-semibold" style={{ background: 'var(--color-surface-2)', color: 'var(--color-text-secondary)' }}>
+          <div key={day} className="py-3 text-center text-sm font-semibold uppercase tracking-wider" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)', color: 'var(--color-text-secondary)' }}>
             {day}
           </div>
         ))}
         {calendarDays.map((date, idx) => {
-          if (!date) return <div key={`empty-${idx}`} className="min-h-[120px]" style={{ background: 'var(--color-surface-2)' }}></div>;
+          if (!date) return <div key={`empty-${idx}`} className="min-h-[120px]" style={{ background: 'rgba(255, 255, 255, 0.3)' }}></div>;
           
           const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
           const dayLeads = leadsByDate[dateKey] || [];
           const isToday = new Date().toDateString() === date.toDateString();
 
           return (
-            <div key={dateKey} className="p-2 min-h-[120px]" style={{ background: isToday ? 'var(--color-info-bg)' : 'var(--color-surface)' }}>
-              <div className="text-sm font-medium w-6 h-6 flex items-center justify-center rounded-full mb-2" style={isToday ? { background: '#2563eb', color: '#fff' } : { color: 'var(--color-text)' }}>
+            <div key={dateKey} className="p-3 min-h-[120px] transition-colors duration-200" style={{ background: isToday ? 'rgba(170, 59, 255, 0.05)' : 'rgba(255, 255, 255, 0.6)' }}>
+              <div className="text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full mb-3" style={isToday ? { background: 'var(--accent)', color: '#fff', boxShadow: '0 4px 10px rgba(170, 59, 255, 0.3)' } : { color: 'var(--color-text-secondary)' }}>
                 {date.getDate()}
               </div>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1.5">
                 {dayLeads.slice(0, 3).map(lead => (
                   <div 
                     key={lead.id}
                     onClick={() => onLeadClick(lead.id)}
-                    className="text-xs px-2 py-1 border rounded cursor-pointer truncate"
-                    style={{ background: 'var(--color-surface-3)', color: 'var(--color-text)', borderColor: 'var(--color-border-strong)' }}
+                    className="text-xs px-2 py-1.5 rounded cursor-pointer truncate transition-transform hover:scale-[1.02]"
+                    style={{ background: 'rgba(255,255,255,0.9)', color: 'var(--color-text)', border: '1px solid rgba(0,0,0,0.05)', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
                     title={lead.name}
                   >
                     {lead.name}

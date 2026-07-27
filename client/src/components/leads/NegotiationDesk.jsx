@@ -46,7 +46,7 @@ export default function NegotiationDesk({ leadId, lead, onUpdate }) {
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm mb-6">
+      <div className="rounded-xl p-5 shadow-sm mb-6 transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100">
             <label className="block text-xs font-bold text-blue-800 uppercase tracking-wider mb-2">Our Quoted Price</label>

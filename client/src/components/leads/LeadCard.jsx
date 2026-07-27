@@ -22,7 +22,7 @@ export default function LeadCard({ lead, onClick, draggable }) {
         <span className={styles.name}>{lead.name}</span>
         <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
           {lead.win_probability !== undefined && (
-            <Badge variant="outline" size="sm" className={lead.win_probability > 70 ? 'bg-green-50 text-green-700' : 'bg-gray-50'}>
+            <Badge variant="outline" size="sm" className={lead.win_probability > 70 ? 'text-green-700 border-green-200' : 'text-gray-700 border-gray-200'} style={{ background: lead.win_probability > 70 ? 'rgba(34, 197, 94, 0.1)' : 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(5px)' }}>
               {lead.win_probability}% Win
             </Badge>
           )}

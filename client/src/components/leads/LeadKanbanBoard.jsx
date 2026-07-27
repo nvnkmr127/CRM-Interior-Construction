@@ -22,8 +22,8 @@ function KanbanColumn({ stage, leads, activeId, onLeadClick }) {
   const isOverLimit = stage.wip_limit != null && leads.length > stage.wip_limit;
 
   return (
-    <div className={`flex flex-col rounded-lg min-w-[280px] max-w-[280px] max-h-full flex-shrink-0 mr-4 transition-colors`} style={{ background: 'var(--color-surface-2)', borderColor: isOverLimit ? 'var(--color-danger, #ef4444)' : 'var(--color-border)', borderWidth: isOverLimit ? '2px' : '1px' }}>
-      <div className="p-3 flex justify-between items-center rounded-t-lg" style={{ background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)' }}>
+    <div className={`flex flex-col rounded-xl min-w-[280px] max-w-[280px] max-h-full flex-shrink-0 mr-4 transition-all`} style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(10px)', borderColor: isOverLimit ? 'var(--color-danger, #ef4444)' : 'rgba(255, 255, 255, 0.4)', borderWidth: isOverLimit ? '2px' : '1px' }}>
+      <div className="p-3 flex justify-between items-center rounded-t-xl transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', borderBottom: '1px solid rgba(255, 255, 255, 0.2)' }}>
         <div>
           <h3 className="font-semibold flex items-center" style={{ color: isOverLimit ? 'var(--color-danger, #ef4444)' : 'var(--color-text)' }}>
             {stage.name} 
@@ -56,7 +56,8 @@ function KanbanColumn({ stage, leads, activeId, onLeadClick }) {
         {leads.length > visibleCount && (
           <div className="py-3 text-center">
             <button 
-              className="text-xs font-medium bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-1.5 rounded-full shadow-sm transition-colors"
+              className="text-xs font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-1.5 rounded-full shadow-sm transition-all"
+              style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)' }}
               onClick={() => setVisibleCount(v => v + 50)}
             >
               Load {Math.min(50, leads.length - visibleCount)} more (of {leads.length - visibleCount})

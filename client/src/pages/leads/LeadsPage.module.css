@@ -236,11 +236,19 @@
 
 /* ─── List View ───────────────────────────────────────────── */
 .listWrapper {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
+}
+
+.dark .listWrapper {
+  background: rgba(30, 30, 35, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.4);
 }
 
 .listTable {
@@ -253,34 +261,52 @@
   font-size: var(--text-xs);
   color: var(--color-text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 600;
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 2px solid var(--color-border);
-  background: var(--color-surface-2);
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  padding: 16px 20px;
+  border-bottom: 2px solid rgba(0,0,0,0.05);
+  background: rgba(250, 250, 250, 0.5);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
   white-space: nowrap;
 }
 
+.dark .listTh {
+  background: rgba(40, 40, 45, 0.5);
+  border-bottom: 2px solid rgba(255,255,255,0.05);
+}
+
 .listTd {
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--color-border);
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
   font-size: var(--text-sm);
   color: var(--color-text);
   vertical-align: middle;
   white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.dark .listTd {
+  border-bottom: 1px solid rgba(255,255,255,0.04);
 }
 
 .listTr {
   cursor: pointer;
-  transition: background 0.12s;
+  transition: all 0.2s;
 }
 
 .listTr:last-child .listTd {
   border-bottom: none;
 }
 
-.listTr:hover {
-  background: var(--color-surface-2);
+.listTr:hover .listTd {
+  background: rgba(170, 59, 255, 0.04);
+}
+
+.dark .listTr:hover .listTd {
+  background: rgba(170, 59, 255, 0.1);
 }
 
 /* ─── List Cell Content ───────────────────────────────────── */

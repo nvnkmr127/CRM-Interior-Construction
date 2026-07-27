@@ -130,7 +130,7 @@ export default function LeadCaptureForm() {
         </CardHeader>
         <CardContent className="text-center space-y-4">
           <p>We're excited to help you design your dream space.</p>
-          <div className="p-4 bg-gray-50 rounded-lg border">
+          <div className="p-4 rounded-xl border transition-all" style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(10px)' }}>
             <p className="text-sm text-gray-500 mb-2">Your dedicated representative</p>
             {successData.rep?.photo ? (
               <img src={successData.rep.photo} alt={repName} className="w-16 h-16 rounded-full mx-auto mb-2" />

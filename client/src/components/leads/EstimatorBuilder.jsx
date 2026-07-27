@@ -96,9 +96,9 @@ export default function EstimatorBuilder({ leadId, onSaved, onCancel }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-gray-50 h-screen w-screen overflow-hidden">
+    <div className="fixed inset-0 z-50 flex flex-col h-screen w-screen overflow-hidden transition-all" style={{ background: 'rgba(240, 245, 250, 0.7)', backdropFilter: 'blur(20px)' }}>
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shrink-0 shadow-sm">
+      <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between shrink-0 shadow-sm" style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(16px)' }}>
         <div>
           <h2 className="text-xl font-bold text-gray-900">Native Estimator Builder</h2>
           <p className="text-sm text-gray-500">Build your BOQ below</p>
@@ -118,7 +118,7 @@ export default function EstimatorBuilder({ leadId, onSaved, onCancel }) {
       <div className="flex-1 overflow-y-auto p-8">
         <div className="max-w-4xl mx-auto space-y-6">
           {rooms.map((room, rIndex) => (
-            <div key={room.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div key={room.id} className="rounded-xl shadow-sm border transition-all overflow-hidden" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
               <div className="bg-gray-100 px-4 py-3 border-b border-gray-200 flex justify-between items-center gap-4">
                 <div className="flex items-center gap-2">
                   <input
@@ -198,7 +198,7 @@ export default function EstimatorBuilder({ leadId, onSaved, onCancel }) {
                                       >
                                         📐
                                       </button>
-                                      <div className="absolute left-0 mt-1 hidden group-hover:block bg-white border border-gray-200 rounded shadow-md z-10 py-1 min-w-[120px]">
+                                      <div className="absolute left-0 mt-1 hidden group-hover:block border border-gray-200 rounded shadow-md z-10 py-1 min-w-[120px] transition-all" style={{ background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)' }}>
                                         <div className="px-2 py-1 text-[10px] text-gray-400 font-bold border-b border-gray-100">INSERT DIMENSION</div>
                                         <button 
                                           type="button"
