@@ -659,8 +659,8 @@ export default function RolesManager() {
             <DataTable columns={columns} data={roles} />
           </>
         ) : (
-          <div>
-            <div className={layoutStyles.sectionHeader} style={{ marginBottom: '24px' }}>
+          <div style={{ width: '100%', maxWidth: '1200px' }}>
+            <div className={layoutStyles.sectionHeader} style={{ marginBottom: '32px' }}>
               <div>
                 <h2 className={layoutStyles.sectionTitle}>{editingRole ? 'Edit Role' : 'Create Role'}</h2>
                 <p className={layoutStyles.sectionDesc}>Configure granular module permissions below.</p>
@@ -668,7 +668,9 @@ export default function RolesManager() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', maxWidth: '1000px' }}>
+              
+              {/* Basic Details */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
                 <div className={styles.formGroup} style={{ margin: 0 }}>
                   <label className={styles.label}>Role Name</label>
                   <Input
@@ -679,7 +681,7 @@ export default function RolesManager() {
                   />
                 </div>
                 
-                {!editingRole && roles.length > 0 ? (
+                {!editingRole && roles.length > 0 && (
                   <div className={styles.formGroup} style={{ margin: 0 }}>
                     <label className={styles.label}>Clone Permissions From Existing Role</label>
                     <select 
@@ -707,7 +709,7 @@ export default function RolesManager() {
                       ))}
                     </select>
                   </div>
-                ) : <div />}
+                )}
 
                 <div className={styles.formGroup} style={{ margin: 0 }}>
                   <label className={styles.label}>Description</label>
@@ -717,21 +719,10 @@ export default function RolesManager() {
                     placeholder="Optional description"
                   />
                 </div>
-
-                <div className={styles.formGroup} style={{ margin: 0 }}>
-                  <label className="input-label" style={{ display: 'block', marginBottom: '8px', color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>Change Summary (Optional)</label>
-                  <input
-                    type="text"
-                    className="input-field"
-                    value={formData.change_summary || ''}
-                    onChange={e => setFormData(prev => ({ ...prev, change_summary: e.target.value }))}
-                    placeholder="E.g. Added Delete Project permissions"
-                    style={{ width: '100%' }}
-                  />
-                </div>
               </div>
 
-              <div className={styles.formGroup} style={{ maxWidth: '800px', marginBottom: '24px' }}>
+              {/* Module Visibility */}
+              <div className={styles.formGroup} style={{ width: '100%', marginBottom: '0' }}>
                 <label className={styles.label}>Module Visibility</label>
                 <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
                   Enable or disable entire modules for this role. Disabled modules will be hidden from navigation.
@@ -756,8 +747,9 @@ export default function RolesManager() {
                 )}
               </div>
 
-              <div className={styles.formGroup}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', maxWidth: '800px' }}>
+              {/* Permissions */}
+              <div className={styles.formGroup} style={{ width: '100%' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                   <label className={styles.label} style={{ marginBottom: 0 }}>Permissions</label>
 
                   {!formData.permissions.includes('*') && (
@@ -769,16 +761,14 @@ export default function RolesManager() {
                   )}
                 </div>
 
-
-
                 {formData.permissions.includes('*') ? (
-                  <div style={{ padding: '12px', background: 'var(--color-accent-light)', color: 'var(--color-accent-dark)', borderRadius: 'var(--radius-md)', maxWidth: '100%' }}>
+                  <div style={{ padding: '12px', background: 'var(--color-accent-light)', color: 'var(--color-accent-dark)', borderRadius: 'var(--radius-md)', width: '100%' }}>
                     This role has full system access (*).
                   </div>
                 ) : (
                   <>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '100%' }}>
-                      <div style={{ flex: '1 1 300px', display: 'flex', gap: '12px', alignItems: 'center', background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
                         <div style={{ flex: 1 }}>
                           <Select 
                             label="Select Module to Configure"
@@ -810,7 +800,7 @@ export default function RolesManager() {
 
                         return (
                           <div style={{ padding: '24px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--color-border)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--color-border)', flexWrap: 'wrap', gap: '12px' }}>
                               <h3 style={{ margin: 0, color: 'var(--color-text)' }}>{module.label} Permissions</h3>
                               <div style={{ display: 'flex', gap: '8px' }}>
                                 <Button variant="ghost" size="sm" onClick={() => handleSelectAllModule(module.id, module.actions)}>Select All</Button>
@@ -820,7 +810,7 @@ export default function RolesManager() {
 
                             <div style={{ marginBottom: '24px' }}>
                               <label className={styles.label} style={{ fontSize: '14px', marginBottom: '12px' }}>Required Permission List</label>
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '12px', background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px', background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
                                 {module.actions.map(action => {
                                   const permId = `${module.id}:${action.id}`;
                                   return (
@@ -841,7 +831,8 @@ export default function RolesManager() {
                               <label className={styles.label} style={{ fontSize: '14px', marginBottom: '12px' }}>Data Scope</label>
                               <div style={{ background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
                                 <select
-                                  style={{ width: '100%', maxWidth: '300px', padding: '8px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)' }}
+                                  className="input-field"
+                                  style={{ width: '100%', maxWidth: '100%', padding: '10px' }}
                                   value={scopeType}
                                   onChange={(e) => handleDataScopeChange(module.id, e.target.value)}
                                 >
@@ -898,10 +889,11 @@ export default function RolesManager() {
                                   {FIELD_PERMISSIONS_SCHEMA[module.id].map(field => {
                                     const currentPerm = formData.field_permissions?.[module.id]?.[field.id] || 'editable';
                                     return (
-                                      <div key={field.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                      <div key={field.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                         <span style={{ fontSize: '12px', fontWeight: 500 }}>{field.label}</span>
                                         <select
-                                          style={{ padding: '6px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)', fontSize: '12px' }}
+                                          className="input-field"
+                                          style={{ padding: '8px', width: '100%', fontSize: '13px' }}
                                           value={currentPerm}
                                           onChange={(e) => {
                                             const val = e.target.value;
@@ -930,7 +922,29 @@ export default function RolesManager() {
 
                             {PAGE_PERMISSIONS_SCHEMA[module.id] && (
                               <div>
-                                <label className={styles.label} style={{ fontSize: '14px', marginBottom: '12px' }}>Page / Tab Access</label>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                  <label className={styles.label} style={{ fontSize: '14px', margin: 0 }}>Page / Tab Access</label>
+                                  <div style={{ display: 'flex', gap: '8px' }}>
+                                    <Button variant="ghost" size="sm" onClick={() => {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        page_permissions: {
+                                          ...prev.page_permissions,
+                                          [module.id]: PAGE_PERMISSIONS_SCHEMA[module.id].map(p => p.id)
+                                        }
+                                      }));
+                                    }}>Select All</Button>
+                                    <Button variant="ghost" size="sm" onClick={() => {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        page_permissions: {
+                                          ...prev.page_permissions,
+                                          [module.id]: []
+                                        }
+                                      }));
+                                    }}>Clear</Button>
+                                  </div>
+                                </div>
                                 <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
                                   Select which tabs should be visible. If none are selected, all tabs are visible by default.
                                 </p>
@@ -977,22 +991,23 @@ export default function RolesManager() {
                 )}
               </div>
 
-              <div className={styles.formGroup} style={{ maxWidth: '1000px', marginTop: '32px' }}>
-                <label className={styles.label} style={{ fontSize: '18px', borderBottom: '1px solid var(--color-border)', paddingBottom: '8px', marginBottom: '24px' }}>Security Policies</label>
+              {/* Security Policies */}
+              <div className={styles.formGroup} style={{ width: '100%', marginTop: '16px' }}>
+                <label className={styles.label} style={{ fontSize: '18px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px', marginBottom: '24px' }}>Security Policies</label>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
                   
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
                     {/* Allowed Login Times */}
-                    <div>
+                    <div style={{ background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
                       <label className={styles.label}>Allowed Login Times</label>
-                      <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '8px' }}>Restrict when this role can log in (e.g. 09:00 AM to 06:00 PM). Leave blank for no restriction.</p>
-                      <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>Restrict when this role can log in (e.g. 09:00 AM to 06:00 PM). Leave blank for no restriction.</p>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                         <TimeSelect
                           value={formData.security_policies.allowed_login_times?.start || ''}
                           onChange={val => setFormData(prev => ({ ...prev, security_policies: { ...prev.security_policies, allowed_login_times: { ...(prev.security_policies.allowed_login_times || {}), start: val } } }))}
                         />
-                        <span>to</span>
+                        <span style={{ color: 'var(--color-text-secondary)' }}>to</span>
                         <TimeSelect
                           value={formData.security_policies.allowed_login_times?.end || ''}
                           onChange={val => setFormData(prev => ({ ...prev, security_policies: { ...prev.security_policies, allowed_login_times: { ...(prev.security_policies.allowed_login_times || {}), end: val } } }))}
@@ -1001,10 +1016,10 @@ export default function RolesManager() {
                     </div>
 
                     {/* Allowed Days */}
-                    <div>
+                    <div style={{ background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
                       <label className={styles.label}>Allowed Days</label>
-                      <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '8px' }}>Restrict which days this role can log in.</p>
-                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                      <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>Restrict which days this role can log in.</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
                         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, idx) => {
                           const isChecked = formData.security_policies.allowed_days ? formData.security_policies.allowed_days.includes(idx) : false;
                           return (
@@ -1029,11 +1044,11 @@ export default function RolesManager() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
                     {/* Allowed IPs */}
-                    <div>
+                    <div style={{ background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
                       <label className={styles.label}>Allowed IP Addresses</label>
-                      <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '8px' }}>Comma separated list of IPs or CIDR blocks.</p>
+                      <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>Comma separated list of IPs or CIDR blocks.</p>
                       <input
                         type="text"
                         className="input-field"
@@ -1048,9 +1063,9 @@ export default function RolesManager() {
                     </div>
 
                     {/* Trusted Browsers */}
-                    <div>
+                    <div style={{ background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
                       <label className={styles.label}>Trusted Browsers</label>
-                      <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '8px' }}>Comma separated list (e.g. Chrome, Firefox).</p>
+                      <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>Comma separated list (e.g. Chrome, Firefox).</p>
                       <input
                         type="text"
                         className="input-field"
@@ -1065,9 +1080,9 @@ export default function RolesManager() {
                     </div>
 
                     {/* Allowed Devices */}
-                    <div>
+                    <div style={{ background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
                       <label className={styles.label}>Allowed Devices</label>
-                      <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '8px' }}>Comma separated list (e.g. Desktop, Mobile).</p>
+                      <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>Comma separated list (e.g. Desktop, Mobile).</p>
                       <input
                         type="text"
                         className="input-field"
@@ -1084,7 +1099,7 @@ export default function RolesManager() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-start', marginTop: '16px' }}>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-start', marginTop: '16px', padding: '16px', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
                 <Button variant="primary" onClick={handleSave}>Save Role</Button>
                 <Button variant="ghost" onClick={() => setSearchParams({})}>Cancel</Button>
               </div>
