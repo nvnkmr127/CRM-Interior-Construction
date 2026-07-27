@@ -38,6 +38,7 @@ if (useRedis) {
   cronQueue.add('amc_alert', {}, { repeat: { every: 12 * 60 * 60 * 1000 } }).catch(e => console.error('Failed to schedule amc_alert', e.message));
   cronQueue.add('payment_reminder', {}, { repeat: { every: 12 * 60 * 60 * 1000 } }).catch(e => console.error('Failed to schedule payment_reminder', e.message));
   cronQueue.add('weekly_progress_report', {}, { repeat: { pattern: '0 17 * * 5' } }).catch(e => console.error('Failed to schedule weekly_progress_report', e.message));
+  cronQueue.add('temp_permission_check', {}, { repeat: { every: 60 * 60 * 1000 } }).catch(e => console.error('Failed to schedule temp_permission_check', e.message));
 }
 
 module.exports = {

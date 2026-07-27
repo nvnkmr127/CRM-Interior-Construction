@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { Button, Input, Select, Modal } from '../ui';
-import { updateProject } from '../../api/projects';
+import { updateProject, getProjectMembers, assignProjectMembers, removeProjectMember } from '../../api/projects';
 import { usersApi } from '../../api/users';
 import { useToast } from '../../store/toastContext';
 
@@ -12,10 +12,46 @@ export default function TeamAndRolesTab({ project, onRefresh }) {
   const [teamMembers, setTeamMembers] = useState([]);
   
   const [formData, setFormData] = useState({});
+  const [projectMembers, setProjectMembers] = useState([]);
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [selectedUsersToAssign, setSelectedUsersToAssign] = useState([]);
+  const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
     usersApi.getAll().then(res => setTeamMembers(res || [])).catch(console.error);
+    fetchMembers();
   }, []);
+
+  const fetchMembers = () => {
+    getProjectMembers(project.id).then(res => setProjectMembers(res || [])).catch(console.error);
+  };
+
+  const handleAssignMembers = async () => {
+    if (!selectedUsersToAssign.length) return;
+    try {
+      setAssigning(true);
+      await assignProjectMembers(project.id, selectedUsersToAssign);
+      toast.addToast('Members assigned successfully', 'success');
+      setAssignModalOpen(false);
+      setSelectedUsersToAssign([]);
+      fetchMembers();
+    } catch (e) {
+      toast.addToast(e?.response?.data?.error || 'Failed to assign members', 'error');
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const handleRemoveMember = async (userId) => {
+    if (!window.confirm('Remove member from project?')) return;
+    try {
+      await removeProjectMember(project.id, userId);
+      toast.addToast('Member removed', 'success');
+      fetchMembers();
+    } catch (e) {
+      toast.addToast(e?.response?.data?.error || 'Failed to remove member', 'error');
+    }
+  };
 
   const openEdit = () => {
     usersApi.getAll().then(res => setTeamMembers(res || [])).catch(console.error);
@@ -119,6 +155,44 @@ export default function TeamAndRolesTab({ project, onRefresh }) {
         </div>
       </div>
 
+      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid var(--color-border)' }}>
+          <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+            Project Access List
+          </div>
+          <Button variant="primary" size="sm" onClick={() => setAssignModalOpen(true)}>
+            + Assign Members
+          </Button>
+        </div>
+        
+        {projectMembers.length === 0 ? (
+          <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+            No members assigned. Users will only have access if they are assigned globally or set as Project Manager.
+          </div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <thead>
+              <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                <th style={{ padding: '12px 20px', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Name</th>
+                <th style={{ padding: '12px 20px', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Email</th>
+                <th style={{ padding: '12px 20px', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {projectMembers.map(m => (
+                <tr key={m.user_id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                  <td style={{ padding: '12px 20px', fontSize: 'var(--text-sm)' }}>{m.name}</td>
+                  <td style={{ padding: '12px 20px', fontSize: 'var(--text-sm)' }}>{m.email}</td>
+                  <td style={{ padding: '12px 20px', fontSize: 'var(--text-sm)' }}>
+                    <Button variant="danger" size="sm" onClick={() => handleRemoveMember(m.user_id)}>Remove</Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
       <Modal isOpen={isEditing} onClose={() => setIsEditing(false)} title="Edit Team & Roles" size="md">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', paddingBottom: '16px' }}>
           <Select 
@@ -187,6 +261,27 @@ export default function TeamAndRolesTab({ project, onRefresh }) {
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
           <Button variant="outline" onClick={() => setIsEditing(false)} disabled={saving}>Cancel</Button>
           <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={assignModalOpen} onClose={() => setAssignModalOpen(false)} title="Assign Project Members" size="sm">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingBottom: '16px' }}>
+          <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
+            Select users to grant explicit access to this project.
+          </p>
+          <Select 
+            label="Select Users"
+            multi={true}
+            options={teamMembers.filter(tm => !projectMembers.some(pm => pm.user_id === tm.id)).map(tm => ({ label: tm.name, value: tm.id }))}
+            value={selectedUsersToAssign}
+            onChange={setSelectedUsersToAssign}
+          />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
+          <Button variant="outline" onClick={() => setAssignModalOpen(false)} disabled={assigning}>Cancel</Button>
+          <Button onClick={handleAssignMembers} disabled={assigning || !selectedUsersToAssign.length}>
+            {assigning ? 'Assigning...' : 'Assign Users'}
+          </Button>
         </div>
       </Modal>
     </div>

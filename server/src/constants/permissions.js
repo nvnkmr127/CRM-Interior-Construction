@@ -136,10 +136,30 @@ const isValidPermission = (perm) => {
   return validMod && validAction;
 };
 
+const ACTION_DEPENDENCIES = {
+  'delete': ['view', 'edit'],
+  'edit': ['view'],
+  'create': ['view'],
+  'archive': ['view', 'edit'],
+  'export_excel': ['view'],
+  'export_csv': ['view'],
+  'export_pdf': ['view'],
+  'export_finance': ['view'],
+  'print': ['view'],
+  'duplicate': ['view', 'create'],
+  'approve': ['view'],
+  'assign': ['view'],
+  'transfer': ['view'],
+  'restore': ['view', 'edit'],
+  'bulk_update': ['view', 'edit'],
+  'bulk_delete': ['view', 'delete']
+};
+
 module.exports = {
   PERMISSION_MODULES,
   PERMISSION_ACTIONS,
   DATA_SCOPES,
   getAllAvailablePermissions,
-  isValidPermission
+  isValidPermission,
+  ACTION_DEPENDENCIES
 };

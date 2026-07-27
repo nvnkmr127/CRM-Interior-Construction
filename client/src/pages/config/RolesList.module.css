@@ -1,0 +1,163 @@
+.listContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.title {
+  margin: 0 0 4px 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.5px;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.headerActions {
+  display: flex;
+  gap: 12px;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--color-surface);
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+
+.searchBox {
+  width: 300px;
+}
+
+.tableWrapper {
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  overflow: hidden;
+}
+
+.roleName {
+  font-weight: 600;
+  color: var(--color-text);
+  font-size: 14px;
+}
+
+.roleDesc {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.badgeNeutral {
+  background: var(--color-bg-subtle);
+  color: var(--color-text);
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+}
+
+.badgeInfo {
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badgeDanger {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Ellipsis Dropdown */
+.actionMenu {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.ellipsisBtn {
+  background: none;
+  border: 1px solid transparent;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  transition: all 0.2s;
+}
+
+.ellipsisBtn:hover, .ellipsisBtn:focus {
+  background: var(--color-bg-hover);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.dropdownContent {
+  display: none;
+  position: absolute;
+  right: 0;
+  background-color: var(--color-surface);
+  min-width: 140px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  z-index: 10;
+  overflow: hidden;
+}
+
+.dropdown:hover .dropdownContent, .dropdownContent:hover {
+  display: block;
+}
+
+.dropdownContent button {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 10px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--color-text);
+  transition: background 0.1s;
+}
+
+.dropdownContent button:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.deleteText {
+  color: #ef4444 !important;
+}
+
+.deleteText:hover {
+  background-color: rgba(239, 68, 68, 0.05) !important;
+}

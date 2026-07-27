@@ -16,6 +16,8 @@ import UserGridCard from '../../components/ui/UserGridCard'
 import AIInsightsPanel from '../../components/ui/AIInsightsPanel'
 import api from '../../api/axios'
 import EmployeeProfilePage from './EmployeeProfilePage'
+import EffectivePermissionViewer from './EffectivePermissionViewer'
+import PermissionAssignmentModal from './PermissionAssignmentModal'
 
 const DEFAULT_ROLE_OPTIONS = [
   { value: 'superadmin', label: 'Super Admin' },
@@ -43,6 +45,8 @@ export default function UsersManager() {
     return saved ? JSON.parse(saved) : ['user', 'role', 'status', 'lastActive', 'actions']
   })
   const [contextMenu, setContextMenu] = useState(null)
+  const [effectivePermUserTarget, setEffectivePermUserTarget] = useState(null)
+  const [assignPermUserTarget, setAssignPermUserTarget] = useState(null)
   const toast = useToast()
 
   const [roles, setRoles] = useState([])
@@ -221,7 +225,7 @@ export default function UsersManager() {
           ) : (
             <>
               <div style={{ minWidth: '160px', textAlign: 'left' }}>
-                <PermissionButton permission="users:assign_roles" variant="ghost" className="p-0 border-0">
+                <PermissionButton permission="users:assign_roles" asChild>
                   <Select 
                     value={u.role_id || u.role} 
                     options={roleOptions} 
@@ -243,6 +247,13 @@ export default function UsersManager() {
                   Deactivate
                 </PermissionButton>
               )}
+              
+              <Button variant="ghost" onClick={() => setEffectivePermUserTarget(u)} title="View Effective Permissions">
+                <i className="ri-shield-keyhole-line" style={{ fontSize: '1.2rem', color: 'var(--color-primary)' }}></i>
+              </Button>
+              <Button variant="ghost" onClick={() => setAssignPermUserTarget(u)} title="Assign Direct/Temporary Permissions">
+                <i className="ri-user-settings-line" style={{ fontSize: '1.2rem', color: 'var(--color-secondary)' }}></i>
+              </Button>
             </>
           )}
         </div>
@@ -468,6 +479,30 @@ export default function UsersManager() {
             }} 
           />
         )}
+        
+        <OffboardingDashboard 
+          isOpen={!!offboardingTarget}
+          onClose={() => {
+            setOffboardingTarget(null)
+            fetchUsers()
+          }}
+          user={offboardingTarget}
+        />
+
+        <EffectivePermissionViewer 
+          isOpen={!!effectivePermUserTarget} 
+          onClose={() => setEffectivePermUserTarget(null)} 
+          user={effectivePermUserTarget} 
+        />
+
+        <PermissionAssignmentModal
+          isOpen={!!assignPermUserTarget}
+          onClose={() => {
+            setAssignPermUserTarget(null)
+            fetchUsers()
+          }}
+          user={assignPermUserTarget}
+        />
 
         <BulkUserModals 
           isOpen={!!bulkModalType}

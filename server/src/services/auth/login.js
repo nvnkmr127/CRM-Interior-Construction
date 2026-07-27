@@ -65,9 +65,12 @@ async function loginUser({ email, password, tenantId, ip, userAgent, trustedDevi
       }
     }
 
-    // 1. Find user by tenant_id + email
+    // 1. Find user by tenant_id + email, include role policies
     const userResult = await pool.query(
-      'SELECT * FROM users WHERE tenant_id = $1 AND email = $2 LIMIT 1',
+      `SELECT u.*, r.security_policies, r.name as role_name, r.permissions as role_permissions 
+       FROM users u 
+       LEFT JOIN roles r ON u.role_id = r.id 
+       WHERE u.tenant_id = $1 AND u.email = $2 LIMIT 1`,
       [tenantId, email]
     );
 
@@ -87,6 +90,55 @@ async function loginUser({ email, password, tenantId, ip, userAgent, trustedDevi
 
     if (user.status !== 'active') {
       throw new Error('ACCOUNT_INACTIVE');
+    }
+
+    // 2.5 Evaluate Role Security Policies
+    const policies = user.security_policies || {};
+    // Bypass for superadmin unless explicitly restricted (we assume superadmin bypasses to avoid lockout)
+    if (user.role_name !== 'superadmin') {
+      const now = new Date();
+      
+      // Allowed Days
+      if (policies.allowed_days && policies.allowed_days.length > 0) {
+        const currentDay = now.getDay(); // 0 (Sun) to 6 (Sat)
+        if (!policies.allowed_days.includes(currentDay)) {
+          throw new Error('POLICY_VIOLATION: DAY_RESTRICTION');
+        }
+      }
+
+      // Allowed Login Times
+      if (policies.allowed_login_times && policies.allowed_login_times.start && policies.allowed_login_times.end) {
+        // Simple string comparison HH:mm
+        const currentHourStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+        if (currentHourStr < policies.allowed_login_times.start || currentHourStr > policies.allowed_login_times.end) {
+          throw new Error('POLICY_VIOLATION: TIME_RESTRICTION');
+        }
+      }
+
+      // Allowed IPs
+      if (policies.allowed_ips && policies.allowed_ips.length > 0) {
+        if (!policies.allowed_ips.includes(ip)) {
+          throw new Error('POLICY_VIOLATION: IP_RESTRICTION');
+        }
+      }
+
+      // Allowed Devices & Trusted Browsers
+      const parser = new UAParser(userAgent);
+      const browserName = parser.getBrowser().name || 'Unknown';
+      const deviceType = parser.getDevice().type || 'Desktop';
+
+      if (policies.trusted_browsers && policies.trusted_browsers.length > 0) {
+        if (!policies.trusted_browsers.includes(browserName)) {
+          throw new Error('POLICY_VIOLATION: BROWSER_RESTRICTION');
+        }
+      }
+
+      if (policies.allowed_devices && policies.allowed_devices.length > 0) {
+        const mappedDevice = deviceType === 'desktop' || deviceType === 'Desktop' ? 'Desktop' : (deviceType === 'mobile' || deviceType === 'Mobile' ? 'Mobile' : deviceType);
+        if (!policies.allowed_devices.includes(mappedDevice) && !policies.allowed_devices.includes(deviceType)) {
+          throw new Error('POLICY_VIOLATION: DEVICE_RESTRICTION');
+        }
+      }
     }
 
     // 3. Verify password
@@ -132,23 +184,19 @@ async function loginUser({ email, password, tenantId, ip, userAgent, trustedDevi
     const mfaRequired = securitySettings.mfa_required_all || userSecurity.mfa_enabled || !isTrusted;
 
     // Fetch role name and permissions
-    let roleName = null;
+    let roleName = user.role_name;
     let rolePermissions = [];
     let enabledModules = [];
     if (user.role_id) {
-      const roleResult = await pool.query('SELECT name, permissions FROM roles WHERE id = $1', [user.role_id]);
-      if (roleResult.rows.length > 0) {
-        roleName = roleResult.rows[0].name;
-        const p = typeof roleResult.rows[0].permissions === 'string' ? JSON.parse(roleResult.rows[0].permissions) : (roleResult.rows[0].permissions || []);
-        rolePermissions = Array.isArray(p) ? p : (p.actions || []);
-        enabledModules = Array.isArray(p) ? [] : (p.modules || []);
-        user.role = {
-          id: user.role_id,
-          name: roleName,
-          permissions: rolePermissions,
-          enabled_modules: enabledModules
-        };
-      }
+      const p = typeof user.role_permissions === 'string' ? JSON.parse(user.role_permissions) : (user.role_permissions || []);
+      rolePermissions = Array.isArray(p) ? p : (p.actions || []);
+      enabledModules = Array.isArray(p) ? [] : (p.modules || []);
+      user.role = {
+        id: user.role_id,
+        name: roleName,
+        permissions: rolePermissions,
+        enabled_modules: enabledModules
+      };
     }
 
     if (mfaRequired && !isTrusted) {

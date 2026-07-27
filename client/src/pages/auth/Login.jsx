@@ -71,6 +71,16 @@ export default function Login() {
         if (result.message?.toLowerCase().includes('inactive')) {
           setErrorType('inactive');
           setApiError('Your account is inactive. Contact your workspace admin.');
+        } else if (result.message?.includes('POLICY_VIOLATION')) {
+          setErrorType('policy_violation');
+          const reason = result.message.split(': ')[1] || 'Unknown';
+          let errorMsg = 'Login blocked by security policy.';
+          if (reason === 'DAY_RESTRICTION') errorMsg = 'Login blocked: Your role is restricted from logging in today.';
+          else if (reason === 'TIME_RESTRICTION') errorMsg = 'Login blocked: You are logging in outside your allowed hours.';
+          else if (reason === 'IP_RESTRICTION') errorMsg = 'Login blocked: You are attempting to log in from an unauthorized network.';
+          else if (reason === 'BROWSER_RESTRICTION') errorMsg = 'Login blocked: Please use a trusted browser.';
+          else if (reason === 'DEVICE_RESTRICTION') errorMsg = 'Login blocked: Your device type is restricted.';
+          setApiError(errorMsg);
         } else {
           setErrorType('shake');
           setApiError('Email or password is incorrect. Try again.');

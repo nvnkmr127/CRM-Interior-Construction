@@ -11,6 +11,22 @@ export const updateProject = async (id, data) => {
   return response.data;
 };
 
+// Project Members
+export const getProjectMembers = async (id) => {
+  const response = await api.get(`/projects/${id}/members`);
+  return response.data;
+};
+
+export const assignProjectMembers = async (id, userIds) => {
+  const response = await api.post(`/projects/${id}/members/bulk`, { userIds });
+  return response.data;
+};
+
+export const removeProjectMember = async (id, userId) => {
+  const response = await api.delete(`/projects/${id}/members/${userId}`);
+  return response.data;
+};
+
 export const getProjectActivities = async (projectId, params) => {
   const response = await api.get(`/projects/${projectId}/activities`, { params });
   return response.data;

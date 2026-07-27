@@ -50,7 +50,13 @@ const verifyProjectBooked = require('../middleware/verifyBooking');
 
 const router = express.Router();
 
+const enforceProjectAccess = require('../middleware/enforceProjectAccess');
+
 router.use(authenticate);
+
+// Enforce project access for all routes containing a project ID parameter
+router.param('id', enforceProjectAccess);
+router.param('projectId', enforceProjectAccess);
 
 // Get Project Activities
 router.get('/:id/activities', authorize('projects:read'), async (req, res, next) => {
@@ -549,6 +555,74 @@ router.get('/retention/dashboard', authorize('projects:read'), async (req, res, 
     return success(res, data);
   } catch (err) {
     next(err);
+  }
+});
+
+// GET /api/projects/:projectId/members
+router.get('/:projectId/members', authorize('projects:read'), async (req, res, next) => {
+  try {
+    const { pool } = require('../config/db');
+    const { rows } = await pool.query(
+      `SELECT pm.user_id, pm.role_in_project, pm.created_at, u.name, u.email 
+       FROM project_members pm
+       JOIN users u ON pm.user_id = u.id
+       WHERE pm.project_id = $1 AND pm.tenant_id = $2`,
+      [req.params.projectId, req.tenantId]
+    );
+    return success(res, rows);
+  } catch (err) {
+    console.error('[Projects Router] Get members error:', err);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to retrieve project members.', 500);
+  }
+});
+
+// POST /api/projects/:projectId/members/bulk
+router.post('/:projectId/members/bulk', authorize('projects:manage_members'), async (req, res, next) => {
+  try {
+    const { userIds } = req.body;
+    if (!Array.isArray(userIds)) return fail(res, 'VALIDATION_ERROR', 'userIds must be an array', 400);
+
+    const { pool } = require('../config/db');
+    
+    // Begin bulk insert
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      for (const uid of userIds) {
+        await client.query(
+          `INSERT INTO project_members (tenant_id, project_id, user_id, assigned_by) 
+           VALUES ($1, $2, $3, $4) 
+           ON CONFLICT (project_id, user_id) DO NOTHING`,
+          [req.tenantId, req.params.projectId, uid, req.user.userId]
+        );
+      }
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+
+    return success(res, { message: 'Members assigned successfully' });
+  } catch (err) {
+    console.error('[Projects Router] Bulk assign members error:', err);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to assign project members.', 500);
+  }
+});
+
+// DELETE /api/projects/:projectId/members/:userId
+router.delete('/:projectId/members/:userId', authorize('projects:manage_members'), async (req, res, next) => {
+  try {
+    const { pool } = require('../config/db');
+    await pool.query(
+      'DELETE FROM project_members WHERE project_id = $1 AND user_id = $2 AND tenant_id = $3',
+      [req.params.projectId, req.params.userId, req.tenantId]
+    );
+    return success(res, { message: 'Member removed successfully' });
+  } catch (err) {
+    console.error('[Projects Router] Remove member error:', err);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to remove project member.', 500);
   }
 });
 

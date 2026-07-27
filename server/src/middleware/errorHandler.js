@@ -50,6 +50,10 @@ function errorHandler(err, req, res, next) {
       response.error = { code: 'OPTIMISTIC_LOCK_FAILED', message: 'This lead has been modified by someone else since you last fetched it.' };
       return res.status(409).json(response);
     default:
+      if (err.message && err.message.startsWith('POLICY_VIOLATION')) {
+        response.error = { code: 'POLICY_VIOLATION', message: err.message };
+        return res.status(403).json(response);
+      }
       if (err.message && err.message.startsWith('VALIDATION_ERROR:')) {
         response.error = { code: 'VALIDATION_ERROR', message: err.message.split('VALIDATION_ERROR:')[1].trim() };
         return res.status(400).json(response);

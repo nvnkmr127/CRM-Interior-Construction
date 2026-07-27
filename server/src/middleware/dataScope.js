@@ -19,7 +19,7 @@ const dataScope = (moduleName, ownerField = 'owner_id', tableAlias = '') => {
     }
 
     const scopes = req.user.data_scopes || {};
-    const scope = scopes[moduleName] || 'assigned'; // Default to assigned if no scope is defined
+    const rawScope = scopes[moduleName] || 'assigned'; // Default to assigned if no scope is defined
     const userId = req.user.userId;
     const departmentId = req.user.departmentId || null;
     const branchId = req.user.branchId || null;
@@ -27,7 +27,15 @@ const dataScope = (moduleName, ownerField = 'owner_id', tableAlias = '') => {
     // Support table alias if provided (e.g. "p.pm_id")
     const column = tableAlias ? `${tableAlias}.${ownerField}` : ownerField;
 
-    switch (scope) {
+    let scopeType = rawScope;
+    let scopeIds = [];
+
+    if (typeof rawScope === 'object' && rawScope !== null) {
+      scopeType = rawScope.type || 'assigned';
+      scopeIds = Array.isArray(rawScope.ids) ? rawScope.ids : [];
+    }
+
+    switch (scopeType) {
       case 'all':
         // Can view company records
         req.scopeFilter = '1=1';
@@ -40,12 +48,28 @@ const dataScope = (moduleName, ownerField = 'owner_id', tableAlias = '') => {
            req.scopeFilter = `${column} IN (SELECT id FROM users WHERE branch_id = '${branchId}')`;
         }
         break;
+      case 'specific_branches':
+        if (scopeIds.length === 0) {
+          req.scopeFilter = '1=0'; // Block all if no branches selected
+        } else {
+          const ids = scopeIds.map(id => `'${id}'`).join(',');
+          req.scopeFilter = `${column} IN (SELECT id FROM users WHERE branch_id IN (${ids}))`;
+        }
+        break;
       case 'department':
         // Can view records owned by users in the same department
         if (!departmentId) {
            req.scopeFilter = `${column} = '${userId}'`; // fallback
         } else {
            req.scopeFilter = `${column} IN (SELECT id FROM users WHERE department_id = '${departmentId}')`;
+        }
+        break;
+      case 'specific_departments':
+        if (scopeIds.length === 0) {
+          req.scopeFilter = '1=0';
+        } else {
+          const ids = scopeIds.map(id => `'${id}'`).join(',');
+          req.scopeFilter = `${column} IN (SELECT id FROM users WHERE department_id IN (${ids}))`;
         }
         break;
       case 'team':
@@ -56,7 +80,12 @@ const dataScope = (moduleName, ownerField = 'owner_id', tableAlias = '') => {
       case 'own':
       default:
         // By default, restrict to own/assigned records
-        req.scopeFilter = `${column} = '${userId}'`;
+        if (moduleName === 'projects') {
+          const table = tableAlias ? tableAlias + '.id' : 'id';
+          req.scopeFilter = `(${column} = '${userId}' OR ${table} IN (SELECT project_id FROM project_members WHERE user_id = '${userId}'))`;
+        } else {
+          req.scopeFilter = `${column} = '${userId}'`;
+        }
         break;
     }
 

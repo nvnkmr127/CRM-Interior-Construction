@@ -6,6 +6,7 @@ const taskEscalationJob = require('../../jobs/taskEscalationJob');
 const amcService = require('../../services/postSale/amcService');
 const paymentReminderJob = require('../../jobs/paymentReminderJob');
 const weeklyProgressReportJob = require('../../jobs/weeklyProgressReportJob');
+const temporaryPermissionJob = require('../../jobs/temporaryPermissionJob');
 
 if (useRedis) {
   const cronWorker = new Worker('Cron_Queue', async (job) => {
@@ -30,6 +31,9 @@ if (useRedis) {
           break;
         case 'weekly_progress_report':
           await weeklyProgressReportJob.run();
+          break;
+        case 'temp_permission_check':
+          await temporaryPermissionJob.run();
           break;
         default:
           console.warn(`[CronWorker] Unknown job name: ${job.name}`);

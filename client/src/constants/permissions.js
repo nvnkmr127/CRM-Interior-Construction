@@ -41,6 +41,8 @@ export const DATA_SCOPES = [
   { id: 'department', label: 'Department Records', description: 'Can access records owned by anyone in their department.' },
   { id: 'branch', label: 'Branch Records', description: 'Can access records owned by anyone in their branch.' },
   { id: 'all', label: 'Company Records (All)', description: 'Can access all records across the entire company.' },
+  { id: 'specific_branches', label: 'Specific Branches', description: 'Can access records owned by users in explicitly selected branches.' },
+  { id: 'specific_departments', label: 'Specific Departments', description: 'Can access records owned by users in explicitly selected departments.' }
 ];
 
 /**
@@ -65,4 +67,20 @@ export const isValidPermission = (perm) => {
   const validMod = PERMISSION_MODULES.some(m => m.id === mod);
   const validAction = PERMISSION_ACTIONS.some(a => a.id === action);
   return validMod && validAction;
+};
+
+export const ACTION_DEPENDENCIES = {
+  'delete': ['view', 'edit'],
+  'edit': ['view'],
+  'create': ['view'],
+  'archive': ['view', 'edit'],
+  'export': ['view'],
+  'print': ['view'],
+  'duplicate': ['view', 'create'],
+  'approve': ['view'],
+  'assign': ['view'],
+  'transfer': ['view'],
+  'restore': ['view', 'edit'],
+  'bulk_update': ['view', 'edit'],
+  'bulk_delete': ['view', 'delete']
 };

@@ -9,6 +9,22 @@ const { logAction } = require('../services/auditLog');
 const { queueEmail } = require('../services/emailService');
 const aiEmployeeService = require('../services/aiEmployeeService');
 
+// Temporary auto-migrate for user permissions
+(async () => {
+  try {
+    await pool.query(`
+      ALTER TABLE users 
+      ADD COLUMN IF NOT EXISTS direct_permissions JSONB DEFAULT '[]'::jsonb;
+      
+      ALTER TABLE users 
+      ADD COLUMN IF NOT EXISTS temporary_permissions JSONB DEFAULT '[]'::jsonb;
+    `);
+    console.log('users table permissions columns ready');
+  } catch (err) {
+    console.error('Failed to alter users table:', err);
+  }
+})();
+
 const router = express.Router();
 
 const VALID_TRANSITIONS = {
@@ -801,6 +817,95 @@ router.post('/:id/reset-password', authorize('users:reset_password'), async (req
     return success(res, { message: 'Password reset instructions sent' });
   } catch (error) {
     return fail(res, 'INTERNAL_ERROR', 'Failed to reset password', 500);
+  }
+});
+
+// GET /:id/effective-permissions
+router.get('/:id/effective-permissions', authorize('users:manage'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await pool.query(`
+      SELECT u.id, u.direct_permissions, u.temporary_permissions, r.name as role_name, r.permissions as role_permissions
+      FROM users u
+      LEFT JOIN roles r ON u.role_id = r.id
+      WHERE u.id = $1 AND u.tenant_id = $2
+    `, [id, req.tenantId]);
+    
+    if (rows.length === 0) return fail(res, 'NOT_FOUND', 'User not found', 404);
+
+    const user = rows[0];
+    
+    // Parse JSONs safely
+    let inheritedObj = { actions: [], scopes: {}, fields: {}, modules: [], pages: {} };
+    if (user.role_permissions) {
+      const p = typeof user.role_permissions === 'string' ? JSON.parse(user.role_permissions) : user.role_permissions;
+      inheritedObj.actions = Array.isArray(p) ? p : (p.actions || []);
+    }
+    
+    const directActions = (typeof user.direct_permissions === 'string' ? JSON.parse(user.direct_permissions) : user.direct_permissions) || [];
+    const temporaryArr = (typeof user.temporary_permissions === 'string' ? JSON.parse(user.temporary_permissions) : user.temporary_permissions) || [];
+
+    const effectiveMap = {}; // { 'action': ['Role: Admin', 'Direct'] }
+
+    // 1. Inherited
+    inheritedObj.actions.forEach(action => {
+      if (!effectiveMap[action]) effectiveMap[action] = [];
+      effectiveMap[action].push(`Role: ${user.role_name}`);
+    });
+
+    // 2. Direct
+    directActions.forEach(action => {
+      if (!effectiveMap[action]) effectiveMap[action] = [];
+      effectiveMap[action].push('Direct');
+    });
+
+    // 3. Temporary
+    const now = new Date();
+    temporaryArr.forEach(temp => {
+      if (new Date(temp.expires_at) > now) {
+        temp.permissions.forEach(action => {
+          if (!effectiveMap[action]) effectiveMap[action] = [];
+          effectiveMap[action].push(`Temporary (Expires ${new Date(temp.expires_at).toLocaleDateString()})`);
+        });
+      }
+    });
+
+    return success(res, effectiveMap);
+  } catch (error) {
+    console.error('[Users API] Get effective permissions error:', error);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to calculate effective permissions', 500);
+  }
+});
+
+// PATCH /:id/permissions
+router.patch('/:id/permissions', authorize('users:assign_roles'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { direct_permissions, temporary_permissions } = req.body;
+
+    const { rows } = await pool.query(
+      `UPDATE users 
+       SET direct_permissions = COALESCE($1, direct_permissions),
+           temporary_permissions = COALESCE($2, temporary_permissions),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3 AND tenant_id = $4
+       RETURNING id`,
+      [
+        direct_permissions ? JSON.stringify(direct_permissions) : null,
+        temporary_permissions ? JSON.stringify(temporary_permissions) : null,
+        id,
+        req.tenantId
+      ]
+    );
+
+    if (rows.length === 0) return fail(res, 'NOT_FOUND', 'User not found', 404);
+
+    await logAction({ tenantId: req.tenantId, userId: req.user.userId, action: 'user.permissions_updated', entity: 'user', entityId: id });
+
+    return success(res, { message: 'Permissions updated successfully' });
+  } catch (error) {
+    console.error('[Users API] Update permissions error:', error);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to update permissions', 500);
   }
 });
 
