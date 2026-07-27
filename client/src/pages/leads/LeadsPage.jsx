@@ -68,7 +68,25 @@ export default function LeadsPage() {
   useEffect(() => {
     localStorage.setItem('crm_leads_sortBy', sortBy);
   }, [sortBy]);
-  const [view, setView] = useState('dashboard');
+  
+  const queryParams = new URLSearchParams(location.search);
+  const initialView = queryParams.get('view') || 'dashboard';
+  const [view, setView] = useState(initialView);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const urlView = params.get('view');
+    if (urlView && urlView !== view) {
+      setView(urlView);
+    }
+  }, [location.search]);
+
+  const handleViewChange = (newView) => {
+    setView(newView);
+    const params = new URLSearchParams(location.search);
+    params.set('view', newView);
+    navigate({ search: params.toString() });
+  };
   const [selectedLeadId, setSelectedLeadId] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [stageMenuLeadId, setStageMenuLeadId] = useState(null);
@@ -195,38 +213,7 @@ export default function LeadsPage() {
           <p className={styles.subtitle}>Manage your interior construction pipeline</p>
         </div>
 
-        <div className={styles.viewToggle} style={{ margin: '0 auto' }}>
-          <button
-            onClick={() => setView('dashboard')}
-            className={`${styles.viewBtn} ${view === 'dashboard' ? styles.viewBtnActive : ''}`}
-          >
-            &#128202; Dashboard
-          </button>
-          <button
-            onClick={() => setView('list')}
-            className={`${styles.viewBtn} ${view === 'list' ? styles.viewBtnActive : ''}`}
-          >
-            &#9776; List
-          </button>
-          <button
-            onClick={() => setView('kanban')}
-            className={`${styles.viewBtn} ${view === 'kanban' ? styles.viewBtnActive : ''}`}
-          >
-            &#9638; Kanban
-          </button>
-          <button
-            onClick={() => setView('calendar')}
-            className={`${styles.viewBtn} ${view === 'calendar' ? styles.viewBtnActive : ''}`}
-          >
-            &#128197; Calendar
-          </button>
-          <button
-            onClick={() => setView('map')}
-            className={`${styles.viewBtn} ${view === 'map' ? styles.viewBtnActive : ''}`}
-          >
-            &#128506; Map
-          </button>
-        </div>
+
 
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           
@@ -254,7 +241,7 @@ export default function LeadsPage() {
           scoreRange={scoreRange} setScoreRange={setScoreRange}
           intentFilter={intentFilter} setIntentFilter={setIntentFilter}
           sortBy={sortBy} setSortBy={setSortBy}
-          view={view} setView={setView}
+          view={view} setView={handleViewChange}
           assignees={assignees}
           createdFrom={createdFrom} setCreatedFrom={setCreatedFrom}
           createdTo={createdTo} setCreatedTo={setCreatedTo}

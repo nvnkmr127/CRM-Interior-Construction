@@ -13,7 +13,13 @@ const NAV_ITEMS = [
         { to: '/dashboard/warehouse', icon: '📦', label: 'Warehouse Dashboard', permission: 'dashboards:view_warehouse_dashboard' },
         { to: '/dashboard/management', icon: '👑', label: 'Management Dashboard', permission: 'dashboards:view_management_dashboard' },
     ]},
-    { to: '/leads',      icon: '◎', label: 'Leads', module: 'leads' },
+    { label: 'Leads', icon: '◎', module: 'leads', subItems: [
+        { to: '/leads?view=dashboard', icon: '📊', label: 'Dashboard' },
+        { to: '/leads?view=list', icon: '≣', label: 'List' },
+        { to: '/leads?view=kanban', icon: '◫', label: 'Kanban' },
+        { to: '/leads?view=calendar', icon: '📅', label: 'Calendar' },
+        { to: '/leads?view=map', icon: '🗺️', label: 'Map' },
+    ]},
     { to: '/projects', icon: '◈', label: 'Projects', module: 'projects' },
     { to: '/tasks',      icon: '◻', label: 'My Tasks', module: 'tasks' },
   ]},
@@ -70,7 +76,10 @@ function NavItem({ item, collapsed, onClose }) {
   const location = useLocation();
 
   if (item.subItems) {
-    const isActive = item.subItems.some(sub => location.pathname === sub.to);
+    const isActive = item.subItems.some(sub => {
+      const basePath = sub.to.split('?')[0];
+      return location.pathname === basePath;
+    });
     
     return (
       <div className={styles.navItemWrapper}>
@@ -93,9 +102,15 @@ function NavItem({ item, collapsed, onClose }) {
               <NavLink
                 key={sub.to}
                 to={sub.to}
-                className={({isActive}) => `${styles.subItem} ${isActive ? styles.subActive : ''}`}
+                className={() => {
+                  const isQueryMatch = sub.to.includes('?') 
+                    ? location.pathname + location.search === sub.to || (location.pathname === sub.to.split('?')[0] && !location.search && sub.to.includes('view=dashboard'))
+                    : location.pathname === sub.to;
+                  return `${styles.subItem} ${isQueryMatch ? styles.subActive : ''}`;
+                }}
                 onClick={onClose}
               >
+                {sub.icon && <span className={styles.navIcon}>{sub.icon}</span>}
                 <span className={styles.navLabel}>{sub.label}</span>
               </NavLink>
             ))}
