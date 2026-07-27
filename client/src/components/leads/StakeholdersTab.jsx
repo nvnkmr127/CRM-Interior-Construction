@@ -80,6 +80,60 @@ export default function StakeholdersTab({ leadId }) {
     } catch (e) {
       toast.error('Failed to remove stakeholder');
     }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-semibold text-gray-800">Stakeholders</h3>
+        <Button onClick={() => setIsAdding(!isAdding)} variant="outline" size="sm">
+          {isAdding ? 'Cancel' : '+ Add Stakeholder'}
+        </Button>
+      </div>
+      
+      {isAdding && (
+         <form onSubmit={handleAdd} className="bg-gray-50 p-4 rounded-xl border space-y-3">
+             <Input placeholder="Name" value={newContact.name} onChange={e => setNewContact({...newContact, name: e.target.value})} required />
+             <Input placeholder="Role" value={newContact.role} onChange={e => setNewContact({...newContact, role: e.target.value})} />
+             <Input placeholder="Phone" value={newContact.phone} onChange={e => setNewContact({...newContact, phone: e.target.value})} />
+             <Input placeholder="Email" value={newContact.email} onChange={e => setNewContact({...newContact, email: e.target.value})} />
+             <Select value={newContact.decision_authority} onChange={e => setNewContact({...newContact, decision_authority: e.target.value})}>
+                 <option>Primary</option>
+                 <option>Influencer</option>
+             </Select>
+             <Input placeholder="Notes" value={newContact.relationship_notes} onChange={e => setNewContact({...newContact, relationship_notes: e.target.value})} />
+             <Button type="submit">Save</Button>
+         </form>
+      )}
+
+      {editingContactId && (
+         <form onSubmit={(e) => handleUpdate(e, editingContactId)} className="bg-gray-50 p-4 rounded-xl border space-y-3">
+             <Input placeholder="Name" value={editContact.name} onChange={e => setEditContact({...editContact, name: e.target.value})} required />
+             <Input placeholder="Role" value={editContact.role} onChange={e => setEditContact({...editContact, role: e.target.value})} />
+             <Input placeholder="Phone" value={editContact.phone} onChange={e => setEditContact({...editContact, phone: e.target.value})} />
+             <Input placeholder="Email" value={editContact.email} onChange={e => setEditContact({...editContact, email: e.target.value})} />
+             <Select value={editContact.decision_authority} onChange={e => setEditContact({...editContact, decision_authority: e.target.value})}>
+                 <option>Primary</option>
+                 <option>Influencer</option>
+             </Select>
+             <Input placeholder="Notes" value={editContact.relationship_notes} onChange={e => setEditContact({...editContact, relationship_notes: e.target.value})} />
+             <div className="flex gap-2">
+                 <Button type="submit">Update</Button>
+                 <Button type="button" variant="outline" onClick={() => setEditingContactId(null)}>Cancel</Button>
+             </div>
+         </form>
+      )}
+
+      {loading ? (
+         <div className="text-gray-500 text-sm">Loading...</div>
+      ) : contacts.length === 0 ? (
+         <div className="text-gray-500 text-sm italic">No stakeholders found.</div>
+      ) : (
+         <div className="space-y-3">
+          {contacts.map(contact => (
+            <div key={contact.id} className="border p-4 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow relative">
+                <div className="absolute top-4 right-4 flex gap-2">
+                  <button onClick={() => handleEditClick(contact)} className="text-gray-400 hover:text-blue-500">
                     <svg style={{ width: '18px', height: '18px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                     </svg>
@@ -108,8 +162,7 @@ export default function StakeholdersTab({ leadId }) {
                   {contact.relationship_notes && <span className="text-gray-500 italic truncate" title={contact.relationship_notes}>"{contact.relationship_notes}"</span>}
                 </div>
               </div>
-            );
-          })}
+          ))}
         </div>
       )}
     </div>

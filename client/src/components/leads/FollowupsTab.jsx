@@ -81,6 +81,42 @@ export default function FollowupsTab({ leadId }) {
   const now = new Date();
 
   return (
+    <div className="p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-semibold text-gray-800">Follow-ups</h3>
+        <button onClick={() => setShowForm(!showForm)} className="px-3 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 text-sm font-medium transition-colors">
+          {showForm ? 'Cancel' : '+ New'}
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="bg-gray-50 p-4 rounded-xl space-y-3 mb-6 border border-gray-100">
+          <input type="text" placeholder="Title" value={form.title} onChange={e => setForm({...form, title: e.target.value})} className="w-full text-sm rounded-lg p-2 border focus:ring-2" />
+          <input type="datetime-local" value={form.due_at} onChange={e => setForm({...form, due_at: e.target.value})} className="w-full text-sm rounded-lg p-2 border focus:ring-2" />
+          <textarea placeholder="Notes..." value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} className="w-full text-sm rounded-lg p-2 border focus:ring-2" />
+          <button onClick={create} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold w-full">Save</button>
+        </div>
+      )}
+
+      {editingFollowupId && (
+        <div className="bg-gray-50 p-4 rounded-xl space-y-3 mb-6 border border-gray-100">
+          <input type="text" placeholder="Title" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} className="w-full text-sm rounded-lg p-2 border focus:ring-2" />
+          <input type="datetime-local" value={editForm.due_at} onChange={e => setEditForm({...editForm, due_at: e.target.value})} className="w-full text-sm rounded-lg p-2 border focus:ring-2" />
+          <textarea placeholder="Notes..." value={editForm.notes} onChange={e => setEditForm({...editForm, notes: e.target.value})} className="w-full text-sm rounded-lg p-2 border focus:ring-2" />
+          <div className="flex gap-2">
+             <button onClick={() => update(editingFollowupId)} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold">Update</button>
+             <button onClick={() => setEditingFollowupId(null)} className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-bold">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      <ul className="space-y-3">
+        {followups.map(f => {
+          const due = new Date(f.due_at);
+          const isOverdue = !f.is_done && due < now;
+          return (
+            <li key={f.id} className="flex items-start gap-3 p-4 rounded-xl border border-gray-100 bg-white hover:border-gray-200 transition-colors shadow-sm">
+              <input type="checkbox" checked={f.is_done} onChange={() => toggle(f)} className="mt-1 w-4 h-4 text-blue-600 rounded border-gray-300 cursor-pointer" />
               <div className="flex-1 min-w-0 font-sans">
                 <p className={`text-sm font-medium ${f.is_done ? 'line-through text-gray-400' : 'text-gray-800'}`}>{f.title}</p>
                 <p className={`text-xs mt-0.5 ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
