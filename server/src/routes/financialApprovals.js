@@ -808,7 +808,7 @@ router.post('/:id/assign', async (req, res, next) => {
 });
 
 // POST /api/financial-approvals/:id/export
-router.post('/:id/export', authorize('finance:export_finance'), async (req, res, next) => {
+router.post('/:id/export', async (req, res, next) => {
   try {
     const { id } = req.params;
     const { format } = req.body;

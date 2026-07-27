@@ -23,6 +23,8 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
   
   const [newComment, setNewComment] = useState('')
   const [statusError, setStatusError] = useState(null)
+  const [users, setUsers] = useState([])
+
   
   const [draggedChecklistItemId, setDraggedChecklistItemId] = useState(null)
   const [dragOverChecklistItemId, setDragOverChecklistItemId] = useState(null)
@@ -140,8 +142,6 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
   const handleSave = async (updates) => {
     await applyUpdate(updates)
   }
-
-
 
   const handleTitleBlur = () => {
     if (title.trim() && title !== task.title) {
@@ -295,8 +295,6 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
     })
   }
 
-
-
   const handleChecklistDragStart = (e, id) => {
     setDraggedChecklistItemId(id)
     e.dataTransfer.effectAllowed = 'move'
@@ -380,21 +378,62 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
           />
 
           <div className={`${styles.grid} ${styles.section}`}>
-            {/* Left Col: Details */}
             <div>
               <div className={styles.detailsGrid}>
                 <div className={styles.detailItem}>
                   <div className={styles.detailLabel}>Assignee</div>
-                  <div className={styles.detailValue}>
-                    <Avatar name={task.assignee?.name} size="xs" />
-                    {task.assignee?.name || 'Unassigned'}
+                  <div style={{ flex: 1, marginLeft: -8, display: 'flex', alignItems: 'center' }}>
+                    {task.assignee?.name && <div style={{marginLeft: 8, marginRight: 4}}><Avatar name={task.assignee?.name} size="xs" /></div>}
+                    <select
+                      disabled={!permissions.canEdit}
+                      value={task.assignee?.id || ''}
+                      onChange={async (e) => {
+                        const newAssigneeId = e.target.value
+                        const user = users.find(u => String(u.id || u.user_id) === String(newAssigneeId))
+                        const prevAssignee = task.assignee
+                        setTask(t => ({ ...t, assignee: user ? { id: user.id || user.user_id, name: user.name } : null }))
+                        try {
+                          await applyUpdate({ assigneeId: newAssigneeId || null }, 'single')
+                          toast.success('Assignee updated')
+                        } catch (err) {
+                          setTask(t => ({ ...t, assignee: prevAssignee }))
+                        }
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid transparent',
+                        borderRadius: '4px',
+                        padding: '6px 8px',
+                        color: 'var(--color-text)',
+                        fontFamily: 'inherit',
+                        fontSize: '14px',
+                        flex: 1,
+                        cursor: permissions.canEdit ? 'pointer' : 'default',
+                        outline: 'none',
+                        transition: 'var(--transition-fast)'
+                      }}
+                    >
+                      <option value="">Unassigned</option>
+                      {users.map(u => {
+                        const uid = u.user_id || u.id;
+                        return (
+                          <option key={uid} value={uid}>{u.name}</option>
+                        );
+                      })}
+                    </select>
                   </div>
                 </div>
 
                 <div className={styles.detailItem}>
                   <div className={styles.detailLabel}>Due Date</div>
                   <div className={`${styles.detailValue} ${new Date(task.dueDate || task.due_date) < new Date() && task.status !== 'done' ? styles.overdue : ''}`}>
-                    {(task.dueDate || task.due_date) ? new Date(task.dueDate || task.due_date).toLocaleDateString() : 'Set date'}
+                    <input
+                      type="date"
+                      value={task.dueDate ? task.dueDate.split('T')[0] : ''}
+                      disabled={!permissions.canEdit}
+                      onChange={(e) => applyUpdate({ dueDate: e.target.value })}
+                      style={{ border: 'none', background: 'transparent', color: 'inherit' }}
+                    />
                   </div>
                 </div>
 

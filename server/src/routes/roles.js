@@ -415,7 +415,6 @@ router.patch('/:id', authorize('users:manage'), async (req, res) => {
       let newPages = page_permissions !== undefined ? page_permissions : existingPages;
 
       permsStr = JSON.stringify({ actions: validPermissions, scopes: newScopes, fields: newFields, modules: newModules, pages: newPages });
-      const existingPages = Array.isArray(p) ? {} : (p.pages || {});
 
       await logActivity(req, 'role', roleId, 'Edited', JSON.stringify({
         name: roleRows[0].name,
@@ -516,7 +515,7 @@ router.patch('/:id/rollback/:versionId', authorize('users:manage'), async (req, 
     // Insert a new version reflecting this rollback
     const { rows: maxVRows } = await pool.query(`SELECT COALESCE(MAX(version_number), 0) as max_v FROM role_versions WHERE role_id=$1`, [roleId]);
     const nextV = (parseInt(maxVRows[0].max_v, 10) || 0) + 1;
-    const change_summary = \`Rolled back to Version \${targetVersion.version_number}\`;
+    const change_summary = `Rolled back to Version ${targetVersion.version_number}`;
 
     await pool.query(`
       INSERT INTO role_versions (tenant_id, role_id, version_number, user_id, permissions, data_scopes, field_permissions, enabled_modules, page_permissions, change_summary)
