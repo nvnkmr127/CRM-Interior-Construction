@@ -3440,6 +3440,26 @@ export const setupMockInterceptor = (api) => {
             persistDb();
             responseData.data = newRole;
           }
+          else if (url.endsWith('/roles/clone') && method === 'post') {
+            const { sourceId, newName, isTemplate } = JSON.parse(config.data);
+            
+            // Generate a simple mock role for clone, we only really need the name for the UI list
+            const newRole = {
+              id: 'role-clone-' + Date.now(),
+              name: newName,
+              description: `Cloned from template`,
+              permissions: [],
+              data_scopes: {},
+              field_permissions: {},
+              enabled_modules: [],
+              page_permissions: {},
+              security_policies: {},
+              created_at: new Date().toISOString()
+            };
+            mockDatabase.roles.push(newRole);
+            persistDb();
+            responseData.data = newRole;
+          }
           else if (url.match(/\/roles\/([^/]+)$/) && method === 'patch') {
             const id = url.split('/').pop();
             const idx = mockDatabase.roles.findIndex(r => r.id === id);
