@@ -23,7 +23,10 @@ export default function TeamAndRolesTab({ project, onRefresh }) {
   }, []);
 
   const fetchMembers = () => {
-    getProjectMembers(project.id).then(res => setProjectMembers(res || [])).catch(console.error);
+    getProjectMembers(project.id).then(res => {
+      const members = Array.isArray(res) ? res : (res?.data || []);
+      setProjectMembers(Array.isArray(members) ? members : []);
+    }).catch(console.error);
   };
 
   const handleAssignMembers = async () => {
@@ -179,15 +182,18 @@ export default function TeamAndRolesTab({ project, onRefresh }) {
               </tr>
             </thead>
             <tbody>
-              {projectMembers.map(m => (
-                <tr key={m.user_id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  <td style={{ padding: '12px 20px', fontSize: 'var(--text-sm)' }}>{m.name}</td>
-                  <td style={{ padding: '12px 20px', fontSize: 'var(--text-sm)' }}>{m.email}</td>
-                  <td style={{ padding: '12px 20px', fontSize: 'var(--text-sm)' }}>
-                    <Button variant="danger" size="sm" onClick={() => handleRemoveMember(m.user_id)}>Remove</Button>
-                  </td>
-                </tr>
-              ))}
+              {projectMembers.map((m, index) => {
+                const memberId = m.user_id || m.id;
+                return (
+                  <tr key={memberId || index} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                    <td style={{ padding: '12px 20px', fontSize: 'var(--text-sm)' }}>{m.name}</td>
+                    <td style={{ padding: '12px 20px', fontSize: 'var(--text-sm)' }}>{m.email}</td>
+                    <td style={{ padding: '12px 20px', fontSize: 'var(--text-sm)' }}>
+                      <Button variant="danger" size="sm" onClick={() => handleRemoveMember(memberId)}>Remove</Button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
