@@ -711,7 +711,18 @@ export default function MyTasksPage() {
 
   return (
     <div className={styles.page}>
-      {/* Header */}
+      {selectedTask ? (
+        <TaskDetail
+          isOpen={!!selectedTask}
+          onClose={() => setSelectedTask(null)}
+          taskId={typeof selectedTask === 'object' ? selectedTask.id : selectedTask}
+          projectId={typeof selectedTask === 'object' ? selectedTask.project?.id : tasks.find(t => t.id === selectedTask)?.project?.id}
+          initialTask={typeof selectedTask === 'object' ? selectedTask : tasks.find(t => t.id === selectedTask)}
+          inline={true}
+        />
+      ) : (
+        <>
+          {/* Header */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <h1 className={styles.title}>My Tasks</h1>
@@ -1037,17 +1048,6 @@ export default function MyTasksPage() {
         )}
       </div>
 
-      {selectedTask && (
-        <TaskDetail
-          isOpen={!!selectedTask}
-          onClose={() => setSelectedTask(null)}
-          taskId={typeof selectedTask === 'object' ? selectedTask.id : selectedTask}
-          projectId={typeof selectedTask === 'object' ? selectedTask.project?.id : tasks.find(t => t.id === selectedTask)?.project?.id}
-          initialTask={typeof selectedTask === 'object' ? selectedTask : tasks.find(t => t.id === selectedTask)}
-          inline={true}
-        />
-      )}
-
       {isTemplateModalOpen && (
         <TemplateGalleryModal
           isOpen={isTemplateModalOpen}
@@ -1154,6 +1154,8 @@ export default function MyTasksPage() {
       />
 
 
+      </>
+      )}
     </div>
   )
 }
