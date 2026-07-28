@@ -387,6 +387,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
           <div className={styles.headerRow}>
             <Badge variant={PRIORITY_COLORS[task.priority]} style={{ textTransform: 'capitalize' }}>{task.priority}</Badge>
             <div className={styles.flexGap2}>
+
               {['soft_deleted', 'archived'].includes(task.status) ? (
                 <Button variant="outline" size="sm" onClick={handleRestore}>Restore Task</Button>
               ) : (

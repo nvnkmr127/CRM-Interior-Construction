@@ -24,6 +24,7 @@ import { useToast } from '../../store/toastContext'
 import { useTaskAutomation } from '../../store/TaskAutomationContext'
 import { useGovernance } from '../../store/TaskGovernanceContext'
 import { getGlobalTasks, updateTask, updateGlobalTask, getTags, getTaskViews, createTaskView, createGlobalTask } from '../../api/tasks'
+import { getProjects } from '../../api/projects'
 
 const TABS = [
   { id: 'all', label: 'All' },
@@ -180,11 +181,14 @@ export default function MyTasksPage() {
     Promise.all([
       getGlobalTasks({ assigneeId: 'me', limit: 100 }),
       getTags().catch(() => ({ data: [] })),
-      getTaskViews().catch(() => ({ data: [] }))
-    ]).then(([res, tagsRes, viewsRes]) => {
+      getTaskViews().catch(() => ({ data: [] })),
+      getProjects().catch(() => ({ data: [] }))
+    ]).then(([res, tagsRes, viewsRes, projRes]) => {
         setGlobalTags(tagsRes.data?.data || tagsRes.data || [])
         const vs = viewsRes.data?.data || viewsRes.data || []
         setSavedViews(vs)
+        
+        const projData = projRes.data?.data || projRes.data || []
         
         const def = vs.find(v => v.is_default)
         if (def) {
@@ -193,29 +197,36 @@ export default function MyTasksPage() {
         }
 
         const _r = res.data?.data || res.data; const raw = Array.isArray(_r) ? _r : [];
-        let normalized = raw.map(t => ({
-          id: t.id,
-          title: t.title,
-          description: t.description || '',
-          customerName: t.customer_name || t.customerName || '',
-          leadName: t.lead_name || t.leadName || '',
-          assigneeName: t.assignee_name || t.assigneeName || '',
-          tags: Array.isArray(t.tags) ? t.tags : [],
-          status: t.status || 'todo',
-          priority: t.priority || 'medium',
-          dueDate: t.due_date || t.dueDate || null,
-          estimatedTime: t.estimatedTime || 0,
-          actualTime: t.actualTime || 0,
-          billableHours: t.billableHours || 0,
-          timeLogs: t.timeLogs || [],
-          project: { 
-            id: t.project_id || (t.lead_id ? 'lead-tasks' : 'general-tasks'), 
-            name: t.project_name || (t.lead_id ? 'Lead Tasks' : 'General Tasks') 
-          },
-          parent_id: t.parent_id || null,
-          milestone: t.milestone_name || null,
-          checklist: Array.isArray(t.checklist) ? t.checklist : (Array.isArray(t.subtasks) ? t.subtasks : []),
-        }))
+        let normalized = raw.map(t => {
+          let pName = t.project_name;
+          if (!pName && t.project_id) {
+            const pObj = projData.find(x => String(x.id) === String(t.project_id));
+            if (pObj) pName = pObj.name;
+          }
+          return {
+            id: t.id,
+            title: t.title,
+            description: t.description || '',
+            customerName: t.customer_name || t.customerName || '',
+            leadName: t.lead_name || t.leadName || '',
+            assigneeName: t.assignee_name || t.assigneeName || '',
+            tags: Array.isArray(t.tags) ? t.tags : [],
+            status: t.status || 'todo',
+            priority: t.priority || 'medium',
+            dueDate: t.due_date || t.dueDate || null,
+            estimatedTime: t.estimatedTime || 0,
+            actualTime: t.actualTime || 0,
+            billableHours: t.billableHours || 0,
+            timeLogs: t.timeLogs || [],
+            project: { 
+              id: t.project_id || (t.lead_id ? 'lead-tasks' : 'general-tasks'), 
+              name: pName || (t.lead_id ? 'Lead Tasks' : 'General Tasks') 
+            },
+            parent_id: t.parent_id || null,
+            milestone: t.milestone_name || null,
+            checklist: Array.isArray(t.checklist) ? t.checklist : (Array.isArray(t.subtasks) ? t.subtasks : []),
+          };
+        })
 
         // Inject Mock Data if no tasks exist (Dev only)
         if (normalized.length === 0 && import.meta.env.DEV) {
@@ -678,7 +689,13 @@ export default function MyTasksPage() {
           
           <div className={styles.taskMeta}>
             <Badge variant={PRIORITY_COLORS[task.priority]} style={{textTransform:'capitalize'}}>{task.priority}</Badge>
+            {task.project?.name && task.project.name !== '—' && (
+              <Badge variant="neutral" style={{background:'var(--color-bg-alt)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)'}}>
+                {task.project.name}
+              </Badge>
+            )}
             {task.milestone && <Badge variant="neutral" style={{background:'var(--color-accent-light)', color:'var(--color-accent)'}}>{highlightText(task.milestone, debouncedSearchQuery)}</Badge>}
+
             
             {task.checklist && task.checklist.length > 0 && (
               <Badge variant="neutral" style={{color: 'var(--color-text-muted)'}}>
