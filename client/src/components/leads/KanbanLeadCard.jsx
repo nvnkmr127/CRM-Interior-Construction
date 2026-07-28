@@ -5,7 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Badge } from '../ui'; // Assuming standard UI
 import ScoreBadge from './ScoreBadge';
 
-export default function KanbanLeadCard({ lead, onAction }) {
+const KanbanLeadCard = React.memo(function KanbanLeadCard({ lead, onAction }) {
   const {
     attributes,
     listeners,
@@ -211,4 +211,6 @@ export default function KanbanLeadCard({ lead, onAction }) {
       </div>
     </div>
   );
-}
+});
+
+export default KanbanLeadCard;

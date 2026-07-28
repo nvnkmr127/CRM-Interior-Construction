@@ -131,8 +131,8 @@ export default function ProjectsPage() {
         return new Date(a.target_date || a.targetDate || 0) - new Date(b.target_date || b.targetDate || 0);
       }
       if (sortBy === 'value_asc') {
-        const av = parseFloat(String(a.value || '0').replace(/[^\d.]/g, '')) || 0;
-        const bv = parseFloat(String(b.value || '0').replace(/[^\d.]/g, '')) || 0;
+        const av = parseFloat(String(a.contract_value || a.value || '0').replace(/[^\d.]/g, '')) || 0;
+        const bv = parseFloat(String(b.contract_value || b.value || '0').replace(/[^\d.]/g, '')) || 0;
         return av - bv;
       }
       if (sortBy === 'progress_asc') {

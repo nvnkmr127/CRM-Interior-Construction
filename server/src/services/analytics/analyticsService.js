@@ -4,10 +4,10 @@ const readPool = db.readPool || db;
 exports.getGlobalStats = async (tenantId, userId) => {
   const activeLeadsRes = await readPool.query(`SELECT COUNT(*) FROM leads WHERE tenant_id=$1 AND status='active' AND deleted_at IS NULL`, [tenantId]);
   const wonThisMonthRes = await readPool.query(`
-    SELECT COUNT(*), 0 as won_value
+    SELECT COUNT(*) as count, COALESCE(SUM(l.budget_max), 0) as won_value
     FROM leads l
-    JOIN lead_stages ls ON ls.id = l.stage_id
-    WHERE l.tenant_id=$1 AND ls.is_won=true
+    LEFT JOIN lead_stages ls ON ls.id = l.stage_id
+    WHERE l.tenant_id=$1 AND (ls.is_won=true OR l.status='converted')
     AND l.updated_at >= date_trunc('month', NOW())
   `, [tenantId]);
   const projectsRes = await readPool.query(`
@@ -76,10 +76,10 @@ exports.getSalesDashboard = async (tenantId, userId) => {
       ORDER BY due_date ASC LIMIT 10
     `, [tenantId, userId]);
   const performanceRes = await readPool.query(`
-      SELECT COUNT(*) as won_count, 0 as revenue
+      SELECT COUNT(*) as won_count, COALESCE(SUM(l.budget_max), 0) as revenue
       FROM leads l
-      JOIN lead_stages ls ON ls.id = l.stage_id
-      WHERE l.tenant_id=$1 AND l.assignee_id=$2 AND ls.is_won=true
+      LEFT JOIN lead_stages ls ON ls.id = l.stage_id
+      WHERE l.tenant_id=$1 AND l.assignee_id=$2 AND (ls.is_won=true OR l.status='converted')
       AND l.updated_at >= date_trunc('month', NOW())
     `, [tenantId, userId]);
   
@@ -92,7 +92,7 @@ exports.getSalesDashboard = async (tenantId, userId) => {
 
 exports.getManagerDashboard = async (tenantId) => {
   const teamPerformanceRes = await readPool.query(`
-      SELECT u.name as rep_name, COUNT(l.id) as active_leads, 0 as potential_revenue
+      SELECT u.name as rep_name, COUNT(l.id) as active_leads, COALESCE(SUM(l.budget_max), 0) as potential_revenue
       FROM users u
       LEFT JOIN leads l ON l.assignee_id = u.id AND l.status = 'active' AND l.tenant_id=$1
       WHERE u.tenant_id=$1 AND u.role = 'sales_executive'

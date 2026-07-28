@@ -457,6 +457,7 @@ async function completeLeadConversion(tenantId, leadId, newProjectId, lead, proj
       [newProjectId, convertedStageId, leadId]
     );
 
+    // 1. Transfer Estimates to Quotations
     const estimatesRes = await client.query(
       `SELECT * FROM lead_estimates WHERE tenant_id = $1 AND lead_id = $2 ORDER BY created_at ASC`,
       [tenantId, leadId]
@@ -510,9 +511,70 @@ async function completeLeadConversion(tenantId, leadId, newProjectId, lead, proj
       }
     }
 
+    // 2. Transfer Activities
+    await client.query(
+      `UPDATE activities SET project_id = $1 WHERE lead_id = $2 AND tenant_id = $3`,
+      [newProjectId, leadId, tenantId]
+    );
+
+    // 3. Transfer Files
+    const filesRes = await client.query(
+      `SELECT * FROM lead_files WHERE lead_id = $1 AND tenant_id = $2`,
+      [leadId, tenantId]
+    );
+    for (const file of filesRes.rows) {
+      await client.query(
+        `INSERT INTO documents (
+          tenant_id, project_id, name, doc_type, version, storage_key, file_size_bytes, mime_type, uploaded_by, status
+        ) VALUES ($1, $2, $3, $4, 1, $5, $6, $7, $8, 'approved')`,
+        [
+          tenantId,
+          newProjectId,
+          file.file_name,
+          'other',
+          file.storage_key,
+          file.file_size,
+          file.mime_type,
+          file.uploaded_by
+        ]
+      );
+    }
+
+    // 4. Transfer Follow-ups as Tasks
+    const followupsRes = await client.query(
+      `SELECT * FROM lead_followups WHERE lead_id = $1 AND tenant_id = $2 AND is_done = FALSE`,
+      [leadId, tenantId]
+    );
+    for (const followup of followupsRes.rows) {
+      await client.query(
+        `INSERT INTO tasks (
+          tenant_id, project_id, title, description, assignee_id, due_date, status, created_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, 'todo', $7)`,
+        [
+          tenantId,
+          newProjectId,
+          followup.title,
+          followup.notes || 'Migrated from lead follow-up',
+          followup.assignee_id,
+          followup.due_at,
+          followup.created_by
+        ]
+      );
+    }
+
+    // 5. Transfer Lead Notes to Project Timeline Activity (if any)
+    if (lead.notes && lead.notes.trim()) {
+      await client.query(
+        `INSERT INTO activities (
+          tenant_id, project_id, lead_id, user_id, type, title, notes
+        ) VALUES ($1, $2, $3, $4, 'note', 'Original Lead Notes', $5)`,
+        [tenantId, newProjectId, leadId, userId, lead.notes]
+      );
+    }
+
     await client.query(
       `INSERT INTO lead_timeline (tenant_id, lead_id, event_type, summary) VALUES ($1, $2, 'lead.converted', $3)`,
-      [tenantId, leadId, `Lead converted to project "${projectName}" (ID: ${newProjectId}). ${estimatesRes.rows.length} estimate(s) transferred.`]
+      [tenantId, leadId, `Lead converted to project "${projectName}" (ID: ${newProjectId}). ${estimatesRes.rows.length} estimate(s), ${filesRes.rows.length} file(s) transferred.`]
     );
 
     await eventBus.emit('lead.converted', {

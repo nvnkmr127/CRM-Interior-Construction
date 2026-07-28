@@ -206,34 +206,32 @@ export default function LeadsPage() {
   // handleImport is now handled inside LeadImportModal
 
   return (
-    <div className={styles.page}>
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <h1 className={styles.title}>Leads</h1>
-          <p className={styles.subtitle}>Manage your interior construction pipeline</p>
-        </div>
+    <div className={styles.page} style={selectedLeadId ? { padding: 0 } : {}}>
+      {!selectedLeadId && (
+        <>
+          <div className={styles.header}>
+            <div className={styles.headerLeft}>
+              <h1 className={styles.title}>Leads</h1>
+              <p className={styles.subtitle}>Manage your interior construction pipeline</p>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <PermissionButton 
+                module="leads"
+                action="export_csv"
+                variant="outline" 
+                onClick={handleExport}
+                title="Export Leads to CSV"
+              >&#8593; Export</PermissionButton>
+              <PermissionButton module="leads" action="import" variant="outline" onClick={() => setIsImportModalOpen(true)}>&#8595; Import</PermissionButton>
+              <PermissionButton module="leads" action="create" variant="primary" onClick={() => setIsFormOpen(true)}>+ New Lead</PermissionButton>
+            </div>
+          </div>
+        </>
+      )}
 
+      {!selectedLeadId && view !== 'dashboard' && <LeadStatsBar stats={stats} loading={loading} />}
 
-
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          
-
-
-          <PermissionButton 
-            module="leads"
-            action="export_csv"
-            variant="outline" 
-            onClick={handleExport}
-            title="Export Leads to CSV"
-          >&#8593; Export</PermissionButton>
-          <PermissionButton module="leads" action="import" variant="outline" onClick={() => setIsImportModalOpen(true)}>&#8595; Import</PermissionButton>
-          <PermissionButton module="leads" action="create" variant="primary" onClick={() => setIsFormOpen(true)}>+ New Lead</PermissionButton>
-        </div>
-      </div>
-
-      {view !== 'dashboard' && <LeadStatsBar stats={stats} loading={loading} />}
-
-      {view !== 'dashboard' && (
+      {!selectedLeadId && view !== 'dashboard' && (
         <LeadFilterRow
           search={search} setSearch={setSearch}
           assigneeFilter={assigneeFilter} setAssigneeFilter={setAssigneeFilter}
@@ -249,7 +247,8 @@ export default function LeadsPage() {
         />
       )}
 
-      <div className={styles.content}>
+      {!selectedLeadId && (
+        <div className={styles.content}>
         {error ? (
           <div style={{ padding: '40px', textAlign: 'center', background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)' }}>
             <div style={{ fontSize: '24px', marginBottom: '8px' }}>⚠</div>
@@ -296,18 +295,23 @@ export default function LeadsPage() {
             search={search}
           />
         )}
-      </div>
+        </div>
+      )}
 
-      <LeadDrawer
-        leadId={selectedLeadId}
-        isOpen={!!selectedLeadId}
-        onClose={() => setSelectedLeadId(null)}
-        onLeadUpdated={(updatedLead) => {
-          if (!updatedLead) setSelectedLeadId(null);
-          refetch();
-        }}
-        stages={stages}
-      />
+      {selectedLeadId && (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 'calc(100vh - var(--topbar-height, 56px) - var(--space-6, 24px) * 2)' }}>
+          <LeadDrawer
+            leadId={selectedLeadId}
+            isOpen={!!selectedLeadId}
+            onClose={() => setSelectedLeadId(null)}
+            onLeadUpdated={(updatedLead) => {
+              if (!updatedLead) setSelectedLeadId(null);
+              refetch();
+            }}
+            stages={stages}
+          />
+        </div>
+      )}
 
       {isFormOpen && (
         <LeadForm 

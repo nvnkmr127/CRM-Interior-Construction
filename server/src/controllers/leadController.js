@@ -25,6 +25,7 @@ exports.changeStageHandler = async (req, res, next) => {
     return success(res, updatedLead);
   } catch (error) {
     if (error.code === 'STAGE_GATE_FAILED') return res.status(422).json({ success: false, error: { code: 'STAGE_GATE_FAILED', message: 'Missing mandatory fields', missing: error.missing } });
+    if (error.code === 'CONFLICT') return fail(res, 'CONFLICT', error.message, 409);
     next(error);
   }
 };

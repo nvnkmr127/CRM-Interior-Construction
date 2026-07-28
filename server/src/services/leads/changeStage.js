@@ -13,6 +13,13 @@ async function changeStage({ tenantId, userId, leadId, newStageId }) {
     throw new Error('NOT_FOUND');
   }
 
+  // Prevent changing stage of already converted leads
+  if (oldLead.status === 'converted') {
+    const error = new Error('Lead is already converted and cannot be moved.');
+    error.code = 'CONFLICT';
+    throw error;
+  }
+
   // 2. If it's already the same stage, just return the lead
   if (oldLead.stage_id === newStageId) {
     return oldLead;

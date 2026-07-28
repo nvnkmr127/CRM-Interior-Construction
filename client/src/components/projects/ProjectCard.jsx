@@ -111,8 +111,8 @@ export default function ProjectCard({ project, onClick }) {
         </div>
         <div className={styles.progressMeta}>
           <span className={styles.progressLabel}>
-            {displayProject.completedTasks != null && displayProject.totalTasks != null
-              ? `${displayProject.completedTasks}/${displayProject.totalTasks} tasks`
+            {(displayProject.completed_tasks != null || displayProject.completedTasks != null) && (displayProject.total_tasks != null || displayProject.totalTasks != null)
+              ? `${displayProject.completed_tasks ?? displayProject.completedTasks}/${displayProject.total_tasks ?? displayProject.totalTasks} tasks`
               : `${progress}% complete`}
           </span>
           <span className={styles.progressPct} style={{ color: getProgressColor(progress) }}>
@@ -129,7 +129,7 @@ export default function ProjectCard({ project, onClick }) {
       {/* Bottom: value + deadline */}
       <div className={styles.bottomRow}>
         <span className={styles.value}>
-          {formatValue(displayProject.value) || '—'}
+          {formatValue(displayProject.contract_value || displayProject.value) || '—'}
         </span>
         {deadlineStr && (
           <span className={displayProject.overdue ? styles.dateOverdue : styles.date}>

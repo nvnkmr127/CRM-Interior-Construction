@@ -10,7 +10,7 @@ import { Badge } from '../ui'; // Standard UI badge
 // Stages are now passed as props from the database
 
 // Droppable Column Component
-function KanbanColumn({ stage, leads, activeId, onLeadClick }) {
+const KanbanColumn = React.memo(function KanbanColumn({ stage, leads, activeId, onLeadClick }) {
   const { setNodeRef } = useDroppable({ id: stage.id });
   const [visibleCount, setVisibleCount] = useState(50);
   
@@ -73,7 +73,7 @@ function KanbanColumn({ stage, leads, activeId, onLeadClick }) {
       </div>
     </div>
   );
-}
+});
 
 export default function LeadKanbanBoard({ initialLeads = [], stages = [], reps = [], onStageChange, onLeadClick }) {
   const [leads, setLeads] = useState(initialLeads);

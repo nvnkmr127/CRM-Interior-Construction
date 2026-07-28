@@ -39,6 +39,14 @@ async function updateLead({ tenantId, userId, leadId, data }) {
     throw new Error('NOT_FOUND');
   }
 
+  // Protect converted leads from stage changes via direct update
+  const newStageId = data.stageId || data.stage_id;
+  if (currentLead.status === 'converted' && newStageId && newStageId !== currentLead.stage_id) {
+    const error = new Error('Lead is already converted and cannot change stages.');
+    error.code = 'CONFLICT';
+    throw error;
+  }
+
   // OPTIMISTIC LOCK CHECK
   if (data.updated_at) {
     const currentUpdatedAt = new Date(currentLead.updated_at).getTime();
@@ -52,7 +60,6 @@ async function updateLead({ tenantId, userId, leadId, data }) {
   }
 
   // Handle naming conventions (stageId vs stage_id)
-  const newStageId = data.stageId || data.stage_id;
   const currentStageId = currentLead.stage_id;
 
   // Combine current lead data with incoming updates to check fields

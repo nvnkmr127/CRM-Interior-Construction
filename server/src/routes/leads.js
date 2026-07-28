@@ -44,7 +44,7 @@ router.post('/bulk/stage', authenticate, authorize('leads:update'), leadControll
 router.post('/bulk/tag', authenticate, authorize('leads:update'), leadController.bulkTagHandler);
 router.post('/merge', authenticate, authorize('leads:update'), leadController.mergeLeadsHandler);
 router.post('/:id/stage', authenticate, authorize('leads:update'), leadController.changeStageHandler);
-router.post('/:id/convert-to-project', authenticate, authorize('leads:update'), leadController.convertToProjectHandler);
+router.post('/:id/convert-to-project', authenticate, authorize('leads:update'), authorize('projects:create'), leadController.convertToProjectHandler);
 router.post('/:id/activities', authenticate, validate(logActivitySchema), leadController.logActivityHandler);
 router.get('/:id/activities', authenticate, leadController.getActivitiesHandler);
 router.patch('/:id/activities/:aid', authenticate, leadController.updateActivityHandler);
