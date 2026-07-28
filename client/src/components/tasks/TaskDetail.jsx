@@ -11,6 +11,7 @@ import { useTaskAutomation } from '../../store/TaskAutomationContext'
 import { useGovernance } from '../../store/TaskGovernanceContext'
 import { getTask, getGlobalTask, updateTask, addTaskComment, deleteTask, createTask, createGlobalTask } from '../../api/tasks'
 import { usersApi } from '../../api/users'
+import { getProject, getProjects } from '../../api/projects'
 
 const PRIORITIES = ['low', 'medium', 'high', 'urgent']
 const PRIORITY_COLORS = { low: 'info', medium: 'warning', high: 'danger', urgent: 'danger' }
@@ -25,6 +26,8 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
   const [newComment, setNewComment] = useState('')
   const [statusError, setStatusError] = useState(null)
   const [users, setUsers] = useState([])
+  const [projectsList, setProjectsList] = useState([])
+  const [isEditingMode, setIsEditingMode] = useState(false)
 
   
   const [draggedChecklistItemId, setDraggedChecklistItemId] = useState(null)
@@ -41,6 +44,17 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
   const governance = useGovernance()
   const logAuditActivity = governance?.logAuditActivity || (() => {})
   const permissions = { ...governance?.permissions, canEdit: true } // Force enable for testing
+
+  useEffect(() => {
+    if (task && task.project?.id && (!task.project.name || task.project.name === 'General Tasks' || task.project.name === '—') && !task.project.id.includes('-tasks')) {
+      getProject(task.project.id).then(pres => {
+        const p = pres.data?.data || pres.data;
+        if (p && p.name) {
+          setTask(curr => curr ? { ...curr, project: { ...curr.project, name: p.name } } : curr);
+        }
+      }).catch(() => {});
+    }
+  }, [task?.project?.id, task?.project?.name]);
 
   const loadTask = () => {
     if (!isOpen || !taskId) return;
@@ -93,6 +107,16 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
         setTask(normalized)
         setTitle(normalized.title)
         setDesc(normalized.description)
+        
+        // Fetch project name if it defaulted to '—' or is missing
+        if ((!t.project_name || normalized.project.name === '—') && normalized.project.id && !normalized.project.id.includes('-tasks')) {
+          getProject(normalized.project.id).then(pres => {
+            const p = pres.data?.data || pres.data
+            if (p && p.name) {
+              setTask(curr => curr ? { ...curr, project: { ...curr.project, name: p.name } } : curr)
+            }
+          }).catch(() => {})
+        }
       })
       .catch(() => {
         if (initialTask) {
@@ -108,6 +132,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
 
   useEffect(() => {
     usersApi.getAll().then(res => setUsers(res || [])).catch(() => {})
+    getProjects().then(res => setProjectsList(res.data?.data || res.data || [])).catch(() => {})
   }, [])
 
   useEffect(loadTask, [isOpen, taskId, projectId])
@@ -134,6 +159,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
         logAuditActivity(task.id, 'STATUS_CHANGE', task.status, finalPayload.status)
       }
       runAutomations('task_updated', updatedTask, task)
+      window.dispatchEvent(new CustomEvent('taskUpdated', { detail: updatedTask }))
 
     } catch (e) {
       toast.error('Failed to update task')
@@ -226,6 +252,9 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
     try {
       await applyUpdate({ status: newStatus }, 'single')
       toast.success('Status updated')
+      if (newStatus === 'done' && onClose) {
+        onClose()
+      }
     } catch (err) {
       setTask(t => ({ ...t, status: task.status }))
     }
@@ -234,15 +263,13 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
   const completeChecklist = () => {
     setTask(t => ({
       ...t,
-      checklist: t.checklist.map(s => ({ ...s, done: true })),
-      status: 'done'
+      checklist: t.checklist.map(s => ({ ...s, done: true }))
     }))
     setStatusError(null)
     updateTask(projectId, task.id, { 
-       status: 'done', 
        checklist: task.checklist.map(s => ({ ...s, done: true })) 
-    }).catch(() => {})
-    toast.success('Checklist completed and task marked done')
+    }).catch(() => toast.error('Failed to save checklist'))
+    toast.success('Checklist completed')
   }
 
   const saveChecklist = (newChecklist) => {
@@ -436,9 +463,39 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
 
                 <div className={styles.detailItem}>
                   <div className={styles.detailLabel}>Project</div>
-                  <div className={styles.detailValue}>
-                    <Link to={`/projects/${task.project.id}`} className={styles.link}>{task.project.name}</Link>
-                  </div>
+                  {isEditingMode ? (
+                    <div style={{ flex: 1, marginLeft: -8, display: 'flex', alignItems: 'center' }}>
+                      <Select
+                        searchable={true}
+                        disabled={!permissions.canEdit}
+                        value={task.project?.id && !task.project.id.includes('-tasks') ? task.project.id : 'general'}
+                        options={[
+                          { value: 'general', label: 'General Tasks (No Project)' },
+                          ...projectsList.map(p => ({ value: p.id, label: p.name }))
+                        ]}
+                        onChange={async (newProjectId) => {
+                          const actualId = newProjectId === 'general' ? null : newProjectId
+                          const proj = projectsList.find(p => String(p.id) === String(actualId))
+                          const prevProj = task.project
+                          setTask(t => ({ ...t, project: proj ? { id: proj.id, name: proj.name } : { id: 'general-tasks', name: 'General Tasks' } }))
+                          try {
+                            await applyUpdate({ project_id: actualId }, 'single')
+                            toast.success('Project updated')
+                          } catch (err) {
+                            setTask(t => ({ ...t, project: prevProj }))
+                          }
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className={styles.detailValue}>
+                      {task.project?.id && !task.project.id.includes('-tasks') ? (
+                        <Link to={`/projects/${task.project.id}`} className={styles.link}>{task.project.name}</Link>
+                      ) : (
+                        <span>General Tasks</span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className={styles.detailItem}>

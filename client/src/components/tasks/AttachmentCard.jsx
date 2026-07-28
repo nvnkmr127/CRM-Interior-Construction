@@ -33,6 +33,7 @@ export default function AttachmentCard({ attachment, onDelete, onUpdateVersion }
   }, [attachment])
 
   const getGenericIcon = (type, name) => {
+    if (!name) return '📁 FILE'
     const ext = name.split('.').pop().toLowerCase()
     if (type === 'application/pdf' || ext === 'pdf') return '📄 PDF'
     if (ext === 'doc' || ext === 'docx') return '📝 DOC'
@@ -43,7 +44,7 @@ export default function AttachmentCard({ attachment, onDelete, onUpdateVersion }
   }
 
   const formatSize = (bytes) => {
-    if (bytes === 0) return '0 B'
+    if (!bytes || bytes === 0) return '0 B'
     const k = 1024
     const sizes = ['B', 'KB', 'MB', 'GB']
     const i = Math.floor(Math.log(bytes) / Math.log(k))

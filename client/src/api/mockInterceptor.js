@@ -1058,7 +1058,7 @@ export const setupMockInterceptor = (api) => {
             }
           }
           // PROJECTS
-          else if (url.includes('/projects')) {
+          else if (url.includes('/projects') && !url.includes('/tasks') && !url.includes('/comments') && !url.includes('/attachments') && !url.includes('/activity')) {
             const match = url.match(/\/projects\/([a-zA-Z0-9-]+)$/);
             const projId = match ? match[1] : null;
 

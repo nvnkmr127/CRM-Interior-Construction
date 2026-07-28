@@ -127,12 +127,20 @@ export default function MyTasksPage() {
       loadTasks()
     }
     const handleAutoReload = () => loadTasks()
+    const handleTaskUpdated = (e) => {
+      if (e && e.detail && e.detail.id) {
+        setTasks(prev => prev.map(t => t.id === e.detail.id ? { ...t, ...e.detail } : t))
+      }
+      loadTasks()
+    }
 
     window.addEventListener('globalTimeLogged', handleGlobalLog)
     window.addEventListener('automationExecuted', handleAutoReload)
+    window.addEventListener('taskUpdated', handleTaskUpdated)
     return () => {
       window.removeEventListener('globalTimeLogged', handleGlobalLog)
       window.removeEventListener('automationExecuted', handleAutoReload)
+      window.removeEventListener('taskUpdated', handleTaskUpdated)
     }
   }, [])
 

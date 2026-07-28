@@ -42,6 +42,10 @@ export default function GlobalTaskFormModal({ isOpen, onClose, onSuccess }) {
       toast.error('Title is required');
       return;
     }
+    if (!projectId) {
+      toast.error('Project is required');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -50,7 +54,7 @@ export default function GlobalTaskFormModal({ isOpen, onClose, onSuccess }) {
         description,
         priority,
         due_date: dueDate ? new Date(dueDate).toISOString() : null,
-        project_id: projectId || null,
+        project_id: projectId,
         status: 'todo'
       };
       
@@ -82,13 +86,14 @@ export default function GlobalTaskFormModal({ isOpen, onClose, onSuccess }) {
         </div>
 
         <div>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>Project (Optional)</label>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '14px' }}>Project *</label>
           <select
             value={projectId}
             onChange={e => setProjectId(e.target.value)}
             style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+            required
           >
-            <option value="">No Project</option>
+            <option value="">Select a Project...</option>
             {projects.map(p => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
