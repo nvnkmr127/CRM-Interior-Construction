@@ -548,7 +548,8 @@ export default function MyTasksPage() {
         const startOfWeek = new Date(today.setDate(today.getDate() - today.getDay()))
         const endOfWeek = new Date(today.setDate(today.getDate() - today.getDay() + 6))
         return date >= startOfWeek && date <= endOfWeek
-      }).length
+      }).length,
+      completed: tasks.filter(t => t.status === 'done').length
     }
   }, [tasks])
 
@@ -654,12 +655,6 @@ export default function MyTasksPage() {
             >
               ⋮⋮
             </span>
-            <input 
-              type="checkbox" 
-              className={`${styles.taskCheckbox} ${updatingTaskId === task.id ? styles.loading : ''}`}
-              checked={task.status === 'done'}
-              onChange={() => handleStatusChange(task, task.status === 'done' ? 'todo' : 'done')}
-            />
             <select 
               value={task.status || 'todo'} 
               onChange={(e) => handleStatusChange(task, e.target.value)}
@@ -824,6 +819,14 @@ export default function MyTasksPage() {
           <span className={styles.statDot} style={{ background: 'var(--color-text)' }} />
           <span style={{ color: 'var(--color-text)', fontVariantNumeric: 'tabular-nums' }}>{tasks.length}</span>
           <span style={{ color: activeTab === 'all' ? 'var(--color-text)' : 'var(--color-text-secondary)' }}>All Tasks</span>
+        </button>
+        <button className={`${styles.statChip} ${activeTab === 'completed' ? styles.statChipActive : ''}`}
+          onClick={() => setActiveTab('completed')}
+          style={{ borderColor: activeTab === 'completed' ? 'var(--color-success)' : 'var(--color-border)' }}
+        >
+          <span className={styles.statDot} style={{ background: 'var(--color-success)' }} />
+          <span style={{ color: 'var(--color-success)', fontVariantNumeric: 'tabular-nums' }}>{stats.completed}</span>
+          <span style={{ color: activeTab === 'completed' ? 'var(--color-success)' : 'var(--color-text-secondary)' }}>Completed</span>
         </button>
         
         {/* View selection within stats ribbon */}
