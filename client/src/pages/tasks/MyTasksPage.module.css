@@ -1,9 +1,23 @@
 /* --- Page Shell ------------------------------------------------------- */
 .page {
+  flex: 1;
+  margin: calc(-1 * var(--space-6));
   padding: var(--space-6);
   background: var(--color-bg);
-  min-height: 100%;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.detailContainer {
+  flex: 1;
+  margin: calc(-1 * var(--space-6));
+  background: var(--color-bg);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* --- Header ----------------------------------------------------------- */

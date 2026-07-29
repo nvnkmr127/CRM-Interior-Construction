@@ -1,4 +1,4 @@
-.nav { display:flex; align-items:center; gap:var(--space-1); padding: var(--space-2) 0 var(--space-4); }
+.nav { display:flex; align-items:center; gap:var(--space-1); padding: var(--space-2) 0 var(--space-4); margin-left: 0; }
 .crumb { font-size:var(--text-sm); color:var(--color-text-secondary); }
 .link { color:var(--color-text-secondary); text-decoration:none; }
 .link:hover { color:var(--color-accent); }

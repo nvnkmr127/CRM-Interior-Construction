@@ -657,7 +657,7 @@ export default function MyTasksPage() {
   }
 
   return (
-    <div className={styles.page}>
+    <div className={selectedTask ? styles.detailContainer : styles.page}>
       {selectedTask ? (
         <TaskDetail
           isOpen={!!selectedTask}
