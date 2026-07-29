@@ -15,6 +15,51 @@ export const setupMockInterceptor = (api) => {
 
           const persistDb = () => saveMockDatabase(mockDatabase);
 
+          if (!mockDatabase.tasks) {
+            const today = new Date();
+            const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+            const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+            mockDatabase.tasks = [
+              {
+                id: 'mock-1',
+                title: 'Review interior design blueprints for Smith Villa',
+                description: 'Check the master bedroom lighting layout and ensure electrical points align with the new false ceiling design.',
+                customerName: 'John Smith',
+                assigned_to: 'u1',
+                assignee_name: 'Alice Admin',
+                tags: [{id: 't1', name: 'Design'}, {id: 't2', name: 'Urgent'}],
+                status: 'in_progress',
+                priority: 'high',
+                due_date: today.toISOString().split('T')[0],
+                estimatedTime: 120,
+                actualTime: 45,
+                project_id: 'p1',
+                project_name: 'Smith Villa Renovation',
+                checklist: [
+                  { id: 'c1', title: 'Verify lighting points', done: true },
+                  { id: 'c2', title: 'Check HVAC duct routing', done: false }
+                ]
+              },
+              {
+                id: 'mock-2',
+                title: 'Procure Italian marble for living room',
+                description: 'Vendor needs confirmation by EOD. Call the supplier in Mumbai to confirm shipping timeline.',
+                customerName: 'Sarah Jenkins',
+                assigned_to: 'u2',
+                assignee_name: 'Bob Sales',
+                tags: [{id: 't3', name: 'Procurement'}],
+                status: 'todo',
+                priority: 'urgent',
+                due_date: yesterday.toISOString().split('T')[0],
+                estimatedTime: 30,
+                actualTime: 0,
+                project_id: 'p2',
+                project_name: 'Jenkins Penthouse',
+                checklist: []
+              }
+            ];
+          }
+
           if (!mockDatabase.taskTemplates) {
             mockDatabase.taskTemplates = [
               {
@@ -1925,14 +1970,37 @@ export const setupMockInterceptor = (api) => {
                 responseData.data = mockDatabase.tasks.find(t => t.id === taskId) || null;
               } else {
                 let leadIdParam = config.params?.lead_id;
-                if (!leadIdParam && urlParts.length > 1) {
-                  leadIdParam = new URLSearchParams(urlParts[1]).get('lead_id');
+                let assigneeIdParam = config.params?.assigneeId || config.params?.assignee_id;
+                if (urlParts.length > 1) {
+                  const searchParams = new URLSearchParams(urlParts[1]);
+                  if (!leadIdParam) leadIdParam = searchParams.get('lead_id');
+                  if (!assigneeIdParam) assigneeIdParam = searchParams.get('assigneeId') || searchParams.get('assignee_id');
                 }
+
+                let tasks = [...mockDatabase.tasks];
                 if (leadIdParam) {
-                  responseData.data = mockDatabase.tasks.filter(t => t.lead_id === leadIdParam);
-                } else {
-                  responseData.data = [...mockDatabase.tasks];
+                  tasks = tasks.filter(t => t.lead_id === leadIdParam);
                 }
+
+                if (assigneeIdParam) {
+                  if (assigneeIdParam === 'me') {
+                    const currentRole = localStorage.getItem('gov_role') || 'admin';
+                    const usersWithRole = (mockDatabase.users || []).filter(u => u.role_id === currentRole || u.role === currentRole);
+                    const validUserIds = usersWithRole.map(u => u.id);
+                    
+                    // Filter to tasks assigned to any mock user that has this role
+                    if (validUserIds.length > 0) {
+                      tasks = tasks.filter(t => validUserIds.includes(t.assigned_to) || validUserIds.includes(t.assignee_id));
+                    } else {
+                      // fallback if no users found with this role
+                      tasks = tasks.filter(t => t.assigned_to === 'me' || t.assignee_id === 'me');
+                    }
+                  } else {
+                    tasks = tasks.filter(t => t.assigned_to === assigneeIdParam || t.assignee_id === assigneeIdParam);
+                  }
+                }
+                
+                responseData.data = tasks;
               }
             } else if (method === 'post') {
               const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
@@ -2048,9 +2116,16 @@ export const setupMockInterceptor = (api) => {
               }
             } else if (method === 'delete') {
               if (taskId) {
-                mockDatabase.tasks = mockDatabase.tasks.filter(t => t.id !== taskId);
-                persistDb();
-                responseData.data = { success: true };
+                const idx = mockDatabase.tasks.findIndex(t => t.id === taskId);
+                if (idx !== -1) {
+                  mockDatabase.tasks[idx] = { 
+                    ...mockDatabase.tasks[idx], 
+                    status: 'deleted', 
+                    deletedAt: new Date().toISOString() 
+                  };
+                  persistDb();
+                  responseData.data = { success: true };
+                }
               }
             }
           }

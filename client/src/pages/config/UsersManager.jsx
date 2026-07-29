@@ -58,7 +58,10 @@ export default function UsersManager() {
   const allUsers = [...injectedUsers, ...users].filter((v, i, a) => a.findIndex(v2 => v2.id === v.id) === i)
 
   const roleOptions = roles.length > 0 
-    ? roles.map(r => ({ value: r.id, label: r.name })) 
+    ? [
+        ...roles.map(r => ({ value: r.id, label: r.name })),
+        ...DEFAULT_ROLE_OPTIONS.filter(d => !roles.some(r => r.id === d.value || r.name.toLowerCase() === d.label.toLowerCase()))
+      ]
     : DEFAULT_ROLE_OPTIONS
 
   

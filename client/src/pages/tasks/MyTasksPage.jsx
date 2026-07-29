@@ -25,6 +25,7 @@ import { useTaskAutomation } from '../../store/TaskAutomationContext'
 import { useGovernance } from '../../store/TaskGovernanceContext'
 import { getGlobalTasks, updateTask, updateGlobalTask, getTags, getTaskViews, createTaskView, createGlobalTask } from '../../api/tasks'
 import { getProjects } from '../../api/projects'
+import api from '../../api/axios'
 
 const TABS = [
   { id: 'all', label: 'All' },
@@ -73,6 +74,14 @@ export default function MyTasksPage() {
   const [isAiTaskCreationOpen, setIsAiTaskCreationOpen] = useState(false)
   const [isGlobalTaskModalOpen, setIsGlobalTaskModalOpen] = useState(false)
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false)
+
+  const [systemRoles, setSystemRoles] = useState([])
+
+  useEffect(() => {
+    api.get('/roles')
+      .then(res => setSystemRoles(res.data?.data || []))
+      .catch(err => console.error("Failed to fetch roles", err))
+  }, [])
   const [isGovernanceOpen, setIsGovernanceOpen] = useState(false)
 
   const [savedViews, setSavedViews] = useState([])
@@ -178,8 +187,17 @@ export default function MyTasksPage() {
 
   const loadTasks = () => {
     setLoading(true)
+    const taskParams = { limit: 100 }
+    
+    // Roles that can see all tasks across the company/projects
+    const globalViewRoles = ['superadmin', 'admin', 'director', 'manager', 'finance_head', 'finance_manager']
+    
+    if (!globalViewRoles.includes(role)) {
+      taskParams.assigneeId = 'me'
+    }
+
     Promise.all([
-      getGlobalTasks({ assigneeId: 'me', limit: 100 }),
+      getGlobalTasks(taskParams),
       getTags().catch(() => ({ data: [] })),
       getTaskViews().catch(() => ({ data: [] })),
       getProjects().catch(() => ({ data: [] }))
@@ -210,6 +228,7 @@ export default function MyTasksPage() {
             customerName: t.customer_name || t.customerName || '',
             leadName: t.lead_name || t.leadName || '',
             assigneeName: t.assignee_name || t.assigneeName || '',
+            assignee_id: t.assignee_id || t.assigned_to || t.assigneeId || null,
             tags: Array.isArray(t.tags) ? t.tags : [],
             status: t.status || 'todo',
             priority: t.priority || 'medium',
@@ -228,97 +247,6 @@ export default function MyTasksPage() {
           };
         })
 
-        // Inject Mock Data if no tasks exist (Dev only)
-        if (normalized.length === 0 && import.meta.env.DEV) {
-          const today = new Date();
-          const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
-          const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
-          const nextWeek = new Date(today); nextWeek.setDate(nextWeek.getDate() + 5);
-          
-          normalized = [
-            {
-              id: 'mock-1',
-              title: 'Review interior design blueprints for Smith Villa',
-              description: 'Check the master bedroom lighting layout and ensure electrical points align with the new false ceiling design.',
-              customerName: 'John Smith',
-              assigneeName: 'Pavan Kalyan',
-              tags: [{id: 't1', name: 'Design'}, {id: 't2', name: 'Urgent'}],
-              status: 'in_progress',
-              priority: 'high',
-              dueDate: today.toISOString().split('T')[0],
-              estimatedTime: 120,
-              actualTime: 45,
-              project: { id: 'p1', name: 'Smith Villa Renovation' },
-              checklist: [
-                { id: 'c1', title: 'Verify lighting points', done: true },
-                { id: 'c2', title: 'Check HVAC duct routing', done: false }
-              ]
-            },
-            {
-              id: 'mock-2',
-              title: 'Procure Italian marble for living room',
-              description: 'Vendor needs confirmation by EOD. Call the supplier in Mumbai to confirm shipping timeline.',
-              customerName: 'Sarah Jenkins',
-              assigneeName: 'Pavan Kalyan',
-              tags: [{id: 't3', name: 'Procurement'}],
-              status: 'todo',
-              priority: 'urgent',
-              dueDate: yesterday.toISOString().split('T')[0],
-              estimatedTime: 30,
-              actualTime: 0,
-              project: { id: 'p2', name: 'Jenkins Penthouse' },
-              checklist: []
-            },
-            {
-              id: 'mock-3',
-              title: 'Site inspection & plumbing quality check',
-              description: 'Walkthrough with the plumbing contractor to ensure no leakages before tiling begins.',
-              customerName: 'Robert Fox',
-              assigneeName: 'Pavan Kalyan',
-              tags: [{id: 't4', name: 'Site Visit'}],
-              status: 'waiting',
-              priority: 'medium',
-              dueDate: tomorrow.toISOString().split('T')[0],
-              estimatedTime: 180,
-              actualTime: 0,
-              project: { id: 'p3', name: 'Fox Office Setup' },
-              checklist: [
-                { id: 'c3', title: 'Master bathroom pressure test', done: false },
-                { id: 'c4', title: 'Kitchen sink drainage', done: false }
-              ]
-            },
-            {
-              id: 'mock-4',
-              title: 'Finalize modular kitchen 3D renders',
-              description: 'Client requested changes to the cabinet finishes (wants matte instead of gloss).',
-              customerName: 'Emma Watson',
-              assigneeName: 'Pavan Kalyan',
-              tags: [{id: 't1', name: 'Design'}],
-              status: 'review',
-              priority: 'high',
-              dueDate: nextWeek.toISOString().split('T')[0],
-              estimatedTime: 240,
-              actualTime: 200,
-              project: { id: 'p4', name: 'Watson Kitchen Remodel' },
-              checklist: []
-            },
-            {
-              id: 'mock-5',
-              title: 'Sign vendor contract for electrical fittings',
-              description: 'Contract is drafted, just need to review the penalty clauses before signing.',
-              assigneeName: 'Pavan Kalyan',
-              tags: [{id: 't5', name: 'Admin'}],
-              status: 'done',
-              priority: 'low',
-              dueDate: yesterday.toISOString().split('T')[0],
-              estimatedTime: 60,
-              actualTime: 60,
-              project: { id: 'general-tasks', name: 'General Tasks' },
-              checklist: []
-            }
-          ];
-        }
-
         setTasks(normalized)
       })
       .catch(() => setTasks([]))
@@ -327,7 +255,7 @@ export default function MyTasksPage() {
 
   useEffect(() => {
     loadTasks()
-  }, [])
+  }, [role])
 
   const handleStatusChange = async (task, newStatus) => {
     setUpdatingTaskId(task.id)
@@ -437,7 +365,7 @@ export default function MyTasksPage() {
   const filteredTasks = useMemo(() => {
     const filtered = tasks.filter(t => {
       // Tab filters
-      const isTrashed = ['soft_deleted', 'archived'].includes(t.status)
+      const isTrashed = ['soft_deleted', 'archived', 'deleted'].includes(t.status)
       if (activeTab === 'trash') {
         if (!isTrashed) return false
       } else {
@@ -549,7 +477,8 @@ export default function MyTasksPage() {
         const endOfWeek = new Date(today.setDate(today.getDate() - today.getDay() + 6))
         return date >= startOfWeek && date <= endOfWeek
       }).length,
-      completed: tasks.filter(t => t.status === 'done').length
+      completed: tasks.filter(t => t.status === 'done').length,
+      deleted: tasks.filter(t => t.status === 'deleted').length
     }
   }, [tasks])
 
@@ -684,11 +613,7 @@ export default function MyTasksPage() {
           
           <div className={styles.taskMeta}>
             <Badge variant={PRIORITY_COLORS[task.priority]} style={{textTransform:'capitalize'}}>{task.priority}</Badge>
-            {task.project?.name && task.project.name !== '—' && (
-              <Badge variant="neutral" style={{background:'var(--color-bg-alt)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)'}}>
-                {task.project.name}
-              </Badge>
-            )}
+
             {task.milestone && <Badge variant="neutral" style={{background:'var(--color-accent-light)', color:'var(--color-accent)'}}>{highlightText(task.milestone, debouncedSearchQuery)}</Badge>}
 
             
@@ -708,9 +633,11 @@ export default function MyTasksPage() {
               </div>
             )}
 
-            <span className={`${styles.dueDate} ${isOverdue(task.dueDate) && isPending(task.status) ? styles.overdue : ''} ${isToday(task.dueDate) && isPending(task.status) ? styles.today : ''}`}>
-              {formatDate(task.dueDate)}
-            </span>
+            {task.dueDate && (
+              <span className={`${styles.dueDate} ${isOverdue(task.dueDate) && isPending(task.status) ? styles.overdue : ''} ${isToday(task.dueDate) && isPending(task.status) ? styles.today : ''}`}>
+                {formatDate(task.dueDate)}
+              </span>
+            )}
           </div>
 
           <div className={styles.actions}>
@@ -799,10 +726,43 @@ export default function MyTasksPage() {
             <option value="templates">📑 Templates</option>
           </select>
           <select value={role} onChange={e => setRole(e.target.value)} className={styles.filterSelect} style={{ minWidth: '140px' }}>
+            <option value="superadmin">Role: Superadmin</option>
             <option value="admin">Role: Admin</option>
+            <option value="ceo">Role: CEO</option>
+            <option value="director">Role: Director</option>
+            <option value="sales_head">Role: Sales Head</option>
+            <option value="sales_manager">Role: Sales Manager</option>
+            <option value="sales_executive">Role: Sales Executive</option>
+            <option value="marketing_head">Role: Marketing Head</option>
+            <option value="marketing_executive">Role: Marketing Executive</option>
             <option value="manager">Role: Manager</option>
+            <option value="project_manager">Role: Project Manager</option>
+            <option value="finance_head">Role: Finance Head</option>
+            <option value="finance_manager">Role: Finance Manager</option>
+            <option value="finance_executive">Role: Finance Executive</option>
+            <option value="hr_head">Role: HR Head</option>
+            <option value="hr_manager">Role: HR Manager</option>
+            <option value="hr_executive">Role: HR Executive</option>
+            <option value="architect">Role: Architect</option>
+            <option value="lead_designer">Role: Lead Designer</option>
+            <option value="designer">Role: Designer</option>
+            <option value="junior_designer">Role: Junior Designer</option>
+            <option value="3d_visualizer">Role: 3D Visualizer</option>
+            <option value="draftsman">Role: Draftsman</option>
+            <option value="estimator">Role: Estimator / QS</option>
+            <option value="site_engineer">Role: Site Engineer</option>
+            <option value="qc_engineer">Role: QC Engineer</option>
+            <option value="site_supervisor">Role: Site Supervisor</option>
+            <option value="crm_executive">Role: CRM Executive</option>
+            <option value="vendor_manager">Role: Vendor Manager</option>
+            <option value="procurement_officer">Role: Procurement Officer</option>
             <option value="contributor">Role: Contributor</option>
             <option value="viewer">Role: Viewer</option>
+            {systemRoles
+                .filter(r => !['superadmin', 'admin', 'ceo', 'director', 'sales_head', 'sales_manager', 'sales_executive', 'marketing_head', 'marketing_executive', 'manager', 'project_manager', 'finance_head', 'finance_manager', 'finance_executive', 'hr_head', 'hr_manager', 'hr_executive', 'architect', 'lead_designer', 'designer', 'junior_designer', '3d_visualizer', 'draftsman', 'estimator', 'site_engineer', 'qc_engineer', 'site_supervisor', 'crm_executive', 'vendor_manager', 'procurement_officer', 'contributor', 'viewer'].includes(r.id))
+                .map(r => (
+                  <option key={r.id} value={r.id}>Role: {r.name}</option>
+              ))}
           </select>
           <Button variant="primary" onClick={() => setIsGlobalTaskModalOpen(true)}>+ New Task</Button>
         </div>
@@ -851,32 +811,16 @@ export default function MyTasksPage() {
           <span style={{ color: 'var(--color-success)', fontVariantNumeric: 'tabular-nums' }}>{stats.completed}</span>
           <span style={{ color: activeTab === 'completed' ? 'var(--color-success)' : 'var(--color-text-secondary)' }}>Completed</span>
         </button>
+        <button className={`${styles.statChip} ${activeTab === 'trash' ? styles.statChipActive : ''}`}
+          onClick={() => setActiveTab('trash')}
+          style={{ borderColor: activeTab === 'trash' ? 'var(--color-danger)' : 'var(--color-border)' }}
+        >
+          <span className={styles.statDot} style={{ background: 'var(--color-danger)' }} />
+          <span style={{ color: 'var(--color-danger)', fontVariantNumeric: 'tabular-nums' }}>{stats.deleted}</span>
+          <span style={{ color: activeTab === 'trash' ? 'var(--color-danger)' : 'var(--color-text-secondary)' }}>Deleted Tasks</span>
+        </button>
         
-        {/* View selection within stats ribbon */}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <Select
-              value={currentViewId}
-              onChange={val => {
-                if (val === 'manage') {
-                  setIsViewManagerOpen(true)
-                } else if (val === 'default') {
-                  setCurrentViewId('default')
-                } else {
-                  const v = savedViews.find(x => x.id === val)
-                  if (v) {
-                    setCurrentViewId(v.id)
-                    applyViewPayload(v.payload)
-                  }
-                }
-              }}
-              options={[
-                { value: 'default', label: 'Default View' },
-                ...savedViews.map(v => ({ value: v.id, label: v.name })),
-                { value: 'manage', label: '⚙ Manage Views...' }
-              ]}
-            />
-            <Button variant="ghost" size="sm" onClick={handleSaveCurrentView} title="Save current filters as a new view">💾 Save View</Button>
-        </div>
+
       </div>
 
       {/* Filter Bar */}

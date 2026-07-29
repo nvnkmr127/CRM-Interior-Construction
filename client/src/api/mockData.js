@@ -659,6 +659,21 @@ export const loadMockDatabase = () => {
       // Force users to always be fresh from initialMockDatabase
       merged.users = [...initialMockDatabase.users];
 
+      if (merged.tasks && Array.isArray(merged.tasks)) {
+        const now = new Date();
+        merged.tasks = merged.tasks.filter(t => {
+          if (t.status === 'deleted' && t.deletedAt) {
+            const deletedDate = new Date(t.deletedAt);
+            const diffTime = Math.abs(now - deletedDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+            if (diffDays > 7) {
+              return false; // permanently delete
+            }
+          }
+          return true;
+        });
+      }
+
       return merged;
     }
   } catch (e) {

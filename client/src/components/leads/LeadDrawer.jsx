@@ -614,64 +614,9 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
           {/* TAB CONTENT (SCROLLABLE) */}
           <div className="flex-1 overflow-y-auto p-6">
             {activeTab === 'overview' && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* LEFT PANEL: Details */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                {/* COLUMN 1: Data Entry & Details */}
                 <div className="space-y-6 flex flex-col">
-                  {/* Upcoming Meeting */}
-                  {lead.next_meeting_schedule && (
-                    <div className="p-5 rounded-xl shadow-sm transition-all" style={{ background: 'rgba(255, 165, 0, 0.15)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 165, 0, 0.3)' }}>
-                      <div className="flex justify-between items-center mb-3">
-                        <h4 className="text-xs font-bold text-orange-800 uppercase tracking-wider flex items-center gap-1">
-                          <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                          Upcoming Meeting
-                        </h4>
-                        <span className="text-[10px] font-bold text-orange-700 bg-orange-100 border border-orange-200 px-2 py-0.5 rounded uppercase tracking-wide">
-                          Scheduled
-                        </span>
-                      </div>
-                      <div className="space-y-2.5">
-                        <div className="text-sm font-semibold text-gray-800">
-                          {lead.next_meeting_title || 'Lead Consultation Meeting'}
-                        </div>
-                        <div className="flex flex-col gap-1.5 text-xs text-gray-600">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-gray-400">📅</span>
-                            <span className="font-medium text-gray-700">{formatMeetingSchedule(lead.next_meeting_schedule)}</span>
-                            {lead.next_meeting_duration && (
-                              <span className="text-gray-400">({lead.next_meeting_duration} mins)</span>
-                            )}
-                          </div>
-                          {lead.next_meeting_type && (
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-gray-400">📍</span>
-                              <span className="font-medium text-gray-700">{lead.next_meeting_type}</span>
-                            </div>
-                          )}
-                          {lead.next_meeting_host && (
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-gray-400">👤</span>
-                              <span className="font-medium text-gray-700">Host: {lead.next_meeting_host}</span>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {lead.next_meeting_link && (
-                          <div className="pt-2 border-t border-orange-100 mt-2">
-                            <a
-                              href={lead.next_meeting_link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded shadow-sm transition-colors cursor-pointer"
-                            >
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                              Join Call / Open Link
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
                   {/* Contact Info */}
                   <div className="p-5 rounded-xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
                     <div className="flex justify-between items-center mb-3">
@@ -704,7 +649,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       </div>
                     </div>
                   </div>
-
+                  
                   {/* Property & Scope */}
                   <div className="p-5 rounded-xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
                     <div className="flex justify-between items-center mb-3">
@@ -861,7 +806,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       </div>
                     </div>
                   </div>
-
+                  
                   {/* Preferences & Tracking */}
                   <div className="p-5 rounded-xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
                     <div className="flex justify-between items-center mb-3">
@@ -909,20 +854,65 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                     </div>
                   </div>
                 </div>
-                {/* END LEFT PANEL */}
-
-                {/* CENTER PANEL: Timeline & Checklist */}
-                <div className="space-y-4 border-l border-r border-gray-100 px-4">
-                  <DiscoveryCallChecklist lead={lead} onUpdate={fetchLead} />
-                  
-                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Activity Timeline</h4>
-                  <ActivityTimeline leadId={leadId} />
-                </div>
-                {/* END CENTER PANEL */}
-
-                {/* RIGHT PANEL: AI Insights & Score */}
-                <div className="space-y-6">
+                
+                {/* COLUMN 2: AI & Insights */}
+                <div className="space-y-6 flex flex-col md:border-l md:border-gray-100 md:pl-6 xl:border-l-0 xl:pl-0">
                   <LeadQualificationScore lead={lead} />
+                  
+                  {/* Upcoming Meeting */}
+                  {lead.next_meeting_schedule && (
+                    <div className="p-5 rounded-xl shadow-sm transition-all" style={{ background: 'rgba(255, 165, 0, 0.15)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 165, 0, 0.3)' }}>
+                      <div className="flex justify-between items-center mb-3">
+                        <h4 className="text-xs font-bold text-orange-800 uppercase tracking-wider flex items-center gap-1">
+                          <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                          Upcoming Meeting
+                        </h4>
+                        <span className="text-[10px] font-bold text-orange-700 bg-orange-100 border border-orange-200 px-2 py-0.5 rounded uppercase tracking-wide">
+                          Scheduled
+                        </span>
+                      </div>
+                      <div className="space-y-2.5">
+                        <div className="text-sm font-semibold text-gray-800">
+                          {lead.next_meeting_title || 'Lead Consultation Meeting'}
+                        </div>
+                        <div className="flex flex-col gap-1.5 text-xs text-gray-600">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-gray-400">📅</span>
+                            <span className="font-medium text-gray-700">{formatMeetingSchedule(lead.next_meeting_schedule)}</span>
+                            {lead.next_meeting_duration && (
+                              <span className="text-gray-400">({lead.next_meeting_duration} mins)</span>
+                            )}
+                          </div>
+                          {lead.next_meeting_type && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-gray-400">📍</span>
+                              <span className="font-medium text-gray-700">{lead.next_meeting_type}</span>
+                            </div>
+                          )}
+                          {lead.next_meeting_host && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-gray-400">👤</span>
+                              <span className="font-medium text-gray-700">Host: {lead.next_meeting_host}</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {lead.next_meeting_link && (
+                          <div className="pt-2 border-t border-orange-100 mt-2">
+                            <a
+                              href={lead.next_meeting_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded shadow-sm transition-colors cursor-pointer"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                              Join Call / Open Link
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   
                   {/* AI Insights Section */}
                   {(lead.win_probability !== undefined || lead.ai_score_breakdown) && (
@@ -959,7 +949,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       </div>
                     </div>
                   )}
-
+                  
                   {/* BUYING INTENT WIDGET */}
                   <div className="bg-orange-50/50 p-4 rounded-lg shadow-sm border border-orange-100">
                     <div className="flex items-center justify-between mb-2">
@@ -1025,15 +1015,18 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                         No referrals recorded yet.
                       </div>
                     )}
-                  </div>
                 </div>
-                {/* END RIGHT PANEL */}
-
+                
+                {/* COLUMN 3: Timeline & Checklist */}
+                <div className="space-y-4 lg:col-span-2 xl:col-span-1 xl:border-l xl:border-gray-100 xl:pl-6">
+                  <DiscoveryCallChecklist lead={lead} onUpdate={fetchLead} />
+                  
+                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Activity Timeline</h4>
+                  <ActivityTimeline leadId={leadId} />
+                </div>
               </div>
             )}
-
-
-
+            
             {activeTab === 'negotiation' && (
               <NegotiationDesk leadId={leadId} lead={lead} onUpdate={fetchLead} />
             )}

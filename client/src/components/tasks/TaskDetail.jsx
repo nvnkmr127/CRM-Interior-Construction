@@ -9,7 +9,7 @@ import { useToast } from '../../store/toastContext'
 import { useTaskNotifications } from '../../store/TaskNotificationContext'
 import { useTaskAutomation } from '../../store/TaskAutomationContext'
 import { useGovernance } from '../../store/TaskGovernanceContext'
-import { getTask, getGlobalTask, updateTask, addTaskComment, deleteTask, createTask, createGlobalTask } from '../../api/tasks'
+import { getTask, getGlobalTask, updateTask, addTaskComment, deleteTask, createTask, createGlobalTask, deleteGlobalTask } from '../../api/tasks'
 import { usersApi } from '../../api/users'
 import { getProject, getProjects } from '../../api/projects'
 
@@ -62,7 +62,15 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
 
     // Bypass fetch for mock tasks
     if (String(taskId).startsWith('mock-') && initialTask) {
-      setTask(initialTask);
+      setTask({
+        ...initialTask,
+        assignee: (initialTask.assignee_id || initialTask.assigned_to || initialTask.assigneeId) 
+          ? { 
+              id: initialTask.assignee_id || initialTask.assigned_to || initialTask.assigneeId, 
+              name: initialTask.assignee_name || initialTask.assigneeName || 'Unknown' 
+            } 
+          : null
+      });
       setTitle(initialTask.title || '');
       setDesc(initialTask.description || '');
       setLoading(false);
@@ -89,7 +97,9 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
           status: t.status || 'todo',
           priority: t.priority || 'medium',
           dueDate: t.due_date || t.dueDate || null,
-          assignee: t.assignee_id ? { id: t.assignee_id, name: t.assignee_name || 'Unknown' } : null,
+          assignee: (t.assignee_id || t.assigned_to || t.assigneeId) 
+            ? { id: t.assignee_id || t.assigned_to || t.assigneeId, name: t.assignee_name || t.assigneeName || 'Unknown' } 
+            : null,
           project: { id: t.project_id || projectId, name: t.project_name || '—' },
           roomName: t.room_name || t.roomName || null,
           checklist: (Array.isArray(t.checklist) ? t.checklist : (t.subtasks || [])).map(s => ({
@@ -179,14 +189,20 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
   }
 
   const handleDelete = async () => {
-    if (window.confirm('Move task to Trash? (Soft delete)')) {
+    if (window.confirm('Are you sure you want to permanently delete this task?')) {
       try {
-        await applyUpdate({ status: 'soft_deleted' })
-        logAuditActivity(task.id, 'DELETE', 'active', 'soft_deleted')
+        if (projectId && projectId !== 'general-tasks' && projectId !== 'lead-tasks') {
+          await deleteTask(projectId, task.id)
+        } else {
+          await deleteGlobalTask(task.id)
+        }
+        logAuditActivity(task.id, 'HARD_DELETE', 'active', 'deleted')
         onClose();
+        window.dispatchEvent(new CustomEvent('taskUpdated', { detail: { id: task.id, status: 'deleted' } }))
         window.dispatchEvent(new CustomEvent('globalTimeLogged'))
+        toast.success('Task permanently deleted')
       } catch (e) {
-        toast.error('Failed to move task to trash');
+        toast.error('Failed to delete task');
       }
     }
   };
@@ -393,7 +409,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
               ) : (
                 <>
                   {permissions.canDelete && <Button variant="outline" size="sm" className={styles.textMuted} onClick={handleArchive}>Archive</Button>}
-                  {permissions.canDelete && <Button variant="outline" size="sm" className={styles.textDanger} onClick={handleDelete}>Delete</Button>}
+                  <Button variant="outline" size="sm" className={styles.textDanger} onClick={handleDelete}>Delete</Button>
                   {permissions.canEdit && (
                     <Button variant="primary" size="sm" onClick={() => handleStatusChange('done')} disabled={task.status === 'done'}>
                       {task.status === 'done' ? '✓ Completed' : 'Mark Complete'}
@@ -432,7 +448,13 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
                         const prevAssignee = task.assignee
                         setTask(t => ({ ...t, assignee: user ? { id: user.id || user.user_id, name: user.name } : null }))
                         try {
-                          await applyUpdate({ assigneeId: actualId }, 'single')
+                          await applyUpdate({ 
+                            assignee_id: actualId, 
+                            assigneeId: actualId, 
+                            assigned_to: actualId,
+                            assignee_name: user ? user.name : null,
+                            assigneeName: user ? user.name : null
+                          }, 'single')
                           toast.success('Assignee updated')
                         } catch (err) {
                           setTask(t => ({ ...t, assignee: prevAssignee }))
@@ -449,7 +471,11 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
                       type="date"
                       value={task.dueDate ? task.dueDate.split('T')[0] : ''}
                       disabled={!permissions.canEdit}
-                      onChange={(e) => applyUpdate({ dueDate: e.target.value })}
+                      onChange={(e) => {
+                        const newDate = e.target.value;
+                        setTask(t => ({ ...t, dueDate: newDate }));
+                        applyUpdate({ dueDate: newDate });
+                      }}
                       style={{ border: 'none', background: 'transparent', color: 'inherit' }}
                     />
                   </div>
