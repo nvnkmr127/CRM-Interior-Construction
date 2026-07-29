@@ -748,7 +748,30 @@ export default function MyTasksPage() {
           <h1 className={styles.title}>My Tasks</h1>
           <p className={styles.subtitle}>{new Date().toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' })}</p>
         </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className={styles.viewToggle}>
+            <button
+              className={`${styles.viewBtn} ${viewMode === 'list' ? styles.viewBtnActive : ''}`}
+              onClick={() => setViewMode('list')}
+              title="List View"
+            >
+              &#9776; List
+            </button>
+            <button
+              className={`${styles.viewBtn} ${viewMode === 'kanban' ? styles.viewBtnActive : ''}`}
+              onClick={() => setViewMode('kanban')}
+              title="Kanban View"
+            >
+              &#9638; Kanban
+            </button>
+            <button
+              className={`${styles.viewBtn} ${viewMode === 'calendar' ? styles.viewBtnActive : ''}`}
+              onClick={() => setViewMode('calendar')}
+              title="Calendar View"
+            >
+              &#128197; Calendar
+            </button>
+          </div>
           <Button variant="outline" onClick={() => setIsAiTaskCreationOpen(true)}>✨ AI Task</Button>
           <select 
             className={styles.filterSelect}
@@ -947,29 +970,6 @@ export default function MyTasksPage() {
           <option value="priority">Sort: Priority</option>
         </select>
 
-        <div className={styles.viewToggle}>
-          <button
-            className={`${styles.viewBtn} ${viewMode === 'list' ? styles.viewBtnActive : ''}`}
-            onClick={() => setViewMode('list')}
-            title="List View"
-          >
-            &#9776; List
-          </button>
-          <button
-            className={`${styles.viewBtn} ${viewMode === 'kanban' ? styles.viewBtnActive : ''}`}
-            onClick={() => setViewMode('kanban')}
-            title="Kanban View"
-          >
-            &#9638; Kanban
-          </button>
-          <button
-            className={`${styles.viewBtn} ${viewMode === 'calendar' ? styles.viewBtnActive : ''}`}
-            onClick={() => setViewMode('calendar')}
-            title="Calendar View"
-          >
-            &#128197; Calendar
-          </button>
-        </div>
       </div>
       {/* AI Daily Assistant */}
       {showDailyAssistant && (
