@@ -198,8 +198,8 @@ export default function LeadFormBuilderPage() {
     <div className={styles.container}>
       <div className={styles.header}>
         <h2>{isEditing ? 'Edit Form' : 'Create New Form'}</h2>
-        <div>
-          <button className={styles.actions} onClick={() => navigate('/leads/forms')} style={{ marginRight: '10px', background: 'white' }}>Cancel</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button className={styles.actions} onClick={() => navigate('/leads/forms')} style={{ background: 'white' }}>Cancel</button>
           <button className={styles.primaryBtn} onClick={handleSave}>Save Form</button>
         </div>
       </div>
