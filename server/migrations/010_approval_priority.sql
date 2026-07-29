@@ -1,5 +1,5 @@
 
-DO \$\$
+DO $$
 DECLARE
     r RECORD;
 BEGIN
@@ -15,7 +15,7 @@ BEGIN
     LOOP
         EXECUTE 'ALTER TABLE ' || quote_ident(r.relname) || ' DROP CONSTRAINT ' || quote_ident(r.conname);
     END LOOP;
-END \$\$;
+END $$;
 
 UPDATE financial_approvals SET priority = 'critical' WHERE priority = 'urgent';
 

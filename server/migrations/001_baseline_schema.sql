@@ -1,3 +1,6 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
 CREATE TABLE IF NOT EXISTS tenants (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL,
@@ -4098,7 +4101,7 @@ CREATE TABLE IF NOT EXISTS site_material_usages (
 CREATE INDEX IF NOT EXISTS idx_site_mat_usages_project ON site_material_usages(project_id, tenant_id);
 CREATE INDEX IF NOT EXISTS idx_site_mat_usages_po_item ON site_material_usages(po_item_id);
 CREATE TABLE user_leaves (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID REFERENCES tenants(id),
   user_id UUID REFERENCES users(id),
   start_date DATE NOT NULL,
@@ -4110,7 +4113,7 @@ CREATE TABLE user_leaves (
 );
 
 CREATE TABLE project_coverages (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID REFERENCES tenants(id),
   leave_id UUID REFERENCES user_leaves(id),
   project_id UUID REFERENCES projects(id),
@@ -4595,7 +4598,7 @@ ALTER TABLE financial_approvals
 ADD CONSTRAINT financial_approvals_transaction_type_check 
 CHECK (transaction_type IN ('invoice', 'payment', 'payment_update', 'discount', 'credit', 'refund', 'change_order'));
 
--- Allow change_orders to have a pending_approval status
+-- Allow project_change_orders to have a pending_approval status
 DO $$
 DECLARE
     r RECORD;
@@ -4606,7 +4609,7 @@ BEGIN
         JOIN pg_class t ON c.conrelid = t.oid
         JOIN pg_namespace n ON t.relnamespace = n.oid
         WHERE n.nspname = 'public' 
-          AND t.relname = 'change_orders'
+          AND t.relname = 'project_change_orders'
           AND c.contype = 'c'
           AND pg_get_constraintdef(c.oid) LIKE '%status%'
     LOOP
@@ -4614,8 +4617,8 @@ BEGIN
     END LOOP;
 END $$;
 
-ALTER TABLE change_orders 
-ADD CONSTRAINT change_orders_status_check 
+ALTER TABLE project_change_orders 
+ADD CONSTRAINT project_change_orders_status_check 
 CHECK (status IN ('draft', 'pending_approval', 'approved', 'rejected', 'executed', 'cancelled'));
 
 -- Migration: 184_vendor_default_handling.sql

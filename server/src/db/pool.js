@@ -4,6 +4,9 @@ if (process.env.NODE_ENV === 'test') {
   require('dotenv').config({ path: path.resolve(__dirname, '../../.env.test'), override: true });
 } else {
   require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
+  if (!process.env.DATABASE_URL) {
+    require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
+  }
 }
 
 const useSSL = process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost') && !process.env.DATABASE_URL.includes('127.0.0.1');
