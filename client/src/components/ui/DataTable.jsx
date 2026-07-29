@@ -85,7 +85,7 @@ export default function DataTable({
   return (
     <div className={styles.wrapper}>
       <div className="overflow-x-auto">
-        <table className={styles.table}>
+        <table className={styles.table} style={{ tableLayout: 'fixed' }}>
           <thead className={styles.thead}>
             <tr>
               {expandable && <th className={`${styles.th} ${styles.expandCol}`}></th>}
@@ -138,7 +138,7 @@ export default function DataTable({
             ) : data.length === 0 ? (
               <tr>
                 <td colSpan={activeColumns.length + (selectable ? 1 : 0) + (expandable ? 1 : 0)}>
-                  <div style={{ padding: '40px 0' }}>
+                  <div style={{ padding: '40px 0', width: '100%', display: 'flex', justifyContent: 'center' }}>
                     <EmptyState 
                       icon={<span style={{fontSize: 32}}>S</span>}
                       title={emptyMessage || 'No data found'} 

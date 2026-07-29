@@ -412,21 +412,23 @@ export default function UsersManager() {
               ))}
             </div>
           ) : (
-          <DataTable 
-            columns={columns} 
-            data={activeTab === 'directory' ? allUsers.filter(u => u.status !== 'pending_approval' && u.status !== 'changes_requested') : allUsers.filter(u => u.status === 'pending_approval' || u.status === 'changes_requested')} 
-            selectable={activeTab === 'directory'}
-            selectedIds={selectedIds}
-            onSelectChange={setSelectedIds}
-            visibleColumns={visibleColumns}
-            onContextMenu={(e, row) => {
-              setContextMenu({
-                x: e.clientX,
-                y: e.clientY,
-                user: row
-              })
-            }}
-          />
+          <div style={{ width: '100%' }}>
+            <DataTable 
+              columns={columns} 
+              data={activeTab === 'directory' ? allUsers.filter(u => u.status !== 'pending_approval' && u.status !== 'changes_requested') : allUsers.filter(u => u.status === 'pending_approval' || u.status === 'changes_requested')} 
+              selectable={activeTab === 'directory'}
+              selectedIds={selectedIds}
+              onSelectChange={setSelectedIds}
+              visibleColumns={visibleColumns}
+              onContextMenu={(e, row) => {
+                setContextMenu({
+                  x: e.clientX,
+                  y: e.clientY,
+                  user: row
+                })
+              }}
+            />
+          </div>
           )
 
         ) : activeTab === 'emails' ? (
@@ -482,15 +484,6 @@ export default function UsersManager() {
             }} 
           />
         )}
-        
-        <OffboardingDashboard 
-          isOpen={!!offboardingTarget}
-          onClose={() => {
-            setOffboardingTarget(null)
-            fetchUsers()
-          }}
-          user={offboardingTarget}
-        />
 
         <EffectivePermissionViewer 
           isOpen={!!effectivePermUserTarget} 

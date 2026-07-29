@@ -43,7 +43,7 @@ export default function OffboardingDashboard() {
   const columns = [
     {
       key: 'employee',
-      header: 'Employee',
+      label: 'Employee',
       render: (r) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div>
@@ -55,22 +55,22 @@ export default function OffboardingDashboard() {
     },
     {
       key: 'status',
-      header: 'Status',
+      label: 'Status',
       render: (r) => getStatusBadge(r.status)
     },
     {
       key: 'resignation_date',
-      header: 'Resignation Date',
+      label: 'Resignation Date',
       render: (r) => new Date(r.resignation_date).toLocaleDateString()
     },
     {
       key: 'last_working_day',
-      header: 'Last Working Day',
+      label: 'Last Working Day',
       render: (r) => new Date(r.last_working_day).toLocaleDateString()
     },
     {
       key: 'actions',
-      header: 'Actions',
+      label: 'Actions',
       render: (r) => (
         <Button size="sm" variant="secondary" onClick={() => setSelectedRecord(r)}>
           View / Update
