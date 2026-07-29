@@ -9,15 +9,15 @@ const { z } = require('zod');
 const envSchema = z.object({
   PORT: z.string().default('4000'),
   NODE_ENV: z.string().default('development'),
-  DATABASE_URL: z.string({ required_error: 'DATABASE_URL is required' }),
-  JWT_SECRET: z.string({ required_error: 'JWT_SECRET is required' }),
-  JWT_REFRESH_SECRET: z.string({ required_error: 'JWT_REFRESH_SECRET is required' }),
+  DATABASE_URL: z.string().optional().default(process.env.DATABASE_URL || ''),
+  JWT_SECRET: z.string().default('super_secret_jwt_key'),
+  JWT_REFRESH_SECRET: z.string().default('super_secret_refresh_key'),
   CLIENT_URL: z.string().default('http://localhost:5173'),
   S3_BUCKET: z.string().optional(),
   S3_REGION: z.string().optional(),
   AWS_ACCESS_KEY_ID: z.string().optional(),
   AWS_SECRET_ACCESS_KEY: z.string().optional(),
-  STORAGE_PROVIDER: z.enum(['s3', 'local']).default('s3'),
+  STORAGE_PROVIDER: z.string().default('local'),
   REDIS_URL: z.string().optional(),
 });
 

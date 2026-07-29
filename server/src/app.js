@@ -175,6 +175,10 @@ const { auditMiddleware } = require('./middleware/auditLogger');
 
 app.use(auditMiddleware);
 
+app.get('/', (req, res) => {
+  res.json({ message: 'CRM Interior Construction API Server', status: 'ok', timestamp: new Date().toISOString() });
+});
+
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
