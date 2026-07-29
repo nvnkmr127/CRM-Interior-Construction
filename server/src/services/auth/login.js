@@ -4,8 +4,12 @@ const { queueEmail } = require('../emailService');
 const { logAction } = require('../auditLog');
 const { verifyPassword } = require('./password');
 const { signAccessToken, signRefreshToken } = require('./tokens');
-const UAParser = require('ua-parser-js');
-const geoip = require('geoip-lite');
+let geoip;
+try {
+  geoip = require('geoip-lite');
+} catch (e) {
+  geoip = { lookup: () => null };
+}
 const { getCache, setCache } = require('../../utils/cache');
 
 async function recordLoginHistory({ tenantId, userId, sessionId, emailAttempted, ip, userAgent, status, failureReason }) {
