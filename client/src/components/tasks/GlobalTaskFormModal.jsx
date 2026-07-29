@@ -9,7 +9,7 @@ export default function GlobalTaskFormModal({ isOpen, onClose, onSuccess }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('medium');
-  const [dueDate, setDueDate] = useState('');
+  const [dueDate, setDueDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [projectId, setProjectId] = useState('');
   const [projects, setProjects] = useState([]);
   const [submitting, setSubmitting] = useState(false);
@@ -20,7 +20,7 @@ export default function GlobalTaskFormModal({ isOpen, onClose, onSuccess }) {
       setTitle('');
       setDescription('');
       setPriority('medium');
-      setDueDate('');
+      setDueDate(new Date().toISOString().split('T')[0]);
       setProjectId('');
       
       // Fetch projects for dropdown

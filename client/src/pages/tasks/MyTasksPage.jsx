@@ -49,8 +49,10 @@ const STATUSES = {
 const PRIORITY_COLORS = { low: 'info', medium: 'warning', high: 'danger', urgent: 'danger' }
 
 export default function MyTasksPage() {
-  usePageTitle('My Tasks')
-  useBreadcrumbs([{ label: 'My Tasks' }])
+  const [selectedTask, setSelectedTask] = useState(null)
+  
+  usePageTitle(selectedTask ? 'Task Details' : 'My Tasks')
+  useBreadcrumbs(selectedTask ? [{ label: 'Task Details' }] : [{ label: 'My Tasks' }])
   const toast = useToast()
 
   const [activeTab, setActiveTab] = useState('all')
@@ -58,8 +60,6 @@ export default function MyTasksPage() {
   const [loading, setLoading] = useState(true)
   const [updatingTaskId, setUpdatingTaskId] = useState(null)
   const [globalTags, setGlobalTags] = useState([])
-  
-  const [selectedTask, setSelectedTask] = useState(null)
   const [collapsedProjects, setCollapsedProjects] = useState(new Set())
   const [expandedTaskIds, setExpandedTaskIds] = useState(new Set())
   const [draggedTaskId, setDraggedTaskId] = useState(null)

@@ -43,7 +43,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
   const { runAutomations } = useTaskAutomation()
   const governance = useGovernance()
   const logAuditActivity = governance?.logAuditActivity || (() => {})
-  const permissions = { ...governance?.permissions, canEdit: true } // Force enable for testing
+  const permissions = { ...governance?.permissions, canEdit: true }
 
   useEffect(() => {
     if (task && task.project?.id && (!task.project.name || task.project.name === 'General Tasks' || task.project.name === '—') && !task.project.id.includes('-tasks')) {
@@ -390,7 +390,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
   if (!isOpen) return null
 
   return (
-    <div className={styles.container}>
+    <div className={styles.page}>
       <div className={styles.pageHeader}>
         <Button variant="ghost" onClick={onClose}>
           &larr; Back to Tasks
@@ -400,73 +400,85 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
         <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading task details...</div>
       ) : (
         <>
-          <div className={styles.headerRow}>
-            <Badge variant={PRIORITY_COLORS[task.priority]} style={{ textTransform: 'capitalize' }}>{task.priority}</Badge>
-            <div className={styles.flexGap2}>
-
-              {['soft_deleted', 'archived'].includes(task.status) ? (
-                <Button variant="outline" size="sm" onClick={handleRestore}>Restore Task</Button>
-              ) : (
-                <>
-                  {permissions.canDelete && <Button variant="outline" size="sm" className={styles.textMuted} onClick={handleArchive}>Archive</Button>}
-                  <Button variant="outline" size="sm" className={styles.textDanger} onClick={handleDelete}>Delete</Button>
-                  {permissions.canEdit && (
-                    <Button variant="primary" size="sm" onClick={() => handleStatusChange('done')} disabled={task.status === 'done'}>
-                      {task.status === 'done' ? '✓ Completed' : 'Mark Complete'}
-                    </Button>
-                  )}
-                </>
-              )}
+          <div className={styles.headerCard}>
+            <div className={styles.headerTop}>
+              <div className={styles.headerLeft}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <Badge variant={PRIORITY_COLORS[task.priority]} style={{ textTransform: 'capitalize', cursor: 'pointer' }} onClick={cyclePriority}>{task.priority}</Badge>
+                  <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>Task ID: {task.id.substring(0, 8)}</span>
+                </div>
+                <input 
+                  className={styles.titleInput} 
+                  value={title} 
+                  onChange={e => setTitle(e.target.value)}
+                  onBlur={handleTitleBlur}
+                  disabled={!permissions.canEdit}
+                  onKeyDown={e => e.key === 'Escape' && setTitle(task.title)}
+                  placeholder="Task Title"
+                />
+              </div>
+              <div className={styles.headerRight}>
+                {['soft_deleted', 'archived', 'deleted'].includes(task.status) ? (
+                  <Button variant="outline" size="sm" onClick={handleRestore}>Restore Task</Button>
+                ) : (
+                  <>
+                    {permissions.canDelete && <Button variant="outline" size="sm" className={styles.textMuted} onClick={handleArchive}>Archive</Button>}
+                    <Button variant="outline" size="sm" className={styles.textDanger} onClick={handleDelete}>Delete</Button>
+                    {permissions.canEdit && (
+                      <Button variant="primary" size="sm" onClick={() => handleStatusChange('done')} disabled={task.status === 'done'}>
+                        {task.status === 'done' ? '✓ Completed' : 'Mark Complete'}
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
-          <input 
-            className={styles.titleInput} 
-            value={title} 
-            onChange={e => setTitle(e.target.value)}
-            onBlur={handleTitleBlur}
-            disabled={!permissions.canEdit}
-            onKeyDown={e => e.key === 'Escape' && setTitle(task.title)}
-          />
 
-          <div className={`${styles.grid} ${styles.section}`}>
-            <div>
-              <div className={styles.detailsGrid}>
-                <div className={styles.detailItem}>
-                  <div className={styles.detailLabel}>Assignee</div>
-                  <div style={{ flex: 1, marginLeft: -8, display: 'flex', alignItems: 'center' }}>
-                    {task.assignee?.name && <div style={{marginLeft: 8, marginRight: 4}}><Avatar name={task.assignee?.name} size="xs" /></div>}
-                    <Select
-                      searchable={true}
-                      value={task.assignee?.id || 'unassigned'}
-                      options={[
-                        { value: 'unassigned', label: 'Unassigned' },
-                        ...users.map(u => ({ value: u.id || u.user_id, label: u.name }))
-                      ]}
-                      onChange={async (newAssigneeId) => {
-                        const actualId = newAssigneeId === 'unassigned' ? null : newAssigneeId
-                        const user = users.find(u => String(u.id || u.user_id) === String(actualId))
-                        const prevAssignee = task.assignee
-                        setTask(t => ({ ...t, assignee: user ? { id: user.id || user.user_id, name: user.name } : null }))
-                        try {
-                          await applyUpdate({ 
-                            assignee_id: actualId, 
-                            assigneeId: actualId, 
-                            assigned_to: actualId,
-                            assignee_name: user ? user.name : null,
-                            assigneeName: user ? user.name : null
-                          }, 'single')
-                          toast.success('Assignee updated')
-                        } catch (err) {
-                          setTask(t => ({ ...t, assignee: prevAssignee }))
-                        }
-                      }}
-                    />
+          <div className={styles.grid}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+              
+              <div className={styles.statsGrid}>
+                {/* Assignee Card */}
+                <div className={styles.statCard}>
+                  <div className={styles.statLabel}>Assignee</div>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', width: '100%' }}>
+                    {task.assignee?.name && <div style={{marginRight: 4}}><Avatar name={task.assignee?.name} size="xs" /></div>}
+                    <div style={{ flex: 1 }}>
+                      <Select
+                        searchable={true}
+                        value={task.assignee?.id || 'unassigned'}
+                        options={[
+                          { value: 'unassigned', label: 'Unassigned' },
+                          ...users.map(u => ({ value: u.id || u.user_id, label: u.name }))
+                        ]}
+                        onChange={async (newAssigneeId) => {
+                          const actualId = newAssigneeId === 'unassigned' ? null : newAssigneeId
+                          const user = users.find(u => String(u.id || u.user_id) === String(actualId))
+                          const prevAssignee = task.assignee
+                          setTask(t => ({ ...t, assignee: user ? { id: user.id || user.user_id, name: user.name } : null }))
+                          try {
+                            await applyUpdate({ 
+                              assignee_id: actualId, 
+                              assigneeId: actualId, 
+                              assigned_to: actualId,
+                              assignee_name: user ? user.name : null,
+                              assigneeName: user ? user.name : null
+                            }, 'single')
+                            toast.success('Assignee updated')
+                          } catch (err) {
+                            setTask(t => ({ ...t, assignee: prevAssignee }))
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div className={styles.detailItem}>
-                  <div className={styles.detailLabel}>Due Date</div>
-                  <div className={`${styles.detailValue} ${new Date(task.dueDate || task.due_date) < new Date() && task.status !== 'done' ? styles.overdue : ''}`}>
+                {/* Due Date Card */}
+                <div className={styles.statCard}>
+                  <div className={styles.statLabel}>Due Date</div>
+                  <div className={`${styles.statValue} ${new Date(task.dueDate || task.due_date) < new Date() && task.status !== 'done' ? styles.overdue : ''}`}>
                     <input
                       type="date"
                       value={task.dueDate ? task.dueDate.split('T')[0] : ''}
@@ -476,22 +488,23 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
                         setTask(t => ({ ...t, dueDate: newDate }));
                         applyUpdate({ dueDate: newDate });
                       }}
-                      style={{ border: 'none', background: 'transparent', color: 'inherit' }}
                     />
                   </div>
                 </div>
 
-                <div className={styles.detailItem}>
-                  <div className={styles.detailLabel}>Priority</div>
-                  <div className={styles.detailValue} onClick={cyclePriority}>
+                {/* Priority Card */}
+                <div className={styles.statCard}>
+                  <div className={styles.statLabel}>Priority</div>
+                  <div className={styles.statValue} onClick={cyclePriority} style={{ cursor: 'pointer' }}>
                     <Badge variant={PRIORITY_COLORS[task.priority]} style={{ textTransform: 'capitalize' }}>{task.priority}</Badge>
                   </div>
                 </div>
 
-                <div className={styles.detailItem}>
-                  <div className={styles.detailLabel}>Project</div>
+                {/* Project Card */}
+                <div className={styles.statCard}>
+                  <div className={styles.statLabel}>Project</div>
                   {isEditingMode ? (
-                    <div style={{ flex: 1, marginLeft: -8, display: 'flex', alignItems: 'center' }}>
+                    <div className={styles.statValue}>
                       <Select
                         searchable={true}
                         disabled={!permissions.canEdit}
@@ -515,7 +528,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
                       />
                     </div>
                   ) : (
-                    <div className={styles.detailValue}>
+                    <div className={styles.statValue} style={{ padding: '4px 8px', marginLeft: '-8px' }}>
                       {task.project?.id && !task.project.id.includes('-tasks') ? (
                         <Link to={`/projects/${task.project.id}`} className={styles.link}>{task.project.name}</Link>
                       ) : (
@@ -525,16 +538,18 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
                   )}
                 </div>
 
-                <div className={styles.detailItem}>
-                  <div className={styles.detailLabel}>Room / Area</div>
-                  <div className={styles.detailValue}>
+                {/* Room / Area Card */}
+                <div className={styles.statCard}>
+                  <div className={styles.statLabel}>Room / Area</div>
+                  <div className={styles.statValue} style={{ padding: '4px 8px', marginLeft: '-8px' }}>
                     {task.roomName || 'General (No room tag)'}
                   </div>
                 </div>
 
-                <div className={styles.detailItem}>
-                  <div className={styles.detailLabel}>Status</div>
-                  <div style={{ flex: 1, marginLeft: -8 }}>
+                {/* Status Card */}
+                <div className={styles.statCard}>
+                  <div className={styles.statLabel}>Status</div>
+                  <div className={styles.statValue}>
                     <Select 
                       value={task.status} 
                       disabled={!permissions.canEdit}
@@ -564,30 +579,24 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
                 </div>
               )}
 
-
-
-
-
-              <div className={styles.sectionPadded}>
+              <div className={styles.contentCard}>
                 <div className={styles.sectionTitle} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>Description</span>
                   {saveStatus && <span className={styles.saveIndicator} style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{saveStatus}</span>}
                 </div>
                 <div className={styles.descWrapper}>
-                  <RichTextEditor value={desc} onChange={handleDescChange} />
+                  <RichTextEditor value={desc} onChange={handleDescChange} hideToolbar={true} />
                 </div>
               </div>
 
-
-
-              <div className={styles.sectionPadded}>
+              <div className={styles.contentCard}>
                 <TaskAttachments taskId={task.id} projectId={projectId} isGlobal={!projectId} />
               </div>
             </div>
 
             {/* Right Col: Checklist & Comments */}
-            <div>
-              <div className={styles.subtasks}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+              <div className={styles.contentCard}>
                 <div className={styles.sectionTitle} style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                   <span>Checklist</span>
                   <Badge variant="neutral">{task.checklist.filter(s => s.done).length}/{task.checklist.length}</Badge>
@@ -629,10 +638,10 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
                     <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>+ Add item</span>
                   </div>
                 </div>
-                <div className={styles.section}>
-                  <TaskComments taskId={task.id} projectId={projectId} isGlobal={!projectId} />
-                </div>            
-
+              </div>
+              
+              <div className={styles.contentCard}>
+                <TaskComments taskId={task.id} projectId={projectId} isGlobal={!projectId} />
               </div>
             </div>
           </div>

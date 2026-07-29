@@ -1016,7 +1016,8 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       </div>
                     )}
                 </div>
-                
+                </div>
+
                 {/* COLUMN 3: Timeline & Checklist */}
                 <div className="space-y-4 lg:col-span-2 xl:col-span-1 xl:border-l xl:border-gray-100 xl:pl-6">
                   <DiscoveryCallChecklist lead={lead} onUpdate={fetchLead} />

@@ -50,7 +50,7 @@ const MenuBar = ({ editor, toggleFullscreen, isFullscreen }) => {
   )
 }
 
-export default function RichTextEditor({ value, onChange }) {
+export default function RichTextEditor({ value, onChange, hideToolbar = false }) {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const containerRef = useRef(null)
   const isInternalChange = useRef(false)
@@ -88,7 +88,7 @@ export default function RichTextEditor({ value, onChange }) {
 
   return (
     <div ref={containerRef} className={`${styles.editorContainer} ${isFullscreen ? styles.fullscreen : ''}`}>
-      <MenuBar editor={editor} toggleFullscreen={() => setIsFullscreen(!isFullscreen)} isFullscreen={isFullscreen} />
+      {!hideToolbar && <MenuBar editor={editor} toggleFullscreen={() => setIsFullscreen(!isFullscreen)} isFullscreen={isFullscreen} />}
       <EditorContent editor={editor} className={styles.editorContent} />
     </div>
   )

@@ -175,7 +175,8 @@ export default function TaskKanbanBoard({ tasks, onTaskClick, onTaskDrop, onTask
                       >
                         {!isCollapsed && items.map(t => {
                           const isDragging = draggedTaskId === t.id
-                          const isOverdue = new Date(t.due_date) < new Date() && t.status !== 'done'
+                          const isOverdue = t.due_date && new Date(t.due_date) < new Date() && t.status !== 'done'
+                          const isToday = t.due_date && new Date(t.due_date).toDateString() === new Date().toDateString()
                           
                           return (
                             <div 
@@ -219,7 +220,7 @@ export default function TaskKanbanBoard({ tasks, onTaskClick, onTaskDrop, onTask
                                   {t.is_recurring && <span title="Recurring">🔄</span>}
                                   {t.due_date && (
                                     <span className={`${styles.date} ${isOverdue ? styles.overdue : ''}`}>
-                                      {new Date(t.due_date).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                      {t.due_date ? new Date(t.due_date).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'No Due Date'}
                                     </span>
                                   )}
                                   {(t.comments?.length > 0) && (

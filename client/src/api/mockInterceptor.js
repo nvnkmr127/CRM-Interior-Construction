@@ -1978,6 +1978,23 @@ export const setupMockInterceptor = (api) => {
                 }
 
                 let tasks = [...mockDatabase.tasks];
+                const sevenDaysAgo = new Date();
+                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                let tasksChanged = false;
+                tasks = tasks.filter(t => {
+                  if (['deleted', 'soft_deleted'].includes(t.status) && t.deletedAt) {
+                    const deletedDate = new Date(t.deletedAt);
+                    if (deletedDate < sevenDaysAgo) {
+                      tasksChanged = true;
+                      return false;
+                    }
+                  }
+                  return true;
+                });
+                if (tasksChanged) {
+                  mockDatabase.tasks = tasks;
+                  persistDb();
+                }
                 if (leadIdParam) {
                   tasks = tasks.filter(t => t.lead_id === leadIdParam);
                 }
