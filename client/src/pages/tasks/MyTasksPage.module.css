@@ -1,7 +1,10 @@
 /* --- Page Shell ------------------------------------------------------- */
 .page {
   flex: 1;
-  margin: calc(-1 * var(--space-6));
+  margin-top: 0;
+  margin-bottom: calc(-1 * var(--space-6));
+  margin-left: calc(-1 * var(--space-6));
+  margin-right: calc(-1 * var(--space-6));
   padding: var(--space-6);
   background: var(--color-bg);
   position: relative;
@@ -12,7 +15,10 @@
 
 .detailContainer {
   flex: 1;
-  margin: calc(-1 * var(--space-6));
+  margin-top: 0;
+  margin-bottom: calc(-1 * var(--space-6));
+  margin-left: calc(-1 * var(--space-6));
+  margin-right: calc(-1 * var(--space-6));
   background: var(--color-bg);
   position: relative;
   display: flex;

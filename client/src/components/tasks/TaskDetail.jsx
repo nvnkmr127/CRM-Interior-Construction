@@ -28,6 +28,8 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
   const [users, setUsers] = useState([])
   const [projectsList, setProjectsList] = useState([])
   const [isEditingMode, setIsEditingMode] = useState(false)
+  const [isEditingRoom, setIsEditingRoom] = useState(false)
+  const [tempRoomName, setTempRoomName] = useState('')
 
   
   const [draggedChecklistItemId, setDraggedChecklistItemId] = useState(null)
@@ -255,6 +257,32 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
       toast.success('Priority updated')
     } catch {
       setTask(t => ({ ...t, priority: task.priority }))
+    }
+  }
+
+  const handlePriorityChange = async (next) => {
+    if (!permissions.canEdit) return
+    setTask(t => ({ ...t, priority: next }))
+    try {
+      await applyUpdate({ priority: next })
+      logAuditActivity(task.id, 'PRIORITY_CHANGE', task.priority, next)
+      toast.success('Priority updated')
+    } catch {
+      setTask(t => ({ ...t, priority: task.priority }))
+    }
+  }
+
+  const handleSaveRoom = async () => {
+    setIsEditingRoom(false);
+    if (tempRoomName === (task.roomName || '')) return;
+    
+    const oldName = task.roomName;
+    setTask(t => ({ ...t, roomName: tempRoomName, room_name: tempRoomName }));
+    try {
+      await applyUpdate({ roomName: tempRoomName, room_name: tempRoomName });
+      toast.success('Room updated');
+    } catch {
+      setTask(t => ({ ...t, roomName: oldName, room_name: oldName }));
     }
   }
 
@@ -495,8 +523,20 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
                 {/* Priority Card */}
                 <div className={styles.statCard}>
                   <div className={styles.statLabel}>Priority</div>
-                  <div className={styles.statValue} onClick={cyclePriority} style={{ cursor: 'pointer' }}>
-                    <Badge variant={PRIORITY_COLORS[task.priority]} style={{ textTransform: 'capitalize' }}>{task.priority}</Badge>
+                  <div className={styles.statValue} style={{ width: '100%' }}>
+                    <div style={{ flex: 1 }}>
+                      <Select 
+                        value={task.priority} 
+                        disabled={!permissions.canEdit}
+                        options={[
+                          {value: 'low', label: 'Low'},
+                          {value: 'medium', label: 'Medium'},
+                          {value: 'high', label: 'High'},
+                          {value: 'urgent', label: 'Urgent'}
+                        ]}
+                        onChange={handlePriorityChange}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -540,29 +580,50 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
 
                 {/* Room / Area Card */}
                 <div className={styles.statCard}>
-                  <div className={styles.statLabel}>Room / Area</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div className={styles.statLabel}>Room / Area</div>
+                    {permissions.canEdit && !isEditingRoom && (
+                      <Button variant="ghost" size="sm" style={{ padding: '2px 8px', height: 'auto', fontSize: '11px', fontWeight: 600 }} onClick={() => { setIsEditingRoom(true); setTempRoomName(task.roomName || ''); }}>
+                        Edit
+                      </Button>
+                    )}
+                  </div>
                   <div className={styles.statValue} style={{ padding: '4px 8px', marginLeft: '-8px' }}>
-                    {task.roomName || 'General (No room tag)'}
+                    {isEditingRoom ? (
+                      <input 
+                        type="text" 
+                        value={tempRoomName} 
+                        onChange={(e) => setTempRoomName(e.target.value)}
+                        onBlur={handleSaveRoom}
+                        autoFocus
+                        style={{ flex: 1, padding: '4px', border: '1px solid var(--color-border)', borderRadius: '4px', width: '100%', fontSize: 'var(--text-sm)' }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleSaveRoom() }}
+                      />
+                    ) : (
+                      task.roomName || 'General (No room tag)'
+                    )}
                   </div>
                 </div>
 
                 {/* Status Card */}
                 <div className={styles.statCard}>
                   <div className={styles.statLabel}>Status</div>
-                  <div className={styles.statValue}>
-                    <Select 
-                      value={task.status} 
-                      disabled={!permissions.canEdit}
-                      options={[
-                        {value: 'todo', label: 'To Do'},
-                        {value: 'in_progress', label: 'In Progress'},
-                        {value: 'blocked', label: 'Blocked'},
-                        {value: 'done', label: 'Done'},
-                        {value: 'soft_deleted', label: 'Deleted (Trash)'},
-                        {value: 'archived', label: 'Archived'}
-                      ]}
-                      onChange={handleStatusChange}
-                    />
+                  <div className={styles.statValue} style={{ width: '100%' }}>
+                    <div style={{ flex: 1 }}>
+                      <Select 
+                        value={task.status} 
+                        disabled={!permissions.canEdit}
+                        options={[
+                          {value: 'todo', label: 'To Do'},
+                          {value: 'in_progress', label: 'In Progress'},
+                          {value: 'blocked', label: 'Blocked'},
+                          {value: 'done', label: 'Done'},
+                          {value: 'soft_deleted', label: 'Deleted (Trash)'},
+                          {value: 'archived', label: 'Archived'}
+                        ]}
+                        onChange={handleStatusChange}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
