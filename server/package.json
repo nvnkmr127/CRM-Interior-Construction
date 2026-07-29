@@ -4,7 +4,7 @@
   "private": true,
   "main": "src/app.js",
   "scripts": {
-    "build": "mkdir -p dist && echo 'Server build complete'",
+    "build": "mkdir -p dist && echo 'OK' > dist/index.html",
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "test": "jest --runInBand --forceExit",
