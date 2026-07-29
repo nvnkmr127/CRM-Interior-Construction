@@ -43,41 +43,42 @@ async function abuseDetector(req, res, next) {
     record.failures = 0;
   }
 
-  // 2. Intercept response
-  const originalSend = res.send;
-  res.send = function (body) {
-    const statusCode = res.statusCode;
-    
-    // If it's an auth failure or not found (reconnaissance)
-    if ([401, 403, 404].includes(statusCode)) {
-      record.failures += 1;
-      record.lastFailureTime = Date.now();
+  // 2. Intercept response safely
+  if (typeof res.send === 'function') {
+    const originalSend = res.send;
+    res.send = function (body) {
+      try {
+        const statusCode = res.statusCode;
+        
+        if ([401, 403, 404].includes(statusCode)) {
+          record.failures += 1;
+          record.lastFailureTime = Date.now();
 
-      if (record.failures >= ABUSE_THRESHOLD) {
-        console.warn(`[SECURITY] Abuse detected from IP ${ip}. Blocking for 5 minutes.`);
-        record.blockedUntil = Date.now() + (BLOCK_DURATION_SEC * 1000);
+          if (record.failures >= ABUSE_THRESHOLD) {
+            console.warn(`[SECURITY] Abuse detected from IP ${ip}. Blocking for 5 minutes.`);
+            record.blockedUntil = Date.now() + (BLOCK_DURATION_SEC * 1000);
+          }
+          
+          setCache(redisKey, record, BLOCK_DURATION_SEC + 60).catch(_err => {
+            abuseStore.set(ip, record);
+          });
+          abuseStore.set(ip, record);
+          
+        } else if (statusCode >= 200 && statusCode < 300) {
+          if (record.failures > 0) {
+            record.failures = 0;
+            record.blockedUntil = 0;
+            setCache(redisKey, record, 60).catch(() => {});
+            abuseStore.delete(ip);
+          }
+        }
+      } catch (err) {
+        /* ignore tracking errors in serverless */
       }
-      
-      // Save state asynchronously (don't block the response)
-      setCache(redisKey, record, BLOCK_DURATION_SEC + 60).catch(_err => {
-        // Fallback to memory
-        abuseStore.set(ip, record);
-      });
-      // Always set memory fallback just in case
-      abuseStore.set(ip, record);
-      
-    } else if (statusCode >= 200 && statusCode < 300) {
-      // On success, we can clear the failures
-      if (record.failures > 0) {
-        record.failures = 0;
-        record.blockedUntil = 0;
-        setCache(redisKey, record, 60).catch(() => {});
-        abuseStore.delete(ip);
-      }
-    }
 
-    return originalSend.call(this, body);
-  };
+      return originalSend.call(this, body);
+    };
+  }
 
   next();
 }
