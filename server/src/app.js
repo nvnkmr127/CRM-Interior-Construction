@@ -171,7 +171,17 @@ const siteVisitRoutes = require('./routes/siteVisits');
 const quotationRoutes = require('./routes/quotations');
 const aiRoutes = require('./routes/ai');
 const mobileRoutes = require('./routes/mobile');
-const { auditMiddleware } = require('./middleware/auditLogger');
+// Vercel Serverless URL Normalizer: ensures req.url starts with /api for route matching
+app.use((req, res, next) => {
+  const targetUrl = req.originalUrl || req.url || '';
+  if (targetUrl.includes('/api/')) {
+    const apiIndex = targetUrl.indexOf('/api/');
+    req.url = targetUrl.substring(apiIndex);
+  } else if (!req.url.startsWith('/api') && req.url !== '/' && req.url !== '/health') {
+    req.url = '/api' + (req.url.startsWith('/') ? '' : '/') + req.url;
+  }
+  next();
+});
 
 app.use(auditMiddleware);
 
