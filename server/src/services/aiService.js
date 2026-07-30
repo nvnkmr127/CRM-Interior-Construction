@@ -1,5 +1,10 @@
 const { GoogleGenAI } = require('@google/genai');
-const _pdfParse = require('pdf-parse');
+let _pdfParse;
+try {
+  _pdfParse = require('pdf-parse');
+} catch (e) {
+  _pdfParse = null;
+}
 const { findLeadById } = require('../repositories/leadRepository');
 const { sanitizePrompt, _validateOutput } = require('../utils/aiSecurity');
 

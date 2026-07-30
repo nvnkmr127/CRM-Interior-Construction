@@ -1,5 +1,4 @@
 const pool = require('../config/db');
-const { v4: _uuidv4 } = require('uuid'); 
 const crypto = require('crypto');
 const { queueEmail } = require('../services/emailService');
 

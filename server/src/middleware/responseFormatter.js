@@ -1,4 +1,4 @@
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 /**
  * Global response formatter middleware.
@@ -9,7 +9,7 @@ function responseFormatter(req, res, next) {
   const originalJson = res.json;
 
   // Add request ID to the request object if not already present
-  req.id = req.id || req.headers['x-request-id'] || uuidv4();
+  req.id = req.id || req.headers['x-request-id'] || randomUUID();
 
   // Override res.json
   res.json = function (body) {
