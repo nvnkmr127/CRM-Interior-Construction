@@ -21,7 +21,8 @@ const sanitizeDbUrl = (urlStr) => {
   }
 };
 
-const rawUrl = process.env.DATABASE_URL || '';
+const fallbackUrl = 'postgresql://neondb_owner:npg_K0JQzHbZVyU3@ep-noisy-smoke-aw8j01pj-pooler.c-12.us-east-1.aws.neon.tech/neondb';
+const rawUrl = process.env.DATABASE_URL || fallbackUrl;
 const useSSL = rawUrl && !rawUrl.includes('localhost') && !rawUrl.includes('127.0.0.1');
 
 if (useSSL) {
