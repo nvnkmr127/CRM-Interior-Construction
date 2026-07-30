@@ -102,12 +102,13 @@ async function authenticate(req, res, next) {
         riskScore += 50; // Extremely suspicious if browser changes mid-session
       }
 
-      // V3 Geo-Fencing Stub: In production, use geoip-lite or Cloudflare headers
-      const countryCode = req.headers['cf-ipcountry'] || 'US';
-      const allowedCountries = ['US', 'IN', 'GB', 'CA']; // Configurable per tenant
-      if (!allowedCountries.includes(countryCode)) {
-        console.warn(`[SECURITY] Blocked login attempt from unauthorized country: ${countryCode}`);
-        return res.status(403).json({ success: false, error: 'GEO_BLOCKED', message: 'Access from your current location is not permitted.' });
+      const countryCode = req.headers['cf-ipcountry'] || req.headers['x-vercel-ip-country'];
+      if (countryCode) {
+        const allowedCountries = ['US', 'IN', 'GB', 'CA', 'AU', 'DE', 'FR', 'SG', 'JP'];
+        if (!allowedCountries.includes(countryCode.toUpperCase())) {
+          console.warn(`[SECURITY] Blocked login attempt from unauthorized country: ${countryCode}`);
+          return res.status(403).json({ success: false, error: 'GEO_BLOCKED', message: 'Access from your current location is not permitted.' });
+        }
       }
 
       req.riskScore = riskScore;
