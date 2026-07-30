@@ -9,22 +9,6 @@ const { logAction } = require('../services/auditLog');
 const { queueEmail } = require('../services/emailService');
 const aiEmployeeService = require('../services/aiEmployeeService');
 
-// Temporary auto-migrate for user permissions
-(async () => {
-  try {
-    await pool.query(`
-      ALTER TABLE users 
-      ADD COLUMN IF NOT EXISTS direct_permissions JSONB DEFAULT '[]'::jsonb;
-      
-      ALTER TABLE users 
-      ADD COLUMN IF NOT EXISTS temporary_permissions JSONB DEFAULT '[]'::jsonb;
-    `);
-    console.log('users table permissions columns ready');
-  } catch (err) {
-    console.error('Failed to alter users table:', err);
-  }
-})();
-
 const router = express.Router();
 
 const VALID_TRANSITIONS = {

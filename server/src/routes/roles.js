@@ -7,34 +7,6 @@ const { queueEmail } = require('../services/emailService');
 const { logActivity } = require('../utils/activityLogger');
 const { PERMISSION_MODULES, PERMISSION_ACTIONS, isValidPermission, ACTION_DEPENDENCIES } = require('../constants/permissions');
 
-// Temporary auto-migrate for role_versions
-(async () => {
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS role_versions (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-        role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-        version_number INTEGER NOT NULL,
-        user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-        permissions JSONB DEFAULT '[]'::jsonb,
-        data_scopes JSONB DEFAULT '{}'::jsonb,
-        field_permissions JSONB DEFAULT '{}'::jsonb,
-        enabled_modules JSONB DEFAULT '[]'::jsonb,
-        page_permissions JSONB DEFAULT '{}'::jsonb,
-        change_summary TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE (role_id, version_number)
-      );
-      CREATE INDEX IF NOT EXISTS idx_role_versions_tenant ON role_versions(tenant_id);
-      CREATE INDEX IF NOT EXISTS idx_role_versions_role ON role_versions(role_id);
-    `);
-    console.log('role_versions table is ready');
-  } catch (err) {
-    console.error('Failed to create role_versions table:', err);
-  }
-})();
-
 const validateDependencies = (permsArray) => {
   if (permsArray.includes('*')) return null;
   const permSet = new Set(permsArray);
