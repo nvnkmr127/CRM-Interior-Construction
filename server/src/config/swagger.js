@@ -30,14 +30,23 @@ const options = {
       },
     ],
   },
-  apis: ['./src/routes/*.js', './src/routes/**/*.js'], // Path to the API routes
+  apis: ['./src/routes/*.js', './server/src/routes/*.js'],
 };
 
-const swaggerSpec = swaggerJsDoc(options);
+let swaggerSpec = null;
 
 const setupSwagger = (app) => {
-  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-  console.log('Swagger docs available at /api-docs');
+  if (process.env.VERCEL) return; // Skip heavy filesystem scans on Vercel cold-start
+  app.use('/api-docs', (req, res, next) => {
+    if (!swaggerSpec) {
+      try {
+        swaggerSpec = swaggerJsDoc(options);
+      } catch (e) {
+        swaggerSpec = {};
+      }
+    }
+    next();
+  }, swaggerUi.serve, (req, res, next) => swaggerUi.setup(swaggerSpec)(req, res, next));
 };
 
 module.exports = setupSwagger;

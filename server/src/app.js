@@ -16,11 +16,11 @@ const app = express();
 setupSwagger(app);
 
 // Initialize EventBus Subscribers
-require('./services/notifications/notificationEventHandler');
-require('./services/ai/aiEventHandler');
-require('./services/projects/projectEventHandler');
-require('./services/workflows/workflowEngine');
-require('./services/timeline/timelineWriter');
+try { require('./services/notifications/notificationEventHandler'); } catch (e) { console.warn('Failed to load notificationEventHandler:', e.message); }
+try { require('./services/ai/aiEventHandler'); } catch (e) { console.warn('Failed to load aiEventHandler:', e.message); }
+try { require('./services/projects/projectEventHandler'); } catch (e) { console.warn('Failed to load projectEventHandler:', e.message); }
+try { require('./services/workflows/workflowEngine'); } catch (e) { console.warn('Failed to load workflowEngine:', e.message); }
+try { require('./services/timeline/timelineWriter'); } catch (e) { console.warn('Failed to load timelineWriter:', e.message); }
 
 // Removed periodic intervals. Jobs are now handled by BullMQ cronWorker.
 
@@ -183,6 +183,8 @@ const siteVisitRoutes = require('./routes/siteVisits');
 const quotationRoutes = require('./routes/quotations');
 const aiRoutes = require('./routes/ai');
 const mobileRoutes = require('./routes/mobile');
+app.get(['/favicon.ico', '/favicon.png', '/robots.txt'], (req, res) => res.status(204).end());
+
 // Vercel Serverless URL Normalizer: ensures req.url starts with /api for route matching
 app.use((req, res, next) => {
   const targetUrl = req.originalUrl || req.url || '';
@@ -198,11 +200,11 @@ app.use((req, res, next) => {
 const { auditMiddleware } = require('./middleware/auditLogger');
 app.use(auditMiddleware);
 
-app.get('/', (req, res) => {
+app.get(['/', '/api'], (req, res) => {
   res.json({ message: 'CRM Interior Construction API Server', status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.get('/health', (req, res) => {
+app.get(['/health', '/api/health'], (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
@@ -318,6 +320,17 @@ app.use('/api/developer/tokens', require('./routes/apiTokens'));
 app.use('/api/v1', require('./routes/api/v1'));
 
 require('./routes/qc')(app);
+
+// 404 Catch-All Handler
+app.use((req, res, next) => {
+  res.status(404).json({
+    success: false,
+    error: {
+      code: 'NOT_FOUND',
+      message: `Route ${req.method} ${req.originalUrl || req.url} not found`
+    }
+  });
+});
 
 // Error handler MUST be the last middleware
 app.use(errorHandler);
