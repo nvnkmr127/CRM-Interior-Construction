@@ -21,3 +21,6 @@ CREATE TABLE IF NOT EXISTS login_history (
 CREATE INDEX IF NOT EXISTS idx_login_history_tenant ON login_history(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_login_history_user ON login_history(user_id);
 CREATE INDEX IF NOT EXISTS idx_login_history_session ON login_history(session_id);
+
+ALTER TABLE login_history ADD COLUMN IF NOT EXISTS user_agent TEXT;
+ALTER TABLE login_history ADD COLUMN IF NOT EXISTS email_attempted VARCHAR(255);
