@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars, no-undef, no-useless-assignment, react-hooks/purity, react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Badge, Button, Modal, Input, Select, PermissionButton } from '../../components/ui';
 import styles from './PaymentsTab.module.css';
 import { getPaymentMilestones, updatePaymentMilestone } from '../../api/paymentMilestones';
@@ -72,6 +72,17 @@ export default function PaymentsTab({ projectId, project }) {
   const [loading, setLoading] = useState(true);
   const [activeSubTab, setActiveSubTab] = useState('breakdown'); // breakdown, logs, milestones, credits, approvals
   
+  const subTabsRef = useRef(null);
+
+  useEffect(() => {
+    if (subTabsRef.current) {
+      const activeElement = subTabsRef.current.querySelector(`.${styles.subTabActive}`);
+      if (activeElement) {
+        activeElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  }, [activeSubTab]);
+
   // Cost Breakdown "Cart" state
   const [selectedCostItems, setSelectedCostItems] = useState([]);
   const [customAvailableItems, setCustomAvailableItems] = useState([]);
@@ -1677,7 +1688,7 @@ export default function PaymentsTab({ projectId, project }) {
       </div>
 
       {/* Sub-Tabs */}
-      <div className={styles.subTabsContainer}>
+      <div className={styles.subTabsContainer} ref={subTabsRef}>
         {['dashboard', 'collections', 'tally_sync', 'reconciliation', 'adjustments', 'breakdown', 'logs', 'audit_logs', 'milestones', 'gates', 'links', 'invoices', 'receipts', 'ledger', 'receivables', 'reminders', 'credits', 'approvals', ...(simulateRole === 'Admin' ? ['rbac'] : [])].map(tab => (
           <button
             key={tab}

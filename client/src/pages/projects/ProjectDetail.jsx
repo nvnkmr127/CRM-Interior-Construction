@@ -1,5 +1,5 @@
 /* eslint-disable no-undef, react-hooks/set-state-in-effect */
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Badge, PermissionButton } from '../../components/ui';
 import { usePagePermissions } from '../../hooks/usePagePermissions';
@@ -811,6 +811,7 @@ function OverviewTab({ project, onRefresh, onEdit }) {
 export default function ProjectDetail() {
   const { id: projectId } = useParams();
   const navigate = useNavigate();
+  const navRef = useRef(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const { canAccessPage, getAllowedPages } = usePagePermissions('projects');
   const allowedTabs = getAllowedPages().map(t => t.id);
@@ -820,6 +821,15 @@ export default function ProjectDetail() {
   const setActiveTab = (tab) => {
     setSearchParams({ tab });
   };
+  
+  useEffect(() => {
+    if (navRef.current) {
+      const activeElement = navRef.current.querySelector(`.${styles.headerNavItemActive}`);
+      if (activeElement) {
+        activeElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  }, [activeTab]);
   
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -1290,7 +1300,7 @@ export default function ProjectDetail() {
         </div>
 
         {/* Quick Nav Tabs from Form Sections */}
-        <div className={styles.headerNav}>
+        <div className={styles.headerNav} ref={navRef}>
           {[
             { id: 'Overview', icon: '📝', label: 'Overview' },
             { id: 'Team & Roles', icon: '👥', label: 'Team & Roles' },

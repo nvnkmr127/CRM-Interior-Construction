@@ -5,14 +5,7 @@ import styles from './Sidebar.module.css'
 
 const NAV_ITEMS = [
   { group: 'WORKSPACE', items: [
-    { label: 'Dashboards', icon: '⊞', module: 'dashboards', subItems: [
-        { to: '/dashboard/sales', icon: '📈', label: 'Sales Dashboard', permission: 'dashboards:view_sales_dashboard' },
-        { to: '/dashboard/project', icon: '🏗️', label: 'Project Dashboard', permission: 'dashboards:view_project_dashboard' },
-        { to: '/dashboard/finance', icon: '💰', label: 'Finance Dashboard', permission: 'dashboards:view_finance_dashboard' },
-        { to: '/dashboard/factory', icon: '🏭', label: 'Factory Dashboard', permission: 'dashboards:view_factory_dashboard' },
-        { to: '/dashboard/warehouse', icon: '📦', label: 'Warehouse Dashboard', permission: 'dashboards:view_warehouse_dashboard' },
-        { to: '/dashboard/management', icon: '👑', label: 'Management Dashboard', permission: 'dashboards:view_management_dashboard' },
-    ]},
+    { to: '/dashboard/sales', icon: '⊞', label: 'Dashboard', module: 'dashboards', permission: 'dashboards:view_sales_dashboard' },
     { label: 'Leads', icon: '◎', module: 'leads', subItems: [
         { to: '/leads?view=dashboard', icon: '📊', label: 'Dashboard' },
         { to: '/leads?view=list', icon: '≣', label: 'List' },
