@@ -130,18 +130,22 @@ export default function LeadKanbanBoard({ initialLeads = [], stages = [], reps =
 
   const leadsByStage = useMemo(() => {
     const acc = {};
-    stages.forEach(s => acc[s.id] = []);
-    filteredLeads.forEach(lead => {
-      // lead.stage_id from database
-      const stageId = lead.stage_id || lead.stage;
-      if (acc[stageId]) {
-        acc[stageId].push(lead);
-      } else {
-        // Fallback if stage is unknown
-        if (!acc['unknown']) acc['unknown'] = [];
-        acc['unknown'].push(lead);
-      }
-    });
+    if (Array.isArray(stages)) {
+      stages.forEach(s => acc[s.id] = []);
+    }
+    if (Array.isArray(filteredLeads)) {
+      filteredLeads.forEach(lead => {
+        // lead.stage_id from database
+        const stageId = lead.stage_id || lead.stage;
+        if (acc[stageId]) {
+          acc[stageId].push(lead);
+        } else {
+          // Fallback if stage is unknown
+          if (!acc['unknown']) acc['unknown'] = [];
+          acc['unknown'].push(lead);
+        }
+      });
+    }
     return acc;
   }, [filteredLeads, stages]);
 
