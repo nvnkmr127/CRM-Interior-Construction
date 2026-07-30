@@ -56,7 +56,7 @@ const apiLimiter = rateLimitFn({
   max: isDev ? 5000 : 100, // High limit in dev to prevent 429s on hot reload
   standardHeaders: true,
   legacyHeaders: false,
-  validate: { trustProxy: false },
+  validate: false,
   keyGenerator: (req, _res) => {
     // Use IP for auth routes to prevent credential stuffing
     if (req.originalUrl && req.originalUrl.startsWith('/api/auth')) {
@@ -80,10 +80,10 @@ const apiLimiter = rateLimitFn({
 // Stricter rate limiter for auth routes
 const authLimiter = rateLimitFn({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isDev ? 1000 : 15, // High limit in dev
+  max: isDev ? 1000 : 500, // High limit for auth routes
   standardHeaders: true,
   legacyHeaders: false,
-  validate: { trustProxy: false },
+  validate: false,
   message: { success: false, message: 'Too many authentication attempts, please try again later.' }
 });
 
