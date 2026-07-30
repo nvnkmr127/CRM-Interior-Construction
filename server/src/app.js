@@ -5,6 +5,13 @@ const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const setupSwagger = require('./config/swagger');
 
+process.on('uncaughtException', (err) => {
+  console.error('[UNCAUGHT EXCEPTION]', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[UNHANDLED REJECTION]', reason);
+});
+
 const app = express();
 setupSwagger(app);
 
