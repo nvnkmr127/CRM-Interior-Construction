@@ -6,15 +6,16 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
-async function checkLeadsDeletedAt() {
+async function checkSessions() {
   try {
-    const q = `SELECT count(id) FROM leads WHERE deleted_at IS NULL`;
-    const res = await pool.query(q);
-    console.log('Leads OK', res.rows);
+    const res = await pool.query('SELECT count(id) FROM sessions');
+    console.log('Sessions count:', res.rows[0].count);
+    const res2 = await pool.query('SELECT * FROM sessions ORDER BY created_at DESC LIMIT 5');
+    console.log('Recent sessions:', res2.rows.map(r => r.id));
   } catch(e) {
-    console.error('Leads ERROR:', e.message);
+    console.error('ERROR:', e.message);
   }
   process.exit(0);
 }
 
-checkLeadsDeletedAt();
+checkSessions();
