@@ -120,9 +120,10 @@ export default function LeadsPage() {
   // Unique assignees for dropdown
   const assignees = useMemo(() => {
     const map = {};
-    (Array.isArray(leads) ? leads : []).forEach(l => {
+    const arr = Array.isArray(leads) ? leads : [];
+    for (const l of arr) {
       if (l.assignee_id && l.assignee_name) map[l.assignee_id] = l.assignee_name;
-    });
+    }
     return Object.entries(map);
   }, [leads]);
 
@@ -151,10 +152,11 @@ export default function LeadsPage() {
   // Group for kanban
   const leadsByStage = useMemo(() => {
     const map = {};
-    (Array.isArray(filteredLeads) ? filteredLeads : []).forEach(l => {
+    const arr = Array.isArray(filteredLeads) ? filteredLeads : [];
+    for (const l of arr) {
       if (!map[l.stage_id]) map[l.stage_id] = [];
       map[l.stage_id].push(l);
-    });
+    }
     return map;
   }, [filteredLeads]);
 

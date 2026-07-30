@@ -131,10 +131,12 @@ export default function LeadKanbanBoard({ initialLeads = [], stages = [], reps =
   const leadsByStage = useMemo(() => {
     const acc = {};
     if (Array.isArray(stages)) {
-      stages.forEach(s => acc[s.id] = []);
+      for (const s of stages) {
+        acc[s.id] = [];
+      }
     }
     if (Array.isArray(filteredLeads)) {
-      filteredLeads.forEach(lead => {
+      for (const lead of filteredLeads) {
         // lead.stage_id from database
         const stageId = lead.stage_id || lead.stage;
         if (acc[stageId]) {
@@ -144,7 +146,7 @@ export default function LeadKanbanBoard({ initialLeads = [], stages = [], reps =
           if (!acc['unknown']) acc['unknown'] = [];
           acc['unknown'].push(lead);
         }
-      });
+      }
     }
     return acc;
   }, [filteredLeads, stages]);

@@ -23,7 +23,7 @@ export default function LeadCalendar({ leads, onLeadClick }) {
 
   const leadsByDate = useMemo(() => {
     const map = {};
-    leads.forEach(lead => {
+    (Array.isArray(leads) ? leads : []).forEach(lead => {
       const dateStr = lead.last_activity_at || lead.created_at;
       if (!dateStr) return;
       const d = new Date(dateStr);

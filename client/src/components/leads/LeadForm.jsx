@@ -32,7 +32,7 @@ export default function LeadForm({ lead, onSave, onClose }) {
     } else {
       baseRules.email = validators.email;
     }
-    mFields.forEach(f => {
+    (Array.isArray(mFields) ? mFields : []).forEach(f => {
       if (!baseRules[f] && f !== 'email') {
         const labelName = f.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
         baseRules[f] = validators.required(labelName);
