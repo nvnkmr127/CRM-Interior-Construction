@@ -1,6 +1,6 @@
 const express = require('express');
 const { z } = require('zod');
-const { authenticator } = require('otplib');
+const speakeasy = require('speakeasy');
 const pool = require('../db/pool');
 const { success, fail } = require('../utils/response');
 const { signAccessToken, signRefreshToken } = require('../services/auth/tokens');
@@ -38,7 +38,7 @@ router.post('/validate', async (req, res, next) => {
     let isValid = false;
 
     if (userSecurity.mfa_method === 'totp' && userSecurity.mfa_enabled) {
-      isValid = authenticator.verify({ token: code, secret: userSecurity.mfa_secret });
+      isValid = speakeasy.totp.verify({ secret: userSecurity.mfa_secret, encoding: 'base32', token: code });
     } else {
       // Check OTP in otp_codes table
       const codeHash = crypto.createHash('sha256').update(code).digest('hex');
