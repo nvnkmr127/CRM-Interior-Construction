@@ -4,6 +4,7 @@ const { queueEmail } = require('../emailService');
 const { logAction } = require('../auditLog');
 const { verifyPassword } = require('./password');
 const { signAccessToken, signRefreshToken } = require('./tokens');
+const UAParser = require('ua-parser-js');
 let geoip;
 try {
   geoip = require('geoip-lite');
