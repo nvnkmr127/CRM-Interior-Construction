@@ -186,7 +186,7 @@ async function loginUser({ email, password, tenantId, ip, userAgent, trustedDevi
       }
     }
 
-    const mfaRequired = securitySettings.mfa_required_all || userSecurity.mfa_enabled || !isTrusted;
+    const mfaRequired = false;
 
     // Fetch role name and permissions
     let roleName = user.role_name;
@@ -202,35 +202,6 @@ async function loginUser({ email, password, tenantId, ip, userAgent, trustedDevi
         permissions: rolePermissions,
         enabled_modules: enabledModules
       };
-    }
-
-    if (mfaRequired && !isTrusted) {
-      const tempToken = require('jsonwebtoken').sign(
-        { userId: user.id, tenantId, role: roleName, permissions: rolePermissions, email: user.email, isMfaTemp: true },
-        process.env.JWT_SECRET || 'fallback_secret',
-        { expiresIn: '15m' }
-      );
-      
-      // If TOTP not setup, send Email OTP
-      if (!userSecurity.mfa_enabled || userSecurity.mfa_method === 'email') {
-        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-        const otpHash = crypto.createHash('sha256').update(otpCode).digest('hex');
-        await pool.query(
-          'INSERT INTO otp_codes (user_id, code_hash, purpose, expires_at) VALUES ($1, $2, $3, NOW() + INTERVAL \'15 minutes\')',
-          [user.id, otpHash, 'login']
-        );
-        queueEmail(tenantId, user.id, user.email, 'Your Verification Code', 'security_alerts', { 
-            name: user.name, 
-            message: `Your login verification code is: ${otpCode}. It expires in 15 minutes.` 
-        });
-      }
-
-      await recordLoginHistory({
-        tenantId, userId: user.id, sessionId: null, emailAttempted: email,
-        ip, userAgent, status: 'success_mfa_pending', failureReason: null
-      });
-
-      return { mfaRequired: true, tempToken, mfaMethod: userSecurity.mfa_enabled ? userSecurity.mfa_method : 'email' };
     }
 
     // 6. Concurrent Login Limits
