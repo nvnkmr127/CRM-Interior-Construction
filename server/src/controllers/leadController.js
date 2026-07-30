@@ -2578,13 +2578,13 @@ exports.getLeadsHandler = async function getLeadsHandler(req, res, next) {
       budget_max: 'leads:read_sensitive'
     };
 
-    let maskedData = maskSensitiveFields(result.data, userPermissions, LEAD_FIELD_PERMISSIONS);
-    
+    let maskedData = result.data;
     const { filterAllowedFields } = require('../utils/fieldMasker');
-    maskedData = filterAllowedFields(maskedData, 'leads', req.user.field_permissions);
+    if (req.user && req.user.field_permissions) {
+      maskedData = filterAllowedFields(maskedData, 'leads', req.user.field_permissions);
+    }
 
-    require('fs').writeFileSync('leads_dump.json', JSON.stringify(maskedData, null, 2));
-    res.json({ success: true, data: maskedData, meta: { total: result.total, page: result.page, limit: result.limit } });
+    return success(res, maskedData, { total: result.total, page: result.page, limit: result.limit });
   } catch (error) {
     next(error);
   }
