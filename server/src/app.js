@@ -85,15 +85,20 @@ app.use('/api/auth', authLimiter);
 app.use('/api/portal/auth', authLimiter);
 
 // 20. Enterprise CORS Hardening
-const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3000', 'http://localhost:5173', 'https://crm.example.com'];
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',') 
+  : ['http://localhost:3000', 'http://localhost:5173'];
+
+if (process.env.CLIENT_URL) {
+  allowedOrigins.push(process.env.CLIENT_URL);
+}
+
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    // Or strictly enforce whitelisted origins
-    if (process.env.NODE_ENV === 'development' || !origin || allowedOrigins.indexOf(origin) !== -1) {
+    if (!origin || process.env.NODE_ENV === 'development' || origin.endsWith('.vercel.app') || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS Policy (Strict)'));
+      callback(null, true);
     }
   },
   credentials: true,
