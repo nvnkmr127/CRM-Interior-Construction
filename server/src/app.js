@@ -195,6 +195,7 @@ app.use((req, res, next) => {
   next();
 });
 
+const { auditMiddleware } = require('./middleware/auditLogger');
 app.use(auditMiddleware);
 
 app.get('/', (req, res) => {
