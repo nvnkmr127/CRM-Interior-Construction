@@ -110,6 +110,7 @@ const TimeSelect = ({ value, onChange }) => {
   );
 };
 
+
 export default function RolesManager() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [roles, setRoles] = useState([])
@@ -566,15 +567,15 @@ export default function RolesManager() {
 
   const columns = [
     {
-      key: 'name', label: 'Role Name',
+      key: 'name', label: 'Role Name', width: '15%',
       render: (r) => <span style={{ fontWeight: 500, color: 'var(--color-text)' }}>{r.name}</span>
     },
     {
-      key: 'description', label: 'Description',
+      key: 'description', label: 'Description', width: '25%',
       render: (r) => <span style={{ color: 'var(--color-text-secondary)' }}>{r.description || '-'}</span>
     },
     {
-      key: 'permissions', label: 'Permissions',
+      key: 'permissions', label: 'Permissions', width: '20%',
       render: (r) => {
         if (r.permissions?.includes('*')) return <span className={styles.tag} style={{ background: 'var(--color-accent-light)', color: 'var(--color-accent-dark)' }}>Full Access (*)</span>
         return (
@@ -585,9 +586,9 @@ export default function RolesManager() {
       }
     },
     {
-      key: 'actions', label: 'Actions', align: 'right',
+      key: 'actions', label: 'Actions', align: 'right', width: '550px',
       render: (r) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
           <Button variant="ghost" size="sm" onClick={() => handleOpenModal(r)}>Edit</Button>
           <Button variant="ghost" size="sm" onClick={() => { setCloneSource({ id: r.id, isTemplate: false, name: r.name }); setCloneName(`${r.name} - Copy`); setIsCloneModalOpen(true); }}>Duplicate</Button>
           <Button variant="ghost" size="sm" onClick={() => handleSaveAsTemplate(r)}>Save as Template</Button>
