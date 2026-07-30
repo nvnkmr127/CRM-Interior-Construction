@@ -1,145 +1,202 @@
-.container {
+/* ─── Page Shell ─────────────────────────────────────────────────────── */
+.page {
   padding: var(--space-6);
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
+  background: var(--color-bg);
+  min-height: 100%;
 }
 
+/* ─── Header ─────────────────────────────────────────────────────────── */
 .header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: var(--space-4);
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
 }
 
 .title {
   font-size: var(--text-2xl);
-  font-weight: 700;
+  font-weight: 800;
   color: var(--color-text);
   margin: 0;
-}
-
-.subtitle {
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
-  margin: var(--space-1) 0 0 0;
+  letter-spacing: -0.02em;
 }
 
 .refreshBtn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-}
-
-/* KPI Panel Styles */
-.kpiPanel {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--space-4);
-}
-
-.kpiCard {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-5);
-  box-shadow: var(--shadow-sm);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  transition: all var(--transition-normal) ease;
-}
-
-.kpiCard:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-  border-color: var(--color-primary-light);
-}
-
-.kpiTop {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.kpiLabel {
-  font-size: var(--text-xs);
+  gap: 5px;
+  border: none;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
   font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.kpiIcon {
-  font-size: var(--text-lg);
-  opacity: 0.7;
-}
-
-.kpiValue {
-  font-size: var(--text-2xl);
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.kpiSub {
-  font-size: var(--text-xs);
   color: var(--color-text-secondary);
+  background: var(--color-surface-2);
+  transition: var(--transition-fast);
+  line-height: 1;
 }
 
-/* Colors for KPI cards */
-.textDanger {
-  color: var(--color-danger) !important;
-}
-
-.textWarning {
-  color: var(--color-warning) !important;
-}
-
-.textSuccess {
-  color: var(--color-success) !important;
-}
-
-/* Filter bar styles */
-.filterBar {
+.refreshBtn:hover {
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-4);
+  color: var(--color-text);
   box-shadow: var(--shadow-sm);
 }
 
-.searchWrapper {
-  flex: 1;
-  min-width: 280px;
+/* ─── Stats Ribbon (KPI) ───────────────────────────────────────────────────── */
+.statsRibbon {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.statChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--color-border);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  transition: var(--transition-base);
+  background: var(--color-surface);
+  white-space: nowrap;
+  line-height: 1;
+  font-family: var(--font-sans);
+}
+
+.statChip:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.statChipActive {
+  box-shadow: var(--shadow-sm);
+}
+
+.statDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ─── Filter Bar ─────────────────────────────────────────────────────── */
+.filterBar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.searchWrap {
+  position: relative;
+  flex-grow: 1;
+  max-width: 280px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-secondary);
+  pointer-events: none;
 }
 
 .searchInput {
   width: 100%;
+  padding: var(--space-2) var(--space-3) var(--space-2) 30px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-sizing: border-box;
+  transition: var(--transition-fast);
 }
 
-.selectsWrapper {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex-wrap: wrap;
+.searchInput::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(232, 147, 90, 0.12);
 }
 
 .filterSelect {
-  min-width: 180px;
+  padding: var(--space-2) var(--space-3);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  height: 36px;
 }
 
-/* Grid layout for Resource Cards */
+.filterSelect:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+/* ─── View Toggle ────────────────────────────────────────────────────── */
+.viewToggle {
+  display: flex;
+  gap: var(--space-1);
+  background: var(--color-surface-2);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  margin-left: auto;
+  border: 1px solid var(--color-border);
+}
+
+.viewBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: transparent;
+  transition: var(--transition-fast);
+  line-height: 1;
+}
+
+.viewBtn:hover {
+  color: var(--color-text);
+}
+
+.viewBtnActive {
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+/* ─── Grid View ──────────────────────────────────────────────────────── */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: var(--space-6);
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
 }
 
 /* Resource Card Styles */
@@ -158,7 +215,7 @@
 .resourceCard:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-lg);
-  border-color: var(--color-primary-light);
+  border-color: var(--color-accent);
 }
 
 .cardHeader {
@@ -183,7 +240,6 @@
   margin: 2px 0 0 0;
 }
 
-/* Metrics Section inside Card */
 .metricSection {
   display: flex;
   flex-direction: column;
@@ -202,6 +258,7 @@
 .metricLabel {
   font-size: var(--text-xs);
   color: var(--color-text-secondary);
+  font-weight: 500;
 }
 
 .metricValue {
@@ -230,10 +287,9 @@
 }
 
 .inlineCapInput:focus {
-  border-color: var(--color-primary);
+  border-color: var(--color-accent);
 }
 
-/* Progress bar workload indicator */
 .progressWrapper {
   display: flex;
   flex-direction: column;
@@ -254,18 +310,6 @@
   transition: width var(--transition-slow) ease;
 }
 
-.barBlue {
-  background: linear-gradient(90deg, #3b82f6, #60a5fa);
-}
-
-.barGreen {
-  background: linear-gradient(90deg, #10b981, #34d399);
-}
-
-.barRed {
-  background: linear-gradient(90deg, #ef4444, #f87171);
-}
-
 .progressLabelRow {
   display: flex;
   justify-content: space-between;
@@ -278,7 +322,6 @@
   font-weight: 600;
 }
 
-/* Projects list section */
 .projectsSection {
   display: flex;
   flex-direction: column;
@@ -321,7 +364,7 @@
 .projInfo {
   display: flex;
   flex-direction: column;
-  max-width: 70%;
+  max-width: 65%;
 }
 
 .projName {
@@ -358,7 +401,7 @@
 }
 
 .inlineHoursInput:focus {
-  border-color: var(--color-primary);
+  border-color: var(--color-accent);
   background: var(--color-surface);
 }
 
@@ -377,20 +420,118 @@
   border-radius: var(--radius-md);
 }
 
-.emptyState {
+/* ─── List View ──────────────────────────────────────────────────────── */
+.listWrap {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--space-10);
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
+  overflow: hidden;
   box-shadow: var(--shadow-sm);
 }
 
-/* Loading & Error page styles */
+.listTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.listTh {
+  text-align: left;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 2px solid var(--color-border);
+  background: var(--color-surface-2);
+  white-space: nowrap;
+}
+
+.listTd {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+  vertical-align: middle;
+  color: var(--color-text);
+}
+
+.listTr {
+  transition: background var(--transition-fast);
+}
+
+.listTr:hover .listTd {
+  background: var(--color-surface-2);
+}
+
+.listTr:last-child .listTd {
+  border-bottom: none;
+}
+
+/* ─── Mini Progress Bar ──────────────────────────────────────────────── */
+.miniProgress {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-2);
+  overflow: hidden;
+  width: 80px;
+  border: 1px solid var(--color-border);
+}
+
+.miniProgressFill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.4s ease;
+}
+
+.barBlue {
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+}
+
+.barGreen {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.barRed {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+/* ─── Action Button ──────────────────────────────────────────────────── */
+.actionBtn {
+  border: none;
+  background: none;
+  color: var(--color-accent);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: var(--transition-fast);
+  font-family: var(--font-sans);
+}
+
+.actionBtn:hover {
+  background: var(--color-surface-2);
+}
+
+/* ─── Empty / Error State ────────────────────────────────────────────── */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-20) var(--space-8);
+  text-align: center;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--color-border);
+}
+
+.emptyIcon {
+  font-size: 40px;
+  margin-bottom: var(--space-3);
+  opacity: 0.5;
+}
+
 .loadingContainer, .errorContainer {
   min-height: 400px;
   display: flex;
@@ -417,4 +558,46 @@
 .errorCard h3 {
   margin: 0;
   color: var(--color-danger);
+}
+
+.textDanger {
+  color: var(--color-danger) !important;
+}
+
+.textSuccess {
+  color: var(--color-success) !important;
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: var(--space-4);
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filterBar {
+    gap: var(--space-2);
+  }
+
+  .searchWrap {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .viewToggle {
+    margin-left: 0;
+  }
+
+  .listWrap {
+    overflow-x: auto;
+  }
 }
