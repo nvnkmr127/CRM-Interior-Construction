@@ -183,6 +183,8 @@ const siteVisitRoutes = require('./routes/siteVisits');
 const quotationRoutes = require('./routes/quotations');
 const aiRoutes = require('./routes/ai');
 const mobileRoutes = require('./routes/mobile');
+app.get(['/favicon.ico', '/favicon.png', '/robots.txt'], (req, res) => res.status(204).end());
+
 // Vercel Serverless URL Normalizer: ensures req.url starts with /api for route matching
 app.use((req, res, next) => {
   const targetUrl = req.originalUrl || req.url || '';
