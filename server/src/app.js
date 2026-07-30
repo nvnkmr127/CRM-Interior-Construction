@@ -270,6 +270,7 @@ app.use('/api/tasks', globalTasksRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/users/bulk', usersBulkRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/roles', rolesRoutes);
 app.use('/api/offboarding', require('./routes/offboarding'));
 app.use('/api/filters', savedFiltersRoutes);
 app.use('/api/org', orgRoutes);

@@ -26,12 +26,12 @@ export const deleteTaskTemplate = (templateId) => api.delete(`/task-templates/${
 export const getTags = () => api.get('/tags');
 export const createTag = (data) => api.post('/tags', data);
 export const updateTag = (tagId, data) => api.patch(`/tags/${tagId}`, data);
-export const deleteTag = (id) => api.delete(`/api/tags/${id}`);
+export const deleteTag = (id) => api.delete(`/tags/${id}`);
 
-export const getTaskViews = () => api.get('/api/task-views');
-export const createTaskView = (data) => api.post('/api/task-views', data);
-export const updateTaskView = (id, data) => api.patch(`/api/task-views/${id}`, data);
-export const deleteTaskView = (id) => api.delete(`/api/task-views/${id}`);
+export const getTaskViews = () => api.get('/views');
+export const createTaskView = (data) => api.post('/views', data);
+export const updateTaskView = (id, data) => api.patch(`/views/${id}`, data);
+export const deleteTaskView = (id) => api.delete(`/views/${id}`);
 
 export const getTasks = (projectId, params) => api.get(`/projects/${projectId}/tasks`, { params });
 export const getTask = (projectId, taskId) => api.get(`/projects/${projectId}/tasks/${taskId}`);
