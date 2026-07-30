@@ -267,6 +267,7 @@ app.get('/api/local-download', (req, res) => {
 app.use('/api/projects/:id/handover', handoverRoutes);
 app.use('/api/phases/:phaseId/milestones', milestonesRoutes);
 app.use('/api/tasks', globalTasksRoutes);
+app.use('/api/tags', require('./routes/tags'));
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/users/bulk', usersBulkRoutes);
 app.use('/api/users', usersRoutes);
