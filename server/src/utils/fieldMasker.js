@@ -53,7 +53,40 @@ function stripUnauthorizedEdits(body, moduleName, userFieldPermissions = {}) {
   return sanitizedBody;
 }
 
+/**
+ * Masks sensitive fields based on user permissions.
+ * @param {Object|Array} data - The data to mask.
+ * @param {Array} userPermissions - Array of user permissions.
+ * @param {Object} fieldPermissions - Mapping of field names to required permissions.
+ * @returns {Object|Array} Masked data.
+ */
+function maskSensitiveFields(data, userPermissions = [], fieldPermissions = {}) {
+  if (!data) return data;
+
+  const hasPerm = (perm) => userPermissions.includes('*') || userPermissions.includes(perm);
+
+  const maskObject = (obj) => {
+    const maskedObj = { ...obj };
+    for (const [field, requiredPerm] of Object.entries(fieldPermissions)) {
+      if (maskedObj[field] !== undefined && !hasPerm(requiredPerm)) {
+        if (typeof maskedObj[field] === 'string') {
+          maskedObj[field] = '******';
+        } else {
+          maskedObj[field] = null;
+        }
+      }
+    }
+    return maskedObj;
+  };
+
+  if (Array.isArray(data)) {
+    return data.map(maskObject);
+  }
+  return maskObject(data);
+}
+
 module.exports = {
   filterAllowedFields,
-  stripUnauthorizedEdits
+  stripUnauthorizedEdits,
+  maskSensitiveFields
 };

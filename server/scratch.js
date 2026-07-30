@@ -6,19 +6,15 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
-async function fixNotifications() {
+async function checkLeadsDeletedAt() {
   try {
-    await pool.query('ALTER TABLE notifications ADD COLUMN IF NOT EXISTS read_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;');
-    console.log('Added read_at to notifications');
-    
-    // Check it again
-    const q = `SELECT count(id) FROM notifications WHERE read_at IS NULL`;
+    const q = `SELECT count(id) FROM leads WHERE deleted_at IS NULL`;
     const res = await pool.query(q);
-    console.log('Notifications OK', res.rows);
+    console.log('Leads OK', res.rows);
   } catch(e) {
-    console.error('ERROR:', e.message);
+    console.error('Leads ERROR:', e.message);
   }
   process.exit(0);
 }
 
-fixNotifications();
+checkLeadsDeletedAt();
