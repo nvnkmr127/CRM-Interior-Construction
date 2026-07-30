@@ -58,13 +58,11 @@ function errorHandler(err, req, res, next) {
         response.error = { code: 'VALIDATION_ERROR', message: err.message.split('VALIDATION_ERROR:')[1].trim() };
         return res.status(400).json(response);
       }
-      response.error = { code: 'INTERNAL_ERROR', message: 'Something went wrong' };
-      
-      // Include stack trace only in development
-      if (!isProduction) {
-        response.error.stack = err.stack;
-      }
-      
+      response.error = { 
+        code: 'INTERNAL_ERROR', 
+        message: err.message || 'Something went wrong',
+        details: err.stack || String(err)
+      };
       return res.status(500).json(response);
   }
 }

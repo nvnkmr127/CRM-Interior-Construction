@@ -247,6 +247,7 @@ router.get('/me', authenticate, async (req, res, next) => {
 
     return success(res, { user });
   } catch (error) {
+    console.error('[AUTH_LOGIN_ERROR]', error);
     next(error);
   }
 });
