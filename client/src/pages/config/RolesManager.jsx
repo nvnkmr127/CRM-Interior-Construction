@@ -643,8 +643,8 @@ export default function RolesManager() {
   }, [searchQuery, filteredModules]);
 
   return (
-    <div className="mx-auto max-w-7xl p-4 sm:p-8 space-y-8">
-      <div className={layoutStyles.configSection}>
+    <div className={!isModalOpen ? "mx-auto max-w-7xl p-4 sm:p-8 space-y-8" : "w-full h-full p-4 sm:p-6 flex flex-col"}>
+      <div className={!isModalOpen ? layoutStyles.configSection : ""} style={isModalOpen ? { display: 'flex', flexDirection: 'column', minHeight: '100%', flex: 1 } : {}}>
         {!isModalOpen ? (
           <>
             <div className={layoutStyles.sectionHeader}>
@@ -660,349 +660,113 @@ export default function RolesManager() {
             <DataTable columns={columns} data={roles} />
           </>
         ) : (
-          <div style={{ width: '100%', maxWidth: '1200px' }}>
-            <div className={layoutStyles.sectionHeader} style={{ marginBottom: '32px' }}>
+          <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <div className={layoutStyles.sectionHeader} style={{ marginBottom: '24px' }}>
               <div>
                 <h2 className={layoutStyles.sectionTitle}>{editingRole ? 'Edit Role' : 'Create Role'}</h2>
                 <p className={layoutStyles.sectionDesc}>Configure granular module permissions below.</p>
               </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <Button variant="ghost" onClick={() => setSearchParams({})}>Cancel</Button>
+                <Button variant="primary" onClick={handleSave}>Save Role</Button>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(350px, 1fr) minmax(500px, 2fr)', gap: '24px', flex: 1, alignItems: 'start' }}>
               
-              {/* Basic Details */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
-                <div className={styles.formGroup} style={{ margin: 0 }}>
-                  <label className={styles.label}>Role Name</label>
-                  <Input
-                    value={formData.name}
-                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g. Sales Manager"
-                    disabled={formData.name === 'superadmin'}
-                  />
-                </div>
+              {/* Left Column */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                 
-                {!editingRole && roles.length > 0 && (
-                  <div className={styles.formGroup} style={{ margin: 0 }}>
-                    <label className={styles.label}>Clone Permissions From Existing Role</label>
-                    <select 
-                      className="input-field"
-                      style={{ width: '100%', padding: '10px' }}
-                      onChange={e => {
-                        const roleToClone = roles.find(r => r.id === e.target.value);
-                        if (!roleToClone) return;
-                        if (!window.confirm(`Are you sure you want to overwrite current permissions with the '${roleToClone.name}' role template?`)) return;
-                        setFormData(prev => ({
-                          ...prev,
-                          permissions: roleToClone.permissions || [],
-                          enabled_modules: roleToClone.enabled_modules || [],
-                          data_scopes: roleToClone.data_scopes || {},
-                          page_permissions: roleToClone.page_permissions || {},
-                          field_permissions: roleToClone.field_permissions || {},
-                          security_policies: roleToClone.security_policies || {}
-                        }));
-                      }}
-                      value=""
-                    >
-                      <option value="" disabled>Select a role to copy permissions...</option>
-                      {roles.map(r => (
-                        <option key={r.id} value={r.id}>{r.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                {/* Card: Basic Details */}
+                <div style={{ background: 'var(--color-surface)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '20px', color: 'var(--color-text)' }}>Basic Details</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div className={styles.formGroup} style={{ margin: 0 }}>
+                      <label className={styles.label}>Role Name</label>
+                      <Input
+                        value={formData.name}
+                        onChange={e => setFormData({ ...formData, name: e.target.value })}
+                        placeholder="e.g. Sales Manager"
+                        disabled={formData.name === 'superadmin'}
+                      />
+                    </div>
+                    
+                    {!editingRole && roles.length > 0 && (
+                      <div className={styles.formGroup} style={{ margin: 0 }}>
+                        <label className={styles.label}>Clone Permissions From Existing Role</label>
+                        <select 
+                          className="input-field"
+                          style={{ width: '100%', padding: '10px' }}
+                          onChange={e => {
+                            const roleToClone = roles.find(r => r.id === e.target.value);
+                            if (!roleToClone) return;
+                            if (!window.confirm(`Are you sure you want to overwrite current permissions with the '${roleToClone.name}' role template?`)) return;
+                            setFormData(prev => ({
+                              ...prev,
+                              permissions: roleToClone.permissions || [],
+                              enabled_modules: roleToClone.enabled_modules || [],
+                              data_scopes: roleToClone.data_scopes || {},
+                              page_permissions: roleToClone.page_permissions || {},
+                              field_permissions: roleToClone.field_permissions || {},
+                              security_policies: roleToClone.security_policies || {}
+                            }));
+                          }}
+                          value=""
+                        >
+                          <option value="" disabled>Select a role to copy permissions...</option>
+                          {roles.map(r => (
+                            <option key={r.id} value={r.id}>{r.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
 
-                <div className={styles.formGroup} style={{ margin: 0 }}>
-                  <label className={styles.label}>Description</label>
-                  <Input
-                    value={formData.description}
-                    onChange={e => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Optional description"
-                  />
+                    <div className={styles.formGroup} style={{ margin: 0 }}>
+                      <label className={styles.label}>Description</label>
+                      <Input
+                        value={formData.description}
+                        onChange={e => setFormData({ ...formData, description: e.target.value })}
+                        placeholder="Optional description"
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              {/* Module Visibility */}
-              <div className={styles.formGroup} style={{ width: '100%', marginBottom: '0' }}>
-                <label className={styles.label}>Module Visibility</label>
-                <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
-                  Enable or disable entire modules for this role. Disabled modules will be hidden from navigation.
-                </p>
-                {formData.permissions.includes('*') ? (
-                  <div style={{ padding: '12px', background: 'var(--color-accent-light)', color: 'var(--color-accent-dark)', borderRadius: 'var(--radius-md)' }}>
-                    Superadmins implicitly have all modules enabled.
-                  </div>
-                ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
-                    {schemaModules.map(mod => (
-                      <label key={mod.id} className={styles.checkboxContainer}>
-                        <input
-                          type="checkbox"
-                          checked={(formData.enabled_modules || []).includes(mod.id)}
-                          onChange={() => handleToggleModuleVisibility(mod.id)}
-                        />
-                        {mod.label}
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Permissions */}
-              <div className={styles.formGroup} style={{ width: '100%' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <label className={styles.label} style={{ marginBottom: 0 }}>Permissions</label>
-
-                  {!formData.permissions.includes('*') && (
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <Button variant="ghost" size="sm" onClick={() => setIsDependencyRefOpen(true)}>View Dependencies</Button>
-                      <Button variant="ghost" size="sm" onClick={handleSelectAllGlobal}>Select All</Button>
-                      <Button variant="ghost" size="sm" onClick={handleClearAllGlobal}>Clear All</Button>
+                {/* Card: Module Visibility */}
+                <div style={{ background: 'var(--color-surface)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', color: 'var(--color-text)' }}>Module Visibility</h3>
+                  <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
+                    Enable or disable entire modules for this role. Disabled modules will be hidden from navigation.
+                  </p>
+                  {formData.permissions.includes('*') ? (
+                    <div style={{ padding: '12px', background: 'var(--color-accent-light)', color: 'var(--color-accent-dark)', borderRadius: 'var(--radius-md)' }}>
+                      Superadmins implicitly have all modules enabled.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+                      {schemaModules.map(mod => (
+                        <label key={mod.id} className={styles.checkboxContainer}>
+                          <input
+                            type="checkbox"
+                            checked={(formData.enabled_modules || []).includes(mod.id)}
+                            onChange={() => handleToggleModuleVisibility(mod.id)}
+                          />
+                          {mod.label}
+                        </label>
+                      ))}
                     </div>
                   )}
                 </div>
 
-                {formData.permissions.includes('*') ? (
-                  <div style={{ padding: '12px', background: 'var(--color-accent-light)', color: 'var(--color-accent-dark)', borderRadius: 'var(--radius-md)', width: '100%' }}>
-                    This role has full system access (*).
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
-                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-                        <div style={{ flex: 1 }}>
-                          <Select 
-                            label="Select Module to Configure"
-                            options={[
-                              { value: '', label: 'Select a module...' },
-                              ...schemaModules.map(m => ({ value: m.label, label: m.label }))
-                            ]}
-                            value={searchQuery}
-                            onChange={v => setSearchQuery(v)}
-                          />
-                        </div>
-                      </div>
-
-                      {(() => {
-                        const selectedModuleRaw = schemaModules.find(m => m.label === searchQuery);
-                        const module = selectedModuleRaw ? { ...selectedModuleRaw, actions: schemaActions } : null;
-
-                        if (!module) {
-                          return (
-                            <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-secondary)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--color-border)' }}>
-                              Please select a module from the dropdown above to instantly display and configure its required permissions.
-                            </div>
-                          );
-                        }
-
-                        const currentScope = formData.data_scopes[module.id];
-                        const scopeType = typeof currentScope === 'object' ? currentScope?.type : (currentScope || 'all');
-                        const scopeIds = typeof currentScope === 'object' ? (currentScope?.ids || []) : [];
-
-                        return (
-                          <div style={{ padding: '24px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--color-border)', flexWrap: 'wrap', gap: '12px' }}>
-                              <h3 style={{ margin: 0, color: 'var(--color-text)' }}>{module.label} Permissions</h3>
-                              <div style={{ display: 'flex', gap: '8px' }}>
-                                <Button variant="ghost" size="sm" onClick={() => handleSelectAllModule(module.id, module.actions)}>Select All</Button>
-                                <Button variant="ghost" size="sm" onClick={() => handleClearAllModule(module.id, module.actions)}>Clear</Button>
-                              </div>
-                            </div>
-
-                            <div style={{ marginBottom: '24px' }}>
-                              <label className={styles.label} style={{ fontSize: '14px', marginBottom: '12px' }}>Required Permission List</label>
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px', background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-                                {module.actions.map(action => {
-                                  const permId = `${module.id}:${action.id}`;
-                                  return (
-                                    <label key={permId} className={styles.checkboxContainer}>
-                                      <input
-                                        type="checkbox"
-                                        checked={formData.permissions.includes(permId)}
-                                        onChange={() => handleTogglePermission(permId)}
-                                      />
-                                      {action.label}
-                                    </label>
-                                  )
-                                })}
-                              </div>
-                            </div>
-
-                            <div style={{ marginBottom: '24px' }}>
-                              <label className={styles.label} style={{ fontSize: '14px', marginBottom: '12px' }}>Data Scope</label>
-                              <div style={{ background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-                                <select
-                                  className="input-field"
-                                  style={{ width: '100%', maxWidth: '100%', padding: '10px' }}
-                                  value={scopeType}
-                                  onChange={(e) => handleDataScopeChange(module.id, e.target.value)}
-                                >
-                                  {DATA_SCOPES.map(scope => (
-                                    <option key={scope.id} value={scope.id} title={scope.description}>{scope.label}</option>
-                                  ))}
-                                </select>
-                                <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '8px' }}>
-                                  {DATA_SCOPES.find(s => s.id === scopeType)?.description}
-                                </p>
-
-                                {scopeType === 'specific_branches' && (
-                                  <div style={{ marginTop: '16px', background: 'var(--color-background-soft)', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
-                                    <label className={styles.label} style={{ fontSize: '12px', marginBottom: '8px' }}>Select Permitted Branches</label>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '8px' }}>
-                                      {branches.map(b => (
-                                        <label key={b.id} className={styles.checkboxContainer} style={{ fontSize: '12px' }}>
-                                          <input
-                                            type="checkbox"
-                                            checked={scopeIds.includes(b.id)}
-                                            onChange={() => handleSpecificScopeIdsChange(module.id, scopeType, b.id)}
-                                          />
-                                          {b.name}
-                                        </label>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {scopeType === 'specific_departments' && (
-                                  <div style={{ marginTop: '16px', background: 'var(--color-background-soft)', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
-                                    <label className={styles.label} style={{ fontSize: '12px', marginBottom: '8px' }}>Select Permitted Departments</label>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '8px' }}>
-                                      {departments.map(d => (
-                                        <label key={d.id} className={styles.checkboxContainer} style={{ fontSize: '12px' }}>
-                                          <input
-                                            type="checkbox"
-                                            checked={scopeIds.includes(d.id)}
-                                            onChange={() => handleSpecificScopeIdsChange(module.id, scopeType, d.id)}
-                                          />
-                                          {d.name}
-                                        </label>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            {FIELD_PERMISSIONS_SCHEMA[module.id] && (
-                              <div style={{ marginBottom: '24px' }}>
-                                <label className={styles.label} style={{ fontSize: '14px', marginBottom: '12px' }}>Field Level Permissions</label>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-                                  {FIELD_PERMISSIONS_SCHEMA[module.id].map(field => {
-                                    const currentPerm = formData.field_permissions?.[module.id]?.[field.id] || 'editable';
-                                    return (
-                                      <div key={field.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                        <span style={{ fontSize: '12px', fontWeight: 500 }}>{field.label}</span>
-                                        <select
-                                          className="input-field"
-                                          style={{ padding: '8px', width: '100%', fontSize: '13px' }}
-                                          value={currentPerm}
-                                          onChange={(e) => {
-                                            const val = e.target.value;
-                                            setFormData(prev => ({
-                                              ...prev,
-                                              field_permissions: {
-                                                ...prev.field_permissions,
-                                                [module.id]: {
-                                                  ...(prev.field_permissions[module.id] || {}),
-                                                  [field.id]: val
-                                                }
-                                              }
-                                            }));
-                                          }}
-                                        >
-                                          <option value="editable">Editable</option>
-                                          <option value="read_only">Read Only</option>
-                                          <option value="hidden">Hidden</option>
-                                        </select>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            )}
-
-                            {PAGE_PERMISSIONS_SCHEMA[module.id] && (
-                              <div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                  <label className={styles.label} style={{ fontSize: '14px', margin: 0 }}>Page / Tab Access</label>
-                                  <div style={{ display: 'flex', gap: '8px' }}>
-                                    <Button variant="ghost" size="sm" onClick={() => {
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        page_permissions: {
-                                          ...prev.page_permissions,
-                                          [module.id]: PAGE_PERMISSIONS_SCHEMA[module.id].map(p => p.id)
-                                        }
-                                      }));
-                                    }}>Select All</Button>
-                                    <Button variant="ghost" size="sm" onClick={() => {
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        page_permissions: {
-                                          ...prev.page_permissions,
-                                          [module.id]: []
-                                        }
-                                      }));
-                                    }}>Clear</Button>
-                                  </div>
-                                </div>
-                                <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
-                                  Select which tabs should be visible. If none are selected, all tabs are visible by default.
-                                </p>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-                                  {PAGE_PERMISSIONS_SCHEMA[module.id].map(page => {
-                                    const isChecked = formData.page_permissions?.[module.id]?.includes(page.id) || false;
-                                    return (
-                                      <label key={page.id} className={styles.checkboxContainer}>
-                                        <input
-                                          type="checkbox"
-                                          checked={isChecked}
-                                          onChange={(e) => {
-                                            const checked = e.target.checked;
-                                            setFormData(prev => {
-                                              const currentPages = prev.page_permissions?.[module.id] || [];
-                                              let newPages = [];
-                                              if (checked) {
-                                                newPages = [...currentPages, page.id];
-                                              } else {
-                                                newPages = currentPages.filter(p => p !== page.id);
-                                              }
-                                              return {
-                                                ...prev,
-                                                page_permissions: {
-                                                  ...prev.page_permissions,
-                                                  [module.id]: newPages
-                                                }
-                                              };
-                                            });
-                                          }}
-                                        />
-                                        {page.label}
-                                      </label>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Security Policies */}
-              <div className={styles.formGroup} style={{ width: '100%', marginTop: '16px' }}>
-                <label className={styles.label} style={{ fontSize: '18px', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px', marginBottom: '24px' }}>Security Policies</label>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-                  
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+                {/* Card: Security Policies */}
+                <div style={{ background: 'var(--color-surface)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '20px', color: 'var(--color-text)' }}>Security Policies</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                    
                     {/* Allowed Login Times */}
-                    <div style={{ background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                    <div>
                       <label className={styles.label}>Allowed Login Times</label>
-                      <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>Restrict when this role can log in (e.g. 09:00 AM to 06:00 PM). Leave blank for no restriction.</p>
+                      <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>Restrict when this role can log in (e.g. 09:00 AM to 06:00 PM).</p>
                       <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                         <TimeSelect
                           value={formData.security_policies.allowed_login_times?.start || ''}
@@ -1017,7 +781,7 @@ export default function RolesManager() {
                     </div>
 
                     {/* Allowed Days */}
-                    <div style={{ background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                    <div>
                       <label className={styles.label}>Allowed Days</label>
                       <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>Restrict which days this role can log in.</p>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
@@ -1043,11 +807,9 @@ export default function RolesManager() {
                         })}
                       </div>
                     </div>
-                  </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
                     {/* Allowed IPs */}
-                    <div style={{ background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                    <div>
                       <label className={styles.label}>Allowed IP Addresses</label>
                       <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>Comma separated list of IPs or CIDR blocks.</p>
                       <input
@@ -1064,7 +826,7 @@ export default function RolesManager() {
                     </div>
 
                     {/* Trusted Browsers */}
-                    <div style={{ background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                    <div>
                       <label className={styles.label}>Trusted Browsers</label>
                       <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>Comma separated list (e.g. Chrome, Firefox).</p>
                       <input
@@ -1081,7 +843,7 @@ export default function RolesManager() {
                     </div>
 
                     {/* Allowed Devices */}
-                    <div style={{ background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                    <div>
                       <label className={styles.label}>Allowed Devices</label>
                       <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>Comma separated list (e.g. Desktop, Mobile).</p>
                       <input
@@ -1100,9 +862,251 @@ export default function RolesManager() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-start', marginTop: '16px', padding: '16px', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-                <Button variant="primary" onClick={handleSave}>Save Role</Button>
-                <Button variant="ghost" onClick={() => setSearchParams({})}>Cancel</Button>
+              {/* Right Column */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', height: '100%' }}>
+                
+                {/* Card: Permissions */}
+                <div style={{ background: 'var(--color-surface)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h3 style={{ fontSize: '16px', fontWeight: 600, margin: 0, color: 'var(--color-text)' }}>Permissions</h3>
+                    {!formData.permissions.includes('*') && (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <Button variant="ghost" size="sm" onClick={() => setIsDependencyRefOpen(true)}>View Dependencies</Button>
+                        <Button variant="ghost" size="sm" onClick={handleSelectAllGlobal}>Select All</Button>
+                        <Button variant="ghost" size="sm" onClick={handleClearAllGlobal}>Clear All</Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {formData.permissions.includes('*') ? (
+                    <div style={{ padding: '12px', background: 'var(--color-accent-light)', color: 'var(--color-accent-dark)', borderRadius: 'var(--radius-md)', width: '100%' }}>
+                      This role has full system access (*).
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                          <div style={{ flex: 1 }}>
+                            <Select 
+                              label="Select Module to Configure"
+                              options={[
+                                { value: '', label: 'Select a module...' },
+                                ...schemaModules.map(m => ({ value: m.label, label: m.label }))
+                              ]}
+                              value={searchQuery}
+                              onChange={v => setSearchQuery(v)}
+                            />
+                          </div>
+                        </div>
+
+                        {(() => {
+                          const selectedModuleRaw = schemaModules.find(m => m.label === searchQuery);
+                          const module = selectedModuleRaw ? { ...selectedModuleRaw, actions: schemaActions } : null;
+
+                          if (!module) {
+                            return (
+                              <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-secondary)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--color-border)' }}>
+                                Please select a module from the dropdown above to instantly display and configure its required permissions.
+                              </div>
+                            );
+                          }
+
+                          const currentScope = formData.data_scopes[module.id];
+                          const scopeType = typeof currentScope === 'object' ? currentScope?.type : (currentScope || 'all');
+                          const scopeIds = typeof currentScope === 'object' ? (currentScope?.ids || []) : [];
+
+                          return (
+                            <div style={{ padding: '24px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--color-border)', flexWrap: 'wrap', gap: '12px' }}>
+                                <h3 style={{ margin: 0, color: 'var(--color-text)' }}>{module.label} Permissions</h3>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                  <Button variant="ghost" size="sm" onClick={() => handleSelectAllModule(module.id, module.actions)}>Select All</Button>
+                                  <Button variant="ghost" size="sm" onClick={() => handleClearAllModule(module.id, module.actions)}>Clear</Button>
+                                </div>
+                              </div>
+
+                              <div style={{ marginBottom: '24px' }}>
+                                <label className={styles.label} style={{ fontSize: '14px', marginBottom: '12px' }}>Required Permission List</label>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px', background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                                  {module.actions.map(action => {
+                                    const permId = `${module.id}:${action.id}`;
+                                    return (
+                                      <label key={permId} className={styles.checkboxContainer}>
+                                        <input
+                                          type="checkbox"
+                                          checked={formData.permissions.includes(permId)}
+                                          onChange={() => handleTogglePermission(permId)}
+                                        />
+                                        {action.label}
+                                      </label>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+
+                              <div style={{ marginBottom: '24px' }}>
+                                <label className={styles.label} style={{ fontSize: '14px', marginBottom: '12px' }}>Data Scope</label>
+                                <div style={{ background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                                  <select
+                                    className="input-field"
+                                    style={{ width: '100%', maxWidth: '100%', padding: '10px' }}
+                                    value={scopeType}
+                                    onChange={(e) => handleDataScopeChange(module.id, e.target.value)}
+                                  >
+                                    {DATA_SCOPES.map(scope => (
+                                      <option key={scope.id} value={scope.id} title={scope.description}>{scope.label}</option>
+                                    ))}
+                                  </select>
+                                  <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '8px' }}>
+                                    {DATA_SCOPES.find(s => s.id === scopeType)?.description}
+                                  </p>
+
+                                  {scopeType === 'specific_branches' && (
+                                    <div style={{ marginTop: '16px', background: 'var(--color-background-soft)', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                                      <label className={styles.label} style={{ fontSize: '12px', marginBottom: '8px' }}>Select Permitted Branches</label>
+                                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '8px' }}>
+                                        {branches.map(b => (
+                                          <label key={b.id} className={styles.checkboxContainer} style={{ fontSize: '12px' }}>
+                                            <input
+                                              type="checkbox"
+                                              checked={scopeIds.includes(b.id)}
+                                              onChange={() => handleSpecificScopeIdsChange(module.id, scopeType, b.id)}
+                                            />
+                                            {b.name}
+                                          </label>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {scopeType === 'specific_departments' && (
+                                    <div style={{ marginTop: '16px', background: 'var(--color-background-soft)', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                                      <label className={styles.label} style={{ fontSize: '12px', marginBottom: '8px' }}>Select Permitted Departments</label>
+                                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '8px' }}>
+                                        {departments.map(d => (
+                                          <label key={d.id} className={styles.checkboxContainer} style={{ fontSize: '12px' }}>
+                                            <input
+                                              type="checkbox"
+                                              checked={scopeIds.includes(d.id)}
+                                              onChange={() => handleSpecificScopeIdsChange(module.id, scopeType, d.id)}
+                                            />
+                                            {d.name}
+                                          </label>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {FIELD_PERMISSIONS_SCHEMA[module.id] && (
+                                <div style={{ marginBottom: '24px' }}>
+                                  <label className={styles.label} style={{ fontSize: '14px', marginBottom: '12px' }}>Field Level Permissions</label>
+                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                                    {FIELD_PERMISSIONS_SCHEMA[module.id].map(field => {
+                                      const currentPerm = formData.field_permissions?.[module.id]?.[field.id] || 'editable';
+                                      return (
+                                        <div key={field.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                          <span style={{ fontSize: '12px', fontWeight: 500 }}>{field.label}</span>
+                                          <select
+                                            className="input-field"
+                                            style={{ padding: '8px', width: '100%', fontSize: '13px' }}
+                                            value={currentPerm}
+                                            onChange={(e) => {
+                                              const val = e.target.value;
+                                              setFormData(prev => ({
+                                                ...prev,
+                                                field_permissions: {
+                                                  ...prev.field_permissions,
+                                                  [module.id]: {
+                                                    ...(prev.field_permissions[module.id] || {}),
+                                                    [field.id]: val
+                                                  }
+                                                }
+                                              }));
+                                            }}
+                                          >
+                                            <option value="editable">Editable</option>
+                                            <option value="read_only">Read Only</option>
+                                            <option value="hidden">Hidden</option>
+                                          </select>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+
+                              {PAGE_PERMISSIONS_SCHEMA[module.id] && (
+                                <div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                    <label className={styles.label} style={{ fontSize: '14px', margin: 0 }}>Page / Tab Access</label>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                      <Button variant="ghost" size="sm" onClick={() => {
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          page_permissions: {
+                                            ...prev.page_permissions,
+                                            [module.id]: PAGE_PERMISSIONS_SCHEMA[module.id].map(p => p.id)
+                                          }
+                                        }));
+                                      }}>Select All</Button>
+                                      <Button variant="ghost" size="sm" onClick={() => {
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          page_permissions: {
+                                            ...prev.page_permissions,
+                                            [module.id]: []
+                                          }
+                                        }));
+                                      }}>Clear</Button>
+                                    </div>
+                                  </div>
+                                  <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
+                                    Select which tabs should be visible. If none are selected, all tabs are visible by default.
+                                  </p>
+                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                                    {PAGE_PERMISSIONS_SCHEMA[module.id].map(page => {
+                                      const isChecked = formData.page_permissions?.[module.id]?.includes(page.id) || false;
+                                      return (
+                                        <label key={page.id} className={styles.checkboxContainer}>
+                                          <input
+                                            type="checkbox"
+                                            checked={isChecked}
+                                            onChange={(e) => {
+                                              const checked = e.target.checked;
+                                              setFormData(prev => {
+                                                const currentPages = prev.page_permissions?.[module.id] || [];
+                                                let newPages = [];
+                                                if (checked) {
+                                                  newPages = [...currentPages, page.id];
+                                                } else {
+                                                  newPages = currentPages.filter(p => p !== page.id);
+                                                }
+                                                return {
+                                                  ...prev,
+                                                  page_permissions: {
+                                                    ...prev.page_permissions,
+                                                    [module.id]: newPages
+                                                  }
+                                                };
+                                              });
+                                            }}
+                                          />
+                                          {page.label}
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
