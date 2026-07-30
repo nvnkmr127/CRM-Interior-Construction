@@ -16,11 +16,11 @@ const app = express();
 setupSwagger(app);
 
 // Initialize EventBus Subscribers
-require('./services/notifications/notificationEventHandler');
-require('./services/ai/aiEventHandler');
-require('./services/projects/projectEventHandler');
-require('./services/workflows/workflowEngine');
-require('./services/timeline/timelineWriter');
+try { require('./services/notifications/notificationEventHandler'); } catch (e) { console.warn('Failed to load notificationEventHandler:', e.message); }
+try { require('./services/ai/aiEventHandler'); } catch (e) { console.warn('Failed to load aiEventHandler:', e.message); }
+try { require('./services/projects/projectEventHandler'); } catch (e) { console.warn('Failed to load projectEventHandler:', e.message); }
+try { require('./services/workflows/workflowEngine'); } catch (e) { console.warn('Failed to load workflowEngine:', e.message); }
+try { require('./services/timeline/timelineWriter'); } catch (e) { console.warn('Failed to load timelineWriter:', e.message); }
 
 // Removed periodic intervals. Jobs are now handled by BullMQ cronWorker.
 
