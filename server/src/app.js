@@ -198,11 +198,11 @@ app.use((req, res, next) => {
 const { auditMiddleware } = require('./middleware/auditLogger');
 app.use(auditMiddleware);
 
-app.get('/', (req, res) => {
+app.get(['/', '/api'], (req, res) => {
   res.json({ message: 'CRM Interior Construction API Server', status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.get('/health', (req, res) => {
+app.get(['/health', '/api/health'], (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
@@ -318,6 +318,17 @@ app.use('/api/developer/tokens', require('./routes/apiTokens'));
 app.use('/api/v1', require('./routes/api/v1'));
 
 require('./routes/qc')(app);
+
+// 404 Catch-All Handler
+app.use((req, res, next) => {
+  res.status(404).json({
+    success: false,
+    error: {
+      code: 'NOT_FOUND',
+      message: `Route ${req.method} ${req.originalUrl || req.url} not found`
+    }
+  });
+});
 
 // Error handler MUST be the last middleware
 app.use(errorHandler);
