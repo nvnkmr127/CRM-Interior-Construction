@@ -33,7 +33,7 @@ router.use(authenticate);
 // AI Routes
 router.get('/ai/insights', async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT id, name, email, role_id, status, last_login_at as "lastActive" FROM users WHERE tenant_id=$1 AND deleted_at IS NULL', [req.tenantId]);
+    const { rows } = await pool.query('SELECT id, name, email, role_id, status, created_at as "lastActive" FROM users WHERE tenant_id=$1 AND deleted_at IS NULL', [req.tenantId]);
     
     // Attach roles if needed
     const rolesReq = await pool.query('SELECT id, name FROM roles WHERE tenant_id=$1', [req.tenantId]);
@@ -83,7 +83,7 @@ router.get('/:id/ai/summary', async (req, res) => {
     if (rows.length === 0) return res.status(404).json(fail('User not found'));
     
     const user = rows[0];
-    user.lastActive = user.last_login_at;
+    user.lastActive = user.created_at;
     
     const summary = await aiEmployeeService.generateEmployeeSummary(user);
     res.json(success({ summary }));

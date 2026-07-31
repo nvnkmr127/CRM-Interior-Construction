@@ -357,6 +357,25 @@ pool.query(`
   CREATE INDEX IF NOT EXISTS idx_ta_task ON task_attachments(task_id, status);
 
   -- 20260723_enterprise_security.sql
+  CREATE TABLE IF NOT EXISTS login_history (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      session_id UUID,
+      email_attempted VARCHAR(255),
+      ip_address VARCHAR(100),
+      browser VARCHAR(100),
+      os VARCHAR(100),
+      device VARCHAR(100),
+      status VARCHAR(50),
+      failure_reason TEXT,
+      login_time TIMESTAMP DEFAULT NOW(),
+      logout_time TIMESTAMP,
+      duration_seconds INT
+  );
+  CREATE INDEX IF NOT EXISTS idx_login_history_tenant ON login_history(tenant_id);
+  CREATE INDEX IF NOT EXISTS idx_login_history_user ON login_history(user_id);
+
   CREATE TABLE IF NOT EXISTS tenant_security_settings (
       tenant_id UUID PRIMARY KEY REFERENCES tenants(id) ON DELETE CASCADE,
       mfa_required_all BOOLEAN DEFAULT false,
