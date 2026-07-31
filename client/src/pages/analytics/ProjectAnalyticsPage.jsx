@@ -136,7 +136,7 @@ export default function ProjectAnalyticsPage() {
           id: s.status,
         }))
         const revenueData   = (raw.revenueTimeline   || []).map(r => ({
-          month: r.month,
+          month: r.month || 'Unknown',
           planned: r.planned / 100000,
           collected: r.collected / 100000,
         }))
