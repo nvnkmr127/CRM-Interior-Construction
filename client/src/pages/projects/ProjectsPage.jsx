@@ -4,7 +4,7 @@ import { Button, Skeleton, Pagination, PermissionButton } from '../../components
 import ProjectCard from '../../components/projects/ProjectCard';
 import ProjectForm from '../../components/projects/ProjectForm';
 import styles from './ProjectsPage.module.css';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { getProjects } from '../../api/projects';
 
 const SORT_OPTIONS = [
@@ -61,6 +61,7 @@ function MiniProgressBar({ value }) {
 
 export default function ProjectsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [view, setView] = useState('grid');
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -102,6 +103,15 @@ export default function ProjectsPage() {
   };
 
   useEffect(() => { loadProjects(); }, [page, limit, statusFilter, search, pmFilter]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('new') === 'true') {
+      setIsFormOpen(true);
+      params.delete('new');
+      navigate({ search: params.toString() }, { replace: true });
+    }
+  }, [location.search, navigate]);
 
   const counts = {
     active: statusFilter === 'active' ? total : (statusFilter === 'all' ? projects.filter(p => p.status === 'active' && !p.deleted_at).length : 0),
