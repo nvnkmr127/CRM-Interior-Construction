@@ -43,10 +43,20 @@ async function authenticate(req, res, next) {
       }
 
       if (!session) {
-        const sessionResult = await pool.query(
-          'SELECT id, ip_address, user_agent, last_active_at FROM sessions WHERE id = $1 AND tenant_id = $2',
-          [decoded.sessionId, decoded.tenantId]
-        );
+        let sessionResult;
+        try {
+          sessionResult = await pool.query(
+            'SELECT id, ip_address, user_agent, last_active_at FROM sessions WHERE id = $1 AND tenant_id = $2',
+            [decoded.sessionId, decoded.tenantId]
+          );
+        } catch (err) {
+          // Fallback if last_active_at or user_agent columns are missing
+          console.warn('Session columns missing, falling back to basic query', err.message);
+          sessionResult = await pool.query(
+            'SELECT id, ip_address FROM sessions WHERE id = $1 AND tenant_id = $2',
+            [decoded.sessionId, decoded.tenantId]
+          );
+        }
         if (sessionResult.rowCount === 0) {
           // Session was revoked or deleted
           return res.status(401).json({ success: false, error: 'SESSION_REVOKED', message: 'Your session has been terminated.' });
@@ -149,7 +159,8 @@ async function authenticate(req, res, next) {
     }
     
     // 5. Any other error -> 401 TOKEN_INVALID
-    return res.status(401).json({ success: false, error: 'TOKEN_INVALID' });
+    console.error('Authentication Error:', error);
+    return res.status(401).json({ success: false, error: 'TOKEN_INVALID', details: error.message });
   }
 }
 
