@@ -13,6 +13,20 @@ const { logActivity } = require('../utils/activityLogger');
 const router = express.Router();
 router.use(authenticate);
 
+// Intercept mock IDs globally to prevent DB UUID cast errors
+router.param('id', (req, res, next, id) => {
+  if (id && id.startsWith('mock-')) {
+    if (req.path.includes('/unread')) {
+      return success(res, { unread_count: 0 });
+    }
+    if (req.path.includes('/comments') || req.path.includes('/history') || req.path.includes('/attachments') || req.path.includes('/tasks')) {
+      return success(res, []);
+    }
+    return success(res, { message: 'Mock action successful' });
+  }
+  next();
+});
+
 // Helper to check specific finance permissions
 function checkPermissionForType(user, type) {
   if (user.role === 'superadmin') return true;
