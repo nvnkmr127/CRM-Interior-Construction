@@ -440,6 +440,32 @@ router.patch('/:id', authorize('users:manage'), async (req, res) => {
   }
 });
 
+// DELETE /:id - Delete a role
+router.delete('/:id', authorize('users:manage'), async (req, res) => {
+  const tenantId = req.tenantId;
+  const roleId = req.params.id;
+
+  try {
+    const { rows } = await pool.query('SELECT * FROM roles WHERE id=$1 AND tenant_id=$2', [roleId, tenantId]);
+    if (rows.length === 0) return fail(res, 'NOT_FOUND', 'Role not found', 404);
+    if (rows[0].is_system) return fail(res, 'VALIDATION_ERROR', 'Cannot delete system roles', 400);
+
+    // Check if role is assigned to any users
+    const { rows: userRows } = await pool.query('SELECT COUNT(*) FROM users WHERE role_id=$1 AND tenant_id=$2', [roleId, tenantId]);
+    if (parseInt(userRows[0].count, 10) > 0) {
+      return fail(res, 'VALIDATION_ERROR', 'Cannot delete role because it is assigned to one or more users', 400);
+    }
+
+    await pool.query('DELETE FROM roles WHERE id=$1 AND tenant_id=$2', [roleId, tenantId]);
+    await logActivity(req, 'role', roleId, 'Deleted', JSON.stringify({ name: rows[0].name }), null);
+    
+    return success(res, { deleted: true });
+  } catch (error) {
+    console.error('[Roles API] Delete error:', error);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to delete role', 500);
+  }
+});
+
 // GET /:id/versions - Get role versions
 router.get('/:id/versions', authorize('users:manage'), async (req, res) => {
   try {
