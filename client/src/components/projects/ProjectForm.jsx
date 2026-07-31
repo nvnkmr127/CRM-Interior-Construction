@@ -524,7 +524,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
               setFormData(newFormData);
             }} 
             error={errors.clientName}
-            list={formData.clientName && formData.clientName.length > 0 ? "clientsList" : undefined}
+            list="clientsList"
           />
           <datalist id="clientsList">
             {clientNames.map(name => (
