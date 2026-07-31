@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../store/toastContext';
-import { Modal, Button, Badge } from '../ui';
+import { Button, Badge } from '../ui';
 import ScoreBadge from './ScoreBadge';
 import ActivityTimeline from './ActivityTimeline';
 import TaskWidget from './TaskWidget';
@@ -471,11 +471,11 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} closeOnBackdrop={false} hideHeader style={{ width: '1295px', maxWidth: '95vw', height: '90vh', borderRadius: '12px', overflow: 'hidden' }}>
+    <div className="w-full h-full flex flex-col bg-white overflow-hidden relative">
       {loading || !lead ? (
-        <div className="p-6 flex items-center justify-center text-gray-500">Loading lead details...</div>
+        <div className="p-6 flex items-center justify-center text-gray-500 h-full">Loading lead details...</div>
       ) : (
-        <div className="flex flex-col h-full transition-all" style={{ background: 'rgba(255, 255, 255, 0.3)', backdropFilter: 'blur(10px)' }}>
+        <div className="flex flex-col h-full transition-all bg-white">
 
           {/* HEADER */}
           <div className="border-b border-gray-200 px-6 pt-6 pb-4 shrink-0 shadow-sm relative z-10" style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(16px)' }}>
@@ -1651,6 +1651,6 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
           )}
         </div>
       )}
-    </Modal>
+    </div>
   );
 }
