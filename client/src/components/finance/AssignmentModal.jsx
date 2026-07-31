@@ -18,7 +18,7 @@ export default function AssignmentModal({ isOpen, approval, onClose, onSuccess }
 
   const fetchUsers = async () => {
     try {
-      const res = await api.get('/api/users?role=finance'); // Adjust endpoint to your actual users list
+      const res = await api.get('/users?role=finance'); // Adjust endpoint to your actual users list
       setUsers(res.data.data || []);
     } catch (e) {
       console.error('Failed to fetch users');
@@ -36,7 +36,7 @@ export default function AssignmentModal({ isOpen, approval, onClose, onSuccess }
 
     setLoading(true);
     try {
-      await api.post(`/api/financial-approvals/${approval.id}/assign`, {
+      await api.post(`/financial-approvals/${approval.id}/assign`, {
         assigned_to: selectedUser,
         comments: comments
       });

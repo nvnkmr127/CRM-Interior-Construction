@@ -33,7 +33,7 @@ export default function ApprovalComments({ approvalId, currentUserRole, onUnread
 
   const fetchComments = async () => {
     try {
-      const res = await api.get(`/api/financial-approvals/${approvalId}/comments`);
+      const res = await api.get(`/financial-approvals/${approvalId}/comments`);
       setComments(res.data.data || []);
     } catch (e) {
       console.error(e);
@@ -42,7 +42,7 @@ export default function ApprovalComments({ approvalId, currentUserRole, onUnread
 
   const fetchUsers = async () => {
     try {
-      const res = await api.get('/api/users?limit=100');
+      const res = await api.get('/users?limit=100');
       setUsers(res.data.data || []);
     } catch (e) {
       console.error(e);
@@ -51,7 +51,7 @@ export default function ApprovalComments({ approvalId, currentUserRole, onUnread
 
   const markAsRead = async () => {
     try {
-      await api.post(`/api/financial-approvals/${approvalId}/comments/read`);
+      await api.post(`/financial-approvals/${approvalId}/comments/read`);
       if (onUnreadChange) onUnreadChange(0);
     } catch (e) {}
   };
@@ -63,7 +63,7 @@ export default function ApprovalComments({ approvalId, currentUserRole, onUnread
     const mentions = mentionsList.map(m => m.id);
 
     try {
-      await api.post(`/api/financial-approvals/${approvalId}/comments`, {
+      await api.post(`/financial-approvals/${approvalId}/comments`, {
         content,
         is_internal: isInternal,
         parent_id: replyTo,
@@ -87,7 +87,7 @@ export default function ApprovalComments({ approvalId, currentUserRole, onUnread
   const handleDelete = async (id) => {
     if (!window.confirm('Delete comment?')) return;
     try {
-      await api.delete(`/api/financial-approvals/${approvalId}/comments/${id}`);
+      await api.delete(`/financial-approvals/${approvalId}/comments/${id}`);
       fetchComments();
     } catch (e) {
       console.error(e);
@@ -96,7 +96,7 @@ export default function ApprovalComments({ approvalId, currentUserRole, onUnread
 
   const handleEditSubmit = async (id) => {
     try {
-      await api.put(`/api/financial-approvals/${approvalId}/comments/${id}`, { content: editContent });
+      await api.put(`/financial-approvals/${approvalId}/comments/${id}`, { content: editContent });
       setEditingId(null);
       fetchComments();
     } catch (e) {
@@ -106,7 +106,7 @@ export default function ApprovalComments({ approvalId, currentUserRole, onUnread
 
   const handleReaction = async (id, emoji) => {
     try {
-      await api.post(`/api/financial-approvals/${approvalId}/comments/${id}/reactions`, { emoji });
+      await api.post(`/financial-approvals/${approvalId}/comments/${id}/reactions`, { emoji });
       fetchComments();
     } catch (e) {
       console.error(e);

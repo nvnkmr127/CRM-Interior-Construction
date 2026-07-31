@@ -52,8 +52,8 @@ export default function ApiIntegrationPage() {
     try {
       setIsLoading(true);
       const [keysRes, statsRes] = await Promise.all([
-        api.get('/api/developer/tokens', { withCredentials: true }),
-        api.get('/api/developer/tokens/dashboard', { withCredentials: true })
+        api.get('/developer/tokens', { withCredentials: true }),
+        api.get('/developer/tokens/dashboard', { withCredentials: true })
       ]);
       setTokens(keysRes.data.data);
       setStats(statsRes.data.data.stats);
@@ -94,10 +94,10 @@ export default function ApiIntegrationPage() {
     e.preventDefault();
     try {
       if (editingToken) {
-        await api.put(`/api/developer/tokens/${editingToken.id}`, formData, { withCredentials: true });
+        await api.put(`/developer/tokens/${editingToken.id}`, formData, { withCredentials: true });
         toast.success('API Token updated successfully');
       } else {
-        const res = await api.post('/api/developer/tokens', formData, { withCredentials: true });
+        const res = await api.post('/developer/tokens', formData, { withCredentials: true });
         toast.success('API Token created successfully');
         setSecretModal({ isOpen: true, secret: res.data.data.rawSecret });
       }
@@ -111,7 +111,7 @@ export default function ApiIntegrationPage() {
   const handleToggleStatus = async (token) => {
     const newStatus = token.status === 'active' ? 'inactive' : 'active';
     try {
-      await api.put(`/api/developer/tokens/${token.id}`, { status: newStatus }, { withCredentials: true });
+      await api.put(`/developer/tokens/${token.id}`, { status: newStatus }, { withCredentials: true });
       toast.success(`API Token ${newStatus === 'active' ? 'enabled' : 'disabled'}`);
       fetchData();
     } catch (error) {
@@ -122,7 +122,7 @@ export default function ApiIntegrationPage() {
   const handleRegenerate = async (id) => {
     if (!window.confirm('Are you sure? Any applications using this key will immediately stop working.')) return;
     try {
-      const res = await api.post(`/api/developer/tokens/${id}/regenerate`, {}, { withCredentials: true });
+      const res = await api.post(`/developer/tokens/${id}/regenerate`, {}, { withCredentials: true });
       toast.success('API Token regenerated successfully');
       setSecretModal({ isOpen: true, secret: res.data.data.rawSecret });
       fetchData();
@@ -134,7 +134,7 @@ export default function ApiIntegrationPage() {
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this API key? This action cannot be undone.')) return;
     try {
-      await api.delete(`/api/developer/tokens/${id}`, { withCredentials: true });
+      await api.delete(`/developer/tokens/${id}`, { withCredentials: true });
       toast.success('API Token deleted successfully');
       fetchData();
     } catch (error) {

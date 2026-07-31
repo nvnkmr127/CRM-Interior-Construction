@@ -356,7 +356,7 @@ export default function FinancialApprovalsPage() {
     if (!window.confirm('Are you sure you want to approve this request?')) return;
     setSubmitting(true);
     try {
-      await api.post(`/api/financial-approvals/${app.id}/approve`);
+      await api.post(`/financial-approvals/${app.id}/approve`);
       toast.success('Transaction approved successfully!');
       fetchPendingApprovals();
       fetchHistoryApprovals();
@@ -371,7 +371,7 @@ export default function FinancialApprovalsPage() {
     if (!window.confirm('Are you sure you want to reopen this rejected transaction?')) return;
     setSubmitting(true);
     try {
-      await api.post(`/api/financial-approvals/${app.id}/reopen`);
+      await api.post(`/financial-approvals/${app.id}/reopen`);
       toast.success('Transaction reopened successfully!');
       fetchPendingApprovals();
       fetchHistoryApprovals();
@@ -747,7 +747,7 @@ export default function FinancialApprovalsPage() {
                         </button>
                       <div style={{ display: 'flex', gap: '12px' }}>
                         <button
-                          onClick={() => { setCommentsApprovalId(app.id); api.post(`/api/financial-approvals/${app.id}/view`); }}
+                          onClick={() => { setCommentsApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }}
                           className={styles.primaryBtn}
                           style={{ marginLeft: 'auto', background: 'var(--surface-sunken)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', position: 'relative' }}
                         >
@@ -756,7 +756,7 @@ export default function FinancialApprovalsPage() {
                         <button
                           onClick={() => {
                             setAttachmentApprovalId(app.id);
-                            api.post(`/api/financial-approvals/${app.id}/view`);
+                            api.post(`/financial-approvals/${app.id}/view`);
                           }}
                           className={styles.primaryBtn}
                           style={{ background: 'var(--surface-sunken)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
@@ -764,7 +764,7 @@ export default function FinancialApprovalsPage() {
                           📎 Attachments
                         </button>
                         <button
-                          onClick={() => { setActivityApprovalId(app.id); api.post(`/api/financial-approvals/${app.id}/view`); }}
+                          onClick={() => { setActivityApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }}
                           className={styles.primaryBtn}
                           style={{ background: 'var(--surface-sunken)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
                         >
@@ -776,7 +776,7 @@ export default function FinancialApprovalsPage() {
                   {!hasPermission(app) && (
                     <div className={styles.cardActions} style={{ justifyContent: 'flex-end' }}>
                         <button
-                          onClick={() => { setCommentsApprovalId(app.id); api.post(`/api/financial-approvals/${app.id}/view`); }}
+                          onClick={() => { setCommentsApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }}
                           className={styles.primaryBtn}
                           style={{ background: 'var(--surface-sunken)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', position: 'relative' }}
                         >
@@ -785,7 +785,7 @@ export default function FinancialApprovalsPage() {
                         <button
                           onClick={() => {
                             setAttachmentApprovalId(app.id);
-                            api.post(`/api/financial-approvals/${app.id}/view`);
+                            api.post(`/financial-approvals/${app.id}/view`);
                           }}
                           className={styles.primaryBtn}
                           style={{ marginLeft: '8px', background: 'var(--surface-sunken)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
@@ -793,7 +793,7 @@ export default function FinancialApprovalsPage() {
                           📎 Attachments
                         </button>
                         <button
-                          onClick={() => { setActivityApprovalId(app.id); api.post(`/api/financial-approvals/${app.id}/view`); }}
+                          onClick={() => { setActivityApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }}
                           className={styles.primaryBtn}
                           style={{ marginLeft: '8px', background: 'var(--surface-sunken)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
                         >
@@ -885,16 +885,16 @@ export default function FinancialApprovalsPage() {
                         )}
                       </td>
                     <td className={styles.td}>
-                       <button onClick={() => { setCommentsApprovalId(app.id); api.post(`/api/financial-approvals/${app.id}/view`); }} style={{ padding: '4px 8px', cursor: 'pointer', background: 'transparent', border: '1px solid #ccc', borderRadius: '4px', position: 'relative' }}>
+                       <button onClick={() => { setCommentsApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }} style={{ padding: '4px 8px', cursor: 'pointer', background: 'transparent', border: '1px solid #ccc', borderRadius: '4px', position: 'relative' }}>
                          💬 <UnreadBadge approvalId={app.id} refreshCounter={commentsRefreshSeq} />
                        </button>
                        <button onClick={() => {
                             setAttachmentApprovalId(app.id);
-                            api.post(`/api/financial-approvals/${app.id}/view`);
+                            api.post(`/financial-approvals/${app.id}/view`);
                           }} style={{ marginLeft: '8px', padding: '4px 8px', cursor: 'pointer', background: 'transparent', border: '1px solid #ccc', borderRadius: '4px' }}>
                          📎
                        </button>
-                       <button onClick={() => { setActivityApprovalId(app.id); api.post(`/api/financial-approvals/${app.id}/view`); }} style={{ marginLeft: '8px', padding: '4px 8px', cursor: 'pointer', background: 'transparent', border: '1px solid #ccc', borderRadius: '4px' }}>
+                       <button onClick={() => { setActivityApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }} style={{ marginLeft: '8px', padding: '4px 8px', cursor: 'pointer', background: 'transparent', border: '1px solid #ccc', borderRadius: '4px' }}>
                          📋
                        </button>
                     </td>
@@ -976,7 +976,7 @@ export default function FinancialApprovalsPage() {
               <h3 style={{ margin: 0 }}>Activity & Audit Log</h3>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button 
-                  onClick={() => { api.post(`/api/financial-approvals/${activityApprovalId}/export`, { format: 'csv' }); alert('Exporting activity log...'); }} 
+                  onClick={() => { api.post(`/financial-approvals/${activityApprovalId}/export`, { format: 'csv' }); alert('Exporting activity log...'); }} 
                   className={styles.primaryBtn} 
                   style={{ background: 'var(--surface-sunken)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}>
                   ⬇️ Export CSV

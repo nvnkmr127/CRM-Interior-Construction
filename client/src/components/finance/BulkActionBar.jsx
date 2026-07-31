@@ -15,7 +15,7 @@ export default function BulkActionBar({ selectedIds, clearSelection, refreshData
     setLoading(true);
     try {
       const idsArray = Array.from(selectedIds);
-      const res = await api.post('/api/financial-approvals/bulk-action', {
+      const res = await api.post('/financial-approvals/bulk-action', {
         ids: idsArray,
         action: actionStr,
         comments: `Bulk ${actionStr} applied.`

@@ -15,7 +15,7 @@ export default function AttachmentManager({ approvalId, currentUserRole, current
 
   const fetchAttachments = async () => {
     try {
-      const res = await api.get(`/api/financial-approvals/${approvalId}/attachments`);
+      const res = await api.get(`/financial-approvals/${approvalId}/attachments`);
       setAttachments(res.data.data || []);
     } catch (e) {
       console.error(e);
@@ -39,7 +39,7 @@ export default function AttachmentManager({ approvalId, currentUserRole, current
 
     setUploading(true);
     try {
-      await api.post(`/api/financial-approvals/${approvalId}/attachments`, formData, {
+      await api.post(`/financial-approvals/${approvalId}/attachments`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       toast.success('Document uploaded successfully.');
@@ -55,7 +55,7 @@ export default function AttachmentManager({ approvalId, currentUserRole, current
   const handleDelete = async (docId) => {
     if (!window.confirm('Delete this document permanently?')) return;
     try {
-      await api.delete(`/api/financial-approvals/${approvalId}/attachments/${docId}`);
+      await api.delete(`/financial-approvals/${approvalId}/attachments/${docId}`);
       toast.success('Document deleted.');
       fetchAttachments();
     } catch (err) {

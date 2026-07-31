@@ -56,7 +56,7 @@ export default function DelayAnalysisReportPage() {
         setLoading(true);
         let queryPeriod = period.toLowerCase();
         if (queryPeriod === 'all') queryPeriod = '3650d';
-        const res = await api.get(`/api/analytics/projects/delay-analysis?period=${queryPeriod}`);
+        const res = await api.get(`/analytics/projects/delay-analysis?period=${queryPeriod}`);
         if (isMounted && res.data.success) {
           setData(res.data.data);
         }

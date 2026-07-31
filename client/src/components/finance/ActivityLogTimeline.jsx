@@ -12,7 +12,7 @@ export default function ActivityLogTimeline({ approvalId }) {
 
   const fetchLogs = async () => {
     try {
-      const res = await api.get(`/api/financial-approvals/${approvalId}/activity`);
+      const res = await api.get(`/financial-approvals/${approvalId}/activity`);
       setLogs(res.data.data || []);
     } catch (e) {
       console.error(e);
