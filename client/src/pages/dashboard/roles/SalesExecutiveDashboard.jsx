@@ -57,7 +57,7 @@ function avatarColor(name) {
 function Spark({ data, color }) {
   return (
     <ResponsiveContainer width="100%" height={48}>
-      <AreaChart data={data} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
+      <AreaChart data={data || []} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id={`sg-${color.replace('#','')}`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity={0.3} />
@@ -374,7 +374,7 @@ export default function SalesExecutiveDashboard() {
               <Skeleton height="220px" width="100%" />
             ) : (
               <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={revenueTrend} margin={{ top: 12, right: 16, left: -10, bottom: 0 }}>
+                <AreaChart data={revenueTrend || []} margin={{ top: 12, right: 16, left: -10, bottom: 0 }}>
                   <defs>
                     <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%"   stopColor="#E8935A" stopOpacity={0.35} />
