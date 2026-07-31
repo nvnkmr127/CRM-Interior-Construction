@@ -77,7 +77,12 @@ export default function ProjectsPage() {
 
   const loadProjects = () => {
     setLoading(true);
-    getProjects({ page, limit, includeDeleted: true })
+    getProjects({ 
+      page, 
+      limit, 
+      includeDeleted: true,
+      status: statusFilter === 'all' ? undefined : statusFilter
+    })
       .then(res => {
         const rawData = res.data?.data || res.data?.results || res.data;
         const arr = Array.isArray(rawData) ? rawData : [];
@@ -96,26 +101,19 @@ export default function ProjectsPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { loadProjects(); }, [page, limit]);
+  useEffect(() => { loadProjects(); }, [page, limit, statusFilter, search, pmFilter]);
 
   const counts = {
-    active: projects.filter(p => p.status === 'active' && !p.deleted_at).length,
-    on_hold: projects.filter(p => p.status === 'on_hold' && !p.deleted_at).length,
-    completed: projects.filter(p => p.status === 'completed' && !p.deleted_at).length,
-    overdue: projects.filter(p => p.overdue && !p.deleted_at).length,
-    deleted: projects.filter(p => p.deleted_at).length,
+    active: statusFilter === 'active' ? total : (statusFilter === 'all' ? projects.filter(p => p.status === 'active' && !p.deleted_at).length : 0),
+    on_hold: statusFilter === 'on_hold' ? total : (statusFilter === 'all' ? projects.filter(p => p.status === 'on_hold' && !p.deleted_at).length : 0),
+    completed: statusFilter === 'completed' ? total : (statusFilter === 'all' ? projects.filter(p => p.status === 'completed' && !p.deleted_at).length : 0),
+    overdue: statusFilter === 'overdue' ? total : (statusFilter === 'all' ? projects.filter(p => p.overdue && !p.deleted_at).length : 0),
+    deleted: statusFilter === 'deleted' ? total : (statusFilter === 'all' ? projects.filter(p => p.deleted_at).length : 0),
   };
 
   const pmOptions = ['all', ...Array.from(new Set(projects.map(p => p.pm_name || p.pmName).filter(Boolean)))];
 
   const filtered = projects
-    .filter(p => {
-      if (statusFilter === 'deleted') return !!p.deleted_at;
-      if (p.deleted_at) return false;
-      if (statusFilter === 'overdue') return !!p.overdue;
-      if (statusFilter !== 'all') return p.status?.toLowerCase() === statusFilter;
-      return true;
-    })
     .filter(p => {
       if (pmFilter === 'all') return true;
       const name = p.pm_name || p.pmName || '';

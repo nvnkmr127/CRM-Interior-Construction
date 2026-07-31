@@ -275,7 +275,11 @@ class ProjectRepository {
     }
     let idx = 2;
 
-    if (status) {
+    if (status === 'deleted') {
+      whereClause += ` AND p.deleted_at IS NOT NULL`;
+    } else if (status === 'overdue') {
+      whereClause += ` AND p.target_date < CURRENT_DATE AND p.status NOT IN ('completed', 'cancelled') AND p.deleted_at IS NULL`;
+    } else if (status) {
       whereClause += ` AND p.status = $${idx++}`;
       values.push(status);
     }
