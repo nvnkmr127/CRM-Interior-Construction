@@ -259,7 +259,7 @@ export default function TaskAnalytics() {
           </div>
           <div style={{ height: 260 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={ || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={burnDown || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorBurn" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
@@ -283,7 +283,7 @@ export default function TaskAnalytics() {
           </div>
           <div style={{ height: 260 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={ || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={burnUp || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="day" axisLine={false} tickLine={false} />
                 <YAxis axisLine={false} tickLine={false} />

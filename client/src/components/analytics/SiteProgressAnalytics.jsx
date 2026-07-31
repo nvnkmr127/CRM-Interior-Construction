@@ -161,7 +161,7 @@ export default function SiteProgressAnalytics() {
           </div>
           <div style={{ height: 260 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={ || []} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+              <AreaChart data={progressTimeline || []} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="date" axisLine={false} tickLine={false} />
                 <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `${val}%`} />
