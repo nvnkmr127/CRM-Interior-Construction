@@ -202,7 +202,7 @@ export default function AIForecastAnalytics() {
           </div>
           <div style={{ height: 280 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={delayProbability} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <AreaChart data={ || []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="days" axisLine={false} tickLine={false} label={{ value: 'Days Delayed', position: 'insideBottom', offset: -5 }} />
                 <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `${val}%`} />

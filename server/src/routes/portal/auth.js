@@ -76,7 +76,7 @@ router.post('/verify-otp', async (req, res, next) => {
     // 3. Set portalToken as httpOnly cookie (30 days)
     res.cookie('portalToken', portalToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.NODE_ENV === 'production', sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     });
 

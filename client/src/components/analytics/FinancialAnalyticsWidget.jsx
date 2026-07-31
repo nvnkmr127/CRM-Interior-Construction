@@ -63,7 +63,7 @@ export default function FinancialAnalyticsWidget({ filters }) {
   return (
     <div style={{ width: '100%', padding: '16px' }}>
       <ResponsiveContainer minWidth={1} minHeight={1} width="100%" height={280}>
-        <AreaChart data={data} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
+        <AreaChart data={ || []} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
           <XAxis dataKey="month" stroke="var(--color-text-secondary)" />
           <YAxis stroke="var(--color-text-secondary)" />

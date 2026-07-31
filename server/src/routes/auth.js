@@ -115,7 +115,7 @@ router.post('/login', async (req, res, next) => {
     const cookieOptions = {
       httpOnly: true,
       secure: isProduction,
-      sameSite: 'strict',
+      sameSite: isProduction ? 'none' : 'lax',
     };
 
     res.cookie('refreshToken', refreshToken, {
@@ -153,7 +153,7 @@ router.post('/refresh', async (req, res, next) => {
     const cookieOptions = {
       httpOnly: true,
       secure: isProduction,
-      sameSite: 'strict',
+      sameSite: isProduction ? 'none' : 'lax',
     };
 
     res.cookie('refreshToken', refreshToken, {
@@ -213,7 +213,8 @@ router.get('/me', authenticate, async (req, res, next) => {
     const result = await pool.query(query, [userId]);
 
     if (result.rows.length === 0) {
-      return fail(res, 'NOT_FOUND', 'User not found', 404);
+
+      return fail(res, 'NOT_FOUND', 'User not found', 404);
     }
 
     const row = result.rows[0];
