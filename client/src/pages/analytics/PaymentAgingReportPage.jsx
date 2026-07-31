@@ -20,7 +20,7 @@ export default function PaymentAgingReportPage() {
       const res = await getPaymentAgingReport();
       setData(res);
     } catch (err) {
-      toast.addToast('Failed to load Payment Aging data', 'error');
+      toast.error('Failed to load Payment Aging data');
     } finally {
       setLoading(false);
     }

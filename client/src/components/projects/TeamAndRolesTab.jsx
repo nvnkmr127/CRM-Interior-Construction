@@ -34,12 +34,12 @@ export default function TeamAndRolesTab({ project, onRefresh }) {
     try {
       setAssigning(true);
       await assignProjectMembers(project.id, selectedUsersToAssign);
-      toast.addToast('Members assigned successfully', 'success');
+      toast.success('Members assigned successfully');
       setAssignModalOpen(false);
       setSelectedUsersToAssign([]);
       fetchMembers();
     } catch (e) {
-      toast.addToast(e?.response?.data?.error || 'Failed to assign members', 'error');
+      toast.error(e?.response?.data?.error || 'Failed to assign members');
     } finally {
       setAssigning(false);
     }
@@ -49,10 +49,10 @@ export default function TeamAndRolesTab({ project, onRefresh }) {
     if (!window.confirm('Remove member from project?')) return;
     try {
       await removeProjectMember(project.id, userId);
-      toast.addToast('Member removed', 'success');
+      toast.success('Member removed');
       fetchMembers();
     } catch (e) {
-      toast.addToast(e?.response?.data?.error || 'Failed to remove member', 'error');
+      toast.error(e?.response?.data?.error || 'Failed to remove member');
     }
   };
 

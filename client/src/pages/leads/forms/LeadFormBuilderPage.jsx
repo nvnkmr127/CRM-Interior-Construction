@@ -88,7 +88,7 @@ export default function LeadFormBuilderPage() {
         });
       }
     } catch (error) {
-      toast.addToast('Failed to load form', 'error');
+      toast.error('Failed to load form');
       navigate('/leads/forms');
     } finally {
       setIsLoading(false);
@@ -97,7 +97,7 @@ export default function LeadFormBuilderPage() {
 
   const handleSave = async () => {
     try {
-      if (!formData.name) return toast.addToast('Form name is required', 'error');
+      if (!formData.name) return toast.error('Form name is required');
       
       const payload = {
         ...formData,
@@ -106,14 +106,14 @@ export default function LeadFormBuilderPage() {
 
       if (isEditing) {
         await updateForm(id, payload);
-        toast.addToast('Form updated successfully', 'success');
+        toast.success('Form updated successfully');
       } else {
         await createForm(payload);
-        toast.addToast('Form created successfully', 'success');
+        toast.success('Form created successfully');
       }
       navigate('/leads/forms');
     } catch (error) {
-      toast.addToast(error.response?.data?.error || 'Failed to save form', 'error');
+      toast.error(error.response?.data?.error || 'Failed to save form');
     }
   };
 

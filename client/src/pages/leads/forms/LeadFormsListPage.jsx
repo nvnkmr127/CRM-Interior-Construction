@@ -18,7 +18,7 @@ export default function LeadFormsListPage() {
         setForms(data.data);
       }
     } catch (error) {
-      toast.addToast('Error fetching forms', 'error');
+      toast.error('Error fetching forms');
     } finally {
       setIsLoading(false);
     }
@@ -32,10 +32,10 @@ export default function LeadFormsListPage() {
     if (!window.confirm('Are you sure you want to delete this form?')) return;
     try {
       await deleteForm(id);
-      toast.addToast('Form deleted', 'success');
+      toast.success('Form deleted');
       fetchForms();
     } catch (error) {
-      toast.addToast('Failed to delete form', 'error');
+      toast.error('Failed to delete form');
     }
   };
 
@@ -43,7 +43,7 @@ export default function LeadFormsListPage() {
     const url = `${window.location.origin}/forms/${slug}`;
     const iframeCode = `<iframe src="${url}" width="100%" height="500" frameborder="0"></iframe>`;
     navigator.clipboard.writeText(iframeCode);
-    toast.addToast('Iframe embed code copied to clipboard!', 'success');
+    toast.success('Iframe embed code copied to clipboard!');
   };
 
   return (

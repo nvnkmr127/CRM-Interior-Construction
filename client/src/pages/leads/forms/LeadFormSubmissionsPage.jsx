@@ -26,7 +26,7 @@ export default function LeadFormSubmissionsPage() {
       if (formData.success) setForm(formData.data);
       if (submissionsData.success) setSubmissions(submissionsData.data);
     } catch (error) {
-      toast.addToast('Failed to load submissions', 'error');
+      toast.error('Failed to load submissions');
     } finally {
       setIsLoading(false);
     }
