@@ -391,7 +391,7 @@ const dataScope = require('../middleware/dataScope');
  */
 router.get('/', authorize('projects:read'), dataScope('projects', 'pm_id', 'p'), async (req, res, next) => {
   try {
-    const { status, pmId, designerId, search, page, limit } = req.query;
+    const { status, pmId, designerId, search, page, limit, includeDeleted } = req.query;
     
     const parsedPage = parseInt(page, 10) || 1;
     const parsedLimit = parseInt(limit, 10) || 20;
@@ -403,7 +403,8 @@ router.get('/', authorize('projects:read'), dataScope('projects', 'pm_id', 'p'),
       search,
       page: parsedPage,
       limit: parsedLimit,
-      scopeFilter: req.scopeFilter
+      scopeFilter: req.scopeFilter,
+      includeDeleted: includeDeleted === 'true'
     });
 
     const { filterAllowedFields } = require('../utils/fieldMasker');
@@ -632,7 +633,7 @@ router.get('/:projectId/boq-variance', authorize('projects:read'), require('../c
 // GET /api/projects/:id
 router.get('/:id', authorize('projects:read'), async (req, res, next) => {
   try {
-    const project = await projectRepository.findProjectById(req.tenantId, req.params.id);
+    const project = await projectRepository.findProjectById(req.tenantId, req.params.id, true);
     if (!project) {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }

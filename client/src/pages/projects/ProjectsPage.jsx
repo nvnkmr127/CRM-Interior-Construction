@@ -23,14 +23,15 @@ function formatValue(val) {
   return `₹${num.toLocaleString('en-IN')}`;
 }
 
-function StatusBadge({ status }) {
+function StatusBadge({ status, deleted }) {
   const map = {
     active: { color: 'var(--color-info)', bg: 'var(--color-info-bg)' },
     on_hold: { color: 'var(--color-warning)', bg: 'var(--color-warning-bg)' },
     completed: { color: 'var(--color-success)', bg: 'var(--color-success-bg)' },
     overdue: { color: 'var(--color-danger)', bg: 'var(--color-danger-bg)' },
+    deleted: { color: 'var(--color-text-secondary)', bg: 'var(--color-surface-2)' },
   };
-  const s = status?.toLowerCase();
+  const s = deleted ? 'deleted' : status?.toLowerCase();
   const style = map[s] || { color: 'var(--color-text-secondary)', bg: 'var(--color-surface-2)' };
   return (
     <span style={{
@@ -40,7 +41,7 @@ function StatusBadge({ status }) {
       color: style.color, background: style.bg,
     }}>
       <span style={{ width: 6, height: 6, borderRadius: '50%', background: style.color, flexShrink: 0 }} />
-      {status}
+      {s === 'deleted' ? 'Deleted' : status}
     </span>
   );
 }
@@ -76,7 +77,7 @@ export default function ProjectsPage() {
 
   const loadProjects = () => {
     setLoading(true);
-    getProjects({ page, limit })
+    getProjects({ page, limit, includeDeleted: true })
       .then(res => {
         const rawData = res.data?.data || res.data?.results || res.data;
         const arr = Array.isArray(rawData) ? rawData : [];
@@ -98,16 +99,19 @@ export default function ProjectsPage() {
   useEffect(() => { loadProjects(); }, [page, limit]);
 
   const counts = {
-    active: projects.filter(p => p.status === 'active').length,
-    on_hold: projects.filter(p => p.status === 'on_hold').length,
-    completed: projects.filter(p => p.status === 'completed').length,
-    overdue: projects.filter(p => p.overdue).length,
+    active: projects.filter(p => p.status === 'active' && !p.deleted_at).length,
+    on_hold: projects.filter(p => p.status === 'on_hold' && !p.deleted_at).length,
+    completed: projects.filter(p => p.status === 'completed' && !p.deleted_at).length,
+    overdue: projects.filter(p => p.overdue && !p.deleted_at).length,
+    deleted: projects.filter(p => p.deleted_at).length,
   };
 
   const pmOptions = ['all', ...Array.from(new Set(projects.map(p => p.pm_name || p.pmName).filter(Boolean)))];
 
   const filtered = projects
     .filter(p => {
+      if (statusFilter === 'deleted') return !!p.deleted_at;
+      if (p.deleted_at) return false;
       if (statusFilter === 'overdue') return !!p.overdue;
       if (statusFilter !== 'all') return p.status?.toLowerCase() === statusFilter;
       return true;
@@ -149,6 +153,7 @@ export default function ProjectsPage() {
     { key: 'on_hold', label: 'On Hold', count: counts.on_hold, color: 'var(--color-warning)', bg: 'var(--color-warning-bg)' },
     { key: 'completed', label: 'Completed', count: counts.completed, color: 'var(--color-success)', bg: 'var(--color-success-bg)' },
     { key: 'overdue', label: 'Overdue', count: counts.overdue, color: 'var(--color-danger)', bg: 'var(--color-danger-bg)' },
+    { key: 'deleted', label: 'Deleted', count: counts.deleted, color: 'var(--color-text-secondary)', bg: 'var(--color-surface-2)' },
   ];
 
   return (
@@ -330,7 +335,7 @@ export default function ProjectsPage() {
                       </div>
                     </td>
                     <td className={styles.listTd}>
-                      <StatusBadge status={p.status} />
+                      <StatusBadge status={p.status} deleted={!!p.deleted_at} />
                     </td>
                     <td className={styles.listTd}>
                       <span className={styles.phaseTag}>{p.phase || '—'}</span>

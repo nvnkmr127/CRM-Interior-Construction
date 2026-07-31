@@ -149,7 +149,7 @@ class ProjectRepository {
     return rows[0];
   }
 
-  async findProjectById(tenantId, projectId) {
+  async findProjectById(tenantId, projectId, includeDeleted = false) {
     const query = `
       SELECT p.*,
         pm.name as pm_name,
@@ -163,7 +163,7 @@ class ProjectRepository {
         (SELECT string_agg(u.name, ', ') FROM users u WHERE u.id = ANY(p.procurement_officer_ids)) as procurement_officer_name
       FROM projects p
       LEFT JOIN users pm ON p.pm_id = pm.id
-      WHERE p.tenant_id = $1 AND p.id = $2 AND p.deleted_at IS NULL
+      WHERE p.tenant_id = $1 AND p.id = $2 ${includeDeleted ? '' : 'AND p.deleted_at IS NULL'}
     `;
     const { rows } = await pool.query(query, [tenantId, projectId]);
     if (rows.length === 0) return null;
@@ -266,10 +266,13 @@ class ProjectRepository {
     return project;
   }
 
-  async findProjects(tenantId, { status, pmId, designerId, search, page = 1, limit = 20, scopeFilter = '1=1' }) {
+  async findProjects(tenantId, { status, pmId, designerId, search, page = 1, limit = 20, scopeFilter = '1=1', includeDeleted = false }) {
     const offset = (page - 1) * limit;
     const values = [tenantId];
-    let whereClause = `p.tenant_id = $1 AND p.deleted_at IS NULL AND (${scopeFilter})`;
+    let whereClause = `p.tenant_id = $1 AND (${scopeFilter})`;
+    if (!includeDeleted) {
+      whereClause += ` AND p.deleted_at IS NULL`;
+    }
     let idx = 2;
 
     if (status) {

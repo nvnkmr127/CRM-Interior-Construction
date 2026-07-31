@@ -8,6 +8,7 @@ const STATUS_MAP = {
   on_hold:   { label: 'On Hold',   color: 'var(--color-warning)', bg: 'var(--color-warning-bg)' },
   overdue:   { label: 'Overdue',   color: 'var(--color-danger)',  bg: 'var(--color-danger-bg)' },
   cancelled: { label: 'Cancelled', color: 'var(--color-text-secondary)', bg: 'var(--color-surface-2)' },
+  deleted:   { label: 'Deleted',   color: 'var(--color-text-secondary)', bg: 'var(--color-surface-2)' },
 };
 
 function getProgressColor(val) {
@@ -42,7 +43,10 @@ export default function ProjectCard({ project, onClick }) {
     overdue: false
   };
 
-  const statusKey = displayProject.overdue ? 'overdue' : (displayProject.status?.toLowerCase() || 'active');
+  let statusKey = displayProject.overdue ? 'overdue' : (displayProject.status?.toLowerCase() || 'active');
+  if (displayProject.deleted_at) {
+    statusKey = 'deleted';
+  }
   const statusInfo = STATUS_MAP[statusKey] || STATUS_MAP.active;
 
   const progress = displayProject.progress || 0;
