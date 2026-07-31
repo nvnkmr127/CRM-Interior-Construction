@@ -316,7 +316,7 @@ export default function SalesExecutiveDashboard() {
         </div>
 
         <div className={styles.headerRight}>
-          <button className={styles.btnPrimary} onClick={() => navigate('/leads')}>
+          <button className={styles.btnPrimary} onClick={() => navigate('/leads?new=true')}>
             + Lead
           </button>
           <button className={styles.btnPrimary} onClick={() => navigate('/projects')}>
