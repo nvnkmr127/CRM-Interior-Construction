@@ -60,11 +60,11 @@ export default function AIForecastAnalytics() {
         completionProbability: 92
       },
       cashForecast: [
-        { month: 'Jul', actual: 12000000, forecast: null, upper: null, lower: null },
-        { month: 'Aug', actual: 14000000, forecast: null, upper: null, lower: null },
-        { month: 'Sep', actual: null, forecast: 13000000, upper: 14000000, lower: 12000000 },
-        { month: 'Oct', actual: null, forecast: 15000000, upper: 16500000, lower: 13500000 },
-        { month: 'Nov', actual: null, forecast: 11000000, upper: 12500000, lower: 9500000 }
+        { month: 'Jul', actual: 12000000, forecast: undefined, upper: undefined, lower: undefined },
+        { month: 'Aug', actual: 14000000, forecast: undefined, upper: undefined, lower: undefined },
+        { month: 'Sep', actual: undefined, forecast: 13000000, upper: 14000000, lower: 12000000 },
+        { month: 'Oct', actual: undefined, forecast: 15000000, upper: 16500000, lower: 13500000 },
+        { month: 'Nov', actual: undefined, forecast: 11000000, upper: 12500000, lower: 9500000 }
       ],
       delayProbability: [
         { days: '0-5', probability: 10 },
@@ -74,11 +74,11 @@ export default function AIForecastAnalytics() {
         { days: '>20', probability: 5 }
       ],
       profitMarginTrend: [
-        { month: 'Jul', actual: 23.0, forecast: null, upper: null, lower: null },
-        { month: 'Aug', actual: 22.5, forecast: null, upper: null, lower: null },
-        { month: 'Sep', actual: null, forecast: 22.0, upper: 23.5, lower: 20.5 },
-        { month: 'Oct', actual: null, forecast: 21.5, upper: 23.0, lower: 20.0 },
-        { month: 'Nov', actual: null, forecast: 21.8, upper: 23.2, lower: 20.4 }
+        { month: 'Jul', actual: 23.0, forecast: undefined, upper: undefined, lower: undefined },
+        { month: 'Aug', actual: 22.5, forecast: undefined, upper: undefined, lower: undefined },
+        { month: 'Sep', actual: undefined, forecast: 22.0, upper: 23.5, lower: 20.5 },
+        { month: 'Oct', actual: undefined, forecast: 21.5, upper: 23.0, lower: 20.0 },
+        { month: 'Nov', actual: undefined, forecast: 21.8, upper: 23.2, lower: 20.4 }
       ]
     };
   }

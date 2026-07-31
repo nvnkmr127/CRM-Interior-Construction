@@ -140,8 +140,8 @@ export default function ProjectAnalyticsPage() {
         })
         const revenueData   = (raw.revenueTimeline   || []).map(r => ({
           month: r.month || 'Unknown',
-          planned: r.planned / 100000,
-          collected: r.collected / 100000,
+          planned: (r.planned || 0) / 100000,
+          collected: (r.collected || 0) / 100000,
         }))
         const delayedProjects = (raw.delayedProjects || []).map(p => ({
           id: p.id,
