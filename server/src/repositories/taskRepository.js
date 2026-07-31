@@ -66,10 +66,15 @@ class TaskRepository {
     return task;
   }
 
-  async findTasks(tenantId, { projectId, milestoneId, assigneeId, status, priority, dueWithin, page = 1, limit = 20, leadId, allTasks, scopeFilter = '1=1' }) {
+  async findTasks(tenantId, { projectId, milestoneId, assigneeId, status, priority, dueWithin, page = 1, limit = 20, leadId, allTasks, scopeFilter = '1=1', includeDeleted = false }) {
     const offset = (page - 1) * limit;
     const values = [tenantId];
-    let whereClause = `t.tenant_id = $1 AND t.deleted_at IS NULL AND (${scopeFilter})`;
+    let whereClause = `t.tenant_id = $1 AND (${scopeFilter})`;
+    
+    if (!includeDeleted) {
+      whereClause += ` AND t.deleted_at IS NULL`;
+    }
+
     let idx = 2;
 
     if (projectId) {
@@ -242,7 +247,7 @@ class TaskRepository {
       await client.query('BEGIN');
       // Delete parent
       const { rowCount } = await client.query(`
-        UPDATE tasks SET deleted_at = NOW()
+        UPDATE tasks SET deleted_at = NOW(), status = 'deleted'
         WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL
       `, [taskId, tenantId]);
 

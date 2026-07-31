@@ -68,7 +68,7 @@ const commentSchema = z.object({
 // GET /api/tasks
 router.get('/', async (req, res, next) => {
   try {
-    let { assigneeId, status, priority, dueWithin, page, limit, lead_id, leadId } = req.query;
+    let { assigneeId, status, priority, dueWithin, page, limit, lead_id, leadId, includeDeleted } = req.query;
     
     // For "My Tasks", assigneeId is 'me'. Replace it with the logged in user's ID.
     if (assigneeId === 'me') {
@@ -86,7 +86,8 @@ router.get('/', async (req, res, next) => {
       dueWithin,
       page: parsedPage,
       limit: parsedLimit,
-      leadId: leadId || lead_id || null
+      leadId: leadId || lead_id || null,
+      includeDeleted: includeDeleted === 'true'
     });
 
     return paginate(res, result.data, result.total, result.page, result.limit);

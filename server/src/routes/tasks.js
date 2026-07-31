@@ -75,7 +75,7 @@ const commentSchema = z.object({
 // GET /api/projects/:projectId/tasks
 router.get('/', authorize('projects:read'), dataScope('tasks', 'assignee_id', 't'), async (req, res, next) => {
   try {
-    const { milestoneId, assigneeId, status, priority, page, limit, allTasks } = req.query;
+    const { milestoneId, assigneeId, status, priority, page, limit, allTasks, includeDeleted } = req.query;
     
     const parsedPage = parseInt(page, 10) || 1;
     const isAll = limit === 'all' || allTasks === 'true';
@@ -90,7 +90,8 @@ router.get('/', authorize('projects:read'), dataScope('tasks', 'assignee_id', 't
       page: parsedPage,
       limit: parsedLimit,
       allTasks: allTasks === 'true',
-      scopeFilter: req.scopeFilter
+      scopeFilter: req.scopeFilter,
+      includeDeleted: includeDeleted === 'true'
     });
 
     const maskedData = result.data.map(task => filterAllowedFields(task, req.user, 'tasks'));

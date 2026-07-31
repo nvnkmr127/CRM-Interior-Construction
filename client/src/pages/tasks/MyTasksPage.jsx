@@ -187,7 +187,7 @@ export default function MyTasksPage() {
 
   const loadTasks = () => {
     setLoading(true)
-    const taskParams = { limit: 100 }
+    const taskParams = { limit: 100, includeDeleted: true }
     
     // Roles that can see all tasks across the company/projects
     const globalViewRoles = ['superadmin', 'admin', 'director', 'manager', 'finance_head', 'finance_manager']
@@ -280,6 +280,14 @@ export default function MyTasksPage() {
     } finally {
       setUpdatingTaskId(null)
     }
+  }
+
+  const handleDeleteTask = (taskId) => {
+    deleteGlobalTask(taskId).then(() => {
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'deleted' } : t))
+      if (selectedTask?.id === taskId) setSelectedTask(null)
+      toast.success('Task deleted successfully')
+    })
   }
 
   const handleKanbanDrop = (taskId, newStatus) => {
@@ -1050,10 +1058,7 @@ export default function MyTasksPage() {
           onClose={() => {
             setIsTagManagerModalOpen(false)
             // reload tasks to get updated tags if merged/deleted
-            getGlobalTasks({ assigneeId: 'me', limit: 100 }).then(res => {
-              const _r = res.data?.data || res.data; const raw = Array.isArray(_r) ? _r : [];
-              setTasks(raw.map(t => ({...t, project: t.project || {id:'gen',name:'Gen'}}))) 
-            }).catch(()=>{})
+            loadTasks()
           }}
         />
       )}
