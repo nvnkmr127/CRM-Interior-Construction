@@ -23,8 +23,9 @@ const sql = readMig('006_financial_approval_attachments.sql') + ';' +
             readMig('007_extend_approvals_bulk.sql') + ';' + 
             readMig('008_approval_assignment.sql') + ';' + 
             readMig('009_sla_tracking.sql') + ';' + 
-            readMig('010_approval_priority.sql');
-pool.query(sql).then(() => console.log('Migration 006 OK')).catch(e => console.log(e));
+            readMig('010_approval_priority.sql') + ';' + 
+            readMig('027_task_attachments.sql');
+pool.query(sql).then(() => console.log('Migrations OK')).catch(e => console.log(e));
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

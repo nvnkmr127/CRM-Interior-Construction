@@ -2232,8 +2232,8 @@ export const setupMockInterceptor = (api) => {
           // TASK ATTACHMENTS
           else if (url.includes('/attachments') && (url.includes('/tasks') || url.includes('/projects'))) {
             const urlParts = url.split('?');
-            const matchAttachments = urlParts[0].match(/\/tasks\/([a-zA-Z0-9-]+)\/attachments$/);
-            const matchAttachment = urlParts[0].match(/\/tasks\/([a-zA-Z0-9-]+)\/attachments\/([a-zA-Z0-9-]+)$/);
+            const matchAttachments = urlParts[0].match(/(?:\/projects\/[a-zA-Z0-9-]+)?\/tasks\/([a-zA-Z0-9-]+)\/attachments$/);
+            const matchAttachment = urlParts[0].match(/(?:\/projects\/[a-zA-Z0-9-]+)?\/tasks\/([a-zA-Z0-9-]+)\/attachments\/([a-zA-Z0-9-]+)$/);
 
             let taskId = null;
             let attachmentId = null;

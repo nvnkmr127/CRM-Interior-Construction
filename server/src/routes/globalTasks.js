@@ -7,6 +7,22 @@ const pool = require('../config/db');
 const taskRepository = require('../repositories/taskRepository');
 const { createTask } = require('../services/tasks/createTask');
 const { updateTask } = require('../services/tasks/updateTask');
+const multer = require('multer');
+const path = require('path');
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/attachments/');
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB
+});
 
 const router = express.Router();
 router.use(authenticate);
@@ -203,6 +219,141 @@ router.post('/:tid/comments', validate(commentSchema), async (req, res, next) =>
   } catch (err) {
     console.error('[Global Tasks Router] Create comment error:', err);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create comment.', 500);
+  }
+});
+
+// GET /api/tasks/:tid/attachments
+router.get('/:tid/attachments', async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT * FROM task_attachments 
+      WHERE task_id = $1 AND tenant_id = $2 AND status = 'active'
+      ORDER BY created_at DESC
+    `, [req.params.tid, req.tenantId]);
+    
+    const formatted = rows.map(r => ({
+      id: r.id,
+      task_id: r.task_id,
+      name: r.name,
+      url: r.url,
+      type: r.mime_type,
+      size: r.size_bytes,
+      version: r.version,
+      created_at: r.created_at
+    }));
+    return success(res, formatted);
+  } catch (err) {
+    console.error('[Global Tasks Router] List attachments error:', err);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to fetch attachments.', 500);
+  }
+});
+
+// POST /api/tasks/:tid/attachments
+router.post('/:tid/attachments', upload.array('files'), async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId;
+    const tid = req.params.tid;
+    
+    if (!req.files || req.files.length === 0) {
+      return fail(res, 'BAD_REQUEST', 'No files uploaded', 400);
+    }
+    
+    const uploadedAttachments = [];
+    for (const file of req.files) {
+      const fileUrl = `${process.env.API_URL || 'http://localhost:3000'}/uploads/attachments/${file.filename}`;
+      const { rows } = await pool.query(`
+        INSERT INTO task_attachments 
+        (tenant_id, task_id, name, url, mime_type, size_bytes, uploaded_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *
+      `, [tenantId, tid, file.originalname, fileUrl, file.mimetype, file.size, req.user.userId]);
+      
+      const r = rows[0];
+      uploadedAttachments.push({
+        id: r.id,
+        task_id: r.task_id,
+        name: r.name,
+        url: r.url,
+        type: r.mime_type,
+        size: r.size_bytes,
+        version: r.version,
+        created_at: r.created_at
+      });
+    }
+    
+    return success(res, uploadedAttachments, {}, 201);
+  } catch (err) {
+    console.error('[Global Tasks Router] Upload attachments error:', err);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to upload attachments.', 500);
+  }
+});
+
+// PATCH /api/tasks/:tid/attachments/:attachmentId
+router.patch('/:tid/attachments/:attachmentId', upload.single('file'), async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    const { attachmentId, tid } = req.params;
+    const tenantId = req.tenantId;
+    
+    if (!req.file) {
+      return fail(res, 'BAD_REQUEST', 'No file uploaded', 400);
+    }
+    
+    await client.query('BEGIN');
+    const oldQuery = "SELECT * FROM task_attachments WHERE id = $1 AND task_id = $2 AND tenant_id = $3 AND status = 'active' FOR UPDATE";
+    const oldRes = await client.query(oldQuery, [attachmentId, tid, tenantId]);
+    if (oldRes.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return fail(res, 'NOT_FOUND', 'Attachment not found', 404);
+    }
+    
+    const oldAtt = oldRes.rows[0];
+    await client.query("UPDATE task_attachments SET status = 'replaced' WHERE id = $1", [attachmentId]);
+    
+    const fileUrl = `${process.env.API_URL || 'http://localhost:3000'}/uploads/attachments/${req.file.filename}`;
+    const { rows } = await client.query(`
+      INSERT INTO task_attachments 
+      (tenant_id, task_id, name, url, mime_type, size_bytes, version, parent_id, uploaded_by)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *
+    `, [tenantId, tid, req.file.originalname, fileUrl, req.file.mimetype, req.file.size, oldAtt.version + 1, attachmentId, req.user.userId]);
+    
+    await client.query('COMMIT');
+    
+    const r = rows[0];
+    return success(res, {
+      id: r.id,
+      task_id: r.task_id,
+      name: r.name,
+      url: r.url,
+      type: r.mime_type,
+      size: r.size_bytes,
+      version: r.version,
+      created_at: r.created_at
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[Global Tasks Router] Replace attachment error:', err);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to replace attachment.', 500);
+  } finally {
+    client.release();
+  }
+});
+
+// DELETE /api/tasks/:tid/attachments/:attachmentId
+router.delete('/:tid/attachments/:attachmentId', async (req, res, next) => {
+  try {
+    const { attachmentId, tid } = req.params;
+    const tenantId = req.tenantId;
+    
+    const { rows } = await pool.query('DELETE FROM task_attachments WHERE id = $1 AND task_id = $2 AND tenant_id = $3 RETURNING *', [attachmentId, tid, tenantId]);
+    
+    if (rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Attachment not found', 404);
+    }
+    
+    return success(res, { message: 'Attachment deleted successfully' });
+  } catch (err) {
+    console.error('[Global Tasks Router] Delete attachment error:', err);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to delete attachment.', 500);
   }
 });
 
