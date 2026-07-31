@@ -1,9 +1,6 @@
 const fs = require('fs');
-let f = fs.readFileSync('src/routes/users.js', 'utf8');
-
-const target = `queueEmail(tenantId, userIdToUpdate, targetUser.email, 'Role Updated', 'role_changed', { name: targetUser.name, newRole: roleRows[0].name });`;
-const replacement = target + `\n         const { logAction } = require('../services/auditLog');\n         await logAction({ tenantId, userId: reviewerId, action: 'employee.role_changed', entity: 'user', entityId: userIdToUpdate, newValue: { role: roleRows[0].name } });`;
-
-f = f.replace(target, replacement);
-fs.writeFileSync('src/routes/users.js', f);
-console.log('Fixed users.js');
+let code = fs.readFileSync('src/routes/financialApprovals.js', 'utf8');
+code = code.replace(/\$\{sort \|\| ''\}/g, '\$\{sort_by \|\| \'\'\}');
+code = code.replace(/sort === 'priority_asc'/g, 'sort_by === \'priority_asc\'');
+fs.writeFileSync('src/routes/financialApprovals.js', code);
+console.log('Done!');
