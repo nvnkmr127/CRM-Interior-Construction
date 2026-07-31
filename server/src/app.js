@@ -361,7 +361,7 @@ pool.query(`
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
       user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-      session_id UUID,
+      session_id VARCHAR(255),
       email_attempted VARCHAR(255),
       ip_address VARCHAR(100),
       browser VARCHAR(100),
@@ -375,6 +375,9 @@ pool.query(`
   );
   CREATE INDEX IF NOT EXISTS idx_login_history_tenant ON login_history(tenant_id);
   CREATE INDEX IF NOT EXISTS idx_login_history_user ON login_history(user_id);
+  
+  -- Fix session_id type if it was created as UUID
+  ALTER TABLE login_history ALTER COLUMN session_id TYPE VARCHAR(255) USING session_id::VARCHAR;
 
   CREATE TABLE IF NOT EXISTS tenant_security_settings (
       tenant_id UUID PRIMARY KEY REFERENCES tenants(id) ON DELETE CASCADE,
@@ -431,6 +434,46 @@ pool.query(`
       created_at TIMESTAMP DEFAULT NOW()
   );
   CREATE INDEX IF NOT EXISTS idx_otp_codes_user ON otp_codes(user_id);
+
+  CREATE TABLE IF NOT EXISTS user_preferences (
+      user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
+      email_sla_breaches BOOLEAN DEFAULT true,
+      push_score_changes BOOLEAN DEFAULT true,
+      dnd_start_time VARCHAR(10) DEFAULT '22:00',
+      dnd_end_time VARCHAR(10) DEFAULT '08:00',
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+  );
+
+  CREATE TABLE IF NOT EXISTS api_keys (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      name VARCHAR(255) NOT NULL,
+      description TEXT,
+      permissions JSONB DEFAULT '[]'::jsonb,
+      secret_hash VARCHAR(255) NOT NULL,
+      status VARCHAR(50) DEFAULT 'active',
+      last_used_at TIMESTAMP WITH TIME ZONE,
+      created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_api_keys_tenant_id ON api_keys(tenant_id);
+
+  CREATE TABLE IF NOT EXISTS api_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      api_key_id UUID REFERENCES api_keys(id) ON DELETE SET NULL,
+      endpoint VARCHAR(255) NOT NULL,
+      method VARCHAR(10) NOT NULL,
+      status_code INTEGER NOT NULL,
+      ip_address VARCHAR(45),
+      execution_time_ms INTEGER,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_api_logs_tenant_id ON api_logs(tenant_id);
+  CREATE INDEX IF NOT EXISTS idx_api_logs_api_key_id ON api_logs(api_key_id);
   
   ALTER TABLE sessions ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMP DEFAULT NOW();
   
