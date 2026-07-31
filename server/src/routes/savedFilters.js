@@ -4,6 +4,9 @@ const authorize = require('../middleware/authorize');
 const { success, fail } = require('../utils/response');
 
 const router = express.Router();
+const authenticate = require('../middleware/authenticate');
+
+router.use(authenticate);
 
 router.get('/:module', authorize('users:manage'), async (req, res, next) => {
   const tenantId = req.tenantId;
