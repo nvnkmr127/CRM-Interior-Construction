@@ -109,9 +109,17 @@ class LocalStorageProvider extends StorageProvider {
   }
 
   async getUploadUrl(key, _mimeType) {
+    if (process.env.NODE_ENV === 'production' && !process.env.VERCEL_URL) {
+       // If on Vercel, we shouldn't even try local storage. But we'll throw the error here when they try to upload.
+    }
+    
     // In a real local provider, you'd generate a local API endpoint url
     // that accepts file uploads, and save it in the uploadDir.
-    // We mock it for the interface completeness.
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Local file storage is not supported in production serverless environments. Please configure AWS S3 credentials (S3_BUCKET, S3_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) and set STORAGE_PROVIDER=s3 in Vercel.');
+    }
+
+    // We mock it for the interface completeness in development.
     return { 
       uploadUrl: `${env.clientUrl}/api/local-upload?key=${encodeURIComponent(key)}`, 
       storageKey: key 
