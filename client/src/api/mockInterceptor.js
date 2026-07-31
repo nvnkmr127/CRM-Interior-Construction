@@ -841,7 +841,12 @@ export const setupMockInterceptor = (api) => {
                   // 4. Source filter
                   const source = getParam('source');
                   if (source && source !== 'All Sources') {
-                    filtered = filtered.filter(l => l.source && l.source.toLowerCase() === source.toLowerCase());
+                    if (Array.isArray(source)) {
+                      const sourcesLower = source.map(s => String(s).toLowerCase());
+                      filtered = filtered.filter(l => l.source && sourcesLower.includes(l.source.toLowerCase()));
+                    } else {
+                      filtered = filtered.filter(l => l.source && l.source.toLowerCase() === String(source).toLowerCase());
+                    }
                   }
 
                   // 5. Score range filter
