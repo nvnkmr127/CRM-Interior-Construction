@@ -64,7 +64,7 @@ exports.getRevenueAnalytics = async (req, res, next) => {
         forecast,
         avgDealSize,
         trend: rows.map(r => ({
-          month: r.month,
+          month: r.month || 'Unknown',
           target: parseFloat(r.target) || 0,
           actual: parseFloat(r.actual) || 0
         }))
@@ -1090,7 +1090,7 @@ exports.getCSATAnalytics = async (req, res, next) => {
       data: {
         summary,
         trends: trendsRes.rows.map(r => ({
-          month: r.month,
+          month: r.month || 'Unknown',
           avgScore: parseFloat(r.avgScore || 0),
           count: parseInt(r.count || 0)
         })),

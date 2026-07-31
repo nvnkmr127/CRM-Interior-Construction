@@ -28,7 +28,7 @@ export default function FinancialAnalyticsWidget({ filters }) {
             ]);
           } else {
             setData(res.trend.map(t => ({
-              month: t.month,
+              month: t.month || 'Unknown',
               revenue: t.actual,
               expenses: t.actual * 0.65
             })));

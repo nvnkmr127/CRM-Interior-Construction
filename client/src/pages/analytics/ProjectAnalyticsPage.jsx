@@ -130,11 +130,14 @@ export default function ProjectAnalyticsPage() {
     getProjectAnalytics(rangeToParams[dateRange])
       .then(res => {
         const raw = res.data?.data || {}
-        const statusData    = (raw.statusDistribution || []).map(s => ({
-          name: s.status.charAt(0).toUpperCase() + s.status.slice(1).replace('_', ' '),
-          count: s.count,
-          id: s.status,
-        }))
+        const statusData    = (raw.statusDistribution || []).map(s => {
+          const statusStr = s.status || 'unknown';
+          return {
+            name: statusStr.charAt(0).toUpperCase() + statusStr.slice(1).replace('_', ' '),
+            count: s.count,
+            id: statusStr,
+          };
+        })
         const revenueData   = (raw.revenueTimeline   || []).map(r => ({
           month: r.month || 'Unknown',
           planned: r.planned / 100000,
