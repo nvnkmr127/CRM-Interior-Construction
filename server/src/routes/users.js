@@ -43,9 +43,9 @@ router.get('/ai/insights', async (req, res) => {
     const users = rows.map(u => ({ ...u, role_name: roleMap[u.role_id] || 'Unknown' }));
     
     const insights = await aiEmployeeService.detectAnomalies(users);
-    res.json(success(insights));
+    return success(res, insights);
   } catch (error) {
-    res.status(500).json(fail('Failed to fetch AI insights'));
+    return fail(res, 'INTERNAL_ERROR', 'Failed to fetch AI insights', 500);
   }
 });
 

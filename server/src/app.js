@@ -337,4 +337,24 @@ app.use((req, res, next) => {
 // Error handler MUST be the last middleware
 app.use(errorHandler);
 
+// --- AUTO-MIGRATE ON VERCEL (Since Vercel doesn't run server.js) ---
+const pool = require('./config/db');
+pool.query(`
+  CREATE TABLE IF NOT EXISTS task_attachments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    name VARCHAR(500) NOT NULL,
+    url VARCHAR(1000) NOT NULL,
+    mime_type VARCHAR(100),
+    size_bytes INTEGER,
+    version INTEGER DEFAULT 1,
+    parent_id UUID REFERENCES task_attachments(id) ON DELETE SET NULL,
+    status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'replaced')),
+    uploaded_by UUID NOT NULL REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_ta_task ON task_attachments(task_id, status);
+`).catch(err => console.error('Auto-migration error:', err));
+
 module.exports = app;

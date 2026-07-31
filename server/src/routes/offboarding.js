@@ -11,7 +11,7 @@ router.use(authenticate);
 router.get('/', async (req, res) => {
   try {
     const { rows } = await pool.query(`
-      SELECT o.*, u.first_name, u.last_name, u.email, u.status as user_status
+      SELECT o.*, u.name as first_name, u.email, u.status as user_status
       FROM employee_offboarding o
       JOIN users u ON u.id = o.user_id
       WHERE o.tenant_id = $1
