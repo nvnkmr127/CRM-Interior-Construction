@@ -221,18 +221,17 @@ async function loginUser({ email, password, tenantId, ip, userAgent, trustedDevi
       }
     }
 
-    const payload = { userId: user.id, tenantId, role: roleName, permissions: rolePermissions, email: user.email };
+    const sessionId = crypto.randomUUID();
+    const payload = { userId: user.id, tenantId, role: roleName, permissions: rolePermissions, email: user.email, sessionId };
     const accessToken = signAccessToken(payload);
     const refreshToken = signRefreshToken(payload);
 
     const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
     const insertSessionQuery = `
-      INSERT INTO sessions (user_id, tenant_id, token_hash, expires_at, ip_address, user_agent)
-      VALUES ($1, $2, $3, NOW() + INTERVAL '7 days', $4, $5)
-      RETURNING id
+      INSERT INTO sessions (id, user_id, tenant_id, token_hash, expires_at, ip_address, user_agent)
+      VALUES ($1, $2, $3, $4, NOW() + INTERVAL '7 days', $5, $6)
     `;
-    const sessionResult = await pool.query(insertSessionQuery, [user.id, tenantId, tokenHash, ip, userAgent]);
-    const sessionId = sessionResult.rows[0].id;
+    await pool.query(insertSessionQuery, [sessionId, user.id, tenantId, tokenHash, ip, userAgent]);
 
     await recordLoginHistory({ tenantId, userId: user.id, sessionId, emailAttempted: email, ip, userAgent, status: 'success', failureReason: null });
 

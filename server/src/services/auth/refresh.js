@@ -47,11 +47,14 @@ async function refreshTokens(rawRefreshToken) {
   await pool.query('DELETE FROM sessions WHERE id = $1', [session.id]);
 
   // 5. Sign new access + refresh tokens
+  const newSessionId = crypto.randomUUID();
   const payload = {
     userId: decoded.userId,
     tenantId: decoded.tenantId,
     role: decoded.role,
-    email: decoded.email
+    email: decoded.email,
+    permissions: decoded.permissions,
+    sessionId: newSessionId
   };
 
   const newAccessToken = signAccessToken(payload);
@@ -61,13 +64,14 @@ async function refreshTokens(rawRefreshToken) {
   const newTokenHash = crypto.createHash('sha256').update(newRefreshToken).digest('hex');
   
   const insertSessionQuery = `
-    INSERT INTO sessions (user_id, tenant_id, token_hash, expires_at, ip_address, user_agent)
-    VALUES ($1, $2, $3, NOW() + INTERVAL '7 days', $4, $5)
+    INSERT INTO sessions (id, user_id, tenant_id, token_hash, expires_at, ip_address, user_agent)
+    VALUES ($1, $2, $3, $4, NOW() + INTERVAL '7 days', $5, $6)
   `;
 
   await pool.query(insertSessionQuery, [
-    session.user_id,
-    session.tenant_id,
+    newSessionId,
+    decoded.userId,
+    decoded.tenantId,
     newTokenHash,
     session.ip_address, // Carrying over IP from old session
     session.user_agent  // Carrying over User Agent from old session
