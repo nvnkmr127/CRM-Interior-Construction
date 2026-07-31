@@ -210,7 +210,8 @@ export default function FinancialApprovalsPage() {
         return;
       }
       const res = await api.get(`/financial-approvals?${params.toString()}`);
-      let data = res.data?.data || [];
+      const payload = res.data?.data || {};
+      let data = Array.isArray(payload) ? payload : (payload.data || []);
       if (data.length === 0) {
         data = [
           {
@@ -252,7 +253,7 @@ export default function FinancialApprovalsPage() {
         ];
         setPendingTotal(2);
       } else {
-        setPendingTotal(res.data?.pagination?.total || 0);
+        setPendingTotal(payload.pagination?.total || payload.meta?.total || 0);
       }
       setPendingList(data);
     } catch (err) {
@@ -271,7 +272,8 @@ export default function FinancialApprovalsPage() {
         return;
       }
       const res = await api.get(`/financial-approvals?${params.toString()}`);
-      let data = res.data?.data || [];
+      const payload = res.data?.data || {};
+      let data = Array.isArray(payload) ? payload : (payload.data || []);
       if (data.length === 0) {
         data = [
           {
@@ -307,7 +309,7 @@ export default function FinancialApprovalsPage() {
         ];
         setHistoryTotal(2);
       } else {
-        setHistoryTotal(res.data?.pagination?.total || 0);
+        setHistoryTotal(payload.pagination?.total || payload.meta?.total || 0);
       }
       setHistoryList(data);
     } catch (err) {
