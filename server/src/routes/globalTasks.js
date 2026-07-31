@@ -129,7 +129,7 @@ router.post('/', validate(createTaskSchema), async (req, res, next) => {
 // GET /api/tasks/:tid
 router.get('/:tid', async (req, res, next) => {
   try {
-    const task = await taskRepository.findTaskById(req.tenantId, req.params.tid);
+    const task = await taskRepository.findTaskById(req.tenantId, req.params.tid, true);
     if (!task) return fail(res, 'NOT_FOUND', 'Task not found', 404);
     return success(res, task);
   } catch (err) {
@@ -174,7 +174,11 @@ router.patch('/:tid', validate(updateTaskSchema), async (req, res, next) => {
 // DELETE /api/tasks/:tid
 router.delete('/:tid', async (req, res, next) => {
   try {
-    await taskRepository.softDeleteTask(req.tenantId, req.params.tid);
+    if (req.query.hard === 'true') {
+      await taskRepository.hardDeleteTask(req.tenantId, req.params.tid);
+    } else {
+      await taskRepository.softDeleteTask(req.tenantId, req.params.tid);
+    }
     return res.status(204).send();
   } catch (err) {
     if (err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Task not found', 404);

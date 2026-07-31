@@ -194,9 +194,9 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
     if (window.confirm('Are you sure you want to permanently delete this task?')) {
       try {
         if (projectId && projectId !== 'general-tasks' && projectId !== 'lead-tasks') {
-          await deleteTask(projectId, task.id)
+          await deleteTask(projectId, task.id, { params: { hard: true } })
         } else {
-          await deleteGlobalTask(task.id)
+          await deleteGlobalTask(task.id, { params: { hard: true } })
         }
         logAuditActivity(task.id, 'HARD_DELETE', 'active', 'deleted')
         onClose();

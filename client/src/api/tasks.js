@@ -4,7 +4,7 @@ export const getGlobalTasks = (params) => api.get('/tasks', { params });
 export const getGlobalTask = (taskId) => api.get(`/tasks/${taskId}`);
 export const createGlobalTask = (data) => api.post('/tasks', data);
 export const updateGlobalTask = (taskId, data) => api.patch(`/tasks/${taskId}`, data);
-export const deleteGlobalTask = (taskId) => api.delete(`/tasks/${taskId}`);
+export const deleteGlobalTask = (taskId, options = {}) => api.delete(`/tasks/${taskId}`, options);
 export const getGlobalTaskComments = (taskId, params) => api.get(`/tasks/${taskId}/comments`, { params });
 export const addGlobalTaskComment = (taskId, data) => api.post(`/tasks/${taskId}/comments`, data);
 export const updateGlobalTaskComment = (taskId, commentId, data) => api.patch(`/tasks/${taskId}/comments/${commentId}`, data);
@@ -37,7 +37,7 @@ export const getTasks = (projectId, params) => api.get(`/projects/${projectId}/t
 export const getTask = (projectId, taskId) => api.get(`/projects/${projectId}/tasks/${taskId}`);
 export const createTask = (projectId, data) => api.post(`/projects/${projectId}/tasks`, data);
 export const updateTask = (projectId, taskId, data) => api.patch(`/projects/${projectId}/tasks/${taskId}`, data);
-export const deleteTask = (projectId, taskId) => api.delete(`/projects/${projectId}/tasks/${taskId}`);
+export const deleteTask = (projectId, taskId, options = {}) => api.delete(`/projects/${projectId}/tasks/${taskId}`, options);
 export const addTaskComment = (projectId, taskId, data) => api.post(`/projects/${projectId}/tasks/${taskId}/comments`, data);
 export const updateTaskComment = (projectId, taskId, commentId, data) => api.patch(`/projects/${projectId}/tasks/${taskId}/comments/${commentId}`, data);
 export const deleteTaskComment = (projectId, taskId, commentId) => api.delete(`/projects/${projectId}/tasks/${taskId}/comments/${commentId}`);

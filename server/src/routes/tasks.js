@@ -201,7 +201,7 @@ router.patch('/bulk-update', authorize('projects:manage'), async (req, res, next
 // GET /api/projects/:projectId/tasks/:tid
 router.get('/:tid', authorize('projects:read'), async (req, res, next) => {
   try {
-    let task = await taskRepository.findTaskById(req.tenantId, req.params.tid);
+    let task = await taskRepository.findTaskById(req.tenantId, req.params.tid, true);
     if (!task) return fail(res, 'NOT_FOUND', 'Task not found', 404);
     task = filterAllowedFields(task, req.user, 'tasks');
     return success(res, task);
@@ -247,7 +247,11 @@ router.patch('/:tid', authorize('projects:manage'), validate(updateTaskSchema), 
 // DELETE /api/projects/:projectId/tasks/:tid
 router.delete('/:tid', authorize('projects:manage'), async (req, res, next) => {
   try {
-    await taskRepository.softDeleteTask(req.tenantId, req.params.tid);
+    if (req.query.hard === 'true') {
+      await taskRepository.hardDeleteTask(req.tenantId, req.params.tid);
+    } else {
+      await taskRepository.softDeleteTask(req.tenantId, req.params.tid);
+    }
     return res.status(204).send();
   } catch (err) {
     if (err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Task not found', 404);

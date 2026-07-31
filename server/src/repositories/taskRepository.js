@@ -29,12 +29,13 @@ class TaskRepository {
     return rows[0];
   }
 
-  async findTaskById(tenantId, taskId) {
+  async findTaskById(tenantId, taskId, includeDeleted = false) {
+    let deletedFilter = includeDeleted ? '' : 'AND t.deleted_at IS NULL';
     const query = `
       SELECT t.*, u.name as assignee_name
       FROM tasks t
       LEFT JOIN users u ON t.assignee_id = u.id
-      WHERE t.id = $1 AND t.tenant_id = $2 AND t.deleted_at IS NULL
+      WHERE t.id = $1 AND t.tenant_id = $2 ${deletedFilter}
     `;
     const { rows } = await pool.query(query, [taskId, tenantId]);
     if (rows.length === 0) return null;
@@ -46,7 +47,7 @@ class TaskRepository {
       SELECT t.*, u.name as assignee_name
       FROM tasks t
       LEFT JOIN users u ON t.assignee_id = u.id
-      WHERE t.parent_task_id = $1 AND t.tenant_id = $2 AND t.deleted_at IS NULL
+      WHERE t.parent_task_id = $1 AND t.tenant_id = $2 ${deletedFilter}
       ORDER BY t.sort_order ASC, t.created_at ASC
     `;
     const subRes = await pool.query(subQuery, [taskId, tenantId]);
@@ -267,6 +268,17 @@ class TaskRepository {
     } finally {
       client.release();
     }
+  }
+
+  async hardDeleteTask(tenantId, taskId) {
+    const query = `
+      DELETE FROM tasks
+      WHERE id = $1 AND tenant_id = $2
+      RETURNING *
+    `;
+    const { rowCount } = await pool.query(query, [taskId, tenantId]);
+    if (rowCount === 0) throw new Error('NOT_FOUND');
+    return true;
   }
 }
 
