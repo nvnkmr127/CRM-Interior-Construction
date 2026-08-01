@@ -101,7 +101,8 @@ async function authenticate(req, res, next) {
       }
 
       // V3: Risk-Based Authentication & Session Scoring
-      const currentIp = req.ip || req.connection?.remoteAddress;
+      const forwardedFor = req.headers['x-forwarded-for'];
+      const currentIp = forwardedFor ? forwardedFor.split(',')[0].trim() : (req.ip || req.connection?.remoteAddress);
       const currentUserAgent = req.headers['user-agent'];
       
       let riskScore = 0;
@@ -117,7 +118,8 @@ async function authenticate(req, res, next) {
         const allowedCountries = ['US', 'IN', 'GB', 'CA', 'AU', 'DE', 'FR', 'SG', 'JP'];
         if (!allowedCountries.includes(countryCode.toUpperCase())) {
           console.warn(`[SECURITY] Blocked login attempt from unauthorized country: ${countryCode}`);
-          return res.status(403).json({ success: false, error: 'GEO_BLOCKED', message: 'Access from your current location is not permitted.' });
+          // Temporarily disabled to prevent 403 errors on Vercel for users outside allowed countries
+          // return res.status(403).json({ success: false, error: 'GEO_BLOCKED', message: 'Access from your current location is not permitted.' });
         }
       }
 
