@@ -2,7 +2,7 @@ import axios from 'axios';
 import { setupMockInterceptor } from './mockInterceptor';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://crm-interior-construction-server.vercel.app/api' : '/api'),
   withCredentials: true,  // send cookies
   headers: { 'Content-Type': 'application/json' },
 });
