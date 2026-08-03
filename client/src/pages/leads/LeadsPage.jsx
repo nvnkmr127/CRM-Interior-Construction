@@ -257,7 +257,7 @@ export default function LeadsPage() {
   // handleImport is now handled inside LeadImportModal
 
   return (
-    <div className={styles.page} style={selectedLeadId ? { padding: 0 } : {}}>
+    <div className={styles.page} style={selectedLeadId ? { padding: 0, position: 'static' } : {}}>
       {!selectedLeadId && (
         <>
           <div className={styles.header}>
@@ -351,7 +351,7 @@ export default function LeadsPage() {
       )}
 
       {selectedLeadId && (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 'calc(100vh - var(--topbar-height, 56px) - var(--space-6, 24px) * 2)' }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50, display: 'flex', flexDirection: 'column' }}>
           <LeadDrawer
             leadId={selectedLeadId}
             isOpen={!!selectedLeadId}
