@@ -11,28 +11,28 @@ import { Select, Avatar, Badge, Modal } from '../../components/ui'
 import AnalyticsDrillDownModal from '../../components/analytics/AnalyticsDrillDownModal';
 import ReportingCenterModal from '../../components/analytics/ReportingCenterModal';
 import AnalyticsAlertsPanel from '../../components/analytics/AnalyticsAlertsPanel';
-import GoalTrackingWidget from '../../components/analytics/GoalTrackingWidget';
+
 import LeadToProjectOutcomesWidget from '../../components/analytics/LeadToProjectOutcomesWidget';
 import LeadKPIsWidget from '../../components/analytics/LeadKPIsWidget';
 import RevenueKPIsWidget from '../../components/analytics/RevenueKPIsWidget';
 import RevenueChartsWidget from '../../components/analytics/RevenueChartsWidget';
-import SalesCycleWidget from '../../components/analytics/SalesCycleWidget';
-import PipelineVelocityWidget from '../../components/analytics/PipelineVelocityWidget';
-import SLADashboardWidget from '../../components/analytics/SLADashboardWidget';
+
+
+
 import AIRevenueInsightsWidget from '../../components/analytics/AIRevenueInsightsWidget';
 import AIPredictionWidget from '../../components/analytics/AIPredictionWidget';
-import SalesProductivityWidget from '../../components/analytics/SalesProductivityWidget';
-import MarketingAnalyticsWidget from '../../components/analytics/MarketingAnalyticsWidget';
-import GeographicWidget from '../../components/analytics/GeographicWidget';
-import CustomerAnalyticsWidget from '../../components/analytics/CustomerAnalyticsWidget';
+
+
+
+
 import FinancialAnalyticsWidget from '../../components/analytics/FinancialAnalyticsWidget';
 import RevenueForecastWidget from '../../components/analytics/RevenueForecastWidget';
-import ExecutiveSummaryWidget from '../../components/analytics/ExecutiveSummaryWidget';
+
 import FunnelChart from '../../components/analytics/FunnelChart';
-import LostReasonsChart from '../../components/analytics/LostReasonsChart';
+
 import RepLeaderboard from '../../components/analytics/RepLeaderboard';
 
-import BenchmarkAnalyticsWidget from '../../components/analytics/BenchmarkAnalyticsWidget';
+
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import {
@@ -50,19 +50,8 @@ import {
   DUMMY_FUNNEL_DATA,
   DUMMY_LOST_DATA,
   DUMMY_WIN_RATE_DATA,
-  DUMMY_SALES_CYCLE_DATA,
-  DUMMY_AGING_DATA,
-  DUMMY_RESPONSE_TIME_DATA,
-  DUMMY_RESPONSE_TREND_DATA,
-  DUMMY_SLA_DASHBOARD_DATA,
-  DUMMY_VELOCITY_DATA,
   DUMMY_AI_INSIGHTS_DATA,
   DUMMY_AI_PREDICTION_DATA,
-  DUMMY_MARKETING_DATA,
-  DUMMY_PRODUCTIVITY_DATA,
-  DUMMY_EXECUTIVE_DATA,
-  DUMMY_GEO_DATA,
-  DUMMY_CUSTOMER_DATA,
   DUMMY_FINANCIAL_DATA,
   DUMMY_FORECAST_DATA
 } from '../../data/dummyAnalyticsData';
@@ -252,22 +241,11 @@ const DEFAULT_DASHBOARD_LAYOUT = [
   { i: 'funnel', x: 0, y: 2, w: 12, h: 4, minW: 6, minH: 3 },
   { i: 'revenue_kpis', x: 0, y: 6, w: 12, h: 2, minW: 4, minH: 2 },
   { i: 'revenue_charts', x: 0, y: 8, w: 12, h: 5, minW: 6, minH: 4 },
-  { i: 'sales_cycle', x: 0, y: 13, w: 12, h: 4, minW: 6, minH: 3 },
-  { i: 'pipeline_vel', x: 0, y: 17, w: 12, h: 3, minW: 4, minH: 2 },
-  { i: 'lost_leads', x: 0, y: 20, w: 12, h: 4, minW: 6, minH: 3 },
   { i: 'win_rate', x: 0, y: 24, w: 12, h: 4, minW: 6, minH: 3 },
-  { i: 'sla', x: 0, y: 28, w: 12, h: 3, minW: 6, minH: 2 },
   { i: 'ai_revenue', x: 0, y: 31, w: 12, h: 4, minW: 6, minH: 3 },
   { i: 'ai_predict', x: 0, y: 35, w: 12, h: 4, minW: 6, minH: 3 },
-  { i: 'sales_prod', x: 0, y: 39, w: 12, h: 5, minW: 6, minH: 4 },
-  { i: 'marketing', x: 0, y: 44, w: 12, h: 5, minW: 6, minH: 4 },
-  { i: 'geo', x: 0, y: 49, w: 12, h: 5, minW: 6, minH: 4 },
-  { i: 'customer', x: 0, y: 54, w: 12, h: 5, minW: 6, minH: 4 },
   { i: 'financial', x: 0, y: 59, w: 12, h: 5, minW: 6, minH: 4 },
   { i: 'forecast', x: 0, y: 64, w: 12, h: 5, minW: 6, minH: 4 },
-  { i: 'executive', x: 0, y: 69, w: 12, h: 6, minW: 6, minH: 5 },
-  { i: 'goal_tracking', x: 0, y: 75, w: 12, h: 6, minW: 4, minH: 4 },
-  { i: 'benchmark_analytics', x: 0, y: 81, w: 12, h: 6, minW: 6, minH: 5 },
   { i: 'project_outcomes', x: 0, y: 87, w: 12, h: 6, minW: 6, minH: 4 }
 ];
 
@@ -563,10 +541,10 @@ export default function LeadAnalyticsPage() {
               const val = e.target.value;
               setCurrentPreset(val);
               if (val === 'default') setLayout(DEFAULT_DASHBOARD_LAYOUT);
-              else if (val === 'executive') setLayout(DEFAULT_DASHBOARD_LAYOUT.filter(l => ['executive', 'revenue_kpis', 'ai_revenue', 'forecast', 'goal_tracking', 'benchmark_analytics'].includes(l.i)));
-              else if (val === 'marketing') setLayout(DEFAULT_DASHBOARD_LAYOUT.filter(l => ['marketing', 'lead_kpis', 'funnel', 'geo', 'goal_tracking', 'benchmark_analytics'].includes(l.i)));
-              else if (val === 'sales') setLayout(DEFAULT_DASHBOARD_LAYOUT.filter(l => ['sales_cycle', 'pipeline_vel', 'win_rate', 'sales_prod', 'goal_tracking'].includes(l.i)));
-              else if (val === 'manager') setLayout(DEFAULT_DASHBOARD_LAYOUT.filter(l => ['lead_kpis', 'revenue_kpis', 'sla', 'lost_leads', 'benchmark_analytics', 'executive'].includes(l.i)));
+              else if (val === 'executive') setLayout(DEFAULT_DASHBOARD_LAYOUT.filter(l => ['revenue_kpis', 'ai_revenue', 'forecast', 'project_outcomes'].includes(l.i)));
+              else if (val === 'marketing') setLayout(DEFAULT_DASHBOARD_LAYOUT.filter(l => ['lead_kpis', 'funnel'].includes(l.i)));
+              else if (val === 'sales') setLayout(DEFAULT_DASHBOARD_LAYOUT.filter(l => ['win_rate'].includes(l.i)));
+              else if (val === 'manager') setLayout(DEFAULT_DASHBOARD_LAYOUT.filter(l => ['lead_kpis', 'revenue_kpis'].includes(l.i)));
               else if (savedLayouts[val]) setLayout(savedLayouts[val]);
             }} 
             style={{ padding: '8px', borderRadius: '4px', border: '1px solid var(--color-border)', background: 'var(--color-surface-2)', color: 'var(--color-text)' }}
@@ -605,22 +583,11 @@ export default function LeadAnalyticsPage() {
             case 'funnel': widgetContent = <FunnelChart filters={filters} />; break;
             case 'revenue_kpis': widgetContent = <RevenueKPIsWidget filters={filters} />; break;
             case 'revenue_charts': widgetContent = <RevenueChartsWidget filters={filters} />; break;
-            case 'sales_cycle': widgetContent = <SalesCycleWidget filters={filters} />; break;
-            case 'pipeline_vel': widgetContent = <PipelineVelocityWidget filters={filters} />; break;
-            case 'lost_leads': widgetContent = <LostReasonsChart filters={filters} />; break;
             case 'win_rate': widgetContent = <RepLeaderboard filters={filters} />; break;
-            case 'sla': widgetContent = <SLADashboardWidget filters={filters} />; break;
             case 'ai_revenue': widgetContent = <AIRevenueInsightsWidget filters={filters} />; break;
             case 'ai_predict': widgetContent = <AIPredictionWidget filters={filters} />; break;
-            case 'sales_prod': widgetContent = <SalesProductivityWidget filters={filters} />; break;
-            case 'marketing': widgetContent = <MarketingAnalyticsWidget filters={filters} />; break;
-            case 'geo': widgetContent = <GeographicWidget filters={filters} />; break;
-            case 'customer': widgetContent = <CustomerAnalyticsWidget filters={filters} />; break;
             case 'financial': widgetContent = <FinancialAnalyticsWidget filters={filters} />; break;
             case 'forecast': widgetContent = <RevenueForecastWidget filters={filters} />; break;
-            case 'executive': widgetContent = <ExecutiveSummaryWidget filters={filters} />; break;
-            case 'goal_tracking': widgetContent = <GoalTrackingWidget />; break;
-            case 'benchmark_analytics': widgetContent = <BenchmarkAnalyticsWidget />; break;
             case 'project_outcomes': widgetContent = <LeadToProjectOutcomesWidget filters={filters} />; break;
             default: return null;
           }

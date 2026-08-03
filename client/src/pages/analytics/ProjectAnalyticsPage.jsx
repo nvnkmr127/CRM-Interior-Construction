@@ -6,18 +6,7 @@ import styles from './ProjectAnalyticsPage.module.css'
 import { Select, Badge, DataTable, Avatar } from '../../components/ui'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { useBreadcrumbs } from '../../hooks/useBreadcrumbs'
-import TimelineAnalytics from '../../components/analytics/TimelineAnalytics'
-import ResourceAnalytics from '../../components/analytics/ResourceAnalytics'
-import TeamAnalytics from '../../components/analytics/TeamAnalytics'
-import TaskAnalytics from '../../components/analytics/TaskAnalytics'
-import QualityAnalytics from '../../components/analytics/QualityAnalytics'
-import SiteProgressAnalytics from '../../components/analytics/SiteProgressAnalytics'
-import DelayAnalytics from '../../components/analytics/DelayAnalytics'
-import ClientAnalytics from '../../components/analytics/ClientAnalytics'
-import RiskAnalytics from '../../components/analytics/RiskAnalytics'
 
-import ExecutiveAnalytics from '../../components/analytics/ExecutiveAnalytics'
-import AIForecastAnalytics from '../../components/analytics/AIForecastAnalytics'
 import GlobalFilterBar from '../../components/analytics/GlobalFilterBar'
 import { AnalyticsFilterProvider } from '../../context/AnalyticsFilterContext'
 import {
@@ -185,9 +174,6 @@ export default function ProjectAnalyticsPage() {
     <div className={styles.pageContainer}>
       {/* ── Global Filters ────────────────────────────────────────────── */}
       <GlobalFilterBar />
-
-      {/* ── Executive Dashboard Module ───────────────────────────────── */}
-      <ExecutiveAnalytics />
 
       {loading ? (
         <>
@@ -487,36 +473,6 @@ export default function ProjectAnalyticsPage() {
         )}
       </div>
 
-      {/* ── Timeline Analytics Module ────────────────────────────────── */}
-      <TimelineAnalytics />
-
-      {/* ── Resource Analytics Module ────────────────────────────────── */}
-      <ResourceAnalytics />
-
-      {/* ── Team Performance Analytics Module ────────────────────────── */}
-      <TeamAnalytics />
-
-      {/* ── Task Analytics Module ────────────────────────────────────── */}
-      <TaskAnalytics />
-
-      {/* ── Quality Analytics Module ─────────────────────────────────── */}
-      <QualityAnalytics />
-
-      {/* ── Site Progress Analytics Module ───────────────────────────── */}
-      <SiteProgressAnalytics />
-
-      {/* ── Delay Analytics Module ───────────────────────────────────── */}
-      <DelayAnalytics />
-
-      {/* ── Client Analytics Module ──────────────────────────────────── */}
-      <ClientAnalytics />
-
-
-      {/* ── Risk Analytics Module ────────────────────────────────────── */}
-      <RiskAnalytics />
-
-      {/* ── AI Forecast Analytics Module ─────────────────────────────── */}
-      <AIForecastAnalytics />
         </>
       )}
     </div>
