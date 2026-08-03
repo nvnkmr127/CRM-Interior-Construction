@@ -22,7 +22,7 @@ const KanbanColumn = React.memo(function KanbanColumn({ stage, leads, activeId, 
   const isOverLimit = stage.wip_limit != null && leads.length > stage.wip_limit;
 
   return (
-    <div className={`flex flex-col rounded-xl min-w-[280px] max-w-[280px] max-h-full flex-shrink-0 mr-4 transition-all`} style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(10px)', borderColor: isOverLimit ? 'var(--color-danger, #ef4444)' : 'rgba(255, 255, 255, 0.4)', borderWidth: isOverLimit ? '2px' : '1px' }}>
+    <div className={`flex flex-col rounded-xl min-w-[280px] max-w-[280px] flex-shrink-0 mr-4 transition-all`} style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(10px)', borderColor: isOverLimit ? 'var(--color-danger, #ef4444)' : 'rgba(255, 255, 255, 0.4)', borderWidth: isOverLimit ? '2px' : '1px' }}>
       <div className="p-3 flex justify-between items-center rounded-t-xl transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', borderBottom: '1px solid rgba(255, 255, 255, 0.2)' }}>
         <div>
           <h3 className="font-semibold flex items-center" style={{ color: isOverLimit ? 'var(--color-danger, #ef4444)' : 'var(--color-text)' }}>
@@ -40,7 +40,7 @@ const KanbanColumn = React.memo(function KanbanColumn({ stage, leads, activeId, 
         )}
       </div>
       
-      <div ref={setNodeRef} className="flex-1 p-2 overflow-y-auto min-h-[150px]">
+      <div ref={setNodeRef} className="flex-1 p-2 min-h-[150px]">
         <SortableContext items={visibleLeads.map(l => l.id)} strategy={verticalListSortingStrategy}>
           {visibleLeads.map(lead => (
             <KanbanLeadCard 
@@ -222,7 +222,7 @@ export default function LeadKanbanBoard({ initialLeads = [], stages = [], reps =
   const activeLead = useMemo(() => leads.find(l => l.id === activeId), [activeId, leads]);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col">
       
       {toast && (
         <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg text-white font-medium transition-all ${toast.type === 'error' ? 'bg-red-500' : 'bg-green-500'}`}>
@@ -232,8 +232,8 @@ export default function LeadKanbanBoard({ initialLeads = [], stages = [], reps =
 
       <LeadFilterBar filters={filters} setFilters={setFilters} reps={reps} />
 
-      <div className="flex-1 overflow-x-auto overflow-y-hidden pb-4">
-        <div className="flex h-full items-start">
+      <div className="flex-1 overflow-x-auto pb-4">
+        <div className="flex items-start">
           <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             {stages.map(stage => (
               <KanbanColumn 
