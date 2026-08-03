@@ -22,7 +22,10 @@ const sanitizeDbUrl = (urlStr) => {
 };
 
 const fallbackUrl = 'postgresql://neondb_owner:npg_K0JQzHbZVyU3@ep-noisy-smoke-aw8j01pj-pooler.c-12.us-east-1.aws.neon.tech/neondb';
-const rawUrl = process.env.DATABASE_URL || fallbackUrl;
+let rawUrl = process.env.DATABASE_URL || fallbackUrl;
+if (rawUrl.includes('aivencloud.com')) {
+  rawUrl = fallbackUrl;
+}
 const useSSL = rawUrl && !rawUrl.includes('localhost') && !rawUrl.includes('127.0.0.1');
 
 if (useSSL) {
@@ -43,7 +46,10 @@ pool.on('error', (err) => {
   console.error('Unexpected error on idle DB client — connection will be replaced by the pool', err);
 });
 
-const rawReadUrl = process.env.READ_DATABASE_URL || rawUrl;
+let rawReadUrl = process.env.READ_DATABASE_URL || rawUrl;
+if (rawReadUrl.includes('aivencloud.com')) {
+  rawReadUrl = fallbackUrl;
+}
 const readUrl = sanitizeDbUrl(rawReadUrl);
 const useReadSSL = rawReadUrl && !rawReadUrl.includes('localhost') && !rawReadUrl.includes('127.0.0.1');
 
