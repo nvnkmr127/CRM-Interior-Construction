@@ -26,7 +26,6 @@ try { require('./services/timeline/timelineWriter'); } catch (e) { console.warn(
 
 app.set('trust proxy', 1);
 app.use(helmet({ crossOriginResourcePolicy: false }));
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true }));
 app.use(morgan('dev'));
 
 const path = require('path');
