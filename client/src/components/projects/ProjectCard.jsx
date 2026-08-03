@@ -44,7 +44,7 @@ export default function ProjectCard({ project, onClick }) {
   };
 
   let statusKey = displayProject.overdue ? 'overdue' : (displayProject.status?.toLowerCase() || 'active');
-  if (displayProject.deleted_at) {
+  if (displayProject.deleted_at || displayProject.deletedAt) {
     statusKey = 'deleted';
   }
   const statusInfo = STATUS_MAP[statusKey] || STATUS_MAP.active;

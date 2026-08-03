@@ -114,11 +114,12 @@ export default function ProjectsPage() {
   }, [location.search, navigate]);
 
   const counts = {
-    active: statusFilter === 'active' ? total : (statusFilter === 'all' ? projects.filter(p => p.status === 'active' && !p.deleted_at).length : 0),
-    on_hold: statusFilter === 'on_hold' ? total : (statusFilter === 'all' ? projects.filter(p => p.status === 'on_hold' && !p.deleted_at).length : 0),
-    completed: statusFilter === 'completed' ? total : (statusFilter === 'all' ? projects.filter(p => p.status === 'completed' && !p.deleted_at).length : 0),
-    overdue: statusFilter === 'overdue' ? total : (statusFilter === 'all' ? projects.filter(p => p.overdue && !p.deleted_at).length : 0),
-    deleted: statusFilter === 'deleted' ? total : (statusFilter === 'all' ? projects.filter(p => p.deleted_at).length : 0),
+    all: statusFilter === 'all' ? total : projects.length,
+    active: statusFilter === 'active' ? total : (statusFilter === 'all' ? projects.filter(p => p.status === 'active' && !(p.deleted_at || p.deletedAt)).length : 0),
+    on_hold: statusFilter === 'on_hold' ? total : (statusFilter === 'all' ? projects.filter(p => p.status === 'on_hold' && !(p.deleted_at || p.deletedAt)).length : 0),
+    completed: statusFilter === 'completed' ? total : (statusFilter === 'all' ? projects.filter(p => p.status === 'completed' && !(p.deleted_at || p.deletedAt)).length : 0),
+    overdue: statusFilter === 'overdue' ? total : (statusFilter === 'all' ? projects.filter(p => p.overdue && !(p.deleted_at || p.deletedAt)).length : 0),
+    deleted: statusFilter === 'deleted' ? total : (statusFilter === 'all' ? projects.filter(p => (p.deleted_at || p.deletedAt)).length : 0),
   };
 
   const pmOptions = ['all', ...Array.from(new Set(projects.map(p => p.pm_name || p.pmName).filter(Boolean)))];
@@ -157,6 +158,7 @@ export default function ProjectsPage() {
     });
 
   const statChips = [
+    { key: 'all', label: 'All', count: counts.all, color: 'var(--color-primary)', bg: 'var(--color-primary-bg)' },
     { key: 'active', label: 'Active', count: counts.active, color: 'var(--color-info)', bg: 'var(--color-info-bg)' },
     { key: 'on_hold', label: 'On Hold', count: counts.on_hold, color: 'var(--color-warning)', bg: 'var(--color-warning-bg)' },
     { key: 'completed', label: 'Completed', count: counts.completed, color: 'var(--color-success)', bg: 'var(--color-success-bg)' },
@@ -196,15 +198,6 @@ export default function ProjectsPage() {
             </button>
           );
         })}
-        {statusFilter !== 'all' && (
-          <button
-            className={styles.statChip}
-            onClick={() => setStatusFilter('all')}
-            style={{ color: 'var(--color-text-secondary)', borderColor: 'var(--color-border)', fontSize: 'var(--text-xs)' }}
-          >
-            Clear filter ×
-          </button>
-        )}
       </div>
 
       {/* Filter Bar */}
@@ -343,7 +336,7 @@ export default function ProjectsPage() {
                       </div>
                     </td>
                     <td className={styles.listTd}>
-                      <StatusBadge status={p.status} deleted={!!p.deleted_at} />
+                      <StatusBadge status={p.status} deleted={!!(p.deleted_at || p.deletedAt)} />
                     </td>
                     <td className={styles.listTd}>
                       <span className={styles.phaseTag}>{p.phase || '—'}</span>

@@ -222,7 +222,7 @@ export default function LeadKanbanBoard({ initialLeads = [], stages = [], reps =
   const activeLead = useMemo(() => leads.find(l => l.id === activeId), [activeId, leads]);
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col h-auto min-h-min">
       
       {toast && (
         <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg text-white font-medium transition-all ${toast.type === 'error' ? 'bg-red-500' : 'bg-green-500'}`}>
@@ -232,7 +232,7 @@ export default function LeadKanbanBoard({ initialLeads = [], stages = [], reps =
 
       <LeadFilterBar filters={filters} setFilters={setFilters} reps={reps} />
 
-      <div className="flex-1 overflow-x-auto pb-4">
+      <div className="flex-1 overflow-x-auto overflow-y-visible pb-4">
         <div className="flex items-start">
           <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             {stages.map(stage => (
