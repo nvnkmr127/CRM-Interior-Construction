@@ -55,7 +55,7 @@ const enforceProjectAccess = require('../middleware/enforceProjectAccess');
 router.get('/debug-db', async (req, res, next) => {
   try {
     const { pool } = require('../config/db');
-    const { rows } = await pool.query('SELECT * FROM projects WHERE deleted_at IS NOT NULL LIMIT 1');
+    const { rows } = await pool.query('SELECT id, name, tenant_id, status FROM projects');
     return res.json({ success: true, data: rows });
   } catch (err) {
     return res.json({ success: false, error: err.message });

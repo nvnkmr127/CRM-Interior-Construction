@@ -3584,6 +3584,39 @@ export const setupMockInterceptor = (api) => {
             responseData.data = mockDatabase.departments;
           }
           // --- ROLES & PERMISSIONS MOCK DATA END ---
+          // ANALYTICS
+          else if (url.includes('/analytics/projects')) {
+            if (method === 'get') {
+              const projects = mockDatabase.projects || [];
+              const statusCounts = {};
+              projects.forEach(p => {
+                const s = p.status || 'unknown';
+                statusCounts[s] = (statusCounts[s] || 0) + 1;
+              });
+              const statusDistribution = Object.keys(statusCounts).map(s => ({
+                status: s,
+                count: statusCounts[s]
+              }));
+              
+              responseData.data = {
+                statusDistribution,
+                revenueTimeline: [],
+                topProjects: projects.map(p => ({ id: p.id, name: p.name, value: p.value || 0, status: p.status })).sort((a,b)=>b.value-a.value).slice(0, 5),
+                delayedProjects: []
+              };
+            }
+          }
+          else if (url.includes('/analytics/')) {
+             if (method === 'get') {
+               // Generic fallback for other analytics routes in mock mode
+               responseData.data = {
+                 summary: { total: 0 },
+                 funnel: [],
+                 revenue: 0,
+                 pipeline: []
+               };
+             }
+          }
           else if (isMutation) {
             console.warn(
               `[MockSession] ${method.toUpperCase()} ${config.url} intercepted — request NOT sent to server.`

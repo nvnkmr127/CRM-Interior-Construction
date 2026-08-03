@@ -98,6 +98,7 @@ const DATE_RANGES = [
   { key: '30D', label: '30D' },
   { key: '90D', label: '90D' },
   { key: '1Y', label: '1Y' },
+  { key: 'ALL', label: 'ALL' },
 ]
 
 /* ─── Component ──────────────────────────────────────────────────────── */
@@ -106,7 +107,7 @@ export default function ProjectAnalyticsPage() {
   useBreadcrumbs([{ label: 'Analytics' }, { label: 'Projects' }])
 
   const navigate = useNavigate()
-  const [dateRange, setDateRange] = useState('1Y')
+  const [dateRange, setDateRange] = useState('ALL')
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState(null)
 
@@ -122,13 +123,13 @@ export default function ProjectAnalyticsPage() {
 
     getProjectAnalytics(rangeToParams[dateRange])
       .then(res => {
-        const raw = res.data?.data || {}
+        const raw = res || {}
         const statusData    = (raw.statusDistribution || []).map(s => {
           const statusStr = s.status || 'unknown';
           return {
             name: statusStr.charAt(0).toUpperCase() + statusStr.slice(1).replace('_', ' '),
             count: s.count,
-            id: statusStr,
+            id: statusStr.toLowerCase(),
           };
         })
         const revenueData   = (raw.revenueTimeline   || []).map(r => ({
@@ -169,9 +170,20 @@ export default function ProjectAnalyticsPage() {
           })
         }
       })
-      .catch(() => setData(getEmptyData()))
+      .catch((err) => {
+        console.error('Project Analytics Fetch Error:', err.response?.data || err);
+        setData({ ...getEmptyData(), debugError: err.response?.data?.error || err.message });
+      })
       .finally(() => setLoading(false))
   }, [dateRange])
+
+  if (loading) {
+    return <div className="flex h-64 items-center justify-center text-gray-500">Loading analytics...</div>
+  }
+
+  if (data?.debugError) {
+    return <div className="p-8 text-red-500 bg-red-100 rounded">Error from API: {data.debugError}</div>
+  }
 
   const totalProjects = data ? data.statusData.reduce((s, d) => s + d.count, 0) : 0
 

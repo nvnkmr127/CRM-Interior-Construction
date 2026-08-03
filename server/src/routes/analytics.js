@@ -338,7 +338,7 @@ router.get('/leads/lost_reasons', async (req, res) => {
  * Returns analytics data for projects.
  * Query params: from (ISO date), to (ISO date)
  */
-router.get('/projects', authorize('analytics:read'), async (req, res) => {
+router.get('/projects', authorize('projects:read'), async (req, res) => {
   try {
     const { from, to } = req.query;
     const tenantId = req.tenantId;
@@ -429,7 +429,7 @@ router.get('/projects', authorize('analytics:read'), async (req, res) => {
     });
   } catch (err) {
     console.error('Project Analytics Error:', err);
-    res.status(500).json({ success: false, error: 'Failed to fetch project analytics data' });
+    res.status(500).json({ success: false, error: err.message || 'Failed to fetch project analytics data' });
   }
 });
 

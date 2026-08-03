@@ -6,7 +6,7 @@ export const getRevenueAnalytics = (params) => api.get('/analytics/revenue-leads
 
 export const getLeadPredictions = (params) => api.get('/analytics/lead-predictions', { params }).then(r=>r.data.data);
 
-export const getProjectAnalytics = (params) => api.get('/analytics/projects', { params }).then(r=>r.data.data);
+export const getProjectAnalytics = (params) => api.get('/analytics/projects', { params: { ...params, _cb: Date.now() } }).then(r=>r.data.data);
 
 export const getTimelineAnalytics = (params) => api.get('/analytics/timeline', { params }).then(r=>r.data.data);
 
