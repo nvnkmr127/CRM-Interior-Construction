@@ -139,6 +139,14 @@ export default function ProjectsPage() {
         p.clientName?.toLowerCase().includes(q)
       );
     })
+    .filter(p => {
+      if (statusFilter === 'all') {
+        const isDeleted = p.deleted_at || p.deletedAt;
+        if (isDeleted) return false;
+        return p.status === 'active' || p.status === 'on_hold';
+      }
+      return true;
+    })
     .sort((a, b) => {
       if (sortBy === 'deadline_asc') {
         return new Date(a.target_date || a.targetDate || 0) - new Date(b.target_date || b.targetDate || 0);
