@@ -93,11 +93,15 @@ async function authenticate(req, res, next) {
         return res.status(401).json({ success: false, error: 'SESSION_TIMEOUT', message: 'Session expired due to inactivity.' });
       }
 
-      // Periodically update last_active_at (e.g. if older than 5 minutes) to avoid thrashing DB
+      // Update last_active_at if more than 5 minutes have passed to avoid spamming the DB
       if (diffMinutes > 5) {
-        pool.query('UPDATE sessions SET last_active_at = NOW() WHERE id = $1', [decoded.sessionId]).catch(() => {});
-        session.last_active_at = new Date().toISOString();
-        setCache(cacheKey, session, 300).catch(() => {});
+        try {
+          await pool.query('UPDATE sessions SET last_active_at = NOW() WHERE id = $1', [decoded.sessionId]);
+          session.last_active_at = new Date().toISOString();
+          await setCache(cacheKey, session, 300);
+        } catch (updateErr) {
+          console.warn('Failed to update session activity', updateErr);
+        }
       }
 
       // V3: Risk-Based Authentication & Session Scoring
