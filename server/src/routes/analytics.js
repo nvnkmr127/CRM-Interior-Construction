@@ -333,74 +333,12 @@ router.get('/leads/lost_reasons', async (req, res) => {
   }
 });
 
-router.get('/projects', authorize('analytics:read'), async (req, res) => {
-  const tenantId = req.tenantId;
-  const { from, to } = getDates(req);
-
-  try {
-    const [kpisRes, distRes, revenueRes, completionRes, delayedRes] = await Promise.all([
-      pool.query(`
-        SELECT
-          COUNT(*) FILTER (WHERE p.status='active') as active,
-          COUNT(*) FILTER (WHERE p.status='completed' AND p.updated_at BETWEEN $2 AND $3) as completed_period,
-          COALESCE(SUM(pm.paid_amount),0) as revenue_collected,
-          ROUND(AVG(EXTRACT(EPOCH FROM (COALESCE(p.updated_at,NOW())-p.created_at))/86400)) as avg_duration_days
-        FROM projects p
-        LEFT JOIN payment_milestones pm ON pm.project_id=p.id AND pm.status='paid'
-        WHERE p.tenant_id=$1 AND p.deleted_at IS NULL
-      `, [tenantId, from, to]),
-      pool.query(`
-        SELECT status, COUNT(*) as count FROM projects
-        WHERE tenant_id=$1 AND deleted_at IS NULL GROUP BY status
-      `, [tenantId]),
-      pool.query(`
-        SELECT date_trunc('month', pm.due_date) as month,
-          COALESCE(SUM(pm.amount),0) as planned,
-          COALESCE(SUM(pm.paid_amount) FILTER (WHERE pm.status='paid'),0) as collected
-        FROM payment_milestones pm
-        JOIN projects p ON p.id=pm.project_id
-        WHERE p.tenant_id=$1 AND pm.due_date >= NOW()-INTERVAL '6 months'
-        GROUP BY month ORDER BY month
-      `, [tenantId]),
-      pool.query(`
-        SELECT p.id, p.name, p.client_name,
-          COUNT(t.id) as total_tasks,
-          COUNT(t.id) FILTER (WHERE t.status='done') as done_tasks,
-          ROUND(100.0 * COUNT(t.id) FILTER (WHERE t.status='done') / NULLIF(COUNT(t.id),0)) as pct
-        FROM projects p
-        LEFT JOIN tasks t ON t.project_id=p.id AND t.deleted_at IS NULL
-        WHERE p.tenant_id=$1 AND p.status='active' AND p.deleted_at IS NULL
-        GROUP BY p.id ORDER BY pct ASC NULLS LAST LIMIT 8
-      `, [tenantId]),
-      pool.query(`
-        SELECT p.*, u.name as pm_name,
-          EXTRACT(DAY FROM NOW()-p.target_date) as days_overdue,
-          (SELECT ph.name FROM project_phases ph WHERE ph.project_id=p.id AND ph.status='in_progress' LIMIT 1) as current_phase
-        FROM projects p LEFT JOIN users u ON u.id=p.pm_id
-        WHERE p.tenant_id=$1 AND p.status='active'
-        AND p.target_date < NOW() AND p.deleted_at IS NULL
-        ORDER BY days_overdue DESC
-      `, [tenantId])
-    ]);
-
-    return success(res, {
-      kpis: kpisRes.rows[0],
-      statusDist: distRes.rows,
-      monthlyRevenue: revenueRes.rows,
-      taskCompletion: completionRes.rows,
-      delayedProjects: delayedRes.rows
-    });
-  } catch (error) {
-    res.status(500).json(fail('Projects analytics failed'));
-  }
-});
-
 /**
  * GET /api/analytics/projects
  * Returns analytics data for projects.
  * Query params: from (ISO date), to (ISO date)
  */
-router.get('/projects', async (req, res) => {
+router.get('/projects', authorize('analytics:read'), async (req, res) => {
   try {
     const { from, to } = req.query;
     const tenantId = req.tenantId;
@@ -423,7 +361,7 @@ router.get('/projects', async (req, res) => {
     const statusQuery = `
       SELECT p.status, COUNT(p.id) as count
       FROM projects p
-      WHERE p.tenant_id = $1 ${dateFilter}
+      WHERE p.tenant_id = $1 AND p.deleted_at IS NULL ${dateFilter}
       GROUP BY p.status
       ORDER BY count DESC
     `;
@@ -436,7 +374,7 @@ router.get('/projects', async (req, res) => {
         SUM(pm.amount) as planned,
         SUM(CASE WHEN pm.status = 'paid' THEN pm.amount ELSE 0 END) as collected
       FROM payment_milestones pm
-      JOIN projects p ON p.id = pm.project_id AND p.tenant_id = $1
+      JOIN projects p ON p.id = pm.project_id AND p.tenant_id = $1 AND p.deleted_at IS NULL
       WHERE pm.due_date >= NOW() - INTERVAL '12 months'
       GROUP BY DATE_TRUNC('month', pm.due_date)
       ORDER BY DATE_TRUNC('month', pm.due_date) ASC
@@ -451,6 +389,7 @@ router.get('/projects', async (req, res) => {
       FROM projects p
       LEFT JOIN users u ON u.id = p.pm_id AND u.tenant_id = $1
       WHERE p.tenant_id = $1
+        AND p.deleted_at IS NULL
         AND p.target_date < CURRENT_DATE
         AND p.status NOT IN ('completed', 'cancelled')
       ORDER BY days_delayed DESC
@@ -462,7 +401,7 @@ router.get('/projects', async (req, res) => {
     const topProjectsQuery = `
       SELECT p.id, p.name, p.contract_value as value, p.status
       FROM projects p
-      WHERE p.tenant_id = $1 ${dateFilter}
+      WHERE p.tenant_id = $1 AND p.deleted_at IS NULL ${dateFilter}
         AND p.contract_value IS NOT NULL
       ORDER BY p.contract_value DESC
       LIMIT 5
