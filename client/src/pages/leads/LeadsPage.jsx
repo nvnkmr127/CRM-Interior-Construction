@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { parseFiltersFromURL, serializeFiltersToURL } from '../../utils/filterSync';
 import { Button, PermissionButton } from '../../components/ui';
 import { useToast } from '../../store/toastContext';
 import api from '../../api/axios';
@@ -24,8 +25,10 @@ export default function LeadsPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const isAdmin = user?.role === 'admin' || user?.role?.name === 'admin' || user?.role === 'superadmin' || user?.role?.name === 'superadmin';
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  
+  const [search, setSearch] = useState(params.get('search') || '');
+  const [debouncedSearch, setDebouncedSearch] = useState(params.get('search') || '');
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -39,38 +42,84 @@ export default function LeadsPage() {
   }, [debouncedSearch]);
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
     let changed = false;
+    const currentParams = new URLSearchParams(location.search);
     
-    if (params.get('new') === 'true') {
+    if (currentParams.get('new') === 'true') {
       setIsFormOpen(true);
-      params.delete('new');
+      currentParams.delete('new');
       changed = true;
     }
     
-    if (params.get('id')) {
-      setSelectedLeadId(params.get('id'));
-      params.delete('id');
+    if (currentParams.get('id')) {
+      setSelectedLeadId(currentParams.get('id'));
+      currentParams.delete('id');
       changed = true;
     }
 
     if (changed) {
-      navigate({ search: params.toString() }, { replace: true });
+      navigate({ search: currentParams.toString() }, { replace: true });
     }
   }, [location.search, navigate]);
 
-  const [assigneeFilter, setAssigneeFilter] = useState('');
-  const [sourceFilter, setSourceFilter] = useState('All Sources');
-  const [scoreRange, setScoreRange] = useState('all');
-  const [intentFilter, setIntentFilter] = useState('all');
-  const [sortBy, setSortBy] = useState(() => localStorage.getItem('crm_leads_sortBy') || 'latest');
+  const [assigneeFilter, setAssigneeFilter] = useState(params.get('assigneeId') || '');
+  const [sourceFilter, setSourceFilter] = useState(params.get('source') || 'All Sources');
+  const [scoreRange, setScoreRange] = useState(params.get('scoreRange') || 'all');
+  const [intentFilter, setIntentFilter] = useState(params.get('intent') || 'all');
+  const [sortBy, setSortBy] = useState(() => params.get('sortBy') || localStorage.getItem('crm_leads_sortBy') || 'latest');
+  const [createdFrom, setCreatedFrom] = useState(params.get('createdFrom') || '');
+  const [createdTo, setCreatedTo] = useState(params.get('createdTo') || '');
+  const [stageIdFilter, setStageIdFilter] = useState(params.get('stageId') || '');
+
+  // Sync state changes to URL
+  const isFirstRender = React.useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    const currentParams = new URLSearchParams(location.search);
+    const newFiltersStr = serializeFiltersToURL({
+      search: debouncedSearch,
+      assigneeId: assigneeFilter,
+      source: sourceFilter,
+      scoreRange,
+      intent: intentFilter,
+      createdFrom,
+      createdTo,
+      stageId: stageIdFilter,
+      sortBy
+    });
+    
+    // Strip old filter params
+    ['search', 'assigneeId', 'source', 'scoreRange', 'intent', 'createdFrom', 'createdTo', 'stageId', 'sortBy'].forEach(k => currentParams.delete(k));
+    
+    const finalSearch = new URLSearchParams(currentParams.toString() + (currentParams.toString() && newFiltersStr ? '&' : '') + newFiltersStr).toString();
+    
+    if (finalSearch !== location.search.substring(1)) {
+      navigate({ search: finalSearch }, { replace: true });
+    }
+  }, [debouncedSearch, assigneeFilter, sourceFilter, scoreRange, intentFilter, createdFrom, createdTo, stageIdFilter, sortBy, navigate, location.search]);
+
+  // Sync URL changes back to state (for back button)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    if (urlParams.get('search') !== null && urlParams.get('search') !== debouncedSearch) setSearch(urlParams.get('search') || '');
+    if (urlParams.get('assigneeId') !== null && urlParams.get('assigneeId') !== assigneeFilter) setAssigneeFilter(urlParams.get('assigneeId') || '');
+    if (urlParams.get('source') !== null && urlParams.get('source') !== sourceFilter) setSourceFilter(urlParams.get('source') || 'All Sources');
+    if (urlParams.get('scoreRange') !== null && urlParams.get('scoreRange') !== scoreRange) setScoreRange(urlParams.get('scoreRange') || 'all');
+    if (urlParams.get('intent') !== null && urlParams.get('intent') !== intentFilter) setIntentFilter(urlParams.get('intent') || 'all');
+    if (urlParams.get('createdFrom') !== null && urlParams.get('createdFrom') !== createdFrom) setCreatedFrom(urlParams.get('createdFrom') || '');
+    if (urlParams.get('createdTo') !== null && urlParams.get('createdTo') !== createdTo) setCreatedTo(urlParams.get('createdTo') || '');
+    if (urlParams.get('stageId') !== null && urlParams.get('stageId') !== stageIdFilter) setStageIdFilter(urlParams.get('stageId') || '');
+    if (urlParams.get('sortBy') !== null && urlParams.get('sortBy') !== sortBy) setSortBy(urlParams.get('sortBy') || 'latest');
+  }, [location.search]);
 
   useEffect(() => {
     localStorage.setItem('crm_leads_sortBy', sortBy);
   }, [sortBy]);
   
-  const queryParams = new URLSearchParams(location.search);
-  const initialView = queryParams.get('view') || 'dashboard';
+  const initialView = params.get('view') || 'dashboard';
   const [view, setView] = useState(initialView);
 
   useEffect(() => {
@@ -92,8 +141,6 @@ export default function LeadsPage() {
   const [stageMenuLeadId, setStageMenuLeadId] = useState(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [createdFrom, setCreatedFrom] = useState('');
-  const [createdTo, setCreatedTo] = useState('');
 
   const [page, setPage] = useState(1);
   const limit = 20;
@@ -107,13 +154,14 @@ export default function LeadsPage() {
     if (intentFilter && intentFilter !== 'all') f.intent = intentFilter;
     if (createdFrom) f.createdFrom = createdFrom;
     if (createdTo) f.createdTo = createdTo;
+    if (stageIdFilter) f.stageId = stageIdFilter;
     if (sortBy) {
       if (sortBy === 'latest') { f.sortBy = 'created_at'; f.sortDesc = true; }
       else if (sortBy === 'score') { f.sortBy = 'score'; f.sortDesc = true; }
       else if (sortBy === 'name') { f.sortBy = 'name'; f.sortDesc = false; }
     }
     return f;
-  }, [debouncedSearch, sourceFilter, assigneeFilter, scoreRange, intentFilter, sortBy, createdFrom, createdTo, page, limit]);
+  }, [debouncedSearch, sourceFilter, assigneeFilter, scoreRange, intentFilter, sortBy, createdFrom, createdTo, stageIdFilter, page, limit]);
 
   const { leads, stages, stats, total, loading, error, optimisticStageChange, bulkChangeStage, bulkDelete, refetch } = useLeads(filters);
 
@@ -179,6 +227,7 @@ export default function LeadsPage() {
     setIntentFilter('all');
     setCreatedFrom('');
     setCreatedTo('');
+    setStageIdFilter('');
     setPage(1);
   };
 
@@ -245,6 +294,7 @@ export default function LeadsPage() {
           assignees={assignees}
           createdFrom={createdFrom} setCreatedFrom={setCreatedFrom}
           createdTo={createdTo} setCreatedTo={setCreatedTo}
+          stageIdFilter={stageIdFilter} setStageIdFilter={setStageIdFilter}
           onClearFilters={clearFilters}
         />
       )}

@@ -1,5 +1,7 @@
 /* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { serializeFiltersToURL, mapAnalyticsFiltersToLeadFilters } from '../../utils/filterSync';
 import { getLostReasons } from '../../api/analytics';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import styles from './LostReasonsChart.module.css';
@@ -13,6 +15,7 @@ const CustomTooltip = ({ active, payload }) => {
         <p className={styles.tooltipTitle}>{reason.replace(/_/g, ' ')}</p>
         <p className={styles.tooltipText}>Count: {count}</p>
         <p className={styles.tooltipSubtext}>{percentage}% of lost leads</p>
+        <p className={styles.tooltipSubtext} style={{marginTop: '4px', fontStyle: 'italic', fontSize: '10px', color: 'var(--color-primary)'}}>Click to view leads</p>
       </div>
     );
   }
@@ -20,6 +23,7 @@ const CustomTooltip = ({ active, payload }) => {
 };
 
 export default function LostReasonsChart({ filters }) {
+  const navigate = useNavigate();
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -68,6 +72,15 @@ export default function LostReasonsChart({ filters }) {
     return <div className={styles.emptyState}>No lost reasons recorded for this period.</div>;
   }
 
+  const handleBarClick = (data) => {
+    if (!data || !data.reason) return;
+    // For lost reasons, we might want to pass intent, stageId=Lost, and a specific search or tags if backend supports it.
+    // For now, let's just pass stageId = Lost (assuming 'Lost' is the ID or name for lost leads)
+    const leadFilters = mapAnalyticsFiltersToLeadFilters(filters, { stageId: 'Lost' });
+    const searchStr = serializeFiltersToURL(leadFilters);
+    navigate(`/leads?${searchStr}`);
+  };
+
   return (
     <div className={styles.container}>
       <h3 className={styles.title}>Lost Reasons Breakdown</h3>
@@ -86,7 +99,7 @@ export default function LostReasonsChart({ filters }) {
               style={{ fontSize: '12px', textTransform: 'capitalize' }}
             />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.04)' }} />
-            <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+            <Bar dataKey="count" radius={[0, 4, 4, 0]} onClick={handleBarClick} style={{ cursor: 'pointer' }}>
               {data.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill="var(--color-danger, #f87171)" />
               ))}

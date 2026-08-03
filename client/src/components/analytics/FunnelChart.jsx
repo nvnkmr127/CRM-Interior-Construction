@@ -1,10 +1,13 @@
 /* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, react-hooks/static-components */
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { serializeFiltersToURL, mapAnalyticsFiltersToLeadFilters } from '../../utils/filterSync';
 import { getLeadFunnel } from '../../api/analytics';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import styles from './FunnelChart.module.css';
 
 export default function FunnelChart({ filters }) {
+  const navigate = useNavigate();
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -65,10 +68,18 @@ export default function FunnelChart({ filters }) {
           <p className={styles.tooltipTitle}>{stage ? stage.toString().replace(/_/g, ' ') : ''}</p>
           <p className={styles.tooltipText}>Leads: {count}</p>
           {drop_off_rate > 0 && <p className={styles.tooltipDanger}>Drop-off: {drop_off_rate}%</p>}
+          <p className={styles.tooltipSubtext} style={{marginTop: '4px', fontStyle: 'italic', fontSize: '10px', color: 'var(--color-primary)'}}>Click to view leads</p>
         </div>
       );
     }
     return null;
+  };
+
+  const handleBarClick = (data) => {
+    if (!data || !data.stage) return;
+    const leadFilters = mapAnalyticsFiltersToLeadFilters(filters, { stageId: data.stage });
+    const searchStr = serializeFiltersToURL(leadFilters);
+    navigate(`/leads?${searchStr}`);
   };
 
   return (
@@ -88,7 +99,7 @@ export default function FunnelChart({ filters }) {
               tick={{ fontSize: 13, textTransform: 'capitalize', fill: 'var(--text)' }}
             />
             <Tooltip content={<CustomTooltip />} cursor={{fill: 'var(--color-bg-subtle, rgba(0,0,0,0.05))'}} />
-            <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={32}>
+            <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={32} onClick={handleBarClick} style={{ cursor: 'pointer' }}>
               {data.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={`var(--color-accent, hsl(270, 100%, ${55 + index * 8}%))`} />
               ))}

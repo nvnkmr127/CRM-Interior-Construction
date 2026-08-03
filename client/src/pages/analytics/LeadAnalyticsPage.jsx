@@ -1,6 +1,7 @@
 /* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, no-useless-assignment */
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom';
+import { parseFiltersFromURL, serializeFiltersToURL } from '../../utils/filterSync';
 import WidgetContainer from '../../components/analytics/WidgetContainer';
 import WidgetLibraryModal from '../../components/analytics/WidgetLibraryModal';
 import RemoveWidgetModal from '../../components/analytics/RemoveWidgetModal';
@@ -271,7 +272,8 @@ const DEFAULT_DASHBOARD_LAYOUT = [
 ];
 
 export default function LeadAnalyticsPage() {
-
+  const location = useLocation();
+  const navigate = useNavigate();
   usePageTitle('Lead Analytics');
   useBreadcrumbs([{ label: 'Analytics' }, { label: 'Leads' }]);
   
@@ -322,8 +324,41 @@ export default function LeadAnalyticsPage() {
     setIsEditMode(false);
   };
 
-  const [filters, setFilters] = useState(DEFAULT_FILTERS);
-  const [tempFilters, setTempFilters] = useState(DEFAULT_FILTERS); // For modal
+  const initialFilters = useMemo(() => {
+    return parseFiltersFromURL(location.search, DEFAULT_FILTERS);
+  }, [location.search]); // Parse from location.search to keep it current on mount
+
+  const [filters, setFilters] = useState(initialFilters);
+  const [tempFilters, setTempFilters] = useState(initialFilters); // For modal
+
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    const currentParams = new URLSearchParams(location.search);
+    const newFiltersStr = serializeFiltersToURL(filters);
+    
+    // clear default filter keys from current params
+    Object.keys(DEFAULT_FILTERS).forEach(k => currentParams.delete(k));
+    
+    const finalSearch = new URLSearchParams(currentParams.toString() + (currentParams.toString() && newFiltersStr ? '&' : '') + newFiltersStr).toString();
+    
+    if (finalSearch !== location.search.substring(1)) {
+      navigate({ search: finalSearch }, { replace: true });
+    }
+  }, [filters, navigate, location.search]);
+
+  // Handle URL changes from back/forward buttons
+  useEffect(() => {
+    const urlFilters = parseFiltersFromURL(location.search, DEFAULT_FILTERS);
+    if (JSON.stringify(urlFilters) !== JSON.stringify(filters)) {
+      setFilters(urlFilters);
+      setTempFilters(urlFilters);
+    }
+  }, [location.search]);
+
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [reportingCenterOpen, setReportingCenterOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);

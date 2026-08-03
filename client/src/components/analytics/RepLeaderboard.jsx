@@ -1,9 +1,12 @@
 /* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { serializeFiltersToURL, mapAnalyticsFiltersToLeadFilters } from '../../utils/filterSync';
 import { getRepPerformance } from '../../api/analytics';
 import styles from './RepLeaderboard.module.css';
 
 export default function RepLeaderboard({ filters }) {
+  const navigate = useNavigate();
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -60,6 +63,12 @@ export default function RepLeaderboard({ filters }) {
     link.click();
   };
 
+  const handleRepClick = (repId) => {
+    const leadFilters = mapAnalyticsFiltersToLeadFilters(filters, { assigneeId: repId });
+    const searchStr = serializeFiltersToURL(leadFilters);
+    navigate(`/leads?${searchStr}`);
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -70,7 +79,13 @@ export default function RepLeaderboard({ filters }) {
         {data.map((rep, index) => {
           const isTop = index === 0 && rep.won > 0;
           return (
-            <div key={rep.rep_id || index} className={`${styles.repCard} ${isTop ? styles.repCardTop : ''}`}>
+            <div 
+              key={rep.rep_id || index} 
+              className={`${styles.repCard} ${isTop ? styles.repCardTop : ''}`}
+              onClick={() => handleRepClick(rep.rep_id || rep.rep_name)}
+              style={{ cursor: 'pointer' }}
+              title="Click to view rep's leads"
+            >
               <div className={styles.cardHeader}>
                 <div className={styles.repInfo}>
                   <div className={styles.avatarContainer}>

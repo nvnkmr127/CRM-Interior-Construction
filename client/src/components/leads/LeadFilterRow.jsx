@@ -26,6 +26,7 @@ export default function LeadFilterRow({
   assignees,
   createdFrom, setCreatedFrom,
   createdTo, setCreatedTo,
+  stageIdFilter, setStageIdFilter,
   onClearFilters
 }) {
   const [savedFilters, setSavedFilters] = React.useState(() => {
@@ -44,7 +45,7 @@ export default function LeadFilterRow({
       id: Date.now().toString(),
       name,
       config: {
-        search, assigneeFilter, sourceFilter, scoreRange, intentFilter, sortBy, createdFrom, createdTo
+        search, assigneeFilter, sourceFilter, scoreRange, intentFilter, sortBy, createdFrom, createdTo, stageIdFilter
       }
     };
     
@@ -68,7 +69,9 @@ export default function LeadFilterRow({
     if (typeof setIntentFilter === 'function') setIntentFilter(filter.config.intentFilter || 'all');
     setSortBy(filter.config.sortBy || 'latest');
     setCreatedFrom(filter.config.createdFrom || '');
+    setCreatedFrom(filter.config.createdFrom || '');
     setCreatedTo(filter.config.createdTo || '');
+    if (typeof setStageIdFilter === 'function') setStageIdFilter(filter.config.stageIdFilter || '');
   };
 
   const deleteSavedFilter = (id, e) => {
@@ -173,7 +176,7 @@ export default function LeadFilterRow({
           Save
         </button>
 
-        {(search || assigneeFilter || sourceFilter !== 'All Sources' || scoreRange !== 'all' || (intentFilter && intentFilter !== 'all') || createdFrom || createdTo) && (
+        {(search || assigneeFilter || sourceFilter !== 'All Sources' || scoreRange !== 'all' || (intentFilter && intentFilter !== 'all') || createdFrom || createdTo || stageIdFilter) && (
           <button className={styles.clearBtn} onClick={onClearFilters}>✕ Clear</button>
         )}
       </div>
