@@ -41,6 +41,7 @@ exports.listTasks = async (req, res) => {
     const filters = { page, limit, allTasks: true };
     if (req.query.projectId) filters.projectId = req.query.projectId;
     if (req.query.status) filters.status = req.query.status;
+    if (req.query.includeDeleted === 'true') filters.includeDeleted = true;
 
     const result = await taskRepository.findTasks(tenantId, filters);
     return success(res, result);
@@ -178,7 +179,11 @@ exports.deleteTask = async (req, res) => {
   try {
     const { tenantId } = req;
     const { id } = req.params;
-    await taskRepository.softDeleteTask(tenantId, id);
+    if (req.query.hard === 'true') {
+      await taskRepository.hardDeleteTask(tenantId, id);
+    } else {
+      await taskRepository.softDeleteTask(tenantId, id);
+    }
     return success(res, { deletedId: id });
   } catch (error) {
     console.error('Delete Task Error:', error);

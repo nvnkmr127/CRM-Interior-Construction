@@ -486,7 +486,8 @@ export default function MyTasksPage() {
         return date >= startOfWeek && date <= endOfWeek
       }).length,
       completed: tasks.filter(t => t.status === 'done').length,
-      deleted: tasks.filter(t => t.status === 'deleted').length
+      deleted: tasks.filter(t => ['soft_deleted', 'archived', 'deleted'].includes(t.status)).length,
+      allActive: tasks.filter(t => !['soft_deleted', 'archived', 'deleted'].includes(t.status)).length
     }
   }, [tasks])
 
@@ -808,7 +809,7 @@ export default function MyTasksPage() {
           style={{ borderColor: activeTab === 'all' ? 'var(--color-text)' : 'var(--color-border)' }}
         >
           <span className={styles.statDot} style={{ background: 'var(--color-text)' }} />
-          <span style={{ color: 'var(--color-text)', fontVariantNumeric: 'tabular-nums' }}>{tasks.length}</span>
+          <span style={{ color: 'var(--color-text)', fontVariantNumeric: 'tabular-nums' }}>{stats.allActive}</span>
           <span style={{ color: activeTab === 'all' ? 'var(--color-text)' : 'var(--color-text-secondary)' }}>All Tasks</span>
         </button>
         <button className={`${styles.statChip} ${activeTab === 'completed' ? styles.statChipActive : ''}`}
