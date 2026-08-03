@@ -5,9 +5,7 @@ import { getProfitabilityAnalytics } from '../../api/analytics';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import { Spinner, EmptyState } from '../../components/ui';
-import BudgetAnalytics from '../../components/analytics/BudgetAnalytics';
-import CashFlowAnalytics from '../../components/analytics/CashFlowAnalytics';
-import PaymentAnalytics from '../../components/analytics/PaymentAnalytics';
+
 import GlobalFilterBar from '../../components/analytics/GlobalFilterBar';
 import { AnalyticsFilterProvider } from '../../context/AnalyticsFilterContext';
 import styles from './ProjectProfitabilityReportPage.module.css';
@@ -372,10 +370,7 @@ export default function ProjectProfitabilityReportPage() {
         </div>
       )}
 
-      {/* ── Profitability Analytics Modules ──────────────────────────── */}
-      <BudgetAnalytics />
-      <CashFlowAnalytics />
-      <PaymentAnalytics />
+
     </div>
   );
 

@@ -5,11 +5,7 @@ import { getPortfolioBOQVarianceReport } from '../../api/projects';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import { Spinner, EmptyState } from '../../components/ui';
-import ProcurementAnalytics from '../../components/analytics/ProcurementAnalytics';
-import VendorAnalytics from '../../components/analytics/VendorAnalytics';
-import MaterialAnalytics from '../../components/analytics/MaterialAnalytics';
-import InventoryAnalytics from '../../components/analytics/InventoryAnalytics';
-import ChangeOrderAnalytics from '../../components/analytics/ChangeOrderAnalytics';
+
 import GlobalFilterBar from '../../components/analytics/GlobalFilterBar';
 import { AnalyticsFilterProvider } from '../../context/AnalyticsFilterContext';
 import styles from './BOQVarianceReportPage.module.css';
@@ -237,12 +233,7 @@ export default function BOQVarianceReportPage() {
         </div>
       )}
       
-      {/* ── BOQ Analytics Modules ──────────────────────────────────────── */}
-      <ProcurementAnalytics />
-      <VendorAnalytics />
-      <MaterialAnalytics />
-      <InventoryAnalytics />
-      <ChangeOrderAnalytics />
+
     </div>
   );
 

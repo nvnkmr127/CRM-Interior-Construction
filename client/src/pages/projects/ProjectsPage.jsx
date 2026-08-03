@@ -62,15 +62,18 @@ function MiniProgressBar({ value }) {
 export default function ProjectsPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [view, setView] = useState('grid');
+  
+  const queryParams = new URLSearchParams(location.search);
+  
+  const [view, setView] = useState(queryParams.get('view') || 'grid');
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [search, setSearch] = useState('');
-  const [pmFilter, setPmFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('deadline_asc');
+  const [statusFilter, setStatusFilter] = useState(queryParams.get('status') || 'all');
+  const [search, setSearch] = useState(queryParams.get('search') || '');
+  const [pmFilter, setPmFilter] = useState(queryParams.get('pm') || 'all');
+  const [sortBy, setSortBy] = useState(queryParams.get('sort') || 'deadline_asc');
   
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -104,6 +107,31 @@ export default function ProjectsPage() {
 
   useEffect(() => { loadProjects(); }, [page, limit, statusFilter, search, pmFilter]);
 
+  // Sync state changes to URL
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    let changed = false;
+
+    if (view !== 'grid') { params.set('view', view); changed = true; } 
+    else if (params.has('view')) { params.delete('view'); changed = true; }
+
+    if (statusFilter !== 'all') { params.set('status', statusFilter); changed = true; }
+    else if (params.has('status')) { params.delete('status'); changed = true; }
+
+    if (search) { params.set('search', search); changed = true; }
+    else if (params.has('search')) { params.delete('search'); changed = true; }
+
+    if (pmFilter !== 'all') { params.set('pm', pmFilter); changed = true; }
+    else if (params.has('pm')) { params.delete('pm'); changed = true; }
+
+    if (sortBy !== 'deadline_asc') { params.set('sort', sortBy); changed = true; }
+    else if (params.has('sort')) { params.delete('sort'); changed = true; }
+
+    if (changed) {
+      navigate({ search: params.toString() }, { replace: true });
+    }
+  }, [view, statusFilter, search, pmFilter, sortBy, navigate, location.search]);
+
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get('new') === 'true') {
@@ -111,7 +139,7 @@ export default function ProjectsPage() {
       params.delete('new');
       navigate({ search: params.toString() }, { replace: true });
     }
-  }, [location.search, navigate]);
+  }, []);
 
   const counts = {
     all: statusFilter === 'all' ? total : projects.length,

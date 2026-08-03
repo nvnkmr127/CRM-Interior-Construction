@@ -50,9 +50,13 @@ function formatLakhs(val) {
   return `₹${val}L`
 }
 
-function KpiCard({ label, value, sub, accentColor, icon }) {
+function KpiCard({ label, value, sub, accentColor, icon, onClick }) {
   return (
-    <div className={styles.kpiCard}>
+    <div 
+      className={styles.kpiCard} 
+      onClick={onClick}
+      style={onClick ? { cursor: 'pointer' } : undefined}
+    >
       <div className={styles.kpiTop}>
         <span className={styles.kpiLabel}>{label}</span>
         {icon && <span className={styles.kpiIcon} style={{ color: accentColor }}>{icon}</span>}
@@ -141,6 +145,7 @@ export default function ProjectAnalyticsPage() {
           status: p.status,
         }))
         const topProjects   = (raw.topProjects       || []).map(p => ({
+          id: p.id,
           name: p.name,
           value: p.value / 100000,
           status: p.status,
@@ -224,6 +229,7 @@ export default function ProjectAnalyticsPage() {
           sub="Currently running"
           accentColor="var(--color-info)"
           icon="◈"
+          onClick={() => navigate('/projects?status=active')}
         />
         <KpiCard
           label="Revenue Collected"
@@ -331,6 +337,8 @@ export default function ProjectAnalyticsPage() {
                     paddingAngle={3}
                     dataKey="count"
                     stroke="none"
+                    onClick={(entry) => navigate(`/projects?status=${entry.id || (entry.payload && entry.payload.id)}`)}
+                    style={{ cursor: 'pointer' }}
                   >
                     {data.statusData.map((entry) => (
                       <Cell key={entry.id} fill={STATUS_COLORS[entry.id]} />
@@ -402,6 +410,12 @@ export default function ProjectAnalyticsPage() {
                 radius={[0, 6, 6, 0]}
                 barSize={20}
                 label={{ position: 'right', formatter: v => `₹${v}L`, fontSize: 11, fill: 'var(--color-text-secondary)' }}
+                onClick={(entry) => {
+                  if (entry.id || (entry.payload && entry.payload.id)) {
+                    navigate(`/projects/${entry.id || entry.payload.id}`);
+                  }
+                }}
+                style={{ cursor: 'pointer' }}
               />
             </BarChart>
           </ResponsiveContainer>
@@ -411,7 +425,11 @@ export default function ProjectAnalyticsPage() {
       {/* ── Delayed Projects Table ────────────────────────────────────── */}
       <div className={styles.tableCard}>
         <div className={styles.tableHeaderRow}>
-          <div className={styles.tableTitle}>
+          <div 
+            className={styles.tableTitle} 
+            onClick={() => navigate('/projects?status=overdue')}
+            style={{ cursor: 'pointer' }}
+          >
             <span className={styles.tableTitleDot} />
             Delayed Projects
           </div>
