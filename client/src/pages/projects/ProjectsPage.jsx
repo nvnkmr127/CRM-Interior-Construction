@@ -141,11 +141,16 @@ export default function ProjectsPage() {
     })
     .filter(p => {
       if (statusFilter === 'all') {
-        const isDeleted = p.deleted_at || p.deletedAt;
-        if (isDeleted) return false;
-        return p.status === 'active' || p.status === 'on_hold';
+        // "in all column it should display all projects irrespective of status"
+        return true;
       }
-      return true;
+      if (statusFilter === 'deleted') {
+        return p.deleted_at || p.deletedAt;
+      }
+      if (statusFilter === 'overdue') {
+        return p.overdue && !(p.deleted_at || p.deletedAt);
+      }
+      return p.status === statusFilter && !(p.deleted_at || p.deletedAt);
     })
     .sort((a, b) => {
       if (sortBy === 'deadline_asc') {
