@@ -643,8 +643,8 @@ export default function RolesManager() {
   }, [searchQuery, filteredModules]);
 
   return (
-    <div className={!isModalOpen ? "mx-auto max-w-7xl p-4 sm:p-8 space-y-8" : "w-full h-full p-4 sm:p-6 flex flex-col"}>
-      <div className={!isModalOpen ? layoutStyles.configSection : ""} style={isModalOpen ? { display: 'flex', flexDirection: 'column', minHeight: '100%', flex: 1 } : {}}>
+    <div className={!isModalOpen ? "w-full space-y-8 fade-in" : "w-full h-full flex flex-col fade-in"}>
+      <div className={!isModalOpen ? layoutStyles.configSection : ""} style={isModalOpen ? { display: 'flex', flexDirection: 'column', minHeight: '100%', flex: 1, animation: 'fadeIn 0.3s ease-out' } : {}}>
         {!isModalOpen ? (
           <>
             <div className={layoutStyles.sectionHeader}>

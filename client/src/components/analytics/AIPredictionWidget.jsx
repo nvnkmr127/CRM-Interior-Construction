@@ -18,7 +18,7 @@ export default function AIPredictionWidget({ filters }) {
       getAIPredictions(filters)
         .then(resData => {
           if (!isMounted) return;
-          if (!resData || resData.length === 0) {
+          if (!resData || !Array.isArray(resData) || resData.length === 0) {
             setData([
               { month: 'Jan', current: 40000, predicted: 42000 },
               { month: 'Feb', current: 45000, predicted: 48000 },

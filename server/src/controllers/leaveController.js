@@ -31,9 +31,8 @@ exports.getLeaveImpact = async (req, res) => {
 
     const query = `
       SELECT p.id, p.name as project_name, p.status,
-             c.name as client_name
+             p.client_name
       FROM projects p
-      LEFT JOIN clients c ON p.client_id = c.id
       WHERE p.tenant_id = $1 AND p.status = 'active' AND p.deleted_at IS NULL
         AND (p.pm_id = $2 OR p.designer_id = $2 OR p.site_engineer_id = $2)
     `;

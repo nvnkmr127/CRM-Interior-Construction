@@ -3,7 +3,7 @@ import React from 'react';
 import styles from './SourceROITable.module.css';
 
 export default function SourceROITable({ data }) {
-  if (!data || data.length === 0) {
+  if (!data || !Array.isArray(data) || data.length === 0) {
     return <div className={styles.emptyState}>No source data available for this period.</div>;
   }
 

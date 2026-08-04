@@ -1,0 +1,38 @@
+[
+  {
+    "id": "9aee7873-796b-4ab9-bdbb-46872db1fc00",
+    "tenant_id": "fefd62a3-c984-4d90-b390-6163b65d3f94",
+    "user_id": "d3e5c5d1-63e8-4ec7-8a38-4913a36d329a",
+    "entity_type": "project",
+    "entity_id": "068943df-ae47-4bf8-98d1-64b90055c1ca",
+    "allocated_hours": "10.00",
+    "start_date": "2026-07-28T18:30:00.000Z",
+    "end_date": "2026-10-26T18:30:00.000Z",
+    "created_at": "2026-08-04T07:28:29.046Z",
+    "updated_at": "2026-08-04T07:28:29.046Z"
+  },
+  {
+    "id": "d55b2762-5d4b-4b00-bc34-1f11b16438bb",
+    "tenant_id": "fefd62a3-c984-4d90-b390-6163b65d3f94",
+    "user_id": "144aa867-5e5e-41b9-865d-bfcf752fadf0",
+    "entity_type": "project",
+    "entity_id": "068943df-ae47-4bf8-98d1-64b90055c1ca",
+    "allocated_hours": "20.00",
+    "start_date": "2026-07-28T18:30:00.000Z",
+    "end_date": "2026-10-26T18:30:00.000Z",
+    "created_at": "2026-08-04T07:28:29.046Z",
+    "updated_at": "2026-08-04T07:28:29.046Z"
+  },
+  {
+    "id": "f2f3fa6b-a2cd-455b-92e4-edac58da8834",
+    "tenant_id": "fefd62a3-c984-4d90-b390-6163b65d3f94",
+    "user_id": "144aa867-5e5e-41b9-865d-bfcf752fadf0",
+    "entity_type": "project",
+    "entity_id": "34a54b8c-17a9-47b3-9425-84ff3c546fea",
+    "allocated_hours": "10.00",
+    "start_date": "2026-07-28T18:30:00.000Z",
+    "end_date": "2026-10-26T18:30:00.000Z",
+    "created_at": "2026-08-04T07:28:29.046Z",
+    "updated_at": "2026-08-04T07:28:29.046Z"
+  }
+]

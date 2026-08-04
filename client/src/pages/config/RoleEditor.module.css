@@ -8,8 +8,6 @@
 }
 
 .stickyHeader {
-  position: sticky;
-  top: -24px; /* Offset for ConfigPage .content padding (var(--space-6) = 24px) */
   z-index: 10;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);

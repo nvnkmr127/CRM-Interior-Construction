@@ -17,7 +17,7 @@ export default function GeographicWidget({ filters }) {
       getGeographicAnalytics(filters)
         .then(resData => {
           if (!isMounted) return;
-          if (!resData || resData.length === 0) {
+          if (!resData || !Array.isArray(resData) || resData.length === 0) {
             setData([
               { region: 'North America', leads: 450, value: 850000, growth: '+15%' },
               { region: 'Europe', leads: 320, value: 620000, growth: '+8%' },

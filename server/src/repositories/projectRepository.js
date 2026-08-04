@@ -279,8 +279,10 @@ class ProjectRepository {
       whereClause += ` AND p.deleted_at IS NOT NULL`;
     } else if (status === 'overdue') {
       whereClause += ` AND p.target_date < CURRENT_DATE AND p.status NOT IN ('completed', 'cancelled') AND p.deleted_at IS NULL`;
+    } else if (status === 'active') {
+      whereClause += ` AND (p.status IS NULL OR LOWER(p.status) NOT IN ('on_hold', 'completed', 'overdue', 'cancelled', 'deleted')) AND p.deleted_at IS NULL`;
     } else if (status) {
-      whereClause += ` AND p.status = $${idx++} AND p.deleted_at IS NULL`;
+      whereClause += ` AND LOWER(p.status) = LOWER($${idx++}) AND p.deleted_at IS NULL`;
       values.push(status);
     } else if (!includeDeleted) {
       whereClause += ` AND p.deleted_at IS NULL`;

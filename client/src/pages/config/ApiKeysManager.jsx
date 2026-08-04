@@ -131,7 +131,7 @@ export default function ApiKeysManager() {
     },
     { key: 'status', label: 'Status', render: (k) => <Badge variant={k.status === 'active' ? 'success' : 'neutral'}>{k.status}</Badge> },
     { 
-      key: 'actions', label: '', align: 'right',
+      key: 'actions', label: '', align: 'right', width: '100px',
       render: (k) => (
         <Button variant="ghost" size="sm" style={{color:'var(--color-danger)'}} onClick={() => setRevokeTarget(k)}>
           Revoke
@@ -141,7 +141,7 @@ export default function ApiKeysManager() {
   ]
 
   return (
-    <div className={layoutStyles.configSection}>
+    <div className={`${layoutStyles.configSection} fade-in`}>
       <div className={layoutStyles.sectionHeader}>
         <div>
           <h2 className={layoutStyles.sectionTitle}>API Keys</h2>
@@ -150,7 +150,9 @@ export default function ApiKeysManager() {
         <Button variant="primary" onClick={() => setIsGenerateOpen(true)}>+ Generate Key</Button>
       </div>
 
-      <DataTable columns={columns} data={keys} />
+      <div className={layoutStyles.glassCard}>
+        <DataTable columns={columns} data={keys} />
+      </div>
 
       {/* Generate Modal */}
       <Modal

@@ -70,7 +70,7 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState(queryParams.get('status') || 'all');
+  const [statusFilter, setStatusFilter] = useState(queryParams.get('status') || 'active');
   const [search, setSearch] = useState(queryParams.get('search') || '');
   const [pmFilter, setPmFilter] = useState(queryParams.get('pm') || 'all');
   const [sortBy, setSortBy] = useState(queryParams.get('sort') || 'deadline_asc');
@@ -84,15 +84,16 @@ export default function ProjectsPage() {
     getProjects({ 
       page, 
       limit, 
-      includeDeleted: true,
-      status: statusFilter === 'all' ? undefined : statusFilter
+      includeDeleted: true
     })
       .then(res => {
         const rawData = res.data?.data || res.data?.results || res.data;
         const arr = Array.isArray(rawData) ? rawData : [];
         setProjects(arr);
         
-        if (res.data?.pagination) {
+        if (res.data?.meta?.total !== undefined) {
+          setTotal(res.data.meta.total);
+        } else if (res.data?.pagination) {
           setTotal(res.data.pagination.total || 0);
         } else if (res.data?.total !== undefined) {
           setTotal(res.data.total);
@@ -141,18 +142,14 @@ export default function ProjectsPage() {
     }
   }, []);
 
-  const counts = {
-    all: statusFilter === 'all' ? total : projects.length,
-    active: statusFilter === 'active' ? total : (statusFilter === 'all' ? projects.filter(p => p.status === 'active' && !(p.deleted_at || p.deletedAt)).length : 0),
-    on_hold: statusFilter === 'on_hold' ? total : (statusFilter === 'all' ? projects.filter(p => p.status === 'on_hold' && !(p.deleted_at || p.deletedAt)).length : 0),
-    completed: statusFilter === 'completed' ? total : (statusFilter === 'all' ? projects.filter(p => p.status === 'completed' && !(p.deleted_at || p.deletedAt)).length : 0),
-    overdue: statusFilter === 'overdue' ? total : (statusFilter === 'all' ? projects.filter(p => p.overdue && !(p.deleted_at || p.deletedAt)).length : 0),
-    deleted: statusFilter === 'deleted' ? total : (statusFilter === 'all' ? projects.filter(p => (p.deleted_at || p.deletedAt)).length : 0),
+  const isActiveStatus = (status) => {
+    const s = status?.toLowerCase();
+    return !s || s === 'active' || !['on_hold', 'completed', 'overdue', 'cancelled', 'deleted'].includes(s);
   };
 
   const pmOptions = ['all', ...Array.from(new Set(projects.map(p => p.pm_name || p.pmName).filter(Boolean)))];
 
-  const filtered = projects
+  const preFiltered = projects
     .filter(p => {
       if (pmFilter === 'all') return true;
       const name = p.pm_name || p.pmName || '';
@@ -166,7 +163,18 @@ export default function ProjectsPage() {
         p.client_name?.toLowerCase().includes(q) ||
         p.clientName?.toLowerCase().includes(q)
       );
-    })
+    });
+
+  const counts = {
+    all: preFiltered.length,
+    active: preFiltered.filter(p => isActiveStatus(p.status) && !(p.deleted_at || p.deletedAt)).length,
+    on_hold: preFiltered.filter(p => p.status?.toLowerCase() === 'on_hold' && !(p.deleted_at || p.deletedAt)).length,
+    completed: preFiltered.filter(p => p.status?.toLowerCase() === 'completed' && !(p.deleted_at || p.deletedAt)).length,
+    overdue: preFiltered.filter(p => p.overdue && !(p.deleted_at || p.deletedAt)).length,
+    deleted: preFiltered.filter(p => (p.deleted_at || p.deletedAt)).length,
+  };
+
+  const filtered = preFiltered
     .filter(p => {
       if (statusFilter === 'all') {
         // "in all column it should display all projects irrespective of status"
@@ -178,7 +186,10 @@ export default function ProjectsPage() {
       if (statusFilter === 'overdue') {
         return p.overdue && !(p.deleted_at || p.deletedAt);
       }
-      return p.status === statusFilter && !(p.deleted_at || p.deletedAt);
+      if (statusFilter === 'active') {
+        return isActiveStatus(p.status) && !(p.deleted_at || p.deletedAt);
+      }
+      return p.status?.toLowerCase() === statusFilter && !(p.deleted_at || p.deletedAt);
     })
     .sort((a, b) => {
       if (sortBy === 'deadline_asc') {
@@ -231,7 +242,7 @@ export default function ProjectsPage() {
                 background: isActive ? chip.bg : 'var(--color-surface)',
                 borderColor: isActive ? chip.color : 'var(--color-border)',
               }}
-              onClick={() => setStatusFilter(prev => prev === chip.key ? 'all' : chip.key)}
+              onClick={() => setStatusFilter(chip.key)}
             >
               <span className={styles.statDot} style={{ background: chip.color }} />
               <span style={{ color: chip.color, fontVariantNumeric: 'tabular-nums' }}>{chip.count}</span>

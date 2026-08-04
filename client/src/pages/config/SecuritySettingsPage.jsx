@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { PageHeader, Card, Button, Checkbox, Input } from '../../components/ui';
+import { Card, Button, Checkbox, Input } from '../../components/ui';
+import layoutStyles from './ConfigLayout.module.css';
 import { useToast } from '../../store/toastContext';
 import api from '../../api/axios';
 
@@ -74,11 +75,13 @@ export default function SecuritySettingsPage() {
   if (loading) return <div>Loading...</div>;
 
   return (
-    <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <PageHeader 
-        title="Enterprise Security" 
-        subtitle="Manage authentication and access policies for all users in this workspace."
-      />
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '24px' }} className="fade-in">
+      <div className={layoutStyles.sectionHeader}>
+        <div>
+          <h2 className={layoutStyles.sectionTitle}>Enterprise Security</h2>
+          <p className={layoutStyles.sectionDesc}>Manage authentication and access policies for all users in this workspace.</p>
+        </div>
+      </div>
 
       <Card title="Authentication & Session Policies">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

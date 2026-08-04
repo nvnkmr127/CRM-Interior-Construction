@@ -186,7 +186,7 @@ export default function UsersManager() {
 
   const columns = [
     {
-      key: 'user', label: 'User', 
+      key: 'user', label: 'User', width: '25%',
       render: (u) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setSelectedUserId(u.id)}>
           <Avatar name={u.name || '?'} size="sm" />
@@ -198,7 +198,7 @@ export default function UsersManager() {
       )
     },
     {
-      key: 'role', label: 'Role',
+      key: 'role', label: 'Role', width: '15%',
       render: (u) => {
         const roleLabel = u.role_name || roleOptions.find(r => r.value === u.role)?.label || u.role || 'No Role'
         return (
@@ -209,18 +209,18 @@ export default function UsersManager() {
       }
     },
     {
-      key: 'status', label: 'Status',
+      key: 'status', label: 'Status', width: '15%',
       render: (u) => {
         const statusVal = u.status || 'inactive'
         return <Badge variant={STATUS_COLORS[statusVal] || 'neutral'}>{statusVal.toUpperCase().replace('_', ' ')}</Badge>
       }
     },
     {
-      key: 'lastActive', label: 'Last Active',
+      key: 'lastActive', label: 'Last Active', width: '15%',
       render: (u) => u.lastActive ? new Date(u.lastActive).toLocaleString() : <span style={{color:'var(--color-text-muted)'}}>Never</span>
     },
     {
-      key: 'actions', label: 'Actions', align: 'right',
+      key: 'actions', label: 'Actions', align: 'right', width: '380px',
       render: (u) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', justifyContent: 'flex-end' }}>
           {u.status === 'pending_approval' || u.status === 'changes_requested' ? (
@@ -299,7 +299,7 @@ export default function UsersManager() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl p-4 sm:p-8 space-y-8">
+    <div className="w-full space-y-8 fade-in">
       <div className={layoutStyles.configSection}>
         <div className={layoutStyles.sectionHeader}>
           <div>
@@ -312,13 +312,13 @@ export default function UsersManager() {
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
 
-              <div style={{ display: 'flex', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-full)', padding: '2px', overflow: 'hidden', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.05)' }}>
                 <button 
-                  style={{ padding: '4px 8px', border: 'none', background: viewMode === 'table' ? 'var(--color-surface-hover)' : 'transparent', cursor: 'pointer' }}
+                  style={{ padding: '6px 14px', border: 'none', background: viewMode === 'table' ? 'var(--color-bg)' : 'transparent', color: viewMode === 'table' ? 'var(--color-text)' : 'var(--color-text-muted)', borderRadius: 'var(--radius-full)', fontWeight: viewMode === 'table' ? '600' : '500', cursor: 'pointer', transition: 'all 0.2s', boxShadow: viewMode === 'table' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}
                   onClick={() => setViewMode('table')}
                 >Table</button>
                 <button 
-                  style={{ padding: '4px 8px', border: 'none', background: viewMode === 'grid' ? 'var(--color-surface-hover)' : 'transparent', cursor: 'pointer' }}
+                  style={{ padding: '6px 14px', border: 'none', background: viewMode === 'grid' ? 'var(--color-bg)' : 'transparent', color: viewMode === 'grid' ? 'var(--color-text)' : 'var(--color-text-muted)', borderRadius: 'var(--radius-full)', fontWeight: viewMode === 'grid' ? '600' : '500', cursor: 'pointer', transition: 'all 0.2s', boxShadow: viewMode === 'grid' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}
                   onClick={() => setViewMode('grid')}
                 >Grid</button>
               </div>
@@ -358,31 +358,31 @@ export default function UsersManager() {
           />
         </div>
 
-        <div style={{ display: 'flex', gap: '24px', borderBottom: '1px solid var(--color-border)', marginBottom: '16px' }}>
-          <div 
-            style={{ paddingBottom: '8px', cursor: 'pointer', fontWeight: activeTab === 'directory' ? 600 : 400, color: activeTab === 'directory' ? 'var(--color-primary)' : 'var(--color-text-secondary)', borderBottom: activeTab === 'directory' ? '2px solid var(--color-primary)' : '2px solid transparent' }} 
+        <div style={{ display: 'flex', gap: '8px', padding: '4px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', marginBottom: '16px', width: 'fit-content' }}>
+          <button 
+            style={{ padding: '8px 16px', border: 'none', background: activeTab === 'directory' ? 'var(--color-bg)' : 'transparent', color: activeTab === 'directory' ? 'var(--color-primary)' : 'var(--color-text-secondary)', borderRadius: 'var(--radius-md)', fontWeight: activeTab === 'directory' ? 600 : 500, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'directory' ? 'var(--shadow-sm)' : 'none' }} 
             onClick={() => { setActiveTab('directory'); setSelectedIds(new Set()); }}
           >
             Active Directory
-          </div>
-          <div 
-            style={{ paddingBottom: '8px', cursor: 'pointer', fontWeight: activeTab === 'approvals' ? 600 : 400, color: activeTab === 'approvals' ? 'var(--color-primary)' : 'var(--color-text-secondary)', borderBottom: activeTab === 'approvals' ? '2px solid var(--color-primary)' : '2px solid transparent' }} 
+          </button>
+          <button 
+            style={{ padding: '8px 16px', border: 'none', background: activeTab === 'approvals' ? 'var(--color-bg)' : 'transparent', color: activeTab === 'approvals' ? 'var(--color-primary)' : 'var(--color-text-secondary)', borderRadius: 'var(--radius-md)', fontWeight: activeTab === 'approvals' ? 600 : 500, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'approvals' ? 'var(--shadow-sm)' : 'none' }} 
             onClick={() => { setActiveTab('approvals'); setSelectedIds(new Set()); }}
           >
-            Pending Approvals ({allUsers.filter(u => u.status === 'pending_approval' || u.status === 'changes_requested').length})
-          </div>
-          <div 
-            style={{ paddingBottom: '8px', cursor: 'pointer', fontWeight: activeTab === 'emails' ? 600 : 400, color: activeTab === 'emails' ? 'var(--color-primary)' : 'var(--color-text-secondary)', borderBottom: activeTab === 'emails' ? '2px solid var(--color-primary)' : '2px solid transparent' }} 
+            Pending Approvals <Badge variant="neutral">{allUsers.filter(u => u.status === 'pending_approval' || u.status === 'changes_requested').length}</Badge>
+          </button>
+          <button 
+            style={{ padding: '8px 16px', border: 'none', background: activeTab === 'emails' ? 'var(--color-bg)' : 'transparent', color: activeTab === 'emails' ? 'var(--color-primary)' : 'var(--color-text-secondary)', borderRadius: 'var(--radius-md)', fontWeight: activeTab === 'emails' ? 600 : 500, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'emails' ? 'var(--shadow-sm)' : 'none' }} 
             onClick={() => { setActiveTab('emails'); setSelectedIds(new Set()); }}
           >
             Email Logs
-          </div>
-          <div 
-            style={{ paddingBottom: '8px', cursor: 'pointer', fontWeight: activeTab === 'offboarding' ? 600 : 400, color: activeTab === 'offboarding' ? 'var(--color-primary)' : 'var(--color-text-secondary)', borderBottom: activeTab === 'offboarding' ? '2px solid var(--color-primary)' : '2px solid transparent' }} 
+          </button>
+          <button 
+            style={{ padding: '8px 16px', border: 'none', background: activeTab === 'offboarding' ? 'var(--color-bg)' : 'transparent', color: activeTab === 'offboarding' ? 'var(--color-primary)' : 'var(--color-text-secondary)', borderRadius: 'var(--radius-md)', fontWeight: activeTab === 'offboarding' ? 600 : 500, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'offboarding' ? 'var(--shadow-sm)' : 'none' }} 
             onClick={() => { setActiveTab('offboarding'); setSelectedIds(new Set()); }}
           >
             Offboarding
-          </div>
+          </button>
         </div>
 
         

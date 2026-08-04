@@ -20,7 +20,7 @@ export default function CustomerAnalyticsWidget({ filters }) {
       getCustomerAnalytics(filters)
         .then(resData => {
           if (!isMounted) return;
-          if (!resData || resData.length === 0) {
+          if (!resData || !Array.isArray(resData) || resData.length === 0) {
             setData(DUMMY_CUSTOMER_DATA.segmentation);
           } else {
             setData(resData);

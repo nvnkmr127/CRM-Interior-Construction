@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { orgApi } from '../../api/org'
 import { useToast } from '../../store/toastContext'
 import { Button, Input, Modal, Avatar, Select } from '../../components/ui'
+import layoutStyles from './ConfigLayout.module.css'
 
 // -----------------------------------------------------------------------------
 // Tree Node Component
@@ -374,14 +375,14 @@ export default function OrganizationManager() {
   const branchTreeRoots = buildTree(search ? filteredBranches : branches, 'parent_id')
 
   return (
-    <div className="mx-auto max-w-7xl p-4 sm:p-8 space-y-8">
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <div className="w-full space-y-8 fade-in">
+      <div className={layoutStyles.configSection}>
         
         {/* Header */}
-        <div className="p-6 sm:p-8 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className={layoutStyles.sectionHeader}>
           <div>
-            <h2 className="text-2xl font-semibold text-gray-900">Organization Hierarchy</h2>
-            <p className="text-gray-500 mt-1">Manage reporting structures, departments, and branches.</p>
+            <h2 className={layoutStyles.sectionTitle}>Organization Hierarchy</h2>
+            <p className={layoutStyles.sectionDesc}>Manage reporting structures, departments, and branches.</p>
           </div>
           <div className="flex gap-3">
             {activeTab === 'departments' && (

@@ -19,7 +19,7 @@ export default function SalesCycleWidget({ filters }) {
         .then(resData => {
           if (!isMounted) return;
           // Fallback to beautiful dummy data if database returns empty
-          if (!resData || resData.length === 0) {
+          if (!resData || !Array.isArray(resData) || resData.length === 0) {
             setData([
               { stage: 'New -> Contacted', days: 1.2 },
               { stage: 'Contacted -> Site Visit', days: 3.5 },

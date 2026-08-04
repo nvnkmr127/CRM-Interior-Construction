@@ -188,7 +188,7 @@ export default function QcChecklistsManager() {
   const currentList = qcChecklists[selectedTrade] || [];
 
   return (
-    <div className={layoutStyles.configSection}>
+    <div className={`${layoutStyles.configSection} fade-in`}>
       <div className={layoutStyles.sectionHeader}>
         <div>
           <h2 className={layoutStyles.sectionTitle}>Trade Pre-Installation QC Checklists</h2>
@@ -234,12 +234,12 @@ export default function QcChecklistsManager() {
       </div>
 
       <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">
+        <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text)' }}>
           {TRADES.find(t => t.id === selectedTrade)?.label} QC Items
         </h3>
         
         {currentList.length === 0 ? (
-          <div className="bg-gray-50 border border-dashed border-gray-300 rounded-xl p-8 text-center text-gray-500">
+          <div className={`${layoutStyles.glassCard} p-8 text-center`} style={{ color: 'var(--color-text-secondary)' }}>
             No check items configured for this trade. Add check items below to guide site supervisors.
           </div>
         ) : (
@@ -247,7 +247,7 @@ export default function QcChecklistsManager() {
             {currentList.map((item, idx) => (
               <div 
                 key={item.id || idx} 
-                className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:border-gray-300 transition-all duration-200"
+                className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 ${layoutStyles.glassRow} hover:-translate-y-0.5 hover:shadow-md`}
               >
                 <div className="flex-1 min-w-0 pr-4">
                   <div className="flex items-center gap-2 mb-1">
@@ -255,7 +255,8 @@ export default function QcChecklistsManager() {
                       type="text"
                       value={item.label}
                       onChange={(e) => handleLabelChange(idx, e.target.value)}
-                      className="font-medium text-gray-900 border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none bg-transparent py-0.5 px-1 text-sm sm:text-base w-full max-w-md transition-colors"
+                      className="font-medium border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none bg-transparent py-0.5 px-1 text-sm sm:text-base w-full max-w-md transition-colors"
+                      style={{ color: 'var(--color-text)' }}
                       placeholder="e.g. Verify dimensions match drawings"
                     />
                     {item.required ? (
@@ -272,7 +273,7 @@ export default function QcChecklistsManager() {
 
                 <div className="flex items-center gap-4 mt-3 sm:mt-0 justify-end">
                   {/* Mandatory Toggle */}
-                  <label className="flex items-center gap-2 text-xs font-medium text-gray-600 cursor-pointer select-none">
+                  <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none" style={{ color: 'var(--color-text-secondary)' }}>
                     <input
                       type="checkbox"
                       checked={!!item.required}
@@ -300,8 +301,8 @@ export default function QcChecklistsManager() {
       </div>
 
       {/* Add QC Item Form */}
-      <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 mt-6">
-        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Add QC Check Item</h3>
+      <div className={`${layoutStyles.glassCard} p-6 mt-6 hover:shadow-md`}>
+        <h3 className="text-sm font-semibold uppercase tracking-wider mb-4" style={{ color: 'var(--color-text)' }}>Add QC Check Item</h3>
         <form onSubmit={handleAddItem} className="space-y-4">
           <div className="grid sm:grid-cols-3 gap-4 items-end">
             <div className="sm:col-span-2">
@@ -314,7 +315,7 @@ export default function QcChecklistsManager() {
               />
             </div>
             <div className="flex items-center gap-4 h-11 justify-between sm:justify-start px-2">
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-600 cursor-pointer select-none">
+              <label className="flex items-center gap-2 text-sm font-medium cursor-pointer select-none" style={{ color: 'var(--color-text-secondary)' }}>
                 <input
                   type="checkbox"
                   checked={newRequired}

@@ -11,7 +11,7 @@ const router = express.Router();
 
 router.post('/', authenticate, authorize('leads:create'), validate(createLeadSchema), leadController.createLeadHandler);
 router.get('/', authenticate, authorize('leads:read'), dataScope('leads', 'assignee_id', 'l'), leadController.getLeadsHandler);
-router.get('/stats', authenticate, authorize('leads:read'), leadController.getLeadStatsHandler);
+router.get('/stats', authenticate, authorize('leads:read'), dataScope('leads', 'assignee_id', 'l'), leadController.getLeadStatsHandler);
 router.post('/public', leadController.createPublicLeadHandler);
 router.get('/check-duplicate', leadController.checkDuplicateHandler);
 

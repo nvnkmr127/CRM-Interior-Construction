@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import layoutStyles from './ConfigLayout.module.css'
 import { configApi } from '../../api/config'
 import { useToast } from '../../store/toastContext'
 import { Button, Input, Select, Modal } from '../../components/ui'
@@ -124,7 +125,7 @@ export default function EmailTemplateBuilder() {
                   padding: '10px 12px', 
                   borderRadius: '6px', 
                   cursor: 'pointer',
-                  background: selectedKey === t.key ? 'var(--color-primary)' : 'transparent',
+                  background: selectedKey === t.key ? 'var(--color-accent)' : 'transparent',
                   color: selectedKey === t.key ? 'white' : 'var(--color-text)',
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -143,7 +144,7 @@ export default function EmailTemplateBuilder() {
       {/* Editor Area */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ fontSize: '20px', fontWeight: 600 }}>Edit {currentTemplateInfo?.label}</h2>
+          <h2 className={layoutStyles.sectionTitle} style={{ margin: 0 }}>Edit {currentTemplateInfo?.label}</h2>
           <div style={{ display: 'flex', gap: '12px' }}>
             <Button variant="secondary" onClick={() => setIsPreview(!isPreview)}>
               {isPreview ? 'Edit Mode' : 'Live Preview'}

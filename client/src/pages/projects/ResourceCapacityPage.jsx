@@ -8,8 +8,8 @@ import api from '../../api/axios'
 import styles from './ResourceCapacityPage.module.css'
 
 export default function ResourceCapacityPage() {
-  usePageTitle('Resource Capability')
-  useBreadcrumbs([{ label: 'Projects', to: '/projects' }, { label: 'Resource Capability' }])
+  usePageTitle('Resource Capacity')
+  useBreadcrumbs([{ label: 'Projects', to: '/projects' }, { label: 'Resource Capacity' }])
   const toast = useToast()
 
   const [view, setView] = useState('grid')
@@ -143,7 +143,7 @@ export default function ResourceCapacityPage() {
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <h1 className={styles.title}>Resource Capability</h1>
+        <h1 className={styles.title}>Resource Capacity</h1>
         <button onClick={fetchCapacityData} className={styles.refreshBtn}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-10.45l5.08 5.08"/>

@@ -187,7 +187,7 @@ export default function CustomFieldsManager() {
   };
 
   return (
-    <div className={styles.container}>
+    <div className={`${styles.container} fade-in`}>
       <div className={styles.header}>
         <div className={styles.tabs}>
           {['lead', 'project', 'task'].map(ent => (

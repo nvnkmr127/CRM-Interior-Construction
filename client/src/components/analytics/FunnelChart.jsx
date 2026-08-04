@@ -6,14 +6,20 @@ import { getLeadFunnel } from '../../api/analytics';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import styles from './FunnelChart.module.css';
 
-export default function FunnelChart({ filters }) {
+export default function FunnelChart({ filters, data: propData }) {
   const navigate = useNavigate();
 
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(propData || null);
+  const [loading, setLoading] = useState(!propData);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (propData) {
+      setData(Array.isArray(propData) ? propData : (propData.data || []));
+      setLoading(false);
+      return;
+    }
+
     let isMounted = true;
     setLoading(true);
     setError(null);
@@ -21,7 +27,8 @@ export default function FunnelChart({ filters }) {
     getLeadFunnel(filters)
       .then(res => {
         if (isMounted) {
-          if (!res || res.length === 0) {
+          const resData = res?.data?.data || res?.data || res;
+          if (!resData || !Array.isArray(resData) || resData.length === 0) {
             setData([
               { stage: 'New', count: 1200, drop_off_rate: 0 },
               { stage: 'Contacted', count: 900, drop_off_rate: 25 },

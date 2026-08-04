@@ -1429,14 +1429,11 @@ exports.analyzeSentimentHandler = async (req, res, next) => {
 exports.getLeadStatsHandler = async (req, res, next) => {
   try {
     const { tenantId, userId } = getTenantAndUser(req);
-    const role = req.user && req.user.role ? req.user.role : '';
     const { getLeadStats } = require('../repositories/leadRepository');
     
-    let assigneeId = null;
-    if (role !== 'superadmin' && role !== 'admin' && role !== 'manager' && role !== 'gm') {
-      assigneeId = userId;
-    }
-    const stats = await getLeadStats(tenantId, assigneeId);
+    const scopeFilter = req.scopeFilter || '1=1';
+    // assigneeId is kept as null since scopeFilter handles the permissions now
+    const stats = await getLeadStats(tenantId, { scopeFilter, assigneeId: null });
     return success(res, stats);
   } catch (error) {
     next(error);

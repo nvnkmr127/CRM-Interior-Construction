@@ -16,6 +16,17 @@ async function enforceProjectAccess(req, res, next, id) {
       return next();
     }
 
+    // Allow if this ID is a task or leave from resource_allocations (for Resource Capacity page)
+    // We catch potential UUID syntax errors if 'id' is not a valid UUID format
+    try {
+      const { rows: raRows } = await pool.query('SELECT entity_type FROM resource_allocations WHERE entity_id = $1 LIMIT 1', [id]);
+      if (raRows.length > 0 && raRows[0].entity_type !== 'project') {
+        return next();
+      }
+    } catch (e) {
+      // Ignore invalid UUID error, proceed to normal project check
+    }
+
     // Temporarily apply dataScope to a mock req to get the SQL filter
     const mockReq = { user: req.user };
     let filter = '1=0';

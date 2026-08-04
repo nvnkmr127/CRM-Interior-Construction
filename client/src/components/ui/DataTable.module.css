@@ -1,8 +1,8 @@
 .wrapper { background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-lg); width: 100%; }
-.table { width:100%; border-collapse:separate; border-spacing: 0; min-width: 100%; }
-.thead { background:var(--color-surface-2); position: sticky; top: 0; z-index: 10; }
+.table { width:100%; border-collapse:separate; border-spacing: 0; min-width: 1000px; }
+.thead { background:var(--color-surface-2); }
 .th {
-  padding: 16px 24px; text-align:left;
+  padding: 16px; text-align:left;
   font-size:var(--text-sm); font-weight:600; color:var(--color-text-secondary);
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface-2);
@@ -36,8 +36,8 @@
 .clickable { cursor:pointer; }
 .tr.clickable:hover { background:var(--color-surface-2); }
 .tr.selected { background:var(--color-accent-light); }
-.td { padding: 16px 24px; font-size:var(--text-base); color:var(--color-text); vertical-align:middle; }
-.checkbox { width:40px; }
+.td { padding: 16px; font-size:var(--text-base); color:var(--color-text); vertical-align:middle; }
+.checkbox { width: 48px; padding-right: 8px; text-align: center; }
 .footer {
   display:flex; align-items:center; justify-content:space-between;
   padding: var(--space-3) var(--space-4);

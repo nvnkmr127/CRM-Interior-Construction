@@ -132,7 +132,7 @@ export default function AutomationBuilder() {
   }
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} fade-in`}>
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Automation Rules</h1>

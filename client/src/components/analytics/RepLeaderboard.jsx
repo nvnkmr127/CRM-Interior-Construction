@@ -43,7 +43,7 @@ export default function RepLeaderboard({ filters }) {
   if (loading) return <div style={{ padding: '16px', color: 'var(--color-text-secondary)', textAlign: 'center' }}>Loading...</div>;
   if (error) return <div style={{ padding: '16px', color: 'var(--color-danger)', textAlign: 'center' }}>{error}</div>;
 
-  if (!data || data.length === 0) {
+  if (!data || !Array.isArray(data) || data.length === 0) {
     return <div className={styles.emptyState}>No rep performance data available for this period.</div>;
   }
 

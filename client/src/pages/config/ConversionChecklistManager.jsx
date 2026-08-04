@@ -119,7 +119,7 @@ export default function ConversionChecklistManager() {
   }
 
   return (
-    <div className={layoutStyles.configSection}>
+    <div className={`${layoutStyles.configSection} fade-in`}>
       <div className={layoutStyles.sectionHeader}>
         <div>
           <h2 className={layoutStyles.sectionTitle}>Lead-to-Project Conversion Checklist</h2>
@@ -138,10 +138,10 @@ export default function ConversionChecklistManager() {
       </div>
 
       <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">Active Checklist Requirements</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text)' }}>Active Checklist Requirements</h3>
         
         {checklist.length === 0 ? (
-          <div className="bg-gray-50 border border-dashed border-gray-300 rounded-xl p-8 text-center text-gray-500">
+          <div className={`${layoutStyles.glassCard} p-8 text-center`} style={{ color: 'var(--color-text-secondary)' }}>
             No checklist requirements configured. Add some below to enforce gates during conversion.
           </div>
         ) : (
@@ -149,7 +149,7 @@ export default function ConversionChecklistManager() {
             {checklist.map((item, idx) => (
               <div 
                 key={item.key} 
-                className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border rounded-xl shadow-sm transition-all duration-200 ${item.active ? 'border-gray-200 hover:border-gray-300' : 'border-gray-200 opacity-60 bg-gray-50/50'}`}
+                className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 ${layoutStyles.glassRow} hover:-translate-y-0.5 hover:shadow-md ${!item.active ? 'opacity-60' : ''}`}
               >
                 <div className="flex-1 min-w-0 pr-4">
                   <div className="flex items-center gap-2 mb-1">
@@ -157,7 +157,8 @@ export default function ConversionChecklistManager() {
                       type="text"
                       value={item.label}
                       onChange={(e) => handleLabelChange(idx, e.target.value)}
-                      className="font-medium text-gray-900 border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none bg-transparent py-0.5 px-1 text-sm sm:text-base w-full max-w-md transition-colors"
+                      className="font-medium border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none bg-transparent py-0.5 px-1 text-sm sm:text-base w-full max-w-md transition-colors"
+                      style={{ color: 'var(--color-text)' }}
                       placeholder="Requirement Label"
                     />
                     {item.required ? (
@@ -175,7 +176,7 @@ export default function ConversionChecklistManager() {
 
                 <div className="flex items-center gap-4 mt-3 sm:mt-0 justify-end">
                   {/* Mandatory Toggle */}
-                  <label className="flex items-center gap-2 text-xs font-medium text-gray-600 cursor-pointer">
+                  <label className="flex items-center gap-2 text-xs font-medium cursor-pointer" style={{ color: 'var(--color-text-secondary)' }}>
                     <input
                       type="checkbox"
                       checked={item.required}
@@ -186,7 +187,7 @@ export default function ConversionChecklistManager() {
                   </label>
 
                   {/* Active Toggle */}
-                  <label className="flex items-center gap-2 text-xs font-medium text-gray-600 cursor-pointer">
+                  <label className="flex items-center gap-2 text-xs font-medium cursor-pointer" style={{ color: 'var(--color-text-secondary)' }}>
                     <input
                       type="checkbox"
                       checked={item.active}
@@ -214,8 +215,8 @@ export default function ConversionChecklistManager() {
       </div>
 
       {/* Add Custom Requirement Form */}
-      <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 mt-6">
-        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Add Custom Requirement</h3>
+      <div className={`${layoutStyles.glassCard} p-6 mt-6 hover:shadow-md`}>
+        <h3 className="text-sm font-semibold uppercase tracking-wider mb-4" style={{ color: 'var(--color-text)' }}>Add Custom Requirement</h3>
         <form onSubmit={handleAddItem} className="space-y-4">
           <div className="grid sm:grid-cols-3 gap-4 items-end">
             <div className="sm:col-span-2">
@@ -228,7 +229,7 @@ export default function ConversionChecklistManager() {
               />
             </div>
             <div className="flex items-center gap-4 h-11 justify-between sm:justify-start px-2">
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-600 cursor-pointer">
+              <label className="flex items-center gap-2 text-sm font-medium cursor-pointer" style={{ color: 'var(--color-text-secondary)' }}>
                 <input
                   type="checkbox"
                   checked={newRequired}

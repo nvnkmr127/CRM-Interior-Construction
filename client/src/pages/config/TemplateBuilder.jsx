@@ -110,7 +110,7 @@ export default function TemplateBuilder() {
   }
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} fade-in`}>
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Project Templates</h1>

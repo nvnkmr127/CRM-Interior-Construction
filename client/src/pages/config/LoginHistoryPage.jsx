@@ -152,6 +152,7 @@ export default function LoginHistoryPage() {
     {
       key: 'actions',
       label: 'Actions',
+      width: '150px',
       render: (log) => {
         if (log.status === 'success' && !log.logout_time && log.active_session_id) {
           return (

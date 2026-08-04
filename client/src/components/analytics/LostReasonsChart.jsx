@@ -37,7 +37,7 @@ export default function LostReasonsChart({ filters }) {
     getLostReasons(filters)
       .then(res => {
         if (isMounted) {
-          if (!res || res.length === 0) {
+          if (!res || !Array.isArray(res) || res.length === 0) {
             setData([
               { reason: 'Price too high', count: 42, percentage: 45 },
               { reason: 'Went with competitor', count: 28, percentage: 30 },

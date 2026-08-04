@@ -594,7 +594,17 @@ async function completeLeadConversion(tenantId, leadId, newProjectId, lead, proj
   }
 }
 
-async function getLeadStats(tenantId, assigneeId = null) {
+async function getLeadStats(tenantId, options = {}) {
+  // Backwards compatibility for when assigneeId is passed directly as second argument
+  let scopeFilter = '1=1';
+  let assigneeId = null;
+  if (typeof options === 'string' || typeof options === 'number') {
+    assigneeId = options;
+  } else if (options && typeof options === 'object') {
+    scopeFilter = options.scopeFilter || '1=1';
+    assigneeId = options.assigneeId || null;
+  }
+
   let query = `
     SELECT
       COUNT(*) AS total_leads,
@@ -606,7 +616,7 @@ async function getLeadStats(tenantId, assigneeId = null) {
       AVG(NULLIF(l.score, 0)) AS avg_score
     FROM leads l
     LEFT JOIN lead_stages s ON l.stage_id = s.id
-    WHERE l.tenant_id = $1 AND l.deleted_at IS NULL
+    WHERE l.tenant_id = $1 AND l.deleted_at IS NULL AND (${scopeFilter})
   `;
   const values = [tenantId];
   if (assigneeId) {

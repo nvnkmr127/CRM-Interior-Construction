@@ -145,7 +145,7 @@ export default function AuditTrail() {
   ];
 
   return (
-    <div className={styles.container}>
+    <div className={`${styles.container} fade-in`}>
       <div className={styles.header}>
         <div>
           <h2 className={styles.title}>Audit Trail</h2>

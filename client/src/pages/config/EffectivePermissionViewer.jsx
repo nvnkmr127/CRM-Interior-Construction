@@ -114,7 +114,7 @@ export default function EffectivePermissionViewer({ user, isOpen, onClose }) {
               </div>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead style={{ position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 1, borderBottom: '2px solid var(--color-border)' }}>
+                <thead style={{ background: 'var(--color-surface)', zIndex: 1, borderBottom: '2px solid var(--color-border)' }}>
                   <tr>
                     <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Permission Action</th>
                     <th style={{ padding: '12px', textAlign: 'left', fontWeight: 600 }}>Sources</th>

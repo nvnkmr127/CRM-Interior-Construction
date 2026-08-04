@@ -32,11 +32,15 @@ export function useLeads(filters = {}) {
       }
       const fetchedStages = stagesRes.data?.data || [];
 
+      let isMockData = false;
+      let fetchedLeads = [];
+
       if (leadsRes.success) {
-        let fetchedLeads = Array.isArray(leadsRes.data) ? leadsRes.data : Array.isArray(leadsRes.results) ? leadsRes.results : [];
+        fetchedLeads = Array.isArray(leadsRes.data) ? leadsRes.data : Array.isArray(leadsRes.results) ? leadsRes.results : [];
         
         // Inject mock data if no leads exist
         if (fetchedLeads.length === 0) {
+          isMockData = true;
           const s1 = fetchedStages[0]?.id || '1';
           const s2 = fetchedStages[1]?.id || fetchedStages[0]?.id || '2';
           const s3 = fetchedStages[2]?.id || fetchedStages[1]?.id || '3';
@@ -50,21 +54,35 @@ export function useLeads(filters = {}) {
           ];
         }
 
-        if (leadsRes.pagination) {
-          setTotal(leadsRes.pagination.total || 0);
-        } else if (leadsRes.meta?.total !== undefined) {
-          setTotal(leadsRes.meta.total);
-        } else if (leadsRes.total !== undefined) {
-          setTotal(leadsRes.total);
+        let tempTotal = 0;
+        if (!isMockData && leadsRes.pagination) {
+          tempTotal = leadsRes.pagination.total || 0;
+        } else if (!isMockData && leadsRes.meta?.total !== undefined) {
+          tempTotal = leadsRes.meta.total;
+        } else if (!isMockData && leadsRes.total !== undefined) {
+          tempTotal = leadsRes.total;
         } else {
-          setTotal(fetchedLeads.length);
+          tempTotal = fetchedLeads.length;
         }
+        setTotal(tempTotal);
+        var leadsListTotal = tempTotal; // Defined globally inside the function
 
         setLeads(fetchedLeads);
       }
       
       if (statsRes.data?.success) {
-        setStats(statsRes.data.data || { total: 0, wonThisMonth: 0, avgScore: 0, convPct: 0 });
+        if (isMockData) {
+          setStats({ total: fetchedLeads.length, wonThisMonth: 1, avgScore: 72, convPct: 20 });
+        } else {
+          setStats(statsRes.data.data || { total: fetchedLeads.length, wonThisMonth: 0, avgScore: 0, convPct: 0 });
+        }
+      } else {
+        // If /leads/stats API fails (catch block returns statsRes.data without success=true)
+        if (isMockData) {
+          setStats({ total: fetchedLeads.length, wonThisMonth: 1, avgScore: 72, convPct: 20 });
+        } else {
+          setStats({ total: leadsListTotal, wonThisMonth: 0, avgScore: 0, convPct: 0 });
+        }
       }
     } catch (err) {
       console.error('Error fetching leads:', err);

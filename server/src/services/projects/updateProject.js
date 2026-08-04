@@ -303,6 +303,24 @@ async function updateProject({ tenantId, userId, projectId, data }) {
       newValue: newValues
     });
 
+    const eventBus = require('../../utils/eventBus');
+    if (newValues.pm_id && newValues.pm_id !== oldValues.pm_id) {
+      eventBus.emit('RESOURCE_ASSIGNED_TO_PROJECT', {
+        tenantId,
+        userId: newValues.pm_id,
+        projectId,
+        projectName: finalProject.name
+      });
+    }
+    if (newValues.designer_id && newValues.designer_id !== oldValues.designer_id) {
+      eventBus.emit('RESOURCE_ASSIGNED_TO_PROJECT', {
+        tenantId,
+        userId: newValues.designer_id,
+        projectId,
+        projectName: finalProject.name
+      });
+    }
+
     try {
       const updatedKeys = Object.keys(newValues);
       await pool.query(

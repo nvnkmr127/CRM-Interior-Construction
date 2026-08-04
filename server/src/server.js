@@ -24,7 +24,8 @@ const sql = readMig('006_financial_approval_attachments.sql') + ';' +
             readMig('008_approval_assignment.sql') + ';' + 
             readMig('009_sla_tracking.sql') + ';' + 
             readMig('010_approval_priority.sql') + ';' + 
-            readMig('027_task_attachments.sql');
+            readMig('027_task_attachments.sql') + ';' +
+            readMig('028_resource_allocations.sql');
 pool.query(sql).then(() => console.log('Migrations OK')).catch(e => console.log(e));
 
 app.listen(PORT, () => {

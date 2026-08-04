@@ -18,7 +18,7 @@ export default function MarketingAnalyticsWidget({ filters }) {
       getMarketingAnalytics(filters)
         .then(resData => {
           if (!isMounted) return;
-          if (!resData || resData.length === 0) {
+          if (!resData || !Array.isArray(resData) || resData.length === 0) {
             setData(DUMMY_MARKETING_DATA.byCampaign.map(c => ({...c, campaign: c.name})));
           } else {
             setData(resData);

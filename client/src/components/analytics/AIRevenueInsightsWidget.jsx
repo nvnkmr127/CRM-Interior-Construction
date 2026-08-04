@@ -2,13 +2,19 @@
 import React, { useState, useEffect } from 'react';
 import { DUMMY_AI_INSIGHTS_DATA } from '../../data/dummyAnalyticsData';
 
-export default function AIRevenueInsightsWidget({ filters }) {
+export default function AIRevenueInsightsWidget({ filters, data: propData }) {
 
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(propData || null);
+  const [loading, setLoading] = useState(!propData);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (propData) {
+      setData(Array.isArray(propData) ? propData : (propData.data || []));
+      setLoading(false);
+      return;
+    }
+
     let isMounted = true;
     setLoading(true);
     setError(null);
@@ -17,14 +23,15 @@ export default function AIRevenueInsightsWidget({ filters }) {
       getAIRevenueInsights(filters)
         .then(resData => {
           if (!isMounted) return;
-          if (!resData || resData.length === 0) {
+          const actualData = resData?.data?.data || resData?.data || resData;
+          if (!actualData || !Array.isArray(actualData) || actualData.length === 0) {
             setData(DUMMY_AI_INSIGHTS_DATA.map(i => ({
               title: i.title,
               desc: i.description,
               type: i.severity === 'Critical' ? 'negative' : (i.severity === 'Low' ? 'positive' : 'neutral')
             })));
           } else {
-            setData(resData);
+            setData(actualData);
           }
           setLoading(false);
         })
@@ -41,7 +48,7 @@ export default function AIRevenueInsightsWidget({ filters }) {
     });
 
     return () => { isMounted = false; };
-  }, [filters]);
+  }, [filters, propData]);
 
   if (loading) return <div style={{ padding: '16px', color: 'var(--color-text-secondary)', textAlign: 'center' }}>Loading...</div>;
   if (error) return <div style={{ padding: '16px', color: 'var(--color-danger)', textAlign: 'center' }}>{error}</div>;

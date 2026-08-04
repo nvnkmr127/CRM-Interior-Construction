@@ -399,6 +399,7 @@ export default function WebhooksManager() {
       key: 'actions',
       label: 'Actions',
       align: 'right',
+      width: '280px',
       render: (w) => (
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
           {testResults[w.id] && (
@@ -419,7 +420,7 @@ export default function WebhooksManager() {
 
   if (isEditOpen) {
     return (
-      <div className={layoutStyles.configSection}>
+      <div className={`${layoutStyles.configSection} fade-in`}>
         <div className={layoutStyles.sectionHeader}>
           <div>
             <h2 className={layoutStyles.sectionTitle}>{editTarget?.id ? 'Edit Webhook' : 'Add Webhook'}</h2>
@@ -535,7 +536,7 @@ export default function WebhooksManager() {
   }
 
   return (
-    <div className={layoutStyles.configSection}>
+    <div className={`${layoutStyles.configSection} fade-in`}>
       <div className={layoutStyles.sectionHeader}>
         <div>
           <h2 className={layoutStyles.sectionTitle}>Outbound Webhooks</h2>

@@ -3,13 +3,19 @@ import React, { useState, useEffect } from 'react';
 import { getForecast } from '../../api/analytics';
 import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
-export default function RevenueForecastWidget({ filters }) {
+export default function RevenueForecastWidget({ filters, data: propData }) {
 
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(propData || null);
+  const [loading, setLoading] = useState(!propData);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (propData) {
+      setData(Array.isArray(propData) ? propData : (propData.data || []));
+      setLoading(false);
+      return;
+    }
+
     let isMounted = true;
     setLoading(true);
     setError(null);
@@ -17,7 +23,8 @@ export default function RevenueForecastWidget({ filters }) {
     getForecast(filters)
       .then(res => {
         if (isMounted) {
-          if (!res || res.length === 0) {
+          const resData = res?.data?.data || res?.data || res;
+          if (!resData || !Array.isArray(resData) || resData.length === 0) {
             setData([
               { qtr: 'Q1 2024', actual: 120000, projected: 120000 },
               { qtr: 'Q2 2024', actual: 145000, projected: 140000 },
@@ -48,7 +55,7 @@ export default function RevenueForecastWidget({ filters }) {
   if (loading) return <div style={{ padding: '16px', color: 'var(--color-text-secondary)', textAlign: 'center' }}>Loading...</div>;
   if (error) return <div style={{ padding: '16px', color: 'var(--color-danger)', textAlign: 'center' }}>{error}</div>;
 
-  if (!data || data.length === 0) {
+  if (!data || !Array.isArray(data) || data.length === 0) {
     return <div style={{ padding: '16px', color: 'var(--color-text-secondary)', textAlign: 'center' }}>No forecast data available.</div>;
   }
 

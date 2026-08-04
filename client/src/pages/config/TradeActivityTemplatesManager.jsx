@@ -198,12 +198,14 @@ export default function TradeActivityTemplatesManager() {
   }
 
   return (
-    <div className={layoutStyles.container}>
-      <div className={layoutStyles.header}>
-        <h1 className={layoutStyles.title}>Trade Execution Config</h1>
-        <p className={layoutStyles.description}>
-          Configure templates per trade and standard dependency sequences.
-        </p>
+    <div className={`${layoutStyles.configSection} fade-in`}>
+      <div className={layoutStyles.sectionHeader}>
+        <div>
+          <h2 className={layoutStyles.sectionTitle}>Trade Execution Config</h2>
+          <p className={layoutStyles.sectionDesc}>
+            Configure templates per trade and standard dependency sequences.
+          </p>
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', padding: '0 32px' }}>

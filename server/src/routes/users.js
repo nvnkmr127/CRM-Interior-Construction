@@ -218,20 +218,30 @@ router.get('/resource-capacity', async (req, res) => {
         COALESCE(
           (
             SELECT json_agg(json_build_object(
-              'id', p.id,
-              'name', p.name,
-              'project_type', p.project_type,
-              'status', p.status,
-              'pm_hours_allocated', p.pm_hours_allocated,
-              'designer_hours_allocated', p.designer_hours_allocated,
-              'hours_allocated', CASE 
-                WHEN p.pm_id = u.id AND p.designer_id = u.id THEN (p.pm_hours_allocated + p.designer_hours_allocated)
-                WHEN p.pm_id = u.id THEN p.pm_hours_allocated 
-                ELSE p.designer_hours_allocated 
-              END
+              'id', ra.entity_id,
+              'name', CASE 
+                        WHEN ra.entity_type = 'project' THEN (SELECT name FROM projects WHERE id = ra.entity_id)
+                        WHEN ra.entity_type = 'task' THEN (SELECT title FROM tasks WHERE id = ra.entity_id)
+                        WHEN ra.entity_type = 'leave' THEN (SELECT reason FROM user_leaves WHERE id = ra.entity_id)
+                        ELSE 'Unknown'
+                      END,
+              'project_type', CASE
+                                WHEN ra.entity_type = 'project' THEN (SELECT project_type FROM projects WHERE id = ra.entity_id)
+                                WHEN ra.entity_type = 'task' THEN 'Task'
+                                WHEN ra.entity_type = 'leave' THEN 'Leave'
+                                ELSE 'Other'
+                              END,
+              'status', 'active',
+              'hours_allocated', ra.allocated_hours,
+              'entity_type', ra.entity_type
             ))
-            FROM projects p
-            WHERE (p.pm_id = u.id OR p.designer_id = u.id) AND p.status = 'active' AND p.deleted_at IS NULL
+            FROM resource_allocations ra
+            WHERE ra.user_id = u.id AND ra.tenant_id = u.tenant_id
+              AND (
+                ra.entity_type IN ('project', 'task')
+                OR ra.end_date IS NULL 
+                OR ra.end_date >= CURRENT_DATE
+              )
           ),
           '[]'::json
         ) as active_projects

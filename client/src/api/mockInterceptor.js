@@ -3608,14 +3608,44 @@ export const setupMockInterceptor = (api) => {
           }
           else if (url.includes('/analytics/')) {
              if (method === 'get') {
-               // Generic fallback for other analytics routes in mock mode
-               responseData.data = {
-                 summary: { total: 0 },
-                 funnel: [],
-                 revenue: 0,
-                 pipeline: []
-               };
+               if (url.includes('/analytics/leads/funnel') || 
+                   url.includes('/analytics/leads/by_source') || 
+                   url.includes('/analytics/leads/rep_performance') || 
+                   url.includes('/analytics/leads/lost_reasons') ||
+                   url.includes('/analytics/pipeline') ||
+                   url.includes('/analytics/revenue')) {
+                 responseData.data = [];
+               } else {
+                 // Generic fallback for other analytics routes in mock mode
+                 responseData.data = {
+                   summary: { total: 0 },
+                   funnel: [],
+                   revenue: 0,
+                   pipeline: []
+                 };
+               }
              }
+           }
+          else if (url.includes('/users/resource-capacity') && method === 'get') {
+            const users = JSON.parse(JSON.stringify(mockDatabase.users || []));
+            const projects = mockDatabase.projects || [];
+            
+            users.forEach(u => {
+              u.role_name = u.role ? u.role.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Unknown';
+              u.active_projects = projects
+                .filter(p => (p.pm_id === u.id || p.pm_name === u.name || p.designer_id === u.id || p.designer_name === u.name) && 
+                             (!p.status || p.status === 'active' || !['on_hold', 'completed', 'overdue', 'cancelled', 'deleted'].includes(p.status.toLowerCase())))
+                .map(p => ({
+                id: p.id,
+                name: p.name,
+                project_type: p.project_type || 'Residential',
+                status: p.status,
+                hours_allocated: 10,
+                entity_type: 'project'
+              }));
+              u.weekly_capacity = 40;
+            });
+            responseData.data = users;
           }
           else if (isMutation) {
             console.warn(

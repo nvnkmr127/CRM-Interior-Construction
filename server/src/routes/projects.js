@@ -55,10 +55,14 @@ const enforceProjectAccess = require('../middleware/enforceProjectAccess');
 router.get('/debug-db', async (req, res, next) => {
   try {
     const { pool } = require('../config/db');
-    const { rows } = await pool.query('SELECT id, name, tenant_id, status FROM projects');
-    return res.json({ success: true, data: rows });
+    await pool.query('ALTER TABLE tasks ADD COLUMN IF NOT EXISTS estimated_hours NUMERIC(10, 2) DEFAULT 0');
+    const fs = require('fs');
+    const path = require('path');
+    const sql = fs.readFileSync(path.join(__dirname, '../../migrations/028_resource_allocations.sql'), 'utf8');
+    await pool.query(sql);
+    return res.json({ success: true, message: 'DB fixed' });
   } catch (err) {
-    return res.json({ success: false, error: err.message });
+    return res.json({ success: false, error: err.message, stack: err.stack });
   }
 });
 
@@ -663,6 +667,20 @@ router.get('/:id', authorize('projects:read'), async (req, res, next) => {
 // PATCH /api/projects/:id
 router.patch('/:id', authorize('projects:update'), validate(updateProjectSchema), async (req, res, next) => {
   try {
+    const { pool } = require('../config/db');
+    // Intercept if this ID belongs to a task or leave from Resource Capacity UI
+    const { rows: raRows } = await pool.query('SELECT entity_type FROM resource_allocations WHERE entity_id = $1 LIMIT 1', [req.params.id]);
+    if (raRows.length > 0 && raRows[0].entity_type !== 'project') {
+      const type = raRows[0].entity_type;
+      const hours = req.body.pm_hours_allocated !== undefined ? req.body.pm_hours_allocated : req.body.designer_hours_allocated;
+      if (type === 'task' && hours !== undefined) {
+         await pool.query('UPDATE tasks SET estimated_hours = $1 WHERE id = $2', [hours, req.params.id]);
+         return success(res, { id: req.params.id, message: 'Task hours updated' });
+      } else if (type === 'leave') {
+         return success(res, { id: req.params.id, message: 'Leave hours cannot be edited here' });
+      }
+    }
+
     const { stripUnauthorizedEdits } = require('../utils/fieldMasker');
     const data = stripUnauthorizedEdits(req.body, 'projects', req.user.field_permissions);
 

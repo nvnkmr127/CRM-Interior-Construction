@@ -18,7 +18,7 @@ export default function SalesProductivityWidget({ filters }) {
       getSalesProductivity(filters)
         .then(resData => {
           if (!isMounted) return;
-          if (!resData || resData.length === 0) {
+          if (!resData || !Array.isArray(resData) || resData.length === 0) {
             setData(DUMMY_PRODUCTIVITY_DATA.ranking.map(r => ({
               rep: r.name,
               calls: r.calls,

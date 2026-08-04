@@ -1,4 +1,4 @@
-.page { padding: var(--space-6); max-width: 1000px; margin: 0 auto; }
+.page { padding: var(--space-6); width: 100%; }
 .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-6); }
 .title { font-size: var(--text-2xl); font-weight: 700; color: var(--color-text); margin: 0; }
 

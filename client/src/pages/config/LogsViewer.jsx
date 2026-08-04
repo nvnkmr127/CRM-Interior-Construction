@@ -117,7 +117,7 @@ export default function LogsViewer() {
   ]
 
   return (
-    <div className={layoutStyles.configSection}>
+    <div className={`${layoutStyles.configSection} fade-in`}>
       <div className={layoutStyles.sectionHeader}>
         <div>
           <h2 className={layoutStyles.sectionTitle}>System Logs</h2>
@@ -148,7 +148,7 @@ export default function LogsViewer() {
             />
             <Input label="Date range" type="date" value="" onChange={()=>{}} />
           </div>
-          <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
+          <div className={layoutStyles.glassCard}>
             <DataTable 
               columns={deliveryColumns} 
               data={deliveries} 
@@ -210,11 +210,11 @@ export default function LogsViewer() {
         {selectedLog && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <div style={{ padding: 16, background: 'var(--color-background)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+              <div className={layoutStyles.glassCard} style={{ padding: 16 }}>
                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Webhook & Event</div>
                 <div style={{ fontWeight: 500 }}>{selectedLog.webhook} — {selectedLog.event}</div>
               </div>
-              <div style={{ padding: 16, background: 'var(--color-background)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+              <div className={layoutStyles.glassCard} style={{ padding: 16 }}>
                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Execution Info</div>
                 <div style={{ fontWeight: 500 }}>{new Date(selectedLog.timestamp).toLocaleString()} • {selectedLog.latency}ms • Attempt {selectedLog.attempt}</div>
               </div>

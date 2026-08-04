@@ -153,7 +153,6 @@ export default function Select({
                 <div 
                   key={opt.value} 
                   className={`${styles.option} ${isSelected ? styles.selected : ''} ${highlightedIndex === index ? styles.highlighted : ''}`}
-                  style={highlightedIndex === index ? { backgroundColor: 'var(--color-primary-light, #f0f9ff)' } : {}}
                   onClick={() => handleSelect(opt)}
                   onMouseEnter={() => setHighlightedIndex(index)}
                 >

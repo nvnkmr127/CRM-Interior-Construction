@@ -222,7 +222,7 @@ export default function LeadStagesManager() {
   }
 
   return (
-    <div className={layoutStyles.configSection}>
+    <div className={`${layoutStyles.configSection} fade-in`}>
       <div className={layoutStyles.sectionHeader}>
         <div>
           <h2 className={layoutStyles.sectionTitle}>Lead Stages</h2>

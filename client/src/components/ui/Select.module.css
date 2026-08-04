@@ -37,7 +37,7 @@
   display:flex; align-items:center; gap:var(--space-2);
   white-space: nowrap;
 }
-.option:hover { background:var(--color-surface-2); }
+.option:hover, .highlighted { background:var(--color-surface-2); }
 .selected { background:var(--color-accent-light); color:var(--color-accent-dark); font-weight:500; }
 .check { color:var(--color-accent); margin-left:auto; }
 .chips { display:flex; flex-wrap:wrap; gap:4px; padding:4px 0; }
