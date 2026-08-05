@@ -56,7 +56,7 @@ export default function FollowupsTab({ leadId }) {
     try {
       const res = await api.post(`/leads/${leadId}/followups`, form);
       if (res.data.success) {
-        setFollowups(prev => [...prev, res.data.data]);
+        setFollowups(prev => [res.data.data, ...prev]);
         setForm({ title: '', due_at: '', notes: '' });
         setShowForm(false);
         toast.success('Follow-up scheduled');
@@ -92,7 +92,31 @@ export default function FollowupsTab({ leadId }) {
       {showForm && (
         <div className="bg-gray-50 p-4 rounded-xl space-y-3 mb-6 border border-gray-100">
           <input type="text" placeholder="Title" value={form.title} onChange={e => setForm({...form, title: e.target.value})} className="w-full text-sm rounded-lg p-2 border focus:ring-2" />
-          <input type="datetime-local" value={form.due_at} onChange={e => setForm({...form, due_at: e.target.value})} className="w-full text-sm rounded-lg p-2 border focus:ring-2" />
+          <div className="relative">
+            <DatePicker
+              selected={form.due_at ? new Date(form.due_at) : null}
+              onChange={(date) => {
+                if (date) {
+                  const tzoffset = date.getTimezoneOffset() * 60000;
+                  const localISOTime = (new Date(date - tzoffset)).toISOString().slice(0, 16);
+                  setForm({...form, due_at: localISOTime});
+                } else {
+                  setForm({...form, due_at: ''});
+                }
+              }}
+              showTimeSelect
+              timeFormat="h:mm aa"
+              timeIntervals={15}
+              timeCaption="Time"
+              dateFormat="MMMM d, yyyy h:mm aa"
+              placeholderText="Select Date & Time"
+              className="w-full text-sm rounded-lg p-2 pr-10 border focus:ring-2 cursor-pointer"
+              wrapperClassName="w-full"
+            />
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            </div>
+          </div>
           <textarea placeholder="Notes..." value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} className="w-full text-sm rounded-lg p-2 border focus:ring-2" />
           <button onClick={create} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold w-full">Save</button>
         </div>
@@ -101,7 +125,31 @@ export default function FollowupsTab({ leadId }) {
       {editingFollowupId && (
         <div className="bg-gray-50 p-4 rounded-xl space-y-3 mb-6 border border-gray-100">
           <input type="text" placeholder="Title" value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} className="w-full text-sm rounded-lg p-2 border focus:ring-2" />
-          <input type="datetime-local" value={editForm.due_at} onChange={e => setEditForm({...editForm, due_at: e.target.value})} className="w-full text-sm rounded-lg p-2 border focus:ring-2" />
+          <div className="relative">
+            <DatePicker
+              selected={editForm.due_at ? new Date(editForm.due_at) : null}
+              onChange={(date) => {
+                if (date) {
+                  const tzoffset = date.getTimezoneOffset() * 60000;
+                  const localISOTime = (new Date(date - tzoffset)).toISOString().slice(0, 16);
+                  setEditForm({...editForm, due_at: localISOTime});
+                } else {
+                  setEditForm({...editForm, due_at: ''});
+                }
+              }}
+              showTimeSelect
+              timeFormat="h:mm aa"
+              timeIntervals={15}
+              timeCaption="Time"
+              dateFormat="MMMM d, yyyy h:mm aa"
+              placeholderText="Select Date & Time"
+              className="w-full text-sm rounded-lg p-2 pr-10 border focus:ring-2 cursor-pointer"
+              wrapperClassName="w-full"
+            />
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            </div>
+          </div>
           <textarea placeholder="Notes..." value={editForm.notes} onChange={e => setEditForm({...editForm, notes: e.target.value})} className="w-full text-sm rounded-lg p-2 border focus:ring-2" />
           <div className="flex gap-2">
              <button onClick={() => update(editingFollowupId)} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold">Update</button>

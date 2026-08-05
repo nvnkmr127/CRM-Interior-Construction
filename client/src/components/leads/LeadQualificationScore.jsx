@@ -2,29 +2,15 @@
 import React from 'react';
 
 export default function LeadQualificationScore({ lead }) {
-  const displayLead = lead || {
-    win_probability: 85,
-    revenue_potential: 2500000,
-    ai_score_breakdown: {
-      "Buying Intent": 88,
-      "Budget Confidence": 72
-    },
-    decision_complexity: "Medium",
-    urgency: "High"
-  };
-
-  const {
-    win_probability = 0,
-    revenue_potential,
-    ai_score_breakdown = {}
-  } = displayLead;
-
-  const safeScoreBreakdown = ai_score_breakdown || {};
-  const buyingIntent = safeScoreBreakdown["Buying Intent"] || 0;
-  const budgetConfidence = safeScoreBreakdown["Budget Confidence"] || 0;
+  const win_probability = lead?.win_probability ?? 85;
+  const revenue_potential = lead?.budget_max ?? lead?.revenue_potential ?? 2500000;
   
-  const decisionComplexity = displayLead?.decision_complexity || 'TBD';
-  const urgency = displayLead?.urgency || 'TBD';
+  const ai_score_breakdown = lead?.ai_score_breakdown || {};
+  const buyingIntent = ai_score_breakdown["Buying Intent"] ?? 88;
+  const budgetConfidence = ai_score_breakdown["Budget Confidence"] ?? 72;
+
+  const decisionComplexity = lead?.decision_complexity ?? 'Medium';
+  const urgency = lead?.urgency ?? 'High';
 
   const getColorByScore = (score) => {
     if (score >= 80) return 'text-green-600 bg-green-50 border-green-200';

@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../store/toastContext';
-import { Button, Badge } from '../ui';
+import { Button, Badge, Select } from '../ui';
 import ScoreBadge from './ScoreBadge';
 import ActivityTimeline from './ActivityTimeline';
 import TaskWidget from './TaskWidget';
@@ -204,7 +204,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
       const payload = {
         title: meetingForm.title,
         notes: meetingForm.notes || `Scheduled meeting: ${meetingForm.title}`,
-        scheduledAt,
+        scheduled_at: scheduledAt,
         metadata: {
           meeting_type: meetingForm.meeting_type,
           meeting_link: meetingForm.meeting_link || (meetingForm.meeting_type === 'Google Meet' ? `https://meet.google.com/${Math.random().toString(36).substr(2, 3)}-${Math.random().toString(36).substr(2, 4)}-${Math.random().toString(36).substr(2, 3)}` : ''),
@@ -226,6 +226,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
         });
         toast.success('Meeting scheduled successfully');
       }
+      
       setIsEditingMeeting(false);
       fetchLead();
       if (onLeadUpdated) onLeadUpdated();
@@ -478,15 +479,15 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
         <div className="flex flex-col h-full transition-all bg-white">
 
           {/* HEADER */}
-          <div className="border-b border-gray-200 px-6 pt-6 pb-4 shrink-0 shadow-sm relative z-10" style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(16px)' }}>
-            <div className="flex items-center justify-between mb-3 gap-4">
+          <div className="border-b border-gray-200 px-6 pt-4 pb-3 shrink-0 shadow-sm relative z-10" style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(16px)' }}>
+            <div className="flex items-center justify-between mb-2 gap-4">
               <div className="flex-1">
                 <input
                   type="text"
                   value={lead.name}
                   onChange={(e) => handleFieldChange('name', e.target.value)}
                   onBlur={(e) => handleFieldBlur('name', e.target.value)}
-                  className="text-3xl font-bold bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none w-full pb-1 transition-colors"
+                  className="text-2xl font-bold bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none w-full pb-0.5 transition-colors"
                   style={{ color: 'var(--color-text, inherit)' }}
                   placeholder="Lead Name"
                 />
@@ -503,7 +504,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               </button>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 mb-4">
+            <div className="flex flex-wrap items-center gap-3 mb-2">
               <Badge variant="outline" className="text-gray-600 font-mono text-xs">{lead.lead_number || `LD-${String(lead.id).substring(0,4).toUpperCase()}`}</Badge>
               {editingScore ? (
                 <form onSubmit={async (e) => {
@@ -678,25 +679,29 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       </div>
                       <div>
                         <label className="block text-sm text-gray-600 mb-1.5">Product</label>
-                        <select
-                          value={lead.scope || ''}
-                          onChange={e => handleFieldChange('scope', e.target.value)}
-                          onBlur={e => handleFieldBlur('scope', e.target.value)}
-                          className="w-full text-base border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
-                        >
-                          <option value="">Select...</option>
-                          <option value="kitchen">Kitchen</option>
-                          <option value="bedroom">Bedroom</option>
-                          <option value="wardrobe">Wardrobe</option>
-                          <option value="fullhouse">Full House</option>
-                          <option value="living_room">Living Room</option>
-                          <option value="bathroom">Bathroom</option>
-                          <option value="office">Office / Study</option>
-                          <option value="false_ceiling">False Ceiling</option>
-                          <option value="flooring">Flooring</option>
-                          <option value="painting">Painting</option>
-                          <option value="custom_furniture">Custom Furniture</option>
-                        </select>
+                        <Select
+                          multi
+                          options={[
+                            { value: 'kitchen', label: 'Kitchen' },
+                            { value: 'bedroom', label: 'Bedroom' },
+                            { value: 'wardrobe', label: 'Wardrobe' },
+                            { value: 'fullhouse', label: 'Full House' },
+                            { value: 'living_room', label: 'Living Room' },
+                            { value: 'bathroom', label: 'Bathroom' },
+                            { value: 'office', label: 'Office / Study' },
+                            { value: 'false_ceiling', label: 'False Ceiling' },
+                            { value: 'flooring', label: 'Flooring' },
+                            { value: 'painting', label: 'Painting' },
+                            { value: 'custom_furniture', label: 'Custom Furniture' }
+                          ]}
+                          value={typeof lead.scope === 'string' && lead.scope ? lead.scope.split(',') : (Array.isArray(lead.scope) ? lead.scope : [])}
+                          onChange={selectedArray => {
+                            const newValue = selectedArray.join(',');
+                            handleFieldChange('scope', newValue);
+                            handleFieldBlur('scope', newValue);
+                          }}
+                          placeholder="Select products..."
+                        />
                       </div>
                       <div className="col-span-2">
                         <label className="block text-sm text-gray-600 mb-1.5">Address</label>
@@ -720,13 +725,16 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       </div>
                       <div>
                         <label className="block text-sm text-gray-600 mb-1.5">Carpet Area</label>
-                        <input
-                          type="number" value={lead.carpet_area_sqft || ''}
-                          onChange={e => handleFieldChange('carpet_area_sqft', e.target.value)}
-                          onBlur={e => handleFieldBlur('carpet_area_sqft', e.target.value)}
-                          className="w-full text-base border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="Sq. ft"
-                        />
+                        <div className="relative">
+                          <input
+                            type="number" value={lead.carpet_area_sqft || ''}
+                            onChange={e => handleFieldChange('carpet_area_sqft', e.target.value)}
+                            onBlur={e => handleFieldBlur('carpet_area_sqft', e.target.value)}
+                            className="w-full text-base border border-gray-300 rounded-lg p-2 pr-12 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="0"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">sq.ft</span>
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm text-gray-600 mb-1.5">Segment</label>
@@ -755,7 +763,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       </div>
                       <div className="col-span-2">
                         <div className="flex justify-between items-center mb-1.5">
-                          <label className="block text-sm text-gray-600">Possession Date & Time</label>
+                          <label className="block text-sm text-gray-600">Possession Date</label>
                           <button 
                             type="button" 
                             onClick={() => setIsPossessionManual(!isPossessionManual)} 
@@ -779,7 +787,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                             onChange={(date) => {
                               if (date) {
                                 const tzoffset = date.getTimezoneOffset() * 60000;
-                                const localISOTime = (new Date(date - tzoffset)).toISOString().slice(0, 16);
+                                const localISOTime = (new Date(date - tzoffset)).toISOString().slice(0, 10);
                                 handleFieldChange('possession_month', localISOTime);
                                 handleFieldBlur('possession_month', localISOTime);
                               } else {
@@ -787,11 +795,8 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                                 handleFieldBlur('possession_month', '');
                               }
                             }}
-                            showTimeSelect
-                            timeFormat="HH:mm"
-                            timeIntervals={15}
-                            dateFormat="MMMM d, yyyy h:mm aa"
-                            placeholderText="Select Date and Time"
+                            dateFormat="MMMM d, yyyy"
+                            placeholderText="Select Date"
                             className="w-full text-base border border-gray-300 rounded-lg p-2 pr-10 focus:ring-blue-500 focus:border-blue-500 cursor-pointer hover:border-blue-400 shadow-sm transition-colors"
                             wrapperClassName="w-full"
                             popperPlacement="bottom-start"
@@ -1580,7 +1585,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               <Button variant="outline" size="md" onClick={handleArchiveToggle} className="text-gray-700 hover:bg-gray-50">
                 {lead.status === 'archived' ? 'Unarchive' : 'Archive'}
               </Button>
-              <Button variant="ghost" size="md" onClick={handleDelete} className="text-red-600 hover:text-red-700 hover:bg-red-50">Mark Lost</Button>
+              <Button variant="outline" size="md" onClick={handleDelete} className="text-gray-700 hover:bg-gray-50">Mark Lost</Button>
 
               {/* Show Convert button if logic matches a won or late stage */}
               {(lead.stage_id === 'won' || lead.stage_name === 'Won' || lead.stage_name === 'Booking' || lead.stage_id === 'booking') && (
