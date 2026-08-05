@@ -1,4 +1,4 @@
-import { NavLink, Routes, Route, Navigate } from 'react-router-dom'
+import { NavLink, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../store/authContext'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { useBreadcrumbs } from '../../hooks/useBreadcrumbs'
@@ -27,41 +27,36 @@ const RolesManager = lazy(() => import('./RolesManager'))
 const LoginHistoryPage = lazy(() => import('./LoginHistoryPage'))
 const SecuritySettingsPage = lazy(() => import('./SecuritySettingsPage'))
 
-const CONFIG_NAV = [
-  { group: 'ACCESS', items: [
-    { to: 'team-members',  icon: '👥', label: 'Team Members', desc: 'Manage user access' },
-    { to: 'roles-permissions', icon: '🔑', label: 'Roles & Permissions', desc: 'Granular access control' },
-    { to: 'organization',  icon: '🏢', label: 'Organization', desc: 'Hierarchy & Departments' },
-    { to: 'security',      icon: '🔒', label: 'Security', desc: 'Enterprise Security Settings' },
-    { to: 'login-history', icon: '🛡️', label: 'Login History', desc: 'Track authentication & sessions' },
-  ]},
-  { group: 'PIPELINE', items: [
-    { to: 'lead-stages',   icon: '◎', label: 'Lead Stages',   desc: 'Sales pipeline stages' },
-    { to: 'custom-fields', icon: '⊡', label: 'Custom Fields', desc: 'Add fields to leads & projects' },
-  ]},
-  { group: 'PROJECTS', items: [
-    { to: 'templates',     icon: '◈', label: 'Project Templates', desc: 'Phase & milestone blueprints' },
-    { to: 'automations',   icon: '⚙', label: 'Automations',       desc: 'Trigger-based rules' },
-    { to: 'conversion-checklist', icon: '☑', label: 'Conversion Checklist', desc: 'Pre-conversion requirements' },
-    { to: 'qc-checklists', icon: '☑', label: 'Trade QC Checklists', desc: 'Pre-installation checklists' },
-    { to: 'trade-activities', icon: '🛠', label: 'Trade Templates', desc: 'Configurable activity templates' },
-    { to: 'vendor-lead-times', icon: '⏱', label: 'Vendor Lead Times', desc: 'Material category order lead times' },
-  ]},
-  { group: 'INTEGRATIONS', items: [
-    { to: 'api-keys',      icon: '⊙', label: 'API Keys',    desc: 'Connect external tools' },
-    { to: 'email-templates', icon: '📧', label: 'Email Templates', desc: 'Custom branding & emails' },
-    { to: 'logs',          icon: '≡', label: 'Logs',        desc: 'Delivery history & retries' },
-  ]},
-
-  { group: 'FINANCE', items: [
-    { to: 'financial-settings', icon: '💰', label: 'Financial Thresholds', desc: 'Configurable approval thresholds' },
-  ]},
-]
 
 export default function ConfigPage() {
   const { user } = useAuth()
-  usePageTitle('Config Centre')
-  useBreadcrumbs([{ label: 'Config Centre' }])
+  const location = useLocation()
+  
+  const pathTitleMap = {
+    '/config/lead-stages': 'Lead Stages',
+    '/config/team-members': 'Team Members',
+    '/config/roles-permissions': 'Roles & Permissions',
+    '/config/organization': 'Organization',
+    '/config/security': 'Security',
+    '/config/login-history': 'Login History',
+    '/config/audit-logs': 'Audit Trail',
+    '/config/custom-fields': 'Custom Fields',
+    '/config/templates': 'Project Templates',
+    '/config/automations': 'Automations',
+    '/config/conversion-checklist': 'Conversion Checklist',
+    '/config/qc-checklists': 'Trade QC Checklists',
+    '/config/trade-activities': 'Trade Templates',
+    '/config/api-keys': 'API Keys',
+    '/config/email-templates': 'Email Templates',
+    '/config/logs': 'Logs',
+    '/config/financial-settings': 'Financial Thresholds',
+    '/config/vendor-lead-times': 'Vendor Lead Times'
+  };
+
+  const currentTitle = pathTitleMap[location.pathname] || 'Configuration';
+
+  usePageTitle(currentTitle)
+  useBreadcrumbs([{ label: currentTitle }])
 
   // Guard: only superadmin can access config
   if (user?.role?.name !== 'superadmin') {
@@ -69,62 +64,31 @@ export default function ConfigPage() {
   }
 
   return (
-    <div className={styles.layout}>
-      {/* LEFT NAV */}
-      <aside className={styles.nav}>
-        <div className={styles.navHeader}>
-          <span className={styles.navTitle}>Config Centre</span>
-          <span className={styles.navSub}>Workspace settings</span>
-        </div>
-        {CONFIG_NAV.map(group => (
-          <div key={group.group} className={styles.navGroup}>
-            <span className={styles.groupLabel}>{group.group}</span>
-            {group.items.map(item => (
-              <NavLink
-                key={item.to}
-                to={`/config/${item.to}`}
-                className={({isActive}) => `${styles.navItem} ${isActive ? styles.active : ''}`}
-              >
-                <span className={styles.itemIcon}>{item.icon}</span>
-                <span className={styles.itemText}>
-                  <span className={styles.itemLabel}>{item.label}</span>
-                  <span className={styles.itemDesc}>{item.desc}</span>
-                </span>
-              </NavLink>
-            ))}
-          </div>
-        ))}
-      </aside>
+    <Suspense fallback={<div className={styles.loading}>Loading...</div>}>
+      <Routes>
+        <Route index element={<Navigate to='/config/lead-stages' replace />} />
+        <Route path='lead-stages'   element={<LeadStagesManager />} />
+        <Route path="team-members" element={<UsersManager />} />
+        <Route path="team-members/:id" element={<EmployeeProfilePage />} />
+        <Route path="roles-permissions" element={<RolesManager />} />
+        <Route path="organization" element={<OrganizationManager />} />
+        <Route path="security" element={<SecuritySettingsPage />} />
+        <Route path="login-history" element={<LoginHistoryPage />} />
+        <Route path="audit-logs" element={<AuditTrail />} />
+        <Route path='custom-fields' element={<CustomFieldsManager />} />
+        <Route path='templates'     element={<TemplateBuilder />} />
+        <Route path='automations'   element={<AutomationBuilder />} />
+        <Route path='conversion-checklist' element={<ConversionChecklistManager />} />
+        <Route path='qc-checklists' element={<QcChecklistsManager />} />
+        <Route path='trade-activities' element={<TradeActivityTemplatesManager />} />
+        <Route path='api-keys'      element={<ApiKeysManager />} />
+        <Route path='email-templates' element={<EmailTemplateBuilder />} />
+        <Route path='logs'          element={<LogsViewer />} />
 
-      {/* RIGHT CONTENT */}
-      <main className={styles.content}>
-        <Suspense fallback={<div className={styles.loading}>Loading...</div>}>
-          <Routes>
-            <Route index element={<Navigate to='/config/lead-stages' replace />} />
-            <Route path='lead-stages'   element={<LeadStagesManager />} />
-            <Route path="team-members" element={<UsersManager />} />
-            <Route path="team-members/:id" element={<EmployeeProfilePage />} />
-            <Route path="roles-permissions" element={<RolesManager />} />
-            <Route path="organization" element={<OrganizationManager />} />
-            <Route path="security" element={<SecuritySettingsPage />} />
-            <Route path="login-history" element={<LoginHistoryPage />} />
-            <Route path="audit-logs" element={<AuditTrail />} />
-            <Route path='custom-fields' element={<CustomFieldsManager />} />
-            <Route path='templates'     element={<TemplateBuilder />} />
-            <Route path='automations'   element={<AutomationBuilder />} />
-            <Route path='conversion-checklist' element={<ConversionChecklistManager />} />
-            <Route path='qc-checklists' element={<QcChecklistsManager />} />
-            <Route path='trade-activities' element={<TradeActivityTemplatesManager />} />
-            <Route path='api-keys'      element={<ApiKeysManager />} />
-            <Route path='email-templates' element={<EmailTemplateBuilder />} />
-            <Route path='logs'          element={<LogsViewer />} />
-
-            <Route path='financial-settings' element={<FinancialSettings />} />
-            <Route path='vendor-lead-times' element={<LeadTimesManager />} />
-            <Route path='*'             element={<Navigate to='/config/lead-stages' replace />} />
-          </Routes>
-        </Suspense>
-      </main>
-    </div>
+        <Route path='financial-settings' element={<FinancialSettings />} />
+        <Route path='vendor-lead-times' element={<LeadTimesManager />} />
+        <Route path='*'             element={<Navigate to='/config/lead-stages' replace />} />
+      </Routes>
+    </Suspense>
   )
 }

@@ -44,23 +44,39 @@ const NAV_ITEMS = [
     { to: '/analytics/inventory', icon: '📦', label: 'Inventory Analytics', module: 'analytics', permission: 'analytics:view_inventory_analytics' },
     { to: '/analytics/csat', icon: '⭐', label: 'Client Satisfaction', module: 'analytics' },
   ]},
-  { group: 'TEAM & ACCESS', adminOnly: true, items: [
+  { group: 'FINANCE', financeOnly: true, items: [
+    { to: '/financial-approvals', icon: '📝', label: 'Financial Approvals', module: 'finance' },
+    { to: '/config/financial-settings', icon: '💰', label: 'Financial Thresholds', module: 'settings', adminOnly: true }
+  ]},
+  { group: 'SALES SETUP', adminOnly: true, items: [
+    { to: '/config/lead-stages', icon: '◎', label: 'Lead Stages', module: 'settings' },
+    { to: '/config/custom-fields', icon: '⊡', label: 'Custom Fields', module: 'settings' },
+    { to: '/leads/forms', icon: '📝', label: 'Lead Forms', module: 'leads' }
+  ]},
+  { group: 'PROJECT SETUP', adminOnly: true, items: [
+    { to: '/config/templates', icon: '◈', label: 'Project Templates', module: 'settings' },
+    { to: '/config/trade-activities', icon: '🛠', label: 'Trade Templates', module: 'settings' },
+    { to: '/config/qc-checklists', icon: '☑', label: 'Trade QC Checklists', module: 'settings' },
+    { to: '/config/conversion-checklist', icon: '☑', label: 'Conversion Checklist', module: 'settings' },
+    { to: '/config/automations', icon: '⚙', label: 'Automations', module: 'settings' },
+    { to: '/config/vendor-lead-times', icon: '⏱', label: 'Vendor Lead Times', module: 'settings' },
+  ]},
+  { group: 'TEAM & SECURITY', adminOnly: true, items: [
     { label: 'Team Management', icon: '👥', module: 'settings', subItems: [
         { to: '/team/members', icon: '◉', label: 'Team Members' },
         { to: '/team/roles', icon: '🔑', label: 'Roles & Permissions' },
     ]},
+    { to: '/config/organization', icon: '🏢', label: 'Organization', module: 'settings' },
+    { to: '/config/security', icon: '🔒', label: 'Security', module: 'settings' },
+    { to: '/config/login-history', icon: '🛡️', label: 'Login History', module: 'settings' },
     { to: '/settings/audit-trail', icon: '📜', label: 'Audit Trail', module: 'settings' }
   ]},
-  { group: 'ADMIN', adminOnly: true, items: [
-    { to: '/config',     icon: '⊙', label: 'Config Centre', module: 'settings' }
-  ]},
-  { group: 'FINANCE', financeOnly: true, items: [
-    { to: '/financial-approvals', icon: '📝', label: 'Financial Approvals', module: 'finance' }
-  ]},
-  { group: 'DEVELOPER', items: [
-    { to: '/developer/webhooks', icon: '🪝', label: 'Webhooks', module: 'settings' },
+  { group: 'INTEGRATIONS', adminOnly: true, items: [
+    { to: '/config/api-keys', icon: '⊙', label: 'API Keys', module: 'settings' },
     { to: '/developer/api', icon: '🔌', label: 'API Integration', module: 'settings' },
-    { to: '/leads/forms', icon: '📝', label: 'Lead Forms', module: 'leads' }
+    { to: '/developer/webhooks', icon: '🪝', label: 'Webhooks', module: 'settings' },
+    { to: '/config/email-templates', icon: '📧', label: 'Email Templates', module: 'settings' },
+    { to: '/config/logs', icon: '≡', label: 'Logs', module: 'settings' },
   ]}
 ]
 
@@ -154,6 +170,7 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
           if (group.financeOnly && !hasFinancePermission) return null
 
           const filterItem = (item) => {
+            if (item.adminOnly && !isAdmin) return false;
             if (isAdmin) return true;
             if (item.permission) {
               const [mod] = item.permission.split(':');
