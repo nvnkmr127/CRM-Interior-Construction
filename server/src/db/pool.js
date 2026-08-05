@@ -1,5 +1,7 @@
 const { Pool } = require('pg');
 const path = require('path');
+const logger = require('../utils/logger');
+
 if (process.env.NODE_ENV === 'test') {
   require('dotenv').config({ path: path.resolve(__dirname, '../../.env.test'), override: true });
 } else {
@@ -68,7 +70,6 @@ readPool.on('error', (error) => {
 // Attach readPool to the primary pool so old requires still work but have access to readPool
 pool.readPool = readPool;
 // Also support `const { pool, readPool } = require('./pool');`
-const logger = require('../utils/logger');
 pool.pool = pool;
 
 module.exports = pool;
