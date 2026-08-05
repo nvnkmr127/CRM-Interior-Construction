@@ -16,6 +16,8 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 const app = express();
+
+
 setupSwagger(app);
 
 // Initialize EventBus Subscribers
@@ -41,19 +43,28 @@ if (process.env.CLIENT_URL) {
   allowedOrigins.push(process.env.CLIENT_URL);
 }
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // Vercel preview environments and defined origins are allowed
-    if (!origin || process.env.NODE_ENV === 'development' || origin.endsWith('.vercel.app') || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(null, true); // Still allowing all for backward compatibility, but headers will now be sent before rate limiters
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'Accept', 'Origin']
-}));
+// On Vercel, CORS is handled by vercel.json Edge headers to prevent cold-start preflight failures
+if (!process.env.VERCEL) {
+  app.use(cors({
+    origin: (origin, callback) => {
+      // Vercel preview environments and defined origins are allowed
+      if (!origin || process.env.NODE_ENV === 'development' || origin.endsWith('.vercel.app') || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, true); 
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'Accept', 'Origin']
+  }));
+} else {
+  // On Vercel, just short-circuit OPTIONS requests in case they reach Express
+  app.use((req, res, next) => {
+    if (req.method === 'OPTIONS') return res.status(204).end();
+    next();
+  });
+}
 app.use(httpLogger);
 
 const path = require('path');
