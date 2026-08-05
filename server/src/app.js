@@ -31,6 +31,29 @@ try { require('./services/timeline/timelineWriter'); } catch (error) { console.w
 
 app.set('trust proxy', 1);
 app.use(helmet({ crossOriginResourcePolicy: false }));
+
+// 20. Enterprise CORS Hardening
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',') 
+  : ['http://localhost:3000', 'http://localhost:5173'];
+
+if (process.env.CLIENT_URL) {
+  allowedOrigins.push(process.env.CLIENT_URL);
+}
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Vercel preview environments and defined origins are allowed
+    if (!origin || process.env.NODE_ENV === 'development' || origin.endsWith('.vercel.app') || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Still allowing all for backward compatibility, but headers will now be sent before rate limiters
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'Accept', 'Origin']
+}));
 app.use(httpLogger);
 
 const path = require('path');
@@ -95,27 +118,6 @@ app.use('/api/', apiLimiter);
 app.use('/api/auth', authLimiter);
 app.use('/api/portal/auth', authLimiter);
 
-// 20. Enterprise CORS Hardening
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',') 
-  : ['http://localhost:3000', 'http://localhost:5173'];
-
-if (process.env.CLIENT_URL) {
-  allowedOrigins.push(process.env.CLIENT_URL);
-}
-
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || process.env.NODE_ENV === 'development' || origin.endsWith('.vercel.app') || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(null, true);
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key']
-}));
 
 app.use(express.json({
   verify: (req, res, buf) => {
