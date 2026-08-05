@@ -3,7 +3,7 @@ const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const validate = require('../middleware/validate');
 const dataScope = require('../middleware/dataScope');
-const { createLeadSchema, logActivitySchema } = require('../validators/leadValidators');
+const { createLeadSchema, logActivitySchema } = require('../../shared/validators/leadSchemas');
 const leadController = require('../controllers/leadController');
 const aiRateLimiter = require('../middleware/aiRateLimiter');
 
@@ -12,7 +12,7 @@ const router = express.Router();
 router.post('/', authenticate, authorize('leads:create'), validate(createLeadSchema), leadController.createLeadHandler);
 router.get('/', authenticate, authorize('leads:read'), dataScope('leads', 'assignee_id', 'l'), leadController.getLeadsHandler);
 router.get('/stats', authenticate, authorize('leads:read'), dataScope('leads', 'assignee_id', 'l'), leadController.getLeadStatsHandler);
-router.post('/public', leadController.createPublicLeadHandler);
+router.post('/public', validate(createLeadSchema), leadController.createPublicLeadHandler);
 router.get('/check-duplicate', leadController.checkDuplicateHandler);
 
 // Manager Dashboard Routes (must be defined before /:id)
@@ -47,7 +47,7 @@ router.post('/:id/stage', authenticate, authorize('leads:update'), leadControlle
 router.post('/:id/convert-to-project', authenticate, authorize('leads:update'), authorize('projects:create'), leadController.convertToProjectHandler);
 router.post('/:id/activities', authenticate, validate(logActivitySchema), leadController.logActivityHandler);
 router.get('/:id/activities', authenticate, leadController.getActivitiesHandler);
-router.patch('/:id/activities/:aid', authenticate, leadController.updateActivityHandler);
+router.patch('/:id/activities/:aid', authenticate, validate(logActivitySchema.partial()), leadController.updateActivityHandler);
 router.get('/:id/timeline', authenticate, leadController.getTimelineHandler);
 router.get('/:id/automation-events', authenticate, authorize('leads:read'), leadController.getAutomationEventsHandler);
 

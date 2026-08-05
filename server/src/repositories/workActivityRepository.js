@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const pool = require('../config/db');
 
 const DEFAULT_QC_CHECKLISTS = {
@@ -74,8 +75,8 @@ async function resolveQcChecklist(tenantId, trade, customQcList = null) {
         }));
       }
     }
-  } catch (err) {
-    console.error('[resolveQcChecklist] Error reading tenant settings:', err);
+  } catch (error) {
+    logger.error('[resolveQcChecklist] Error reading tenant settings:', error);
   }
 
   const defaultList = DEFAULT_QC_CHECKLISTS[trade] || [];
@@ -250,17 +251,17 @@ class WorkActivityRepository {
           for (const dep of deps) {
             if (dep.depends_on_status !== 'completed') {
               if (enforcementMode === 'soft' && !updates.force) {
-                const err = new Error('DEPENDENCY_UNSATISFIED_SOFT');
-                err.status = 400;
-                err.code = 'DEPENDENCY_UNSATISFIED_SOFT';
-                err.message = `Prerequisite activity '${dep.depends_on_name}' is not completed. Do you want to proceed anyway?`;
-                throw err;
+                const error = new Error('DEPENDENCY_UNSATISFIED_SOFT');
+                error.status = 400;
+                error.code = 'DEPENDENCY_UNSATISFIED_SOFT';
+                error.message = `Prerequisite activity '${dep.depends_on_name}' is not completed. Do you want to proceed anyway?`;
+                throw error;
               } else if (enforcementMode === 'hard') {
-                const err = new Error('DEPENDENCY_UNSATISFIED');
-                err.status = 400;
-                err.code = 'DEPENDENCY_UNSATISFIED';
-                err.message = `Cannot start/complete work activity: Prerequisite activity '${dep.depends_on_name}' must be completed first.`;
-                throw err;
+                const error = new Error('DEPENDENCY_UNSATISFIED');
+                error.status = 400;
+                error.code = 'DEPENDENCY_UNSATISFIED';
+                error.message = `Cannot start/complete work activity: Prerequisite activity '${dep.depends_on_name}' must be completed first.`;
+                throw error;
               }
             }
           }
@@ -512,9 +513,9 @@ class WorkActivityRepository {
 
       await client.query('COMMIT');
       return created;
-    } catch (e) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw e;
+      throw error;
     } finally {
       client.release();
     }

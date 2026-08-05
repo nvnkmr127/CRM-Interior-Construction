@@ -1,7 +1,7 @@
+const logger = require('../../utils/logger');
 const pool = require('../../db/pool');
 const { logAction } = require('../auditLog');
 const { notifyUser } = require('../notificationService');
-
 /**
  * Generates a unique service ticket number for a tenant (format: ST-YYYY-0001)
  */
@@ -126,8 +126,8 @@ async function createTicket({
           newLevel: 1,
           reason: 'Auto-escalated: Repeat Complaint detected for this item/category.'
         });
-      } catch (err) {
-        console.error('Failed to auto-escalate repeat complaint:', err);
+      } catch (error) {
+        logger.error('Failed to auto-escalate repeat complaint:', error);
       }
     }
 
@@ -616,7 +616,7 @@ async function sendPreVisitReminders() {
   const { rows } = await pool.query(query);
 
   for (const visit of rows) {
-    console.log(`[Reminder] Sending pre-visit reminder for visit ${visit.id} (Ticket ${visit.ticket_number})`);
+    logger.info(`[Reminder] Sending pre-visit reminder for visit ${visit.id} (Ticket ${visit.ticket_number})`);
     
     if (visit.engineer_id) {
       notifyUser({
@@ -628,7 +628,7 @@ async function sendPreVisitReminders() {
       });
     }
 
-    console.log(`[Reminder] Mock SMS sent to project client for service visit ${visit.id}`);
+    logger.info(`[Reminder] Mock SMS sent to project client for service visit ${visit.id}`);
 
     await pool.query(
       `UPDATE service_visits SET reminder_sent = true, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,

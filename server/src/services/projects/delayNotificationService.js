@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const pool = require('../../db/pool');
 const { notifyUser } = require('../notificationService');
 
@@ -166,7 +167,7 @@ class DelayNotificationService {
         });
       }
       
-      console.log(`[DelayEscalation] Escalated delay draft ${draft.id} for project ${draft.project_id}`);
+      logger.info(`[DelayEscalation] Escalated delay draft ${draft.id} for project ${draft.project_id}`);
     }
   }
 }

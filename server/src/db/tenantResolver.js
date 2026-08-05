@@ -1,5 +1,6 @@
 const { Pool } = require('pg');
 const primaryPool = require('./pool');
+const logger = require('../utils/logger');
 
 // Cache of connection pools for dedicated databases
 const tenantPools = new Map();
@@ -39,8 +40,8 @@ function getTenantPool(tenantId) {
         connectionTimeoutMillis: 2000,
       });
 
-      newPool.on('error', (err) => {
-        console.error(`[TenantResolver] Error on idle client for dedicated tenant ${tId}`, err);
+      newPool.on('error', (error) => {
+        logger.error(`[TenantResolver] Error on idle client for dedicated tenant ${tId}`, error);
       });
 
       tenantPools.set(tId, newPool);
@@ -55,7 +56,7 @@ function getTenantPool(tenantId) {
 
 module.exports = {
   getTenantPool,
-  // Helper to expose mapping updates dynamically (e.g., from a webhook when a tenant upgrades)
+  // Helper to expose mapping updates dynamically (error.g., from a webhook when a tenant upgrades)
   registerDedicatedTenant: (tenantId, dbUrl) => {
     enterpriseTenantsConfig[String(tenantId)] = dbUrl;
   }

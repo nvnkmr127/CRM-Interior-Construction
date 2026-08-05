@@ -16,7 +16,7 @@ const sanitizeDbUrl = (urlStr) => {
     u.searchParams.delete('sslmode');
     u.searchParams.delete('channel_binding');
     return u.toString();
-  } catch (e) {
+  } catch (error) {
     return urlStr.replace(/[?&](sslmode|channel_binding)=[^&]+/g, '');
   }
 };
@@ -42,8 +42,8 @@ const pool = new Pool({
   max: 10
 });
 
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle DB client — connection will be replaced by the pool', err);
+pool.on('error', (error) => {
+  logger.error('Unexpected error on idle DB client — connection will be replaced by the pool', error);
 });
 
 let rawReadUrl = process.env.READ_DATABASE_URL || rawUrl;
@@ -61,13 +61,14 @@ const readPool = new Pool({
   max: 10
 });
 
-readPool.on('error', (err) => {
-  console.error('Unexpected error on idle DB READ client', err);
+readPool.on('error', (error) => {
+  logger.error('Unexpected error on idle DB READ client', error);
 });
 
 // Attach readPool to the primary pool so old requires still work but have access to readPool
 pool.readPool = readPool;
 // Also support `const { pool, readPool } = require('./pool');`
+const logger = require('../utils/logger');
 pool.pool = pool;
 
 module.exports = pool;

@@ -1,5 +1,6 @@
 const { Worker } = require('bullmq');
 const { connection } = require('../queueSetup');
+const logger = require('../../utils/logger');
 
 const notificationWorker = new Worker('Notification_Queue', async job => {
   const { type, _recipientId, _message } = job.data;
@@ -16,8 +17,8 @@ notificationWorker.on('completed', job => {
   console.log(`Notification Job ${job.id} has completed!`);
 });
 
-notificationWorker.on('failed', (job, err) => {
-  console.error(`Notification Job ${job.id} has failed with ${err.message}`);
+notificationWorker.on('failed', (job, error) => {
+  logger.error(`Notification Job ${job.id} has failed with ${error.message}`);
 });
 
 module.exports = notificationWorker;

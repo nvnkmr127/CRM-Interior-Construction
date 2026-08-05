@@ -1,5 +1,6 @@
 const pool = require('../pool').pool || require('../pool');
 const { hashPassword } = require('../../services/auth/password');
+const logger = require('../../utils/logger');
 
 async function addExtraUsers() {
   try {
@@ -48,8 +49,8 @@ async function addExtraUsers() {
 
     console.log('Successfully added extra mock users to Postgres!');
     process.exit(0);
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    logger.error(error);
     process.exit(1);
   }
 }

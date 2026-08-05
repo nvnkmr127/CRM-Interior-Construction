@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
@@ -58,7 +59,7 @@ router.get('/', authorize('users:manage'), async (req, res) => {
 
     return success(res, parsedRows);
   } catch (error) {
-    console.error('[Roles API] Fetch error:', error);
+    logger.error('[Roles API] Fetch error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch roles', 500);
   }
 });
@@ -131,7 +132,7 @@ router.post('/', authorize('users:manage'), async (req, res) => {
 
     return success(res, newRole);
   } catch (error) {
-    console.error('[Roles API] Create error:', error);
+    logger.error('[Roles API] Create error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create role', 500);
   }
 });
@@ -168,7 +169,7 @@ router.get('/templates', authorize('users:manage'), async (req, res) => {
     
     return success(res, allTemplates);
   } catch (error) {
-    console.error('[Roles API] Fetch templates error:', error);
+    logger.error('[Roles API] Fetch templates error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch templates', 500);
   }
 });
@@ -203,7 +204,7 @@ router.post('/templates', authorize('users:manage'), async (req, res) => {
     const { rows } = await pool.query(query, [tenantId, name, description, JSON.stringify(permsObj)]);
     return success(res, { ...rows[0], permissions: permsObj });
   } catch (error) {
-    console.error('[Roles API] Create template error:', error);
+    logger.error('[Roles API] Create template error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to save template', 500);
   }
 });
@@ -250,7 +251,7 @@ router.post('/bulk-import', authorize('users:manage'), async (req, res) => {
     return success(res, importedRoles);
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('[Roles API] Bulk import error:', error);
+    logger.error('[Roles API] Bulk import error:', error);
     // 23505 is PostgreSQL unique violation code
     if (error.code === '23505') {
        return fail(res, 'VALIDATION_ERROR', 'One of the imported roles already exists (duplicate name)', 409);
@@ -340,7 +341,7 @@ router.post('/clone', authorize('users:manage'), async (req, res) => {
 
     return success(res, newRole);
   } catch (error) {
-    console.error('[Roles API] Clone error:', error);
+    logger.error('[Roles API] Clone error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to clone role', 500);
   }
 });
@@ -435,7 +436,7 @@ router.patch('/:id', authorize('users:manage'), async (req, res) => {
       };
     return success(res, updatedRole);
   } catch (error) {
-    console.error('[Roles API] Update error:', error);
+    logger.error('[Roles API] Update error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update role', 500);
   }
 });
@@ -461,7 +462,7 @@ router.delete('/:id', authorize('users:manage'), async (req, res) => {
     
     return success(res, { deleted: true });
   } catch (error) {
-    console.error('[Roles API] Delete error:', error);
+    logger.error('[Roles API] Delete error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete role', 500);
   }
 });
@@ -480,7 +481,7 @@ router.get('/:id/versions', authorize('users:manage'), async (req, res) => {
     `, [roleId, tenantId]);
     return success(res, rows);
   } catch (error) {
-    console.error('[Roles API] Get versions error:', error);
+    logger.error('[Roles API] Get versions error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to get role versions', 500);
   }
 });
@@ -525,7 +526,7 @@ router.patch('/:id/rollback/:versionId', authorize('users:manage'), async (req, 
 
     return success(res, updatedRole[0]);
   } catch (error) {
-    console.error('[Roles API] Rollback error:', error);
+    logger.error('[Roles API] Rollback error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to rollback role', 500);
   }
 });

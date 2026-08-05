@@ -1,12 +1,13 @@
 const { pool } = require('../pool')
 const { hashPassword } = require('../../services/auth/password')
+const logger = require('../../utils/logger');
 
 async function seedDemoData() {
   console.log('Seeding demo data...')
 
   // Get demo tenant
   const { rows:[tenant] } = await pool.query("SELECT id FROM tenants WHERE slug='demo'")
-  if (!tenant) { console.error('Demo tenant not found. Run migrations first.'); process.exit(1) }
+  if (!tenant) { logger.error('Demo tenant not found. Run migrations first.'); process.exit(1) }
   const tenantId = tenant.id
 
   // 1. Get/create roles
@@ -95,4 +96,4 @@ async function seedDemoData() {
   await pool.end()
 }
 
-seedDemoData().catch(e => { console.error(e); process.exit(1) })
+seedDemoData().catch(error => { logger.error(error); process.exit(1) })

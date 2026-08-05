@@ -1,0 +1,18 @@
+[0m
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\queues\automationQueue.js[24m
+  [2m127:8[22m  [31merror[39m  'err' is not defined  [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js[24m
+  [2m313:11[22m  [31merror[39m  Parsing error: Identifier 'tenantId' has already been declared
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\server.js[24m
+  [2m50:64[22m  [31merror[39m  'error' is defined but never used. Allowed unused args must match /^_|^next$/u  [2mno-unused-vars[22m
+  [2m50:85[22m  [31merror[39m  'e' is not defined                                                              [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\password.js[24m
+  [2m42:27[22m  [31merror[39m  Unnecessary escape character: \[  [2mno-useless-escape[22m
+  [2m42:44[22m  [31merror[39m  Unnecessary escape character: \/  [2mno-useless-escape[22m
+
+[31m[1m✖ 6 problems (6 errors, 0 warnings)[22m[39m
+[0m
+\n\nCommand failed: npx eslint . --fix

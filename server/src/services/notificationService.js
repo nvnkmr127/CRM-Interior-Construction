@@ -1,5 +1,5 @@
+const logger = require('../utils/logger');
 const { pool } = require('../db/pool')
-
 /**
  * Fire-and-forget notification creation.
  * Never throws — notification failure never blocks the main request.
@@ -15,8 +15,8 @@ async function createNotification({
        VALUES ($1,$2,$3,$4,$5,$6,$7)`,
       [tenantId, userId, type, message, referenceUrl, actorId, actorName]
     )
-  } catch (err) {
-    console.error('[notificationService] failed to create notification:', err.message)
+  } catch (error) {
+    logger.error('[notificationService] failed to create notification:', error.message)
   }
 }
 

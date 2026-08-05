@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const express = require('express');
 const pool = require('../../db/pool');
 const { createLead } = require('../../services/leads/createLead');
@@ -116,8 +117,8 @@ router.post('/', async (req, res, next) => {
     });
 
   } catch (error) {
-    console.error('Lead Ingest Webhook Error:', error);
-    return res.status(500).json({ success: false, error: 'Internal Server Error' });
+    logger.error('Lead Ingest Webhook Error:', error);
+    return next(error);
   }
 });
 

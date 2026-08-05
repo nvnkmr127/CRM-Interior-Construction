@@ -12,8 +12,8 @@ router.get('/', async (req, res, next) => {
     const { projectId, tenantId } = req.portalUser;
     const amcs = await amcService.getAmcsByProject(projectId, tenantId);
     return success(res, amcs);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 

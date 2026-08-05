@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const pool = require('../db/pool');
 const eventBus = require('../utils/eventBus');
 
@@ -77,8 +78,8 @@ class PaymentReminderJob {
       }
       
       console.log('[Jobs] PaymentReminderJob completed.');
-    } catch (err) {
-      console.error('[Jobs] PaymentReminderJob error:', err);
+    } catch (error) {
+      logger.error('[Jobs] PaymentReminderJob error:', error);
     }
   }
 }

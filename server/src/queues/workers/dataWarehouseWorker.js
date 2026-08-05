@@ -4,6 +4,7 @@ const readPool = require('../../db/pool').readPool || require('../../db/pool');
 const fs = require('fs');
 const path = require('path');
 // const { uploadToS3 } = require('../../utils/storage'); // For real cloud deployment
+const logger = require('../../utils/logger');
 
 const workerName = 'DataWarehouseExport';
 
@@ -45,7 +46,7 @@ const dataWarehouseWorker = new Worker(workerName, async job => {
     console.log(`[${workerName}] Successfully exported ${rows.length} rows to ${exportPath}`);
     return { success: true, count: rows.length, path: exportPath };
   } catch (error) {
-    console.error(`[${workerName}] Export failed:`, error.message);
+    logger.error(`[${workerName}] Export failed:`, error.message);
     throw error;
   }
 }, { connection });
@@ -54,8 +55,8 @@ dataWarehouseWorker.on('completed', (job) => {
   console.log(`[${workerName}] Job ${job.id} completed!`);
 });
 
-dataWarehouseWorker.on('failed', (job, err) => {
-  console.error(`[${workerName}] Job ${job.id} failed with error ${err.message}`);
+dataWarehouseWorker.on('failed', (job, error) => {
+  logger.error(`[${workerName}] Job ${job.id} failed with error ${error.message}`);
 });
 
 module.exports = dataWarehouseWorker;

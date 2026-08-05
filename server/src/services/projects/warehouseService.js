@@ -123,9 +123,9 @@ class WarehouseService {
 
       await client.query('COMMIT');
       return stockRes.rows[0];
-    } catch (err) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw err;
+      throw error;
     } finally {
       client.release();
     }
@@ -189,9 +189,9 @@ class WarehouseService {
 
       await client.query('COMMIT');
       return updatedItem;
-    } catch (err) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw err;
+      throw error;
     } finally {
       client.release();
     }
@@ -252,9 +252,9 @@ class WarehouseService {
 
       await client.query('COMMIT');
       return stockRes.rows[0];
-    } catch (err) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw err;
+      throw error;
     } finally {
       client.release();
     }
@@ -333,9 +333,9 @@ class WarehouseService {
 
       await client.query('COMMIT');
       return qRes.rows[0];
-    } catch (err) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw err;
+      throw error;
     } finally {
       client.release();
     }
@@ -417,9 +417,9 @@ class WarehouseService {
 
       await client.query('COMMIT');
       return activeRes.rows[0];
-    } catch (err) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw err;
+      throw error;
     } finally {
       client.release();
     }

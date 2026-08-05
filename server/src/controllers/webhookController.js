@@ -25,8 +25,8 @@ exports.createWebhook = async (req, res, next) => {
 
     const { rows } = await pool.query(query, values);
     res.status(201).json({ success: true, data: rows[0] });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -39,8 +39,8 @@ exports.getWebhooks = async (req, res, next) => {
     `, [tenantId]);
     
     res.json({ success: true, data: rows });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -58,8 +58,8 @@ exports.deleteWebhook = async (req, res, next) => {
     }
     
     res.json({ success: true, message: 'Webhook deleted successfully' });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -72,7 +72,7 @@ exports.getWebhookLogs = async (req, res, next) => {
     `, [tenantId]);
     
     res.json({ success: true, data: rows });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 };

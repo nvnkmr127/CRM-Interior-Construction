@@ -1,5 +1,5 @@
+const logger = require('../utils/logger');
 const pool = require('../db/pool');
-
 /**
  * Utility to build configurable multi-level approval chains
  * based on transaction types and amounts dynamically from the database.
@@ -70,8 +70,8 @@ async function buildApprovalChain(tenantId, transactionType, amountOrPercentage,
       total_stages: roles.length,
       approval_chain: chain
     };
-  } catch (err) {
-    console.error('Error building approval chain:', err);
+  } catch (error) {
+    logger.error('Error building approval chain:', error);
     // Fallback to empty chain if DB query fails
     return { current_stage: 1, total_stages: 1, approval_chain: [] };
   }

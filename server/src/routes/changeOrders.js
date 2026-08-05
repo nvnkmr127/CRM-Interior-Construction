@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
@@ -6,7 +7,6 @@ const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const pool = require('../config/db');
 const quotationService = require('../services/projects/quotationService');
-
 const router = express.Router({ mergeParams: true });
 router.use(authenticate);
 
@@ -58,8 +58,8 @@ router.get('/', authorize('projects:read'), async (req, res) => {
     }
 
     return success(res, rows);
-  } catch (err) {
-    console.error('[ChangeOrders Router] List error:', err);
+  } catch (error) {
+    logger.error('[ChangeOrders Router] List error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch change orders.', 500);
   }
 });
@@ -105,9 +105,9 @@ router.post('/', authorize('projects:update'), validate(changeOrderSchema), asyn
     }
 
     return success(res, rows[0], {}, 201);
-  } catch (err) {
+  } catch (error) {
     
-    console.error('[ChangeOrders Router] Create error:', err);
+    logger.error('[ChangeOrders Router] Create error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create change order.', 500);
   }
 });
@@ -165,9 +165,9 @@ router.patch('/:id', authorize('projects:update'), validate(updateChangeOrderSch
     }
 
     return success(res, rows[0]);
-  } catch (err) {
+  } catch (error) {
     
-    console.error('[ChangeOrders Router] Update error:', err);
+    logger.error('[ChangeOrders Router] Update error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update change order.', 500);
   }
 });
@@ -199,8 +199,8 @@ router.delete('/:id', authorize('projects:update'), async (req, res) => {
     }
 
     return success(res, { id: rows[0].id, message: 'Change order deleted successfully.' });
-  } catch (err) {
-    console.error('[ChangeOrders Router] Delete error:', err);
+  } catch (error) {
+    logger.error('[ChangeOrders Router] Delete error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete change order.', 500);
   }
 });

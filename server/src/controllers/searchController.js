@@ -1,5 +1,5 @@
+const logger = require('../utils/logger');
 const pool = require('../db/pool');
-
 function getTenantAndUser(req) {
   const tenantId = req.user.tenantId || req.tenantId;
   const userId = req.user.id;
@@ -9,7 +9,7 @@ function getTenantAndUser(req) {
   return { tenantId, userId };
 }
 
-exports.globalSearchHandler = async function globalSearchHandler(req, res) {
+exports.globalSearchHandler = async function globalSearchHandler(req, res, next) {
   try {
     const { tenantId } = getTenantAndUser(req);
     const q = req.query.q || '';
@@ -131,8 +131,8 @@ exports.globalSearchHandler = async function globalSearchHandler(req, res) {
 
     return res.json({ success: true, data: flattenedResults, query: q });
 
-  } catch (err) {
-    console.error('globalSearchHandler error:', err);
-    res.status(500).json({ success: false, error: { message: 'Failed to perform search' } });
+  } catch (error) {
+    logger.error('globalSearchHandler error:', error);
+    return next(error);
   }
 };

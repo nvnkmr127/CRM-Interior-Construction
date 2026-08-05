@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
@@ -5,7 +6,6 @@ const authenticate = require('../middleware/authenticate');
 const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const labourAttendanceRepository = require('../repositories/labourAttendanceRepository');
-
 const router = express.Router({ mergeParams: true });
 router.use(authenticate);
 
@@ -42,9 +42,9 @@ router.post('/check-in', authorize('projects:manage'), validate(checkInSchema), 
     );
 
     return success(res, attendance, {}, 201);
-  } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors || err.issues, 400);
-    console.error('[LabourAttendance Router] Check-in error:', err);
+  } catch (error) {
+    if (error instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', error.errors || error.issues, 400);
+    logger.error('[LabourAttendance Router] Check-in error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to check in worker.', 500);
   }
 });
@@ -66,9 +66,9 @@ router.patch('/:id/check-out', authorize('projects:manage'), validate(checkOutSc
     }
 
     return success(res, attendance);
-  } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors || err.issues, 400);
-    console.error('[LabourAttendance Router] Check-out error:', err);
+  } catch (error) {
+    if (error instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', error.errors || error.issues, 400);
+    logger.error('[LabourAttendance Router] Check-out error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to check out worker.', 500);
   }
 });
@@ -81,8 +81,8 @@ router.get('/', authorize('projects:read'), async (req, res) => {
       req.params.projectId
     );
     return success(res, attendances);
-  } catch (err) {
-    console.error('[LabourAttendance Router] List error:', err);
+  } catch (error) {
+    logger.error('[LabourAttendance Router] List error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch attendance records.', 500);
   }
 });

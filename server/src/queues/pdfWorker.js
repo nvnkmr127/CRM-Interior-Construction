@@ -1,6 +1,7 @@
 // PDF worker — processes automation_jobs with event_type='generate_handover_pdf'
 const { pool } = require('../db/pool');
 const { generateCompletionCertificate } = require('../services/postSale/completionCertificatePdfService');
+const logger = require('../utils/logger');
 
 async function processPdfJobs() {
   try {
@@ -21,16 +22,16 @@ async function processPdfJobs() {
           `UPDATE automation_jobs SET status='completed', processed_at=NOW() WHERE id=$1`,
           [job.id]
         );
-      } catch(err) {
-        console.error('[pdfWorker] job failed:', err.message);
+      } catch (error) {
+        logger.error('[pdfWorker] job failed:', error.message);
         await pool.query(
           `UPDATE automation_jobs SET status='failed', error=$1 WHERE id=$2`,
-          [err.message, job.id]
+          [error.message, job.id]
         );
       }
     }
-  } catch (err) {
-    console.error('[pdfWorker] queue poll failed:', err.message);
+  } catch (error) {
+    logger.error('[pdfWorker] queue poll failed:', error.message);
   }
 }
 

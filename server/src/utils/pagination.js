@@ -41,7 +41,7 @@ function getCursorPagination(cursorParam, limitParam, defaultLimit = 20) {
       const decoded = Buffer.from(cursorParam, 'base64').toString('ascii');
       cursor = parseInt(decoded, 10);
       if (isNaN(cursor)) cursor = null;
-    } catch (e) {
+    } catch (error) {
       cursor = null;
     }
   }

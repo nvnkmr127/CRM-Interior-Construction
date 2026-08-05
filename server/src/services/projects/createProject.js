@@ -1,10 +1,10 @@
+const logger = require('../../utils/logger');
 const projectRepository = require('../../repositories/projectRepository');
 const templateService = require('../templates/templateService');
 const { logAction } = require('../auditLog');
 const { enqueueAutomation } = require('../../queues/automationQueue');
 const pool = require('../../config/db');
 const { assignRolesRoundRobin } = require('./roundRobinService');
-
 async function createProject({ tenantId, userId, data }) {
   const { 
     templateId, 
@@ -348,7 +348,7 @@ async function createProject({ tenantId, userId, data }) {
       try {
         await templateService.applyTemplate(project.id, templateId, tenantId, client);
       } catch (error) {
-        console.error(`Failed to apply template ${templateId} to project ${project.id}:`, error);
+        logger.error(`Failed to apply template ${templateId} to project ${project.id}:`, error);
         throw error; // Let the transaction rollback
       }
     }

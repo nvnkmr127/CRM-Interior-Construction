@@ -121,7 +121,7 @@ describe('Project Work Activities API & Progress Rollup', () => {
     });
 
     it('enforces QC checklist items completion before marking activity completed', async () => {
-      // 1. Generate activities for Carpentry trade in a room (e.g. Living Room)
+      // 1. Generate activities for Carpentry trade in a room (error.g. Living Room)
       // This will automatically populate carpentry default checklist
       const genRes = await request(app)
         .post(`/api/projects/${projectId}/work-activities/generate`)

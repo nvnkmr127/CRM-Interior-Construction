@@ -1,9 +1,9 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const { success, fail } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const pool = require('../config/db');
-
 const router = express.Router({ mergeParams: true });
 router.use(authenticate);
 
@@ -124,8 +124,8 @@ router.get('/', authorize('projects:read'), async (req, res) => {
     });
 
     return success(res, roomProgressList);
-  } catch (err) {
-    console.error('[RoomProgress Router] Error:', err);
+  } catch (error) {
+    logger.error('[RoomProgress Router] Error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to retrieve room-wise progress.', 500);
   }
 });

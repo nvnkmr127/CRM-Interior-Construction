@@ -55,8 +55,8 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
     const tenantId = req.tenantId;
     const tickets = await serviceTicketService.getTicketsByProject(projectId, tenantId);
     return success(res, tickets);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -81,8 +81,8 @@ router.post('/', authorize('support:manage'), validate(createTicketSchema), asyn
     });
 
     return success(res, ticket, {}, 201);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -92,8 +92,8 @@ router.get('/csat-metrics', authorize('projects:read'), async (req, res, next) =
     const tenantId = req.tenantId;
     const metrics = await serviceTicketService.getCsatMetrics(tenantId);
     return success(res, metrics);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -107,8 +107,8 @@ router.get('/:id', authorize('projects:read'), async (req, res, next) => {
       return fail(res, 'NOT_FOUND', 'Service ticket not found.', 404);
     }
     return success(res, ticket);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -134,11 +134,11 @@ router.put('/:id', authorize('support:manage'), validate(updateTicketSchema), as
 
     const ticket = await serviceTicketService.updateTicket(id, tenantId, updateData, userId);
     return success(res, ticket);
-  } catch (err) {
-    if (err.message === 'TICKET_NOT_FOUND') {
+  } catch (error) {
+    if (error.message === 'TICKET_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Service ticket not found.', 404);
     }
-    next(err);
+    next(error);
   }
 });
 
@@ -151,11 +151,11 @@ router.delete('/:id', authorize('support:manage'), async (req, res, next) => {
 
     const ticket = await serviceTicketService.deleteTicket(id, tenantId, userId);
     return success(res, ticket);
-  } catch (err) {
-    if (err.message === 'TICKET_NOT_FOUND') {
+  } catch (error) {
+    if (error.message === 'TICKET_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Service ticket not found.', 404);
     }
-    next(err);
+    next(error);
   }
 });
 
@@ -177,11 +177,11 @@ router.post('/:id/visits', authorize('support:manage'), validate(createVisitSche
     });
 
     return success(res, visit, {}, 201);
-  } catch (err) {
-    if (err.message === 'TICKET_NOT_FOUND') {
+  } catch (error) {
+    if (error.message === 'TICKET_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Service ticket not found.', 404);
     }
-    next(err);
+    next(error);
   }
 });
 
@@ -207,11 +207,11 @@ router.put('/:id/visits/:visitId', authorize('support:manage'), validate(updateV
 
     const visit = await serviceTicketService.updateVisit(visitId, id, tenantId, updateData, userId);
     return success(res, visit);
-  } catch (err) {
-    if (err.message === 'VISIT_NOT_FOUND') {
+  } catch (error) {
+    if (error.message === 'VISIT_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Service visit not found.', 404);
     }
-    next(err);
+    next(error);
   }
 });
 
@@ -224,11 +224,11 @@ router.delete('/:id/visits/:visitId', authorize('support:manage'), async (req, r
 
     const visit = await serviceTicketService.deleteVisit(visitId, id, tenantId, userId);
     return success(res, visit);
-  } catch (err) {
-    if (err.message === 'VISIT_NOT_FOUND') {
+  } catch (error) {
+    if (error.message === 'VISIT_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Service visit not found.', 404);
     }
-    next(err);
+    next(error);
   }
 });
 
@@ -258,11 +258,11 @@ router.post('/:id/parts', authorize('support:manage'), validate(addPartSchema), 
     });
 
     return success(res, part, {}, 201);
-  } catch (err) {
-    if (err.message === 'TICKET_NOT_FOUND') {
+  } catch (error) {
+    if (error.message === 'TICKET_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Service ticket not found.', 404);
     }
-    next(err);
+    next(error);
   }
 });
 
@@ -275,11 +275,11 @@ router.delete('/:id/parts/:partId', authorize('support:manage'), async (req, res
 
     const part = await serviceTicketService.removePartUsed(partId, id, tenantId, userId);
     return success(res, part);
-  } catch (err) {
-    if (err.message === 'PART_NOT_FOUND') {
+  } catch (error) {
+    if (error.message === 'PART_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Part not found.', 404);
     }
-    next(err);
+    next(error);
   }
 });
 

@@ -1,9 +1,9 @@
+const logger = require('../../utils/logger');
 const pool = require('../../db/pool');
 const { notifyUser } = require('../notificationService');
 const { sendWhatsAppMessage } = require('../whatsappService');
 const { notificationQueue } = require('../../queues/queueSetup');
 const eventBus = require('../../utils/eventBus');
-
 /**
  * Retrieves user IDs for Finance users (Finance Head).
  */
@@ -16,7 +16,7 @@ async function getFinanceUsers(tenantId) {
     `, [tenantId]);
     return rows.map(r => r.id);
   } catch (error) {
-    console.error('[Payment Reminder] Error fetching finance users:', error);
+    logger.error('[Payment Reminder] Error fetching finance users:', error);
     return [];
   }
 }
@@ -108,7 +108,7 @@ async function checkAndSendPaymentReminders(projectId = null) {
         const checkRes = await pool.query(checkQuery, [milestone.id, reminderType]);
         
         if (checkRes.rowCount === 0) {
-          console.log(`[Payment Reminder] Sending "${reminderType}" reminder for milestone "${milestone.milestone_name}" (${milestone.id})`);
+          logger.info(`[Payment Reminder] Sending "${reminderType}" reminder for milestone "${milestone.milestone_name}" (${milestone.id})`);
           
           // A. Send Email (via Notification Queue if client_email is present)
           if (milestone.client_email) {
@@ -124,8 +124,8 @@ async function checkAndSendPaymentReminders(projectId = null) {
           if (milestone.client_phone) {
             try {
               await sendWhatsAppMessage(milestone.client_phone, waMessage);
-            } catch (err) {
-              console.error(`[Payment Reminder] Failed to send WhatsApp to ${milestone.client_phone}:`, err.message);
+            } catch (error) {
+              logger.error(`[Payment Reminder] Failed to send WhatsApp to ${milestone.client_phone}:`, error.message);
             }
           }
           
@@ -180,7 +180,7 @@ async function checkAndSendPaymentReminders(projectId = null) {
       }
     }
   } catch (error) {
-    console.error('[Payment Reminder Service] Error checking and sending payment reminders:', error);
+    logger.error('[Payment Reminder Service] Error checking and sending payment reminders:', error);
   }
   
   return remindersSent;

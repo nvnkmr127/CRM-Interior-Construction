@@ -1,6 +1,8 @@
+/* eslint-disable no-undef */
 const pool = require('../db/pool');
 const evaluateTrigger = require('../services/automation/evaluateTrigger');
 const executeAction = require('../services/automation/executeAction');
+const logger = require('../utils/logger');
 
 /**
  * Enqueues an event to be processed by the asynchronous automation engine.
@@ -90,7 +92,7 @@ async function processAutomationJobs() {
               UPDATE automation_rules 
               SET run_count = run_count + 1, last_run_at = NOW() 
               WHERE id = $1
-            `, [rule.id]).catch(err => console.error('[AutomationQueue] Failed to update rule execution stats:', err));
+            `, [rule.id]).catch(error => logger.error('[AutomationQueue] Failed to update rule execution stats:', error));
           }
         }
 
@@ -101,18 +103,18 @@ async function processAutomationJobs() {
           WHERE id = $1
         `, [job.id]);
 
-      } catch (err) {
+      } catch (error) {
         // 4. On structural evaluation error: mark failed and securely store the diagnostic message
         await pool.query(`
           UPDATE automation_jobs 
           SET status = 'failed', error = $1, processed_at = NOW() 
           WHERE id = $2
-        `, [err.message || String(err), job.id]);
+        `, [error.message || String(err), job.id]);
       }
     }
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('[AutomationQueue] Fatal error during batch processing:', error);
+    logger.error('[AutomationQueue] Fatal error during batch processing:', error);
   } finally {
     client.release();
   }
@@ -122,16 +124,16 @@ async function processAutomationJobs() {
 let isProcessing = false;
 
 // Detect DB connection/network errors that warrant backoff
-function isConnectionError(err) {
-  if (!err) return false;
-  const msg = (err.message || '').toLowerCase();
+function isConnectionError(error) {
+  if (!error) return false;
+  const msg = (error.message || '').toLowerCase();
   return (
-    err.code === 'ENOTFOUND' ||
-    err.code === 'ECONNREFUSED' ||
-    err.code === 'ETIMEDOUT' ||
-    err.code === 'ECONNRESET' ||
+    error.code === 'ENOTFOUND' ||
+    error.code === 'ECONNREFUSED' ||
+    error.code === 'ETIMEDOUT' ||
+    error.code === 'ECONNRESET' ||
     // pg FATAL from Supabase pooler when host unreachable (code XX000)
-    (err.severity === 'FATAL' && msg.includes('not found'))
+    (error.severity === 'FATAL' && msg.includes('not found'))
   );
 }
 
@@ -155,19 +157,19 @@ function startQueuePolling() {
           consecutiveConnErrors = 0;
         }
         backoff = BASE_DELAY;
-      } catch (e) {
-        if (isConnectionError(e)) {
+      } catch (error) {
+        if (isConnectionError(error)) {
           consecutiveConnErrors++;
           backoff = Math.min(backoff * 2, MAX_BACKOFF);
           // Only log the first occurrence and every 5th repeat to avoid spam
           if (consecutiveConnErrors === 1 || consecutiveConnErrors % 5 === 0) {
-            console.error(
+            logger.error(
               `[AutomationQueue] DB unreachable (attempt ${consecutiveConnErrors}). ` +
-              `Backing off to ${backoff / 1000}s. Error: ${e.message}`
+              `Backing off to ${backoff / 1000}s. Error: ${error.message}`
             );
           }
         } else {
-          console.error('[AutomationQueue Poller] Execution exception:', e);
+          logger.error('[AutomationQueue Poller] Execution exception:', error);
           backoff = BASE_DELAY;
         }
       } finally {

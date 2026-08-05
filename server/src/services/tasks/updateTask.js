@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const taskRepository = require('../../repositories/taskRepository');
 const { logAction } = require('../auditLog');
 const { enqueueAutomation } = require('../../queues/automationQueue');
@@ -30,11 +31,11 @@ async function updateTask({ tenantId, userId, taskId, data }) {
         );
         const isLocked = projRows[0]?.is_scope_locked;
         if (!isLocked) {
-          const err = new Error('DESIGN_NOT_FROZEN');
-          err.status = 400;
-          err.code = 'DESIGN_NOT_FROZEN';
-          err.message = 'Cannot trigger execution tasks: Design must be frozen before starting procurement or production.';
-          throw err;
+          const error = new Error('DESIGN_NOT_FROZEN');
+          error.status = 400;
+          error.code = 'DESIGN_NOT_FROZEN';
+          error.message = 'Cannot trigger execution tasks: Design must be frozen before starting procurement or production.';
+          throw error;
         }
 
         // 2. Verify quotation is accepted with client confirmation date recorded
@@ -46,11 +47,11 @@ async function updateTask({ tenantId, userId, taskId, data }) {
           [currentTask.project_id, tenantId]
         );
         if (quoteRows.length === 0 || !quoteRows[0].accepted_at) {
-          const err = new Error('QUOTATION_NOT_ACCEPTED');
-          err.status = 400;
-          err.code = 'QUOTATION_NOT_ACCEPTED';
-          err.message = 'Cannot trigger execution tasks: BOQ quotation must be accepted by the client before starting procurement or production.';
-          throw err;
+          const error = new Error('QUOTATION_NOT_ACCEPTED');
+          error.status = 400;
+          error.code = 'QUOTATION_NOT_ACCEPTED';
+          error.message = 'Cannot trigger execution tasks: BOQ quotation must be accepted by the client before starting procurement or production.';
+          throw error;
         }
       }
     }
@@ -91,11 +92,11 @@ async function updateTask({ tenantId, userId, taskId, data }) {
         
         if (isFS) {
           if (dep.depends_on_task_status !== 'done') {
-            const err = new Error('DEPENDENCY_UNSATISFIED');
-            err.status = 400;
-            err.code = 'DEPENDENCY_UNSATISFIED';
-            err.message = `Cannot start/complete task: Prerequisite task '${dep.depends_on_task_title}' must be completed first.`;
-            throw err;
+            const error = new Error('DEPENDENCY_UNSATISFIED');
+            error.status = 400;
+            error.code = 'DEPENDENCY_UNSATISFIED';
+            error.message = `Cannot start/complete task: Prerequisite task '${dep.depends_on_task_title}' must be completed first.`;
+            throw error;
           }
 
           // Factory-to-Project timeline linkage checks
@@ -113,11 +114,11 @@ async function updateTask({ tenantId, userId, taskId, data }) {
             const poCount = poCountRows[0]?.count || 0;
 
             if (poCount === 0) {
-              const err = new Error('FACTORY_PRODUCTION_REQUIRED');
-              err.status = 400;
-              err.code = 'FACTORY_PRODUCTION_REQUIRED';
-              err.message = `Cannot start task '${currentTask.title}': Factory production must be scheduled and completed first.`;
-              throw err;
+              const error = new Error('FACTORY_PRODUCTION_REQUIRED');
+              error.status = 400;
+              error.code = 'FACTORY_PRODUCTION_REQUIRED';
+              error.message = `Cannot start task '${currentTask.title}': Factory production must be scheduled and completed first.`;
+              throw error;
             }
 
             // 2. Check if all scheduled production orders have been delivered and received at site
@@ -138,28 +139,28 @@ async function updateTask({ tenantId, userId, taskId, data }) {
               );
               
               if (dispatchCheckRows.length === 0) {
-                const err = new Error('FACTORY_DISPATCH_REQUIRED');
-                err.status = 400;
-                err.code = 'FACTORY_DISPATCH_REQUIRED';
-                err.message = `Cannot start task '${currentTask.title}': Factory dispatch must be confirmed first.`;
-                throw err;
+                const error = new Error('FACTORY_DISPATCH_REQUIRED');
+                error.status = 400;
+                error.code = 'FACTORY_DISPATCH_REQUIRED';
+                error.message = `Cannot start task '${currentTask.title}': Factory dispatch must be confirmed first.`;
+                throw error;
               } else {
-                const err = new Error('MATERIAL_RECEIPT_REQUIRED');
-                err.status = 400;
-                err.code = 'MATERIAL_RECEIPT_REQUIRED';
-                err.message = `Cannot start task '${currentTask.title}': Material receipt at site has not been recorded yet.`;
-                throw err;
+                const error = new Error('MATERIAL_RECEIPT_REQUIRED');
+                error.status = 400;
+                error.code = 'MATERIAL_RECEIPT_REQUIRED';
+                error.message = `Cannot start task '${currentTask.title}': Material receipt at site has not been recorded yet.`;
+                throw error;
               }
             }
           }
         }
         
         if (isSS && dep.depends_on_task_status !== 'in_progress' && dep.depends_on_task_status !== 'done') {
-          const err = new Error('DEPENDENCY_UNSATISFIED');
-          err.status = 400;
-          err.code = 'DEPENDENCY_UNSATISFIED';
-          err.message = `Cannot start/complete task: Prerequisite task '${dep.depends_on_task_title}' must be started first.`;
-          throw err;
+          const error = new Error('DEPENDENCY_UNSATISFIED');
+          error.status = 400;
+          error.code = 'DEPENDENCY_UNSATISFIED';
+          error.message = `Cannot start/complete task: Prerequisite task '${dep.depends_on_task_title}' must be started first.`;
+          throw error;
         }
       }
     }
@@ -214,8 +215,8 @@ async function updateTask({ tenantId, userId, taskId, data }) {
       projectId: currentTask.project_id,
       triggerType: 'task_date_changed',
       triggerName: currentTask.title
-    }).catch(err => {
-      console.error('[UpdateTask] Error recalculating schedule:', err);
+    }).catch(error => {
+      logger.error('[UpdateTask] Error recalculating schedule:', error);
     });
   }
 

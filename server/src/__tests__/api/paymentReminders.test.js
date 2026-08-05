@@ -72,7 +72,7 @@ describe('Payment Due Reminder Notifications to Clients', () => {
   it('should send reminders for appropriate intervals and avoid sending duplicates or sending for paid/deferred milestones', async () => {
     // Create the test payment milestones with various states and dates
     
-    // 1. 7 days before due date (e.g. today + 7 days)
+    // 1. 7 days before due date (error.g. today + 7 days)
     const res1 = await pool.query(`
       INSERT INTO payment_milestones (tenant_id, project_id, name, amount, due_date, status, is_deferred)
       VALUES ($1, $2, '7 Days Before Milestone', 10000.00, CURRENT_DATE + 7, 'scheduled', false)
@@ -114,7 +114,7 @@ describe('Payment Due Reminder Notifications to Clients', () => {
 
     // --- Controls: ---
     
-    // Paid milestone (e.g. 3 days overdue, but paid status) -> should NOT trigger
+    // Paid milestone (error.g. 3 days overdue, but paid status) -> should NOT trigger
     const resPaid = await pool.query(`
       INSERT INTO payment_milestones (tenant_id, project_id, name, amount, due_date, status, is_deferred)
       VALUES ($1, $2, 'Paid Milestone', 10000.00, CURRENT_DATE - 3, 'paid', false)
@@ -122,7 +122,7 @@ describe('Payment Due Reminder Notifications to Clients', () => {
     `, [tenantId, projectId]);
     milestonePaid = resPaid.rows[0].id;
 
-    // Deferred milestone (e.g. 7 days overdue, but deferred) -> should NOT trigger
+    // Deferred milestone (error.g. 7 days overdue, but deferred) -> should NOT trigger
     const resDeferred = await pool.query(`
       INSERT INTO payment_milestones (tenant_id, project_id, name, amount, due_date, status, is_deferred)
       VALUES ($1, $2, 'Deferred Milestone', 12000.00, CURRENT_DATE - 7, 'overdue', true)
@@ -138,7 +138,7 @@ describe('Payment Due Reminder Notifications to Clients', () => {
     `, [tenantId, projectId]);
     milestoneNoDueDate = resNoDueDate.rows[0].id;
 
-    // Other offset (e.g. 5 days overdue) -> should NOT trigger
+    // Other offset (error.g. 5 days overdue) -> should NOT trigger
     const resOtherOffset = await pool.query(`
       INSERT INTO payment_milestones (tenant_id, project_id, name, amount, due_date, status, is_deferred)
       VALUES ($1, $2, '5 Days Overdue Milestone', 9000.00, CURRENT_DATE - 5, 'overdue', false)
@@ -154,12 +154,12 @@ describe('Payment Due Reminder Notifications to Clients', () => {
 
     // Filter events to our created milestones only
     const projectReminderEvents = reminderEvents.filter(e => 
-      [milestone7dBefore, milestoneOnDue, milestone3dOverdue, milestone7dOverdue, milestone14dOverdue].includes(e.milestoneId)
+      [milestone7dBefore, milestoneOnDue, milestone3dOverdue, milestone7dOverdue, milestone14dOverdue].includes(error.milestoneId)
     );
     expect(projectReminderEvents.length).toBe(5);
     
     // Check that we have the expected event types
-    const types = projectReminderEvents.map(e => e.reminderType);
+    const types = projectReminderEvents.map(e => error.reminderType);
     expect(types).toContain('7_days_before');
     expect(types).toContain('due_date');
     expect(types).toContain('3_days_overdue');

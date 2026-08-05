@@ -17,8 +17,8 @@ class ProjectProfitabilityController {
         status: 'success',
         data: profitability || null
       });
-    } catch (err) {
-      next(err);
+    } catch (error) {
+      next(error);
     }
   };
 
@@ -38,8 +38,8 @@ class ProjectProfitabilityController {
         results: ledger.length,
         data: ledger
       });
-    } catch (err) {
-      next(err);
+    } catch (error) {
+      next(error);
     }
   };
 }

@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const { z } = require('zod');
 const pool = require('../config/db');
@@ -78,8 +79,8 @@ router.get('/', authorize('projects:read'), async (req, res) => {
     }, { budgeted: 0, committed: 0, actual: 0, variance: 0 });
 
     return success(res, { categories, totals });
-  } catch (err) {
-    console.error('[Budget Router] Summary fetch error:', err);
+  } catch (error) {
+    logger.error('[Budget Router] Summary fetch error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch budget summary.', 500);
   }
 });
@@ -102,9 +103,9 @@ router.post('/', authorize('projects:update'), validate(budgetAllocationSchema),
 
     const { rows } = await pool.query(query, [tenantId, projectId, category, budgetedCost]);
     return success(res, rows[0]);
-  } catch (err) {
+  } catch (error) {
     
-    console.error('[Budget Router] Allocation error:', err);
+    logger.error('[Budget Router] Allocation error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to set budget allocation.', 500);
   }
 });
@@ -123,8 +124,8 @@ router.get('/expenses', authorize('projects:read'), async (req, res) => {
     );
 
     return success(res, rows);
-  } catch (err) {
-    console.error('[Budget Router] Fetch expenses error:', err);
+  } catch (error) {
+    logger.error('[Budget Router] Fetch expenses error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch expenses.', 500);
   }
 });
@@ -155,9 +156,9 @@ router.post('/expenses', authorize('projects:update'), validate(expenseSchema), 
     await checkBudgetThresholds(tenantId, projectId);
 
     return success(res, rows[0], {}, 201);
-  } catch (err) {
+  } catch (error) {
     
-    console.error('[Budget Router] Log expense error:', err);
+    logger.error('[Budget Router] Log expense error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to log cost item.', 500);
   }
 });
@@ -181,8 +182,8 @@ router.delete('/expenses/:expenseId', authorize('projects:update'), async (req, 
     await checkBudgetThresholds(tenantId, projectId);
 
     return success(res, { message: 'Cost item deleted' });
-  } catch (err) {
-    console.error('[Budget Router] Delete expense error:', err);
+  } catch (error) {
+    logger.error('[Budget Router] Delete expense error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete cost item.', 500);
   }
 });
@@ -277,7 +278,6 @@ async function checkBudgetThresholds(tenantId, projectId) {
       });
 
       const { logAction } = require('../services/auditLog');
-
       for (const threshold of triggeredThresholds) {
         const message = `Warning: Project '${project.name}' costs have reached ${threshold}% of contract value (Cost: ${totalActual.toFixed(2)}, Contract Value: ${contractValue.toFixed(2)}).`;
         
@@ -305,8 +305,8 @@ async function checkBudgetThresholds(tenantId, projectId) {
         });
       }
     }
-  } catch (err) {
-    console.error('[Budget Check] Failed to verify budget thresholds:', err.message);
+  } catch (error) {
+    logger.error('[Budget Check] Failed to verify budget thresholds:', error.message);
   }
 }
 

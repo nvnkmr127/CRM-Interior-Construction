@@ -1,5 +1,5 @@
+const logger = require('../utils/logger');
 const { getCache, setCache } = require('../utils/cache');
-
 const cacheResponse = (durationInSeconds) => {
   return async (req, res, next) => {
     try {
@@ -21,14 +21,14 @@ const cacheResponse = (durationInSeconds) => {
         res.json = originalJson;
         
         // Cache the response asynchronously
-        setCache(key, body, durationInSeconds).catch(err => console.error('Cache set error', err));
+        setCache(key, body, durationInSeconds).catch(error => logger.error('Cache set error', error));
         
         return originalJson.call(this, body);
       };
       
       next();
     } catch (error) {
-      console.error('Cache middleware error:', error);
+      logger.error('Cache middleware error:', error);
       next(); // Fail open if cache errors out
     }
   };

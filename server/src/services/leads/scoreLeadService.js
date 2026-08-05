@@ -3,7 +3,7 @@ const pool = require('../../db/pool');
 function getFieldValue(obj, path) {
   if (!path) return undefined;
   
-  // Handle standard dot notation (e.g. "custom_fields.budget")
+  // Handle standard dot notation (error.g. "custom_fields.budget")
   const parts = path.split('.');
   let current = obj;
   
@@ -16,7 +16,7 @@ function getFieldValue(obj, path) {
     if (part === 'custom_fields' && typeof current[part] === 'string') {
       try {
         current[part] = JSON.parse(current[part]);
-      } catch (e) {
+      } catch (error) {
         return undefined;
       }
     }

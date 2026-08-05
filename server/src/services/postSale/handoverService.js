@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const pool = require('../../db/pool');
 const { logAction } = require('../auditLog');
 const { _notifyUser } = require('../notificationService');
@@ -235,8 +236,8 @@ async function updateItem({
         const { project_id, tenant_id } = checklistInfo.rows[0];
         await checkAndNotifyHandoverReadiness(tenant_id, project_id);
       }
-    } catch (err) {
-      console.error('[Handover Service] Error triggering handover readiness check:', err.message);
+    } catch (error) {
+      logger.error('[Handover Service] Error triggering handover readiness check:', error.message);
     }
   });
 
@@ -516,7 +517,7 @@ async function checkAndNotifyHandoverReadiness(tenantId, projectId) {
     });
 
   } catch (error) {
-    console.error('[Handover Service] Error in checkAndNotifyHandoverReadiness:', error);
+    logger.error('[Handover Service] Error in checkAndNotifyHandoverReadiness:', error);
   }
 }
 

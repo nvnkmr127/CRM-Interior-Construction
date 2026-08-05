@@ -42,8 +42,8 @@ router.get('/projects/:projectId/credit-notes', authorize('projects:read'), asyn
   try {
     const creditNotes = await getCreditNotes(req.tenantId, req.params.projectId);
     return success(res, creditNotes);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -57,9 +57,9 @@ router.post('/credit-notes', authorize('payments:refund'), validate(createCredit
       data
     });
     return success(res, creditNote, {}, 201);
-  } catch (err) {
+  } catch (error) {
     
-    next(err);
+    next(error);
   }
 });
 
@@ -68,8 +68,8 @@ router.get('/projects/:projectId/refunds', authorize('payments:view'), async (re
   try {
     const refunds = await getRefunds(req.tenantId, req.params.projectId);
     return success(res, refunds);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -83,9 +83,9 @@ router.post('/refunds', authorize('payments:refund'), validate(createRefundSchem
       data
     });
     return success(res, refund, {}, 201);
-  } catch (err) {
+  } catch (error) {
     
-    next(err);
+    next(error);
   }
 });
 

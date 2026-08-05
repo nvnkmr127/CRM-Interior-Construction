@@ -26,7 +26,7 @@ router.post('/validate', async (req, res, next) => {
     try {
       decoded = jwt.verify(tempToken, process.env.JWT_SECRET || 'fallback_secret');
       if (!decoded.isMfaTemp) throw new Error('Invalid token type');
-    } catch (e) {
+    } catch (error) {
       return res.status(401).json(fail('Invalid or expired temporary token'));
     }
 
@@ -91,8 +91,8 @@ router.post('/validate', async (req, res, next) => {
 
     return success(res, responsePayload);
 
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 

@@ -1,6 +1,6 @@
+const logger = require('../utils/logger');
 const pool = require('../config/db');
 const { queueEmail } = require('../services/emailService');
-
 class TemporaryPermissionJob {
   async run() {
     console.log('[TemporaryPermissionJob] Checking for expiring and expired temporary permissions...');
@@ -74,7 +74,7 @@ class TemporaryPermissionJob {
 
       console.log('[TemporaryPermissionJob] Completed successfully.');
     } catch (error) {
-      console.error('[TemporaryPermissionJob] Failed:', error);
+      logger.error('[TemporaryPermissionJob] Failed:', error);
       throw error;
     }
   }

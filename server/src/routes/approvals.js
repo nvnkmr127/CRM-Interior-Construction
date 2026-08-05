@@ -1,8 +1,9 @@
+/* eslint-disable no-unused-vars */
+const logger = require('../utils/logger');
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/pool');
 const { authorize } = require('../middleware/authorize');
-
 // Helper to determine table based on module
 const getTableForModule = (module) => {
   const map = {
@@ -23,7 +24,7 @@ const getTableForModule = (module) => {
 // Generic Approve/Reject Endpoint
 // The authorize middleware will dynamically check if user has <module>:approve permission
 // Example: POST /api/approvals/quotations/123-uuid/approve
-router.post('/:module/:id/:action', async (req, res) => {
+router.post('/:module/:id/:action', async (req, res, next) => {
   const { module, id, action } = req.params;
   const { comments } = req.body;
   const tenantId = req.user.tenant_id;
@@ -85,13 +86,13 @@ router.post('/:module/:id/:action', async (req, res) => {
 
   } catch (error) {
     await pool.query('ROLLBACK');
-    console.error('Approval Error:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    logger.error('Approval Error:', error);
+    return next(error);
   }
 });
 
 // Get Approval History for an Entity
-router.get('/:module/:id/history', async (req, res) => {
+router.get('/:module/:id/history', async (req, res, next) => {
   const { module, id } = req.params;
   const tenantId = req.user.tenant_id;
 
@@ -106,8 +107,8 @@ router.get('/:module/:id/history', async (req, res) => {
     const { rows } = await pool.query(query, [module, id, tenantId]);
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('Approval History Error:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    logger.error('Approval History Error:', error);
+    return next(error);
   }
 });
 

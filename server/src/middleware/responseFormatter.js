@@ -13,7 +13,7 @@ function responseFormatter(req, res, next) {
 
   // Override res.json
   res.json = function (body) {
-    // If the response is already in the standard format (e.g. from errorHandler or already wrapped), skip wrapping
+    // If the response is already in the standard format (error.g. from errorHandler or already wrapped), skip wrapping
     if (body && ('success' in body && 'meta' in body)) {
       return originalJson.call(this, body);
     }

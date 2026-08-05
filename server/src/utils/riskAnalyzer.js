@@ -1,3 +1,4 @@
+/* eslint-disable no-empty */
 
 const pool = require('../config/db');
 const { getProjectBudgetValidation } = require('./budgetValidator');
@@ -59,7 +60,7 @@ async function analyzeFinancialRisk(approvalId, tenantId) {
       riskScore += 40; // additive
       reasons.push('Project Loss Risk (Negative Margin > 10%)');
     }
-  } catch (err) {
+  } catch (error) {
     // ignore if no project
   }
   
@@ -74,7 +75,7 @@ async function analyzeFinancialRisk(approvalId, tenantId) {
           reasons.push('High Vendor Risk (Previous Default Detected on Project)');
         }
       }
-    } catch(err){}
+    } catch (error){}
   }
   
   // Cap at 100

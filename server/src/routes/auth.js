@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const { z } = require('zod');
 const pool = require('../db/pool');
@@ -23,10 +24,10 @@ router.post('/register', async (req, res, next) => {
     // 1. Validate body with zod
     const parsed = registerSchema.safeParse(req.body);
     if (!parsed.success) {
-      const err = new Error('Validation failed');
-      err.isValidation = true;
-      err.details = parsed.error.issues;
-      return next(err);
+      const error = new Error('Validation failed');
+      error.isValidation = true;
+      error.details = parsed.error.issues;
+      return next(error);
     }
 
     const { name, email, password, tenantSlug } = parsed.data;
@@ -67,10 +68,10 @@ router.post('/login', async (req, res, next) => {
     // 1. Validate with zod
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
-      const err = new Error('Validation failed');
-      err.isValidation = true;
-      err.details = parsed.error.issues;
-      return next(err);
+      const error = new Error('Validation failed');
+      error.isValidation = true;
+      error.details = parsed.error.issues;
+      return next(error);
     }
 
     const { email, password, tenantSlug } = parsed.data;
@@ -169,7 +170,7 @@ router.post('/refresh', async (req, res, next) => {
     // 4. Return 200
     return success(res, {});
   } catch (error) {
-    // If the refresh service throws an error (e.g., TOKEN_INVALID), we can treat it as UNAUTHORIZED
+    // If the refresh service throws an error (error.g., TOKEN_INVALID), we can treat it as UNAUTHORIZED
     // Alternatively, let the global handler catch named errors. The global handler will throw 500
     // for unknown ones, but the user requested: 401 { error: 'Session expired. Please login again.' }
     // Let's explicitly format it here to fulfill that specific prompt requirement.
@@ -189,7 +190,7 @@ router.post('/logout', authenticate, async (req, res) => {
     res.clearCookie('accessToken');
     return res.status(204).send();
   } catch (error) {
-    console.error('Logout Error:', error);
+    logger.error('Logout Error:', error);
     res.clearCookie('refreshToken');
     res.clearCookie('accessToken');
     return res.status(204).send();
@@ -248,7 +249,7 @@ router.get('/me', authenticate, async (req, res, next) => {
 
     return success(res, { user });
   } catch (error) {
-    console.error('[AUTH_LOGIN_ERROR]', error);
+    logger.error('[AUTH_LOGIN_ERROR]', error);
     next(error);
   }
 });
@@ -365,7 +366,7 @@ router.post('/reset-password-request', async (req, res) => {
       queueEmail(tenantResult.rows[0].id, u.id, email, 'Password Reset Request', 'password_reset', { name: u.name, resetUrl });
     }
     return success(res, { message: 'If email exists, reset sent' });
-  } catch(e) {
+  } catch (error) {
     return fail(res, 'INTERNAL_ERROR', 'Error processing reset', 500);
   }
 });
@@ -380,13 +381,12 @@ router.post('/change-password', authenticate, async (req, res) => {
       queueEmail(req.tenantId, req.user.userId, userResult.rows[0].email, 'Password Changed', 'password_changed', { name: userResult.rows[0].name });
     }
     return success(res, { message: 'Password changed successfully (mock)' });
-  } catch(e) {
+  } catch (error) {
     return fail(res, 'INTERNAL_ERROR', 'Error changing password', 500);
   }
 });
 
 const { validatePasswordPolicy, hashPassword, recordPasswordChange } = require('../services/auth/password');
-
 router.post('/force-reset-password', async (req, res) => {
   const { userId, newPassword } = req.body;
   if (!userId || !newPassword) return res.status(400).json({ success: false, message: 'Invalid payload' });
@@ -402,8 +402,8 @@ router.post('/force-reset-password', async (req, res) => {
     await recordPasswordChange(userId, passwordHash);
     
     return res.json({ success: true, message: 'Password updated successfully' });
-  } catch(e) {
-    return res.status(400).json({ success: false, message: e.message });
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error.message });
   }
 });
 

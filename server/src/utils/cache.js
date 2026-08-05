@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const { createClient } = require('redis');
 const env = require('../config/env');
 
@@ -8,7 +9,7 @@ const client = useRedis ? createClient({
 }) : null;
 
 if (client) {
-  client.on('error', (err) => console.log('Redis Client Error', err));
+  client.on('error', (error) => logger.info('Redis Client Error', error));
 }
 
 let isConnected = false;

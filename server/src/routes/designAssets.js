@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
@@ -5,7 +6,6 @@ const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const validate = require('../middleware/validate');
 const pool = require('../config/db');
-
 const router = express.Router({ mergeParams: true });
 router.use(authenticate);
 
@@ -65,8 +65,8 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
     }));
 
     return success(res, result);
-  } catch (err) {
-    console.error('[DesignAssets Router] List error:', err);
+  } catch (error) {
+    logger.error('[DesignAssets Router] List error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch design assets.', 500);
   }
 });
@@ -98,8 +98,8 @@ router.post('/', authorize('design:manage'), validate(createAssetSchema), async 
     asset.items = [];
 
     return success(res, asset, {}, 201);
-  } catch (err) {
-    console.error('[DesignAssets Router] Create error:', err);
+  } catch (error) {
+    logger.error('[DesignAssets Router] Create error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create design asset.', 500);
   }
 });
@@ -128,8 +128,8 @@ router.get('/:id', authorize('projects:read'), async (req, res, next) => {
     asset.items = items;
 
     return success(res, asset);
-  } catch (err) {
-    console.error('[DesignAssets Router] Detail error:', err);
+  } catch (error) {
+    logger.error('[DesignAssets Router] Detail error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch design asset details.', 500);
   }
 });
@@ -190,8 +190,8 @@ router.put('/:id', authorize('design:manage'), validate(updateAssetSchema), asyn
 
     const { rows } = await pool.query(query, values);
     return success(res, rows[0]);
-  } catch (err) {
-    console.error('[DesignAssets Router] Update error:', err);
+  } catch (error) {
+    logger.error('[DesignAssets Router] Update error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update design asset.', 500);
   }
 });
@@ -212,8 +212,8 @@ router.delete('/:id', authorize('design:manage'), async (req, res, next) => {
     }
 
     return success(res, { message: 'Design asset deleted successfully.' });
-  } catch (err) {
-    console.error('[DesignAssets Router] Delete error:', err);
+  } catch (error) {
+    logger.error('[DesignAssets Router] Delete error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete design asset.', 500);
   }
 });
@@ -247,8 +247,8 @@ router.post('/:id/items', authorize('design:manage'), validate(createItemSchema)
     ]);
 
     return success(res, rows[0], {}, 201);
-  } catch (err) {
-    console.error('[DesignAssets Router] Add item error:', err);
+  } catch (error) {
+    logger.error('[DesignAssets Router] Add item error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to add item to design asset.', 500);
   }
 });
@@ -277,8 +277,8 @@ router.delete('/:id/items/:itemId', authorize('design:manage'), async (req, res,
     }
 
     return success(res, { message: 'Design asset item deleted successfully.' });
-  } catch (err) {
-    console.error('[DesignAssets Router] Delete item error:', err);
+  } catch (error) {
+    logger.error('[DesignAssets Router] Delete item error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete design asset item.', 500);
   }
 });

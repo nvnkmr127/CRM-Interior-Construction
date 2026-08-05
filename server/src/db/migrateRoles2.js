@@ -1,4 +1,5 @@
 const { pool } = require('../config/db');
+const logger = require('../utils/logger');
 
 async function migrate() {
   const client = await pool.connect();
@@ -13,9 +14,9 @@ async function migrate() {
     
     await client.query('COMMIT');
     console.log('Migration successful');
-  } catch (err) {
+  } catch (error) {
     await client.query('ROLLBACK');
-    console.error('Migration failed:', err);
+    logger.error('Migration failed:', error);
   } finally {
     client.release();
     process.exit(0);

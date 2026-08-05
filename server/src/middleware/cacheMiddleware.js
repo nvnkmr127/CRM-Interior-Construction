@@ -20,8 +20,8 @@ function cacheMiddleware(durationInSeconds = 900) {
       if (cachedResponse) {
         return res.json(cachedResponse);
       }
-    } catch (err) {
-      console.warn('Cache lookup failed:', err);
+    } catch (error) {
+      console.warn('Cache lookup failed:', error);
       // Fall through on cache error
     }
 
@@ -30,8 +30,8 @@ function cacheMiddleware(durationInSeconds = 900) {
     res.json = (body) => {
       // Only cache successful responses
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        setCache(cacheKey, body, durationInSeconds).catch(err => {
-          console.warn('Failed to set cache:', err);
+        setCache(cacheKey, body, durationInSeconds).catch(error => {
+          console.warn('Failed to set cache:', error);
         });
       }
       return originalJson(body);

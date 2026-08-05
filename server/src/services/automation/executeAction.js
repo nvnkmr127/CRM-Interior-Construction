@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const sendWhatsapp = require('./handlers/sendWhatsapp');
 const sendEmail = require('./handlers/sendEmail');
 const createTaskAction = require('./handlers/createTaskAction');
@@ -17,7 +18,6 @@ const sendCalendarInvite = require('./handlers/sendCalendarInvite');
  * @param {Object} context - The execution context boundary { tenantId, userId: 'system', record, triggeredBy }
  */
 const pool = require('../../db/pool');
-
 async function executeAction(action, context) {
   let eventId;
   const startTime = Date.now();
@@ -77,7 +77,7 @@ async function executeAction(action, context) {
     }
 
   } catch (error) {
-    console.error(`[Automation Action Failure] Execution failed for type '${action.type}' (triggered by rule: ${context.triggeredBy}):`, error);
+    logger.error(`[Automation Action Failure] Execution failed for type '${action.type}' (triggered by rule: ${context.triggeredBy}):`, error);
     if (eventId) {
       const duration = Date.now() - startTime;
       await pool.query(`

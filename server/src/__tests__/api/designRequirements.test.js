@@ -1,6 +1,7 @@
 const request = require('supertest');
 const app = require('../../app');
 const pool = require('../../db/pool');
+const logger = require('../../utils/logger');
 
 describe('Project Design Requirements API & Cloning', () => {
   jest.setTimeout(30000);
@@ -15,7 +16,7 @@ describe('Project Design Requirements API & Cloning', () => {
       .post('/api/auth/login')
       .send({ email: 'admin@demo.com', password: 'Admin@123', tenantSlug: 'demo' });
     if (!loginRes.body || !loginRes.body.data) {
-      console.error('Login failed in test. Status:', loginRes.status, 'Response:', loginRes.text);
+      logger.error('Login failed in test. Status:', loginRes.status, 'Response:', loginRes.text);
     }
     accessToken = loginRes.body.data.accessToken;
 

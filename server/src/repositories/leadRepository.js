@@ -1,6 +1,6 @@
+const logger = require('../utils/logger');
 const pool = require('../db/pool');
 const eventBus = require('../services/eventBus');
-
 async function createLead(tenantId, data, txClient = null) {
   const { 
     name, email, phone, source, stage_id, assignee_id, score, custom_fields, notes, status, created_by,
@@ -71,9 +71,9 @@ async function createLead(tenantId, data, txClient = null) {
     lead.material_preference = material_preference;
     
     return lead;
-  } catch (err) {
+  } catch (error) {
     if (!txClient) await client.query('ROLLBACK');
-    throw err;
+    throw error;
   } finally {
     if (!txClient) client.release();
   }
@@ -407,9 +407,9 @@ async function updateLead(tenantId, leadId, updates) {
     }
 
     await client.query('COMMIT');
-  } catch (err) {
+  } catch (error) {
     await client.query('ROLLBACK');
-    throw err;
+    throw error;
   } finally {
     client.release();
   }
@@ -721,8 +721,8 @@ async function getPipelineSummary(tenantId) {
 async function refreshPipelineSummary() {
   try {
     await pool.query('REFRESH MATERIALIZED VIEW CONCURRENTLY pipeline_summary');
-  } catch (err) {
-    console.error('Failed to refresh pipeline_summary', err);
+  } catch (error) {
+    logger.error('Failed to refresh pipeline_summary', error);
   }
 }
 

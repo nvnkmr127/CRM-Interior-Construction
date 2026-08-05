@@ -1,6 +1,6 @@
+const logger = require('../utils/logger');
 const pool = require('../config/db');
 const dataScope = require('./dataScope');
-
 /**
  * Middleware to enforce project-level access for direct /projects/:id routes.
  * It uses the existing dataScope logic to construct a filter and checks against the DB.
@@ -23,7 +23,7 @@ async function enforceProjectAccess(req, res, next, id) {
       if (raRows.length > 0 && raRows[0].entity_type !== 'project') {
         return next();
       }
-    } catch (e) {
+    } catch (error) {
       // Ignore invalid UUID error, proceed to normal project check
     }
 
@@ -51,8 +51,8 @@ async function enforceProjectAccess(req, res, next, id) {
 
     next();
   } catch (error) {
-    console.error('[enforceProjectAccess]', error);
-    return res.status(500).json({ success: false, error: 'Internal error checking project access' });
+    logger.error('[enforceProjectAccess]', error);
+    return next(error);
   }
 }
 

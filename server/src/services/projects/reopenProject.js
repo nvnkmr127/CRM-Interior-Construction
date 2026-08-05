@@ -24,17 +24,17 @@ async function reopenProject({ projectId, tenantId, userId, newStartDate, newTar
     [projectId, tenantId]
   );
   if (currentRes.rows.length === 0) {
-    const err = new Error('PROJECT_NOT_FOUND');
-    err.status = 404;
-    throw err;
+    const error = new Error('PROJECT_NOT_FOUND');
+    error.status = 404;
+    throw error;
   }
   const project = currentRes.rows[0];
 
   if (project.status === 'active') {
-    const err = new Error('PROJECT_ALREADY_ACTIVE');
-    err.message = 'Project is already active.';
-    err.status = 400;
-    throw err;
+    const error = new Error('PROJECT_ALREADY_ACTIVE');
+    error.message = 'Project is already active.';
+    error.status = 400;
+    throw error;
   }
 
   // Calculate shift offset in days
@@ -130,9 +130,9 @@ async function reopenProject({ projectId, tenantId, userId, newStartDate, newTar
     await client.query('COMMIT');
     return updatedProject;
 
-  } catch (err) {
+  } catch (error) {
     await client.query('ROLLBACK');
-    throw err;
+    throw error;
   } finally {
     client.release();
   }

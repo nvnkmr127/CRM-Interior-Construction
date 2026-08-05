@@ -1,4 +1,5 @@
 const pool = require('../db/pool');
+const logger = require('../utils/logger');
 
 /**
  * Middleware to log API requests for developers.
@@ -24,8 +25,8 @@ const apiLogger = (req, res, next) => {
       `INSERT INTO api_logs (tenant_id, api_key_id, endpoint, method, status_code, ip_address, execution_time_ms)
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [req.tenantId, req.apiKeyId, endpoint, method, statusCode, ipAddress, executionTimeMs]
-    ).catch(err => {
-      console.error('Failed to write API log:', err);
+    ).catch(error => {
+      logger.error('Failed to write API log:', error);
     });
   });
 

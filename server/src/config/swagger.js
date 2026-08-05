@@ -41,7 +41,7 @@ const setupSwagger = (app) => {
     if (!swaggerSpec) {
       try {
         swaggerSpec = swaggerJsDoc(options);
-      } catch (e) {
+      } catch (error) {
         swaggerSpec = {};
       }
     }

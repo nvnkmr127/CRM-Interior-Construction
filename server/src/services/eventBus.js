@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const EventEmitter = require('events');
 
 class EventBus extends EventEmitter {
@@ -9,7 +10,7 @@ class EventBus extends EventEmitter {
 
   /**
    * Publishes an event to the bus.
-   * @param {string} eventName - e.g., 'lead.created', 'lead.stage_changed'
+   * @param {string} eventName - error.g., 'lead.created', 'lead.stage_changed'
    * @param {object} payload - The event payload
    * @param {object} context - Tenant and User context { tenantId, userId }
    */
@@ -28,7 +29,7 @@ class EventBus extends EventEmitter {
     // Also emit a catch-all event useful for generic dispatchers/loggers
     this.emit('*', event);
     
-    console.log(`[EventBus] Published: ${eventName} for tenant ${context.tenantId || 'system'}`);
+    logger.info(`[EventBus] Published: ${eventName} for tenant ${context.tenantId || 'system'}`);
   }
 }
 

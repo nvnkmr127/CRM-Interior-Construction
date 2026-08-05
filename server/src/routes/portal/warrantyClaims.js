@@ -19,8 +19,8 @@ router.get('/', async (req, res, next) => {
     const { projectId, tenantId } = req.portalUser;
     const claims = await warrantyClaimService.getClaimsByProject(projectId, tenantId);
     return success(res, claims);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -43,9 +43,9 @@ router.post('/', validate(createPortalClaimSchema), async (req, res, next) => {
     });
 
     return success(res, claim, {}, 201);
-  } catch (err) {
+  } catch (error) {
     
-    next(err);
+    next(error);
   }
 });
 

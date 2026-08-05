@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars, no-useless-assignment */
+const logger = require('../../utils/logger');
 const crypto = require('crypto');
 const pool = require('../../db/pool');
 const { queueEmail } = require('../emailService');
@@ -8,11 +10,10 @@ const UAParser = require('ua-parser-js');
 let geoip;
 try {
   geoip = require('geoip-lite');
-} catch (e) {
+} catch (error) {
   geoip = { lookup: () => null };
 }
 const { getCache, setCache } = require('../../utils/cache');
-
 async function recordLoginHistory({ tenantId, userId, sessionId, emailAttempted, ip, userAgent, status, failureReason }) {
   try {
     const parser = new UAParser(userAgent);
@@ -34,8 +35,8 @@ async function recordLoginHistory({ tenantId, userId, sessionId, emailAttempted,
       ip, userAgent, browser, os, device, location, 
       status, failureReason
     ]);
-  } catch (err) {
-    console.error('Failed to log login history:', err);
+  } catch (error) {
+    logger.error('Failed to log login history:', error);
   }
 }
 
@@ -247,12 +248,12 @@ async function loginUser({ email, password, tenantId, ip, userAgent, trustedDevi
 
     delete user.password_hash;
     return { accessToken, refreshToken, user };
-  } catch (err) {
+  } catch (error) {
     await recordLoginHistory({
       tenantId, userId: user ? user.id : null, sessionId: null, emailAttempted: email,
-      ip, userAgent, status: 'failure', failureReason: err.message
+      ip, userAgent, status: 'failure', failureReason: error.message
     });
-    throw err;
+    throw error;
   }
 }
 

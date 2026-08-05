@@ -1,3 +1,4 @@
+const logger = require('../../../utils/logger');
 const pool = require('../../../db/pool');
 
 /**
@@ -48,7 +49,7 @@ async function handle(config, context) {
     milestoneId || null
   ]);
   
-  console.log(`[Automation] Created task '${title}' for ${leadId ? 'lead '+leadId : 'project '+projectId}`);
+  logger.info(`[Automation] Created task '${title}' for ${leadId ? 'lead '+leadId : 'project '+projectId}`);
 }
 
 module.exports = { handle };

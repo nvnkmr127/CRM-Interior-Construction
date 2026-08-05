@@ -1,5 +1,5 @@
+const logger = require('../../utils/logger');
 const { GoogleGenAI } = require('@google/genai');
-
 /**
  * Supervisor Agent
  * Routes natural language queries to the appropriate sub-system.
@@ -15,7 +15,7 @@ class SupervisorAgent {
       Your job is to route the user's natural language command to the correct sub-agent.
       
       Available Actions:
-      - "update_lead": The user wants to update a lead's data (e.g. status, budget).
+      - "update_lead": The user wants to update a lead's data (error.g. status, budget).
       - "add_note": The user wants to add a timeline note to a lead.
       - "budget_optimizer": The user is asking for budget breakdown recommendations.
       - "sales_coach": The user is asking for sales advice or meeting feedback.
@@ -47,7 +47,7 @@ class SupervisorAgent {
       if (text.startsWith('```json')) text = text.replace(/^```json\n/, '').replace(/\n```$/, '');
       return JSON.parse(text);
     } catch (error) {
-      console.error('[Supervisor Agent] Routing error:', error);
+      logger.error('[Supervisor Agent] Routing error:', error);
       return { action: 'unknown', confidence: 0 };
     }
   }

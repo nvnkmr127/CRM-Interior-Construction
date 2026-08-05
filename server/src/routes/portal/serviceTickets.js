@@ -26,8 +26,8 @@ router.get('/', async (req, res, next) => {
     const { projectId, tenantId } = req.portalUser;
     const tickets = await serviceTicketService.getTicketsByProject(projectId, tenantId);
     return success(res, tickets);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -49,11 +49,11 @@ router.post('/', validate(createPortalTicketSchema), async (req, res, next) => {
     });
 
     return success(res, ticket, {}, 201);
-  } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return fail(res, 'VALIDATION_ERROR', error.errors, 400);
     }
-    next(err);
+    next(error);
   }
 });
 
@@ -74,8 +74,8 @@ router.get('/:id', async (req, res, next) => {
     }
 
     return success(res, ticket);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -95,20 +95,20 @@ router.post('/:id/feedback', validate(feedbackSchema), async (req, res, next) =>
         portalUserId
       );
       return success(res, ticket);
-    } catch (err) {
-      if (err.message === 'TICKET_NOT_FOUND') {
+    } catch (error) {
+      if (error.message === 'TICKET_NOT_FOUND') {
         return fail(res, 'NOT_FOUND', 'Service ticket not found.', 404);
       }
-      if (err.message === 'INVALID_TICKET_STATUS_FOR_FEEDBACK') {
+      if (error.message === 'INVALID_TICKET_STATUS_FOR_FEEDBACK') {
         return fail(res, 'BAD_REQUEST', 'Feedback can only be submitted for resolved or closed tickets.', 400);
       }
-      throw err;
+      throw error;
     }
-  } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return fail(res, 'VALIDATION_ERROR', error.errors, 400);
     }
-    next(err);
+    next(error);
   }
 });
 
@@ -130,14 +130,14 @@ router.post('/:id/visits/:visitId/confirm', async (req, res, next) => {
     try {
       const visit = await serviceTicketService.confirmVisit(visitId, id, tenantId, portalUserId);
       return success(res, visit);
-    } catch (err) {
-      if (err.message === 'VISIT_NOT_FOUND') {
+    } catch (error) {
+      if (error.message === 'VISIT_NOT_FOUND') {
         return fail(res, 'NOT_FOUND', 'Service visit not found.', 404);
       }
-      throw err;
+      throw error;
     }
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -164,11 +164,11 @@ router.post('/csat', validate(csatSchema), async (req, res, next) => {
     });
 
     return success(res, csat, {}, 201);
-  } catch (err) {
-    if (err.message === 'PROJECT_NOT_FOUND') {
+  } catch (error) {
+    if (error.message === 'PROJECT_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Project not found.', 404);
     }
-    next(err);
+    next(error);
   }
 });
 

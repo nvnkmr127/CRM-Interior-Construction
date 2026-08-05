@@ -87,7 +87,7 @@ async function evaluateReadinessGates(projectId, tenantId, client = pool) {
     total: totalDocs,
     unapproved: unapprovedDocs,
     message: totalDocs === 0
-      ? 'No documents uploaded. At least one approved document (e.g. final drawings/handover form) is required.'
+      ? 'No documents uploaded. At least one approved document (error.g. final drawings/handover form) is required.'
       : unapprovedDocs === 0
         ? `All ${totalDocs} uploaded document(s) are approved.`
         : `${unapprovedDocs} of ${totalDocs} document(s) pending approval.`
@@ -171,9 +171,9 @@ async function pmSignOff(projectId, tenantId, userId) {
 
     await client.query('COMMIT');
     return upsertRes.rows[0];
-  } catch (err) {
+  } catch (error) {
     await client.query('ROLLBACK');
-    throw err;
+    throw error;
   } finally {
     client.release();
   }
@@ -220,9 +220,9 @@ async function scheduleAppointment(projectId, tenantId, appointmentDate, notes, 
 
     await client.query('COMMIT');
     return insertRes.rows[0];
-  } catch (err) {
+  } catch (error) {
     await client.query('ROLLBACK');
-    throw err;
+    throw error;
   } finally {
     client.release();
   }

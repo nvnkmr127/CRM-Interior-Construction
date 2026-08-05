@@ -1,3 +1,4 @@
+/* eslint-disable no-empty */
 
 const pool = require('../config/db');
 const { getProjectBudgetValidation } = require('./budgetValidator');
@@ -25,17 +26,17 @@ async function getConstructionFinancialSummary(approvalId, tenantId) {
           vendorBill = { ...inv[0], base_amount: inv[0].amount, net_payable: inv[0].amount }; // Map old invoice format
         }
       }
-    } catch(err){}
+    } catch (error){}
   } else if (app.transaction_type === 'payment' || app.transaction_type === 'payment_update') {
     try {
       const { rows: pm } = await pool.query('SELECT project_id FROM payment_milestones WHERE id = $1', [app.target_id]);
       if (pm.length > 0) projectId = pm[0].project_id;
-    } catch(err){}
+    } catch (error){}
   } else if (app.transaction_type === 'site_expense') {
     try {
       const { rows: se } = await pool.query('SELECT project_id FROM site_expenses WHERE id = $1', [app.target_id]);
       if (se.length > 0) projectId = se[0].project_id;
-    } catch(err){}
+    } catch (error){}
   }
 
   const summary = {
@@ -59,33 +60,33 @@ async function getConstructionFinancialSummary(approvalId, tenantId) {
   try {
     const { rows: boq } = await pool.query('SELECT SUM(total_amount) as total FROM boqs WHERE project_id = $1', [projectId]);
     summary.totalBoq = Number(boq[0]?.total || 0);
-  } catch(err){}
+  } catch (error){}
   try {
     const { rows: po } = await pool.query('SELECT SUM(total_amount) as total FROM purchase_orders WHERE project_id = $1', [projectId]);
     summary.totalPOs = Number(po[0]?.total || 0);
-  } catch(err){}
+  } catch (error){}
   try {
     const { rows: wo } = await pool.query('SELECT SUM(total_amount) as total FROM work_orders WHERE project_id = $1', [projectId]);
     summary.totalWOs = Number(wo[0]?.total || 0);
-  } catch(err){}
+  } catch (error){}
   try {
     const { rows: se } = await pool.query('SELECT SUM(amount) as total FROM site_expenses WHERE project_id = $1', [projectId]);
     summary.totalSiteExpenses = Number(se[0]?.total || 0);
-  } catch(err){}
+  } catch (error){}
   try {
     const { rows: pm } = await pool.query('SELECT SUM(amount) as total FROM payment_milestones WHERE project_id = $1', [projectId]);
     summary.totalMilestones = Number(pm[0]?.total || 0);
-  } catch(err){}
+  } catch (error){}
 
   
   try {
     const { rows: mr } = await pool.query('SELECT SUM(estimated_cost) as total FROM material_requests WHERE project_id = $1', [projectId]);
     summary.totalMaterialRequests = Number(mr[0]?.total || 0);
-  } catch(err){}
+  } catch (error){}
   try {
     const { rows: adv } = await pool.query("SELECT SUM(amount) as total FROM site_expenses WHERE project_id = $1 AND expense_type = 'labour_advance'", [projectId]);
     summary.totalAdvances = Number(adv[0]?.total || 0);
-  } catch(err){}
+  } catch (error){}
   
 
   // 3. Mathematical Validation Engine (GST, TDS, Retention)
@@ -138,7 +139,7 @@ async function getConstructionFinancialSummary(approvalId, tenantId) {
     if (budgetData.status === 'exceeded') {
       summary.validationFlags.push({ type: 'error', message: 'Project Budget Exceeded' });
     }
-  } catch(err){}
+  } catch (error){}
 
   return summary;
 }

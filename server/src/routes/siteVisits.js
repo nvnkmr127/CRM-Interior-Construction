@@ -255,8 +255,8 @@ router.delete('/:id/photos/:photoId', authenticate, async (req, res, next) => {
     // Delete from storage provider
     try {
       await storage.deleteFile(file_url);
-    } catch (e) {
-      console.warn('[SiteVisits Router] Failed to delete file from storage:', e);
+    } catch (error) {
+      console.warn('[SiteVisits Router] Failed to delete file from storage:', error);
     }
 
     // Delete from DB

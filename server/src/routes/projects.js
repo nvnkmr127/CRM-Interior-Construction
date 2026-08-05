@@ -1,5 +1,29 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const { z } = require('zod');
+const {
+  uploadUrlSchema,
+  createProjectSchema,
+  updateReferralSchema,
+  cancelProjectSchema,
+  updateRetentionSchema,
+  reopenProjectSchema,
+  scheduleAppointmentSchema,
+  designRequirementsSchema,
+  roomRequirementSchema,
+  inspirationSchema,
+  replaceResourceSchema,
+  pauseProjectSchema,
+  resumeProjectSchema,
+  handoverSignOffSchema,
+  updateComplianceSchema,
+  updateMepChecklistSchema,
+  updateVendorCoordinationSchema,
+  vendorRecoverySchema,
+  confirmBookingSchema,
+  coordinationSchema,
+  applySchema
+} = require('../../shared/validators/projectSchemas');
 const { success, fail, paginate } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
@@ -61,8 +85,8 @@ router.get('/debug-db', async (req, res, next) => {
     const sql = fs.readFileSync(path.join(__dirname, '../../migrations/028_resource_allocations.sql'), 'utf8');
     await pool.query(sql);
     return res.json({ success: true, message: 'DB fixed' });
-  } catch (err) {
-    return res.json({ success: false, error: err.message, stack: err.stack });
+  } catch (error) {
+    return res.json({ success: false, error: error.message, stack: error.stack });
   }
 });
 
@@ -81,8 +105,8 @@ router.get('/:id/activities', authorize('projects:read'), async (req, res, next)
       [req.params.id, req.tenantId]
     );
     return success(res, rows);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -97,8 +121,8 @@ router.post('/:id/activities', authorize('projects:write'), async (req, res, nex
       [req.params.id, req.tenantId, type || 'note', title, notes, outcome, metadata, req.user?.id || null]
     );
     return success(res, rows[0]);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -107,8 +131,8 @@ router.get('/factory/production-orders', authorize('factory:production_status'),
   try {
     const productionOrderController = require('../controllers/productionOrderController');
     await productionOrderController.getGlobalProductionOrders(req, res, next);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -116,8 +140,8 @@ router.get('/factory/cnc-requests', authorize('factory:production_status'), asyn
   try {
     const productionOrderController = require('../controllers/productionOrderController');
     await productionOrderController.getGlobalCNCRequests(req, res, next);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -126,8 +150,8 @@ router.get('/coordination/dashboard', authorize('projects:read'), async (req, re
     const { getCoordinationDashboard } = require('../services/projects/coordinationService');
     const data = await getCoordinationDashboard(req.tenantId);
     return success(res, data);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -171,138 +195,7 @@ router.use('/:projectId/material-usages', verifyProjectBooked, materialUsagesRou
 
 // Standard CRUD routes
 
-const createProjectSchema = z.object({
-  client_name: z.string().min(2, 'Client name must be at least 2 characters'),
-  name: z.string().min(1, 'Project name is required'),
-  project_type: z.string().optional(),
-  pm_id: z.string().uuid().optional().nullable(),
-  designer_ids: z.array(z.string().uuid()).optional().nullable(),
-  contract_value: z.number().optional().nullable(),
-  booking_amount: z.number().optional().nullable(),
-  start_date: z.string().optional().nullable(),
-  target_date: z.string().optional().nullable(),
-  site_address: z.string().optional().nullable(),
-  templateId: z.string().uuid().optional().nullable(),
-  client_phone: z.string().optional().nullable(),
-  client_email: z.string().email().optional().nullable(),
-  contract_file_key: z.string({ required_error: 'Contract file key is required' }).min(1, 'Contract file key is required'),
-  contract_file_name: z.string({ required_error: 'Contract file name is required' }).min(1, 'Contract file name is required'),
-  contract_file_size: z.number({ required_error: 'Contract file size is required' }).positive('Contract file size must be positive'),
-  contract_file_mime: z.string({ required_error: 'Contract file mime type is required' }).min(1, 'Contract file mime type is required'),
-  is_scope_locked: z.boolean().optional(),
-  enforce_dependencies: z.boolean().optional(),
-  agreement_signed_by: z.string().optional().nullable(),
-  agreement_signed_at: z.string().optional().nullable(),
-  agreement_signature_method: z.string().optional().nullable(),
-  payment_terms: z.string().optional().nullable(),
-  flat_number: z.string().optional().nullable(),
-  floor: z.string().optional().nullable(),
-  building_name: z.string().optional().nullable(),
-  street: z.string().optional().nullable(),
-  city: z.string().optional().nullable(),
-  pincode: z.string().optional().nullable(),
-  landmark: z.string().optional().nullable(),
-  latitude: z.number().optional().nullable(),
-  longitude: z.number().optional().nullable(),
-  builder_name: z.string().optional().nullable(),
-  society_name: z.string().optional().nullable(),
-  rera_id: z.string().optional().nullable(),
-  noc_status: z.string().optional().nullable(),
-  occupancy_certificate_status: z.string().optional().nullable(),
-  property_handover_date: z.string().optional().nullable(),
-  contacts: z.array(z.object({
-    name: z.string().min(1, 'Contact name is required'),
-    phone: z.string().optional().nullable(),
-    email: z.string().optional().nullable(),
-    role: z.string().optional().nullable(),
-    decision_authority: z.string().optional().nullable(),
-    relationship_notes: z.string().optional().nullable(),
-    contact_preference: z.string().optional().nullable(),
-    approval_authority_level: z.string().optional().nullable()
-  })).optional().nullable(),
-  spouse_name: z.string().optional().nullable(),
-  spouse_phone: z.string().optional().nullable(),
-  spouse_email: z.string().optional().nullable(),
-  number_of_family_members: z.number().int().optional().nullable(),
-  lifestyle_preferences: z.string().optional().nullable(),
-  preferred_communication_channel: z.string().optional().nullable(),
-  lift_availability: z.string().optional().nullable(),
-  lift_dimensions: z.string().optional().nullable(),
-  staircase_access: z.string().optional().nullable(),
-  working_hour_window: z.string().optional().nullable(),
-  society_contact: z.string().optional().nullable(),
-  parking_permission: z.string().optional().nullable(),
-  unloading_area: z.string().optional().nullable(),
-  noc_requirements: z.string().optional().nullable(),
-  key_holder_name: z.string().optional().nullable(),
-  key_holder_phone: z.string().optional().nullable(),
-  spare_key_location: z.string().optional().nullable(),
-  gate_pass_number: z.string().optional().nullable(),
-  access_card_holder: z.string().optional().nullable(),
-  access_time_restrictions: z.string().optional().nullable(),
-  lead_designer_ids: z.array(z.string().uuid()).optional().nullable(),
-  junior_designer_ids: z.array(z.string().uuid()).optional().nullable(),
-  site_engineer_ids: z.array(z.string().uuid()).optional().nullable(),
-  qc_engineer_ids: z.array(z.string().uuid()).optional().nullable(),
-  site_supervisor_ids: z.array(z.string().uuid()).optional().nullable(),
-  crm_executive_ids: z.array(z.string().uuid()).optional().nullable(),
-  procurement_officer_ids: z.array(z.string().uuid()).optional().nullable(),
-  carpet_area: z.number().optional().nullable(),
-  built_up_area: z.number().optional().nullable(),
-  number_of_rooms: z.number().int().optional().nullable(),
-  project_category: z.string().optional().nullable(),
-  project_sub_category: z.string().optional().nullable(),
-  fire_noc_status: z.string().optional().nullable(),
-  occupancy_permit_status: z.string().optional().nullable(),
-  retention_money_percentage: z.number().optional().nullable(),
-  ld_clause_details: z.string().optional().nullable(),
-  stakeholder_complexity: z.string().optional().nullable(),
-  property_type: z.string().optional().nullable(),
-  property_age: z.string().optional().nullable(),
-  renovation_scope: z.string().optional().nullable(),
-  segment: z.string().optional().nullable(),
-  allowed_design_revisions: z.number().int().nonnegative().optional().nullable(),
-  current_design_revisions: z.number().int().nonnegative().optional().nullable(),
-  stage_revision_limits: z.any().optional().nullable(),
-  stage_revision_counts: z.any().optional().nullable(),
-  pm_hours_allocated: z.number().int().nonnegative().optional().nullable(),
-  designer_hours_allocated: z.number().int().nonnegative().optional().nullable(),
-  measurements: z.array(z.object({
-    room_name: z.string().min(1, 'Room name is required'),
-    length: z.number().optional().nullable(),
-    width: z.number().optional().nullable(),
-    height: z.number().optional().nullable(),
-    area: z.number().optional().nullable(),
-    unit: z.string().optional().nullable(),
-    notes: z.string().optional().nullable()
-  })).optional().nullable(),
-  vendors: z.array(z.object({
-    vendor_name: z.string().min(1, 'Vendor name is required'),
-    scope_of_work: z.string().optional().nullable(),
-    agreed_rate: z.number().optional().nullable(),
-    payment_terms: z.string().optional().nullable(),
-    status: z.string().optional().nullable()
-  })).optional().nullable(),
-  consultants: z.array(z.object({
-    name: z.string().min(1, 'Consultant name is required'),
-    role: z.string().min(1, 'Consultant role is required'),
-    firm: z.string().optional().nullable(),
-    email: z.string().optional().nullable(),
-    phone: z.string().optional().nullable()
-  })).optional().nullable(),
-  site_team: z.array(z.object({
-    vendor_id: z.string().uuid().optional().nullable(),
-    role: z.string().min(1, 'Role is required'),
-    name: z.string().min(1, 'Name is required'),
-    phone: z.string().optional().nullable(),
-    email: z.string().optional().nullable(),
-    status: z.string().optional().nullable()
-  })).optional().nullable(),
-  installation_warranty_start_date: z.string().optional().nullable(),
-  installation_warranty_end_date: z.string().optional().nullable(),
-  installation_warranty_scope: z.string().optional().nullable(),
-  installation_warranty_status: z.enum(['active', 'expired', 'voided']).optional().nullable()
-});
+
 
 const updateProjectSchema = createProjectSchema.partial().extend({
   status: z.string().optional(),
@@ -313,10 +206,7 @@ const updateProjectSchema = createProjectSchema.partial().extend({
   warranty_terms_acknowledged_by: z.string().optional().nullable()
 });
 
-const uploadUrlSchema = z.object({
-  name: z.string().min(1, 'File name is required'),
-  mimeType: z.string().min(1, 'Mime type is required')
-});
+
 
 // Route to generate S3 pre-signed upload URL for contract document
 router.post('/contract/upload-url', authorize('projects:create'), validate(uploadUrlSchema), async (req, res, next) => {
@@ -331,8 +221,8 @@ router.post('/contract/upload-url', authorize('projects:create'), validate(uploa
       mimeType
     });
     return success(res, result);
-  } catch (err) {
-    console.error('[Projects Router] contract upload-url error:', err);
+  } catch (error) {
+    logger.error('[Projects Router] contract upload-url error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to generate contract upload URL.', 500);
   }
 });
@@ -376,8 +266,8 @@ router.post('/', authorize('projects:create'), validate(createProjectSchema), as
     const safeProject = filterAllowedFields(project, 'projects', req.user.field_permissions);
 
     return success(res, safeProject, {}, 201);
-  } catch (err) {
-    console.error('[Projects Router] Create error:', err);
+  } catch (error) {
+    logger.error('[Projects Router] Create error:', error);
     return fail(res, 'INTERNAL_ERROR', 'An error occurred while creating the project.', 500);
   }
 });
@@ -425,8 +315,8 @@ router.get('/', authorize('projects:read'), dataScope('projects', 'pm_id', 'p'),
     result.data = filterAllowedFields(result.data, 'projects', req.user.field_permissions);
 
     return paginate(res, result.data, result.total, result.page, result.limit);
-  } catch (err) {
-    console.error('[Projects Router] List error:', err);
+  } catch (error) {
+    logger.error('[Projects Router] List error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to retrieve projects list.', 500);
   }
 });
@@ -446,8 +336,8 @@ router.get('/relationship-records', authorize('projects:read'), async (req, res,
       [req.tenantId]
     );
     return success(res, rows);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -480,8 +370,8 @@ router.post('/relationship-records/:id/followups', authorize('projects:update'),
     );
 
     return success(res, rows[0]);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -497,17 +387,12 @@ router.get('/referrals', authorize('projects:read'), async (req, res, next) => {
       [req.tenantId]
     );
     return success(res, rows);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
-const updateReferralSchema = z.object({
-  referralStatus: z.enum(['pending', 'converted', 'closed']).optional(),
-  rewardStatus: z.enum(['unpaid', 'paid', 'not_eligible']).optional(),
-  rewardAmount: z.number().optional(),
-  notes: z.string().optional().nullable()
-});
+
 
 // PATCH /api/projects/referrals/:id
 router.patch('/referrals/:id', authorize('projects:update'), validate(updateReferralSchema), async (req, res, next) => {
@@ -543,9 +428,9 @@ router.patch('/referrals/:id', authorize('projects:update'), validate(updateRefe
     );
 
     return success(res, rows[0]);
-  } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    next(err);
+  } catch (error) {
+    if (error instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', error.errors, 400);
+    next(error);
   }
 });
 
@@ -557,8 +442,8 @@ router.get('/handover/readiness-dashboard', authorize('projects:read'), async (r
     const { getReadinessDashboard } = require('../services/postSale/handoverReadinessService');
     const data = await getReadinessDashboard(req.tenantId);
     return success(res, data);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -568,8 +453,8 @@ router.get('/retention/dashboard', authorize('projects:read'), async (req, res, 
     const { getRetentionDashboard } = require('../services/postSale/retentionService');
     const data = await getRetentionDashboard(req.tenantId);
     return success(res, data);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -585,8 +470,8 @@ router.get('/:projectId/members', authorize('projects:read'), async (req, res, n
       [req.params.projectId, req.tenantId]
     );
     return success(res, rows);
-  } catch (err) {
-    console.error('[Projects Router] Get members error:', err);
+  } catch (error) {
+    logger.error('[Projects Router] Get members error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to retrieve project members.', 500);
   }
 });
@@ -612,16 +497,16 @@ router.post('/:projectId/members/bulk', authorize('projects:manage_members'), as
         );
       }
       await client.query('COMMIT');
-    } catch (e) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw e;
+      throw error;
     } finally {
       client.release();
     }
 
     return success(res, { message: 'Members assigned successfully' });
-  } catch (err) {
-    console.error('[Projects Router] Bulk assign members error:', err);
+  } catch (error) {
+    logger.error('[Projects Router] Bulk assign members error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to assign project members.', 500);
   }
 });
@@ -635,8 +520,8 @@ router.delete('/:projectId/members/:userId', authorize('projects:manage_members'
       [req.params.projectId, req.params.userId, req.tenantId]
     );
     return success(res, { message: 'Member removed successfully' });
-  } catch (err) {
-    console.error('[Projects Router] Remove member error:', err);
+  } catch (error) {
+    logger.error('[Projects Router] Remove member error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to remove project member.', 500);
   }
 });
@@ -658,8 +543,8 @@ router.get('/:id', authorize('projects:read'), async (req, res, next) => {
     const safeProject = filterAllowedFields({ ...project, stats }, 'projects', req.user.field_permissions);
 
     return success(res, safeProject);
-  } catch (err) {
-    console.error('[Projects Router] Get by ID error:', err);
+  } catch (error) {
+    logger.error('[Projects Router] Get by ID error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to retrieve project details.', 500);
   }
 });
@@ -695,20 +580,20 @@ router.patch('/:id', authorize('projects:update'), validate(updateProjectSchema)
     const safeProject = filterAllowedFields(updatedProject, 'projects', req.user.field_permissions);
 
     return success(res, safeProject);
-  } catch (err) {
-    if (err.code === 'BOOKING_REQUIRED') {
-      return fail(res, 'BOOKING_REQUIRED', err.message, 400);
+  } catch (error) {
+    if (error.code === 'BOOKING_REQUIRED') {
+      return fail(res, 'BOOKING_REQUIRED', error.message, 400);
     }
-    if (err.message === 'BOOKING_PAYMENT_REQUIRED' || err.code === 'BOOKING_PAYMENT_REQUIRED') {
-      return fail(res, 'BOOKING_PAYMENT_REQUIRED', err.message, 400);
+    if (error.message === 'BOOKING_PAYMENT_REQUIRED' || error.code === 'BOOKING_PAYMENT_REQUIRED') {
+      return fail(res, 'BOOKING_PAYMENT_REQUIRED', error.message, 400);
     }
-    if (err.status === 400) {
-      return fail(res, err.code || 'BAD_REQUEST', err.message, 400);
+    if (error.status === 400) {
+      return fail(res, error.code || 'BAD_REQUEST', error.message, 400);
     }
-    if (err.message === 'NOT_FOUND' || err.status === 404) {
+    if (error.message === 'NOT_FOUND' || error.status === 404) {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }
-    console.error('[Projects Router] Update error:', err);
+    logger.error('[Projects Router] Update error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update project.', 500);
   }
 });
@@ -718,11 +603,11 @@ router.delete('/:id', authorize('projects:delete'), async (req, res, next) => {
   try {
     await projectRepository.softDeleteProject(req.tenantId, req.params.id);
     return res.status(204).send();
-  } catch (err) {
-    if (err.message === 'NOT_FOUND' || err.status === 404) {
+  } catch (error) {
+    if (error.message === 'NOT_FOUND' || error.status === 404) {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }
-    console.error('[Projects Router] Delete error:', err);
+    logger.error('[Projects Router] Delete error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete project.', 500);
   }
 });
@@ -736,23 +621,18 @@ router.post('/:id/cancel/preview', authorize('projects:manage'), async (req, res
       tenantId: req.tenantId
     });
     return success(res, result);
-  } catch (err) {
-    if (err.message === 'PROJECT_NOT_FOUND' || err.status === 404) {
+  } catch (error) {
+    if (error.message === 'PROJECT_NOT_FOUND' || error.status === 404) {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }
-    if (err.status === 400) {
-      return fail(res, 'BAD_REQUEST', err.message, 400);
+    if (error.status === 400) {
+      return fail(res, 'BAD_REQUEST', error.message, 400);
     }
-    next(err);
+    next(error);
   }
 });
 
-const cancelProjectSchema = z.object({
-  reason: z.string().min(1, 'Reason is required'),
-  settlementNotes: z.string().optional(),
-  refundOverride: z.number().min(0).optional().nullable(),
-  recoverOverride: z.number().min(0).optional().nullable(),
-});
+
 
 // POST /api/projects/:id/cancel
 router.post('/:id/cancel', authorize('projects:manage'), validate(cancelProjectSchema), async (req, res, next) => {
@@ -766,14 +646,14 @@ router.post('/:id/cancel', authorize('projects:manage'), validate(cancelProjectS
       ...body
     });
     return success(res, updated);
-  } catch (err) {
-    if (err.message === 'PROJECT_NOT_FOUND' || err.status === 404) {
+  } catch (error) {
+    if (error.message === 'PROJECT_NOT_FOUND' || error.status === 404) {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }
-    if (err.status === 400) {
-      return fail(res, 'BAD_REQUEST', err.message, 400);
+    if (error.status === 400) {
+      return fail(res, 'BAD_REQUEST', error.message, 400);
     }
-    next(err);
+    next(error);
   }
 });
 
@@ -787,14 +667,14 @@ router.post('/:id/acknowledge-cancellation', authorize('projects:manage'), async
       userId: req.user.id
     });
     return success(res, updated);
-  } catch (err) {
-    if (err.message === 'PROJECT_NOT_FOUND' || err.status === 404) {
+  } catch (error) {
+    if (error.message === 'PROJECT_NOT_FOUND' || error.status === 404) {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }
-    if (err.status === 400) {
-      return fail(res, 'BAD_REQUEST', err.message, 400);
+    if (error.status === 400) {
+      return fail(res, 'BAD_REQUEST', error.message, 400);
     }
-    next(err);
+    next(error);
   }
 });
 
@@ -805,18 +685,12 @@ router.get('/:id/retention', authorize('projects:read'), async (req, res, next) 
     const { getRetentionSchedules } = require('../services/postSale/retentionService');
     const data = await getRetentionSchedules(req.params.id, req.tenantId);
     return success(res, data);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
-const updateRetentionSchema = z.object({
-  status: z.enum(['scheduled', 'completed', 'deferred', 'cancelled']).optional(),
-  actualDate: z.string().optional().nullable(),
-  feedback: z.string().optional().nullable(),
-  csatScore: z.number().int().min(1).max(5).optional().nullable(),
-  notes: z.string().optional().nullable()
-});
+
 
 // PATCH /api/projects/:id/retention/:scheduleId
 router.patch('/:id/retention/:scheduleId', authorize('projects:manage'), validate(updateRetentionSchema), async (req, res, next) => {
@@ -829,11 +703,11 @@ router.patch('/:id/retention/:scheduleId', authorize('projects:manage'), validat
     }, req.user.userId);
 
     return success(res, data, { message: 'Retention schedule updated successfully.' });
-  } catch (err) {
-    if (err.message === 'SCHEDULE_NOT_FOUND') {
+  } catch (error) {
+    if (error.message === 'SCHEDULE_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Retention schedule not found', 404);
     }
-    next(err);
+    next(error);
   }
 });
 
@@ -847,19 +721,16 @@ router.post('/:id/archive', authorize('projects:update'), async (req, res, next)
       userId: req.user.userId
     });
     return success(res, project, { message: 'Project archived successfully.' });
-  } catch (err) {
-    if (err.message === 'PROJECT_NOT_FOUND' || err.status === 404) {
+  } catch (error) {
+    if (error.message === 'PROJECT_NOT_FOUND' || error.status === 404) {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }
-    console.error('[Projects Router] Archive error:', err);
+    logger.error('[Projects Router] Archive error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to archive project.', 500);
   }
 });
 
-const reopenProjectSchema = z.object({
-  newStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be in YYYY-MM-DD format'),
-  newTargetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Target date must be in YYYY-MM-DD format').optional().nullable()
-});
+
 
 // POST /api/projects/:id/reopen
 router.post('/:id/reopen', authorize('projects:update'), validate(reopenProjectSchema), async (req, res, next) => {
@@ -875,14 +746,14 @@ router.post('/:id/reopen', authorize('projects:update'), validate(reopenProjectS
       newTargetDate
     });
     return success(res, project, { message: 'Project reopened successfully.' });
-  } catch (err) {
-    if (err.message === 'PROJECT_NOT_FOUND' || err.status === 404) {
+  } catch (error) {
+    if (error.message === 'PROJECT_NOT_FOUND' || error.status === 404) {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }
-    if (err.message === 'PROJECT_ALREADY_ACTIVE' || err.status === 400) {
-      return fail(res, 'BAD_REQUEST', err.message, 400);
+    if (error.message === 'PROJECT_ALREADY_ACTIVE' || error.status === 400) {
+      return fail(res, 'BAD_REQUEST', error.message, 400);
     }
-    console.error('[Projects Router] Reopen error:', err);
+    logger.error('[Projects Router] Reopen error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to reopen project.', 500);
   }
 });
@@ -895,8 +766,8 @@ router.get('/:id/payment-milestones', authorize('projects:read'), async (req, re
       projectId: req.params.id
     });
     return success(res, paymentMilestones);
-  } catch (err) {
-    console.error('[Projects Router] Get Payment Milestones error:', err);
+  } catch (error) {
+    logger.error('[Projects Router] Get Payment Milestones error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to retrieve payment milestones.', 500);
   }
 });
@@ -907,8 +778,8 @@ router.get('/:id/handover/checklists', authorize('projects:read'), async (req, r
     const checklist = await getChecklistByProjectId(req.params.id, req.tenantId);
     if (!checklist) return fail(res, 'NOT_FOUND', 'Checklist not found', 404);
     return success(res, checklist);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -922,8 +793,8 @@ router.post('/:id/handover/checklists', authorize('projects:manage'), async (req
       items
     });
     return success(res, checklist, {}, 201);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -934,8 +805,8 @@ router.post('/:id/handover/items', authorize('projects:manage'), async (req, res
     if (!checklistId || !room || !description) return fail(res, 'BAD_REQUEST', 'Missing fields', 400);
     const item = await addItem({ checklistId, room, description, itemType });
     return success(res, item, {}, 201);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -945,8 +816,8 @@ router.get('/:id/handover/readiness', authorize('projects:read'), async (req, re
     const { evaluateReadinessGates } = require('../services/postSale/handoverReadinessService');
     const data = await evaluateReadinessGates(req.params.id, req.tenantId);
     return success(res, data);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -956,14 +827,14 @@ router.post('/:id/handover/readiness/pm-sign-off', authorize('projects:manage'),
     const { pmSignOff } = require('../services/postSale/handoverReadinessService');
     const result = await pmSignOff(req.params.id, req.tenantId, req.user.userId);
     return success(res, result, { message: 'PM sign-off for handover readiness recorded successfully.' });
-  } catch (err) {
-    if (err.message === 'PROJECT_NOT_FOUND') {
+  } catch (error) {
+    if (error.message === 'PROJECT_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }
-    if (err.message === 'GATES_PENDING') {
+    if (error.message === 'GATES_PENDING') {
       return fail(res, 'BAD_REQUEST', 'Cannot sign off. Outstanding gates are pending completion.', 400);
     }
-    next(err);
+    next(error);
   }
 });
 
@@ -973,15 +844,12 @@ router.get('/:id/handover/appointments', authorize('projects:read'), async (req,
     const { getProjectAppointments } = require('../services/postSale/handoverReadinessService');
     const data = await getProjectAppointments(req.params.id, req.tenantId);
     return success(res, data);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
-const scheduleAppointmentSchema = z.object({
-  appointmentDate: z.string().transform(val => new Date(val)),
-  notes: z.string().optional().nullable()
-});
+
 
 // POST /api/projects/:id/handover/appointments
 router.post('/:id/handover/appointments', authorize('projects:manage'), validate(scheduleAppointmentSchema), async (req, res, next) => {
@@ -991,29 +859,27 @@ router.post('/:id/handover/appointments', authorize('projects:manage'), validate
     const { scheduleAppointment } = require('../services/postSale/handoverReadinessService');
     const result = await scheduleAppointment(req.params.id, req.tenantId, appointmentDate, notes, req.user.userId);
     return success(res, result, { message: 'Handover appointment scheduled successfully.' });
-  } catch (err) {
-    if (err.message === 'PROJECT_NOT_FOUND' || err.status === 404) {
+  } catch (error) {
+    if (error.message === 'PROJECT_NOT_FOUND' || error.status === 404) {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }
-    if (err.message === 'READINESS_CHECK_FAILED') {
+    if (error.message === 'READINESS_CHECK_FAILED') {
       return fail(res, 'BAD_REQUEST', 'Cannot schedule appointment. Handover readiness gates are not fully green.', 400);
     }
-    next(err);
+    next(error);
   }
 });
 
-const applySchema = z.object({
-  templateId: z.string().uuid()
-});
+
 
 router.post('/:id/apply-template', authorize('projects:manage'), async (req, res, next) => {
   try {
     const parsed = applySchema.safeParse(req.body);
     if (!parsed.success) {
-      const err = new Error('Validation failed');
-      err.isValidation = true;
-      err.details = parsed.error.issues;
-      return next(err);
+      const error = new Error('Validation failed');
+      error.isValidation = true;
+      error.details = parsed.error.issues;
+      return next(error);
     }
 
     const result = await applyTemplate(req.params.id, parsed.data.templateId, req.tenantId);
@@ -1032,39 +898,11 @@ router.post('/:id/apply-template', authorize('projects:manage'), async (req, res
 // --- Design Requirements, Room Requirements & Inspirations ---
 const pool = require('../config/db');
 
-const designRequirementsSchema = z.object({
-  interior_style: z.string().optional().nullable(),
-  color_theme: z.string().optional().nullable(),
-  material_preference: z.string().optional().nullable(),
-  kitchen_style: z.string().optional().nullable(),
-  wardrobe_style: z.string().optional().nullable(),
-  lighting_preference: z.string().optional().nullable(),
-  flooring_preference: z.string().optional().nullable(),
-  lifestyle_inputs: z.string().optional().nullable(),
-  must_haves: z.string().optional().nullable(),
-  nice_to_haves: z.string().optional().nullable(),
-  family_size: z.preprocess((val) => (val === '' || val === null || val === undefined) ? null : parseInt(val, 10), z.number().nullable()).optional(),
-  usage_patterns: z.string().optional().nullable(),
-  storage_priorities: z.string().optional().nullable(),
-  brand_flexibility: z.string().optional().nullable(),
-  brand_remarks: z.string().optional().nullable(),
-  existing_furniture: z.string().optional().nullable(),
-  budget_category_allocation: z.any().optional().nullable()
-});
 
-const roomRequirementSchema = z.object({
-  room_name: z.string().min(1, 'Room name is required'),
-  budget_allocation: z.number().optional().nullable(),
-  priority: z.string().optional().nullable(),
-  functional_requirements: z.string().optional().nullable(),
-  remarks: z.string().optional().nullable()
-});
 
-const inspirationSchema = z.object({
-  image_url: z.string().min(1, 'Image URL is required'),
-  room_type: z.string().optional().nullable(),
-  notes: z.string().optional().nullable()
-});
+
+
+
 
 // GET /api/projects/:projectId/design-requirements
 router.get('/:projectId/design-requirements', authorize('projects:read'), async (req, res, next) => {
@@ -1118,8 +956,8 @@ router.get('/:projectId/design-requirements', authorize('projects:read'), async 
       roomRequirements: roomsRes.rows,
       inspirations: inspirationsRes.rows
     });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -1181,9 +1019,9 @@ router.put('/:projectId/design-requirements', authorize('projects:update'), vali
     
     const { rows } = await pool.query(query, values);
     return success(res, rows[0]);
-  } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    next(err);
+  } catch (error) {
+    if (error instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', error.errors, 400);
+    next(error);
   }
 });
 
@@ -1209,9 +1047,9 @@ router.post('/:projectId/room-requirements', authorize('projects:update'), valid
     
     const { rows } = await pool.query(query, values);
     return success(res, rows[0], {}, 201);
-  } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    next(err);
+  } catch (error) {
+    if (error instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', error.errors, 400);
+    next(error);
   }
 });
 
@@ -1243,9 +1081,9 @@ router.put('/:projectId/room-requirements/:id', authorize('projects:update'), va
     const { rows } = await pool.query(query, values);
     if (rows.length === 0) return fail(res, 'NOT_FOUND', 'Room requirement not found', 404);
     return success(res, rows[0]);
-  } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    next(err);
+  } catch (error) {
+    if (error instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', error.errors, 400);
+    next(error);
   }
 });
 
@@ -1259,8 +1097,8 @@ router.delete('/:projectId/room-requirements/:id', authorize('projects:update'),
     );
     if (rows.length === 0) return fail(res, 'NOT_FOUND', 'Room requirement not found', 404);
     return res.status(204).send();
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -1284,9 +1122,9 @@ router.post('/:projectId/inspirations', authorize('projects:update'), validate(i
     
     const { rows } = await pool.query(query, values);
     return success(res, rows[0], {}, 201);
-  } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    next(err);
+  } catch (error) {
+    if (error instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', error.errors, 400);
+    next(error);
   }
 });
 
@@ -1300,8 +1138,8 @@ router.delete('/:projectId/inspirations/:id', authorize('projects:update'), asyn
     );
     if (rows.length === 0) return fail(res, 'NOT_FOUND', 'Inspiration not found', 404);
     return res.status(204).send();
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -1388,8 +1226,8 @@ router.get('/:projectId/design-workflow', authorize('projects:read'), async (req
       },
       history: historyRes.rows
     });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -1505,8 +1343,8 @@ router.post('/:projectId/design-workflow/transition', authorize('projects:update
     );
 
     return success(res, { current_stage: to_stage, history: histRes.rows[0] });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -1577,8 +1415,8 @@ router.post('/:projectId/design-workflow/client-confirm', authorize('projects:up
     }
 
     return success(res, { current_stage, history: historyRecord });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -1594,18 +1432,13 @@ router.get('/:projectId/schedule-revisions', authorize('projects:read'), async (
       [req.tenantId, req.params.projectId]
     );
     return success(res, rows);
-  } catch (err) {
-    console.error('[Projects Router] Fetch schedule revisions error:', err);
+  } catch (error) {
+    logger.error('[Projects Router] Fetch schedule revisions error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch schedule revisions.', 500);
   }
 });
 
-const replaceResourceSchema = z.object({
-  role: z.enum(['pm', 'designer']),
-  newResourceId: z.string().uuid(),
-  handoverNotes: z.string().min(1, 'Handover notes are required'),
-  clientNotified: z.boolean().optional().default(false)
-});
+
 
 // POST /api/projects/:projectId/replace-resource
 router.post('/:projectId/replace-resource', authorize('projects:manage'), validate(replaceResourceSchema), async (req, res, next) => {
@@ -1625,9 +1458,9 @@ router.post('/:projectId/replace-resource', authorize('projects:manage'), valida
     });
     
     return success(res, handover, {}, 200);
-  } catch (err) {
-    if (err.status) return fail(res, err.message, err.message, err.status);
-    next(err);
+  } catch (error) {
+    if (error.status) return fail(res, error.message, error.message, error.status);
+    next(error);
   }
 });
 
@@ -1650,23 +1483,12 @@ router.get('/:projectId/handovers', authorize('projects:read'), async (req, res,
       [req.tenantId, projectId]
     );
     return success(res, rows);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
-const pauseProjectSchema = z.object({
-  reason: z.enum(['client_request', 'payment_pending', 'site_issue', 'force_majeure', 'other']),
-  expectedResumeDate: z.string().optional().nullable(),
-  clientCommunication: z.object({
-    channel: z.enum(['whatsapp', 'email', 'sms', 'call']),
-    direction: z.enum(['inbound', 'outbound']).optional(),
-    subject: z.string().optional().nullable(),
-    body: z.string().min(1, 'Body is required')
-  }).optional().nullable(),
-  resourceReleaseInstructions: z.string().optional().nullable(),
-  siteSecurityPlan: z.string().optional().nullable()
-});
+
 
 // POST /api/projects/:id/pause
 router.post('/:id/pause', authorize('projects:update'), validate(pauseProjectSchema), async (req, res, next) => {
@@ -1687,17 +1509,14 @@ router.post('/:id/pause', authorize('projects:update'), validate(pauseProjectSch
     });
 
     return success(res, project, { message: 'Project paused successfully.' });
-  } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    if (err.status) return fail(res, err.message, err.message, err.status);
-    next(err);
+  } catch (error) {
+    if (error instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', error.errors, 400);
+    if (error.status) return fail(res, error.message, error.message, error.status);
+    next(error);
   }
 });
 
-const resumeProjectSchema = z.object({
-  siteConditionVerified: z.boolean().optional(),
-  materialStatusVerified: z.boolean().optional()
-});
+
 
 // POST /api/projects/:id/resume
 router.post('/:id/resume', authorize('projects:update'), validate(resumeProjectSchema), async (req, res, next) => {
@@ -1715,9 +1534,9 @@ router.post('/:id/resume', authorize('projects:update'), validate(resumeProjectS
     });
 
     return success(res, project, { message: 'Project resumed successfully.' });
-  } catch (err) {
-    if (err.status) return fail(res, err.message, err.message, err.status);
-    next(err);
+  } catch (error) {
+    if (error.status) return fail(res, error.message, error.message, error.status);
+    next(error);
   }
 });
 
@@ -1759,8 +1578,8 @@ router.post('/:projectId/boq-items/:itemId/discontinue', authorize('projects:upd
     });
 
     return success(res, updateRes.rows[0], { message: 'BOQ item flagged as discontinued.' });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -1803,18 +1622,12 @@ router.get('/:projectId/room-handovers', authorize('projects:read'), async (req,
     });
 
     return success(res, result);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
-const handoverSignOffSchema = z.object({
-  checklistId: z.string().uuid(),
-  roomName: z.string().min(1),
-  clientName: z.string().min(1),
-  clientSignatureData: z.string().optional().nullable(),
-  otp: z.string().min(4)
-});
+
 
 // POST /api/projects/:projectId/handover/sign-off
 router.post('/:projectId/handover/sign-off', authorize('projects:update'), validate(handoverSignOffSchema), async (req, res, next) => {
@@ -1896,9 +1709,9 @@ router.post('/:projectId/handover/sign-off', authorize('projects:update'), valid
 
     await client.query('COMMIT');
     return success(res, handoverRes.rows[0], { message: `Room ${roomName} successfully handed over.` });
-  } catch (err) {
+  } catch (error) {
     await client.query('ROLLBACK');
-    next(err);
+    next(error);
   } finally {
     client.release();
   }
@@ -1915,15 +1728,12 @@ router.get('/:projectId/compliance', authorize('projects:read'), async (req, res
       [projectId, req.tenantId]
     );
     return success(res, rows);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
-const updateComplianceSchema = z.object({
-  status: z.enum(['pending', 'in_progress', 'approved', 'not_applicable']),
-  notes: z.string().optional().nullable()
-});
+
 
 // PATCH /api/projects/:projectId/compliance/:itemId
 router.patch('/:projectId/compliance/:itemId', authorize('projects:update'), validate(updateComplianceSchema), async (req, res, next) => {
@@ -1975,9 +1785,9 @@ router.patch('/:projectId/compliance/:itemId', authorize('projects:update'), val
     });
 
     return success(res, rows[0]);
-  } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    next(err);
+  } catch (error) {
+    if (error instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', error.errors, 400);
+    next(error);
   }
 });
 
@@ -2022,15 +1832,12 @@ router.get('/:projectId/mep-checklist', authorize('projects:read'), async (req, 
     }
 
     return success(res, seededRows);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
-const updateMepChecklistSchema = z.object({
-  status: z.enum(['pending', 'in_progress', 'approved', 'not_applicable']),
-  notes: z.string().optional().nullable()
-});
+
 
 // PATCH /api/projects/:projectId/mep-checklist/:itemId
 router.patch('/:projectId/mep-checklist/:itemId', authorize('projects:update'), validate(updateMepChecklistSchema), async (req, res, next) => {
@@ -2083,9 +1890,9 @@ router.patch('/:projectId/mep-checklist/:itemId', authorize('projects:update'), 
     });
 
     return success(res, rows[0]);
-  } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    next(err);
+  } catch (error) {
+    if (error instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', error.errors, 400);
+    next(error);
   }
 });
 
@@ -2114,17 +1921,12 @@ router.get('/:projectId/vendor-coordination', authorize('projects:read'), async 
       [projectId, req.tenantId]
     );
     return success(res, rows);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
-const updateVendorCoordinationSchema = z.object({
-  scheduledStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
-  scheduledFinishDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
-  blockerDescription: z.string().optional().nullable(),
-  currentStatus: z.enum(['pending', 'active', 'blocked', 'completed']).optional()
-});
+
 
 // PATCH /api/projects/:projectId/vendor-coordination/:vendorId
 router.patch('/:projectId/vendor-coordination/:vendorId', authorize('projects:update'), validate(updateVendorCoordinationSchema), async (req, res, next) => {
@@ -2174,16 +1976,13 @@ router.patch('/:projectId/vendor-coordination/:vendorId', authorize('projects:up
     });
 
     return success(res, rows[0]);
-  } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    next(err);
+  } catch (error) {
+    if (error instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', error.errors, 400);
+    next(error);
   }
 });
 
-const vendorRecoverySchema = z.object({
-  financialRecoveryStatus: z.enum(['pending', 'recovered', 'written_off']),
-  financialRecoveryAmount: z.number().min(0).optional()
-});
+
 
 // PATCH /api/projects/:projectId/vendors/:vendorId/recovery
 router.patch('/:projectId/vendors/:vendorId/recovery', authorize('projects:manage'), validate(vendorRecoverySchema), async (req, res, next) => {
@@ -2211,9 +2010,9 @@ router.patch('/:projectId/vendors/:vendorId/recovery', authorize('projects:manag
     const { rows } = await pool.query(query, params);
 
     return success(res, rows[0]);
-  } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    next(err);
+  } catch (error) {
+    if (error instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', error.errors, 400);
+    next(error);
   }
 });
 
@@ -2232,22 +2031,11 @@ router.get('/:id/booking', authorize('projects:read'), async (req, res, next) =>
       return success(res, null);
     }
     return success(res, rows[0]);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
-const confirmBookingSchema = z.object({
-  advance_amount: z.number().min(0, 'Advance amount cannot be negative'),
-  payment_method: z.enum(['bank_transfer', 'cash', 'card', 'upi', 'cheque']),
-  agreement_file_key: z.string().optional().nullable(),
-  agreement_file_name: z.string().optional().nullable(),
-  agreement_file_size: z.number().optional().nullable(),
-  agreement_file_mime: z.string().optional().nullable(),
-  agreed_scope_summary: z.string().min(1, 'Agreed scope summary is required'),
-  design_freeze_target_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format for design freeze target date'),
-  project_start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format for project start date'),
-  assigned_designer_id: z.string().uuid('Invalid assigned designer ID')
-});
+
 
 // POST /api/projects/:id/booking/confirm
 router.post('/:id/booking/confirm', authenticate, authorize('projects:manage'), validate(confirmBookingSchema), async (req, res, next) => {
@@ -2372,15 +2160,15 @@ router.post('/:id/booking/confirm', authenticate, authorize('projects:manage'), 
       });
 
       return success(res, bookingRecord, { message: 'Booking confirmed and project activated successfully.' });
-    } catch (err) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw err;
+      throw error;
     } finally {
       client.release();
     }
-  } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    next(err);
+  } catch (error) {
+    if (error instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', error.errors, 400);
+    next(error);
   }
 });
 
@@ -2445,8 +2233,8 @@ router.get('/:id/commercial-approval', authenticate, authorize('projects:read'),
       is_approved: !!approval,
       approval_details: approval
     });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -2524,8 +2312,8 @@ router.post('/:id/commercial-approval', authenticate, authorize('projects:manage
     });
 
     return success(res, approvalRecord, { message: 'Commercial approval sign-off completed successfully.' });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -2535,14 +2323,12 @@ router.get('/:id/coordination', authenticate, authorize('projects:read'), async 
     const { getProjectCoordination } = require('../services/projects/coordinationService');
     const data = await getProjectCoordination(req.tenantId, req.params.id);
     return success(res, data);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
-const coordinationSchema = z.object({
-  siteReadinessDate: z.string().nullable().transform(val => val ? new Date(val) : null)
-});
+
 
 // PATCH /api/projects/:id/coordination
 router.patch('/:id/coordination', authenticate, authorize('projects:manage'), validate(coordinationSchema), async (req, res, next) => {
@@ -2561,9 +2347,9 @@ router.patch('/:id/coordination', authenticate, authorize('projects:manage'), va
 
     const data = await getProjectCoordination(tenantId, projectId);
     return success(res, data, { message: 'Site readiness date updated successfully.' });
-  } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors, 400);
-    next(err);
+  } catch (error) {
+    if (error instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', error.errors, 400);
+    next(error);
   }
 });
 
@@ -2573,8 +2359,8 @@ router.get('/:projectId/external-inspections', authorize('projects:read'), async
     const { getExternalInspections } = require('../services/projects/externalInspectionService');
     const data = await getExternalInspections({ tenantId: req.tenantId, projectId: req.params.projectId });
     return success(res, data);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -2589,8 +2375,8 @@ router.post('/:projectId/external-inspections', authorize('projects:write'), asy
       ...req.body 
     });
     return success(res, data, { message: 'External inspection logged successfully', statusCode: 201 });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -2605,8 +2391,8 @@ router.patch('/:projectId/external-inspections/:id', authorize('projects:write')
       updates: req.body 
     });
     return success(res, data, { message: 'External inspection updated successfully' });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -2620,8 +2406,8 @@ router.delete('/:projectId/external-inspections/:id', authorize('projects:write'
       id: req.params.id 
     });
     return success(res, null, { message: 'External inspection deleted successfully' });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 

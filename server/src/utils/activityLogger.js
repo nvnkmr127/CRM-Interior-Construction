@@ -1,10 +1,10 @@
+const logger = require('../utils/logger');
 const pool = require('../db/pool');
-
 /**
  * Logs an activity into the audit_logs table.
  * 
  * @param {Object} req - The Express request object (to extract IP, user, browser)
- * @param {string} entity - The entity type (e.g. 'financial_approval')
+ * @param {string} entity - The entity type (error.g. 'financial_approval')
  * @param {string} entity_id - The ID of the entity
  * @param {string} action - The action performed (Created, Viewed, Opened, Edited, Assigned, Commented, Approved, Rejected, Reopened, Downloaded, Exported)
  * @param {string} old_value - JSON string of old state (optional)
@@ -56,7 +56,7 @@ const logActivity = async (req, entity, entity_id, action, old_value = null, new
       reason
     ]);
   } catch (error) {
-    console.error('Failed to log activity:', error);
+    logger.error('Failed to log activity:', error);
   }
 };
 

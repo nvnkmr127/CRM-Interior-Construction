@@ -1,13 +1,13 @@
+const logger = require('../utils/logger');
 const pool = require('../db/pool');
 const eventBus = require('../utils/eventBus');
-
 class TaskEscalationJob {
   async start() {
     console.log('[Jobs] TaskEscalationJob started.');
     try {
       await this.processEscalations();
-    } catch (err) {
-      console.error('[Jobs] TaskEscalationJob error:', err);
+    } catch (error) {
+      logger.error('[Jobs] TaskEscalationJob error:', error);
     }
   }
 

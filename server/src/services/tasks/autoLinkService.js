@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const pool = require('../../config/db');
 
 async function autoLinkFactoryToInstallationTasks(tenantId, projectId) {
@@ -24,7 +25,6 @@ async function autoLinkFactoryToInstallationTasks(tenantId, projectId) {
     }
 
     const taskDependencyRepository = require('../../repositories/taskDependencyRepository');
-
     // 3. For each installation task, create a finish-to-start dependency on each factory task
     for (const instTask of installationTasks) {
       for (const factTask of factoryTasks) {
@@ -53,13 +53,13 @@ async function autoLinkFactoryToInstallationTasks(tenantId, projectId) {
               dependsOnTaskId: factTask.id,
               dependencyType: 'finish-to-start'
             });
-            console.log(`[Dependency Linkage] Auto-linked task "${instTask.title}" (${instTask.id}) to depend on "${factTask.title}" (${factTask.id})`);
+            logger.info(`[Dependency Linkage] Auto-linked task "${instTask.title}" (${instTask.id}) to depend on "${factTask.title}" (${factTask.id})`);
           }
         }
       }
     }
   } catch (error) {
-    console.error('[Dependency Linkage] Error auto-linking factory to installation tasks:', error);
+    logger.error('[Dependency Linkage] Error auto-linking factory to installation tasks:', error);
   }
 }
 

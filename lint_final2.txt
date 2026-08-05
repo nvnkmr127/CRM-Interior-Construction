@@ -1,0 +1,453 @@
+[0m
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\fix.js[24m
+  [2m3:45[22m  [31merror[39m  Unnecessary escape character: \$  [2mno-useless-escape[22m
+  [2m3:47[22m  [31merror[39m  Unnecessary escape character: \{  [2mno-useless-escape[22m
+  [2m3:57[22m  [31merror[39m  Unnecessary escape character: \|  [2mno-useless-escape[22m
+  [2m3:59[22m  [31merror[39m  Unnecessary escape character: \|  [2mno-useless-escape[22m
+  [2m3:66[22m  [31merror[39m  Unnecessary escape character: \}  [2mno-useless-escape[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js[24m
+   [2m131:11[22m  [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m133:11[22m  [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m137:7[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m224:20[22m  [31merror[39m  'error' is not defined                                                                             [2mno-undef[22m
+   [2m279:3[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m295:24[22m  [31merror[39m  'createLead' is not defined                                                                        [2mno-undef[22m
+   [2m295:67[22m  [31merror[39m  'parsed' is not defined                                                                            [2mno-undef[22m
+   [2m308:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m320:26[22m  [31merror[39m  'findLeads' is not defined                                                                         [2mno-undef[22m
+   [2m353:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m353:47[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m430:52[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m445:13[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m450:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m450:47[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m451:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m513:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m513:46[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m514:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m544:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m573:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m601:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m601:45[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m602:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m616:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m631:9[22m   [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m632:71[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m634:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m634:50[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m635:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m650:9[22m   [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m651:71[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m653:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m667:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m694:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m694:51[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m695:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m711:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m711:48[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m712:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m764:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m764:52[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m765:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m779:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m779:47[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m780:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m794:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m794:49[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m795:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m807:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m807:49[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m808:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m822:9[22m   [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m823:71[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m825:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m825:49[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m826:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m840:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m840:51[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m841:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m859:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m859:53[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m860:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m871:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m871:53[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m872:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m913:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m913:49[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m914:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m938:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m938:58[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m939:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m955:16[22m  [31merror[39m  'estimator_reference_id' is not defined                                                            [2mno-undef[22m
+   [2m961:10[22m  [31merror[39m  'status' is not defined                                                                            [2mno-undef[22m
+   [2m961:18[22m  [31merror[39m  'total_amount' is not defined                                                                      [2mno-undef[22m
+   [2m961:32[22m  [31merror[39m  'pdf_url' is not defined                                                                           [2mno-undef[22m
+   [2m961:41[22m  [31merror[39m  'payload' is not defined                                                                           [2mno-undef[22m
+   [2m967:28[22m  [31merror[39m  'estimator_reference_id' is not defined                                                            [2mno-undef[22m
+   [2m967:52[22m  [31merror[39m  'status' is not defined                                                                            [2mno-undef[22m
+   [2m967:60[22m  [31merror[39m  'total_amount' is not defined                                                                      [2mno-undef[22m
+   [2m967:74[22m  [31merror[39m  'pdf_url' is not defined                                                                           [2mno-undef[22m
+   [2m967:83[22m  [31merror[39m  'payload' is not defined                                                                           [2mno-undef[22m
+   [2m973:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m973:52[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m974:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m987:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+   [2m987:53[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+   [2m988:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+  [2m1029:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+  [2m1029:49[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+  [2m1030:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+  [2m1054:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+  [2m1054:58[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+  [2m1055:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+  [2m1105:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+  [2m1105:52[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+  [2m1106:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+  [2m1196:23[22m  [31merror[39m  'userId' is assigned a value but never used. Allowed unused vars must match /^_/u                  [2mno-unused-vars[22m
+  [2m1215:31[22m  [31merror[39m  'updateLead' is not defined                                                                        [2mno-undef[22m
+  [2m1358:24[22m  [31merror[39m  'leadRepository' is not defined                                                                    [2mno-undef[22m
+  [2m1360:25[22m  [31merror[39m  'aiService' is not defined                                                                         [2mno-undef[22m
+  [2m1390:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+  [2m1390:54[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+  [2m1400:26[22m  [31merror[39m  'aiService' is not defined                                                                         [2mno-undef[22m
+  [2m1408:26[22m  [31merror[39m  'aiService' is not defined                                                                         [2mno-undef[22m
+  [2m1490:24[22m  [31merror[39m  'leadRepository' is not defined                                                                    [2mno-undef[22m
+  [2m1493:28[22m  [31merror[39m  'aiService' is not defined                                                                         [2mno-undef[22m
+  [2m1541:24[22m  [31merror[39m  'leadRepository' is not defined                                                                    [2mno-undef[22m
+  [2m1543:35[22m  [31merror[39m  'aiService' is not defined                                                                         [2mno-undef[22m
+  [2m1551:25[22m  [31merror[39m  'aiService' is not defined                                                                         [2mno-undef[22m
+  [2m1561:30[22m  [31merror[39m  'aiService' is not defined                                                                         [2mno-undef[22m
+  [2m1576:24[22m  [31merror[39m  'leadRepository' is not defined                                                                    [2mno-undef[22m
+  [2m1585:28[22m  [31merror[39m  'aiService' is not defined                                                                         [2mno-undef[22m
+  [2m1589:11[22m  [31merror[39m  'activityService' is not defined                                                                   [2mno-undef[22m
+  [2m1619:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+  [2m1672:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+  [2m1695:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+  [2m1695:54[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+  [2m1696:17[22m  [31merror[39m  'e' is not defined                                                                                 [2mno-undef[22m
+  [2m1712:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+  [2m1712:51[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+  [2m1713:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+  [2m1728:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+  [2m1728:50[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+  [2m1729:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+  [2m1757:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+  [2m1757:58[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+  [2m1758:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+  [2m1793:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+  [2m1793:45[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+  [2m1794:17[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+  [2m2209:23[22m  [31merror[39m  'userId' is assigned a value but never used. Allowed unused vars must match /^_/u                  [2mno-unused-vars[22m
+  [2m2210:11[22m  [31merror[39m  'role' is assigned a value but never used. Allowed unused vars must match /^_/u                    [2mno-unused-vars[22m
+  [2m2212:13[22m  [31merror[39m  'maskSensitiveFields' is assigned a value but never used. Allowed unused vars must match /^_/u     [2mno-unused-vars[22m
+  [2m2222:11[22m  [31merror[39m  'userPermissions' is assigned a value but never used. Allowed unused vars must match /^_/u         [2mno-unused-vars[22m
+  [2m2223:11[22m  [31merror[39m  'LEAD_FIELD_PERMISSIONS' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+  [2m2318:7[22m   [31merror[39m  'logger' is assigned a value but never used. Allowed unused vars must match /^_/u                  [2mno-unused-vars[22m
+  [2m2323:5[22m   [31merror[39m  'logger' is not defined                                                                            [2mno-undef[22m
+  [2m2323:49[22m  [31merror[39m  'err' is not defined                                                                               [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\managerController.js[24m
+   [2m30:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+   [2m52:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+   [2m75:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+   [2m95:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m139:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m161:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m173:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m185:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m206:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m231:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m256:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m267:7[22m  [31merror[39m  'logger' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+  [2m292:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m313:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m336:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m354:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\delete2.js[24m
+  [2m5:13[22m  [31merror[39m  Empty block statement  [2mno-empty[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\jobs\paymentReminderJob.js[24m
+  [2m25:7[22m  [31merror[39m  'logger' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+  [2m82:7[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\auditLogger.js[24m
+  [2m17:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m41:7[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m45:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\authenticate.js[24m
+   [2m92:7[22m  [31merror[39m  'logger' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+  [2m169:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\authenticateApiKey.js[24m
+  [2m59:17[22m  [31merror[39m  'e' is not defined  [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\enforceProjectAccess.js[24m
+  [2m56:17[22m  [31merror[39m  'e' is not defined  [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\workActivityRepository.js[24m
+   [2m78:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m170:7[22m  [31merror[39m  'logger' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\analytics.js[24m
+  [2m46:12[22m  [31merror[39m  'summaryRes' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\approvals.js[24m
+  [2m4:9[22m  [31merror[39m  'authorize' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\budget.js[24m
+   [2m82:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m107:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m127:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m160:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m185:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m280:7[22m  [31merror[39m  'logger' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+  [2m310:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\config\webhooks.js[24m
+    [2m5:7[22m   [31merror[39m  'axios' is assigned a value but never used. Allowed unused vars must match /^_/u   [2mno-unused-vars[22m
+    [2m6:7[22m   [31merror[39m  'crypto' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+   [2m25:5[22m   [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+   [2m53:5[22m   [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+   [2m89:5[22m   [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+   [2m97:13[22m  [31merror[39m  'id' is assigned a value but never used. Allowed unused vars must match /^_/u      [2mno-unused-vars[22m
+  [2m103:5[22m   [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m117:5[22m   [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m136:5[22m   [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m146:7[22m   [31merror[39m  'logger' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+  [2m164:5[22m   [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\dailySiteReports.js[24m
+   [2m38:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+   [2m53:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m112:7[22m  [31merror[39m  'logger' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+  [2m115:7[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m121:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\documents.js[24m
+   [2m64:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+   [2m83:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m119:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m136:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m162:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m175:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m193:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m221:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m241:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m276:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\emailTemplates.js[24m
+  [2m7:9[22m  [31merror[39m  'queueEmail' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js[24m
+   [2m106:44[22m   [31merror[39m  'params' is not defined    [2mno-undef[22m
+   [2m107:7[22m    [31merror[39m  'params' is not defined    [2mno-undef[22m
+   [2m332:67[22m   [31merror[39m  Empty block statement      [2mno-empty[22m
+   [2m471:12[22m   [31merror[39m  'tenantId' is not defined  [2mno-undef[22m
+   [2m483:67[22m   [31merror[39m  Empty block statement      [2mno-empty[22m
+   [2m531:30[22m   [31merror[39m  'tenantId' is not defined  [2mno-undef[22m
+   [2m539:55[22m   [31merror[39m  'tenantId' is not defined  [2mno-undef[22m
+   [2m581:29[22m   [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+   [2m581:184[22m  [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+   [2m581:336[22m  [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+   [2m641:67[22m   [31merror[39m  'tenantId' is not defined  [2mno-undef[22m
+   [2m661:58[22m   [31merror[39m  'tenantId' is not defined  [2mno-undef[22m
+   [2m677:150[22m  [31merror[39m  'tenantId' is not defined  [2mno-undef[22m
+   [2m693:46[22m   [31merror[39m  'tenantId' is not defined  [2mno-undef[22m
+   [2m761:30[22m   [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+   [2m761:185[22m  [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+   [2m761:337[22m  [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+   [2m867:30[22m   [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+   [2m867:185[22m  [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+   [2m867:337[22m  [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+   [2m908:29[22m   [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+   [2m908:184[22m  [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+   [2m908:336[22m  [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+  [2m1039:29[22m   [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+  [2m1039:184[22m  [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+  [2m1039:336[22m  [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\offboarding.js[24m
+  [2m5:9[22m  [31merror[39m  'queueEmail' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\roles.js[24m
+   [2m61:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m134:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m171:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m206:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m253:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m343:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m410:7[22m  [31merror[39m  'logger' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+  [2m439:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m465:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m484:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m529:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\security.js[24m
+  [2m7:9[22m  [31merror[39m  'getCache' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\superadmin.js[24m
+  [2m5:7[22m  [31merror[39m  'pool' is assigned a value but never used. Allowed unused vars must match /^_/u    [2mno-unused-vars[22m
+  [2m7:7[22m  [31merror[39m  'crypto' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\users.js[24m
+  [2m198:5[22m   [31merror[39m  'logger' is not defined                                                                   [2mno-undef[22m
+  [2m256:5[22m   [31merror[39m  'logger' is not defined                                                                   [2mno-undef[22m
+  [2m272:13[22m  [31merror[39m  'password_hash' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+  [2m316:9[22m   [31merror[39m  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u       [2mno-unused-vars[22m
+  [2m333:9[22m   [31merror[39m  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u       [2mno-unused-vars[22m
+  [2m455:5[22m   [31merror[39m  'logger' is not defined                                                                   [2mno-undef[22m
+  [2m731:23[22m  [31merror[39m  'rows' is assigned a value but never used. Allowed unused vars must match /^_/u           [2mno-unused-vars[22m
+  [2m809:7[22m   [31merror[39m  'logger' is assigned a value but never used. Allowed unused vars must match /^_/u         [2mno-unused-vars[22m
+  [2m870:5[22m   [31merror[39m  'logger' is not defined                                                                   [2mno-undef[22m
+  [2m902:5[22m   [31merror[39m  'logger' is not defined                                                                   [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\webhooks\inbound.js[24m
+  [2m178:17[22m  [31merror[39m  'e' is not defined  [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\login.js[24m
+   [2m45:7[22m   [33mwarning[39m  The value assigned to 'securitySettings' is not used in subsequent statements           [2mno-useless-assignment[22m
+   [2m46:7[22m   [33mwarning[39m  The value assigned to 'userSecurity' is not used in subsequent statements               [2mno-useless-assignment[22m
+  [2m185:9[22m   [31merror[39m    'isTrusted' is assigned a value but never used. Allowed unused vars must match /^_/u    [2mno-unused-vars[22m
+  [2m190:11[22m  [31merror[39m    'mfaRequired' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\password.js[24m
+  [2m42:27[22m  [31merror[39m  Unnecessary escape character: \[  [2mno-useless-escape[22m
+  [2m42:44[22m  [31merror[39m  Unnecessary escape character: \/  [2mno-useless-escape[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\automationEngine.js[24m
+   [2m79:7[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m101:7[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m159:7[22m  [31merror[39m  'logger' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+  [2m163:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\leads\createLead.js[24m
+   [2m11:3[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+   [2m15:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+   [2m24:7[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+   [2m31:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+   [2m38:7[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+   [2m61:3[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+   [2m64:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+   [2m67:3[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+   [2m72:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+   [2m78:7[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+   [2m81:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+   [2m83:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+   [2m93:9[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m103:9[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m109:3[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m114:3[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m119:3[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m131:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m136:7[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m148:9[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m167:3[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m172:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m174:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m180:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m191:7[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m195:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m204:7[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m211:3[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\leads\followupService.js[24m
+  [2m53:9[22m  [31merror[39m  'result' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\leads\pipelineIntelligenceService.js[24m
+   [2m57:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m115:7[22m  [31merror[39m  'logger' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+  [2m134:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\leads\updateLead.js[24m
+   [2m13:7[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+   [2m23:7[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+   [2m31:7[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+   [2m57:7[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m185:7[22m  [31merror[39m  'logger' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\postSale\handoverService.js[24m
+  [2m239:7[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m511:7[22m  [31merror[39m  'logger' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+  [2m520:5[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\postSale\snagService.js[24m
+  [2m171:9[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m228:7[22m  [31merror[39m  'logger' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+  [2m231:7[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\completePhase.js[24m
+  [2m103:17[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m152:7[22m   [31merror[39m  'logger' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\productionOrderService.js[24m
+   [2m81:9[22m   [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m156:7[22m   [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m177:9[22m   [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m288:9[22m   [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m724:11[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m772:7[22m   [31merror[39m  'logger' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+  [2m843:9[22m   [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\projectEventHandler.js[24m
+  [2m10:7[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m21:7[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m24:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m38:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m52:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+  [2m92:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\updateProject.js[24m
+  [2m92:7[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\tasks\autoLinkService.js[24m
+  [2m63:5[22m  [31merror[39m  'logger' is not defined  [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\tasks\updateTask.js[24m
+  [2m218:7[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m225:7[22m  [31merror[39m  'logger' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\webhooks\providers\BaseProvider.js[24m
+  [2m13:17[22m  [31merror[39m  'webhook' is defined but never used. Allowed unused args must match /^_|^next$/u    [2mno-unused-vars[22m
+  [2m13:26[22m  [31merror[39m  'eventType' is defined but never used. Allowed unused args must match /^_|^next$/u  [2mno-unused-vars[22m
+  [2m13:37[22m  [31merror[39m  'payload' is defined but never used. Allowed unused args must match /^_|^next$/u    [2mno-unused-vars[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\webhooks\webhookDispatcher.js[24m
+   [2m81:11[22m  [33mwarning[39m  The value assigned to 'responseBodyText' is not used in subsequent statements  [2mno-useless-assignment[22m
+  [2m193:9[22m   [33mwarning[39m  The value assigned to 'responseBodyText' is not used in subsequent statements  [2mno-useless-assignment[22m
+  [2m251:9[22m   [33mwarning[39m  The value assigned to 'responseBodyText' is not used in subsequent statements  [2mno-useless-assignment[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\workflows\workflowEngine.js[24m
+   [2m46:3[22m   [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+   [2m64:5[22m   [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+   [2m93:7[22m   [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m118:15[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m121:13[22m  [31merror[39m  'logger' is not defined                                                            [2mno-undef[22m
+  [2m126:7[22m   [31merror[39m  'logger' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\constructionValidator.js[24m
+   [2m28:17[22m  [31merror[39m  Empty block statement  [2mno-empty[22m
+   [2m33:17[22m  [31merror[39m  Empty block statement  [2mno-empty[22m
+   [2m38:17[22m  [31merror[39m  Empty block statement  [2mno-empty[22m
+   [2m62:15[22m  [31merror[39m  Empty block statement  [2mno-empty[22m
+   [2m66:15[22m  [31merror[39m  Empty block statement  [2mno-empty[22m
+   [2m70:15[22m  [31merror[39m  Empty block statement  [2mno-empty[22m
+   [2m74:15[22m  [31merror[39m  Empty block statement  [2mno-empty[22m
+   [2m78:15[22m  [31merror[39m  Empty block statement  [2mno-empty[22m
+   [2m84:15[22m  [31merror[39m  Empty block statement  [2mno-empty[22m
+   [2m88:15[22m  [31merror[39m  Empty block statement  [2mno-empty[22m
+  [2m141:15[22m  [31merror[39m  Empty block statement  [2mno-empty[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\notifications.js[24m
+  [2m4:7[22m  [31merror[39m  Parsing error: Identifier 'logger' has already been declared
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\riskAnalyzer.js[24m
+  [2m77:17[22m  [31merror[39m  Empty block statement  [2mno-empty[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\secretValidator.js[24m
+  [2m2:7[22m  [31merror[39m  Parsing error: Identifier 'logger' has already been declared
+
+[31m[1m✖ 358 problems (353 errors, 5 warnings)[22m[39m
+[0m

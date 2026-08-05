@@ -1,13 +1,13 @@
+const logger = require('../utils/logger');
 const pool = require('../db/pool');
 const { fetchEstimateFromExternal } = require('../services/estimatorService');
 const eventBus = require('../utils/eventBus');
-
 // Run every hour
 const INTERVAL_MS = 60 * 60 * 1000;
 
 async function reconcilePendingEstimates() {
   try {
-    // Find all estimates that are not finalized (e.g., draft or pending) and have an external reference
+    // Find all estimates that are not finalized (error.g., draft or pending) and have an external reference
     const { rows } = await pool.query(
       `SELECT id, tenant_id, lead_id, estimator_reference_id 
        FROM lead_estimates 
@@ -33,12 +33,12 @@ async function reconcilePendingEstimates() {
           payload: { id: est.lead_id, source: 'background_job', referenceId: est.estimator_reference_id },
           context: { tenantId: est.tenant_id, userId: 'system' }
         });
-      } catch (err) {
-        console.error(`[ReconcileJob] Failed to reconcile estimate ${est.id}:`, err.message);
+      } catch (error) {
+        logger.error(`[ReconcileJob] Failed to reconcile estimate ${est.id}:`, error.message);
       }
     }
-  } catch (err) {
-    console.error('[ReconcileJob] Global error:', err);
+  } catch (error) {
+    logger.error('[ReconcileJob] Global error:', error);
   }
 }
 

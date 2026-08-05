@@ -1,12 +1,64 @@
 .page { 
   display: flex; 
   flex-direction: column; 
-  gap: var(--space-8); 
-  max-width: 700px; 
-  margin: 0 auto; 
-  padding: var(--space-8) var(--space-4); 
+  gap: var(--space-6); 
+  padding: 0; 
   font-family: 'Inter', sans-serif; 
   animation: fadeIn 0.4s ease-out;
+  flex: 1;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+}
+
+.title {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 2px 0;
+  line-height: 1.2;
+}
+
+.subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.contentGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.inputRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+}
+
+@media (max-width: 1024px) {
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @keyframes fadeIn {
@@ -208,4 +260,5 @@
   .dangerBtn { width: 100%; text-align: center; }
   .submitBtn { width: 100%; text-align: center; }
   .avatarSection { flex-direction: column; align-items: center; text-align: center; }
+  .inputRow { grid-template-columns: 1fr; }
 }

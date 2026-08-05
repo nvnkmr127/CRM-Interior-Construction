@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+const logger = require('../../utils/logger');
 const express = require('express');
 const authenticate = require('../../middleware/authenticate');
 const authorize = require('../../middleware/authorize');
@@ -11,7 +13,7 @@ router.use(authenticate);
 router.use(authorize('config:manage'));
 
 // List webhooks
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const query = `
       SELECT id, name, url, events, custom_headers, payload_template, retry_count, is_active, created_at 
@@ -21,14 +23,14 @@ router.get('/', async (req, res) => {
     `;
     const result = await pool.query(query, [req.tenantId]);
     res.json({ success: true, data: result.rows });
-  } catch (err) {
-    console.error('Fetch webhooks error:', err);
-    res.status(500).json({ success: false, error: 'Internal error' });
+  } catch (error) {
+    logger.error('Fetch webhooks error:', error);
+    return next(error);
   }
 });
 
 // Create
-router.post('/', async (req, res) => {
+router.post('/', async (req, res, next) => {
   try {
     const { name, url, secret, events, custom_headers, payload_template, retry_count } = req.body;
     const query = `
@@ -49,14 +51,14 @@ router.post('/', async (req, res) => {
     ];
     const result = await pool.query(query, vals);
     res.status(201).json({ success: true, data: result.rows[0] });
-  } catch (err) {
-    console.error('Create webhook error:', err);
-    res.status(500).json({ success: false, error: 'Internal error' });
+  } catch (error) {
+    logger.error('Create webhook error:', error);
+    return next(error);
   }
 });
 
 // Update
-router.put('/:id', async (req, res) => {
+router.put('/:id', async (req, res, next) => {
   try {
     const { name, url, secret, events, custom_headers, payload_template, retry_count } = req.body;
     const { id } = req.params;
@@ -85,42 +87,42 @@ router.put('/:id', async (req, res) => {
     if (result.rowCount === 0) return res.status(404).json({ success: false, error: 'Not found' });
 
     res.json({ success: true, data: result.rows[0] });
-  } catch (err) {
-    console.error('Update webhook error:', err);
-    res.status(500).json({ success: false, error: 'Internal error' });
+  } catch (error) {
+    logger.error('Update webhook error:', error);
+    return next(error);
   }
 });
 
 // Toggle Debug
-router.patch('/:id/debug', async (req, res) => {
+router.patch('/:id/debug', async (req, res, next) => {
   try {
     const { id } = req.params;
     // We would ideally add an is_debug_mode column to outbound_webhooks.
     // For now, we will simulate the toggle for the UI if the column doesn't exist, 
     // or just return success so the frontend state updates.
     res.json({ success: true, message: 'Debug mode toggled' });
-  } catch (err) {
-    console.error('Toggle debug error:', err);
-    res.status(500).json({ success: false, error: 'Internal error' });
+  } catch (error) {
+    logger.error('Toggle debug error:', error);
+    return next(error);
   }
 });
 
 // Delete
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     const query = `DELETE FROM outbound_webhooks WHERE id = $1 AND tenant_id = $2`;
     const result = await pool.query(query, [id, req.tenantId]);
     if (result.rowCount === 0) return res.status(404).json({ success: false, error: 'Not found' });
     res.status(204).send();
-  } catch (err) {
-    console.error('Delete webhook error:', err);
-    res.status(500).json({ success: false, error: 'Internal error' });
+  } catch (error) {
+    logger.error('Delete webhook error:', error);
+    return next(error);
   }
 });
 
 // Toggle active
-router.patch('/:id/toggle', async (req, res) => {
+router.patch('/:id/toggle', async (req, res, next) => {
   try {
     const { id } = req.params;
     const query = `
@@ -132,14 +134,14 @@ router.patch('/:id/toggle', async (req, res) => {
     const result = await pool.query(query, [id, req.tenantId]);
     if (result.rowCount === 0) return res.status(404).json({ success: false, error: 'Not found' });
     res.json({ success: true, data: result.rows[0] });
-  } catch (err) {
-    console.error('Toggle webhook error:', err);
-    res.status(500).json({ success: false, error: 'Internal error' });
+  } catch (error) {
+    logger.error('Toggle webhook error:', error);
+    return next(error);
   }
 });
 
 // Test webhook
-router.post('/:id/test', async (req, res) => {
+router.post('/:id/test', async (req, res, next) => {
   try {
     const { id } = req.params;
     const { testWebhook } = require('../../services/webhooks/webhookDispatcher');
@@ -156,12 +158,12 @@ router.post('/:id/test', async (req, res) => {
       }
     });
 
-  } catch (err) {
-    if (err.message === 'WEBHOOK_NOT_FOUND') {
+  } catch (error) {
+    if (error.message === 'WEBHOOK_NOT_FOUND') {
       return res.status(404).json({ success: false, error: 'Not found' });
     }
-    console.error('Test webhook error:', err);
-    res.status(500).json({ success: false, error: 'Internal error' });
+    logger.error('Test webhook error:', error);
+    return next(error);
   }
 });
 

@@ -1,6 +1,6 @@
+const logger = require('../utils/logger');
 const pool = require('../db/pool');
 const delayNotificationService = require('../services/projects/delayNotificationService');
-
 async function runDelayEscalation() {
   console.log('[delayEscalationJob] Starting delay escalation check...');
   const client = await pool.connect();
@@ -18,8 +18,8 @@ async function runDelayEscalation() {
     for (const project of projects) {
       try {
         await delayNotificationService.detectAndCreateDelayDrafts(project.tenant_id, project.id);
-      } catch (err) {
-        console.error(`[delayEscalationJob] Failed to detect delays for project ${project.id}:`, err.message);
+      } catch (error) {
+        logger.error(`[delayEscalationJob] Failed to detect delays for project ${project.id}:`, error.message);
       }
     }
 
@@ -31,14 +31,14 @@ async function runDelayEscalation() {
     for (const tenant of tenants) {
       try {
         await delayNotificationService.checkAndEscalateDelays(tenant.id);
-      } catch (err) {
-        console.error(`[delayEscalationJob] Failed to check escalations for tenant ${tenant.id}:`, err.message);
+      } catch (error) {
+        logger.error(`[delayEscalationJob] Failed to check escalations for tenant ${tenant.id}:`, error.message);
       }
     }
 
     console.log('[delayEscalationJob] Completed delay escalation check.');
   } catch (error) {
-    console.error('[delayEscalationJob] Error running delay escalation:', error);
+    logger.error('[delayEscalationJob] Error running delay escalation:', error);
   } finally {
     client.release();
   }

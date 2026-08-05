@@ -1,5 +1,5 @@
+const logger = require('../../utils/logger');
 const { pool } = require('../../config/db');
-
 class ProjectHealthService {
   /**
    * Generates a weekly health report for a specific project.
@@ -46,7 +46,7 @@ class ProjectHealthService {
 
         if (invoiced > 0 && paid < invoiced * 0.5) financial_score = 'Poor';
         else if (invoiced > 0 && paid < invoiced * 0.9) financial_score = 'Fair';
-      } catch (e) {
+      } catch (error) {
         // Invoices/Payments table might not exist in exactly this format, fallback gracefully
       }
 
@@ -63,7 +63,7 @@ class ProjectHealthService {
         openSnags = parseInt(snagRes.rows[0].count, 10) || 0;
         if (openSnags > 10) qc_score = 'Poor';
         else if (openSnags > 3) qc_score = 'Fair';
-      } catch(e) {
+      } catch (error) {
         // Fallback
       }
 
@@ -109,7 +109,7 @@ class ProjectHealthService {
       return insertRes.rows[0];
     } catch (error) {
       await client.query('ROLLBACK');
-      console.error('[ProjectHealthService] Error generating health report:', error);
+      logger.error('[ProjectHealthService] Error generating health report:', error);
       throw error;
     } finally {
       client.release();

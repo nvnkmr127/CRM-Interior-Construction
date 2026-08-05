@@ -1,3 +1,4 @@
+const logger = require('../../../utils/logger');
 const pool = require('../../../db/pool');
 
 /**
@@ -37,7 +38,7 @@ async function handle(config, context) {
 
   // If still no assigneeId, fallback to a system assignment or do nothing
   if (!assigneeId) {
-    console.log(`[Automation] assignUser strategy '${strategy}' failed to find a valid user for tenant ${tenantId}`);
+    logger.info(`[Automation] assignUser strategy '${strategy}' failed to find a valid user for tenant ${tenantId}`);
     return;
   }
 
@@ -50,7 +51,7 @@ async function handle(config, context) {
   `;
 
   await pool.query(query, [assigneeId, record.id, tenantId]);
-  console.log(`[Automation] Assigned user ${assigneeId} to ${tableName} ${record.id}`);
+  logger.info(`[Automation] Assigned user ${assigneeId} to ${tableName} ${record.id}`);
 }
 
 module.exports = { handle };

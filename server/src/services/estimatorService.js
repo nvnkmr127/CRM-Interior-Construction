@@ -1,8 +1,8 @@
+const logger = require('../utils/logger');
 /**
  * Native Estimator Service
  */
 const pool = require('../config/db');
-
 async function createEstimate(tenantId, leadId, payload) {
   // calculate total amount from payload (rooms -> items -> qty * rate)
   let totalAmount = 0;
@@ -39,7 +39,7 @@ async function getEstimates(tenantId, leadId) {
 // Simulate fetching from external system
 async function fetchEstimateFromExternal(referenceId) {
   // In a real scenario, this would be an Axios call to the external estimator API
-  // e.g. return axios.get(`https://api.estimator.com/v1/estimates/${referenceId}`);
+  // error.g. return axios.get(`https://api.estimator.com/v1/estimates/${referenceId}`);
   
   // For simulation, we randomly update the status if it's draft, or just return existing
   const mockStatuses = ['draft', 'sent', 'accepted', 'rejected'];
@@ -68,8 +68,8 @@ async function reconcileEstimates(tenantId, leadId) {
           [externalData.status, externalData.total_amount, externalData.payload, est.id, tenantId]
         );
         updatedEstimates.push(result.rows[0]);
-      } catch (err) {
-        console.error(`Failed to reconcile estimate ${est.id}:`, err);
+      } catch (error) {
+        logger.error(`Failed to reconcile estimate ${est.id}:`, error);
         throw new Error(`External estimator API unreachable for reference ${est.estimator_reference_id}`);
       }
     } else {

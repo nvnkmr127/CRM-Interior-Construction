@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const pool = require('../../db/pool');
 
 class PurchaseOrderService {
@@ -113,9 +114,9 @@ class PurchaseOrderService {
       finalPo.vendor_name = vendorName;
       finalPo.items = await this.getPOItems(client, tenantId, po.id);
       return finalPo;
-    } catch (err) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw err;
+      throw error;
     } finally {
       client.release();
     }
@@ -219,8 +220,8 @@ class PurchaseOrderService {
       // Auto-generate PO PDF document on transition to 'sent'
       if (status === 'sent') {
         const { generatePurchaseOrderPDF } = require('./poPdfService');
-        await generatePurchaseOrderPDF(tenantId, projectId, poId, userId).catch(err => {
-          console.error('[PO PDF Service] Failed to generate PO PDF:', err);
+        await generatePurchaseOrderPDF(tenantId, projectId, poId, userId).catch(error => {
+          logger.error('[PO PDF Service] Failed to generate PO PDF:', error);
         });
       }
 
@@ -235,9 +236,9 @@ class PurchaseOrderService {
       updatedPo.vendor_name = vendorName;
       updatedPo.items = await this.getPOItems(pool, tenantId, poId);
       return updatedPo;
-    } catch (err) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw err;
+      throw error;
     } finally {
       client.release();
     }
@@ -324,9 +325,9 @@ class PurchaseOrderService {
       updatedPo.vendor_name = vendorName;
       updatedPo.items = items;
       return updatedPo;
-    } catch (err) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw err;
+      throw error;
     } finally {
       client.release();
     }

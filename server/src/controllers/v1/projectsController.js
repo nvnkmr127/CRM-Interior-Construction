@@ -1,6 +1,6 @@
+const logger = require('../../utils/logger');
 const projectRepository = require('../../repositories/projectRepository');
 const { success, fail, getQueryParams } = require('../../utils/v1Response');
-
 /**
  * @swagger
  * tags:
@@ -44,7 +44,7 @@ exports.listProjects = async (req, res) => {
     const result = await projectRepository.findProjects(tenantId, filters);
     return success(res, result);
   } catch (error) {
-    console.error('List Projects Error:', error);
+    logger.error('List Projects Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -75,7 +75,7 @@ exports.getProject = async (req, res) => {
     if (!project) return fail(res, 'Project not found', [], 404);
     return success(res, project);
   } catch (error) {
-    console.error('Get Project Error:', error);
+    logger.error('Get Project Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -112,7 +112,7 @@ exports.createProject = async (req, res) => {
     const project = await projectRepository.createProject(tenantId, data);
     return success(res, project, 201);
   } catch (error) {
-    console.error('Create Project Error:', error);
+    logger.error('Create Project Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -150,7 +150,7 @@ exports.updateProject = async (req, res) => {
     if (!project) return fail(res, 'Project not found', [], 404);
     return success(res, project);
   } catch (error) {
-    console.error('Update Project Error:', error);
+    logger.error('Update Project Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -180,7 +180,7 @@ exports.deleteProject = async (req, res) => {
     await projectRepository.softDeleteProject(tenantId, id);
     return success(res, { deletedId: id });
   } catch (error) {
-    console.error('Delete Project Error:', error);
+    logger.error('Delete Project Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };

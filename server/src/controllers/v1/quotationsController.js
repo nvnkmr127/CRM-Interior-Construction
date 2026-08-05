@@ -1,6 +1,6 @@
+const logger = require('../../utils/logger');
 const pool = require('../../db/pool');
 const { success, fail, getQueryParams } = require('../../utils/v1Response');
-
 /**
  * @swagger
  * tags:
@@ -41,7 +41,7 @@ exports.listQuotations = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('List Quotations Error:', error);
+    logger.error('List Quotations Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -54,7 +54,7 @@ exports.getQuotation = async (req, res) => {
     if (!rows.length) return fail(res, 'Quotation not found', [], 404);
     return success(res, rows[0]);
   } catch (error) {
-    console.error('Get Quotation Error:', error);
+    logger.error('Get Quotation Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -73,7 +73,7 @@ exports.createQuotation = async (req, res) => {
     );
     return success(res, rows[0], 201);
   } catch (error) {
-    console.error('Create Quotation Error:', error);
+    logger.error('Create Quotation Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -92,7 +92,7 @@ exports.updateQuotation = async (req, res) => {
     if (!rows.length) return fail(res, 'Quotation not found', [], 404);
     return success(res, rows[0]);
   } catch (error) {
-    console.error('Update Quotation Error:', error);
+    logger.error('Update Quotation Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -105,7 +105,7 @@ exports.deleteQuotation = async (req, res) => {
     if (rowCount === 0) return fail(res, 'Quotation not found', [], 404);
     return success(res, { deletedId: id });
   } catch (error) {
-    console.error('Delete Quotation Error:', error);
+    logger.error('Delete Quotation Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };

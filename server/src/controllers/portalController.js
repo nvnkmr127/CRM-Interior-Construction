@@ -1,5 +1,5 @@
+const logger = require('../utils/logger');
 const pool = require('../db/pool');
-
 /**
  * Customer Portal Controller
  * Publicly accessible read-only endpoints protected by a unique tracking_code.
@@ -46,7 +46,7 @@ exports.getProjectStatusHandler = async (req, res, next) => {
       }
     });
   } catch (error) {
-    console.error('getProjectStatusHandler error:', error);
-    res.status(500).json({ success: false, error: { message: 'Internal Server Error' } });
+    logger.error('getProjectStatusHandler error:', error);
+    return next(error);
   }
 };

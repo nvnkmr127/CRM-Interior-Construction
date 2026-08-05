@@ -7,8 +7,8 @@ import TaskComments from './TaskComments'
 import TaskAttachments from './TaskAttachments'
 import { useToast } from '../../store/toastContext'
 import { useTaskNotifications } from '../../store/TaskNotificationContext'
-import { useTaskAutomation } from '../../store/TaskAutomationContext'
-import { useGovernance } from '../../store/TaskGovernanceContext'
+import { useTaskAutomationStore } from '../../store/useTaskAutomationStore'
+import { useTaskGovernanceStore } from '../../store/useTaskGovernanceStore'
 import { getTask, getGlobalTask, updateTask, addTaskComment, deleteTask, createTask, createGlobalTask, deleteGlobalTask } from '../../api/tasks'
 import { usersApi } from '../../api/users'
 import { getProject, getProjects } from '../../api/projects'
@@ -42,8 +42,8 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
   
   const toast = useToast()
   const { addNotification } = useTaskNotifications()
-  const { runAutomations } = useTaskAutomation()
-  const governance = useGovernance()
+  const { runAutomations } = useTaskAutomationStore()
+  const governance = useTaskGovernanceStore()
   const logAuditActivity = governance?.logAuditActivity || (() => {})
   const permissions = { ...governance?.permissions, canEdit: true }
 
@@ -167,10 +167,10 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
       
       const updatedTask = { ...task, ...finalPayload }
       if (finalPayload.status && finalPayload.status !== task.status) {
-        runAutomations('status_changed', updatedTask, task)
+        runAutomations('status_changed', updatedTask, task, { toast, addNotification })
         logAuditActivity(task.id, 'STATUS_CHANGE', task.status, finalPayload.status)
       }
-      runAutomations('task_updated', updatedTask, task)
+      runAutomations('task_updated', updatedTask, task, { toast, addNotification })
       window.dispatchEvent(new CustomEvent('taskUpdated', { detail: updatedTask }))
 
     } catch (e) {

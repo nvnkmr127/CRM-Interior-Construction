@@ -1,9 +1,9 @@
+const logger = require('../../utils/logger');
 const pool = require('../../db/pool');
 const { notifyUser } = require('../notificationService');
 const { sendWhatsAppMessage } = require('../whatsappService');
 const { notificationQueue } = require('../../queues/queueSetup');
 const eventBus = require('../../utils/eventBus');
-
 /**
  * Retrieves the user ID for Operations Head.
  */
@@ -18,7 +18,7 @@ async function getOperationsHead(tenantId) {
     `, [tenantId]);
     return rows.length > 0 ? rows[0].id : null;
   } catch (error) {
-    console.error('[Document Reminder] Error fetching Operations Head:', error);
+    logger.error('[Document Reminder] Error fetching Operations Head:', error);
     return null;
   }
 }
@@ -80,7 +80,7 @@ async function checkAndSendDocumentApprovalReminders(projectId = null) {
         const checkRes = await pool.query(checkQuery, [d.id, reminderType]);
 
         if (checkRes.rowCount === 0) {
-          console.log(`[Document Approval Reminder] Sending "${reminderType}" alert for document "${d.document_name}" (${d.id})`);
+          logger.info(`[Document Approval Reminder] Sending "${reminderType}" alert for document "${d.document_name}" (${d.id})`);
 
           let emailMessage = '';
           let waMessage = '';
@@ -112,8 +112,8 @@ async function checkAndSendDocumentApprovalReminders(projectId = null) {
           if (d.client_phone) {
             try {
               await sendWhatsAppMessage(d.client_phone, waMessage);
-            } catch (err) {
-              console.error(`[Document Approval Reminder] Failed to send WhatsApp:`, err.message);
+            } catch (error) {
+              logger.error(`[Document Approval Reminder] Failed to send WhatsApp:`, error.message);
             }
           }
 
@@ -165,7 +165,7 @@ async function checkAndSendDocumentApprovalReminders(projectId = null) {
       }
     }
   } catch (error) {
-    console.error('[Document Reminder Service] Error in checkAndSendDocumentApprovalReminders:', error);
+    logger.error('[Document Reminder Service] Error in checkAndSendDocumentApprovalReminders:', error);
   }
 
   return remindersSent;

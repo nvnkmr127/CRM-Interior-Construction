@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+const logger = require('../utils/logger');
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const authenticate = require('../middleware/authenticate');
@@ -31,7 +33,7 @@ router.use(authenticate);
 
 
 // AI Routes
-router.get('/ai/insights', async (req, res) => {
+router.get('/ai/insights', async (req, res, next) => {
   try {
     const { rows } = await pool.query('SELECT id, name, email, role_id, status, created_at as "lastActive" FROM users WHERE tenant_id=$1 AND deleted_at IS NULL', [req.tenantId]);
     
@@ -49,7 +51,7 @@ router.get('/ai/insights', async (req, res) => {
   }
 });
 
-router.post('/ai/search', async (req, res) => {
+router.post('/ai/search', async (req, res, next) => {
   try {
     const { query } = req.body;
     if (!query) return res.json(success({ matchingIds: [] }));
@@ -73,11 +75,11 @@ router.post('/ai/search', async (req, res) => {
     const result = await aiEmployeeService.naturalLanguageSearch(query, users);
     res.json(success(result));
   } catch (error) {
-    res.status(500).json(fail('AI Search Failed'));
+    return next(error);
   }
 });
 
-router.get('/:id/ai/summary', async (req, res) => {
+router.get('/:id/ai/summary', async (req, res, next) => {
   try {
     const { rows } = await pool.query('SELECT u.*, r.name as role_name FROM users u LEFT JOIN roles r ON r.id = u.role_id WHERE u.id=$1 AND u.tenant_id=$2', [req.params.id, req.tenantId]);
     if (rows.length === 0) return res.status(404).json(fail('User not found'));
@@ -88,11 +90,11 @@ router.get('/:id/ai/summary', async (req, res) => {
     const summary = await aiEmployeeService.generateEmployeeSummary(user);
     res.json(success({ summary }));
   } catch (error) {
-    res.status(500).json(fail('Failed to generate summary'));
+    return next(error);
   }
 });
 
-router.get('/ai/onboarding', async (req, res) => {
+router.get('/ai/onboarding', async (req, res, next) => {
   try {
     const { role_id, department_id } = req.query;
     let roleName = 'Employee';
@@ -110,11 +112,11 @@ router.get('/ai/onboarding', async (req, res) => {
     const checklist = await aiEmployeeService.generateOnboardingChecklist(roleName, deptName);
     res.json(success({ checklist }));
   } catch (error) {
-    res.status(500).json(fail('Failed to generate checklist'));
+    return next(error);
   }
 });
 
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
 
   const tenantId = req.tenantId;
   const { search, role, status, page, limit, department_id, manager_id, branch_id, joining_month, no_logins, no_projects, no_tasks, inactive_locked } = req.query;
@@ -195,7 +197,7 @@ router.get('/', async (req, res) => {
       return rest;
     });
 
-    console.log(`[DEBUG] GET /users for tenant ${tenantId}. Total fetched: ${safeUsers.length}. Pending approvals count: ${safeUsers.filter(u => u.status === 'pending_approval').length}`);
+    logger.info(`[DEBUG] GET /users for tenant ${tenantId}. Total fetched: ${safeUsers.length}. Pending approvals count: ${safeUsers.filter(u => u.status === 'pending_approval').length}`);
 
     return success(res, safeUsers);
   } catch (error) {
@@ -203,7 +205,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.get('/resource-capacity', async (req, res) => {
+router.get('/resource-capacity', async (req, res, next) => {
   const tenantId = req.tenantId;
   try {
     const query = `
@@ -253,13 +255,13 @@ router.get('/resource-capacity', async (req, res) => {
     const { rows } = await pool.query(query, [tenantId]);
     return success(res, rows);
   } catch (error) {
-    console.error('[Users Router] resource-capacity fetch failed:', error);
+    logger.error('[Users Router] resource-capacity fetch failed:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch resource capacity data', 500);
   }
 });
 
 // Get Single User Details
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
   const tenantId = req.tenantId;
   const userId = req.params.id;
   try {
@@ -277,7 +279,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Get User Projects
-router.get('/:id/projects', async (req, res) => {
+router.get('/:id/projects', async (req, res, next) => {
   const tenantId = req.tenantId;
   const userId = req.params.id;
   try {
@@ -294,7 +296,7 @@ router.get('/:id/projects', async (req, res) => {
 });
 
 // Get User Tasks
-router.get('/:id/tasks', async (req, res) => {
+router.get('/:id/tasks', async (req, res, next) => {
   const tenantId = req.tenantId;
   const userId = req.params.id;
   try {
@@ -312,7 +314,7 @@ router.get('/:id/tasks', async (req, res) => {
 });
 
 // Get User Sessions (Login History & Devices)
-router.get('/:id/sessions', authorize('users:view_login_history'), async (req, res) => {
+router.get('/:id/sessions', authorize('users:view_login_history'), async (req, res, next) => {
   const tenantId = req.tenantId;
   const userId = req.params.id;
   try {
@@ -329,7 +331,7 @@ router.get('/:id/sessions', authorize('users:view_login_history'), async (req, r
 });
 
 // Get User Login History
-router.get('/:id/login-history', authorize('users:view_login_history'), async (req, res) => {
+router.get('/:id/login-history', authorize('users:view_login_history'), async (req, res, next) => {
   const tenantId = req.tenantId;
   const userId = req.params.id;
   try {
@@ -349,7 +351,7 @@ router.get('/:id/login-history', authorize('users:view_login_history'), async (r
 
 
 // Get User Timeline (Aggregated Events)
-router.get('/:id/timeline', async (req, res) => {
+router.get('/:id/timeline', async (req, res, next) => {
   const tenantId = req.tenantId;
   const userId = req.params.id;
   try {
@@ -452,13 +454,13 @@ router.get('/:id/timeline', async (req, res) => {
 
     return success(res, events);
   } catch(error) {
-    console.error('Timeline fetch error:', error);
+    logger.error('Timeline fetch error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch user timeline', 500);
   }
 });
 
 // Get User Audit Logs
-router.get('/:id/audit', async (req, res) => {
+router.get('/:id/audit', async (req, res, next) => {
   const tenantId = req.tenantId;
   const userId = req.params.id;
   try {
@@ -475,7 +477,7 @@ router.get('/:id/audit', async (req, res) => {
   }
 });
 
-router.patch('/:id', authenticate, async (req, res) => {
+router.patch('/:id', authenticate, async (req, res, next) => {
   const tenantId = req.tenantId;
   const userIdToUpdate = req.params.id;
   const reviewerId = req.user.userId;
@@ -580,7 +582,7 @@ router.patch('/:id', authenticate, async (req, res) => {
   }
 });
 
-router.post('/add-member', authorize('users:invite_user'), async (req, res) => {
+router.post('/add-member', authorize('users:invite_user'), async (req, res, next) => {
   const tenantId = req.tenantId;
   const { name, email, roleId, ...profile_data } = req.body;
 
@@ -621,7 +623,7 @@ router.post('/add-member', authorize('users:invite_user'), async (req, res) => {
   }
 });
 
-router.delete('/:id', authorize('users:delete_user'), async (req, res) => {
+router.delete('/:id', authorize('users:delete_user'), async (req, res, next) => {
   const tenantId = req.tenantId;
   const userIdToDelete = req.params.id;
 
@@ -643,7 +645,7 @@ router.delete('/:id', authorize('users:delete_user'), async (req, res) => {
   }
 });
 
-router.post('/:id/approve', authorize('users:activate_user'), async (req, res) => {
+router.post('/:id/approve', authorize('users:activate_user'), async (req, res, next) => {
   const tenantId = req.tenantId;
   const userId = req.params.id;
   const reviewerId = req.user.userId;
@@ -689,7 +691,7 @@ router.post('/:id/approve', authorize('users:activate_user'), async (req, res) =
   }
 });
 
-router.post('/:id/reject', authorize('users:activate_user'), async (req, res) => {
+router.post('/:id/reject', authorize('users:activate_user'), async (req, res, next) => {
   const tenantId = req.tenantId;
   const userId = req.params.id;
   const reviewerId = req.user.userId;
@@ -719,7 +721,7 @@ router.post('/:id/reject', authorize('users:activate_user'), async (req, res) =>
   }
 });
 
-router.post('/:id/request-changes', authorize('users:activate_user'), async (req, res) => {
+router.post('/:id/request-changes', authorize('users:activate_user'), async (req, res, next) => {
   const tenantId = req.tenantId;
   const userId = req.params.id;
   const reviewerId = req.user.userId;
@@ -748,7 +750,7 @@ router.post('/:id/request-changes', authorize('users:activate_user'), async (req
   }
 });
 
-router.get('/:id/approval-history', authenticate, async (req, res) => {
+router.get('/:id/approval-history', authenticate, async (req, res, next) => {
   const tenantId = req.tenantId;
   const userId = req.params.id;
 
@@ -767,7 +769,7 @@ router.get('/:id/approval-history', authenticate, async (req, res) => {
   }
 });
 
-router.get('/:id/status-history', authenticate, async (req, res) => {
+router.get('/:id/status-history', authenticate, async (req, res, next) => {
   const tenantId = req.tenantId;
   const userId = req.params.id;
 
@@ -786,7 +788,7 @@ router.get('/:id/status-history', authenticate, async (req, res) => {
   }
 });
 
-router.post('/:id/reset-password', authorize('users:reset_password'), async (req, res) => {
+router.post('/:id/reset-password', authorize('users:reset_password'), async (req, res, next) => {
   const tenantId = req.tenantId;
   const userId = req.params.id;
 
@@ -815,7 +817,7 @@ router.post('/:id/reset-password', authorize('users:reset_password'), async (req
 });
 
 // GET /:id/effective-permissions
-router.get('/:id/effective-permissions', authorize('users:manage'), async (req, res) => {
+router.get('/:id/effective-permissions', authorize('users:manage'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const { rows } = await pool.query(`
@@ -866,13 +868,13 @@ router.get('/:id/effective-permissions', authorize('users:manage'), async (req, 
 
     return success(res, effectiveMap);
   } catch (error) {
-    console.error('[Users API] Get effective permissions error:', error);
+    logger.error('[Users API] Get effective permissions error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to calculate effective permissions', 500);
   }
 });
 
 // PATCH /:id/permissions
-router.patch('/:id/permissions', authorize('users:assign_roles'), async (req, res) => {
+router.patch('/:id/permissions', authorize('users:assign_roles'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const { direct_permissions, temporary_permissions } = req.body;
@@ -898,7 +900,7 @@ router.patch('/:id/permissions', authorize('users:assign_roles'), async (req, re
 
     return success(res, { message: 'Permissions updated successfully' });
   } catch (error) {
-    console.error('[Users API] Update permissions error:', error);
+    logger.error('[Users API] Update permissions error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update permissions', 500);
   }
 });

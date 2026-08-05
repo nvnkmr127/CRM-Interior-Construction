@@ -1,9 +1,9 @@
 /**
  * Middleware factory to enforce Data Scope constraints based on role permissions.
  * 
- * @param {string} moduleName - The module name in the data_scopes configuration (e.g. 'projects', 'leads')
- * @param {string} ownerField - The column name referencing the owner/assignee (e.g. 'pm_id' or 'assigned_to'). Default is 'owner_id'
- * @param {string} tableAlias - Optional alias if the query is complex (e.g. 'p')
+ * @param {string} moduleName - The module name in the data_scopes configuration (error.g. 'projects', 'leads')
+ * @param {string} ownerField - The column name referencing the owner/assignee (error.g. 'pm_id' or 'assigned_to'). Default is 'owner_id'
+ * @param {string} tableAlias - Optional alias if the query is complex (error.g. 'p')
  * @returns {Function} Express middleware that attaches a SQL filter string to req.scopeFilter
  */
 const dataScope = (moduleName, ownerField = 'owner_id', tableAlias = '') => {
@@ -24,7 +24,7 @@ const dataScope = (moduleName, ownerField = 'owner_id', tableAlias = '') => {
     const departmentId = req.user.departmentId || null;
     const branchId = req.user.branchId || null;
     
-    // Support table alias if provided (e.g. "p.pm_id")
+    // Support table alias if provided (error.g. "p.pm_id")
     const column = tableAlias ? `${tableAlias}.${ownerField}` : ownerField;
 
     let scopeType = rawScope;

@@ -1,6 +1,6 @@
+const logger = require('../../utils/logger');
 const pool = require('../../db/pool');
 const { triggerAutomation } = require('../automationEngine');
-
 async function checkSlaBreaches() {
   try {
     const tenantsRes = await pool.query('SELECT id FROM tenants WHERE deleted_at IS NULL');
@@ -8,8 +8,8 @@ async function checkSlaBreaches() {
       await checkTenantSlaBreaches(t.id);
       await checkTenantOverdueFollowups(t.id);
     }
-  } catch (err) {
-    console.error('[SLA Tracker] Error fetching tenants for SLA tracker:', err);
+  } catch (error) {
+    logger.error('[SLA Tracker] Error fetching tenants for SLA tracker:', error);
   }
 }
 
@@ -60,12 +60,12 @@ async function checkTenantOverdueFollowups(tenantId) {
             `, [tenantId, manager.id, msg, `/leads/${overdue.lead_id}`]);
           }
 
-          console.log(`[SLA Tracker] Escalated overdue follow-up ${overdue.id} for lead ${overdue.lead_id} in tenant ${tenantId}`);
+          logger.info(`[SLA Tracker] Escalated overdue follow-up ${overdue.id} for lead ${overdue.lead_id} in tenant ${tenantId}`);
         }
       }
     }
-  } catch (err) {
-    console.error(`[SLA Tracker] Error checking overdue followups for tenant ${tenantId}:`, err);
+  } catch (error) {
+    logger.error(`[SLA Tracker] Error checking overdue followups for tenant ${tenantId}:`, error);
   }
 }
 
@@ -103,19 +103,19 @@ async function checkTenantSlaBreaches(tenantId) {
           // Trigger full automation for the SLA breach
           await triggerAutomation('sla_breached', lead, { stageName: lead.stage_name });
           
-          console.log(`[SLA Tracker] Breached SLA for lead ${lead.id} in tenant ${tenantId}`);
+          logger.info(`[SLA Tracker] Breached SLA for lead ${lead.id} in tenant ${tenantId}`);
         }
       }
     }
-  } catch (err) {
-    console.error(`[SLA Tracker] Error checking SLA breaches for tenant ${tenantId}:`, err);
+  } catch (error) {
+    logger.error(`[SLA Tracker] Error checking SLA breaches for tenant ${tenantId}:`, error);
   }
 }
 
 function startSlaTracking() {
   // Run once an hour
   setInterval(checkSlaBreaches, 3600000);
-  console.log('[SLA Tracker] Started (runs every 1 hour)');
+  logger.info('[SLA Tracker] Started (runs every 1 hour)');
 }
 
 module.exports = { startSlaTracking, checkSlaBreaches, checkTenantOverdueFollowups };

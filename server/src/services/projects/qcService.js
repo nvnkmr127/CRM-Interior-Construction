@@ -79,9 +79,9 @@ async function initializeQcStage(tenantId, projectId, phaseId, templateId) {
     
     await client.query('COMMIT');
     return await getProjectQcStages(tenantId, projectId); // Return all to refresh frontend
-  } catch (err) {
+  } catch (error) {
     await client.query('ROLLBACK');
-    throw err;
+    throw error;
   } finally {
     client.release();
   }

@@ -1,7 +1,8 @@
+const logger = require('../utils/logger');
 const pool = require('../db/pool');
 
 async function checkSLAsAndOverdueTasks() {
-  console.log('Running SLA & Overdue Task checks...');
+  logger.info('Running SLA & Overdue Task checks...');
   const tenantQuery = `SELECT id FROM tenants`;
   const tenantsResult = await pool.query(tenantQuery);
   
@@ -21,7 +22,7 @@ async function checkSLAsAndOverdueTasks() {
     
     for (const breach of breaches.rows) {
       // You can add logic here to create notifications or log system activities
-      console.log(`[Tenant: ${tenantId}] SLA Breached for Lead ${breach.id}: ${breach.days_in_stage} days in '${breach.stage_name}' (Limit: ${breach.max_days_in_stage})`);
+      logger.info(`[Tenant: ${tenantId}] SLA Breached for Lead ${breach.id}: ${breach.days_in_stage} days in '${breach.stage_name}' (Limit: ${breach.max_days_in_stage})`);
       
       // Log an activity if not already logged recently (pseudo-logic, avoiding spam)
       // For now, we'll just log it to the console.
@@ -36,7 +37,7 @@ async function checkSLAsAndOverdueTasks() {
     const overdues = await pool.query(overdueQuery, [tenantId]);
     
     for (const overdue of overdues.rows) {
-      console.log(`[Tenant: ${tenantId}] Overdue Follow-up for Lead ${overdue.lead_id}: Task '${overdue.title}' is overdue by ${overdue.overdue_days} days`);
+      logger.info(`[Tenant: ${tenantId}] Overdue Follow-up for Lead ${overdue.lead_id}: Task '${overdue.title}' is overdue by ${overdue.overdue_days} days`);
     }
   }
 }

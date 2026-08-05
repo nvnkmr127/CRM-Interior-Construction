@@ -6,8 +6,8 @@ router.get('/', async (req, res, next) => {
   try {
     const templates = await workActivityRepository.findTradeDependencyTemplates(req.tenantId);
     res.json({ data: templates });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -19,8 +19,8 @@ router.post('/', async (req, res, next) => {
     }
     const template = await workActivityRepository.createTradeDependencyTemplate(req.tenantId, req.body);
     res.status(201).json({ data: template });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -28,8 +28,8 @@ router.delete('/:id', async (req, res, next) => {
   try {
     await workActivityRepository.deleteTradeDependencyTemplate(req.params.id, req.tenantId);
     res.status(204).send();
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 

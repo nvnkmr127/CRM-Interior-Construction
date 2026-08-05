@@ -1,7 +1,7 @@
+const logger = require('../utils/logger');
 const cron = require('node-cron')
 const pool = require('../config/db')
 const { queueEmail } = require('./emailService')
-
 /**
  * Daily jobs that check for date-based triggers:
  * - Birthday
@@ -10,11 +10,11 @@ const { queueEmail } = require('./emailService')
  * - Probation Completed
  */
 function startCronJobs() {
-  console.log('[Cron Service] Starting daily checks...')
+  logger.info('[Cron Service] Starting daily checks...')
   
   // Run every day at 00:00 (Midnight)
   cron.schedule('0 0 * * *', async () => {
-    console.log('[Cron Service] Running daily email trigger checks...')
+    logger.info('[Cron Service] Running daily email trigger checks...')
     try {
       // We will need to query the profile_data JSONB to find matches for today
       // For PostgreSQL, checking MM-DD inside JSON is a bit complex, so we'll fetch active users and process in JS for simplicity.
@@ -42,7 +42,7 @@ function startCronJobs() {
           }
         }
 
-        // 2. Joining Reminder (e.g., 3 days before)
+        // 2. Joining Reminder (error.g., 3 days before)
         if (joiningDate && user.status === 'onboarding') {
           const joinDate = new Date(joiningDate)
           const diffDays = Math.ceil((joinDate - today) / (1000 * 60 * 60 * 24))
@@ -70,7 +70,7 @@ function startCronJobs() {
         }
       }
     } catch (error) {
-      console.error('[Cron Service] Daily checks failed:', error)
+      logger.error('[Cron Service] Daily checks failed:', error)
     }
   })
 }

@@ -11,9 +11,9 @@ async function getRetrospective(projectId, tenantId) {
     [projectId, tenantId]
   );
   if (projRes.rows.length === 0) {
-    const err = new Error('PROJECT_NOT_FOUND');
-    err.status = 404;
-    throw err;
+    const error = new Error('PROJECT_NOT_FOUND');
+    error.status = 404;
+    throw error;
   }
 
   // Fetch retrospective
@@ -74,9 +74,9 @@ async function saveRetrospective(projectId, tenantId, userId, data) {
     [projectId, tenantId]
   );
   if (projRes.rows.length === 0) {
-    const err = new Error('PROJECT_NOT_FOUND');
-    err.status = 404;
-    throw err;
+    const error = new Error('PROJECT_NOT_FOUND');
+    error.status = 404;
+    throw error;
   }
 
   const client = await pool.connect();
@@ -148,9 +148,9 @@ async function saveRetrospective(projectId, tenantId, userId, data) {
     }, client);
 
     await client.query('COMMIT');
-  } catch (err) {
+  } catch (error) {
     await client.query('ROLLBACK');
-    throw err;
+    throw error;
   } finally {
     client.release();
   }

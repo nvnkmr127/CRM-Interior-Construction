@@ -1,6 +1,6 @@
+const logger = require('../utils/logger');
 const { fail } = require('../utils/response');
 const { getCache, setCache } = require('../utils/cache');
-
 // In-memory store fallback for abuse tracking if Redis is disabled
 const abuseStore = new Map();
 
@@ -20,8 +20,8 @@ async function abuseDetector(req, res, next) {
   let record;
   try {
     record = await getCache(redisKey);
-  } catch (err) {
-    console.error('Redis error in abuse detector', err);
+  } catch (error) {
+    logger.error('Redis error in abuse detector', error);
   }
 
   // Fallback to memory if no redis record is found but it's in memory
@@ -72,7 +72,7 @@ async function abuseDetector(req, res, next) {
             abuseStore.delete(ip);
           }
         }
-      } catch (err) {
+      } catch (error) {
         /* ignore tracking errors in serverless */
       }
 

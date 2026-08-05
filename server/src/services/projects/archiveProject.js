@@ -11,9 +11,9 @@ async function archiveProject({ projectId, tenantId, userId }) {
     [projectId, tenantId]
   );
   if (currentRes.rows.length === 0) {
-    const err = new Error('PROJECT_NOT_FOUND');
-    err.status = 404;
-    throw err;
+    const error = new Error('PROJECT_NOT_FOUND');
+    error.status = 404;
+    throw error;
   }
   const project = currentRes.rows[0];
 

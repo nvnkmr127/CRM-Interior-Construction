@@ -25,13 +25,13 @@ async function logoutUser(rawRefreshToken) {
       SET logout_time = NOW(), 
           duration_seconds = EXTRACT(EPOCH FROM (NOW() - login_time))
       WHERE session_id = $1
-    `, [sessionId]).catch(err => console.warn('Failed to update login history on logout', err));
+    `, [sessionId]).catch(error => console.warn('Failed to update login history on logout', error));
     
     // Now delete the session
     await pool.query('DELETE FROM sessions WHERE id = $1', [sessionId]);
 
     const { clearCache } = require('../../utils/cache');
-    await clearCache(`session:${sessionId}`).catch(err => console.warn('Failed to clear session cache', err));
+    await clearCache(`session:${sessionId}`).catch(error => console.warn('Failed to clear session cache', error));
     await logAction({ tenantId: tenant_id, userId: user_id, action: 'user.logout', entity: 'user', entityId: user_id });
   }
 }

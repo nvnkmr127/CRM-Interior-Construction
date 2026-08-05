@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const pool = require('../../db/pool');
 const leadRepository = require('../../repositories/leadRepository');
 const { logAction } = require('../auditLog');
@@ -8,11 +9,11 @@ const { scoreLead, calculateAIScore } = require('./scoreLeadService');
 async function createLead({ tenantId, userId, data, txClient = null, skipSideEffects = false }) {
   const queryFn = txClient ? txClient.query.bind(txClient) : pool.query.bind(pool);
   const { name, phone, email, stageId, assigneeId } = data;
-  console.log('[createLead] START', { tenantId, userId, name, phone, email, stageId, assigneeId });
+  logger.info('[createLead] START', { tenantId, userId, name, phone, email, stageId, assigneeId });
 
   // 1. Validate required: name, phone (at minimum).
   if (!name || !phone) {
-    console.error('[createLead] FAIL validation: name or phone missing', { name, phone });
+    logger.error('[createLead] FAIL validation: name or phone missing', { name, phone });
     throw new Error('VALIDATION_ERROR: Name and phone are required');
   }
 
@@ -21,21 +22,21 @@ async function createLead({ tenantId, userId, data, txClient = null, skipSideEff
     const config = typeof tenantRes.rows[0].config === 'string' ? JSON.parse(tenantRes.rows[0].config || '{}') : (tenantRes.rows[0].config || {});
     const validSources = config.lead_sources || ['Facebook', 'IndiaMART', 'Referral', 'Website', 'Direct', 'Other'];
     if (!validSources.includes(data.source)) {
-      console.error('[createLead] FAIL validation: invalid source', { source: data.source });
+      logger.error('[createLead] FAIL validation: invalid source', { source: data.source });
       throw new Error('VALIDATION_ERROR: Invalid lead source');
     }
   }
 
   const digitsOnly = phone.replace(/\D/g, '');
   if (digitsOnly.length < 10) {
-    console.error('[createLead] FAIL validation: phone is too short', { phone });
+    logger.error('[createLead] FAIL validation: phone is too short', { phone });
     throw new Error('VALIDATION_ERROR: Phone number must contain at least 10 digits');
   }
 
   if (email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      console.error('[createLead] FAIL validation: invalid email format', { email });
+      logger.error('[createLead] FAIL validation: invalid email format', { email });
       throw new Error('VALIDATION_ERROR: Invalid email format');
     }
   }
@@ -58,29 +59,29 @@ async function createLead({ tenantId, userId, data, txClient = null, skipSideEff
 
   duplicateQuery += ') LIMIT 1';
 
-  console.log('[createLead] Checking duplicates...', { phone, email, name, addressVal });
+  logger.info('[createLead] Checking duplicates...', { phone, email, name, addressVal });
   const duplicateCheck = await queryFn(duplicateQuery, duplicateCheckValues);
   if (duplicateCheck.rows.length > 0) {
-    console.error('[createLead] FAIL duplicate: lead already exists with phone/email or name+address', { phone, email, name, addressVal, existingId: duplicateCheck.rows[0].id });
+    logger.error('[createLead] FAIL duplicate: lead already exists with phone/email or name+address', { phone, email, name, addressVal, existingId: duplicateCheck.rows[0].id });
     throw new Error('VALIDATION_ERROR: A lead with this phone, email, or identical name and address already exists');
   }
-  console.log('[createLead] No duplicate found.');
+  logger.info('[createLead] No duplicate found.');
 
   // 2. If stageId provided: verify it belongs to tenant. If not provided: fallback to default.
   let finalStageId = stageId;
   if (finalStageId) {
-    console.log('[createLead] Verifying stageId...', { finalStageId, tenantId });
+    logger.info('[createLead] Verifying stageId...', { finalStageId, tenantId });
     const stageCheck = await queryFn(
       'SELECT id FROM lead_stages WHERE id = $1 AND tenant_id = $2',
       [finalStageId, tenantId]
     );
     if (stageCheck.rows.length === 0) {
-      console.error('[createLead] FAIL stage: stageId not found for tenant', { finalStageId, tenantId });
+      logger.error('[createLead] FAIL stage: stageId not found for tenant', { finalStageId, tenantId });
       throw new Error('INVALID_STAGE');
     }
-    console.log('[createLead] Stage verified OK.');
+    logger.info('[createLead] Stage verified OK.');
   } else {
-    console.log('[createLead] No stageId provided, fetching default first stage...');
+    logger.info('[createLead] No stageId provided, fetching default first stage...');
     // Assuming lead_stages has a 'sequence' or similar ordering column, fallback to ordering by created_at or id.
     // Try sequence first, then fallback.
     try {
@@ -90,9 +91,9 @@ async function createLead({ tenantId, userId, data, txClient = null, skipSideEff
       );
       if (defaultStageCheck.rows.length > 0) {
         finalStageId = defaultStageCheck.rows[0].id;
-        console.log('[createLead] Default stage assigned:', finalStageId);
+        logger.info('[createLead] Default stage assigned:', finalStageId);
       }
-    } catch (e) {
+    } catch (error) {
       // If 'sequence' doesn't exist, fallback to created_at
       const defaultStageCheckFallback = await queryFn(
         'SELECT id FROM lead_stages WHERE tenant_id = $1 ORDER BY created_at ASC LIMIT 1',
@@ -100,23 +101,23 @@ async function createLead({ tenantId, userId, data, txClient = null, skipSideEff
       );
       if (defaultStageCheckFallback.rows.length > 0) {
         finalStageId = defaultStageCheckFallback.rows[0].id;
-        console.log('[createLead] Default stage assigned (fallback):', finalStageId);
+        logger.info('[createLead] Default stage assigned (fallback):', finalStageId);
       }
     }
   }
 
   // 3. Fetch scoring rules and calculate score.
-  console.log('[createLead] Fetching scoring rules...');
+  logger.info('[createLead] Fetching scoring rules...');
   const rulesResult = await queryFn(
     'SELECT * FROM lead_scoring_rules WHERE tenant_id = $1 AND is_active = true',
     [tenantId]
   );
-  console.log('[createLead] Scoring rules fetched:', rulesResult.rows.length);
+  logger.info('[createLead] Scoring rules fetched:', rulesResult.rows.length);
 
   const scoreResultObj = scoreLead(data, rulesResult.rows);
   const score = scoreResultObj.score;
   const score_breakdown = scoreResultObj.breakdown;
-  console.log('[createLead] Score calculated:', score);
+  logger.info('[createLead] Score calculated:', score);
 
   let win_probability = 0;
   let ai_score_breakdown = {};
@@ -128,12 +129,12 @@ async function createLead({ tenantId, userId, data, txClient = null, skipSideEff
 
   let finalAssigneeId = assigneeId;
   if (!finalAssigneeId) {
-    console.log('[createLead] No assigneeId provided, invoking Smart Router...');
+    logger.info('[createLead] No assigneeId provided, invoking Smart Router...');
     const { assignLeadIntelligently } = require('./smartRoutingService');
     finalAssigneeId = await assignLeadIntelligently(tenantId, data);
     
     if (!finalAssigneeId) {
-      console.log('[createLead] Smart Router returned null. Dispatching notification...');
+      logger.info('[createLead] Smart Router returned null. Dispatching notification...');
       try {
         const { notifyUser } = require('../../integrations/notificationService');
         if (userId) {
@@ -141,10 +142,10 @@ async function createLead({ tenantId, userId, data, txClient = null, skipSideEff
             title: 'Unassigned Lead',
             body: `Smart Router could not find an available assignee for the new lead: ${name}. Please assign manually.`,
             type: 'alert'
-          }).catch(e => console.error('Notify error', e));
+          }).catch(error => logger.error('Notify error', error));
         }
-      } catch (err) {
-        console.error('[createLead] Failed to dispatch notification for unassigned lead', err);
+      } catch (error) {
+        logger.error('[createLead] Failed to dispatch notification for unassigned lead', error);
       }
     }
   }
@@ -163,20 +164,20 @@ async function createLead({ tenantId, userId, data, txClient = null, skipSideEff
     ai_score_breakdown,
     created_by: userId
   };
-  console.log('[createLead] Inserting lead into DB...', leadDataForRepo);
+  logger.info('[createLead] Inserting lead into DB...', leadDataForRepo);
 
   let lead;
   try {
     lead = await leadRepository.createLead(tenantId, leadDataForRepo, txClient);
-    console.log('[createLead] Lead inserted OK, id:', lead?.id);
+    logger.info('[createLead] Lead inserted OK, id:', lead?.id);
   } catch (dbErr) {
-    console.error('[createLead] FAIL DB insert:', dbErr.message, { code: dbErr.code, detail: dbErr.detail, constraint: dbErr.constraint });
+    logger.error('[createLead] FAIL DB insert:', dbErr.message, { code: dbErr.code, detail: dbErr.detail, constraint: dbErr.constraint });
     throw dbErr;
   }
 
   if (!skipSideEffects) {
     // 5. logAction
-    console.log('[createLead] Logging audit action...');
+    logger.info('[createLead] Logging audit action...');
     try {
       await logAction({
         tenantId,
@@ -187,11 +188,11 @@ async function createLead({ tenantId, userId, data, txClient = null, skipSideEff
         newValue: lead
       });
     } catch (auditErr) {
-      console.error('[createLead] WARN audit log failed (non-fatal):', auditErr.message);
+      logger.error('[createLead] WARN audit log failed (non-fatal):', auditErr.message);
     }
 
     // 6. enqueueAutomation
-    console.log('[createLead] Enqueuing automation...');
+    logger.info('[createLead] Enqueuing automation...');
     try {
       await enqueueAutomation({
         tenantId,
@@ -200,14 +201,14 @@ async function createLead({ tenantId, userId, data, txClient = null, skipSideEff
         record: lead
       });
     } catch (queueErr) {
-      console.error('[createLead] WARN automation enqueue failed (non-fatal):', queueErr.message);
+      logger.error('[createLead] WARN automation enqueue failed (non-fatal):', queueErr.message);
     }
 
     // 7. Dispatch Webhooks
     dispatchEvent(tenantId, 'lead.created', lead);
   }
 
-  console.log('[createLead] DONE, returning lead id:', lead.id);
+  logger.info('[createLead] DONE, returning lead id:', lead.id);
   return lead;
 }
 

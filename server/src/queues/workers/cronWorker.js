@@ -7,6 +7,7 @@ const amcService = require('../../services/postSale/amcService');
 const paymentReminderJob = require('../../jobs/paymentReminderJob');
 const weeklyProgressReportJob = require('../../jobs/weeklyProgressReportJob');
 const temporaryPermissionJob = require('../../jobs/temporaryPermissionJob');
+const logger = require('../../utils/logger');
 
 if (useRedis) {
   const cronWorker = new Worker('Cron_Queue', async (job) => {
@@ -39,7 +40,7 @@ if (useRedis) {
           console.warn(`[CronWorker] Unknown job name: ${job.name}`);
       }
     } catch (error) {
-      console.error(`[CronWorker] Error processing job ${job.name}:`, error);
+      logger.error(`[CronWorker] Error processing job ${job.name}:`, error);
       throw error;
     }
   }, { connection });
@@ -48,8 +49,8 @@ if (useRedis) {
     console.log(`[CronWorker] Completed job ${job.id} (${job.name})`);
   });
 
-  cronWorker.on('failed', (job, err) => {
-    console.error(`[CronWorker] Job ${job.id} (${job.name}) failed:`, err);
+  cronWorker.on('failed', (job, error) => {
+    logger.error(`[CronWorker] Job ${job.id} (${job.name}) failed:`, error);
   });
 } else {
   console.log('[CronWorker] Redis is disabled, cronWorker not started.');

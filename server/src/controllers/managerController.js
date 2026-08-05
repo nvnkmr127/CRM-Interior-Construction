@@ -1,10 +1,10 @@
+const logger = require('../utils/logger');
 const pool = require('../db/pool');
-
 function getTenantAndUser(req) {
   return { tenantId: req.user.tenantId, userId: req.user.id };
 }
 
-exports.getSlaBreaches = async (req, res) => {
+exports.getSlaBreaches = async (req, res, next) => {
   try {
     const { tenantId } = getTenantAndUser(req);
     // Dynamic SLA breaches: 'new' leads > 2 days, or any lead > 7 days in current stage
@@ -27,12 +27,12 @@ exports.getSlaBreaches = async (req, res) => {
     );
     res.json({ success: true, data: result.rows });
   } catch (error) {
-    console.error('getSlaBreaches error:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch SLA breaches' });
+    logger.error('getSlaBreaches error:', error);
+    return next(error);
   }
 };
 
-exports.getPipelineMovement = async (req, res) => {
+exports.getPipelineMovement = async (req, res, next) => {
   try {
     const { tenantId } = getTenantAndUser(req);
     // Pipeline movement today: Audit logs or activities representing stage changes today
@@ -49,12 +49,12 @@ exports.getPipelineMovement = async (req, res) => {
     );
     res.json({ success: true, data: result.rows });
   } catch (error) {
-    console.error('getPipelineMovement error:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch pipeline movement' });
+    logger.error('getPipelineMovement error:', error);
+    return next(error);
   }
 };
 
-exports.getRepCapacity = async (req, res) => {
+exports.getRepCapacity = async (req, res, next) => {
   try {
     const { tenantId } = getTenantAndUser(req);
     const result = await pool.query(
@@ -72,12 +72,12 @@ exports.getRepCapacity = async (req, res) => {
     );
     res.json({ success: true, data: result.rows });
   } catch (error) {
-    console.error('getRepCapacity error:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch rep capacity' });
+    logger.error('getRepCapacity error:', error);
+    return next(error);
   }
 };
 
-exports.getScoreDistribution = async (req, res) => {
+exports.getScoreDistribution = async (req, res, next) => {
   try {
     const { tenantId } = getTenantAndUser(req);
     const result = await pool.query(
@@ -92,12 +92,12 @@ exports.getScoreDistribution = async (req, res) => {
     );
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
-    console.error('getScoreDistribution error:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch score distribution' });
+    logger.error('getScoreDistribution error:', error);
+    return next(error);
   }
 };
 
-exports.getPendingApprovals = async (req, res) => {
+exports.getPendingApprovals = async (req, res, next) => {
   try {
     const { tenantId } = getTenantAndUser(req);
     const result = await pool.query(
@@ -136,12 +136,12 @@ exports.getPendingApprovals = async (req, res) => {
 
     res.json({ success: true, data: approvals });
   } catch (error) {
-    console.error('getPendingApprovals error:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch pending approvals' });
+    logger.error('getPendingApprovals error:', error);
+    return next(error);
   }
 };
 
-exports.decideApproval = async (req, res) => {
+exports.decideApproval = async (req, res, next) => {
   try {
     const { tenantId } = getTenantAndUser(req);
     const { id } = req.params;
@@ -158,8 +158,8 @@ exports.decideApproval = async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('decideApproval error:', error);
-    res.status(500).json({ success: false, error: 'Failed to update approval' });
+    logger.error('decideApproval error:', error);
+    return next(error);
   }
 };
 
@@ -170,7 +170,7 @@ exports.getRevivalCandidatesHandler = async (req, res, next) => {
     const candidates = await getRevivalCandidates(tenantId);
     res.json({ success: true, data: candidates });
   } catch (error) {
-    console.error('getRevivalCandidatesHandler error:', error);
+    logger.error('getRevivalCandidatesHandler error:', error);
     next(error);
   }
 };
@@ -182,7 +182,7 @@ exports.getAtRiskDealsHandler = async (req, res, next) => {
     const atRisk = await getAtRiskDeals(tenantId);
     res.json({ success: true, data: atRisk });
   } catch (error) {
-    console.error('getAtRiskDealsHandler error:', error);
+    logger.error('getAtRiskDealsHandler error:', error);
     next(error);
   }
 };
@@ -203,7 +203,7 @@ exports.getHeatMapData = async (req, res, next) => {
 
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('getHeatMapData error:', error);
+    logger.error('getHeatMapData error:', error);
     next(error);
   }
 };
@@ -228,7 +228,7 @@ exports.getRevenueForecast = async (req, res, next) => {
 
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('getRevenueForecast error:', error);
+    logger.error('getRevenueForecast error:', error);
     next(error);
   }
 };
@@ -253,7 +253,7 @@ exports.getBuilderIntelligence = async (req, res, next) => {
 
     res.json({ success: true, data: rows });
   } catch (error) {
-    console.error('getBuilderIntelligence error:', error);
+    logger.error('getBuilderIntelligence error:', error);
     next(error);
   }
 };
@@ -288,12 +288,12 @@ exports.getPredictiveDashboard = async (req, res, next) => {
       }
     });
   } catch (error) {
-    console.error('getPredictiveDashboard error:', error);
+    logger.error('getPredictiveDashboard error:', error);
     next(error);
   }
 };
 
-exports.getScheduledVisits = async (req, res) => {
+exports.getScheduledVisits = async (req, res, next) => {
   try {
     const { tenantId } = getTenantAndUser(req);
     const result = await pool.query(
@@ -309,12 +309,12 @@ exports.getScheduledVisits = async (req, res) => {
     );
     res.json({ success: true, data: result.rows });
   } catch (error) {
-    console.error('getScheduledVisits error:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch scheduled visits' });
+    logger.error('getScheduledVisits error:', error);
+    return next(error);
   }
 };
 
-exports.getPredictiveRevenue = async (req, res) => {
+exports.getPredictiveRevenue = async (req, res, next) => {
   try {
     const { tenantId } = getTenantAndUser(req);
     const result = await pool.query(
@@ -332,12 +332,12 @@ exports.getPredictiveRevenue = async (req, res) => {
     );
     res.json({ success: true, data: result.rows });
   } catch (error) {
-    console.error('getPredictiveRevenue error:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch predictive revenue' });
+    logger.error('getPredictiveRevenue error:', error);
+    return next(error);
   }
 };
 
-exports.getHeatMapData = async (req, res) => {
+exports.getHeatMapData = async (req, res, next) => {
   try {
     const { tenantId } = getTenantAndUser(req);
     const result = await pool.query(
@@ -350,8 +350,8 @@ exports.getHeatMapData = async (req, res) => {
     );
     res.json({ success: true, data: result.rows });
   } catch (error) {
-    console.error('getHeatMapData error:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch heatmap data' });
+    logger.error('getHeatMapData error:', error);
+    return next(error);
   }
 };
 

@@ -1,0 +1,42 @@
+[0m
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\queues\automationQueue.js[24m
+  [2m111:37[22m  [31merror[39m  'err' is not defined  [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js[24m
+   [2m107:7[22m    [31merror[39m  'params' is not defined    [2mno-undef[22m
+   [2m332:72[22m   [31merror[39m  Empty block statement      [2mno-empty[22m
+   [2m471:12[22m   [31merror[39m  'tenantId' is not defined  [2mno-undef[22m
+   [2m483:72[22m   [31merror[39m  Empty block statement      [2mno-empty[22m
+   [2m531:30[22m   [31merror[39m  'tenantId' is not defined  [2mno-undef[22m
+   [2m539:55[22m   [31merror[39m  'tenantId' is not defined  [2mno-undef[22m
+   [2m581:40[22m   [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+   [2m581:195[22m  [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+   [2m581:347[22m  [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+   [2m641:67[22m   [31merror[39m  'tenantId' is not defined  [2mno-undef[22m
+   [2m661:58[22m   [31merror[39m  'tenantId' is not defined  [2mno-undef[22m
+   [2m677:150[22m  [31merror[39m  'tenantId' is not defined  [2mno-undef[22m
+   [2m693:46[22m   [31merror[39m  'tenantId' is not defined  [2mno-undef[22m
+   [2m761:41[22m   [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+   [2m761:196[22m  [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+   [2m761:348[22m  [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+   [2m867:41[22m   [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+   [2m867:196[22m  [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+   [2m867:348[22m  [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+   [2m908:40[22m   [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+   [2m908:195[22m  [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+   [2m908:347[22m  [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+  [2m1039:40[22m   [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+  [2m1039:195[22m  [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+  [2m1039:347[22m  [31merror[39m  'sort_by' is not defined   [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\server.js[24m
+  [2m50:64[22m  [31merror[39m  'error' is defined but never used. Allowed unused args must match /^_|^next$/u  [2mno-unused-vars[22m
+  [2m50:85[22m  [31merror[39m  'e' is not defined                                                              [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\password.js[24m
+  [2m42:27[22m  [31merror[39m  Unnecessary escape character: \[  [2mno-useless-escape[22m
+  [2m42:44[22m  [31merror[39m  Unnecessary escape character: \/  [2mno-useless-escape[22m
+
+[31m[1m✖ 30 problems (30 errors, 0 warnings)[22m[39m
+[0m
+\n\nCommand failed: npx eslint . --fix

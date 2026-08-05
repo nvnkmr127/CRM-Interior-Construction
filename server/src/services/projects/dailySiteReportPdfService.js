@@ -1,10 +1,10 @@
+const logger = require('../../utils/logger');
 const PDFDocument = require('pdfkit');
 const pool = require('../../db/pool');
 const storage = require('../../utils/storage');
 const fs = require('fs');
 const path = require('path');
 const { GetObjectCommand } = require('@aws-sdk/client-s3');
-
 async function getImageBuffer(key) {
   try {
     const isLocal = process.env.STORAGE_PROVIDER === 'local' || !process.env.STORAGE_PROVIDER;
@@ -29,8 +29,8 @@ async function getImageBuffer(key) {
       }
       return Buffer.concat(chunks);
     }
-  } catch (err) {
-    console.error(`[DSR PDF Service] Failed to get image buffer for ${key}:`, err.message);
+  } catch (error) {
+    logger.error(`[DSR PDF Service] Failed to get image buffer for ${key}:`, error.message);
   }
   return null;
 }
@@ -190,8 +190,8 @@ async function archiveDailySiteReport(tenantId, reportId, userId) {
     // 5. Photos Section
     resolvePhotos(doc, report.photos, accentColor, borderColor, textMuted).then(() => {
       doc.end();
-    }).catch(err => {
-      console.error('[DSR PDF Service] Photos resolution error:', err);
+    }).catch(error => {
+      logger.error('[DSR PDF Service] Photos resolution error:', error);
       doc.end();
     });
   });
@@ -259,7 +259,7 @@ async function resolvePhotos(doc, photos, accentColor, borderColor, textMuted) {
     if (imageBuffer) {
       try {
         doc.image(imageBuffer, currentX, currentY, { width: colWidth, height: imgHeight, fit: [colWidth, imgHeight] });
-      } catch (err) {
+      } catch (error) {
         drawPlaceholder(doc, currentX, currentY, colWidth, imgHeight, `Failed to render image: ${path.basename(key)}`, borderColor, textMuted);
       }
     } else {

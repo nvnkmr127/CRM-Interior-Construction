@@ -43,8 +43,8 @@ router.post('/import-preview', authorize('users:import'), async (req, res, next)
     });
 
     return success(res, { validRows, invalidRows });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -103,9 +103,9 @@ router.post('/import', authorize('users:import'), async (req, res, next) => {
 
     await client.query('COMMIT');
     return success(res, { created: createdUsers.length, errors, details: createdUsers });
-  } catch (err) {
+  } catch (error) {
     await client.query('ROLLBACK');
-    next(err);
+    next(error);
   } finally {
     client.release();
   }
@@ -170,9 +170,9 @@ router.patch('/update', authorize('users:manage'), async (req, res, next) => {
 
     await client.query('COMMIT');
     return success(res, { message: 'Bulk update successful', oldStates });
-  } catch (err) {
+  } catch (error) {
     await client.query('ROLLBACK');
-    next(err);
+    next(error);
   } finally {
     client.release();
   }
@@ -205,9 +205,9 @@ router.post('/revert', authorize('users:manage'), async (req, res, next) => {
 
     await client.query('COMMIT');
     return success(res, { message: 'Revert successful' });
-  } catch (err) {
+  } catch (error) {
     await client.query('ROLLBACK');
-    next(err);
+    next(error);
   } finally {
     client.release();
   }
@@ -233,8 +233,8 @@ router.post('/reset-password', authorize('users:manage'), async (req, res, next)
     
     auditLog.logAction({ tenantId, userId: req.user.userId, action: 'user.bulk_password_reset', entity: 'user', newValue: { count: rows.length } });
     return success(res, { message: 'Password reset emails queued' });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -249,8 +249,8 @@ router.delete('/delete', authorize('users:manage'), async (req, res, next) => {
     
     auditLog.logAction({ tenantId, userId: req.user.userId, action: 'user.bulk_deleted', entity: 'user', newValue: { count: rowCount } });
     return success(res, { message: `${rowCount} users deleted` });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -285,8 +285,8 @@ router.post('/export', authorize('users:export_csv'), async (req, res, next) => 
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename="users-export.csv"');
     return res.send(csvString);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 

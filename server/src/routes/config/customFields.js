@@ -42,10 +42,10 @@ router.post('/', authorize('config:manage'), async (req, res, next) => {
   try {
     const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) {
-      const err = new Error('Validation failed');
-      err.isValidation = true;
-      err.details = parsed.error.issues;
-      return next(err);
+      const error = new Error('Validation failed');
+      error.isValidation = true;
+      error.details = parsed.error.issues;
+      return next(error);
     }
 
     const field = await addField(req.tenantId, parsed.data);
@@ -70,10 +70,10 @@ router.put('/:id', authorize('config:manage'), async (req, res, next) => {
   try {
     const parsed = updateSchema.safeParse(req.body);
     if (!parsed.success) {
-      const err = new Error('Validation failed');
-      err.isValidation = true;
-      err.details = parsed.error.issues;
-      return next(err);
+      const error = new Error('Validation failed');
+      error.isValidation = true;
+      error.details = parsed.error.issues;
+      return next(error);
     }
 
     const field = await updateField(req.tenantId, req.params.id, parsed.data);

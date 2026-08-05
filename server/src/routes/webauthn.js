@@ -34,8 +34,8 @@ router.post('/generate-options', authenticate, async (req, res, next) => {
     };
 
     return success(res, { options: mockOptions });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -50,8 +50,8 @@ router.post('/verify', authenticate, async (req, res, next) => {
     // Save the verified public key to the user's authenticators table.
 
     return success(res, { verified: true, message: 'Passkey registered successfully (Simulated).' });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 

@@ -1,6 +1,6 @@
+const logger = require('../../utils/logger');
 const eventBus = require('../eventBus');
 const pool = require('../../db/pool');
-
 class TimelineWriter {
   constructor() {
     this.listen();
@@ -10,8 +10,8 @@ class TimelineWriter {
     eventBus.on('*', async (event) => {
       try {
         await this.handleEvent(event);
-      } catch (err) {
-        console.error('[TimelineWriter] Error writing to timeline:', err);
+      } catch (error) {
+        logger.error('[TimelineWriter] Error writing to timeline:', error);
       }
     });
   }

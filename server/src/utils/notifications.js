@@ -1,6 +1,5 @@
-
+const logger = require('../utils/logger');
 const pool = require('../config/db');
-
 async function sendNotification(tenantId, userId, type, message, referenceUrl = null, actorId = null) {
   if (!userId) return;
   try {
@@ -9,9 +8,9 @@ async function sendNotification(tenantId, userId, type, message, referenceUrl = 
       [tenantId, userId, type, message, referenceUrl, actorId]
     );
     // Mock Email Output
-    console.log(`[EMAIL MOCK] To: User(${userId}) | Subject: New ${type} Notification | Body: ${message} | Link: ${referenceUrl || '#'}`);
-  } catch (err) {
-    console.error('Error sending notification', err);
+    logger.info(`[EMAIL MOCK] To: User(${userId}) | Subject: New ${type} Notification | Body: ${message} | Link: ${referenceUrl || '#'}`);
+  } catch (error) {
+    logger.error('Error sending notification', error);
   }
 }
 

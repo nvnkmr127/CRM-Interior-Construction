@@ -1,7 +1,8 @@
+/* eslint-disable no-useless-assignment */
+const logger = require('../../utils/logger');
 const pool = require('../../config/db');
 const axios = require('axios');
 const providerRegistry = require('./providerRegistry');
-
 class WebhookDeliveryService {
   constructor() {
     this.dispatchEvent = this.dispatchEvent.bind(this);
@@ -23,7 +24,7 @@ class WebhookDeliveryService {
       const result = await pool.query(query, [tenantId, JSON.stringify([eventType])]);
       return result.rows;
     } catch (error) {
-      console.error(`[WebhookDeliveryService] Failed to fetch webhooks for event ${eventType}:`, error);
+      logger.error(`[WebhookDeliveryService] Failed to fetch webhooks for event ${eventType}:`, error);
       return [];
     }
   }
@@ -51,13 +52,13 @@ class WebhookDeliveryService {
         debugData ? debugData.resHeaders : null
       ]);
     } catch (logErr) {
-      console.error('[WebhookDeliveryService] Failed to log webhook attempt:', logErr);
+      logger.error('[WebhookDeliveryService] Failed to log webhook attempt:', logErr);
     }
   }
 
   /**
    * Handles the HTTP request, timeouts, custom headers, and retries.
-   * Designed to be easily ported to a native Queue Worker (e.g., BullMQ) where delays are handled by the queue.
+   * Designed to be easily ported to a native Queue Worker (error.g., BullMQ) where delays are handled by the queue.
    */
   async _sendRequest(tenantId, webhook, eventType, requestConfig) {
     // Retry schedule: Immediate (0), 1m, 5m, 15m, 1h
@@ -116,7 +117,7 @@ class WebhookDeliveryService {
     }
 
     if (!success) {
-      console.error(`[WebhookDeliveryService] Webhook ${webhook.id} (event: ${eventType}) permanently failed after ${maxRetries} attempts. Last error: ${lastError ? lastError.message : 'Unknown'}`);
+      logger.error(`[WebhookDeliveryService] Webhook ${webhook.id} (event: ${eventType}) permanently failed after ${maxRetries} attempts. Last error: ${lastError ? lastError.message : 'Unknown'}`);
       
       // Optionally update the webhook status to inactive if we wanted to completely disable it on permanent failure.
       // await pool.query('UPDATE outbound_webhooks SET is_active = false WHERE id = $1', [webhook.id]);
@@ -145,8 +146,8 @@ class WebhookDeliveryService {
   async dispatchEvent(tenantId, eventType, payload) {
     // In a queue-based system, we would enqueue the job here.
     // For now, we process immediately in the background.
-    this._processEvent(tenantId, eventType, payload).catch(err => {
-      console.error('[WebhookDeliveryService] Unhandled dispatcher error:', err);
+    this._processEvent(tenantId, eventType, payload).catch(error => {
+      logger.error('[WebhookDeliveryService] Unhandled dispatcher error:', error);
     });
   }
 

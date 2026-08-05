@@ -94,9 +94,9 @@ class PhaseRepository {
       }
       await client.query('COMMIT');
       return true;
-    } catch (e) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw e;
+      throw error;
     } finally {
       client.release();
     }

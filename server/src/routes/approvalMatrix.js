@@ -1,9 +1,9 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/pool');
 const authenticate = require('../middleware/authenticate');
 const { fail, success } = require('../utils/response');
-
 router.use(authenticate);
 
 // Get all approval matrix rules
@@ -16,8 +16,8 @@ router.get('/', async (req, res) => {
       [req.user.tenant_id]
     );
     success(res, 'Rules fetched successfully', result.rows);
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    logger.error(error);
     fail(res, 'SERVER_ERROR', 'Failed to fetch rules', 500);
   }
 });
@@ -65,8 +65,8 @@ router.post('/', async (req, res) => {
     );
 
     success(res, 'Rule created successfully', result.rows[0], 201);
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    logger.error(error);
     fail(res, 'SERVER_ERROR', 'Failed to create rule', 500);
   }
 });
@@ -129,8 +129,8 @@ router.put('/:id', async (req, res) => {
     }
 
     success(res, 'Rule updated successfully', result.rows[0]);
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    logger.error(error);
     fail(res, 'SERVER_ERROR', 'Failed to update rule', 500);
   }
 });
@@ -149,8 +149,8 @@ router.delete('/:id', async (req, res) => {
     }
 
     success(res, 'Rule deleted successfully');
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    logger.error(error);
     fail(res, 'SERVER_ERROR', 'Failed to delete rule', 500);
   }
 });

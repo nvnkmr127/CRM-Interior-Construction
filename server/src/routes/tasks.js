@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const { z } = require('zod');
 const { success, fail, paginate } = require('../utils/response');
@@ -13,7 +14,6 @@ const { updateTask } = require('../services/tasks/updateTask');
 const { bulkCreateTasks } = require('../services/tasks/bulkCreateTask');
 const multer = require('multer');
 const path = require('path');
-
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, 'uploads/attachments/');
@@ -97,8 +97,8 @@ router.get('/', authorize('projects:read'), dataScope('tasks', 'assignee_id', 't
     const maskedData = result.data.map(task => filterAllowedFields(task, req.user, 'tasks'));
 
     return paginate(res, maskedData, result.total, result.page, result.limit);
-  } catch (err) {
-    console.error('[Tasks Router] List error:', err);
+  } catch (error) {
+    logger.error('[Tasks Router] List error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch tasks.', 500);
   }
 });
@@ -113,9 +113,9 @@ router.post('/', authorize('projects:manage'), validate(createTaskSchema), async
     let task = await createTask({ tenantId: req.tenantId, userId: req.user.userId, data });
     task = filterAllowedFields(task, req.user, 'tasks');
     return success(res, task, {}, 201);
-  } catch (err) {
-    if (err.status === 400) return fail(res, err.code || 'BAD_REQUEST', err.details || err.message, 400);
-    console.error('[Tasks Router] Create error:', err);
+  } catch (error) {
+    if (error.status === 400) return fail(res, error.code || 'BAD_REQUEST', error.details || error.message, 400);
+    logger.error('[Tasks Router] Create error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create task.', 500);
   }
 });
@@ -131,9 +131,9 @@ router.post('/bulk', authorize('projects:manage'), validate(bulkSchema), async (
       tasks
     });
     return success(res, { created: createdTasks, count: createdTasks.length }, {}, 201);
-  } catch (err) {
-    if (err.status === 400) return fail(res, err.code || 'BAD_REQUEST', err.details || err.message, 400);
-    console.error('[Tasks Router] Bulk create error:', err);
+  } catch (error) {
+    if (error.status === 400) return fail(res, error.code || 'BAD_REQUEST', error.details || error.message, 400);
+    logger.error('[Tasks Router] Bulk create error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to bulk create tasks.', 500);
   }
 });
@@ -144,8 +144,8 @@ router.patch('/reorder', authorize('projects:manage'), validate(reorderSchema), 
     const { orderedIds } = req.body;
     await taskRepository.reorderTasks(req.params.projectId, req.tenantId, orderedIds);
     return success(res, { message: 'Tasks reordered successfully' });
-  } catch (err) {
-    console.error('[Tasks Router] Reorder error:', err);
+  } catch (error) {
+    logger.error('[Tasks Router] Reorder error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to reorder tasks.', 500);
   }
 });
@@ -189,9 +189,9 @@ router.patch('/bulk-update', authorize('projects:manage'), async (req, res, next
     }
     await client.query('COMMIT');
     return success(res, { message: 'Tasks updated successfully' });
-  } catch (err) {
+  } catch (error) {
     await client.query('ROLLBACK');
-    console.error('[Tasks Router] Bulk update error:', err);
+    logger.error('[Tasks Router] Bulk update error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to bulk update tasks.', 500);
   } finally {
     client.release();
@@ -205,8 +205,8 @@ router.get('/:tid', authorize('projects:read'), async (req, res, next) => {
     if (!task) return fail(res, 'NOT_FOUND', 'Task not found', 404);
     task = filterAllowedFields(task, req.user, 'tasks');
     return success(res, task);
-  } catch (err) {
-    console.error('[Tasks Router] Get ID error:', err);
+  } catch (error) {
+    logger.error('[Tasks Router] Get ID error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to retrieve task.', 500);
   }
 });
@@ -236,10 +236,10 @@ router.patch('/:tid', authorize('projects:manage'), validate(updateTaskSchema), 
     });
     task = filterAllowedFields(task, req.user, 'tasks');
     return success(res, task);
-  } catch (err) {
-    if (err.status === 400) return fail(res, err.code || 'BAD_REQUEST', err.details || err.message, 400);
-    if (err.status === 404 || err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Task not found', 404);
-    console.error('[Tasks Router] Update error:', err);
+  } catch (error) {
+    if (error.status === 400) return fail(res, error.code || 'BAD_REQUEST', error.details || error.message, 400);
+    if (error.status === 404 || error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Task not found', 404);
+    logger.error('[Tasks Router] Update error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update task.', 500);
   }
 });
@@ -253,9 +253,9 @@ router.delete('/:tid', authorize('projects:manage'), async (req, res, next) => {
       await taskRepository.softDeleteTask(req.tenantId, req.params.tid);
     }
     return res.status(204).send();
-  } catch (err) {
-    if (err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Task not found', 404);
-    console.error('[Tasks Router] Delete error:', err);
+  } catch (error) {
+    if (error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Task not found', 404);
+    logger.error('[Tasks Router] Delete error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete task.', 500);
   }
 });
@@ -271,8 +271,8 @@ router.get('/:tid/comments', authorize('projects:read'), async (req, res, next) 
       ORDER BY c.created_at ASC
     `, [req.params.tid]);
     return success(res, rows);
-  } catch (err) {
-    console.error('[Tasks Router] List comments error:', err);
+  } catch (error) {
+    logger.error('[Tasks Router] List comments error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch comments.', 500);
   }
 });
@@ -295,8 +295,8 @@ router.post('/:tid/comments', authorize('projects:read'), validate(commentSchema
     comment.user_name = req.user.name;
 
     return success(res, comment, {}, 201);
-  } catch (err) {
-    console.error('[Tasks Router] Create comment error:', err);
+  } catch (error) {
+    logger.error('[Tasks Router] Create comment error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create comment.', 500);
   }
 });
@@ -321,8 +321,8 @@ router.get('/:tid/attachments', authorize('projects:read'), async (req, res, nex
       created_at: r.created_at
     }));
     return success(res, formatted);
-  } catch (err) {
-    console.error('[Tasks Router] List attachments error:', err);
+  } catch (error) {
+    logger.error('[Tasks Router] List attachments error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch attachments.', 500);
   }
 });
@@ -360,8 +360,8 @@ router.post('/:tid/attachments', authorize('projects:manage'), upload.array('fil
     }
     
     return success(res, uploadedAttachments, {}, 201);
-  } catch (err) {
-    console.error('[Tasks Router] Upload attachments error:', err);
+  } catch (error) {
+    logger.error('[Tasks Router] Upload attachments error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to upload attachments.', 500);
   }
 });
@@ -408,9 +408,9 @@ router.patch('/:tid/attachments/:attachmentId', authorize('projects:manage'), up
       version: r.version,
       created_at: r.created_at
     });
-  } catch (err) {
+  } catch (error) {
     await client.query('ROLLBACK');
-    console.error('[Tasks Router] Replace attachment error:', err);
+    logger.error('[Tasks Router] Replace attachment error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to replace attachment.', 500);
   } finally {
     client.release();
@@ -430,8 +430,8 @@ router.delete('/:tid/attachments/:attachmentId', authorize('projects:manage'), a
     }
     
     return success(res, { message: 'Attachment deleted successfully' });
-  } catch (err) {
-    console.error('[Tasks Router] Delete attachment error:', err);
+  } catch (error) {
+    logger.error('[Tasks Router] Delete attachment error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete attachment.', 500);
   }
 });

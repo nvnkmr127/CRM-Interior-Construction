@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const EventEmitter = require('events');
 
 class EventBus extends EventEmitter {}
@@ -6,7 +7,7 @@ class EventBus extends EventEmitter {}
 const eventBus = new EventBus();
 
 eventBus.on('RESOURCE_ASSIGNED_TO_PROJECT', async (payload) => {
-    console.log('[EventBus] RESOURCE_ASSIGNED_TO_PROJECT', payload);
+    logger.info('[EventBus] RESOURCE_ASSIGNED_TO_PROJECT', payload);
     const { pool } = require('../config/db');
     try {
         await pool.query(
@@ -14,13 +15,13 @@ eventBus.on('RESOURCE_ASSIGNED_TO_PROJECT', async (payload) => {
              VALUES (gen_random_uuid(), $1, $2, 'assignment', 'Project Assigned', $3, $4, 'project', NOW())`,
             [payload.tenantId, payload.userId, `You have been assigned to project: ${payload.projectName}`, payload.projectId]
         );
-    } catch (err) {
-        console.error('[EventBus] Error handling RESOURCE_ASSIGNED_TO_PROJECT', err);
+    } catch (error) {
+        logger.error('[EventBus] Error handling RESOURCE_ASSIGNED_TO_PROJECT', error);
     }
 });
 
 eventBus.on('RESOURCE_UNAVAILABLE', async (payload) => {
-    console.log('[EventBus] RESOURCE_UNAVAILABLE', payload);
+    logger.info('[EventBus] RESOURCE_UNAVAILABLE', payload);
     const { pool } = require('../config/db');
     try {
         // Find tasks assigned to this user that are pending, and notify the PM of the project
@@ -40,8 +41,8 @@ eventBus.on('RESOURCE_UNAVAILABLE', async (payload) => {
                 );
             }
         }
-    } catch (err) {
-        console.error('[EventBus] Error handling RESOURCE_UNAVAILABLE', err);
+    } catch (error) {
+        logger.error('[EventBus] Error handling RESOURCE_UNAVAILABLE', error);
     }
 });
 

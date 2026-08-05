@@ -162,7 +162,7 @@ exports.getEvents = async (req, res, next) => {
         lastCursor: rows.length > 0 ? rows[rows.length - 1].id : null
       }
     });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 };

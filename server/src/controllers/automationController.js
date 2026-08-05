@@ -1,6 +1,6 @@
+const logger = require('../utils/logger');
 const pool = require('../db/pool');
-
-exports.getRules = async (req, res) => {
+exports.getRules = async (req, res, next) => {
   try {
     const { tenant_id } = req.user;
     const result = await pool.query(
@@ -9,12 +9,12 @@ exports.getRules = async (req, res) => {
     );
     res.json(result.rows);
   } catch (error) {
-    console.error('Error fetching automation rules:', error);
-    res.status(500).json({ error: 'Server error' });
+    logger.error('Error fetching automation rules:', error);
+    return next(error);
   }
 };
 
-exports.getRuleById = async (req, res) => {
+exports.getRuleById = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { tenant_id } = req.user;
@@ -27,12 +27,12 @@ exports.getRuleById = async (req, res) => {
     }
     res.json(result.rows[0]);
   } catch (error) {
-    console.error('Error fetching automation rule:', error);
-    res.status(500).json({ error: 'Server error' });
+    logger.error('Error fetching automation rule:', error);
+    return next(error);
   }
 };
 
-exports.createRule = async (req, res) => {
+exports.createRule = async (req, res, next) => {
   try {
     const { tenant_id, id: user_id } = req.user;
     const { name, trigger, conditions, actions, is_active } = req.body;
@@ -52,12 +52,12 @@ exports.createRule = async (req, res) => {
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
-    console.error('Error creating automation rule:', error);
-    res.status(500).json({ error: 'Server error' });
+    logger.error('Error creating automation rule:', error);
+    return next(error);
   }
 };
 
-exports.updateRule = async (req, res) => {
+exports.updateRule = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { tenant_id } = req.user;
@@ -88,12 +88,12 @@ exports.updateRule = async (req, res) => {
     }
     res.json(result.rows[0]);
   } catch (error) {
-    console.error('Error updating automation rule:', error);
-    res.status(500).json({ error: 'Server error' });
+    logger.error('Error updating automation rule:', error);
+    return next(error);
   }
 };
 
-exports.deleteRule = async (req, res) => {
+exports.deleteRule = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { tenant_id } = req.user;
@@ -106,12 +106,12 @@ exports.deleteRule = async (req, res) => {
     }
     res.json({ message: 'Rule deleted successfully' });
   } catch (error) {
-    console.error('Error deleting automation rule:', error);
-    res.status(500).json({ error: 'Server error' });
+    logger.error('Error deleting automation rule:', error);
+    return next(error);
   }
 };
 
-exports.runWorkflow = async (req, res) => {
+exports.runWorkflow = async (req, res, next) => {
   try {
     const { tenant_id } = req.user;
     const { workflowId, triggerData } = req.body;
@@ -138,12 +138,12 @@ exports.runWorkflow = async (req, res) => {
 
     res.json({ success: true, message: 'Workflow executed successfully', executionId });
   } catch (error) {
-    console.error('Error running workflow:', error);
-    res.status(500).json({ success: false, error: 'Server error' });
+    logger.error('Error running workflow:', error);
+    return next(error);
   }
 };
 
-exports.getHistory = async (req, res) => {
+exports.getHistory = async (req, res, next) => {
   try {
     const { tenant_id } = req.user;
     
@@ -162,11 +162,11 @@ exports.getHistory = async (req, res) => {
     );
     res.json(result.rows);
   } catch (error) {
-    console.error('Error fetching automation history:', error);
-    res.status(500).json({ success: false, error: 'Server error' });
+    logger.error('Error fetching automation history:', error);
+    return next(error);
   }
 };
-exports.toggleRule = async (req, res) => {
+exports.toggleRule = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { tenant_id } = req.user;
@@ -177,11 +177,11 @@ exports.toggleRule = async (req, res) => {
     if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Rule not found' });
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
-    res.status(500).json({ success: false, error: 'Server error' });
+    return next(error);
   }
 };
 
-exports.getAnalytics = async (req, res) => {
+exports.getAnalytics = async (req, res, next) => {
   try {
     const { tenant_id } = req.user;
     
@@ -221,13 +221,13 @@ exports.getAnalytics = async (req, res) => {
       } 
     });
   } catch (error) {
-    console.error('Error fetching automation analytics:', error);
-    res.status(500).json({ success: false, error: 'Server error' });
+    logger.error('Error fetching automation analytics:', error);
+    return next(error);
   }
 };
 
-exports.getLogs = async (req, res) => {
-  exports.getHistory(req, res); // Reuse history
+exports.getLogs = async (req, res, next) => {
+  exports.getHistory(req, res, next); // Reuse history
 };
 exports.getAutomationTemplates = async (req, res, next) => {
   try {

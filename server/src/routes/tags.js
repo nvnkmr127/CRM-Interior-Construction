@@ -1,9 +1,9 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const router = express.Router();
 const authenticate = require('../middleware/authenticate');
 const pool = require('../db/pool');
 const { success, fail } = require('../utils/response');
-
 // Ensure table exists on startup
 const ensureTable = async () => {
   try {
@@ -18,7 +18,7 @@ const ensureTable = async () => {
       );
     `);
   } catch (error) {
-    console.error('[Tags] Error ensuring table:', error.message);
+    logger.error('[Tags] Error ensuring table:', error.message);
   }
 };
 ensureTable();

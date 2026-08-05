@@ -5,6 +5,7 @@ const { listActivities } = require('../../services/activities/activityService');
 const aiService = require('../../services/aiService');
 const eventBus = require('../../services/eventBus');
 const pool = require('../../db/pool');
+const logger = require('../../utils/logger');
 
 let aiWorker;
 
@@ -67,8 +68,8 @@ if (useRedis) {
             VALUES ($1, $2, $3, NOW())
           `, [tenantId, leadId, intel.sentiment]);
         }
-      } catch (err) {
-        console.error(`[aiWorker] Failed to update lead AI fields:`, err);
+      } catch (error) {
+        logger.error(`[aiWorker] Failed to update lead AI fields:`, error);
       }
     }
 
@@ -88,8 +89,8 @@ if (useRedis) {
     console.log(`AI Job ${job.id} has completed!`);
   });
 
-  aiWorker.on('failed', (job, err) => {
-    console.error(`AI Job ${job.id} has failed with ${err.message}`);
+  aiWorker.on('failed', (job, error) => {
+    logger.error(`AI Job ${job.id} has failed with ${error.message}`);
   });
 } else {
   aiWorker = {

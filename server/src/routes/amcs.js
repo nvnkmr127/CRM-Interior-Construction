@@ -63,8 +63,8 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
     const tenantId = req.tenantId;
     const amcs = await amcService.getAmcsByProject(projectId, tenantId);
     return success(res, amcs);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -95,8 +95,8 @@ router.post('/', authorize('support:manage'), validate(createAmcSchema), async (
     });
 
     return success(res, amc, {}, 201);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -126,14 +126,14 @@ router.put('/:id', authorize('support:manage'), validate(updateAmcSchema), async
 
     const amc = await amcService.updateAmc(id, tenantId, updateData, userId);
     return success(res, amc);
-  } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return fail(res, 'VALIDATION_ERROR', error.errors, 400);
     }
-    if (err.message === 'AMC_NOT_FOUND') {
+    if (error.message === 'AMC_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'AMC contract not found.', 404);
     }
-    next(err);
+    next(error);
   }
 });
 
@@ -146,11 +146,11 @@ router.delete('/:id', authorize('support:manage'), async (req, res, next) => {
 
     const amc = await amcService.deleteAmc(id, tenantId, userId);
     return success(res, amc);
-  } catch (err) {
-    if (err.message === 'AMC_NOT_FOUND') {
+  } catch (error) {
+    if (error.message === 'AMC_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'AMC contract not found.', 404);
     }
-    next(err);
+    next(error);
   }
 });
 
@@ -172,14 +172,14 @@ router.post('/:amcId/visits', authorize('support:manage'), validate(createVisitS
     });
 
     return success(res, visit, {}, 201);
-  } catch (err) {
-    if (err instanceof z.ZodError) {
-      return fail(res, 'VALIDATION_ERROR', err.errors, 400);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return fail(res, 'VALIDATION_ERROR', error.errors, 400);
     }
-    if (err.message === 'AMC_NOT_FOUND') {
+    if (error.message === 'AMC_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'AMC contract not found.', 404);
     }
-    next(err);
+    next(error);
   }
 });
 
@@ -201,11 +201,11 @@ router.put('/:amcId/visits/:visitId', authorize('support:manage'), validate(upda
 
     const visit = await amcService.updateAmcVisit(visitId, amcId, tenantId, updateData, userId);
     return success(res, visit);
-  } catch (err) {
-    if (err.message === 'AMC_VISIT_NOT_FOUND') {
+  } catch (error) {
+    if (error.message === 'AMC_VISIT_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'AMC visit schedule not found.', 404);
     }
-    next(err);
+    next(error);
   }
 });
 
@@ -218,11 +218,11 @@ router.delete('/:amcId/visits/:visitId', authorize('support:manage'), async (req
 
     const visit = await amcService.deleteAmcVisit(visitId, amcId, tenantId, userId);
     return success(res, visit);
-  } catch (err) {
-    if (err.message === 'AMC_VISIT_NOT_FOUND') {
+  } catch (error) {
+    if (error.message === 'AMC_VISIT_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'AMC visit schedule not found.', 404);
     }
-    next(err);
+    next(error);
   }
 });
 

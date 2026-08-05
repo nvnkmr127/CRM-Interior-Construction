@@ -1,10 +1,10 @@
+const logger = require('../../utils/logger');
 const express = require('express');
 const router = express.Router();
 const pool = require('../../db/pool');
 const { incrementProjectStageRevision } = require('../../services/projects/revisionTracker');
 const authenticatePortal = require('../../middleware/authenticatePortal');
 const { getDocumentUrl } = require('../../services/documents/documentService');
-
 router.use(authenticatePortal);
 
 // GET /api/portal/design-reviews/rounds
@@ -45,8 +45,8 @@ router.get('/rounds/:id/drawings', async (req, res, next) => {
       let downloadUrl = '';
       try {
         downloadUrl = await getDocumentUrl(doc.storage_key);
-      } catch (e) {
-        console.error(e);
+      } catch (error) {
+        logger.error(error);
       }
       return { ...doc, downloadUrl };
     }));

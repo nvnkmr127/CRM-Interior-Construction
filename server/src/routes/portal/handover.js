@@ -102,14 +102,14 @@ router.post('/sign-off', validate(signOffSchema), async (req, res, next) => {
     // 2. Verify OTP
     try {
       await portalAuthService.verifyOtpOnly(tenantId, phone, otp);
-    } catch (err) {
-      if (err.message === 'OTP_EXPIRED') {
+    } catch (error) {
+      if (error.message === 'OTP_EXPIRED') {
         return fail(res, 'UNAUTHORIZED', 'OTP expired', 401);
       }
-      if (err.message === 'OTP_INVALID') {
+      if (error.message === 'OTP_INVALID') {
         return fail(res, 'UNAUTHORIZED', 'Invalid OTP', 401);
       }
-      throw err;
+      throw error;
     }
 
     // 3. Complete sign off

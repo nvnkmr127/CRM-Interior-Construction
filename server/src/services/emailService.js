@@ -1,7 +1,7 @@
+const logger = require('../utils/logger');
 const pool = require('../config/db')
 const nodemailer = require('nodemailer')
 const templates = require('../utils/emailTemplates')
-
 // Initialize Ethereal Transporter
 let transporter = null;
 nodemailer.createTestAccount().then(account => {
@@ -14,9 +14,9 @@ nodemailer.createTestAccount().then(account => {
       pass: account.pass
     }
   });
-  console.log('[Email] Ethereal SMTP configured for testing.');
-}).catch(err => {
-  console.error('[Email] Failed to create Ethereal account', err);
+  logger.info('[Email] Ethereal SMTP configured for testing.');
+}).catch(error => {
+  logger.error('[Email] Failed to create Ethereal account', error);
 });
 
 /**
@@ -29,9 +29,9 @@ async function queueEmail(tenantId, userId, toEmail, subject, templateName, temp
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [tenantId, userId, toEmail, subject, templateName, JSON.stringify(templateData)]
     )
-    console.log(`[Email Queue] Queued '${templateName}' for ${toEmail}`)
+    logger.info(`[Email Queue] Queued '${templateName}' for ${toEmail}`)
   } catch (error) {
-    console.error(`[Email Queue] Failed to queue email:`, error)
+    logger.error(`[Email Queue] Failed to queue email:`, error)
   }
 }
 
@@ -79,8 +79,8 @@ async function processEmailJob(job) {
       html: htmlContent
     })
     
-    console.log(`\n=== 📧 EMAIL SENT to ${job.recipient_email} ===\nSubject: ${job.subject}\nTemplate: ${job.template_name}`)
-    console.log(`Preview URL: ${nodemailer.getTestMessageUrl(info)}\n===================================`)
+    logger.info(`\n=== 📧 EMAIL SENT to ${job.recipient_email} ===\nSubject: ${job.subject}\nTemplate: ${job.template_name}`)
+    logger.info(`Preview URL: ${nodemailer.getTestMessageUrl(info)}\n===================================`)
 
     await pool.query(
       `UPDATE email_queue SET status = 'sent', sent_at = NOW() WHERE id = $1`,
@@ -98,7 +98,7 @@ async function processEmailJob(job) {
        WHERE id = $4`,
       [status, error.message, nextRetryCount, job.id]
     )
-    console.error(`[Email Queue] Failed to send email to ${job.recipient_email} (Retry ${nextRetryCount})`)
+    logger.error(`[Email Queue] Failed to send email to ${job.recipient_email} (Retry ${nextRetryCount})`)
   }
 }
 
@@ -109,7 +109,7 @@ let workerInterval = null
 
 function startWorker() {
   if (workerInterval) return
-  console.log('[Email Queue] Worker started.')
+  logger.info('[Email Queue] Worker started.')
   
   workerInterval = setInterval(async () => {
     try {
@@ -125,7 +125,7 @@ function startWorker() {
         await processEmailJob(job)
       }
     } catch (error) {
-      console.error('[Email Queue] Worker error:', error)
+      logger.error('[Email Queue] Worker error:', error)
     }
   }, 10000) // Poll every 10 seconds
 }
@@ -134,7 +134,7 @@ function stopWorker() {
   if (workerInterval) {
     clearInterval(workerInterval)
     workerInterval = null
-    console.log('[Email Queue] Worker stopped.')
+    logger.info('[Email Queue] Worker stopped.')
   }
 }
 

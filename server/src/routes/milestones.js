@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
@@ -6,7 +7,6 @@ const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const milestoneRepository = require('../repositories/milestoneRepository');
 const pool = require('../config/db');
-
 // mergeParams: true allows extraction of :phaseId from the app.use mounting point
 const router = express.Router({ mergeParams: true });
 router.use(authenticate);
@@ -28,8 +28,8 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
   try {
     const milestones = await milestoneRepository.findMilestonesByPhase(req.params.phaseId, req.tenantId);
     return success(res, milestones);
-  } catch (err) {
-    console.error('[Milestones Router] List error:', err);
+  } catch (error) {
+    logger.error('[Milestones Router] List error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch milestones.', 500);
   }
 });
@@ -63,9 +63,9 @@ router.post('/', authorize('projects:manage'), validate(createMilestoneSchema), 
     const milestone = await milestoneRepository.createMilestone(req.tenantId, req.params.phaseId, projectId, data);
     
     return success(res, milestone, {}, 201);
-  } catch (err) {
+  } catch (error) {
     
-    console.error('[Milestones Router] Create error:', err);
+    logger.error('[Milestones Router] Create error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create milestone.', 500);
   }
 });
@@ -76,10 +76,10 @@ router.patch('/:mid', authorize('projects:manage'), validate(updateMilestoneSche
     const data  = req.body;
     const updated = await milestoneRepository.updateMilestone(req.params.mid, req.tenantId, data);
     return success(res, updated);
-  } catch (err) {
+  } catch (error) {
     
-    if (err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Milestone not found.', 404);
-    console.error('[Milestones Router] Update error:', err);
+    if (error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Milestone not found.', 404);
+    logger.error('[Milestones Router] Update error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update milestone.', 500);
   }
 });
@@ -93,8 +93,8 @@ router.delete('/:mid', authorize('projects:manage'), async (req, res, next) => {
     );
     if (rowCount === 0) return fail(res, 'NOT_FOUND', 'Milestone not found.', 404);
     return res.status(204).send();
-  } catch (err) {
-    console.error('[Milestones Router] Delete error:', err);
+  } catch (error) {
+    logger.error('[Milestones Router] Delete error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete milestone.', 500);
   }
 });
@@ -108,9 +108,9 @@ router.post('/:mid/complete', authorize('projects:manage'), async (req, res, nex
       milestone: updated,
       paymentTriggered: updated.triggers_payment
     });
-  } catch (err) {
-    if (err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Milestone not found.', 404);
-    console.error('[Milestones Router] Complete error:', err);
+  } catch (error) {
+    if (error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Milestone not found.', 404);
+    logger.error('[Milestones Router] Complete error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to complete milestone.', 500);
   }
 });

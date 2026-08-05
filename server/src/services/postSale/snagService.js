@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const pool = require('../../db/pool');
 const { logAction } = require('../auditLog');
 const { dispatchEvent } = require('../webhooks/webhookDispatcher');
@@ -167,8 +168,8 @@ async function updateSnagStatus({
       try {
         const { checkAndNotifyHandoverReadiness } = require('./handoverService');
         await checkAndNotifyHandoverReadiness(tenantId, snag.project_id);
-      } catch (err) {
-        console.error('[Snag Service] Error checking handover readiness on resolution:', err.message);
+      } catch (error) {
+        logger.error('[Snag Service] Error checking handover readiness on resolution:', error.message);
       }
     });
   }
@@ -226,8 +227,8 @@ async function clientVerifySnag({ tenantId, snagId, clientPortalUserId }) {
     try {
       const { checkAndNotifyHandoverReadiness } = require('./handoverService');
       await checkAndNotifyHandoverReadiness(tenantId, snag.project_id);
-    } catch (err) {
-      console.error('[Snag Service] Error checking handover readiness on verification:', err.message);
+    } catch (error) {
+      logger.error('[Snag Service] Error checking handover readiness on verification:', error.message);
     }
   });
 

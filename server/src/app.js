@@ -1,26 +1,29 @@
 const express = require('express');
+
 const cors = require('cors');
 const helmet = require('helmet');
-const morgan = require('morgan');
+const httpLogger = require('./middleware/httpLogger');
 const cookieParser = require('cookie-parser');
 const setupSwagger = require('./config/swagger');
 
-process.on('uncaughtException', (err) => {
-  console.error('[UNCAUGHT EXCEPTION]', err);
+const logger = require('./utils/logger');
+
+process.on('uncaughtException', (error) => {
+  logger.fatal(error, '[UNCAUGHT EXCEPTION]');
 });
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('[UNHANDLED REJECTION]', reason);
+  logger.fatal({ reason, promise }, '[UNHANDLED REJECTION]');
 });
 
 const app = express();
 setupSwagger(app);
 
 // Initialize EventBus Subscribers
-try { require('./services/notifications/notificationEventHandler'); } catch (e) { console.warn('Failed to load notificationEventHandler:', e.message); }
-try { require('./services/ai/aiEventHandler'); } catch (e) { console.warn('Failed to load aiEventHandler:', e.message); }
-try { require('./services/projects/projectEventHandler'); } catch (e) { console.warn('Failed to load projectEventHandler:', e.message); }
-try { require('./services/workflows/workflowEngine'); } catch (e) { console.warn('Failed to load workflowEngine:', e.message); }
-try { require('./services/timeline/timelineWriter'); } catch (e) { console.warn('Failed to load timelineWriter:', e.message); }
+try { require('./services/notifications/notificationEventHandler'); } catch (error) { console.warn('Failed to load notificationEventHandler:', error.message); }
+try { require('./services/ai/aiEventHandler'); } catch (error) { console.warn('Failed to load aiEventHandler:', error.message); }
+try { require('./services/projects/projectEventHandler'); } catch (error) { console.warn('Failed to load projectEventHandler:', error.message); }
+try { require('./services/workflows/workflowEngine'); } catch (error) { console.warn('Failed to load workflowEngine:', error.message); }
+try { require('./services/timeline/timelineWriter'); } catch (error) { console.warn('Failed to load timelineWriter:', error.message); }
 
 
 
@@ -28,7 +31,7 @@ try { require('./services/timeline/timelineWriter'); } catch (e) { console.warn(
 
 app.set('trust proxy', 1);
 app.use(helmet({ crossOriginResourcePolicy: false }));
-app.use(morgan('dev'));
+app.use(httpLogger);
 
 const path = require('path');
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -43,7 +46,7 @@ try {
   const erl = require('express-rate-limit');
   if (typeof erl.defaultKeyGenerator === 'function') ipGen = erl.defaultKeyGenerator;
   if (typeof erl.ipKeyGenerator === 'function') ipGen = erl.ipKeyGenerator;
-} catch (e) { /* ignore */ }
+} catch (error) { /* ignore */ }
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -71,7 +74,7 @@ const apiLimiter = rateLimitFn({
         if (decoded && decoded.tenantId && decoded.userId) {
           return `${decoded.tenantId}:${decoded.userId}`;
         }
-      } catch (e) { /* ignore */ }
+      } catch (error) { /* ignore */ }
     }
     return ipGen(req, _res);
   },
@@ -486,6 +489,6 @@ pool.query(`
   SELECT id FROM tenants
   ON CONFLICT (tenant_id) DO NOTHING;
 
-`).catch(err => console.error('Auto-migration error:', err));
+`).catch(error => logger.error(error, 'Auto-migration error'));
 
 module.exports = app;

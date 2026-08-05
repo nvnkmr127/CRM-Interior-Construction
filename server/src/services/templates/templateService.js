@@ -1,5 +1,5 @@
+const logger = require('../../utils/logger');
 const pool = require('../../db/pool');
-
 exports.applyTemplate = async (projectId, templateId, tenantId) => {
   try {
     const { rows } = await pool.query(
@@ -29,11 +29,11 @@ exports.applyTemplate = async (projectId, templateId, tenantId) => {
             INSERT INTO notifications (tenant_id, user_id, type, message, reference_type, reference_id)
             VALUES ($1, $2, 'workflow', $3, 'project', $4)
           `;
-          await pool.query(notificationQuery, [tenantId, pmId, action.message, projectId]).catch(e => console.warn('Could not insert notification', e.message));
+          await pool.query(notificationQuery, [tenantId, pmId, action.message, projectId]).catch(error => console.warn('Could not insert notification', error.message));
         }
       }
     }
   } catch (error) {
-    console.error('Error applying template:', error);
+    logger.error('Error applying template:', error);
   }
 };

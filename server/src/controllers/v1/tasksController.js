@@ -1,6 +1,6 @@
+const logger = require('../../utils/logger');
 const taskRepository = require('../../repositories/taskRepository');
 const { success, fail, getQueryParams } = require('../../utils/v1Response');
-
 /**
  * @swagger
  * tags:
@@ -46,7 +46,7 @@ exports.listTasks = async (req, res) => {
     const result = await taskRepository.findTasks(tenantId, filters);
     return success(res, result);
   } catch (error) {
-    console.error('List Tasks Error:', error);
+    logger.error('List Tasks Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -77,7 +77,7 @@ exports.getTask = async (req, res) => {
     if (!task) return fail(res, 'Task not found', [], 404);
     return success(res, task);
   } catch (error) {
-    console.error('Get Task Error:', error);
+    logger.error('Get Task Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -114,7 +114,7 @@ exports.createTask = async (req, res) => {
     const task = await taskRepository.createTask(tenantId, data);
     return success(res, task, 201);
   } catch (error) {
-    console.error('Create Task Error:', error);
+    logger.error('Create Task Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -152,7 +152,7 @@ exports.updateTask = async (req, res) => {
     if (!task) return fail(res, 'Task not found', [], 404);
     return success(res, task);
   } catch (error) {
-    console.error('Update Task Error:', error);
+    logger.error('Update Task Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -186,7 +186,7 @@ exports.deleteTask = async (req, res) => {
     }
     return success(res, { deletedId: id });
   } catch (error) {
-    console.error('Delete Task Error:', error);
+    logger.error('Delete Task Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };

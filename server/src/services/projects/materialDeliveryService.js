@@ -1,7 +1,7 @@
+const logger = require('../../utils/logger');
 const pool = require('../../db/pool');
 const storage = require('../../utils/storage');
 const purchaseOrderService = require('./purchaseOrderService');
-
 class MaterialDeliveryService {
   async createMaterialDelivery(tenantId, userId, projectId, deliveryData) {
     const { purchaseOrderId, expectedDeliveryDate, actualReceiptDate, notes, items } = deliveryData;
@@ -144,9 +144,9 @@ class MaterialDeliveryService {
       // Fetch delivery items and sign photos
       delivery.items = await this.getDeliveryItems(client, tenantId, delivery.id);
       return delivery;
-    } catch (err) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw err;
+      throw error;
     } finally {
       client.release();
     }
@@ -166,8 +166,8 @@ class MaterialDeliveryService {
       if (item.photo_key) {
         try {
           item.photo_url = await storage.getDownloadUrl(item.photo_key);
-        } catch (err) {
-          console.error('[Delivery Service] Failed to get signed URL for', item.photo_key, err.message);
+        } catch (error) {
+          logger.error('[Delivery Service] Failed to get signed URL for', item.photo_key, error.message);
           item.photo_url = null;
         }
       }
@@ -248,9 +248,9 @@ class MaterialDeliveryService {
       await client.query('COMMIT');
       updated.items = await this.getDeliveryItems(pool, tenantId, deliveryId);
       return updated;
-    } catch (err) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw err;
+      throw error;
     } finally {
       client.release();
     }
@@ -347,7 +347,7 @@ class MaterialDeliveryService {
       if (anyRejected) {
         vendorNotificationSent = true;
         vendorNotificationSentAt = new Date().toISOString();
-        console.log(`[Notification Service] ALERT dispatched to Vendor for Purchase Order ${delivery.purchase_order_id || 'N/A'}: Materials rejected during incoming site inspection.`);
+        logger.info(`[Notification Service] ALERT dispatched to Vendor for Purchase Order ${delivery.purchase_order_id || 'N/A'}: Materials rejected during incoming site inspection.`);
         
         if (delivery.purchase_order_id) {
           const poRes = await client.query(
@@ -443,9 +443,9 @@ class MaterialDeliveryService {
       await client.query('COMMIT');
       updatedDelivery.items = await this.getDeliveryItems(pool, tenantId, deliveryId);
       return updatedDelivery;
-    } catch (err) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw err;
+      throw error;
     } finally {
       client.release();
     }

@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const crypto = require('crypto');
 const pool = require('../../db/pool');
 
@@ -27,7 +28,7 @@ async function sendOtp(tenantId, phone) {
   );
 
   // 5. STUB: log 'OTP for ${phone}: ${otp}' to console.
-  console.log(`OTP for ${phone}: ${otp}`);
+  logger.info(`OTP for ${phone}: ${otp}`);
 
   // Real WhatsApp send via WABA in Phase 2 — use config.wabaToken when set.
 }

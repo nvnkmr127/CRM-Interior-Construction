@@ -86,11 +86,11 @@ class BaselineAssessmentRepository {
 
       assessment.items = savedItems;
       return assessment;
-    } catch (err) {
+    } catch (error) {
       if (!isDedicatedClient) {
         await client.query('ROLLBACK');
       }
-      throw err;
+      throw error;
     } finally {
       if (!isDedicatedClient) {
         client.release();

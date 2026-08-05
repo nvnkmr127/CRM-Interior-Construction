@@ -1,5 +1,5 @@
+const logger = require('../../utils/logger');
 const pool = require('../../db/pool');
-
 /**
  * Evaluates all active sales reps for a tenant and dynamically assigns the lead
  * to the rep with the lowest current workload (active leads).
@@ -24,7 +24,7 @@ async function assignLeadIntelligently(tenantId, _leadData) {
     const res = await pool.query(query, [tenantId]);
 
     if (res.rows.length > 0) {
-      console.log(`[SmartRouter] Assigned to ${res.rows[0].id} (Workload: ${res.rows[0].active_leads} leads)`);
+      logger.info(`[SmartRouter] Assigned to ${res.rows[0].id} (Workload: ${res.rows[0].active_leads} leads)`);
       return res.rows[0].id;
     }
 
@@ -41,13 +41,13 @@ async function assignLeadIntelligently(tenantId, _leadData) {
     const fallbackRes = await pool.query(fallbackQuery, [tenantId]);
 
     if (fallbackRes.rows.length > 0) {
-      console.log(`[SmartRouter] Fallback Assigned to ${fallbackRes.rows[0].id} (Workload: ${fallbackRes.rows[0].active_leads} leads)`);
+      logger.info(`[SmartRouter] Fallback Assigned to ${fallbackRes.rows[0].id} (Workload: ${fallbackRes.rows[0].active_leads} leads)`);
       return fallbackRes.rows[0].id;
     }
 
     return null;
   } catch (error) {
-    console.error('[SmartRouter] Routing error:', error);
+    logger.error('[SmartRouter] Routing error:', error);
     return null; // Gracefully fail and leave lead unassigned
   }
 }

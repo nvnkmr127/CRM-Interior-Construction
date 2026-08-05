@@ -10,17 +10,17 @@ async function previewCancellation({ projectId, tenantId }) {
     [projectId, tenantId]
   );
   if (currentRes.rows.length === 0) {
-    const err = new Error('PROJECT_NOT_FOUND');
-    err.status = 404;
-    throw err;
+    const error = new Error('PROJECT_NOT_FOUND');
+    error.status = 404;
+    throw error;
   }
   const project = currentRes.rows[0];
 
   if (project.status === 'cancelled' || project.status === 'completed') {
-    const err = new Error('PROJECT_ALREADY_CLOSED');
-    err.message = `Cannot cancel a project in status: ${project.status}`;
-    err.status = 400;
-    throw err;
+    const error = new Error('PROJECT_ALREADY_CLOSED');
+    error.message = `Cannot cancel a project in status: ${project.status}`;
+    error.status = 400;
+    throw error;
   }
 
   // 1. Calculate default financial settlement numbers
@@ -88,17 +88,17 @@ async function cancelProject({ projectId, tenantId, userId, reason, settlementNo
     [projectId, tenantId]
   );
   if (currentRes.rows.length === 0) {
-    const err = new Error('PROJECT_NOT_FOUND');
-    err.status = 404;
-    throw err;
+    const error = new Error('PROJECT_NOT_FOUND');
+    error.status = 404;
+    throw error;
   }
   const project = currentRes.rows[0];
 
   if (project.status === 'cancelled' || project.status === 'completed') {
-    const err = new Error('PROJECT_ALREADY_CLOSED');
-    err.message = `Cannot cancel a project in status: ${project.status}`;
-    err.status = 400;
-    throw err;
+    const error = new Error('PROJECT_ALREADY_CLOSED');
+    error.message = `Cannot cancel a project in status: ${project.status}`;
+    error.status = 400;
+    throw error;
   }
 
   const client = await pool.connect();
@@ -206,9 +206,9 @@ async function cancelProject({ projectId, tenantId, userId, reason, settlementNo
 
     await client.query('COMMIT');
     return updatedProject;
-  } catch (err) {
+  } catch (error) {
     await client.query('ROLLBACK');
-    throw err;
+    throw error;
   } finally {
     client.release();
   }
@@ -223,17 +223,17 @@ async function acknowledgeCancellation({ projectId, tenantId, _userId }) {
     [projectId, tenantId]
   );
   if (currentRes.rows.length === 0) {
-    const err = new Error('PROJECT_NOT_FOUND');
-    err.status = 404;
-    throw err;
+    const error = new Error('PROJECT_NOT_FOUND');
+    error.status = 404;
+    throw error;
   }
   const project = currentRes.rows[0];
 
   if (project.status !== 'cancelled') {
-    const err = new Error('PROJECT_NOT_CANCELLED');
-    err.message = 'Only cancelled projects can have their settlements acknowledged.';
-    err.status = 400;
-    throw err;
+    const error = new Error('PROJECT_NOT_CANCELLED');
+    error.message = 'Only cancelled projects can have their settlements acknowledged.';
+    error.status = 400;
+    throw error;
   }
 
   const { rows } = await pool.query(

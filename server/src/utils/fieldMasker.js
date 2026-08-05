@@ -5,8 +5,8 @@
 /**
  * Removes 'hidden' fields from outgoing API responses.
  * @param {Object|Array} data - The object or array of objects to filter
- * @param {string} moduleName - The module name (e.g., 'projects')
- * @param {Object} userFieldPermissions - User's field permissions (e.g., req.user.field_permissions)
+ * @param {string} moduleName - The module name (error.g., 'projects')
+ * @param {Object} userFieldPermissions - User's field permissions (error.g., req.user.field_permissions)
  * @returns {Object|Array} The filtered data
  */
 function filterAllowedFields(data, moduleName, userFieldPermissions = {}) {
@@ -34,7 +34,7 @@ function filterAllowedFields(data, moduleName, userFieldPermissions = {}) {
 /**
  * Strips 'read_only' and 'hidden' fields from incoming req.body payloads.
  * @param {Object} body - The request body to sanitize
- * @param {string} moduleName - The module name (e.g., 'projects')
+ * @param {string} moduleName - The module name (error.g., 'projects')
  * @param {Object} userFieldPermissions - User's field permissions
  * @returns {Object} Sanitized body
  */

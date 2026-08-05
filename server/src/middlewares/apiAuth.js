@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const pool = require('../db/pool');
+const logger = require('../utils/logger');
 
 function hashApiKey(apiKey) {
   return crypto.createHash('sha256').update(apiKey).digest('hex');
@@ -7,7 +8,7 @@ function hashApiKey(apiKey) {
 
 /**
  * Middleware to authenticate requests via API Key and authorize based on required permission.
- * @param {string} requiredPermission - The permission required to access the endpoint (e.g. 'Leads Read').
+ * @param {string} requiredPermission - The permission required to access the endpoint (error.g. 'Leads Read').
  */
 const apiAuth = (requiredPermission) => {
   return async (req, res, next) => {
@@ -52,8 +53,8 @@ const apiAuth = (requiredPermission) => {
 
       next();
     } catch (error) {
-      console.error('API Auth Error:', error);
-      res.status(500).json({ success: false, error: 'Internal Server Error' });
+      logger.error('API Auth Error:', error);
+      return next(error);
     }
   };
 };

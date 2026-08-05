@@ -8,7 +8,7 @@ exports.generateKey = async (tenantId, { name, scopes = ['read'], rateLimitRpm =
   // 1. Generate raw key
   const rawKey = 'crm_' + crypto.randomBytes(32).toString('hex');
   
-  // 2. Prefix for display (e.g. 'crm_a1b2')
+  // 2. Prefix for display (error.g. 'crm_a1b2')
   const prefix = rawKey.substring(0, 8);
   
   // 3. Hash the key for storage

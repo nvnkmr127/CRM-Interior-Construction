@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const pool = require('../../config/db');
 const { notificationQueue } = require('../../queues/queueSetup');
 
@@ -74,7 +75,7 @@ async function incrementProjectStageRevision(projectId, tenantId, dbClient = poo
         message: alertMessage
       });
     }
-    console.log(`[RevisionTracker] Warning alert queued for project: ${project.name}, stage: ${stage}`);
+    logger.info(`[RevisionTracker] Warning alert queued for project: ${project.name}, stage: ${stage}`);
   }
 
   // 2. Alert and generate Change Order if limit is exceeded (count > limit)
@@ -120,7 +121,7 @@ async function incrementProjectStageRevision(projectId, tenantId, dbClient = poo
         message: alertMessage
       });
     }
-    console.log(`[RevisionTracker] Exceeded alert & draft change order queued for project: ${project.name}, stage: ${stage}`);
+    logger.info(`[RevisionTracker] Exceeded alert & draft change order queued for project: ${project.name}, stage: ${stage}`);
   }
 
   return { limits, counts, stage, count, limit };

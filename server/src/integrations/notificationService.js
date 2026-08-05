@@ -1,6 +1,7 @@
 const pool = require('../config/db');
 const crypto = require('crypto');
 const { queueEmail } = require('../services/emailService');
+const logger = require('../utils/logger');
 
 const clients = new Map();
 
@@ -95,7 +96,7 @@ const notifyUser = async (tenantId, userId, notification) => {
 
     return newNotification;
   } catch (error) {
-    console.error('Failed to dispatch notification:', error);
+    logger.error('Failed to dispatch notification:', error);
     throw error;
   }
 };

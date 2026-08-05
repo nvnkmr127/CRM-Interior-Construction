@@ -1,5 +1,5 @@
+const logger = require('../utils/logger');
 const { GoogleGenAI } = require('@google/genai');
-
 /**
  * AI Employee Service
  * Integrates with Google Gemini for employee management insights and NLP operations.
@@ -32,7 +32,7 @@ async function detectAnomalies(users) {
     Look for:
     1. Duplicate Employees: Users with very similar names or slightly mispelled emails.
     2. Inactive Accounts: Users whose lastActive date is very old (assume current date is 2026-07-23).
-    3. Security Risks: Any weird data points (e.g. multiple superadmins with generic emails like "admin@").
+    3. Security Risks: Any weird data points (error.g. multiple superadmins with generic emails like "admin@").
 
     Return a JSON object exactly matching this schema:
     {
@@ -58,7 +58,7 @@ async function detectAnomalies(users) {
     
     return JSON.parse(text);
   } catch (error) {
-    console.error('[AI Employee Service] Failed anomaly detection:', error);
+    logger.error('[AI Employee Service] Failed anomaly detection:', error);
     return FALLBACK_INSIGHTS;
   }
 }
@@ -112,7 +112,7 @@ async function naturalLanguageSearch(query, users) {
     if (text.startsWith('```json')) text = text.replace(/^```json\n/, '').replace(/\n```$/, '');
     return JSON.parse(text);
   } catch (error) {
-    console.error('[AI Employee Service] NLP search failed:', error);
+    logger.error('[AI Employee Service] NLP search failed:', error);
     return { matchingIds: [] };
   }
 }
@@ -140,7 +140,7 @@ async function generateEmployeeSummary(user) {
     });
     return (typeof response.text === 'function' ? response.text() : response.text).trim();
   } catch (error) {
-    console.error('[AI Employee Service] Summary failed:', error);
+    logger.error('[AI Employee Service] Summary failed:', error);
     return "Failed to generate AI summary.";
   }
 }
@@ -171,7 +171,7 @@ async function generateOnboardingChecklist(roleName, deptName) {
     if (text.startsWith('```json')) text = text.replace(/^```json\n/, '').replace(/\n```$/, '');
     return JSON.parse(text);
   } catch (error) {
-    console.error('[AI Employee Service] Checklist failed:', error);
+    logger.error('[AI Employee Service] Checklist failed:', error);
     return ['Set up email', 'Provide CRM access'];
   }
 }

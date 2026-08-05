@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
@@ -5,7 +6,6 @@ const authenticate = require('../middleware/authenticate');
 const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const pool = require('../config/db');
-
 const router = express.Router({ mergeParams: true });
 router.use(authenticate);
 
@@ -56,8 +56,8 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
 
     const { rows } = await pool.query(query, [projectId, tenantId]);
     return success(res, rows);
-  } catch (err) {
-    console.error('[MaterialPalettes Router] List error:', err);
+  } catch (error) {
+    logger.error('[MaterialPalettes Router] List error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch material palettes.', 500);
   }
 });
@@ -78,8 +78,8 @@ router.get('/boq-items', authorize('projects:read'), async (req, res, next) => {
 
     const { rows } = await pool.query(query, [projectId, tenantId]);
     return success(res, rows);
-  } catch (err) {
-    console.error('[MaterialPalettes Router] BOQ items fetch error:', err);
+  } catch (error) {
+    logger.error('[MaterialPalettes Router] BOQ items fetch error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch BOQ items.', 500);
   }
 });
@@ -121,9 +121,9 @@ router.post('/', authorize('design:manage'), validate(createPaletteSchema), asyn
     ]);
 
     return success(res, rows[0], {}, 201);
-  } catch (err) {
+  } catch (error) {
     
-    console.error('[MaterialPalettes Router] Create error:', err);
+    logger.error('[MaterialPalettes Router] Create error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create material palette item.', 500);
   }
 });
@@ -234,9 +234,9 @@ router.put('/:id', authorize('design:manage'), validate(updatePaletteSchema), as
 
     const { rows } = await pool.query(query, values);
     return success(res, rows[0]);
-  } catch (err) {
+  } catch (error) {
     
-    console.error('[MaterialPalettes Router] Update error:', err);
+    logger.error('[MaterialPalettes Router] Update error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update material palette item.', 500);
   }
 });
@@ -257,8 +257,8 @@ router.delete('/:id', authorize('design:manage'), async (req, res, next) => {
     }
 
     return success(res, { message: 'Material palette item deleted successfully.' });
-  } catch (err) {
-    console.error('[MaterialPalettes Router] Delete error:', err);
+  } catch (error) {
+    logger.error('[MaterialPalettes Router] Delete error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete material palette item.', 500);
   }
 });

@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
@@ -62,8 +63,8 @@ router.get('/', authorize('projects:read'), async (req, res) => {
       status
     });
     return success(res, activities);
-  } catch (err) {
-    console.error('[WorkActivities Router] List error:', err);
+  } catch (error) {
+    logger.error('[WorkActivities Router] List error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch work activities.', 500);
   }
 });
@@ -74,8 +75,8 @@ router.get('/templates', authorize('projects:read'), async (req, res) => {
     const { trade, roomType } = req.query;
     const templates = await workActivityRepository.findTemplates(trade, roomType);
     return success(res, templates);
-  } catch (err) {
-    console.error('[WorkActivities Router] Templates list error:', err);
+  } catch (error) {
+    logger.error('[WorkActivities Router] Templates list error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch templates.', 500);
   }
 });
@@ -88,8 +89,8 @@ router.post('/', authorize('projects:manage'), validate(createActivitySchema), a
 
     const activity = await workActivityRepository.createActivity(req.tenantId, data);
     return success(res, activity, {}, 201);
-  } catch (err) {
-    console.error('[WorkActivities Router] Create error:', err);
+  } catch (error) {
+    logger.error('[WorkActivities Router] Create error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create work activity.', 500);
   }
 });
@@ -106,8 +107,8 @@ router.post('/generate', authorize('projects:manage'), validate(generateSchema),
       trade
     );
     return success(res, created, {}, 201);
-  } catch (err) {
-    console.error('[WorkActivities Router] Generate error:', err);
+  } catch (error) {
+    logger.error('[WorkActivities Router] Generate error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to generate activities.', 500);
   }
 });
@@ -131,10 +132,10 @@ router.patch('/:id', authorize('projects:manage'), validate(updateActivitySchema
       req.user?.userId
     );
     return success(res, activity);
-  } catch (err) {
-    if (err.status === 400) return fail(res, err.code || 'BAD_REQUEST', err.message, 400);
-    if (err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Work activity not found.', 404);
-    console.error('[WorkActivities Router] Update error:', err);
+  } catch (error) {
+    if (error.status === 400) return fail(res, error.code || 'BAD_REQUEST', error.message, 400);
+    if (error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Work activity not found.', 404);
+    logger.error('[WorkActivities Router] Update error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update work activity.', 500);
   }
 });
@@ -144,9 +145,9 @@ router.delete('/:id', authorize('projects:manage'), async (req, res) => {
   try {
     await workActivityRepository.deleteActivity(req.params.id, req.tenantId);
     return success(res, { message: 'Work activity deleted successfully' });
-  } catch (err) {
-    if (err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Work activity not found.', 404);
-    console.error('[WorkActivities Router] Delete error:', err);
+  } catch (error) {
+    if (error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Work activity not found.', 404);
+    logger.error('[WorkActivities Router] Delete error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete work activity.', 500);
   }
 });
@@ -167,8 +168,8 @@ router.get('/dependencies', authorize('projects:read'), async (req, res) => {
       WHERE wad.project_id = $1 AND wad.tenant_id = $2
     `, [req.params.projectId, req.tenantId]);
     return success(res, rows);
-  } catch (err) {
-    console.error('[WorkActivities Router] Dependencies list error:', err);
+  } catch (error) {
+    logger.error('[WorkActivities Router] Dependencies list error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch work activity dependencies.', 500);
   }
 });
@@ -222,11 +223,11 @@ router.post('/dependencies', authorize('projects:manage'), validate(createDepend
     `, [req.tenantId, req.params.projectId, activityId, dependsOnActivityId, dependencyType]);
 
     return success(res, rows[0], {}, 201);
-  } catch (err) {
-    if (err.code === '23505') {
+  } catch (error) {
+    if (error.code === '23505') {
       return fail(res, 'DUPLICATE_DEPENDENCY', 'This dependency already exists.', 400);
     }
-    console.error('[WorkActivities Router] Create dependency error:', err);
+    logger.error('[WorkActivities Router] Create dependency error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create work activity dependency.', 500);
   }
 });
@@ -243,8 +244,8 @@ router.delete('/dependencies/:id', authorize('projects:manage'), async (req, res
       return fail(res, 'NOT_FOUND', 'Dependency not found.', 404);
     }
     return res.status(204).send();
-  } catch (err) {
-    console.error('[WorkActivities Router] Delete dependency error:', err);
+  } catch (error) {
+    logger.error('[WorkActivities Router] Delete dependency error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete work activity dependency.', 500);
   }
 });
@@ -299,9 +300,9 @@ router.put('/dependencies/bulk', authorize('projects:manage'), async (req, res) 
 
     await client.query('COMMIT');
     return success(res, { message: 'Work activity dependencies updated successfully' });
-  } catch (err) {
+  } catch (error) {
     await client.query('ROLLBACK');
-    console.error('[WorkActivities Router] Bulk update dependencies error:', err);
+    logger.error('[WorkActivities Router] Bulk update dependencies error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to bulk update work activity dependencies.', 500);
   } finally {
     client.release();
@@ -312,7 +313,6 @@ router.put('/dependencies/bulk', authorize('projects:manage'), async (req, res) 
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const storage = require('../utils/storage');
-
 // POST /api/projects/:projectId/work-activities/:id/photos
 router.post('/:id/photos', authorize('projects:manage'), upload.single('file'), async (req, res) => {
   try {
@@ -342,8 +342,8 @@ router.post('/:id/photos', authorize('projects:manage'), upload.single('file'), 
     const photoWithUrl = { ...rows[0], url: downloadUrl };
 
     return success(res, photoWithUrl, {}, 201);
-  } catch (err) {
-    console.error('[WorkActivities Router] Photo upload error:', err);
+  } catch (error) {
+    logger.error('[WorkActivities Router] Photo upload error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to upload completion evidence.', 500);
   }
 });
@@ -371,8 +371,8 @@ router.delete('/:id/photos/:photoId', authorize('projects:manage'), async (req, 
     `, [photoId, activityId, tenantId]);
 
     return success(res, { message: 'Photo deleted successfully' });
-  } catch (err) {
-    console.error('[WorkActivities Router] Photo delete error:', err);
+  } catch (error) {
+    logger.error('[WorkActivities Router] Photo delete error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete completion evidence.', 500);
   }
 });

@@ -1,6 +1,6 @@
+const logger = require('../../utils/logger');
 const pool = require('../../db/pool');
 const { success, fail, getQueryParams } = require('../../utils/v1Response');
-
 /**
  * @swagger
  * tags:
@@ -42,7 +42,7 @@ exports.listPayments = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('List Payments Error:', error);
+    logger.error('List Payments Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -55,7 +55,7 @@ exports.getPayment = async (req, res) => {
     if (!rows.length) return fail(res, 'Payment not found', [], 404);
     return success(res, rows[0]);
   } catch (error) {
-    console.error('Get Payment Error:', error);
+    logger.error('Get Payment Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -76,7 +76,7 @@ exports.createPayment = async (req, res) => {
     );
     return success(res, rows[0], 201);
   } catch (error) {
-    console.error('Create Payment Error:', error);
+    logger.error('Create Payment Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -95,7 +95,7 @@ exports.updatePayment = async (req, res) => {
     if (!rows.length) return fail(res, 'Payment not found', [], 404);
     return success(res, rows[0]);
   } catch (error) {
-    console.error('Update Payment Error:', error);
+    logger.error('Update Payment Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -108,7 +108,7 @@ exports.deletePayment = async (req, res) => {
     if (rowCount === 0) return fail(res, 'Payment not found', [], 404);
     return success(res, { deletedId: id });
   } catch (error) {
-    console.error('Delete Payment Error:', error);
+    logger.error('Delete Payment Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };

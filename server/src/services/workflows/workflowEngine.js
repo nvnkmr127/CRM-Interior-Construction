@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const eventBus = require('../../utils/eventBus');
 // const pool = require('../../config/db'); // For future database-backed rules
 const fs = require('fs');
@@ -42,8 +43,8 @@ try {
       }
     ];
   }
-} catch (e) {
-  console.error('[WorkflowEngine] Error loading workflows.json', e);
+} catch (error) {
+  logger.error('[WorkflowEngine] Error loading workflows.json', error);
 }
 
 class WorkflowEngine {
@@ -61,7 +62,7 @@ class WorkflowEngine {
       });
     });
     
-    console.log(`[WorkflowEngine] Subscribed to ${eventsToListen.length} event types.`);
+    logger.info(`[WorkflowEngine] Subscribed to ${eventsToListen.length} event types.`);
   }
 
   async evaluate(eventName, payload) {
@@ -90,7 +91,7 @@ class WorkflowEngine {
 
   async executeActions(actions, payload) {
     for (const action of actions) {
-      console.log(`[WorkflowEngine] Executing action: ${action.type}`, payload.lead ? payload.lead.id : '');
+      logger.info(`[WorkflowEngine] Executing action: ${action.type}`, payload.lead ? payload.lead.id : '');
       // In a full implementation, this would dispatch to queues or call services
       if (action.type === 'notify' || action.type === 'notify_assignee') {
         const { notificationQueue } = require('../../queues/queueSetup');
@@ -115,10 +116,10 @@ class WorkflowEngine {
                 recipientId: managerRes.rows[0].id,
                 message: action.message,
               });
-              console.log(`[WorkflowEngine] Sent manager escalation for Lead ${payload.lead ? payload.lead.id : 'Unknown'} to Manager ${managerRes.rows[0].id}`);
+              logger.info(`[WorkflowEngine] Sent manager escalation for Lead ${payload.lead ? payload.lead.id : 'Unknown'} to Manager ${managerRes.rows[0].id}`);
             }
-          } catch (e) {
-            console.error('[WorkflowEngine] Error fetching manager', e.message);
+          } catch (error) {
+            logger.error('[WorkflowEngine] Error fetching manager', error.message);
           }
         }
       } else if (action.type === 'notify_pm') {

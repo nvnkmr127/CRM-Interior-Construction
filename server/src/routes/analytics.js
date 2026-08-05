@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+const logger = require('../utils/logger');
 const express = require('express');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
@@ -37,7 +39,7 @@ const getDates = (req) => {
 };
 
 // 0. COMPOSITE ENDPOINTS for LeadAnalyticsPage
-router.get('/leads', async (req, res) => {
+router.get('/leads', async (req, res, next) => {
   try {
     const { from, to } = getDates(req);
     const tenantId = req.tenantId;
@@ -85,13 +87,13 @@ router.get('/leads', async (req, res) => {
         timeSeries: [] // Mock or implement if necessary
       }
     });
-  } catch (err) {
-    console.error('Composite /leads error:', err);
+  } catch (error) {
+    logger.error('Composite /leads error:', error);
     return fail(res, 'SERVER_ERROR', 'Failed to fetch lead analytics', 500);
   }
 });
 
-router.get('/revenue-leads', async (req, res) => {
+router.get('/revenue-leads', async (req, res, next) => {
   // Graceful fallback for revenue analytics, return an empty structure
   res.json({
     success: true,
@@ -114,7 +116,7 @@ router.get('/revenue-leads', async (req, res) => {
 
 
 // 1. GET /api/analytics/leads/summary
-router.get('/leads/summary', async (req, res) => {
+router.get('/leads/summary', async (req, res, next) => {
   try {
     const { from, to } = getDates(req);
     const tenantId = req.tenantId;
@@ -154,13 +156,13 @@ router.get('/leads/summary', async (req, res) => {
         dead: parseInt(row.tier_dead, 10) || 0
       }
     });
-  } catch (err) {
-    res.status(500).json(fail('Failed to fetch summary: ' + err.message));
+  } catch (error) {
+    return next(error);
   }
 });
 
 // 2. GET /api/analytics/leads/funnel
-router.get('/leads/funnel', async (req, res) => {
+router.get('/leads/funnel', async (req, res, next) => {
   try {
     const { from, to } = getDates(req);
     const tenantId = req.tenantId;
@@ -186,13 +188,13 @@ router.get('/leads/funnel', async (req, res) => {
     });
 
     return success(res, funnel);
-  } catch (err) {
-    res.status(500).json(fail('Failed to fetch funnel: ' + err.message));
+  } catch (error) {
+    return next(error);
   }
 });
 
 // 3. GET /api/analytics/leads/by_source
-router.get('/leads/by_source', async (req, res) => {
+router.get('/leads/by_source', async (req, res, next) => {
   try {
     const { from, to } = getDates(req);
     const tenantId = req.tenantId;
@@ -223,13 +225,13 @@ router.get('/leads/by_source', async (req, res) => {
     });
 
     return success(res, data);
-  } catch (err) {
-    res.status(500).json(fail('Failed to fetch sources: ' + err.message));
+  } catch (error) {
+    return next(error);
   }
 });
 
 // 4. GET /api/analytics/leads/rep_performance
-router.get('/leads/rep_performance', async (req, res) => {
+router.get('/leads/rep_performance', async (req, res, next) => {
   try {
     const { from, to } = getDates(req);
     const tenantId = req.tenantId;
@@ -296,13 +298,13 @@ router.get('/leads/rep_performance', async (req, res) => {
     });
 
     return success(res, data);
-  } catch (err) {
-    res.status(500).json(fail('Failed to fetch rep performance: ' + err.message));
+  } catch (error) {
+    return next(error);
   }
 });
 
 // 5. GET /api/analytics/leads/lost_reasons
-router.get('/leads/lost_reasons', async (req, res) => {
+router.get('/leads/lost_reasons', async (req, res, next) => {
   try {
     const { from, to } = getDates(req);
     const tenantId = req.tenantId;
@@ -327,8 +329,8 @@ router.get('/leads/lost_reasons', async (req, res) => {
     });
 
     return success(res, data);
-  } catch (err) {
-    console.error('Failed to fetch lost reasons:', err);
+  } catch (error) {
+    logger.error('Failed to fetch lost reasons:', error);
     return success(res, []); // Graceful fallback
   }
 });
@@ -338,7 +340,7 @@ router.get('/leads/lost_reasons', async (req, res) => {
  * Returns analytics data for projects.
  * Query params: from (ISO date), to (ISO date)
  */
-router.get('/projects', authorize('projects:read'), async (req, res) => {
+router.get('/projects', authorize('projects:read'), async (req, res, next) => {
   try {
     const { from, to } = req.query;
     const tenantId = req.tenantId;
@@ -427,14 +429,13 @@ router.get('/projects', authorize('projects:read'), async (req, res) => {
         })),
       }
     });
-  } catch (err) {
-    console.error('Project Analytics Error:', err);
-    res.status(500).json({ success: false, error: err.message || 'Failed to fetch project analytics data' });
+  } catch (error) {
+    logger.error('Project Analytics Error:', error);
+    return next(error);
   }
 });
 
 const analyticsController = require('../controllers/analyticsController');
-
 // Phase 2: Dedicated Analytics Endpoints
 router.get('/revenue', authenticate, authorize('analytics:read'), analyticsController.getRevenueAnalytics);
 router.get('/pipeline', authenticate, authorize('analytics:read'), analyticsController.getPipelineAnalytics);
@@ -457,7 +458,7 @@ router.get('/profitability', authenticate, authorize('analytics:read'), analytic
 router.get('/resource-utilisation', authenticate, authorize('analytics:read'), analyticsController.getResourceUtilisation);
 router.get('/csat', authenticate, authorize('analytics:read'), analyticsController.getCSATAnalytics);
 
-router.get('/snags', async (req, res) => {
+router.get('/snags', async (req, res, next) => {
   try {
     const { from, to, _projectId } = getDates(req);
     // projectId would be in req.query.projectId if provided
@@ -509,14 +510,14 @@ router.get('/snags', async (req, res) => {
       byVendor: vendorRes.rows.map(r => ({ label: r.vendor_name, count: parseInt(r.count, 10) })),
       byCategory: categoryRes.rows.map(r => ({ label: r.category, count: parseInt(r.count, 10) }))
     });
-  } catch (err) {
-    res.status(500).json(fail('Failed to fetch snags analytics: ' + err.message));
+  } catch (error) {
+    return next(error);
   }
 });
 
 
 // GET /api/analytics/payment-aging
-router.get('/payment-aging', authorize('analytics:read'), async (req, res) => {
+router.get('/payment-aging', authorize('analytics:read'), async (req, res, next) => {
   try {
     const tenantId = req.tenantId;
 
@@ -564,13 +565,13 @@ router.get('/payment-aging', authorize('analytics:read'), async (req, res) => {
       details: result.rows
     }));
   } catch (error) {
-    console.error('Error fetching payment aging report:', error);
-    res.status(500).json(fail('Failed to fetch payment aging report'));
+    logger.error('Error fetching payment aging report:', error);
+    return next(error);
   }
 });
 
 // 18. GET /api/analytics/projects/delay-analysis
-router.get('/projects/delay-analysis', async (req, res) => {
+router.get('/projects/delay-analysis', async (req, res, next) => {
   try {
     const { from, to } = getDates(req);
     const tenantId = req.tenantId;
@@ -642,9 +643,9 @@ router.get('/projects/delay-analysis', async (req, res) => {
       trendByMonth
     });
 
-  } catch (err) {
-    console.error('Delay Analytics Error:', err);
-    res.status(500).json(fail('Failed to fetch delay analytics'));
+  } catch (error) {
+    logger.error('Delay Analytics Error:', error);
+    return next(error);
   }
 });
 
@@ -652,7 +653,7 @@ router.get('/projects/delay-analysis', async (req, res) => {
 router.get('/resource-utilisation', authenticate, authorize('analytics:read'), analyticsController.getResourceUtilisation);
 router.get('/csat', authenticate, authorize('analytics:read'), analyticsController.getCSATAnalytics);
 
-router.get('/snags', async (req, res) => {
+router.get('/snags', async (req, res, next) => {
   try {
     const { from, to, _projectId } = getDates(req);
     // projectId would be in req.query.projectId if provided
@@ -704,14 +705,14 @@ router.get('/snags', async (req, res) => {
       byVendor: vendorRes.rows.map(r => ({ label: r.vendor_name, count: parseInt(r.count, 10) })),
       byCategory: categoryRes.rows.map(r => ({ label: r.category, count: parseInt(r.count, 10) }))
     });
-  } catch (err) {
-    res.status(500).json(fail('Failed to fetch snags analytics: ' + err.message));
+  } catch (error) {
+    return next(error);
   }
 });
 
 
 // GET /api/analytics/payment-aging
-router.get('/payment-aging', authorize('analytics:read'), async (req, res) => {
+router.get('/payment-aging', authorize('analytics:read'), async (req, res, next) => {
   try {
     const tenantId = req.tenantId;
 
@@ -759,13 +760,13 @@ router.get('/payment-aging', authorize('analytics:read'), async (req, res) => {
       details: result.rows
     }));
   } catch (error) {
-    console.error('Error fetching payment aging report:', error);
-    res.status(500).json(fail('Failed to fetch payment aging report'));
+    logger.error('Error fetching payment aging report:', error);
+    return next(error);
   }
 });
 
 // 18. GET /api/analytics/projects/delay-analysis
-router.get('/projects/delay-analysis', async (req, res) => {
+router.get('/projects/delay-analysis', async (req, res, next) => {
   try {
     const { from, to } = getDates(req);
     const tenantId = req.tenantId;
@@ -837,9 +838,9 @@ router.get('/projects/delay-analysis', async (req, res) => {
       trendByMonth
     });
 
-  } catch (err) {
-    console.error('Delay Analytics Error:', err);
-    res.status(500).json(fail('Failed to fetch delay analytics'));
+  } catch (error) {
+    logger.error('Delay Analytics Error:', error);
+    return next(error);
   }
 });
 

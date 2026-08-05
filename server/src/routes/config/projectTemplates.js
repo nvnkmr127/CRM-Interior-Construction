@@ -34,10 +34,10 @@ router.post('/', async (req, res, next) => {
   try {
     const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) {
-      const err = new Error('Validation failed');
-      err.isValidation = true;
-      err.details = parsed.error.issues;
-      return next(err);
+      const error = new Error('Validation failed');
+      error.isValidation = true;
+      error.details = parsed.error.issues;
+      return next(error);
     }
 
     const template = await createTemplate(req.tenantId, req.user.id, parsed.data);
@@ -59,10 +59,10 @@ router.put('/:id', async (req, res, next) => {
   try {
     const parsed = updateSchema.safeParse(req.body);
     if (!parsed.success) {
-      const err = new Error('Validation failed');
-      err.isValidation = true;
-      err.details = parsed.error.issues;
-      return next(err);
+      const error = new Error('Validation failed');
+      error.isValidation = true;
+      error.details = parsed.error.issues;
+      return next(error);
     }
 
     const template = await updateTemplate(req.tenantId, req.params.id, parsed.data);

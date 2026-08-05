@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const pool = require('../../config/db');
 const { logAction } = require('../auditLog');
 const { notifyUser } = require('../notificationService');
@@ -124,7 +125,7 @@ async function replaceResource({ tenantId, userId, projectId, role, newResourceI
     // 7. Client Notification Simulation (Stub log)
     const clientName = project.client_name || 'Client';
     const clientEmail = project.client_email || 'client@example.com';
-    console.log(
+    logger.info(
       `[Client Notification Stub] Mid-project resource replacement alert sent to ${clientName} (${clientEmail}). ` +
       `New Point of Contact for ${role.toUpperCase()}: ${newUser.name}.`
     );

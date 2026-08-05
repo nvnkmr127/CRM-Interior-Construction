@@ -1,6 +1,6 @@
+const logger = require('../../utils/logger');
 const pool = require('../../db/pool');
 const { notifyUser } = require('../notificationService');
-
 class WeeklyReportService {
   /**
    * Generates a weekly progress report for a specific project.
@@ -102,14 +102,14 @@ class WeeklyReportService {
         
         // Simulating Email dispatch here. 
         // In a real system, this would call emailService.sendWeeklyReport(email, data)
-        console.log(`[Email Service Stub] Sending Weekly Report email to client ${clientId} for project ${projectId}`);
+        logger.info(`[Email Service Stub] Sending Weekly Report email to client ${clientId} for project ${projectId}`);
       }
 
       await client.query('COMMIT');
       return report;
     } catch (error) {
       await client.query('ROLLBACK');
-      console.error('[WeeklyReportService] Error generating report:', error);
+      logger.error('[WeeklyReportService] Error generating report:', error);
       throw error;
     } finally {
       client.release();

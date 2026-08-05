@@ -1,6 +1,6 @@
+const logger = require('../utils/logger');
 const pool = require('../config/db');
 const { fail } = require('../utils/response');
-
 async function verifyProjectBooked(req, res, next) {
   try {
     const projectId = req.params.projectId || req.params.id;
@@ -19,9 +19,9 @@ async function verifyProjectBooked(req, res, next) {
     }
 
     next();
-  } catch (err) {
-    console.error('[verifyBooking Middleware] Error:', err);
-    next(err);
+  } catch (error) {
+    logger.error('[verifyBooking Middleware] Error:', error);
+    next(error);
   }
 }
 

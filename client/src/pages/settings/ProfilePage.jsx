@@ -19,6 +19,8 @@ export default function ProfilePage() {
 
   // Profile Form
   const [name, setName] = useState(user?.name || 'Test User')
+  const [phone, setPhone] = useState(user?.phone || '')
+  const [designation, setDesignation] = useState(user?.designation || '')
   const [profileSaving, setProfileSaving] = useState(false)
 
   // Password Form
@@ -29,7 +31,7 @@ export default function ProfilePage() {
     e.preventDefault()
     setProfileSaving(true)
     try {
-      await api.patch('/auth/me', { name })
+      await api.patch('/auth/me', { name, phone, designation })
       toast.success('Profile updated successfully')
     } catch {
       toast.error('Failed to update profile')
@@ -102,82 +104,109 @@ export default function ProfilePage() {
   return (
     <div className={styles.page}>
       
-      {/* Profile Section */}
-      <div className={styles.card}>
-        <div className={styles.cardHeader}>Profile</div>
-        <div className={styles.cardDesc}>Manage your personal information and avatar.</div>
+      <div className={styles.header}>
+        <div className={styles.headerLeft}>
+          <h1 className={styles.title}>My Profile</h1>
+          <p className={styles.subtitle}>Manage your account settings and preferences</p>
+        </div>
+      </div>
 
-        <div className={styles.avatarSection}>
-          <Avatar name={name} size="xl" style={{width: 80, height: 80, fontSize: 32}} />
-          <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()}>Change Photo</Button>
-          <input type="file" ref={fileInputRef} className={styles.fileInput} accept="image/*" onChange={handlePhotoUpload} />
+      <div className={styles.contentGrid}>
+        {/* Left Column */}
+        <div className={styles.column}>
+          {/* Profile Section */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>Profile Information</div>
+            <div className={styles.cardDesc}>Update your personal details and public profile picture.</div>
+
+            <div className={styles.avatarSection}>
+              <Avatar name={name} size="xl" style={{width: 80, height: 80, fontSize: 32}} />
+              <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()}>Change Photo</Button>
+              <input type="file" ref={fileInputRef} className={styles.fileInput} accept="image/*" onChange={handlePhotoUpload} />
+            </div>
+
+            <form className={styles.form} onSubmit={handleProfileSave}>
+              <div className={styles.inputRow}>
+                <div className={styles.inputGroup}>
+                  <label className={styles.label}>Full Name</label>
+                  <input type="text" className={styles.input} value={name} onChange={e => setName(e.target.value)} required />
+                </div>
+                <div className={styles.inputGroup}>
+                  <label className={styles.label}>Phone Number</label>
+                  <input type="tel" className={styles.input} value={phone} onChange={e => setPhone(e.target.value)} placeholder="+1 234 567 8900" />
+                </div>
+              </div>
+
+              <div className={styles.inputRow}>
+                <div className={styles.inputGroup}>
+                  <label className={styles.label}>Email Address</label>
+                  <input type="email" className={`${styles.input} ${styles.inputReadOnly}`} value={user?.email || 'user@example.com'} readOnly />
+                  <div className={styles.helperText}>Contact admin to change email</div>
+                </div>
+                <div className={styles.inputGroup}>
+                  <label className={styles.label}>Job Title</label>
+                  <input type="text" className={styles.input} value={designation} onChange={e => setDesignation(e.target.value)} placeholder="e.g. Project Manager" />
+                </div>
+              </div>
+
+              <div className={styles.inputGroup}>
+                <label className={styles.label}>Role</label>
+                <div>
+                  <Badge variant="neutral">{user?.role?.name || user?.role || 'Admin'}</Badge>
+                </div>
+              </div>
+
+              <button type="submit" className={styles.submitBtn} disabled={profileSaving}>
+                {profileSaving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </form>
+          </div>
         </div>
 
-        <form className={styles.form} onSubmit={handleProfileSave}>
-          <div className={styles.inputGroup}>
-            <label className={styles.label}>Full Name</label>
-            <input type="text" className={styles.input} value={name} onChange={e => setName(e.target.value)} required />
+        {/* Right Column */}
+        <div className={styles.column}>
+          {/* Password Section */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>Change Password</div>
+            <div className={styles.cardDesc}>Ensure your account is using a long, random password to stay secure.</div>
+
+            <form className={styles.form} onSubmit={handlePasswordSave}>
+              <div className={styles.inputGroup}>
+                <label className={styles.label}>Current Password</label>
+                <input type="password" className={styles.input} value={pwdForm.current} onChange={e => setPwdForm({...pwdForm, current: e.target.value})} required />
+              </div>
+
+              <div className={styles.inputGroup}>
+                <label className={styles.label}>New Password</label>
+                <input type="password" className={styles.input} value={pwdForm.new} onChange={e => setPwdForm({...pwdForm, new: e.target.value})} required minLength={8} />
+                {pwdForm.new.length > 0 && (
+                  <div className={styles.strengthBarContainer}>
+                    <div className={styles.strengthBar} style={{ width: strengthWidth, backgroundColor: strengthColor }} />
+                  </div>
+                )}
+              </div>
+
+              <div className={styles.inputGroup}>
+                <label className={styles.label}>Confirm New Password</label>
+                <input type="password" className={styles.input} value={pwdForm.confirm} onChange={e => setPwdForm({...pwdForm, confirm: e.target.value})} required minLength={8} />
+              </div>
+
+              <button type="submit" className={styles.submitBtn} disabled={pwdSaving}>
+                {pwdSaving ? 'Updating...' : 'Update Password'}
+              </button>
+            </form>
           </div>
 
-          <div className={styles.inputGroup}>
-            <label className={styles.label}>Email Address</label>
-            <input type="email" className={`${styles.input} ${styles.inputReadOnly}`} value={user?.email || 'user@example.com'} readOnly />
-            <div className={styles.helperText}>Contact admin to change email</div>
-          </div>
-
-          <div className={styles.inputGroup}>
-            <label className={styles.label}>Role</label>
-            <div>
-              <Badge variant="neutral">{user?.role?.name || 'Admin'}</Badge>
+          {/* Danger Zone */}
+          <div className={styles.dangerCard}>
+            <div className={styles.dangerBox}>
+              <div className={styles.dangerInfo}>
+                <div className={styles.dangerTitle}>Sign out of all devices</div>
+                <div className={styles.dangerDesc}>Log out of all other active sessions across all your devices.</div>
+              </div>
+              <button className={styles.dangerBtn} onClick={handleSignOutAll}>Sign Out Everywhere</button>
             </div>
           </div>
-
-          <button type="submit" className={styles.submitBtn} disabled={profileSaving}>
-            {profileSaving ? 'Saving...' : 'Save Changes'}
-          </button>
-        </form>
-      </div>
-
-      {/* Password Section */}
-      <div className={styles.card}>
-        <div className={styles.cardHeader}>Change Password</div>
-        <div className={styles.cardDesc}>Ensure your account is using a long, random password to stay secure.</div>
-
-        <form className={styles.form} onSubmit={handlePasswordSave}>
-          <div className={styles.inputGroup}>
-            <label className={styles.label}>Current Password</label>
-            <input type="password" className={styles.input} value={pwdForm.current} onChange={e => setPwdForm({...pwdForm, current: e.target.value})} required />
-          </div>
-
-          <div className={styles.inputGroup}>
-            <label className={styles.label}>New Password</label>
-            <input type="password" className={styles.input} value={pwdForm.new} onChange={e => setPwdForm({...pwdForm, new: e.target.value})} required minLength={8} />
-            {pwdForm.new.length > 0 && (
-              <div className={styles.strengthBarContainer}>
-                <div className={styles.strengthBar} style={{ width: strengthWidth, backgroundColor: strengthColor }} />
-              </div>
-            )}
-          </div>
-
-          <div className={styles.inputGroup}>
-            <label className={styles.label}>Confirm New Password</label>
-            <input type="password" className={styles.input} value={pwdForm.confirm} onChange={e => setPwdForm({...pwdForm, confirm: e.target.value})} required minLength={8} />
-          </div>
-
-          <button type="submit" className={styles.submitBtn} disabled={pwdSaving}>
-            {pwdSaving ? 'Updating...' : 'Update Password'}
-          </button>
-        </form>
-      </div>
-
-      {/* Danger Zone */}
-      <div className={styles.dangerCard}>
-        <div className={styles.dangerBox}>
-          <div className={styles.dangerInfo}>
-            <div className={styles.dangerTitle}>Sign out of all devices</div>
-            <div className={styles.dangerDesc}>Log out of all other active sessions across all your devices.</div>
-          </div>
-          <button className={styles.dangerBtn} onClick={handleSignOutAll}>Sign Out Everywhere</button>
         </div>
       </div>
 

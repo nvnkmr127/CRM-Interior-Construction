@@ -1,0 +1,52 @@
+[0m
+[4md:\Digicloudify softwares\CRM-Interior-Construction\fix_lint5.js[24m
+  [2m6:18[22m  [31merror[39m  Parsing error: Invalid regular expression: /\/\\[!\@#\$%\^&\*\(\)_\+\\-\\=\\\[\\\]\{\};':"\\\\|,\.<>\\/\?\]\+\//g, "/[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/: Range out of order in character class
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\queues\automationQueue.js[24m
+  [2m111:37[22m  [31merror[39m  'err' is not defined  [2mno-undef[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js[24m
+    [2m60:11[22m   [31merror[39m  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+   [2m107:7[22m    [31merror[39m  'params' is not defined                                                              [2mno-undef[22m
+   [2m460:11[22m   [31merror[39m  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+   [2m572:11[22m   [31merror[39m  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+   [2m582:40[22m   [31merror[39m  'sort_by' is not defined                                                             [2mno-undef[22m
+   [2m582:195[22m  [31merror[39m  'sort_by' is not defined                                                             [2mno-undef[22m
+   [2m582:347[22m  [31merror[39m  'sort_by' is not defined                                                             [2mno-undef[22m
+   [2m597:11[22m   [31merror[39m  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+   [2m642:67[22m   [31merror[39m  'tenantId' is not defined                                                            [2mno-undef[22m
+   [2m662:58[22m   [31merror[39m  'tenantId' is not defined                                                            [2mno-undef[22m
+   [2m706:11[22m   [31merror[39m  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+   [2m726:11[22m   [31merror[39m  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+   [2m762:41[22m   [31merror[39m  'sort_by' is not defined                                                             [2mno-undef[22m
+   [2m762:196[22m  [31merror[39m  'sort_by' is not defined                                                             [2mno-undef[22m
+   [2m762:348[22m  [31merror[39m  'sort_by' is not defined                                                             [2mno-undef[22m
+   [2m778:11[22m   [31merror[39m  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+   [2m800:11[22m   [31merror[39m  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+   [2m840:11[22m   [31merror[39m  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+   [2m862:11[22m   [31merror[39m  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+   [2m869:41[22m   [31merror[39m  'sort_by' is not defined                                                             [2mno-undef[22m
+   [2m869:196[22m  [31merror[39m  'sort_by' is not defined                                                             [2mno-undef[22m
+   [2m869:348[22m  [31merror[39m  'sort_by' is not defined                                                             [2mno-undef[22m
+   [2m899:11[22m   [31merror[39m  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+   [2m910:40[22m   [31merror[39m  'sort_by' is not defined                                                             [2mno-undef[22m
+   [2m910:195[22m  [31merror[39m  'sort_by' is not defined                                                             [2mno-undef[22m
+   [2m910:347[22m  [31merror[39m  'sort_by' is not defined                                                             [2mno-undef[22m
+   [2m923:11[22m   [31merror[39m  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+   [2m958:11[22m   [31merror[39m  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+  [2m1007:11[22m   [31merror[39m  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+  [2m1025:11[22m   [31merror[39m  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+  [2m1041:40[22m   [31merror[39m  'sort_by' is not defined                                                             [2mno-undef[22m
+  [2m1041:195[22m  [31merror[39m  'sort_by' is not defined                                                             [2mno-undef[22m
+  [2m1041:347[22m  [31merror[39m  'sort_by' is not defined                                                             [2mno-undef[22m
+  [2m1131:11[22m   [31merror[39m  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+  [2m1170:11[22m   [31merror[39m  'tenantId' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+
+[4md:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\password.js[24m
+  [2m29:11[22m  [31merror[39m  'allowedChars' is assigned a value but never used. Allowed unused vars must match /^_/u  [2mno-unused-vars[22m
+  [2m43:27[22m  [31merror[39m  Unnecessary escape character: \[                                                         [2mno-useless-escape[22m
+  [2m43:44[22m  [31merror[39m  Unnecessary escape character: \/                                                         [2mno-useless-escape[22m
+
+[31m[1m✖ 40 problems (40 errors, 0 warnings)[22m[39m
+[0m
+\n\nCommand failed: npx eslint . --fix

@@ -51,9 +51,9 @@ class SiteReadinessRepository {
 
       // Query with joined user name just in case
       return this.findChecklist(tenantId, projectId);
-    } catch (e) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw e;
+      throw error;
     } finally {
       client.release();
     }

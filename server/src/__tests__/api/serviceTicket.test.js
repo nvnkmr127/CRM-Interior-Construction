@@ -468,7 +468,7 @@ describe('Service Tickets API', () => {
     expect(getRes.body.data.escalation_level).toBe(2);
     expect(getRes.body.data.escalations.length).toBeGreaterThan(0);
     // There should be a pm escalation (level 1) and director escalation (level 2)
-    const directorEscalation = getRes.body.data.escalations.find(e => e.escalated_to_role === 'director');
+    const directorEscalation = getRes.body.data.escalations.find(e => error.escalated_to_role === 'director');
     expect(directorEscalation).toBeDefined();
 
     // Cleanup

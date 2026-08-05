@@ -1,6 +1,6 @@
+const logger = require('../utils/logger');
 const pool = require('../config/db');
 const { success, fail } = require('../utils/response');
-
 // GET /api/leaves
 exports.getLeaves = async (req, res) => {
   try {
@@ -18,7 +18,7 @@ exports.getLeaves = async (req, res) => {
     const result = await pool.query(query, [tenantId]);
     return success(res, result.rows);
   } catch (error) {
-    console.error('getLeaves error:', error);
+    logger.error('getLeaves error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch leaves', 500);
   }
 };
@@ -52,7 +52,7 @@ exports.getLeaveImpact = async (req, res) => {
       availableCoveringUsers: usersRes.rows
     });
   } catch (error) {
-    console.error('getLeaveImpact error:', error);
+    logger.error('getLeaveImpact error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch leave impact', 500);
   }
 };
@@ -70,6 +70,8 @@ exports.createLeave = async (req, res) => {
     const leaveQuery = `
       INSERT INTO user_leaves (tenant_id, user_id, start_date, end_date, reason, status)
       VALUES ($1, $2, $3, $4, $5, 'planned')
+
+
       RETURNING *
     `;
     const leaveRes = await client.query(leaveQuery, [tenantId, userId, startDate, endDate, reason]);
@@ -86,7 +88,7 @@ exports.createLeave = async (req, res) => {
         await client.query(covQuery, [tenantId, leaveId, cov.projectId, cov.coveringUserId, cov.handoverNotes, cov.clientNotified]);
         
         if (cov.clientNotified) {
-           console.log(`[Notification] Would notify client for project ${cov.projectId} about handover to user ${cov.coveringUserId}`);
+           logger.info(`[Notification] Would notify client for project ${cov.projectId} about handover to user ${cov.coveringUserId}`);
         }
       }
     }
@@ -95,7 +97,7 @@ exports.createLeave = async (req, res) => {
     return success(res, leaveRes.rows[0]);
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('createLeave error:', error);
+    logger.error('createLeave error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create leave', 500);
   } finally {
     client.release();

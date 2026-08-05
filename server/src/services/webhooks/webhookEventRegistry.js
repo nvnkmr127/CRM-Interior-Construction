@@ -9,7 +9,7 @@ class WebhookEventRegistry {
   }
 
   /**
-   * Registers an event group (e.g. 'Customer', 'Invoice')
+   * Registers an event group (error.g. 'Customer', 'Invoice')
    */
   registerGroup(groupId, label) {
     if (!this.groups[groupId]) {
@@ -18,7 +18,7 @@ class WebhookEventRegistry {
   }
 
   /**
-   * Registers a specific event (e.g. 'customer.created')
+   * Registers a specific event (error.g. 'customer.created')
    */
   registerEvent(groupId, eventId, label, samplePayload = {}) {
     if (!this.groups[groupId]) {

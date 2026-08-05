@@ -1,0 +1,7 @@
+[0m
+[4md:\Digicloudify softwares\CRM-Interior-Construction\fix_lint5.js[24m
+  [2m6:18[22m  [31merror[39m  Parsing error: Invalid regular expression: /\/\\[!\@#\$%\^&\*\(\)_\+\\-\\=\\\[\\\]\{\};':"\\\\|,\.<>\\/\?\]\+\//g, "/[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/: Range out of order in character class
+
+[31m[1m✖ 1 problem (1 error, 0 warnings)[22m[39m
+[0m
+\n\nCommand failed: npx eslint . --fix

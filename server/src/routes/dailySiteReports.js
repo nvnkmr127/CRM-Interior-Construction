@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
@@ -34,8 +35,8 @@ router.get('/', authorize('projects:read'), async (req, res) => {
       req.params.projectId
     );
     return success(res, reports);
-  } catch (err) {
-    console.error('[DailySiteReports Router] List error:', err);
+  } catch (error) {
+    logger.error('[DailySiteReports Router] List error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch daily site reports.', 500);
   }
 });
@@ -49,8 +50,8 @@ router.get('/:id', authorize('projects:read'), async (req, res) => {
     );
     if (!report) return fail(res, 'NOT_FOUND', 'Daily report not found.', 404);
     return success(res, report);
-  } catch (err) {
-    console.error('[DailySiteReports Router] Get error:', err);
+  } catch (error) {
+    logger.error('[DailySiteReports Router] Get error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch daily site report details.', 500);
   }
 });
@@ -111,13 +112,13 @@ router.post('/', authorize('projects:manage'), validate(createReportSchema), asy
       const pdfService = require('../services/projects/dailySiteReportPdfService');
       await pdfService.archiveDailySiteReport(req.tenantId, report.id, req.user?.userId);
     } catch (pdfErr) {
-      console.error('[DailySiteReports Router] PDF Archiving failed:', pdfErr);
+      logger.error('[DailySiteReports Router] PDF Archiving failed:', pdfErr);
     }
 
     return success(res, report, {}, 201);
-  } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors || err.issues, 400);
-    console.error('[DailySiteReports Router] Create error:', err);
+  } catch (error) {
+    if (error instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', error.errors || error.issues, 400);
+    logger.error('[DailySiteReports Router] Create error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to submit daily site report.', 500);
   }
 });

@@ -27,11 +27,11 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
 
     const result = await getRetrospective(projectId, tenantId);
     return success(res, result);
-  } catch (err) {
-    if (err.message === 'PROJECT_NOT_FOUND' || err.status === 404) {
+  } catch (error) {
+    if (error.message === 'PROJECT_NOT_FOUND' || error.status === 404) {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }
-    next(err);
+    next(error);
   }
 });
 
@@ -45,15 +45,15 @@ router.post('/', authorize('projects:manage'), validate(saveRetrospectiveSchema)
     const data  = req.body;
     const result = await saveRetrospective(projectId, tenantId, userId, data);
     return success(res, result, { message: 'Retrospective saved successfully.' });
-  } catch (err) {
+  } catch (error) {
     
-    if (err.message === 'PROJECT_NOT_FOUND' || err.status === 404) {
+    if (error.message === 'PROJECT_NOT_FOUND' || error.status === 404) {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }
-    if (err.message === 'INVALID_RATING') {
+    if (error.message === 'INVALID_RATING') {
       return fail(res, 'BAD_REQUEST', 'Rating must be an integer between 1 and 5', 400);
     }
-    next(err);
+    next(error);
   }
 });
 

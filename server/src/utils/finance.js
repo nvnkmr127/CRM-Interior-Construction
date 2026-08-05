@@ -1,5 +1,5 @@
+const logger = require('../utils/logger');
 const pool = require('../db/pool');
-
 async function getTenantThreshold(tenantId, key, defaultValue) {
   try {
     const { rows } = await pool.query('SELECT config FROM tenants WHERE id = $1', [tenantId]);
@@ -8,7 +8,7 @@ async function getTenantThreshold(tenantId, key, defaultValue) {
     const config = typeof configStr === 'string' ? JSON.parse(configStr || '{}') : (configStr || {});
     return config[key] !== undefined && config[key] !== '' ? Number(config[key]) : defaultValue;
   } catch (error) {
-    console.error(`Error reading threshold ${key} for tenant ${tenantId}:`, error);
+    logger.error(`Error reading threshold ${key} for tenant ${tenantId}:`, error);
     return defaultValue;
   }
 }
@@ -25,7 +25,7 @@ async function isUserSuperadmin(userId) {
     );
     return rows.length > 0 && rows[0].role_name === 'superadmin';
   } catch (error) {
-    console.error(`Error checking if user ${userId} is superadmin:`, error);
+    logger.error(`Error checking if user ${userId} is superadmin:`, error);
     return false;
   }
 }

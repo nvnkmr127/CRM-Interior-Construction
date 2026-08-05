@@ -1,9 +1,9 @@
+const logger = require('../../utils/logger');
 const express = require('express');
 const authenticate = require('../../middleware/authenticate');
 const authorize = require('../../middleware/authorize');
 const { generateKey, revokeKey } = require('../../services/apiKey/apiKeyService');
 const pool = require('../../config/db');
-
 const router = express.Router();
 
 // All routes require authentication and config:manage permission
@@ -14,7 +14,7 @@ router.use(authorize('config:manage'));
  * GET /api/config/api-keys
  * List all API keys for the tenant. Never returns key_hash.
  */
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
   try {
     const query = `
       SELECT id, name, key_prefix, scopes, rate_limit_rpm, ip_allowlist, 
@@ -26,8 +26,8 @@ router.get('/', async (req, res) => {
     const result = await pool.query(query, [req.tenantId]);
     res.json({ success: true, data: result.rows });
   } catch (error) {
-    console.error('Error fetching API keys:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch API keys' });
+    logger.error('Error fetching API keys:', error);
+    return next(error);
   }
 });
 
@@ -35,7 +35,7 @@ router.get('/', async (req, res) => {
  * POST /api/config/api-keys
  * Generate a new API key.
  */
-router.post('/', async (req, res) => {
+router.post('/', async (req, res, next) => {
   try {
     const { name, scopes, rateLimitRpm, ipAllowlist, expiresAt } = req.body;
     
@@ -64,8 +64,8 @@ router.post('/', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error generating API key:', error);
-    res.status(500).json({ success: false, error: 'Failed to generate API key' });
+    logger.error('Error generating API key:', error);
+    return next(error);
   }
 });
 
@@ -73,7 +73,7 @@ router.post('/', async (req, res) => {
  * DELETE /api/config/api-keys/:id
  * Revoke an API key.
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     const revoked = await revokeKey(req.tenantId, id);
@@ -84,8 +84,8 @@ router.delete('/:id', async (req, res) => {
 
     res.status(204).send();
   } catch (error) {
-    console.error('Error revoking API key:', error);
-    res.status(500).json({ success: false, error: 'Failed to revoke API key' });
+    logger.error('Error revoking API key:', error);
+    return next(error);
   }
 });
 

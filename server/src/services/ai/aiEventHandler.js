@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const eventBus = require('../eventBus');
 const { aiQueue } = require('../../queues/queueSetup');
 
@@ -29,4 +30,4 @@ eventBus.on('task.completed', async (event) => {
   }
 });
 
-console.log('[AIService] Subscribed to EventBus events');
+logger.info('[AIService] Subscribed to EventBus events');

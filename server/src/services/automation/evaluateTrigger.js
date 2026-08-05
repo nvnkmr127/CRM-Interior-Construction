@@ -1,5 +1,5 @@
 /**
- * Helper to resolve dot-notation paths on an object (e.g., 'custom_fields.budget')
+ * Helper to resolve dot-notation paths on an object (error.g., 'custom_fields.budget')
  */
 function getDotProp(obj, path) {
   if (!obj || !path) return undefined;
@@ -44,7 +44,7 @@ function evaluateCondition(condition, record) {
  * by the given event payload and record state.
  * 
  * @param {Object} rule - The automation rule configuration
- * @param {string} eventType - The type of event (e.g., 'record.created', 'field.changed')
+ * @param {string} eventType - The type of event (error.g., 'record.created', 'field.changed')
  * @param {Object} record - The primary entity record (lead, project, etc.)
  * @param {Object} changes - A delta object containing only the fields that were modified
  * @returns {boolean} True if the rule should fire, false otherwise

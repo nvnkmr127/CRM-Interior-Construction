@@ -38,11 +38,11 @@ async function createTask({ tenantId, userId, data }) {
       [mappedData.milestone_id, mappedData.project_id, tenantId]
     );
     if (rows.length === 0) {
-      const err = new Error('INVALID_MILESTONE');
-      err.status = 400;
-      err.code = 'INVALID_MILESTONE';
-      err.details = 'Milestone does not exist or does not belong to this project.';
-      throw err;
+      const error = new Error('INVALID_MILESTONE');
+      error.status = 400;
+      error.code = 'INVALID_MILESTONE';
+      error.details = 'Milestone does not exist or does not belong to this project.';
+      throw error;
     }
 
     const milestoneInfo = rows[0];
@@ -54,11 +54,11 @@ async function createTask({ tenantId, userId, data }) {
       );
       const isLocked = projRows[0]?.is_scope_locked;
       if (!isLocked) {
-        const err = new Error('DESIGN_NOT_FROZEN');
-        err.status = 400;
-        err.code = 'DESIGN_NOT_FROZEN';
-        err.details = 'Cannot create task in an execution phase (procurement/production) until the design is frozen.';
-        throw err;
+        const error = new Error('DESIGN_NOT_FROZEN');
+        error.status = 400;
+        error.code = 'DESIGN_NOT_FROZEN';
+        error.details = 'Cannot create task in an execution phase (procurement/production) until the design is frozen.';
+        throw error;
       }
 
       // 2. Verify quotation is accepted with client confirmation date recorded
@@ -70,11 +70,11 @@ async function createTask({ tenantId, userId, data }) {
         [mappedData.project_id, tenantId]
       );
       if (quoteRows.length === 0 || !quoteRows[0].accepted_at) {
-        const err = new Error('QUOTATION_NOT_ACCEPTED');
-        err.status = 400;
-        err.code = 'QUOTATION_NOT_ACCEPTED';
-        err.details = 'Cannot create task in an execution phase (procurement/production) until the BOQ quotation is accepted by the client.';
-        throw err;
+        const error = new Error('QUOTATION_NOT_ACCEPTED');
+        error.status = 400;
+        error.code = 'QUOTATION_NOT_ACCEPTED';
+        error.details = 'Cannot create task in an execution phase (procurement/production) until the BOQ quotation is accepted by the client.';
+        throw error;
       }
     }
   }
@@ -96,11 +96,11 @@ async function createTask({ tenantId, userId, data }) {
 
     const { rows } = await pool.query(parentCheckQuery, parentCheckParams);
     if (rows.length === 0) {
-      const err = new Error('INVALID_PARENT_TASK');
-      err.status = 400;
-      err.code = 'INVALID_PARENT_TASK';
-      err.details = 'Parent task does not exist or does not belong to this project/lead.';
-      throw err;
+      const error = new Error('INVALID_PARENT_TASK');
+      error.status = 400;
+      error.code = 'INVALID_PARENT_TASK';
+      error.details = 'Parent task does not exist or does not belong to this project/lead.';
+      throw error;
     }
   }
 

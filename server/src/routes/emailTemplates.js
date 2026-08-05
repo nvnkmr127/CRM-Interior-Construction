@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+const logger = require('../utils/logger');
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
@@ -5,7 +7,6 @@ const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const { success, fail } = require('../utils/response');
 const { queueEmail } = require('../services/emailService');
-
 router.use(authenticate);
 
 // Get all email templates for tenant
@@ -17,7 +18,7 @@ router.get('/', authorize('config:read'), async (req, res) => {
     );
     return success(res, rows);
   } catch (error) {
-    console.error('[Email Templates] Fetch error:', error);
+    logger.error('[Email Templates] Fetch error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch templates', 500);
   }
 });
@@ -40,7 +41,7 @@ router.post('/', authorize('config:write'), async (req, res) => {
     const { rows } = await pool.query(query, [req.tenantId, template_key, subject, html_content]);
     return success(res, rows[0]);
   } catch (error) {
-    console.error('[Email Templates] Save error:', error);
+    logger.error('[Email Templates] Save error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to save template', 500);
   }
 });
@@ -62,7 +63,7 @@ router.post('/test', authorize('config:write'), async (req, res) => {
     );
     return success(res, { message: 'Test email queued successfully' });
   } catch (error) {
-    console.error('[Email Templates] Test error:', error);
+    logger.error('[Email Templates] Test error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to queue test email', 500);
   }
 });

@@ -28,11 +28,11 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
 
     const result = await getOrCreateClosureChecklist(projectId, tenantId);
     return success(res, result);
-  } catch (err) {
-    if (err.message === 'PROJECT_NOT_FOUND' || err.status === 404) {
+  } catch (error) {
+    if (error.message === 'PROJECT_NOT_FOUND' || error.status === 404) {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }
-    next(err);
+    next(error);
   }
 });
 
@@ -46,12 +46,12 @@ router.patch('/', authorize('projects:manage'), validate(updateClosureChecklistS
     const data  = req.body;
     const result = await updateClosureChecklist(projectId, tenantId, userId, data);
     return success(res, result);
-  } catch (err) {
+  } catch (error) {
     
-    if (err.message === 'PROJECT_NOT_FOUND' || err.status === 404) {
+    if (error.message === 'PROJECT_NOT_FOUND' || error.status === 404) {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }
-    next(err);
+    next(error);
   }
 });
 

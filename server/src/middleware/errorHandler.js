@@ -1,12 +1,12 @@
+const logger = require('../utils/logger');
 const config = require('../config/env');
-
 /**
  * Global error handler middleware.
  * Formats known errors into a standardized JSON response format.
  */
-function errorHandler(err, req, res, next) {
+function errorHandler(error, req, res, next) {
   // Always log the full error server-side
-  console.error('Global Error Handler caught:', err);
+  logger.error(error, 'Global Error Handler caught an error');
 
   const isProduction = config.nodeEnv === 'production';
   const response = {
@@ -14,20 +14,20 @@ function errorHandler(err, req, res, next) {
   };
 
   // 1. Validation Errors
-  if (err.isValidation) {
-    response.error = { code: 'VALIDATION_ERROR', details: err.details };
+  if (error.isValidation) {
+    response.error = { code: 'VALIDATION_ERROR', details: error.details };
     return res.status(400).json(response);
   }
 
   // 2. Custom AppError instances
-  if (err.isOperational) {
-    response.error = { code: err.code, message: err.message };
-    return res.status(err.statusCode).json(response);
+  if (error.isOperational) {
+    response.error = { code: error.code, message: error.message };
+    return res.status(error.statusCode).json(response);
   }
 
   // 3. Fallback for unhandled/native errors
   // To keep compatibility with any legacy throw new Error('STRING') before full refactor:
-  switch (err.message) {
+  switch (error.message) {
     case 'EMAIL_EXISTS':
       response.error = { code: 'EMAIL_EXISTS', message: 'Email already registered' };
       return res.status(409).json(response);
@@ -44,25 +44,27 @@ function errorHandler(err, req, res, next) {
       response.error = { code: 'ACCOUNT_INACTIVE', message: 'Account is inactive' };
       return res.status(403).json(response);
     case 'STAGE_GATE_FAILED':
-      response.error = { code: 'STAGE_GATE_FAILED', message: 'Missing mandatory fields', missing: err.missing || [] };
+      response.error = { code: 'STAGE_GATE_FAILED', message: 'Missing mandatory fields', missing: error.missing || [] };
       return res.status(400).json(response);
     case 'OPTIMISTIC_LOCK_FAILED':
       response.error = { code: 'OPTIMISTIC_LOCK_FAILED', message: 'This lead has been modified by someone else since you last fetched it.' };
       return res.status(409).json(response);
     default:
-      if (err.message && err.message.startsWith('POLICY_VIOLATION')) {
-        response.error = { code: 'POLICY_VIOLATION', message: err.message };
+      if (error.message && error.message.startsWith('POLICY_VIOLATION')) {
+        response.error = { code: 'POLICY_VIOLATION', message: error.message };
         return res.status(403).json(response);
       }
-      if (err.message && err.message.startsWith('VALIDATION_ERROR:')) {
-        response.error = { code: 'VALIDATION_ERROR', message: err.message.split('VALIDATION_ERROR:')[1].trim() };
+      if (error.message && error.message.startsWith('VALIDATION_ERROR:')) {
+        response.error = { code: 'VALIDATION_ERROR', message: error.message.split('VALIDATION_ERROR:')[1].trim() };
         return res.status(400).json(response);
       }
       response.error = { 
         code: 'INTERNAL_ERROR', 
-        message: err.message || 'Something went wrong',
-        details: err.stack || String(err)
+        message: isProduction ? 'Something went wrong' : (error.message || 'Something went wrong')
       };
+      if (!isProduction) {
+        response.error.details = error.stack || String(error);
+      }
       return res.status(500).json(response);
   }
 }

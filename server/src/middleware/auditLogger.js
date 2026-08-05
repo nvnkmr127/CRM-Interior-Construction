@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const pool = require('../db/pool');
 
 /**
@@ -5,8 +6,8 @@ const pool = require('../db/pool');
  * @param {Object} params
  * @param {string} params.tenantId
  * @param {string} params.userId
- * @param {string} params.action - e.g. 'lead.updated', 'project.deleted'
- * @param {string} params.entity - e.g. 'lead', 'project'
+ * @param {string} params.action - error.g. 'lead.updated', 'project.deleted'
+ * @param {string} params.entity - error.g. 'lead', 'project'
  * @param {string} params.entityId - UUID of the entity
  * @param {Object} [params.oldValue] - previous state
  * @param {Object} [params.newValue] - new state
@@ -14,7 +15,7 @@ const pool = require('../db/pool');
  */
 async function logAudit({ tenantId, userId, action, entity, entityId, oldValue, newValue, ipAddress }) {
   if (!tenantId || !action || !entity) {
-    console.error('[AuditLogger] Missing required fields', { tenantId, action, entity });
+    logger.error('[AuditLogger] Missing required fields', { tenantId, action, entity });
     return;
   }
 
@@ -37,12 +38,12 @@ async function logAudit({ tenantId, userId, action, entity, entityId, oldValue, 
       oldValStr,
       newValStr,
       ipAddress || null
-    ]).catch(err => {
-      console.error('[AuditLogger] DB Insert failed:', err);
+    ]).catch(error => {
+      logger.error('[AuditLogger] DB Insert failed:', error);
     });
 
   } catch (error) {
-    console.error('[AuditLogger] Failed to log audit event:', error);
+    logger.error('[AuditLogger] Failed to log audit event:', error);
   }
 }
 
@@ -74,7 +75,7 @@ function auditMiddleware(req, res, next) {
 
           // Trigger V4 Threat Engine analysis asynchronously
           const { analyzeThreat } = require('../services/security/threatEngine');
-          analyzeThreat(tenantId, userId, `api.${req.method.toLowerCase()}`).catch(e => console.error(e));
+          analyzeThreat(tenantId, userId, `api.${req.method.toLowerCase()}`).catch(error => logger.error(error));
         }
       }
     });

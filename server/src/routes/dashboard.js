@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const authenticate = require('../middleware/authenticate');
 const { success, fail } = require('../utils/response');
@@ -5,7 +6,6 @@ const pool = require('../db/pool');
 const { readPool } = pool;
 const analyticsService = require('../services/analytics/analyticsService');
 const { cacheResponse } = require('../middleware/cache');
-
 const router = express.Router();
 
 router.use(authenticate);
@@ -21,7 +21,7 @@ router.get('/stats', cacheResponse(300), async (req, res) => {
 
     return success(res, data);
   } catch (error) {
-    console.error('Dashboard stats error:', error);
+    logger.error('Dashboard stats error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Dashboard stats failed', 500);
   }
 });
@@ -50,7 +50,7 @@ router.get('/activity', async (req, res) => {
       new_value: row.new_value
     })));
   } catch (error) {
-    console.error('Activity fetch error:', error);
+    logger.error('Activity fetch error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Activity fetch failed', 500);
   }
 });
@@ -70,7 +70,7 @@ router.get('/pipeline', cacheResponse(600), async (req, res) => {
 
     return success(res, rows);
   } catch (error) {
-    console.error('Pipeline fetch error:', error);
+    logger.error('Pipeline fetch error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Pipeline fetch failed', 500);
   }
 });
@@ -92,7 +92,7 @@ router.get('/my-tasks', async (req, res) => {
 
     return success(res, rows);
   } catch (error) {
-    console.error('My tasks fetch error:', error);
+    logger.error('My tasks fetch error:', error);
     return fail(res, 'INTERNAL_ERROR', 'My tasks fetch failed', 500);
   }
 });
@@ -113,7 +113,7 @@ router.get('/payments-due', async (req, res) => {
 
     return success(res, rows);
   } catch (error) {
-    console.error('Payments due fetch error:', error);
+    logger.error('Payments due fetch error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Payments due fetch failed', 500);
   }
 });
@@ -129,8 +129,8 @@ router.get('/sales', cacheResponse(300), async (req, res, next) => {
     
     // Using responseFormatter via throwing to res.json directly
     res.json(data);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -142,8 +142,8 @@ router.get('/manager', cacheResponse(300), async (req, res, next) => {
     const data = await analyticsService.getManagerDashboard(tenantId);
     
     res.json(data);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -152,8 +152,8 @@ router.get('/ceo', cacheResponse(300), async (req, res, next) => {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
     const data = await analyticsService.getCeoDashboard(tenantId);
     res.json({ success: true, data });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -163,8 +163,8 @@ router.get('/designer', cacheResponse(300), async (req, res, next) => {
     const userId = req.user && (req.user.id || req.user.userId);
     const data = await analyticsService.getDesignerDashboard(tenantId, userId);
     res.json({ success: true, data });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -173,8 +173,8 @@ router.get('/marketing', cacheResponse(300), async (req, res, next) => {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
     const data = await analyticsService.getMarketingDashboard(tenantId);
     res.json({ success: true, data });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -183,8 +183,8 @@ router.get('/operations', cacheResponse(300), async (req, res, next) => {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
     const data = await analyticsService.getOperationsDashboard(tenantId);
     res.json({ success: true, data });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -193,8 +193,8 @@ router.get('/finance', cacheResponse(300), async (req, res, next) => {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
     const data = await analyticsService.getFinanceDashboard(tenantId);
     res.json({ success: true, data });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -204,8 +204,8 @@ router.get('/field-ops', cacheResponse(300), async (req, res, next) => {
     const userId = req.user && (req.user.id || req.user.userId);
     const data = await analyticsService.getFieldOperationsDashboard(tenantId, userId);
     res.json({ success: true, data });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -214,8 +214,8 @@ router.get('/procurement', cacheResponse(300), async (req, res, next) => {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
     const data = await analyticsService.getProcurementDashboard(tenantId);
     res.json({ success: true, data });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 

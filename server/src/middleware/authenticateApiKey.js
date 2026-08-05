@@ -1,5 +1,5 @@
+const logger = require('../utils/logger');
 const { validateKey } = require('../services/apiKey/apiKeyService');
-
 /**
  * Express middleware to authenticate requests using an X-API-Key header.
  */
@@ -18,7 +18,7 @@ async function authenticateApiKey(req, res, next) {
     if (typeof allowlist === 'string') {
       try {
         allowlist = JSON.parse(allowlist);
-      } catch (e) {
+      } catch (error) {
         allowlist = [];
       }
     }
@@ -37,7 +37,7 @@ async function authenticateApiKey(req, res, next) {
     if (typeof scopes === 'string') {
       try {
         scopes = JSON.parse(scopes);
-      } catch (e) {
+      } catch (error) {
         scopes = ['read'];
       }
     }
@@ -50,12 +50,12 @@ async function authenticateApiKey(req, res, next) {
 
     // 4. Pass to next middleware
     next();
-  } catch (err) {
-    if (err.code === 'INVALID_API_KEY' || err.code === 'API_KEY_EXPIRED') {
-      return res.status(401).json({ success: false, error: err.code });
+  } catch (error) {
+    if (error.code === 'INVALID_API_KEY' || error.code === 'API_KEY_EXPIRED') {
+      return res.status(401).json({ success: false, error: error.code });
     }
-    console.error('API Key Auth Error:', err);
-    return res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: 'Authentication failed' });
+    logger.error('API Key Auth Error:', error);
+    return next(error);
   }
 }
 

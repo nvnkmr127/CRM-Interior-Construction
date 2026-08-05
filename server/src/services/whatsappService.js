@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 async function sendWhatsAppMessage(toPhone, messageBody, mediaUrl = null) {
   const apiUrl = process.env.WHATSAPP_API_URL || 'https://api.your-whatsapp-provider.com/v1/messages';
   const apiKey = process.env.WHATSAPP_API_KEY;
@@ -5,7 +6,7 @@ async function sendWhatsAppMessage(toPhone, messageBody, mediaUrl = null) {
 
   if (!apiKey) {
     console.warn('[WhatsApp] API Key missing. Simulating message send to:', toPhone);
-    console.log('[WhatsApp] Message:', messageBody);
+    logger.info('[WhatsApp] Message:', messageBody);
     return { success: true, simulated: true, messageId: mockMessageId };
   }
 
@@ -37,7 +38,7 @@ async function sendWhatsAppMessage(toPhone, messageBody, mediaUrl = null) {
     const data = await response.json();
     return { success: true, data, messageId: data?.messageId || data?.id || mockMessageId };
   } catch (error) {
-    console.error('[WhatsApp Service] Failed to send message:', error);
+    logger.error('[WhatsApp Service] Failed to send message:', error);
     throw error;
   }
 }
@@ -63,8 +64,8 @@ async function pullWhatsAppChatStatus(toPhone, existingMessages = []) {
           newMessages: data.newMessages || []
         };
       }
-    } catch (err) {
-      console.error('[WhatsApp Service] Failed to fetch real chat status, falling back to simulation:', err);
+    } catch (error) {
+      logger.error('[WhatsApp Service] Failed to fetch real chat status, falling back to simulation:', error);
     }
   }
 

@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const pool = require('../../db/pool');
 
 /**
@@ -54,7 +55,7 @@ async function updateLeadIntelligence(tenantId, leadId) {
 
     return { win_probability: winProbability, risk_level: riskLevel };
   } catch (error) {
-    console.error('[Pipeline Intelligence] Failed to update lead intelligence:', error);
+    logger.error('[Pipeline Intelligence] Failed to update lead intelligence:', error);
   }
 }
 
@@ -112,7 +113,6 @@ async function executeAutonomousFollowups(tenantId) {
     let generatedCount = 0;
     const { generateFollowupRecommendations } = require('../../services/aiService');
     const { _activityService } = require('../../services/timeline/activityService');
-
     for (const lead of res.rows) {
       // Use AI to generate a hyper-personalized email draft
       const recommendation = await generateFollowupRecommendations(lead, 'over 7 days ago');
@@ -130,7 +130,7 @@ async function executeAutonomousFollowups(tenantId) {
     
     return { success: true, emails_drafted: generatedCount };
   } catch (error) {
-    console.error('[Pipeline Intelligence] Autonomous followups error:', error);
+    logger.error('[Pipeline Intelligence] Autonomous followups error:', error);
     return { success: false, error: 'Failed to execute autonomous followups' };
   }
 }

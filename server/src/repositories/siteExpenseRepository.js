@@ -56,12 +56,12 @@ class SiteExpenseRepository {
 
   async findExpensesByProject(tenantId, projectId) {
     const query = `
-      SELECT e.*, s.name as submitted_by_name, a.name as approved_by_name
+      SELECT error.*, s.name as submitted_by_name, a.name as approved_by_name
       FROM site_expenses e
-      LEFT JOIN users s ON e.submitted_by = s.id
-      LEFT JOIN users a ON e.approved_by = a.id
-      WHERE e.tenant_id = $1 AND e.project_id = $2
-      ORDER BY e.submitted_at DESC
+      LEFT JOIN users s ON error.submitted_by = s.id
+      LEFT JOIN users a ON error.approved_by = a.id
+      WHERE error.tenant_id = $1 AND error.project_id = $2
+      ORDER BY error.submitted_at DESC
     `;
     const { rows } = await pool.query(query, [tenantId, projectId]);
     return rows;

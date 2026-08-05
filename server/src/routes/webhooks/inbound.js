@@ -1,9 +1,9 @@
+const logger = require('../../utils/logger');
 const express = require('express');
 const crypto = require('crypto');
 const pool = require('../../db/pool');
 const { createLead } = require('../../services/leads/createLead');
 const { updateLead } = require('../../services/leads/updateLead');
-
 const router = express.Router();
 
 router.post('/:sourceKey', async (req, res, next) => {
@@ -43,7 +43,7 @@ router.post('/:sourceKey', async (req, res, next) => {
         if (expectedBuf.length !== incomingBuf.length || !crypto.timingSafeEqual(expectedBuf, incomingBuf)) {
           return res.status(401).json({ success: false, error: 'Signature mismatch' });
         }
-      } catch (e) {
+      } catch (error) {
         return res.status(401).json({ success: false, error: 'Invalid signature format' });
       }
     }
@@ -152,7 +152,7 @@ router.post('/:sourceKey', async (req, res, next) => {
     return res.status(200).json({ received: true, leadId });
 
   } catch (error) {
-    console.error('Webhook Error:', error);
+    logger.error('Webhook Error:', error);
     
     try {
       const { sourceKey } = req.params;
@@ -174,7 +174,7 @@ router.post('/:sourceKey', async (req, res, next) => {
     if (error.message.includes('VALIDATION_ERROR') || error.message.includes('STAGE_GATE_FAILED')) {
       return res.status(400).json({ success: false, error: error.message });
     }
-    return res.status(500).json({ success: false, error: 'Internal Webhook Error' });
+    return next(error);
   }
 });
 

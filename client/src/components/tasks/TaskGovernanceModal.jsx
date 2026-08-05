@@ -1,12 +1,12 @@
 /* eslint-disable no-unused-vars */
 import React, { useState } from 'react'
 import { Modal, Button } from '../ui'
-import { useGovernance } from '../../store/TaskGovernanceContext'
+import { useTaskGovernanceStore } from '../../store/useTaskGovernanceStore'
 import { useToast } from '../../store/toastContext'
 import styles from './TaskGovernanceModal.module.css'
 
 export default function TaskGovernanceModal({ isOpen, onClose }) {
-  const { webhooks, setWebhooks, retentionDays, setRetentionDays, permissions } = useGovernance()
+  const { webhooks, setWebhooks, retentionDays, setRetentionDays, permissions } = useTaskGovernanceStore()
   const [newWebhook, setNewWebhook] = useState('')
   const toast = useToast()
 

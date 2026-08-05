@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
@@ -6,7 +7,6 @@ const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const pool = require('../config/db');
 const { incrementProjectStageRevision } = require('../services/projects/revisionTracker');
-
 const router = express.Router({ mergeParams: true });
 router.use(authenticate);
 
@@ -59,8 +59,8 @@ router.get('/', authorize('projects:read'), async (req, res) => {
     `;
     const { rows } = await pool.query(query, [projectId, tenantId]);
     return success(res, rows);
-  } catch (err) {
-    console.error('[DrawingRegister Router] List error:', err);
+  } catch (error) {
+    logger.error('[DrawingRegister Router] List error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch drawing register.', 500);
   }
 });
@@ -78,8 +78,8 @@ router.post('/', authorize('design:manage'), validate(drawingRegisterSchema), as
     if (data.status === 'issued_for_construction') {
       try {
         validateDrawingRelease(data.layoutType, 'pending', 'pending');
-      } catch (err) {
-        return fail(res, 'APPROVAL_REQUIRED', err.message, 422);
+      } catch (error) {
+        return fail(res, 'APPROVAL_REQUIRED', error.message, 422);
       }
     }
 
@@ -142,10 +142,10 @@ router.post('/', authorize('design:manage'), validate(drawingRegisterSchema), as
 
     await client.query('COMMIT');
     return success(res, rows[0], {}, 201);
-  } catch (err) {
+  } catch (error) {
     await client.query('ROLLBACK');
     
-    console.error('[DrawingRegister Router] Create error:', err);
+    logger.error('[DrawingRegister Router] Create error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to register drawing.', 500);
   } finally {
     client.release();
@@ -184,9 +184,9 @@ router.put('/:id', authorize('design:manage'), validate(updateDrawingRegisterSch
     if (nextStatus === 'issued_for_construction') {
       try {
         validateDrawingRelease(nextLayoutType, nextClientStatus, nextContractorStatus);
-      } catch (err) {
+      } catch (error) {
         await client.query('ROLLBACK');
-        return fail(res, 'APPROVAL_REQUIRED', err.message, 422);
+        return fail(res, 'APPROVAL_REQUIRED', error.message, 422);
       }
     }
 
@@ -264,10 +264,10 @@ router.put('/:id', authorize('design:manage'), validate(updateDrawingRegisterSch
 
     await client.query('COMMIT');
     return success(res, record);
-  } catch (err) {
+  } catch (error) {
     await client.query('ROLLBACK');
     
-    console.error('[DrawingRegister Router] Update error:', err);
+    logger.error('[DrawingRegister Router] Update error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update drawing.', 500);
   } finally {
     client.release();
@@ -326,9 +326,9 @@ router.delete('/:id', authorize('design:manage'), async (req, res) => {
 
     await client.query('COMMIT');
     return success(res, null, { message: 'Drawing register entry deleted successfully.' });
-  } catch (err) {
+  } catch (error) {
     await client.query('ROLLBACK');
-    console.error('[DrawingRegister Router] Delete error:', err);
+    logger.error('[DrawingRegister Router] Delete error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete drawing.', 500);
   } finally {
     client.release();
@@ -359,8 +359,8 @@ router.post('/:id/client-approve', authorize('design:manage'), async (req, res) 
       return fail(res, 'NOT_FOUND', 'Drawing not found.', 404);
     }
     return success(res, rows[0]);
-  } catch (err) {
-    console.error('[DrawingRegister Router] Client approve error:', err);
+  } catch (error) {
+    logger.error('[DrawingRegister Router] Client approve error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to approve drawing.', 500);
   }
 });
@@ -393,8 +393,8 @@ router.post('/:id/client-revision', authorize('design:manage'), async (req, res)
       return fail(res, 'NOT_FOUND', 'Drawing not found.', 404);
     }
     return success(res, rows[0]);
-  } catch (err) {
-    console.error('[DrawingRegister Router] Client revision error:', err);
+  } catch (error) {
+    logger.error('[DrawingRegister Router] Client revision error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to request client revision.', 500);
   }
 });
@@ -423,8 +423,8 @@ router.post('/:id/contractor-approve', authorize('design:manage'), async (req, r
       return fail(res, 'NOT_FOUND', 'Drawing not found.', 404);
     }
     return success(res, rows[0]);
-  } catch (err) {
-    console.error('[DrawingRegister Router] Contractor approve error:', err);
+  } catch (error) {
+    logger.error('[DrawingRegister Router] Contractor approve error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to approve drawing.', 500);
   }
 });
@@ -457,8 +457,8 @@ router.post('/:id/contractor-revision', authorize('design:manage'), async (req, 
       return fail(res, 'NOT_FOUND', 'Drawing not found.', 404);
     }
     return success(res, rows[0]);
-  } catch (err) {
-    console.error('[DrawingRegister Router] Contractor revision error:', err);
+  } catch (error) {
+    logger.error('[DrawingRegister Router] Contractor revision error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to request contractor revision.', 500);
   }
 });

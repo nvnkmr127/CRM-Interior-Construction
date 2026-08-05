@@ -50,9 +50,9 @@ class VendorPaymentService {
 
       await client.query('COMMIT');
       return res.rows[0];
-    } catch (err) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw err;
+      throw error;
     } finally {
       client.release();
     }
@@ -185,9 +185,9 @@ class VendorPaymentService {
       
       await client.query('COMMIT');
       return updateRes.rows[0];
-    } catch (err) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw err;
+      throw error;
     } finally {
       client.release();
     }

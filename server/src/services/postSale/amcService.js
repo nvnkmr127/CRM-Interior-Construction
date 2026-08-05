@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const pool = require('../../db/pool');
 const { logAction } = require('../auditLog');
 const { notifyUser } = require('../notificationService');
@@ -93,9 +94,9 @@ async function createAmc({
     });
 
     return { ...amc, visits };
-  } catch (err) {
+  } catch (error) {
     await client.query('ROLLBACK');
-    throw err;
+    throw error;
   } finally {
     client.release();
   }
@@ -251,7 +252,7 @@ async function scheduleAmcVisit({
 }
 
 /**
- * Updates a maintenance visit (e.g. completes it, assigns technician).
+ * Updates a maintenance visit (error.g. completes it, assigns technician).
  */
 async function updateAmcVisit(visitId, amcId, tenantId, updateData, userId = null) {
   const existingRes = await pool.query(
@@ -342,7 +343,7 @@ async function deleteAmcVisit(visitId, amcId, tenantId, userId = null) {
  * Periodic checks for AMC renewals and automated status updates.
  */
 async function checkAndNotifyExpiredOrExpiringAMCs() {
-  console.log('[AMCScheduler] Running AMC renewal checks...');
+  logger.info('[AMCScheduler] Running AMC renewal checks...');
   
   // 1. Mark expired contracts
   const expireRes = await pool.query(`
@@ -352,7 +353,7 @@ async function checkAndNotifyExpiredOrExpiringAMCs() {
     RETURNING id, contract_number, tenant_id
   `);
   if (expireRes.rows.length > 0) {
-    console.log(`[AMCScheduler] Auto-expired ${expireRes.rows.length} AMC contract(s).`);
+    logger.info(`[AMCScheduler] Auto-expired ${expireRes.rows.length} AMC contract(s).`);
   }
 
   // 2. Fetch expiring contracts to alert
@@ -399,7 +400,7 @@ async function checkAndNotifyExpiredOrExpiringAMCs() {
         [amc.id]
       );
 
-      console.log(`[AMCScheduler] renewal alert sent for AMC #${amc.contract_number} to user ${recipientUserId}`);
+      logger.info(`[AMCScheduler] renewal alert sent for AMC #${amc.contract_number} to user ${recipientUserId}`);
     }
   }
 }

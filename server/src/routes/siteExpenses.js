@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
@@ -5,7 +6,6 @@ const authenticate = require('../middleware/authenticate');
 const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const siteExpenseRepository = require('../repositories/siteExpenseRepository');
-
 const router = express.Router({ mergeParams: true });
 router.use(authenticate);
 
@@ -41,9 +41,9 @@ router.post('/', authorize('projects:manage'), validate(submitExpenseSchema), as
     );
 
     return success(res, expense, {}, 201);
-  } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors || err.issues, 400);
-    console.error('[SiteExpenses Router] Submit error:', err);
+  } catch (error) {
+    if (error instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', error.errors || error.issues, 400);
+    logger.error('[SiteExpenses Router] Submit error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to submit site expense.', 500);
   }
 });
@@ -65,9 +65,9 @@ router.patch('/:id/status', authorize('projects:manage'), validate(updateStatusS
     }
 
     return success(res, expense);
-  } catch (err) {
-    if (err instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', err.errors || err.issues, 400);
-    console.error('[SiteExpenses Router] Update status error:', err);
+  } catch (error) {
+    if (error instanceof z.ZodError) return fail(res, 'VALIDATION_ERROR', error.errors || error.issues, 400);
+    logger.error('[SiteExpenses Router] Update status error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update site expense status.', 500);
   }
 });
@@ -85,8 +85,8 @@ router.patch('/:id/reimburse', authorize('projects:manage'), async (req, res) =>
     }
 
     return success(res, expense);
-  } catch (err) {
-    console.error('[SiteExpenses Router] Reimburse error:', err);
+  } catch (error) {
+    logger.error('[SiteExpenses Router] Reimburse error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to mark site expense as reimbursed.', 500);
   }
 });
@@ -99,8 +99,8 @@ router.get('/', authorize('projects:read'), async (req, res) => {
       req.params.projectId
     );
     return success(res, expenses);
-  } catch (err) {
-    console.error('[SiteExpenses Router] List error:', err);
+  } catch (error) {
+    logger.error('[SiteExpenses Router] List error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch site expenses.', 500);
   }
 });

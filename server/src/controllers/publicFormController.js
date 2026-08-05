@@ -1,8 +1,8 @@
+const logger = require('../utils/logger');
 const pool = require('../db/pool');
 const { success, fail } = require('../utils/response');
 const submissionService = require('../services/leadForms/submissionService');
 const leadFormRepository = require('../repositories/leadFormRepository');
-
 exports.getFormBySlug = async (req, res, next) => {
   try {
     const { slug } = req.params;
@@ -13,7 +13,7 @@ exports.getFormBySlug = async (req, res, next) => {
     if (form.status !== 'active') return fail(res, 'BAD_REQUEST', 'Form is inactive', 400);
 
     // Increment view count asynchronously
-    leadFormRepository.incrementFormViews(form.tenant_id, form.id).catch(console.error);
+    leadFormRepository.incrementFormViews(form.tenant_id, form.id).catch(error => logger.error('incrementFormViews error:', error));
 
     // Only return safe public fields (don't expose internal config like assignee)
     return success(res, {

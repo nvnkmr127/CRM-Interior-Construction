@@ -1,4 +1,5 @@
 const pool = require('./pool');
+const logger = require('../utils/logger');
 async function run() {
   try {
     await pool.query(`
@@ -9,8 +10,8 @@ async function run() {
     `);
     console.log('Schema updated');
     process.exit(0);
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    logger.error(error);
     process.exit(1);
   }
 }

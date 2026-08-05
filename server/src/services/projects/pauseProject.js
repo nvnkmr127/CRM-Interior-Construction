@@ -11,17 +11,17 @@ async function pauseProject({ projectId, tenantId, userId, reason, expectedResum
     [projectId, tenantId]
   );
   if (currentRes.rows.length === 0) {
-    const err = new Error('PROJECT_NOT_FOUND');
-    err.status = 404;
-    throw err;
+    const error = new Error('PROJECT_NOT_FOUND');
+    error.status = 404;
+    throw error;
   }
   const project = currentRes.rows[0];
 
   if (project.status !== 'active') {
-    const err = new Error('PROJECT_NOT_ACTIVE');
-    err.message = 'Only active projects can be paused.';
-    err.status = 400;
-    throw err;
+    const error = new Error('PROJECT_NOT_ACTIVE');
+    error.message = 'Only active projects can be paused.';
+    error.status = 400;
+    throw error;
   }
 
   const client = await pool.connect();
@@ -84,9 +84,9 @@ async function pauseProject({ projectId, tenantId, userId, reason, expectedResum
 
     await client.query('COMMIT');
     return updatedProject;
-  } catch (err) {
+  } catch (error) {
     await client.query('ROLLBACK');
-    throw err;
+    throw error;
   } finally {
     client.release();
   }
@@ -101,24 +101,24 @@ async function resumeProject({ projectId, tenantId, userId, siteConditionVerifie
     [projectId, tenantId]
   );
   if (currentRes.rows.length === 0) {
-    const err = new Error('PROJECT_NOT_FOUND');
-    err.status = 404;
-    throw err;
+    const error = new Error('PROJECT_NOT_FOUND');
+    error.status = 404;
+    throw error;
   }
   const project = currentRes.rows[0];
 
   if (project.status !== 'on_hold') {
-    const err = new Error('PROJECT_NOT_PAUSED');
-    err.message = 'Only paused projects can be resumed.';
-    err.status = 400;
-    throw err;
+    const error = new Error('PROJECT_NOT_PAUSED');
+    error.message = 'Only paused projects can be resumed.';
+    error.status = 400;
+    throw error;
   }
 
   if (!siteConditionVerified || !materialStatusVerified) {
-    const err = new Error('PRE_RESUME_CHECKLIST_INCOMPLETE');
-    err.message = 'Site condition and material status must be verified before resuming the project.';
-    err.status = 400;
-    throw err;
+    const error = new Error('PRE_RESUME_CHECKLIST_INCOMPLETE');
+    error.message = 'Site condition and material status must be verified before resuming the project.';
+    error.status = 400;
+    throw error;
   }
 
   const client = await pool.connect();
@@ -153,9 +153,9 @@ async function resumeProject({ projectId, tenantId, userId, siteConditionVerifie
 
     await client.query('COMMIT');
     return updatedProject;
-  } catch (err) {
+  } catch (error) {
     await client.query('ROLLBACK');
-    throw err;
+    throw error;
   } finally {
     client.release();
   }

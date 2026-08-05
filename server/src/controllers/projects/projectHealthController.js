@@ -1,6 +1,6 @@
+const logger = require('../../utils/logger');
 const projectHealthService = require('../../services/projects/projectHealthService');
-
-exports.generateHealthReport = async (req, res) => {
+exports.generateHealthReport = async (req, res, next) => {
   try {
     const { projectId } = req.params;
     const { tenantId } = req.user;
@@ -8,12 +8,12 @@ exports.generateHealthReport = async (req, res) => {
     const report = await projectHealthService.generateHealthReport(tenantId, projectId);
     res.status(201).json({ success: true, data: report });
   } catch (error) {
-    console.error('generateHealthReport error:', error);
-    res.status(500).json({ success: false, message: 'Server Error' });
+    logger.error('generateHealthReport error:', error);
+    return next(error);
   }
 };
 
-exports.getHealthReports = async (req, res) => {
+exports.getHealthReports = async (req, res, next) => {
   try {
     const { projectId } = req.params;
     const { tenantId } = req.user;
@@ -21,7 +21,7 @@ exports.getHealthReports = async (req, res) => {
     const reports = await projectHealthService.getReports(tenantId, projectId);
     res.status(200).json({ success: true, data: reports });
   } catch (error) {
-    console.error('getHealthReports error:', error);
-    res.status(500).json({ success: false, message: 'Server Error' });
+    logger.error('getHealthReports error:', error);
+    return next(error);
   }
 };

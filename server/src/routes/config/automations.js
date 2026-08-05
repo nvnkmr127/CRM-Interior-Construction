@@ -37,10 +37,10 @@ router.post('/', async (req, res, next) => {
   try {
     const parsed = ruleSchema.safeParse(req.body);
     if (!parsed.success) {
-      const err = new Error('Validation failed');
-      err.isValidation = true;
-      err.details = parsed.error.issues;
-      return next(err);
+      const error = new Error('Validation failed');
+      error.isValidation = true;
+      error.details = parsed.error.issues;
+      return next(error);
     }
 
     const { name, trigger, conditions = [], actions = [] } = parsed.data;
@@ -70,10 +70,10 @@ router.put('/:id', async (req, res, next) => {
   try {
     const parsed = ruleSchema.safeParse(req.body);
     if (!parsed.success) {
-      const err = new Error('Validation failed');
-      err.isValidation = true;
-      err.details = parsed.error.issues;
-      return next(err);
+      const error = new Error('Validation failed');
+      error.isValidation = true;
+      error.details = parsed.error.issues;
+      return next(error);
     }
 
     const { name, trigger, conditions = [], actions = [] } = parsed.data;
@@ -145,10 +145,10 @@ router.post('/:id/test-run', async (req, res, next) => {
   try {
     const parsed = testRunSchema.safeParse(req.body);
     if (!parsed.success) {
-      const err = new Error('Validation failed');
-      err.isValidation = true;
-      err.details = parsed.error.issues;
-      return next(err);
+      const error = new Error('Validation failed');
+      error.isValidation = true;
+      error.details = parsed.error.issues;
+      return next(error);
     }
 
     const ruleRes = await pool.query(`

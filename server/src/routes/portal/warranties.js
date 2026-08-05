@@ -12,8 +12,8 @@ router.get('/', async (req, res, next) => {
     const { projectId, tenantId } = req.portalUser;
     const warranties = await warrantyService.getWarrantiesByProject(projectId, tenantId);
     return success(res, warranties);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 

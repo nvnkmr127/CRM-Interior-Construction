@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const { verifyAccessToken, TokenExpiredError } = require('../services/auth/tokens');
 const authenticateApiKey = require('./authenticateApiKey');
 const { getTenantPool } = require('../db/tenantResolver');
@@ -38,8 +39,8 @@ async function authenticate(req, res, next) {
       
       try {
         session = await getCache(cacheKey);
-      } catch (err) {
-        console.warn('Redis cache miss or error for session validation', err);
+      } catch (error) {
+        console.warn('Redis cache miss or error for session validation', error);
       }
 
       if (!session) {
@@ -49,9 +50,9 @@ async function authenticate(req, res, next) {
             'SELECT id, ip_address, user_agent, last_active_at FROM sessions WHERE id = $1 AND tenant_id = $2',
             [decoded.sessionId, decoded.tenantId]
           );
-        } catch (err) {
+        } catch (error) {
           // Fallback if last_active_at or user_agent columns are missing
-          console.warn('Session columns missing, falling back to basic query', err.message);
+          console.warn('Session columns missing, falling back to basic query', error.message);
           sessionResult = await pool.query(
             'SELECT id, ip_address FROM sessions WHERE id = $1 AND tenant_id = $2',
             [decoded.sessionId, decoded.tenantId]
@@ -64,7 +65,7 @@ async function authenticate(req, res, next) {
         session = sessionResult.rows[0];
         
         // Cache the session data for 5 minutes (reduced from 15 to allow last_active_at updates to sync better)
-        setCache(cacheKey, session, 300).catch(err => console.warn('Failed to cache session', err));
+        setCache(cacheKey, session, 300).catch(error => console.warn('Failed to cache session', error));
       }
 
       // Check session timeout from tenant settings
@@ -165,7 +166,7 @@ async function authenticate(req, res, next) {
     }
     
     // 5. Any other error -> 401 TOKEN_INVALID
-    console.error('Authentication Error:', error);
+    logger.error('Authentication Error:', error);
     return res.status(401).json({ success: false, error: 'TOKEN_INVALID', details: error.message });
   }
 }

@@ -1,4 +1,5 @@
 const pool = require('./pool').pool || require('./pool');
+const logger = require('../utils/logger');
 
 async function run() {
   const p = pool.query ? pool : pool.pool;
@@ -12,13 +13,13 @@ async function run() {
     for (const oldCol of oldCols) {
       const col = oldCol + 's';
       const fkName = `projects_${oldCol}_fkey`;
-      await p.query(`ALTER TABLE projects DROP CONSTRAINT IF EXISTS ${fkName};`).catch(e=>console.log(e.message));
-      await p.query(`ALTER TABLE projects ALTER COLUMN ${col} TYPE uuid[] USING CASE WHEN ${col} IS NOT NULL THEN ARRAY[${col}] ELSE NULL END;`).catch(e=>console.log(e.message));
+      await p.query(`ALTER TABLE projects DROP CONSTRAINT IF EXISTS ${fkName};`).catch(error =>console.log(error.message));
+      await p.query(`ALTER TABLE projects ALTER COLUMN ${col} TYPE uuid[] USING CASE WHEN ${col} IS NOT NULL THEN ARRAY[${col}] ELSE NULL END;`).catch(error =>console.log(error.message));
     }
     console.log("Migration successful");
     process.exit(0);
-  } catch(e) {
-    console.error(e);
+  } catch (error) {
+    logger.error(error);
     process.exit(1);
   }
 }

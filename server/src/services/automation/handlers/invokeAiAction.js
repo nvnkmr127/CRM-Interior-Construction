@@ -1,14 +1,14 @@
+const logger = require('../../../utils/logger');
 const aiService = require('../../../services/aiService');
 const pool = require('../../../db/pool');
-
 /**
- * Invokes AI operations (e.g., generating summary, next steps, extracting insights)
+ * Invokes AI operations (error.g., generating summary, next steps, extracting insights)
  */
 async function handle(config, context) {
   const { actionType, prompt, outputField } = config; // config from DB
   const { record, _tenantId } = context;
 
-  console.log(`[Automation - AI] Invoking AI Action '${actionType}' for record ${record.id}`);
+  logger.info(`[Automation - AI] Invoking AI Action '${actionType}' for record ${record.id}`);
 
   try {
     if (actionType === 'generate_summary') {
@@ -27,7 +27,7 @@ async function handle(config, context) {
        }
     }
   } catch (error) {
-    console.error(`[Automation - AI] Failed AI action:`, error);
+    logger.error(`[Automation - AI] Failed AI action:`, error);
   }
 }
 

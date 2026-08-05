@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
@@ -60,8 +61,8 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
 
     const { rows } = await pool.query(query, values);
     return success(res, rows);
-  } catch (err) {
-    console.error('[Documents Router] List error:', err);
+  } catch (error) {
+    logger.error('[Documents Router] List error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch documents.', 500);
   }
 });
@@ -79,8 +80,8 @@ router.post('/upload-url', authorize('projects:manage'), validate(uploadUrlSchem
       docType: data.docType
     });
     return success(res, result);
-  } catch (err) {
-    console.error('[Documents Router] upload-url error:', err);
+  } catch (error) {
+    logger.error('[Documents Router] upload-url error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to generate AWS upload URL.', 500);
   }
 });
@@ -96,7 +97,7 @@ router.post('/register', authorize('projects:manage'), validate(registerSchema),
       const isValid = await storage.validateMagicNumber(data.storageKey, data.mimeType);
       if (!isValid) {
         // If invalid, delete the malicious file and reject the registration
-        await storage.deleteFile(data.storageKey).catch(e => console.error(e));
+        await storage.deleteFile(data.storageKey).catch(error => logger.error(error));
         return fail(res, 'SECURITY_REJECTED', 'Malware scan failed: File signature does not match claimed MIME type.', 403);
       }
     }
@@ -114,8 +115,8 @@ router.post('/register', authorize('projects:manage'), validate(registerSchema),
       uploadedBy: req.user.userId
     });
     return success(res, doc, {}, 201);
-  } catch (err) {
-    console.error('[Documents Router] register error:', err);
+  } catch (error) {
+    logger.error('[Documents Router] register error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to register document in database.', 500);
   }
 });
@@ -131,8 +132,8 @@ router.get('/:did/url', authorize('projects:read'), async (req, res, next) => {
 
     const url = await getDocumentUrl(rows[0].storage_key);
     return success(res, { url });
-  } catch (err) {
-    console.error('[Documents Router] get URL error:', err);
+  } catch (error) {
+    logger.error('[Documents Router] get URL error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to generate secure AWS access URL.', 500);
   }
 });
@@ -156,9 +157,9 @@ router.post('/:did/approve', authorize('projects:manage'), async (req, res, next
 
     const approvedDoc = await approveDocument(req.tenantId, req.params.did, req.user.userId);
     return success(res, approvedDoc);
-  } catch (err) {
-    if (err.message === 'NOT_FOUND' || err.status === 404) return fail(res, 'NOT_FOUND', 'Document not found.', 404);
-    console.error('[Documents Router] approve error:', err);
+  } catch (error) {
+    if (error.message === 'NOT_FOUND' || error.status === 404) return fail(res, 'NOT_FOUND', 'Document not found.', 404);
+    logger.error('[Documents Router] approve error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to approve document.', 500);
   }
 });
@@ -169,9 +170,9 @@ router.post('/:did/revision', authorize('projects:manage'), validate(revisionSch
     const { note } = req.body;
     const doc = await requestRevision(req.tenantId, req.params.did, note, req.user.userId);
     return success(res, doc);
-  } catch (err) {
-    if (err.message === 'NOT_FOUND' || err.status === 404) return fail(res, 'NOT_FOUND', 'Document not found.', 404);
-    console.error('[Documents Router] revision error:', err);
+  } catch (error) {
+    if (error.message === 'NOT_FOUND' || error.status === 404) return fail(res, 'NOT_FOUND', 'Document not found.', 404);
+    logger.error('[Documents Router] revision error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to process revision request.', 500);
   }
 });
@@ -187,9 +188,9 @@ router.post('/:did/version', authorize('projects:manage'), validate(versionSchem
       mimeType: data.mimeType
     });
     return success(res, doc, {}, 201);
-  } catch (err) {
-    if (err.message === 'NOT_FOUND' || err.status === 404) return fail(res, 'NOT_FOUND', 'Original document not found.', 404);
-    console.error('[Documents Router] add version error:', err);
+  } catch (error) {
+    if (error.message === 'NOT_FOUND' || error.status === 404) return fail(res, 'NOT_FOUND', 'Original document not found.', 404);
+    logger.error('[Documents Router] add version error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to instantiate document version.', 500);
   }
 });
@@ -216,8 +217,8 @@ router.patch('/:documentId/visibility', authorize('projects:manage'), async (req
       return fail(res, 'NOT_FOUND', 'Document not found.', 404);
     }
     return success(res, rows[0]);
-  } catch (err) {
-    console.error('[Documents Router] Patch visibility error:', err);
+  } catch (error) {
+    logger.error('[Documents Router] Patch visibility error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update visibility.', 500);
   }
 });
@@ -236,8 +237,8 @@ router.get('/:documentId/comments', authorize('projects:read'), async (req, res,
     `;
     const { rows } = await pool.query(query, [documentId, tenantId]);
     return success(res, rows);
-  } catch (err) {
-    console.error('[Documents Router] Get comments error:', err);
+  } catch (error) {
+    logger.error('[Documents Router] Get comments error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch comments.', 500);
   }
 });
@@ -271,8 +272,8 @@ router.post('/:documentId/comments', authorize('projects:manage'), async (req, r
     `;
     const { rows } = await pool.query(query, [tenantId, documentId, comment.trim(), creatorName]);
     return success(res, rows[0], {}, 201);
-  } catch (err) {
-    console.error('[Documents Router] Create comment error:', err);
+  } catch (error) {
+    logger.error('[Documents Router] Create comment error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to add comment.', 500);
   }
 });

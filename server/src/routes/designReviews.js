@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
@@ -7,7 +8,6 @@ const validate = require('../middleware/validate');
 const pool = require('../config/db');
 const { getDocumentUrl } = require('../services/documents/documentService');
 const { notifyUser } = require('../services/notificationService');
-
 const router = express.Router({ mergeParams: true });
 router.use(authenticate);
 
@@ -43,8 +43,8 @@ router.get('/rounds', authorize('projects:read'), async (req, res, next) => {
 
     const { rows } = await pool.query(query, [projectId, tenantId]);
     return success(res, rows);
-  } catch (err) {
-    console.error('[DesignReviews Router] Get rounds error:', err);
+  } catch (error) {
+    logger.error('[DesignReviews Router] Get rounds error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch design review rounds.', 500);
   }
 });
@@ -63,8 +63,8 @@ router.post('/rounds', authorize('design:manage'), validate(createRoundSchema), 
 
     const { rows } = await pool.query(query, [tenantId, projectId, data.name]);
     return success(res, rows[0], {}, 201);
-  } catch (err) {
-    console.error('[DesignReviews Router] Create round error:', err);
+  } catch (error) {
+    logger.error('[DesignReviews Router] Create round error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create design review round.', 500);
   }
 });
@@ -87,8 +87,8 @@ router.post('/rounds/:id/close', authorize('design:manage'), async (req, res, ne
       return fail(res, 'NOT_FOUND', 'Design review round not found.', 404);
     }
     return success(res, rows[0]);
-  } catch (err) {
-    console.error('[DesignReviews Router] Close round error:', err);
+  } catch (error) {
+    logger.error('[DesignReviews Router] Close round error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to close design review round.', 500);
   }
 });
@@ -126,15 +126,15 @@ router.get('/drawings', authorize('projects:read'), async (req, res, next) => {
       let downloadUrl = '';
       try {
         downloadUrl = await getDocumentUrl(doc.storage_key);
-      } catch (e) {
-        console.error(`Failed to get presigned URL for storageKey: ${doc.storage_key}`, e);
+      } catch (error) {
+        logger.error(`Failed to get presigned URL for storageKey: ${doc.storage_key}`, error);
       }
       return { ...doc, downloadUrl };
     }));
 
     return success(res, result);
-  } catch (err) {
-    console.error('[DesignReviews Router] Get drawings error:', err);
+  } catch (error) {
+    logger.error('[DesignReviews Router] Get drawings error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch drawings.', 500);
   }
 });
@@ -158,8 +158,8 @@ router.put('/drawings/:documentId', authorize('design:manage'), validate(associa
     }
 
     return success(res, rows[0]);
-  } catch (err) {
-    console.error('[DesignReviews Router] Associate drawing error:', err);
+  } catch (error) {
+    logger.error('[DesignReviews Router] Associate drawing error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to associate drawing with round.', 500);
   }
 });
@@ -178,8 +178,8 @@ router.get('/drawings/:documentId/comments', authorize('projects:read'), async (
 
     const { rows } = await pool.query(query, [documentId, tenantId]);
     return success(res, rows);
-  } catch (err) {
-    console.error('[DesignReviews Router] Get comments error:', err);
+  } catch (error) {
+    logger.error('[DesignReviews Router] Get comments error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch comments.', 500);
   }
 });
@@ -199,8 +199,8 @@ router.post('/drawings/:documentId/comments', authorize('design:manage'), valida
 
     const { rows } = await pool.query(query, [tenantId, documentId, data.comment, creatorName]);
     return success(res, rows[0], {}, 201);
-  } catch (err) {
-    console.error('[DesignReviews Router] Add comment error:', err);
+  } catch (error) {
+    logger.error('[DesignReviews Router] Add comment error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to add comment.', 500);
   }
 });
@@ -233,8 +233,8 @@ router.post('/freeze-design', authorize('design:manage'), async (req, res, next)
     });
 
     return success(res, rows[0], { message: 'Design scope frozen and locked successfully.' });
-  } catch (err) {
-    console.error('[DesignReviews Router] Freeze design error:', err);
+  } catch (error) {
+    logger.error('[DesignReviews Router] Freeze design error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to freeze design scope.', 500);
   }
 });

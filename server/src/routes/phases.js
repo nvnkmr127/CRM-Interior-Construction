@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
@@ -5,7 +6,6 @@ const authorize = require('../middleware/authorize');
 const validate = require('../middleware/validate');
 const phaseRepository = require('../repositories/phaseRepository');
 const { completePhase, checkScopeLock } = require('../services/projects/completePhase');
-
 // mergeParams: true allows access to :projectId from parent projectsRouter
 const router = express.Router({ mergeParams: true });
 
@@ -35,8 +35,8 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
   try {
     const phases = await phaseRepository.findPhasesByProject(req.tenantId, req.params.projectId);
     return success(res, phases);
-  } catch (err) {
-    console.error('[Phases Router] List error:', err);
+  } catch (error) {
+    logger.error('[Phases Router] List error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to retrieve phases.', 500);
   }
 });
@@ -47,8 +47,8 @@ router.post('/', authorize('projects:manage'), validate(createPhaseSchema), asyn
     const data = req.body;
     const phase = await phaseRepository.createPhase(req.tenantId, req.params.projectId, data);
     return success(res, phase, {}, 201);
-  } catch (err) {
-    console.error('[Phases Router] Create error:', err);
+  } catch (error) {
+    logger.error('[Phases Router] Create error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create phase.', 500);
   }
 });
@@ -59,8 +59,8 @@ router.patch('/reorder', authorize('projects:manage'), validate(reorderSchema), 
     const { orderedIds } = req.body;
     await phaseRepository.reorderPhases(req.params.projectId, req.tenantId, orderedIds);
     return success(res, { message: 'Phases reordered successfully' });
-  } catch (err) {
-    console.error('[Phases Router] Reorder error:', err);
+  } catch (error) {
+    logger.error('[Phases Router] Reorder error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to reorder phases.', 500);
   }
 });
@@ -74,24 +74,24 @@ router.put('/:phaseId', authorize('projects:manage'), validate(updatePhaseSchema
     }
     const phase = await phaseRepository.updatePhase(req.params.phaseId, req.tenantId, data);
     return success(res, phase);
-  } catch (err) {
-    if (err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Phase not found', 404);
-    if (err.code === 'COMMERCIAL_APPROVAL_REQUIRED' || err.message === 'COMMERCIAL_APPROVAL_REQUIRED' || err.message.includes('Commercial approval has not been completed')) {
-      return fail(res, 'COMMERCIAL_APPROVAL_REQUIRED', err.message, 400);
+  } catch (error) {
+    if (error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Phase not found', 404);
+    if (error.code === 'COMMERCIAL_APPROVAL_REQUIRED' || error.message === 'COMMERCIAL_APPROVAL_REQUIRED' || error.message.includes('Commercial approval has not been completed')) {
+      return fail(res, 'COMMERCIAL_APPROVAL_REQUIRED', error.message, 400);
     }
     if (
-      err.status === 400 ||
-      err.message === 'SCOPE_LOCK_REQUIRED' ||
-      err.message === 'SITE_READINESS_REQUIRED' ||
-      err.message.includes('Design scope must be locked') ||
-      err.message.includes('Site readiness checklist')
+      error.status === 400 ||
+      error.message === 'SCOPE_LOCK_REQUIRED' ||
+      error.message === 'SITE_READINESS_REQUIRED' ||
+      error.message.includes('Design scope must be locked') ||
+      error.message.includes('Site readiness checklist')
     ) {
-      const code = (err.message.includes('Design scope must be locked') || err.message === 'SCOPE_LOCK_REQUIRED')
+      const code = (error.message.includes('Design scope must be locked') || error.message === 'SCOPE_LOCK_REQUIRED')
         ? 'SCOPE_LOCK_REQUIRED'
         : 'SITE_READINESS_REQUIRED';
-      return fail(res, code, err.message, 400);
+      return fail(res, code, error.message, 400);
     }
-    console.error('[Phases Router] Update error:', err);
+    logger.error('[Phases Router] Update error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update phase.', 500);
   }
 });
@@ -101,9 +101,9 @@ router.delete('/:phaseId', authorize('projects:manage'), async (req, res, next) 
   try {
     await phaseRepository.deletePhase(req.params.phaseId, req.tenantId);
     return res.status(204).send();
-  } catch (err) {
-    if (err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Phase not found', 404);
-    console.error('[Phases Router] Delete error:', err);
+  } catch (error) {
+    if (error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Phase not found', 404);
+    logger.error('[Phases Router] Delete error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete phase.', 500);
   }
 });
@@ -117,26 +117,26 @@ router.post('/:phaseId/sign-off', authorize('projects:manage'), async (req, res,
       phaseId: req.params.phaseId
     });
     return success(res, result);
-  } catch (err) {
-    if (err.message === 'MILESTONES_INCOMPLETE') {
-      return fail(res, 'MILESTONES_INCOMPLETE', err.details, 422);
+  } catch (error) {
+    if (error.message === 'MILESTONES_INCOMPLETE') {
+      return fail(res, 'MILESTONES_INCOMPLETE', error.details, 422);
     }
-    if (err.message === 'SITE_READINESS_REQUIRED' || err.message.includes('Site readiness checklist')) {
-      return fail(res, 'SITE_READINESS_REQUIRED', err.message, 400);
+    if (error.message === 'SITE_READINESS_REQUIRED' || error.message.includes('Site readiness checklist')) {
+      return fail(res, 'SITE_READINESS_REQUIRED', error.message, 400);
     }
-    if (err.message === 'SCOPE_LOCK_REQUIRED' || err.message.includes('Design scope must be locked')) {
-      return fail(res, 'SCOPE_LOCK_REQUIRED', err.message, 400);
+    if (error.message === 'SCOPE_LOCK_REQUIRED' || error.message.includes('Design scope must be locked')) {
+      return fail(res, 'SCOPE_LOCK_REQUIRED', error.message, 400);
     }
-    if (err.message === 'PHASE_ALREADY_COMPLETED') {
+    if (error.message === 'PHASE_ALREADY_COMPLETED') {
       return fail(res, 'PHASE_ALREADY_COMPLETED', 'Phase is already completed', 400);
     }
-    if (err.status === 400) {
-      return fail(res, err.code || 'BAD_REQUEST', err.message, 400);
+    if (error.status === 400) {
+      return fail(res, error.code || 'BAD_REQUEST', error.message, 400);
     }
-    if (err.message === 'NOT_FOUND' || err.status === 404) {
+    if (error.message === 'NOT_FOUND' || error.status === 404) {
       return fail(res, 'NOT_FOUND', 'Phase not found', 404);
     }
-    console.error('[Phases Router] Sign-off error:', err);
+    logger.error('[Phases Router] Sign-off error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to sign-off phase.', 500);
   }
 });

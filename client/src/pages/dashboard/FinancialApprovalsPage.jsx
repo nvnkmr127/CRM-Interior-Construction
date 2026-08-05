@@ -41,43 +41,43 @@ function SLATracker({ approval }) {
   
   const isOverdue = diffHours < 0;
   
-  let color = '#059669'; // Green (under 24h)
+  let color = 'var(--color-success)'; 
+  let bgColor = 'rgba(16, 185, 129, 0.1)';
   let level = 0;
   
   const hoursElapsed = (now.getTime() - new Date(approval.created_at).getTime()) / (1000 * 60 * 60);
-  if (hoursElapsed >= 72) { color = '#dc2626'; level = 3; } // Red
-  else if (hoursElapsed >= 48) { color = '#ea580c'; level = 2; } // Orange
-  else if (hoursElapsed >= 24) { color = '#d97706'; level = 1; } // Yellow
+  if (hoursElapsed >= 72) { color = 'var(--color-danger)'; bgColor = 'rgba(239, 68, 68, 0.1)'; level = 3; } 
+  else if (hoursElapsed >= 48) { color = '#ea580c'; bgColor = 'rgba(234, 88, 12, 0.1)'; level = 2; } 
+  else if (hoursElapsed >= 24) { color = '#d97706'; bgColor = 'rgba(217, 119, 6, 0.1)'; level = 1; } 
 
-  // Format remaining time
   const absHours = Math.floor(Math.abs(diffHours));
   const absMins = Math.floor((Math.abs(diffMs) % (1000 * 60 * 60)) / (1000 * 60));
   const timeString = `${absHours}h ${absMins}m`;
 
   return (
-    <div style={{ marginTop: '12px', padding: '12px', borderRadius: '6px', border: `1px solid ${color}40`, backgroundColor: `${color}10` }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>SLA Tracking</span>
+    <div style={{ margin: 'var(--space-3) 0', padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)', border: `1px solid ${color}40`, backgroundColor: bgColor }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
+        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>SLA Tracking</span>
         {level > 0 && (
-          <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', backgroundColor: color, color: '#fff' }}>
+          <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '4px 8px', borderRadius: 'var(--radius-full)', backgroundColor: color, color: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
             Escalation L${level}
           </span>
         )}
       </div>
       
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.8rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)', fontSize: '0.8rem' }}>
         <div>
-          <div style={{ color: 'var(--text-tertiary)', fontSize: '0.7rem' }}>Created Time</div>
-          <div style={{ fontWeight: 500 }}>{new Date(approval.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</div>
+          <div style={{ color: 'var(--color-text-muted)', fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em', marginBottom: '2px' }}>Created Time</div>
+          <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{new Date(approval.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</div>
         </div>
         <div>
-          <div style={{ color: 'var(--text-tertiary)', fontSize: '0.7rem' }}>Target Resolution</div>
-          <div style={{ fontWeight: 500 }}>{targetDate.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</div>
+          <div style={{ color: 'var(--color-text-muted)', fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em', marginBottom: '2px' }}>Target Resolution</div>
+          <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{targetDate.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</div>
         </div>
       </div>
       
-      <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, color }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+      <div style={{ marginTop: 'var(--space-3)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: 700, color }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
         {isOverdue ? (
           <span>Overdue by {timeString}</span>
         ) : (
@@ -93,10 +93,11 @@ function PriorityBadge({ approval, onUpdate }) {
   const [isOpen, setIsOpen] = useState(false);
   const { priority } = approval;
   
-  let color = '#6b7280'; // Low: gray
-  if (priority === 'medium') color = '#3b82f6'; // Blue
-  else if (priority === 'high') color = '#f97316'; // Orange
-  else if (priority === 'critical') color = '#dc2626'; // Red
+  let color = '#6b7280';
+  let bg = 'rgba(107, 114, 128, 0.1)';
+  if (priority === 'medium') { color = '#3b82f6'; bg = 'rgba(59, 130, 246, 0.1)'; }
+  else if (priority === 'high') { color = '#f97316'; bg = 'rgba(249, 115, 22, 0.1)'; }
+  else if (priority === 'critical') { color = '#dc2626'; bg = 'rgba(220, 38, 38, 0.1)'; }
 
   const handleUpdate = (newP) => {
     setIsOpen(false);
@@ -107,14 +108,14 @@ function PriorityBadge({ approval, onUpdate }) {
     <div style={{ position: 'relative', display: 'inline-block' }}>
       <span 
         onClick={() => setIsOpen(!isOpen)}
-        style={{ cursor: 'pointer', padding: '2px 8px', borderRadius: '4px', backgroundColor: `${color}20`, color, fontSize: '0.75rem', fontWeight: 600, textTransform: 'capitalize' }}
+        style={{ cursor: 'pointer', padding: '4px 10px', borderRadius: 'var(--radius-full)', backgroundColor: bg, color, fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'inline-block', transition: 'all 0.2s' }}
       >
         {priority || 'low'}
       </span>
       {isOpen && (
-        <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 10, background: '#fff', border: '1px solid #e5e7eb', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', minWidth: '100px' }}>
+        <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '4px', zIndex: 50, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', minWidth: '120px', overflow: 'hidden' }}>
           {['low', 'medium', 'high', 'critical'].map(p => (
-            <div key={p} onClick={() => handleUpdate(p)} style={{ padding: '6px 12px', fontSize: '0.75rem', cursor: 'pointer', textTransform: 'capitalize', color: '#374151' }}>
+            <div key={p} onClick={() => handleUpdate(p)} style={{ padding: '8px 16px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', textTransform: 'capitalize', color: 'var(--color-text)', borderBottom: '1px solid var(--color-border-light)', transition: 'background 0.2s' }}>
               {p}
             </div>
           ))}
@@ -566,16 +567,16 @@ export default function FinancialApprovalsPage() {
               {pendingList.map((app) => (
                 <div key={app.id} className={`${styles.approvalCard} ${selectedIds.has(app.id) ? styles.selectedCard : ''}`}>
                   <div className={styles.cardHeader}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <input 
                         type="checkbox" 
                         checked={selectedIds.has(app.id)} 
                         onChange={() => toggleSelection(app.id)} 
-                        style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                        style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--color-primary)' }}
                       />
                       <span className={styles.typeTag}>{getTypeLabel(app.transaction_type)}</span>
-                      {app.priority === 'urgent' && <span style={{ background: '#fef2f2', color: '#991b1b', padding: '2px 8px', borderRadius: '999px', fontSize: '0.75rem', fontWeight: 600 }}>Urgent</span>}
-                      {app.priority === 'high' && <span style={{ background: '#fffbeb', color: '#b45309', padding: '2px 8px', borderRadius: '999px', fontSize: '0.75rem', fontWeight: 600 }}>High</span>}
+                      {app.priority === 'urgent' && <span style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#dc2626', padding: '4px 8px', borderRadius: 'var(--radius-full)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase' }}>Urgent</span>}
+                      {app.priority === 'high' && <span style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', padding: '4px 8px', borderRadius: 'var(--radius-full)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase' }}>High</span>}
                     </div>
                     <span className={`${styles.statusTag} ${getStatusClass(app.status)}`}>{app.status}</span>
                   </div>
@@ -675,62 +676,49 @@ export default function FinancialApprovalsPage() {
                     </div>
 
                     <div className={styles.detailsList}>
-                    <SLATracker approval={app} />
+                      <SLATracker approval={app} />
                       <div className={styles.detailRow}>
-                      <span className={styles.detailLabel}>Project:</span>
-                      <span className={styles.detailValue}>
-                        <HighlightText text={app.project_name || 'N/A'} highlight={searchQuery} />
-                      </span>
-                    </div>
-                    {app.customer_name && (
-                      <div className={styles.detailRow}>
-                        <span className={styles.detailLabel}>Customer:</span>
+                        <span className={styles.detailLabel}>Project</span>
                         <span className={styles.detailValue}>
-                          <HighlightText text={app.customer_name} highlight={searchQuery} />
+                          <HighlightText text={app.project_name || 'N/A'} highlight={searchQuery} />
                         </span>
                       </div>
-                    )}
-                    {app.target_number && (
+                      {app.customer_name && (
+                        <div className={styles.detailRow}>
+                          <span className={styles.detailLabel}>Customer</span>
+                          <span className={styles.detailValue}>
+                            <HighlightText text={app.customer_name} highlight={searchQuery} />
+                          </span>
+                        </div>
+                      )}
+                      {app.target_number && (
+                        <div className={styles.detailRow}>
+                          <span className={styles.detailLabel}>Reference</span>
+                          <span className={styles.detailValue}>
+                            <HighlightText text={app.target_number} highlight={searchQuery} />
+                          </span>
+                        </div>
+                      )}
                       <div className={styles.detailRow}>
-                        <span className={styles.detailLabel}>Reference:</span>
+                        <span className={styles.detailLabel}>Requested By</span>
                         <span className={styles.detailValue}>
-                          <HighlightText text={app.target_number} highlight={searchQuery} />
+                          <HighlightText text={app.requester_name || 'System'} highlight={searchQuery} />
                         </span>
                       </div>
-                    )}
-                    <div className={styles.detailRow}>
-                      <span className={styles.detailLabel}>Requested By:</span>
-                      <span className={styles.detailValue}>
-                        <HighlightText text={app.requester_name || 'System'} highlight={searchQuery} />
-                      </span>
-                    </div>
-                    <div className={styles.detailRow}>
-                      <span className={styles.detailLabel}>Limit Exceeded:</span>
-                      <span className={styles.detailValue}>{formatCurrency(app.threshold_limit)}</span>
-                    </div>
-                    <div className={styles.detailRow}>
-                      <span className={styles.detailLabel}>Requested On:</span>
-                      <span className={styles.detailValue}>{new Date(app.created_at).toLocaleDateString()}</span>
+                      <div className={styles.detailRow}>
+                        <span className={styles.detailLabel}>Limit Exceeded</span>
+                        <span className={styles.detailValue}>{formatCurrency(app.threshold_limit)}</span>
+                      </div>
+                      <div className={styles.detailRow}>
+                        <span className={styles.detailLabel}>Requested On</span>
+                        <span className={styles.detailValue}>{new Date(app.created_at).toLocaleDateString()}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
                   {hasPermission(app) && (
                     <div className={styles.cardActions}>
-                        <button 
-                          onClick={() => { setSelectedApproval(app); setCommentsApprovalId(app.id); }}
-                          className={styles.secondaryBtn}
-                        >
-                          Comments & Activity
-                        </button>
-                        {(user?.role?.name === 'superadmin' || user?.role?.permissions?.includes('admin')) && (
-                          <button 
-                            onClick={() => setAssignApproval(app)}
-                            className={styles.secondaryBtn}
-                          >
-                            Assign
-                          </button>
-                        )}
+                      <div style={{ display: 'flex', width: '100%', gap: '12px' }}>
                         <button
                           onClick={() => handleApprove(app)}
                           disabled={submitting}
@@ -745,59 +733,63 @@ export default function FinancialApprovalsPage() {
                         >
                           Reject
                         </button>
-                      <div style={{ display: 'flex', gap: '12px' }}>
-                        <button
-                          onClick={() => { setCommentsApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }}
-                          className={styles.primaryBtn}
-                          style={{ marginLeft: 'auto', background: 'var(--surface-sunken)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', position: 'relative' }}
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', width: '100%', flexWrap: 'wrap' }}>
+                        <button 
+                          onClick={() => { setSelectedApproval(app); setCommentsApprovalId(app.id); }}
+                          className={styles.secondaryBtn}
                         >
-                          💬 Discussion <UnreadBadge approvalId={app.id} refreshCounter={commentsRefreshSeq} />
+                          💬 Notes <UnreadBadge approvalId={app.id} refreshCounter={commentsRefreshSeq} />
                         </button>
                         <button
                           onClick={() => {
                             setAttachmentApprovalId(app.id);
                             api.post(`/financial-approvals/${app.id}/view`);
                           }}
-                          className={styles.primaryBtn}
-                          style={{ background: 'var(--surface-sunken)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
+                          className={styles.secondaryBtn}
                         >
-                          📎 Attachments
+                          📎 Files
                         </button>
                         <button
                           onClick={() => { setActivityApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }}
-                          className={styles.primaryBtn}
-                          style={{ background: 'var(--surface-sunken)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
+                          className={styles.secondaryBtn}
                         >
-                          📋 Activity Log
+                          📋 Logs
                         </button>
+                        {(user?.role?.name === 'superadmin' || user?.role?.permissions?.includes('admin')) && (
+                          <button 
+                            onClick={() => setAssignApproval(app)}
+                            className={styles.secondaryBtn}
+                            style={{ marginLeft: 'auto' }}
+                          >
+                            👤 Assign
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}
                   {!hasPermission(app) && (
-                    <div className={styles.cardActions} style={{ justifyContent: 'flex-end' }}>
+                    <div className={styles.cardActions} style={{ justifyContent: 'flex-start' }}>
                         <button
                           onClick={() => { setCommentsApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }}
-                          className={styles.primaryBtn}
-                          style={{ background: 'var(--surface-sunken)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', position: 'relative' }}
+                          className={styles.secondaryBtn}
                         >
-                          💬 Discussion <UnreadBadge approvalId={app.id} refreshCounter={commentsRefreshSeq} />
+                          💬 Notes <UnreadBadge approvalId={app.id} refreshCounter={commentsRefreshSeq} />
                         </button>
                         <button
                           onClick={() => {
                             setAttachmentApprovalId(app.id);
                             api.post(`/financial-approvals/${app.id}/view`);
                           }}
-                          className={styles.primaryBtn}
-                          style={{ marginLeft: '8px', background: 'var(--surface-sunken)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
+                          className={styles.secondaryBtn}
                         >
-                          📎 Attachments
+                          📎 Files
                         </button>
                         <button
                           onClick={() => { setActivityApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }}
-                          className={styles.primaryBtn}
-                          style={{ marginLeft: '8px', background: 'var(--surface-sunken)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
+                          className={styles.secondaryBtn}
                         >
-                          📋 Activity Log
+                          📋 Logs
                         </button>
                     </div>
                   )}
@@ -885,18 +877,20 @@ export default function FinancialApprovalsPage() {
                         )}
                       </td>
                     <td className={styles.td}>
-                       <button onClick={() => { setCommentsApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }} style={{ padding: '4px 8px', cursor: 'pointer', background: 'transparent', border: '1px solid #ccc', borderRadius: '4px', position: 'relative' }}>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                       <button onClick={() => { setCommentsApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }} className={styles.secondaryBtn} style={{ position: 'relative', padding: '6px' }}>
                          💬 <UnreadBadge approvalId={app.id} refreshCounter={commentsRefreshSeq} />
                        </button>
                        <button onClick={() => {
                             setAttachmentApprovalId(app.id);
                             api.post(`/financial-approvals/${app.id}/view`);
-                          }} style={{ marginLeft: '8px', padding: '4px 8px', cursor: 'pointer', background: 'transparent', border: '1px solid #ccc', borderRadius: '4px' }}>
+                          }} className={styles.secondaryBtn} style={{ padding: '6px' }}>
                          📎
                        </button>
-                       <button onClick={() => { setActivityApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }} style={{ marginLeft: '8px', padding: '4px 8px', cursor: 'pointer', background: 'transparent', border: '1px solid #ccc', borderRadius: '4px' }}>
+                       <button onClick={() => { setActivityApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }} className={styles.secondaryBtn} style={{ padding: '6px' }}>
                          📋
                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -47,7 +47,7 @@ function validateOutput(output) {
   let parsed;
   try {
     parsed = typeof output === 'string' ? JSON.parse(output) : output;
-  } catch (e) {
+  } catch (error) {
     throw new Error('AI Output Validation Failed: Invalid JSON');
   }
 

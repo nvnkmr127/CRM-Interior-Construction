@@ -1,5 +1,5 @@
+const logger = require('../../utils/logger');
 const pool = require('../../config/db');
-
 /**
  * V4 Zero Trust: Automated Threat Engine
  * Analyzes real-time audit logs to detect insider threats or compromised accounts.
@@ -28,7 +28,7 @@ async function analyzeThreat(tenantId, userId, action) {
       await triggerAutomatedRemediation(tenantId, userId, count);
     }
   } catch (error) {
-    console.error('[Threat Engine] Failed to analyze threat:', error);
+    logger.error('[Threat Engine] Failed to analyze threat:', error);
   }
 }
 
@@ -64,7 +64,7 @@ async function triggerAutomatedRemediation(tenantId, userId, count) {
 
     console.warn(`[THREAT ENGINE] Automated Remediation Complete for User ${userId}. All sessions revoked.`);
   } catch (error) {
-    console.error('[Threat Engine] Failed to execute remediation:', error);
+    logger.error('[Threat Engine] Failed to execute remediation:', error);
   }
 }
 

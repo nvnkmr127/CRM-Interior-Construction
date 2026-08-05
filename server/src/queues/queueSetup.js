@@ -20,8 +20,8 @@ const createQueue = (name) => {
   }
   try {
     return new Queue(name, { connection });
-  } catch (e) {
-    console.warn(`[QueueSetup] Defaulting queue ${name} to mock mode:`, e.message);
+  } catch (error) {
+    console.warn(`[QueueSetup] Defaulting queue ${name} to mock mode:`, error.message);
     return mockQueue(name);
   }
 };
@@ -41,8 +41,8 @@ if (useRedis) {
     cronQueue.add('payment_reminder', {}, { repeat: { every: 12 * 60 * 60 * 1000 } }).catch(() => {});
     cronQueue.add('weekly_progress_report', {}, { repeat: { pattern: '0 17 * * 5' } }).catch(() => {});
     cronQueue.add('temp_permission_check', {}, { repeat: { every: 60 * 60 * 1000 } }).catch(() => {});
-  } catch (e) {
-    console.warn('[QueueSetup] Skipping background cron registration:', e.message);
+  } catch (error) {
+    console.warn('[QueueSetup] Skipping background cron registration:', error.message);
   }
 }
 

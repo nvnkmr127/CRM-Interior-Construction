@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const { z } = require('zod');
 const { success, fail, paginate } = require('../utils/response');
@@ -9,7 +10,6 @@ const { createTask } = require('../services/tasks/createTask');
 const { updateTask } = require('../services/tasks/updateTask');
 const multer = require('multer');
 const path = require('path');
-
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, 'uploads/attachments/');
@@ -91,8 +91,8 @@ router.get('/', async (req, res, next) => {
     });
 
     return paginate(res, result.data, result.total, result.page, result.limit);
-  } catch (err) {
-    console.error('[Global Tasks Router] List error:', err);
+  } catch (error) {
+    logger.error('[Global Tasks Router] List error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch global tasks.', 500);
   }
 });
@@ -119,9 +119,9 @@ router.post('/', validate(createTaskSchema), async (req, res, next) => {
 
     const task = await createTask({ tenantId: req.tenantId, userId: req.user.userId, data });
     return success(res, task, {}, 201);
-  } catch (err) {
-    if (err.status === 400) return fail(res, 'BAD_REQUEST', err.details || err.message, 400);
-    console.error('[Global Tasks Router] Create error:', err);
+  } catch (error) {
+    if (error.status === 400) return fail(res, 'BAD_REQUEST', error.details || error.message, 400);
+    logger.error('[Global Tasks Router] Create error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create task.', 500);
   }
 });
@@ -132,8 +132,8 @@ router.get('/:tid', async (req, res, next) => {
     const task = await taskRepository.findTaskById(req.tenantId, req.params.tid, true);
     if (!task) return fail(res, 'NOT_FOUND', 'Task not found', 404);
     return success(res, task);
-  } catch (err) {
-    console.error('[Global Tasks Router] Get ID error:', err);
+  } catch (error) {
+    logger.error('[Global Tasks Router] Get ID error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to retrieve task.', 500);
   }
 });
@@ -163,10 +163,10 @@ router.patch('/:tid', validate(updateTaskSchema), async (req, res, next) => {
       data: mappedData
     });
     return success(res, task);
-  } catch (err) {
-    if (err.status === 400) return fail(res, 'BAD_REQUEST', err.details || err.message, 400);
-    if (err.status === 404 || err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Task not found', 404);
-    console.error('[Global Tasks Router] Update error:', err);
+  } catch (error) {
+    if (error.status === 400) return fail(res, 'BAD_REQUEST', error.details || error.message, 400);
+    if (error.status === 404 || error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Task not found', 404);
+    logger.error('[Global Tasks Router] Update error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update task.', 500);
   }
 });
@@ -180,9 +180,9 @@ router.delete('/:tid', async (req, res, next) => {
       await taskRepository.softDeleteTask(req.tenantId, req.params.tid);
     }
     return res.status(204).send();
-  } catch (err) {
-    if (err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Task not found', 404);
-    console.error('[Global Tasks Router] Delete error:', err);
+  } catch (error) {
+    if (error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Task not found', 404);
+    logger.error('[Global Tasks Router] Delete error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete task.', 500);
   }
 });
@@ -198,8 +198,8 @@ router.get('/:tid/comments', async (req, res, next) => {
       ORDER BY c.created_at ASC
     `, [req.params.tid]);
     return success(res, rows);
-  } catch (err) {
-    console.error('[Global Tasks Router] List comments error:', err);
+  } catch (error) {
+    logger.error('[Global Tasks Router] List comments error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch comments.', 500);
   }
 });
@@ -221,8 +221,8 @@ router.post('/:tid/comments', validate(commentSchema), async (req, res, next) =>
     comment.user_name = req.user.name;
 
     return success(res, comment, {}, 201);
-  } catch (err) {
-    console.error('[Global Tasks Router] Create comment error:', err);
+  } catch (error) {
+    logger.error('[Global Tasks Router] Create comment error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create comment.', 500);
   }
 });
@@ -247,8 +247,8 @@ router.get('/:tid/attachments', async (req, res, next) => {
       created_at: r.created_at
     }));
     return success(res, formatted);
-  } catch (err) {
-    console.error('[Global Tasks Router] List attachments error:', err);
+  } catch (error) {
+    logger.error('[Global Tasks Router] List attachments error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch attachments.', 500);
   }
 });
@@ -286,8 +286,8 @@ router.post('/:tid/attachments', upload.array('files'), async (req, res, next) =
     }
     
     return success(res, uploadedAttachments, {}, 201);
-  } catch (err) {
-    console.error('[Global Tasks Router] Upload attachments error:', err);
+  } catch (error) {
+    logger.error('[Global Tasks Router] Upload attachments error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to upload attachments.', 500);
   }
 });
@@ -334,9 +334,9 @@ router.patch('/:tid/attachments/:attachmentId', upload.single('file'), async (re
       version: r.version,
       created_at: r.created_at
     });
-  } catch (err) {
+  } catch (error) {
     await client.query('ROLLBACK');
-    console.error('[Global Tasks Router] Replace attachment error:', err);
+    logger.error('[Global Tasks Router] Replace attachment error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to replace attachment.', 500);
   } finally {
     client.release();
@@ -356,8 +356,8 @@ router.delete('/:tid/attachments/:attachmentId', async (req, res, next) => {
     }
     
     return success(res, { message: 'Attachment deleted successfully' });
-  } catch (err) {
-    console.error('[Global Tasks Router] Delete attachment error:', err);
+  } catch (error) {
+    logger.error('[Global Tasks Router] Delete attachment error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete attachment.', 500);
   }
 });

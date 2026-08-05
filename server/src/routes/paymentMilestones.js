@@ -65,9 +65,9 @@ router.post('/', authorize('payments:create'), validate(createSchema), async (re
       data: mappedData
     });
     return success(res, milestone, {}, 201);
-  } catch (err) {
+  } catch (error) {
     
-    next(err);
+    next(error);
   }
 });
 
@@ -95,12 +95,12 @@ router.patch('/:id', authorize('payments:edit'), validate(updateSchema), async (
     });
     
     return success(res, milestone);
-  } catch (err) {
+  } catch (error) {
     
-    if (err.message === 'NOT_FOUND') {
+    if (error.message === 'NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Payment milestone not found', 404);
     }
-    next(err);
+    next(error);
   }
 });
 

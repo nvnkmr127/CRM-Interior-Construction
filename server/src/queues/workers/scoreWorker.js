@@ -3,6 +3,7 @@ const { connection } = require('../queueSetup');
 const pool = require('../../db/pool');
 const { calculateAIScore } = require('../../services/leads/scoreLeadService');
 const leadRepository = require('../../repositories/leadRepository');
+const logger = require('../../utils/logger');
 
 const scoreWorker = new Worker('Score_Queue', async job => {
   if (job.name === 'decay_scores') {
@@ -53,15 +54,15 @@ const scoreWorker = new Worker('Score_Queue', async job => {
       } finally {
         client.release();
       }
-    } catch (err) {
-      console.error('[Score Worker] Error recalculating scores:', err);
-      throw err;
+    } catch (error) {
+      logger.error('[Score Worker] Error recalculating scores:', error);
+      throw error;
     }
   }
 }, { connection });
 
-scoreWorker.on('failed', (job, err) => {
-  console.error(`[Score Worker] Job ${job.id} failed:`, err);
+scoreWorker.on('failed', (job, error) => {
+  logger.error(`[Score Worker] Job ${job.id} failed:`, error);
 });
 
 module.exports = scoreWorker;

@@ -40,9 +40,9 @@ router.patch('/items/:itemId', authorize('handover:authorize'), validate(updateI
       hasBrandRegistrationCard: data.has_brand_registration_card
     });
     return success(res, item);
-  } catch (err) {
+  } catch (error) {
     
-    next(err);
+    next(error);
   }
 });
 
@@ -72,8 +72,8 @@ router.post('/checklists/:id/authorize', authorize('handover:authorize'), async 
     );
 
     return success(res, rows[0], { message: 'Handover internally authorized successfully.' });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -86,14 +86,14 @@ router.post('/checklists/:id/sign-off', authorize('handover:authorize'), async (
       clientPortalUserId: req.user.userId
     });
     return success(res, checklist);
-  } catch (err) {
-    if (err.message === 'ITEMS_INCOMPLETE') {
+  } catch (error) {
+    if (error.message === 'ITEMS_INCOMPLETE') {
       return fail(res, 'BAD_REQUEST', 'All items must be checked before sign-off', 400);
     }
-    if (err.message === 'INTERNAL_AUTHORIZATION_PENDING') {
+    if (error.message === 'INTERNAL_AUTHORIZATION_PENDING') {
       return fail(res, 'BAD_REQUEST', 'Internal Authorization Pending: Operations head or senior PM must authorize the handover before client sign-off.', 400);
     }
-    next(err);
+    next(error);
   }
 });
 

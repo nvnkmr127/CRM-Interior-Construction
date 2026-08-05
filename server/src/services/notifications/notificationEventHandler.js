@@ -1,6 +1,6 @@
+const logger = require('../../utils/logger');
 const eventBus = require('../../utils/eventBus');
 const { notificationQueue } = require('../../queues/queueSetup');
-
 // Subscribe to Lead events
 eventBus.on('lead.stage_changed', async ({ _tenantId, userId, lead, _oldStage, newStage }) => {
   if (lead.assignee_id && lead.assignee_id !== userId) {
@@ -35,7 +35,7 @@ eventBus.on('project.schedule_shifted', async ({ pmId, clientEmail, clientName, 
         recipientId: pmId,
         message: alertMessage,
       });
-      console.log(`[NotificationHandler] Dispatched PM in-app alert for project ${projectName}`);
+      logger.info(`[NotificationHandler] Dispatched PM in-app alert for project ${projectName}`);
     }
 
     if (clientEmail) {
@@ -45,10 +45,10 @@ eventBus.on('project.schedule_shifted', async ({ pmId, clientEmail, clientName, 
         email: clientEmail,
         message: `Dear ${clientName}, we want to keep you informed about the progress of your project '${projectName}'. Due to recent timeline adjustments, the revised projected completion date is now ${formattedCompletion}. Thank you for your understanding.`,
       });
-      console.log(`[NotificationHandler] Dispatched client email alert to ${clientEmail} for project ${projectName}`);
+      logger.info(`[NotificationHandler] Dispatched client email alert to ${clientEmail} for project ${projectName}`);
     }
   } catch (error) {
-    console.error('[NotificationHandler] Error processing project.schedule_shifted:', error);
+    logger.error('[NotificationHandler] Error processing project.schedule_shifted:', error);
   }
 });
 
@@ -77,7 +77,7 @@ eventBus.on('task.escalated', async ({ _tenantId, task, targetUserId, targetLeve
       message: message,
     });
 
-    console.log(`[NotificationHandler] Dispatched Escalation Level ${targetLevel} to user ${targetUserId} for task ${task.id}`);
+    logger.info(`[NotificationHandler] Dispatched Escalation Level ${targetLevel} to user ${targetUserId} for task ${task.id}`);
 
     // If level 2 or 3, also notify the PM so they are aware
     if (targetLevel > 1 && pmId && pmId !== targetUserId) {
@@ -90,8 +90,8 @@ eventBus.on('task.escalated', async ({ _tenantId, task, targetUserId, targetLeve
     }
 
   } catch (error) {
-    console.error('[NotificationHandler] Error processing task.escalated:', error);
+    logger.error('[NotificationHandler] Error processing task.escalated:', error);
   }
 });
 
-console.log('[NotificationService] Subscribed to EventBus events');
+logger.info('[NotificationService] Subscribed to EventBus events');

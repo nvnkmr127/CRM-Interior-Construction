@@ -1,6 +1,6 @@
+const logger = require('../../utils/logger');
 const pool = require('../../config/db');
 const eventBus = require('../../utils/eventBus');
-
 // Helper: Calculate difference in calendar days
 function diffDays(d1, d2) {
   const oneDay = 24 * 60 * 60 * 1000;
@@ -24,7 +24,7 @@ function toIsoDateStr(d) {
 }
 
 async function recalculateSchedule({ tenantId, projectId, triggerType, triggerName }) {
-  console.log(`[ScheduleRecalculator] Running cascading schedule recalculation for project ${projectId}. Triggered by ${triggerType} (${triggerName})`);
+  logger.info(`[ScheduleRecalculator] Running cascading schedule recalculation for project ${projectId}. Triggered by ${triggerType} (${triggerName})`);
   
   const client = await pool.connect();
   try {
@@ -36,7 +36,7 @@ async function recalculateSchedule({ tenantId, projectId, triggerType, triggerNa
       [projectId, tenantId]
     );
     if (projRows.length === 0) {
-      console.log(`[ScheduleRecalculator] Project ${projectId} not found.`);
+      logger.info(`[ScheduleRecalculator] Project ${projectId} not found.`);
       await client.query('ROLLBACK');
       return;
     }
@@ -55,7 +55,7 @@ async function recalculateSchedule({ tenantId, projectId, triggerType, triggerNa
     );
 
     if (tasks.length === 0) {
-      console.log(`[ScheduleRecalculator] No tasks to reschedule for project ${projectId}.`);
+      logger.info(`[ScheduleRecalculator] No tasks to reschedule for project ${projectId}.`);
       await client.query('ROLLBACK');
       return;
     }
@@ -88,7 +88,7 @@ async function recalculateSchedule({ tenantId, projectId, triggerType, triggerNa
     for (const id of Object.keys(taskMap)) {
       const t = taskMap[id];
       if (t.status !== 'done' && t.dueDate < today) {
-        console.log(`[ScheduleRecalculator] Task '${t.title}' is late. Projecting its due_date to today.`);
+        logger.info(`[ScheduleRecalculator] Task '${t.title}' is late. Projecting its due_date to today.`);
         t.dueDate = new Date(today);
         t.durationDays = Math.max(1, diffDays(t.dueDate, t.startDate) + 1);
         t.shifted = true;
@@ -199,7 +199,7 @@ async function recalculateSchedule({ tenantId, projectId, triggerType, triggerNa
             [toIsoDateStr(maxDueDate), m.id, tenantId]
           );
           scheduleShifted = true;
-          console.log(`[ScheduleRecalculator] Milestone '${m.name}' due date recalculated to ${toIsoDateStr(maxDueDate)}`);
+          logger.info(`[ScheduleRecalculator] Milestone '${m.name}' due date recalculated to ${toIsoDateStr(maxDueDate)}`);
         }
       }
     }
@@ -235,7 +235,7 @@ async function recalculateSchedule({ tenantId, projectId, triggerType, triggerNa
             [toIsoDateStr(minStart), toIsoDateStr(maxEnd), ph.id, tenantId]
           );
           scheduleShifted = true;
-          console.log(`[ScheduleRecalculator] Phase '${ph.name}' timeline recalculated to ${toIsoDateStr(minStart)} -> ${toIsoDateStr(maxEnd)}`);
+          logger.info(`[ScheduleRecalculator] Phase '${ph.name}' timeline recalculated to ${toIsoDateStr(minStart)} -> ${toIsoDateStr(maxEnd)}`);
         }
       }
     }
@@ -265,7 +265,7 @@ async function recalculateSchedule({ tenantId, projectId, triggerType, triggerNa
 
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('[ScheduleRecalculator] Error running schedule recalculation:', error);
+    logger.error('[ScheduleRecalculator] Error running schedule recalculation:', error);
   } finally {
     client.release();
   }

@@ -1,10 +1,10 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const pool = require('../config/db');
 const { retryLog } = require('../services/webhooks/webhookDispatcher');
 const { success, fail, paginate } = require('../utils/response');
-
 const router = express.Router();
 
 router.use(authenticate);
@@ -62,7 +62,7 @@ router.get('/webhook-events', authorize('logs:read'), async (req, res) => {
     
     return paginate(res, result.rows, total, parseInt(page, 10), parseInt(limit, 10));
   } catch (error) {
-    console.error('Webhook logs error:', error);
+    logger.error('Webhook logs error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch logs', 500);
   }
 });
@@ -111,7 +111,7 @@ router.get('/inbound', authorize('logs:read'), async (req, res) => {
     
     return paginate(res, result.rows, total, parseInt(page, 10), parseInt(limit, 10));
   } catch (error) {
-    console.error('Inbound logs error:', error);
+    logger.error('Inbound logs error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch inbound logs', 500);
   }
 });
@@ -127,7 +127,7 @@ router.post('/webhook-events/:id/retry', authorize('config:manage'), async (req,
     if (error.message === 'NOT_FOUND' || error.message === 'WEBHOOK_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', error.message, 404);
     }
-    console.error('Webhook retry error:', error);
+    logger.error('Webhook retry error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to retry webhook', 500);
   }
 });

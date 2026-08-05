@@ -71,7 +71,7 @@ class S3StorageProvider extends StorageProvider {
       }
       const buffer = Buffer.concat(chunks);
       return this._checkMagic(buffer, expectedMime);
-    } catch (e) {
+    } catch (error) {
       // Mock failure for missing mock S3 bucket
       console.warn('[Storage] Mocking magic number check since S3 is not reachable');
       return true; // assume valid for local dev without internet
@@ -150,8 +150,8 @@ class LocalStorageProvider extends StorageProvider {
       if ((expectedMime === 'image/jpeg' || expectedMime === 'image/jpg') && !hex.startsWith('FFD8FF')) return false;
       if (expectedMime === 'image/png' && !hex.startsWith('89504E47')) return false;
       return true;
-    } catch (e) {
-      console.warn('Failed to read local file magic number:', e);
+    } catch (error) {
+      console.warn('Failed to read local file magic number:', error);
       return false;
     }
   }

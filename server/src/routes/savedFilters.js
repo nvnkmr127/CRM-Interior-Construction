@@ -22,8 +22,8 @@ router.get('/:module', authorize('users:manage'), async (req, res, next) => {
     `, [tenantId, userId, moduleName]);
     
     return success(res, rows);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -44,8 +44,8 @@ router.post('/', authorize('users:manage'), async (req, res, next) => {
     `, [tenantId, userId, module, name, JSON.stringify(filter_state)]);
 
     return success(res, rows[0]);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -65,8 +65,8 @@ router.delete('/:id', authorize('users:manage'), async (req, res, next) => {
     }
     
     return success(res, { message: 'Filter deleted' });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 

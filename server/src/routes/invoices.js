@@ -40,8 +40,8 @@ router.get('/milestone/:milestoneId', authorize('projects:read'), async (req, re
       return fail(res, 'NOT_FOUND', 'Invoice not found for this milestone', 404);
     }
     return success(res, invoice);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -75,8 +75,8 @@ router.get('/milestone/:milestoneId/download', authorize('invoices:print'), asyn
       const downloadUrl = await storage.getDownloadUrl(invoice.pdf_storage_key);
       return res.redirect(downloadUrl);
     }
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -85,14 +85,14 @@ router.get('/milestone/:milestoneId/draft', authorize('projects:read'), async (r
   try {
     const draft = await getInvoiceDraftDetails(req.tenantId, req.params.milestoneId);
     return success(res, draft);
-  } catch (err) {
-    if (err.message === 'MILESTONE_NOT_FOUND') {
+  } catch (error) {
+    if (error.message === 'MILESTONE_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Milestone not found', 404);
     }
-    if (err.message === 'PROJECT_NOT_FOUND') {
+    if (error.message === 'PROJECT_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Linked project not found', 404);
     }
-    next(err);
+    next(error);
   }
 });
 
@@ -109,18 +109,18 @@ router.post('/', authorize('invoices:create'), validate(createInvoiceSchema), as
     });
     
     return success(res, invoice, {}, 201);
-  } catch (err) {
+  } catch (error) {
     
-    if (err.message === 'INVOICE_ALREADY_EXISTS') {
+    if (error.message === 'INVOICE_ALREADY_EXISTS') {
       return fail(res, 'CONFLICT', 'An invoice has already been generated for this milestone.', 409);
     }
-    if (err.message === 'MILESTONE_NOT_FOUND') {
+    if (error.message === 'MILESTONE_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Milestone not found', 404);
     }
-    if (err.message === 'PROJECT_NOT_FOUND') {
+    if (error.message === 'PROJECT_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }
-    next(err);
+    next(error);
   }
 });
 
@@ -155,8 +155,8 @@ router.get('/:id/download', authorize('invoices:print'), async (req, res, next) 
       const downloadUrl = await storage.getDownloadUrl(invoice.pdf_storage_key);
       return res.redirect(downloadUrl);
     }
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 

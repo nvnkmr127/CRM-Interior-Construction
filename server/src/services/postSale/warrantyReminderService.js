@@ -1,9 +1,9 @@
+const logger = require('../../utils/logger');
 const pool = require('../../db/pool');
 const { notifyUser } = require('../notificationService');
 const { sendWhatsAppMessage } = require('../whatsappService');
 const { notificationQueue } = require('../../queues/queueSetup');
 const eventBus = require('../../utils/eventBus');
-
 /**
  * Checks approaching warranty expiries (at 90 and 30 days) and sends reminders with AMC offers.
  * Returns the count of reminders sent.
@@ -74,7 +74,7 @@ async function checkAndSendWarrantyExpiryReminders(projectId = null) {
         const checkRes = await pool.query(checkQuery, [w.id, reminderType]);
 
         if (checkRes.rowCount === 0) {
-          console.log(`[Warranty Expiry Alert] Sending "${reminderType}" alert for warranty "${w.product_name}" (${w.id})`);
+          logger.info(`[Warranty Expiry Alert] Sending "${reminderType}" alert for warranty "${w.product_name}" (${w.id})`);
 
           // A. Send Email to client
           if (w.client_email) {
@@ -90,8 +90,8 @@ async function checkAndSendWarrantyExpiryReminders(projectId = null) {
           if (w.client_phone) {
             try {
               await sendWhatsAppMessage(w.client_phone, waMessage);
-            } catch (err) {
-              console.error(`[Warranty Expiry Alert] Failed to send WhatsApp to ${w.client_phone}:`, err.message);
+            } catch (error) {
+              logger.error(`[Warranty Expiry Alert] Failed to send WhatsApp to ${w.client_phone}:`, error.message);
             }
           }
 
@@ -128,7 +128,7 @@ async function checkAndSendWarrantyExpiryReminders(projectId = null) {
       }
     }
   } catch (error) {
-    console.error('[Warranty Reminder Service] Error checking and sending warranty expiry reminders:', error);
+    logger.error('[Warranty Reminder Service] Error checking and sending warranty expiry reminders:', error);
   }
 
   return remindersSent;

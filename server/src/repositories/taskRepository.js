@@ -205,9 +205,9 @@ class TaskRepository {
       }
       await client.query('COMMIT');
       return true;
-    } catch (e) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw e;
+      throw error;
     } finally {
       client.release();
     }
@@ -234,9 +234,9 @@ class TaskRepository {
       }
       await client.query('COMMIT');
       return createdTasks;
-    } catch (e) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw e;
+      throw error;
     } finally {
       client.release();
     }
@@ -262,9 +262,9 @@ class TaskRepository {
 
       await client.query('COMMIT');
       return true;
-    } catch (e) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw e;
+      throw error;
     } finally {
       client.release();
     }

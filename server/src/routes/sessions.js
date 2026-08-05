@@ -23,8 +23,8 @@ router.get('/', authenticate, async (req, res, next) => {
     );
 
     return success(res, { sessions: result.rows });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -54,14 +54,14 @@ router.delete('/:sessionId', authenticate, async (req, res, next) => {
       SET logout_time = NOW(), 
           duration_seconds = EXTRACT(EPOCH FROM (NOW() - login_time))
       WHERE session_id = $1
-    `, [sessionId]).catch(err => console.warn('Failed to update login history on revoke', err));
+    `, [sessionId]).catch(error => console.warn('Failed to update login history on revoke', error));
 
     // Then delete session
     await pool.query(`DELETE FROM sessions WHERE id = $1`, [sessionId]);
 
     return success(res, { message: 'Session revoked successfully' });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -92,7 +92,7 @@ router.delete('/force-logout/:sessionId', authorize('users:force_logout'), async
           duration_seconds = EXTRACT(EPOCH FROM (NOW() - login_time)),
           status = 'forced_logout'
       WHERE session_id = $1
-    `, [sessionId]).catch(err => console.warn('Failed to update login history on force logout', err));
+    `, [sessionId]).catch(error => console.warn('Failed to update login history on force logout', error));
 
     // Then delete session
     await pool.query(`DELETE FROM sessions WHERE id = $1`, [sessionId]);
@@ -101,8 +101,8 @@ router.delete('/force-logout/:sessionId', authorize('users:force_logout'), async
     await logAction({ tenantId, userId: req.user.userId, action: 'user.force_logout', entity: 'session', entityId: sessionId });
 
     return success(res, { message: 'Session forcefully revoked' });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 

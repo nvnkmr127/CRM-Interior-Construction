@@ -1,6 +1,6 @@
+const logger = require('../../utils/logger');
 const leadRepository = require('../../repositories/leadRepository');
 const { success, fail, getQueryParams } = require('../../utils/v1Response');
-
 /**
  * @swagger
  * tags:
@@ -50,7 +50,7 @@ exports.listLeads = async (req, res) => {
     const result = await leadRepository.findLeads(tenantId, filters, page, limit, sortColumn, sortDirection);
     return success(res, result);
   } catch (error) {
-    console.error('List Leads Error:', error);
+    logger.error('List Leads Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -83,7 +83,7 @@ exports.getLead = async (req, res) => {
     if (!lead) return fail(res, 'Lead not found', [], 404);
     return success(res, lead);
   } catch (error) {
-    console.error('Get Lead Error:', error);
+    logger.error('Get Lead Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -120,7 +120,7 @@ exports.createLead = async (req, res) => {
     const lead = await leadRepository.createLead(tenantId, data);
     return success(res, lead, 201);
   } catch (error) {
-    console.error('Create Lead Error:', error);
+    logger.error('Create Lead Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -158,7 +158,7 @@ exports.updateLead = async (req, res) => {
     if (!lead) return fail(res, 'Lead not found', [], 404);
     return success(res, lead);
   } catch (error) {
-    console.error('Update Lead Error:', error);
+    logger.error('Update Lead Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -188,7 +188,7 @@ exports.deleteLead = async (req, res) => {
     await leadRepository.softDeleteLead(tenantId, id);
     return success(res, { deletedId: id });
   } catch (error) {
-    console.error('Delete Lead Error:', error);
+    logger.error('Delete Lead Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };

@@ -299,7 +299,7 @@ describe('Quotation Versioning and Comparison API', () => {
       executionMilestoneId = milestoneRes.rows[0].id;
     });
 
-    it('should block execution task creation when quotation is not accepted (e.g. in draft/sent status or none exists)', async () => {
+    it('should block execution task creation when quotation is not accepted (error.g. in draft/sent status or none exists)', async () => {
       // Create a task under the execution milestone.
       // Since quotationIdV2 is in 'draft' status (not accepted), this should be blocked.
       const res = await request(app)

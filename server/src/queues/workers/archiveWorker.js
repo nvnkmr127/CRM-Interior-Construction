@@ -1,6 +1,7 @@
 const { Worker } = require('bullmq');
 const { connection } = require('../queueSetup');
 const pool = require('../../db/pool');
+const logger = require('../../utils/logger');
 
 const archiveWorker = new Worker('Archive_Queue', async job => {
   const { tenantId, daysOld = 365 } = job.data;
@@ -32,7 +33,7 @@ const archiveWorker = new Worker('Archive_Queue', async job => {
     return { success: true, archivedCount: rows.length };
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error(`[ArchiveWorker] Archive failed:`, error.message);
+    logger.error(`[ArchiveWorker] Archive failed:`, error.message);
     throw error;
   } finally {
     client.release();

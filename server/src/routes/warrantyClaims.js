@@ -38,8 +38,8 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
     const tenantId = req.tenantId;
     const claims = await warrantyClaimService.getClaimsByProject(projectId, tenantId);
     return success(res, claims);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -63,9 +63,9 @@ router.post('/', authorize('support:manage'), validate(createClaimSchema), async
     });
 
     return success(res, claim, {}, 201);
-  } catch (err) {
+  } catch (error) {
     
-    next(err);
+    next(error);
   }
 });
 
@@ -91,12 +91,12 @@ router.put('/:id', authorize('support:manage'), validate(updateClaimSchema), asy
 
     const claim = await warrantyClaimService.updateClaim(id, tenantId, updateData, userId);
     return success(res, claim);
-  } catch (err) {
+  } catch (error) {
     
-    if (err.message === 'CLAIM_NOT_FOUND') {
+    if (error.message === 'CLAIM_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Warranty claim not found.', 404);
     }
-    next(err);
+    next(error);
   }
 });
 
@@ -109,11 +109,11 @@ router.delete('/:id', authorize('support:manage'), async (req, res, next) => {
 
     const claim = await warrantyClaimService.deleteClaim(id, tenantId, userId);
     return success(res, claim);
-  } catch (err) {
-    if (err.message === 'CLAIM_NOT_FOUND') {
+  } catch (error) {
+    if (error.message === 'CLAIM_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Warranty claim not found.', 404);
     }
-    next(err);
+    next(error);
   }
 });
 

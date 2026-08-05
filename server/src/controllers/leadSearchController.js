@@ -71,7 +71,7 @@ exports.searchLeadsHandler = async (req, res, next) => {
       }
       
       if (filters.noActivitySinceDays !== undefined) {
-        // e.g., leads with no activity in the last 7 days
+        // error.g., leads with no activity in the last 7 days
         query += ` AND l.updated_at <= (NOW() - ($${paramIndex++} || ' days')::interval)`;
         params.push(filters.noActivitySinceDays);
       }

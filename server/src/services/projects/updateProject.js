@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const projectRepository = require('../../repositories/projectRepository');
 const { logAction } = require('../auditLog');
 const { enqueueAutomation } = require('../../queues/automationQueue');
@@ -89,7 +90,7 @@ async function updateProject({ tenantId, userId, projectId, data }) {
         reason,
         nextRev
       ]);
-      console.log(`[UpdateProject] Logged schedule revision #${nextRev} for project ${projectId}. Reason: ${reason}`);
+      logger.info(`[UpdateProject] Logged schedule revision #${nextRev} for project ${projectId}. Reason: ${reason}`);
     }
 
     // 2. Execute update
@@ -328,8 +329,8 @@ async function updateProject({ tenantId, userId, projectId, data }) {
          VALUES ($1, $2, 'system', 'Project Updated', $3, $4, NOW())`,
         [projectId, tenantId, `Updated fields: ${updatedKeys.join(', ')}`, userId]
       );
-    } catch (err) {
-      console.error('Failed to insert project activity:', err);
+    } catch (error) {
+      logger.error('Failed to insert project activity:', error);
     }
   }
 

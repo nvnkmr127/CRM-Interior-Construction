@@ -3450,6 +3450,41 @@ export const setupMockInterceptor = (api) => {
               responseData.data = { success: true };
             }
           }
+          else if (url.includes('/dashboard/')) {
+            if (url.includes('/dashboard/stats')) {
+              responseData.data = {
+                activeLeads: { count: 22, prevWeekCount: 18, trend: 22 },
+                wonThisMonth: { value: 1500000, count: 5 },
+                activeProjects: { count: 8, overdueCount: 2 },
+                tasksDueToday: { count: 5, overdueCount: 1 },
+                targets: { targetRevenue: 5000000, targetLeads: 50 }
+              };
+            }
+            else if (url.includes('/dashboard/activity')) {
+              responseData.data = [
+                { id: 1, type: 'status_change', title: 'Lead converted', description: 'John Smith converted to Project', time: new Date().toISOString() },
+                { id: 2, type: 'note', title: 'Note added', description: 'Follow up required with Client X', time: new Date(Date.now() - 3600000).toISOString() }
+              ];
+            }
+            else if (url.includes('/dashboard/pipeline')) {
+              responseData.data = [
+                { stage: 'New', count: 10, value: 500000 },
+                { stage: 'Contacted', count: 8, value: 800000 },
+                { stage: 'Qualified', count: 4, value: 600000 },
+                { stage: 'Proposal', count: 2, value: 1000000 },
+                { stage: 'Won', count: 1, value: 300000 }
+              ];
+            }
+            else if (url.includes('/dashboard/payments-due')) {
+              responseData.data = [
+                { id: 1, name: 'Project A - Milestone 1', amount: 50000, dueDate: new Date().toISOString() },
+                { id: 2, name: 'Project B - Advance', amount: 20000, dueDate: new Date(Date.now() - 86400000).toISOString() }
+              ];
+            }
+          }
+          else if (url.includes('/tasks') && method === 'get') {
+            responseData.data = mockDatabase.tasks || [];
+          }
 
           // --- ROLES & PERMISSIONS MOCK DATA START ---
           

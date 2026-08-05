@@ -4,7 +4,7 @@ let webhookDispatcher;
 // We utilize a dynamic try/catch hook to ensure our automations module boots up safely even if the webhook framework isn't merged yet.
 try {
   webhookDispatcher = require('../../../webhooks/webhookDispatcher');
-} catch (e) {
+} catch (error) {
   webhookDispatcher = null;
 }
 

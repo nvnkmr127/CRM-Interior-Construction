@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
@@ -6,7 +7,6 @@ const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const taskDependencyRepository = require('../repositories/taskDependencyRepository');
 const pool = require('../config/db');
-
 const router = express.Router({ mergeParams: true });
 router.use(authenticate);
 
@@ -24,8 +24,8 @@ router.get('/', authorize('projects:read'), async (req, res) => {
       req.params.projectId
     );
     return success(res, dependencies);
-  } catch (err) {
-    console.error('[TaskDependencies Router] Fetch error:', err);
+  } catch (error) {
+    logger.error('[TaskDependencies Router] Fetch error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch task dependencies.', 500);
   }
 });
@@ -58,9 +58,9 @@ router.post('/', authorize('projects:manage'), validate(createDependencySchema),
     );
 
     return success(res, dependency, {}, 201);
-  } catch (err) {
+  } catch (error) {
     
-    console.error('[TaskDependencies Router] Create error:', err);
+    logger.error('[TaskDependencies Router] Create error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to create task dependency.', 500);
   }
 });
@@ -74,9 +74,9 @@ router.delete('/:id', authorize('projects:manage'), async (req, res) => {
       req.params.id
     );
     return res.status(204).send();
-  } catch (err) {
-    if (err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Dependency not found.', 404);
-    console.error('[TaskDependencies Router] Delete error:', err);
+  } catch (error) {
+    if (error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Dependency not found.', 404);
+    logger.error('[TaskDependencies Router] Delete error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete task dependency.', 500);
   }
 });
@@ -135,9 +135,9 @@ router.put('/bulk', authorize('projects:manage'), async (req, res) => {
 
     await client.query('COMMIT');
     return success(res, { message: 'Dependencies updated successfully' });
-  } catch (err) {
+  } catch (error) {
     await client.query('ROLLBACK');
-    console.error('[TaskDependencies Router] Bulk update error:', err);
+    logger.error('[TaskDependencies Router] Bulk update error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to bulk update task dependencies.', 500);
   } finally {
     client.release();

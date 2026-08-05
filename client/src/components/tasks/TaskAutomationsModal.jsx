@@ -1,10 +1,10 @@
 /* eslint-disable no-unused-vars */
 import React, { useState } from 'react'
 import { Modal, Button } from '../ui'
-import { useTaskAutomation } from '../../store/TaskAutomationContext'
+import { useTaskAutomationStore } from '../../store/useTaskAutomationStore'
 
 export default function TaskAutomationsModal({ isOpen, onClose }) {
-  const { rules, setRules, logs, clearLogs } = useTaskAutomation()
+  const { rules, setRules, logs, clearLogs } = useTaskAutomationStore()
   const [activeTab, setActiveTab] = useState('rules') // 'rules', 'logs'
   const [editingRule, setEditingRule] = useState(null)
 

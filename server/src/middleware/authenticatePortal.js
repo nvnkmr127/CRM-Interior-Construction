@@ -1,6 +1,6 @@
+const logger = require('../utils/logger');
 const crypto = require('crypto');
 const pool = require('../db/pool');
-
 async function authenticatePortal(req, res, next) {
   try {
     let portalToken;
@@ -46,8 +46,8 @@ async function authenticatePortal(req, res, next) {
 
     next();
   } catch (error) {
-    console.error('Portal Auth Error:', error);
-    res.status(500).json({ success: false, message: 'Internal server error during authentication' });
+    logger.error('Portal Auth Error:', error);
+    return next(error);
   }
 }
 

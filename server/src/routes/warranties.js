@@ -45,8 +45,8 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
     const tenantId = req.tenantId;
     const warranties = await warrantyService.getWarrantiesByProject(projectId, tenantId);
     return success(res, warranties);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -75,8 +75,8 @@ router.post('/', authorize('support:manage'), validate(createWarrantySchema), as
     });
 
     return success(res, warranty, {}, 201);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -105,11 +105,11 @@ router.put('/:id', authorize('support:manage'), validate(updateWarrantySchema), 
 
     const warranty = await warrantyService.updateWarranty(id, tenantId, updateData, userId);
     return success(res, warranty);
-  } catch (err) {
-    if (err.message === 'WARRANTY_NOT_FOUND') {
+  } catch (error) {
+    if (error.message === 'WARRANTY_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Warranty record not found.', 404);
     }
-    next(err);
+    next(error);
   }
 });
 
@@ -122,11 +122,11 @@ router.delete('/:id', authorize('support:manage'), async (req, res, next) => {
 
     const warranty = await warrantyService.deleteWarranty(id, tenantId, userId);
     return success(res, warranty);
-  } catch (err) {
-    if (err.message === 'WARRANTY_NOT_FOUND') {
+  } catch (error) {
+    if (error.message === 'WARRANTY_NOT_FOUND') {
       return fail(res, 'NOT_FOUND', 'Warranty record not found.', 404);
     }
-    next(err);
+    next(error);
   }
 });
 

@@ -19,7 +19,7 @@ async function getProjectBudgetValidation(approvalId, tenantId) {
     if (pm.length > 0) projectId = pm[0].project_id;
   }
   
-  // Fallback if no project is found (e.g., independent refunds)
+  // Fallback if no project is found (error.g., independent refunds)
   if (!projectId) {
     return {
       status: 'safe',

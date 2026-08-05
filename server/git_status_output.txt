@@ -1,0 +1,205 @@
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	modified:   ../client/src/App.jsx
+	modified:   ../client/src/api/mockInterceptor.js
+	modified:   ../client/src/components/tasks/TaskAutomationsModal.jsx
+	modified:   ../client/src/components/tasks/TaskDetail.jsx
+	modified:   ../client/src/components/tasks/TaskGovernanceModal.jsx
+	modified:   ../client/src/pages/dashboard/FinancialApprovalsPage.jsx
+	modified:   ../client/src/pages/dashboard/FinancialApprovalsPage.module.css
+	modified:   ../client/src/pages/settings/ProfilePage.jsx
+	modified:   ../client/src/pages/settings/ProfilePage.module.css
+	modified:   ../client/src/pages/tasks/MyTasksPage.jsx
+	new file:   ../client/src/store/useTaskAutomationStore.js
+	new file:   ../client/src/store/useTaskGovernanceStore.js
+	new file:   ../fix_logging.js
+	new file:   ../fix_phase1.js
+	modified:   package.json
+	modified:   src/__tests__/api/designRequirements.test.js
+	modified:   src/app.js
+	modified:   src/controllers/automationController.js
+	modified:   src/controllers/leadController.js
+	modified:   src/controllers/leaveController.js
+	modified:   src/controllers/managerController.js
+	modified:   src/controllers/portalController.js
+	modified:   src/controllers/projects/projectHealthController.js
+	modified:   src/controllers/publicFormController.js
+	modified:   src/controllers/searchController.js
+	modified:   src/controllers/v1/customersController.js
+	modified:   src/controllers/v1/leadsController.js
+	modified:   src/controllers/v1/paymentsController.js
+	modified:   src/controllers/v1/projectsController.js
+	modified:   src/controllers/v1/quotationsController.js
+	modified:   src/controllers/v1/tasksController.js
+	modified:   src/controllers/warehouseController.js
+	modified:   src/db/migrateRoles.js
+	modified:   src/db/migrateRoles2.js
+	modified:   src/db/pool.js
+	modified:   src/db/runMigration.js
+	modified:   src/db/seeds/addExtraUsers.js
+	modified:   src/db/seeds/demoData.js
+	modified:   src/db/seeds/reseed.js
+	modified:   src/db/tenantResolver.js
+	modified:   src/integrations/notificationService.js
+	modified:   src/jobs/delayEscalationJob.js
+	modified:   src/jobs/paymentReminderJob.js
+	modified:   src/jobs/reconcileEstimatesJob.js
+	modified:   src/jobs/taskEscalationJob.js
+	modified:   src/jobs/temporaryPermissionJob.js
+	modified:   src/jobs/weeklyProgressReportJob.js
+	modified:   src/middleware/abuseDetector.js
+	modified:   src/middleware/auditLogger.js
+	modified:   src/middleware/authenticate.js
+	modified:   src/middleware/authenticateApiKey.js
+	modified:   src/middleware/authenticatePortal.js
+	modified:   src/middleware/cache.js
+	modified:   src/middleware/enforceProjectAccess.js
+	modified:   src/middleware/errorHandler.js
+	new file:   src/middleware/httpLogger.js
+	modified:   src/middleware/verifyBooking.js
+	modified:   src/middlewares/apiAuth.js
+	modified:   src/middlewares/apiLogger.js
+	modified:   src/queues/automationQueue.js
+	modified:   src/queues/pdfWorker.js
+	modified:   src/queues/workers/aiWorker.js
+	modified:   src/queues/workers/archiveWorker.js
+	modified:   src/queues/workers/cronWorker.js
+	modified:   src/queues/workers/dataWarehouseWorker.js
+	modified:   src/queues/workers/notificationWorker.js
+	modified:   src/queues/workers/scoreWorker.js
+	modified:   src/repositories/leadRepository.js
+	modified:   src/repositories/workActivityRepository.js
+	modified:   src/routes/analytics.js
+	modified:   src/routes/approvalMatrix.js
+	modified:   src/routes/approvals.js
+	modified:   src/routes/auth.js
+	modified:   src/routes/budget.js
+	modified:   src/routes/changeOrders.js
+	modified:   src/routes/communications.js
+	modified:   src/routes/config/apiKeys.js
+	modified:   src/routes/config/webhooks.js
+	modified:   src/routes/dailySiteReports.js
+	modified:   src/routes/dashboard.js
+	modified:   src/routes/designAssets.js
+	modified:   src/routes/designReviews.js
+	modified:   src/routes/documents.js
+	modified:   src/routes/drawingRegister.js
+	modified:   src/routes/emailTemplates.js
+	modified:   src/routes/globalTasks.js
+	modified:   src/routes/labourAttendance.js
+	modified:   src/routes/logs.js
+	modified:   src/routes/materialPalettes.js
+	modified:   src/routes/materialUsages.js
+	modified:   src/routes/milestones.js
+	modified:   src/routes/paymentEscalations.js
+	modified:   src/routes/phases.js
+	modified:   src/routes/portal/designReviews.js
+	modified:   src/routes/projects.js
+	modified:   src/routes/roles.js
+	modified:   src/routes/roomProgress.js
+	modified:   src/routes/siteExpenses.js
+	modified:   src/routes/siteReadiness.js
+	modified:   src/routes/superadmin.js
+	modified:   src/routes/tags.js
+	modified:   src/routes/taskDependencies.js
+	modified:   src/routes/tasks.js
+	modified:   src/routes/users.js
+	modified:   src/routes/webhooks/inbound.js
+	modified:   src/routes/webhooks/leadIngest.js
+	modified:   src/routes/workActivities.js
+	modified:   src/services/activities/activityService.js
+	modified:   src/services/ai/aiEventHandler.js
+	modified:   src/services/ai/supervisorAgent.js
+	modified:   src/services/aiEmployeeService.js
+	modified:   src/services/aiService.js
+	modified:   src/services/auditLog.js
+	modified:   src/services/auth/login.js
+	modified:   src/services/automation/executeAction.js
+	modified:   src/services/automation/handlers/assignUser.js
+	modified:   src/services/automation/handlers/createProjectAction.js
+	modified:   src/services/automation/handlers/createTaskAction.js
+	modified:   src/services/automation/handlers/invokeAiAction.js
+	modified:   src/services/automation/handlers/sendCalendarInvite.js
+	modified:   src/services/automation/handlers/sendEmail.js
+	modified:   src/services/automation/handlers/sendWhatsapp.js
+	modified:   src/services/automation/ruleEvaluator.js
+	modified:   src/services/automation/slaTracker.js
+	modified:   src/services/automationEngine.js
+	modified:   src/services/cronService.js
+	modified:   src/services/documents/documentVersionService.js
+	modified:   src/services/emailService.js
+	modified:   src/services/estimatorService.js
+	modified:   src/services/eventBus.js
+	modified:   src/services/leadForms/submissionService.js
+	new file:   src/services/leads/communicationService.js
+	new file:   src/services/leads/contactService.js
+	new file:   src/services/leads/convertToProject.js
+	modified:   src/services/leads/createLead.js
+	new file:   src/services/leads/followupService.js
+	modified:   src/services/leads/pipelineIntelligenceService.js
+	modified:   src/services/leads/smartRoutingService.js
+	modified:   src/services/leads/updateLead.js
+	modified:   src/services/notificationService.js
+	modified:   src/services/notifications/notificationEventHandler.js
+	modified:   src/services/portal/portalAuthService.js
+	modified:   src/services/postSale/amcService.js
+	modified:   src/services/postSale/handoverService.js
+	modified:   src/services/postSale/serviceTicketService.js
+	modified:   src/services/postSale/snagService.js
+	modified:   src/services/postSale/warrantyClaimService.js
+	modified:   src/services/postSale/warrantyReminderService.js
+	modified:   src/services/projects/completePhase.js
+	modified:   src/services/projects/createProject.js
+	modified:   src/services/projects/dailySiteReportPdfService.js
+	modified:   src/services/projects/delayNotificationService.js
+	modified:   src/services/projects/documentReminderService.js
+	modified:   src/services/projects/materialDeliveryService.js
+	modified:   src/services/projects/paymentReminderService.js
+	modified:   src/services/projects/productionOrderService.js
+	modified:   src/services/projects/projectEventHandler.js
+	modified:   src/services/projects/projectHealthService.js
+	modified:   src/services/projects/purchaseOrderService.js
+	modified:   src/services/projects/replaceResourceService.js
+	modified:   src/services/projects/revisionTracker.js
+	modified:   src/services/projects/scheduleRecalculator.js
+	modified:   src/services/projects/updateProject.js
+	modified:   src/services/projects/weeklyReportService.js
+	modified:   src/services/security/threatEngine.js
+	modified:   src/services/slaService.js
+	modified:   src/services/tasks/autoLinkService.js
+	modified:   src/services/tasks/updateTask.js
+	modified:   src/services/templates/templateService.js
+	modified:   src/services/timeline/timelineWriter.js
+	modified:   src/services/webhooks/webhookDispatcher.js
+	modified:   src/services/whatsappService.js
+	modified:   src/services/workflowEngine.js
+	modified:   src/services/workflows/slaEngine.js
+	modified:   src/services/workflows/workflowEngine.js
+	modified:   src/utils/ApprovalChainBuilder.js
+	modified:   src/utils/activityLogger.js
+	modified:   src/utils/cache.js
+	modified:   src/utils/eventBus.js
+	modified:   src/utils/finance.js
+	new file:   src/utils/logger.js
+	modified:   src/utils/notifications.js
+	modified:   src/utils/secretValidator.js
+	new file:   ../test_syntax.js
+	new file:   ../update_contacts.js
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   src/routes/projects.js
+	modified:   src/server.js
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	../check_git.js
+	../draft_extractor.js
+	../extract_schemas.js
+	../restore.js
+	../shared/validators/
+

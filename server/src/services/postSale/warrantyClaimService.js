@@ -1,6 +1,6 @@
+const logger = require('../../utils/logger');
 const pool = require('../../db/pool');
 const { logAction } = require('../auditLog');
-
 /**
  * Creates a new warranty claim.
  */
@@ -79,8 +79,8 @@ async function createClaim({
           ]
         );
       }
-    } catch (err) {
-      console.error('[Warranty Claim Service] Failed to send repeat claim notifications:', err.message);
+    } catch (error) {
+      logger.error('[Warranty Claim Service] Failed to send repeat claim notifications:', error.message);
     }
   }
 

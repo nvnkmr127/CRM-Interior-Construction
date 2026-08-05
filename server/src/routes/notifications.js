@@ -112,7 +112,7 @@ router.get('/preferences', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM user_preferences WHERE user_id=$1 AND tenant_id=$2', [userId, tenantId]);
     return success(res, rows[0] || {});
-  } catch (err) {
+  } catch (error) {
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch preferences', 500);
   }
 });
@@ -133,7 +133,7 @@ router.patch('/preferences', async (req, res) => {
         updated_at=CURRENT_TIMESTAMP
     `, [userId, tenantId, email_sla_breaches ?? true, push_score_changes ?? true, dnd_start_time || '22:00', dnd_end_time || '08:00']);
     return success(res, { message: 'Preferences updated' });
-  } catch (err) {
+  } catch (error) {
     return fail(res, 'INTERNAL_ERROR', 'Failed to update preferences', 500);
   }
 });

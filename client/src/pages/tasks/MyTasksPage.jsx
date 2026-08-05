@@ -21,8 +21,9 @@ import TaskGovernanceModal from '../../components/tasks/TaskGovernanceModal'
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import { useToast } from '../../store/toastContext'
-import { useTaskAutomation } from '../../store/TaskAutomationContext'
-import { useGovernance } from '../../store/TaskGovernanceContext'
+import { useTaskAutomationStore } from '../../store/useTaskAutomationStore'
+import { useTaskGovernanceStore } from '../../store/useTaskGovernanceStore'
+import { useTaskNotifications } from '../../store/TaskNotificationContext'
 import { getGlobalTasks, updateTask, updateGlobalTask, getTags, getTaskViews, createTaskView, createGlobalTask } from '../../api/tasks'
 import { getProjects } from '../../api/projects'
 import api from '../../api/axios'
@@ -82,13 +83,14 @@ export default function MyTasksPage() {
       .then(res => setSystemRoles(res.data?.data || []))
       .catch(err => console.error("Failed to fetch roles", err))
   }, [])
+  const { addNotification } = useTaskNotifications()
+  const { role, setRole, isOffline } = useTaskGovernanceStore()
   const [isGovernanceOpen, setIsGovernanceOpen] = useState(false)
 
   const [savedViews, setSavedViews] = useState([])
   const [currentViewId, setCurrentViewId] = useState('default')
 
-  const { runAutomations } = useTaskAutomation()
-  const { role, setRole, isOffline } = useGovernance()
+  const { runAutomations } = useTaskAutomationStore()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
@@ -270,8 +272,10 @@ export default function MyTasksPage() {
       toast.success(newStatus === 'done' ? 'Task completed!' : `Task marked as ${STATUSES[newStatus]?.label || newStatus}`)
       
       const updated = { ...task, status: newStatus }
-      runAutomations('status_changed', updated, task)
-      runAutomations('task_updated', updated, task)
+      if (newStatus !== task.status) {
+        runAutomations('status_changed', updated, task, { toast, addNotification })
+      }
+      runAutomations('task_updated', updated, task, { toast, addNotification })
       
     } catch (err) {
       console.error('Failed to update task:', err)
@@ -305,7 +309,7 @@ export default function MyTasksPage() {
       } else {
         await updateGlobalTask(taskId, updates)
       }
-      runAutomations('task_updated', { ...task, ...updates }, task)
+      runAutomations('task_updated', { ...task, ...updates }, task, { toast, addNotification })
     } catch (err) {
       console.error('Failed to update task:', err)
       toast.error(err?.response?.data?.error?.message || 'Failed to update task')

@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
@@ -5,7 +6,6 @@ const authenticate = require('../middleware/authenticate');
 const validate = require('../middleware/validate');
 const authorize = require('../middleware/authorize');
 const siteReadinessRepository = require('../repositories/siteReadinessRepository');
-
 const router = express.Router({ mergeParams: true });
 router.use(authenticate);
 
@@ -20,8 +20,8 @@ router.get('/', authorize('projects:read'), async (req, res) => {
   try {
     const checklist = await siteReadinessRepository.findChecklist(req.tenantId, req.params.projectId);
     return success(res, checklist);
-  } catch (err) {
-    console.error('[SiteReadiness Router] Fetch error:', err);
+  } catch (error) {
+    logger.error('[SiteReadiness Router] Fetch error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch site readiness checklist.', 500);
   }
 });
@@ -37,10 +37,10 @@ router.patch('/:itemId', authorize('projects:manage'), validate(updateItemSchema
       req.user?.userId
     );
     return success(res, item);
-  } catch (err) {
+  } catch (error) {
     
-    if (err.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Checklist item not found.', 404);
-    console.error('[SiteReadiness Router] Update error:', err);
+    if (error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Checklist item not found.', 404);
+    logger.error('[SiteReadiness Router] Update error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update checklist item.', 500);
   }
 });
@@ -54,8 +54,8 @@ router.post('/sign-off', authorize('projects:manage'), async (req, res) => {
       req.user?.userId
     );
     return success(res, checklist);
-  } catch (err) {
-    console.error('[SiteReadiness Router] Sign off error:', err);
+  } catch (error) {
+    logger.error('[SiteReadiness Router] Sign off error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to sign off checklist.', 500);
   }
 });

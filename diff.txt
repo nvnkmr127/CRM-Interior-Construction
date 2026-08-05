@@ -1,0 +1,58 @@
+diff --git a/server/src/controllers/leadController.js b/server/src/controllers/leadController.js
+index 0cbfc34..04ecb7f 100644
+--- a/server/src/controllers/leadController.js
++++ b/server/src/controllers/leadController.js
+@@ -1,14 +1,15 @@
+ const pool = require('../db/pool');
+ const { success, fail, paginate } = require('../utils/response');
+ const { changeStage } = require('../services/leads/changeStage');
++const pool = require('../db/pool');
++const { success, fail, paginate } = require('../utils/response');
++const { changeStage } = require('../services/leads/changeStage');
+ const { logActivity, listActivities, updateActivity } = require('../services/activities/activityService');
+-
+-
+-
+-
+-function getTenantAndUser(req) {
+-  return {
+-    tenantId: req.tenantId || (req.user && req.user.tenantId),
++const { createLead } = require('../services/leads/createLead');
++const { findLeads } = require('../repositories/leadRepository');
++const { updateLead } = require('../services/leads/updateLead');
++const aiService = require('../services/aiService');
++const leadRepository = require('../repositories/leadRepository');
+     userId: req.userId || (req.user && req.user.id)
+   };
+ }
+@@ -944,7 +945,7 @@ exports.summarizeMeetingHandler = async function summarizeMeetingHandler(req, re
+   try {
+     const { tenantId, _userId } = getTenantAndUser(req);
+     const { id: leadId } = req.params;
+-    const { _transcript } = req.body;
++    const { estimator_reference_id, status, total_amount, pdf_url, payload } = req.body;
+ 
+     const leadRes = await pool.query('SELECT tenant_id FROM leads WHERE id = $1', [leadId]);
+     if (leadRes.rows.length === 0) return res.status(404).json({ success: false, error: { message: 'Lead not found' } });
+@@ -1741,9 +1742,9 @@ exports.updateProjectReadinessHandler = async (req, res, next) => {
+ 
+     const cf = leadRes.rows[0].custom_fields || {};
+     cf.project_readiness = {
+-      site_cleared: !!site_cleared,
+-      keys_handed_over: !!keys_handed_over,
+-      hoa_approval: !!hoa_approval,
++      site_cleared: Boolean(site_cleared),
++      keys_handed_over: Boolean(keys_handed_over),
++      hoa_approval: Boolean(hoa_approval),
+       score: ((site_cleared ? 33 : 0) + (keys_handed_over ? 33 : 0) + (hoa_approval ? 34 : 0))
+     };
+ 
+@@ -2315,7 +2316,7 @@ exports.syncEstimatesHandler = async function syncEstimatesHandler(req, res) {
+     const updatedEstimates = await estimatorService.reconcileEstimates(tenantId, leadId);
+ 
+     const eventBus = require('../utils/eventBus');
+-const logger = require('../utils/logger');
++
+     eventBus.emit('lead.estimates_synced', { tenantId, userId, leadId, source: 'manual', count: updatedEstimates.length });
+ 
+     res.json({ success: true, data: updatedEstimates });

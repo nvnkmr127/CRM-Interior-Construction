@@ -1,6 +1,6 @@
+const logger = require('../../../utils/logger');
 const axios = require('axios');
 const _configEnv = require('../../../config/env');
-
 /**
  * WhatsApp Action Handler
  * Integrates with third-party WhatsApp API.
@@ -13,11 +13,11 @@ async function handle(config, context) {
 
   const phone = record[recipientField] || record.phone;
   if (!phone) {
-    console.log(`[Automation Action] No phone number found to send WhatsApp template '${tName}'`);
+    logger.info(`[Automation Action] No phone number found to send WhatsApp template '${tName}'`);
     return;
   }
 
-  console.log(`[Automation Action] Sending WhatsApp to ${phone} using template '${tName}'`);
+  logger.info(`[Automation Action] Sending WhatsApp to ${phone} using template '${tName}'`);
 
   try {
     const waApiUrl = process.env.WHATSAPP_API_URL;
@@ -45,9 +45,9 @@ async function handle(config, context) {
       }
     });
     
-    console.log(`[Automation Action] WhatsApp successfully sent to ${phone}`);
-  } catch (err) {
-    console.error(`[Automation Action] Failed to send WhatsApp to ${phone}:`, err.message);
+    logger.info(`[Automation Action] WhatsApp successfully sent to ${phone}`);
+  } catch (error) {
+    logger.error(`[Automation Action] Failed to send WhatsApp to ${phone}:`, error.message);
   }
 }
 

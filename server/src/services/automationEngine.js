@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const pool = require('../db/pool');
 const { calculateLeadScore } = require('./leadScoringService');
 
@@ -76,7 +77,7 @@ async function _scheduleJob(leadId, triggerEvent, actionTaken, delayMs, payload 
   setTimeout(async () => {
     const startTime = Date.now();
     try {
-      console.log(`[Queue] Executing action for ${leadId}: ${actionTaken}`);
+      logger.info(`[Queue] Executing action for ${leadId}: ${actionTaken}`);
       
       // If action is creating a task, do it here
       if (payload.createTask) {
@@ -97,10 +98,10 @@ async function _scheduleJob(leadId, triggerEvent, actionTaken, delayMs, payload 
       const duration = Date.now() - startTime;
       await pool.query(`UPDATE automation_events SET status = 'success', duration_ms = $1 WHERE id = $2`, [duration, eventId]);
 
-    } catch (e) {
-      console.error('Job failed', e);
+    } catch (error) {
+      logger.error('Job failed', error);
       const duration = Date.now() - startTime;
-      await pool.query(`UPDATE automation_events SET status = 'failed', duration_ms = $1, error_message = $2 WHERE id = $3`, [duration, e.message, eventId]);
+      await pool.query(`UPDATE automation_events SET status = 'failed', duration_ms = $1, error_message = $2 WHERE id = $3`, [duration, error.message, eventId]);
     }
   }, delayMs);
 }
@@ -140,7 +141,7 @@ async function assignRep(lead) {
  */
 async function triggerAutomation(event, lead, payload = {}) {
   try {
-    // 1. Core synchronous business logic (e.g., Lead Scoring) that shouldn't be fully decoupled yet
+    // 1. Core synchronous business logic (error.g., Lead Scoring) that shouldn't be fully decoupled yet
     if (event === 'lead_created') {
       const scoreResult = calculateLeadScore(lead);
       await pool.query(`
@@ -158,8 +159,8 @@ async function triggerAutomation(event, lead, payload = {}) {
     const ruleEvaluator = require('./automation/ruleEvaluator');
     await ruleEvaluator.processEvent(lead.tenant_id, event, lead, payload.changes || {});
 
-  } catch (err) {
-    console.error(`[Automation Engine] Error executing ${event} for lead ${lead.id}:`, err);
+  } catch (error) {
+    logger.error(`[Automation Engine] Error executing ${event} for lead ${lead.id}:`, error);
   }
 }
 

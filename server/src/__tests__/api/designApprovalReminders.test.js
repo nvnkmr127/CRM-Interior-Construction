@@ -119,10 +119,10 @@ describe('Design/Document Approval Reminders', () => {
     expect(sentCount).toBe(3);
 
     // Filter EventBus events to our specific documents
-    const filteredEvents = reminderEvents.filter(e => [doc48h, doc72h, doc120h].includes(e.documentId));
+    const filteredEvents = reminderEvents.filter(e => [doc48h, doc72h, doc120h].includes(error.documentId));
     expect(filteredEvents.length).toBe(3);
 
-    const reminderTypes = filteredEvents.map(e => e.reminderType);
+    const reminderTypes = filteredEvents.map(e => error.reminderType);
     expect(reminderTypes).toContain('48_hours_reminder');
     expect(reminderTypes).toContain('72_hours_reminder');
     expect(reminderTypes).toContain('120_hours_reminder');

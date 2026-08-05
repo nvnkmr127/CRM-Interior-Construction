@@ -1,4 +1,23 @@
 const config = require('./config/env');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 const app = require('./app');
 const { startQueuePolling } = require('./queues/automationQueue');
 const { startPdfWorker } = require('./queues/pdfWorker');
@@ -26,7 +45,7 @@ const sql = readMig('006_financial_approval_attachments.sql') + ';' +
             readMig('010_approval_priority.sql') + ';' + 
             readMig('027_task_attachments.sql') + ';' +
             readMig('028_resource_allocations.sql');
-pool.query(sql).then(() => console.log('Migrations OK')).catch(e => console.log(e));
+pool.query(sql).then(() => console.log('Migrations OK')).catch(error => console.log(error));
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

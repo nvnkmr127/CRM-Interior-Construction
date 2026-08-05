@@ -1,7 +1,7 @@
+const logger = require('../utils/logger');
 const pool = require('../db/pool');
 const asyncLocalStorage = require('../utils/requestContext');
 const UAParser = require('ua-parser-js');
-
 /**
  * Logs an action to the audit_logs table.
  * Designed to be best-effort; it NEVER throws an error to the caller.
@@ -9,8 +9,8 @@ const UAParser = require('ua-parser-js');
  * @param {Object} params
  * @param {string} params.tenantId
  * @param {string} [params.userId]
- * @param {string} params.action - e.g. 'lead.created', 'task.status_changed'
- * @param {string} params.entity - e.g. 'lead', 'project', 'task'
+ * @param {string} params.action - error.g. 'lead.created', 'task.status_changed'
+ * @param {string} params.entity - error.g. 'lead', 'project', 'task'
  * @param {string} [params.entityId]
  * @param {Object} [params.oldValue]
  * @param {Object} [params.newValue]
@@ -67,7 +67,7 @@ async function logAction({ tenantId, userId, action, entity, entityId, oldValue,
     ]);
   } catch (error) {
     // Best-effort logging: NEVER throw, just record it server-side.
-    console.error('Audit Log Fire-and-Forget Error:', error);
+    logger.error('Audit Log Fire-and-Forget Error:', error);
   }
 }
 

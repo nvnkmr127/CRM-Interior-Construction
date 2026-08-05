@@ -1,6 +1,6 @@
+const logger = require('../utils/logger');
 const pool = require('../db/pool');
 const weeklyReportService = require('../services/projects/weeklyReportService');
-
 async function runWeeklyReports() {
   console.log('[weeklyProgressReportJob] Starting weekly report generation...');
   const client = await pool.connect();
@@ -18,12 +18,12 @@ async function runWeeklyReports() {
       try {
         await weeklyReportService.generateReport(project.tenant_id, project.id);
         console.log(`[weeklyProgressReportJob] Successfully generated report for project ${project.id}`);
-      } catch (err) {
-        console.error(`[weeklyProgressReportJob] Failed to generate report for project ${project.id}:`, err.message);
+      } catch (error) {
+        logger.error(`[weeklyProgressReportJob] Failed to generate report for project ${project.id}:`, error.message);
       }
     }
   } catch (error) {
-    console.error('[weeklyProgressReportJob] Error fetching active projects:', error);
+    logger.error('[weeklyProgressReportJob] Error fetching active projects:', error);
   } finally {
     client.release();
   }

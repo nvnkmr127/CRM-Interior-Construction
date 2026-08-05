@@ -1,7 +1,7 @@
+const logger = require('../../utils/logger');
 const pool = require('../../db/pool');
 const evaluateTrigger = require('./evaluateTrigger');
 const executeAction = require('./executeAction');
-
 /**
  * Processes an automation event by finding matching active rules and executing their actions.
  * @param {string} tenantId 
@@ -29,8 +29,8 @@ async function processEvent(tenantId, eventType, record, changes = {}) {
         triggerDef = JSON.parse(ruleRow.trigger);
         conditionsDef = JSON.parse(ruleRow.conditions || '[]');
         actionsDef = JSON.parse(ruleRow.actions || '[]');
-      } catch(e) {
-        console.error(`[RuleEvaluator] Failed to parse rule definition for rule ${ruleRow.id}`, e);
+      } catch (error) {
+        logger.error(`[RuleEvaluator] Failed to parse rule definition for rule ${ruleRow.id}`, error);
         continue;
       }
 
@@ -51,7 +51,7 @@ async function processEvent(tenantId, eventType, record, changes = {}) {
       const isMatch = evaluateTrigger(ruleDef, eventType, record, changes);
 
       if (isMatch) {
-        console.log(`[RuleEvaluator] Rule ${ruleRow.id} matched event ${eventType}`);
+        logger.info(`[RuleEvaluator] Rule ${ruleRow.id} matched event ${eventType}`);
         
         // Update last run stats
         await pool.query(`
@@ -76,7 +76,7 @@ async function processEvent(tenantId, eventType, record, changes = {}) {
       }
     }
   } catch (error) {
-    console.error(`[RuleEvaluator] Error processing event ${eventType}:`, error);
+    logger.error(`[RuleEvaluator] Error processing event ${eventType}:`, error);
   }
 }
 

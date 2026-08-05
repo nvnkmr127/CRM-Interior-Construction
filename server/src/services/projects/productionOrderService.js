@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const pool = require('../../db/pool');
 const AppError = require('../../utils/AppError');
 
@@ -77,8 +78,8 @@ class ProductionOrderService {
       try {
         const { checkAndTriggerCoordinationDelays } = require('./coordinationService');
         await checkAndTriggerCoordinationDelays(tenantId, projectId);
-      } catch (err) {
-        console.error('[ProductionOrderService] Coordination trigger error:', err);
+      } catch (error) {
+        logger.error('[ProductionOrderService] Coordination trigger error:', error);
       }
 
       // Return the complete production order with items
@@ -152,8 +153,8 @@ class ProductionOrderService {
     try {
       const { checkAndTriggerCoordinationDelays } = require('./coordinationService');
       await checkAndTriggerCoordinationDelays(tenantId, projectId);
-    } catch (err) {
-      console.error('[ProductionOrderService] Coordination trigger error:', err);
+    } catch (error) {
+      logger.error('[ProductionOrderService] Coordination trigger error:', error);
     }
 
     // Sync project timeline task status
@@ -173,8 +174,8 @@ class ProductionOrderService {
            WHERE project_id = $2 AND tenant_id = $3 AND (title ILIKE '%Factory Woodwork Production%' OR title ILIKE '%Factory Production%')`,
           [taskStatus, projectId, tenantId]
         );
-      } catch (err) {
-        console.error('[ProductionOrderService] Timeline task sync error:', err.message);
+      } catch (error) {
+        logger.error('[ProductionOrderService] Timeline task sync error:', error.message);
       }
     }
 
@@ -284,8 +285,8 @@ class ProductionOrderService {
            WHERE project_id = $2 AND tenant_id = $3 AND (title ILIKE '%Factory Woodwork Production%' OR title ILIKE '%Factory Production%')`,
           [taskStatus, projectId, tenantId]
         );
-      } catch (err) {
-        console.error('[ProductionOrderService] Timeline task sync error:', err.message);
+      } catch (error) {
+        logger.error('[ProductionOrderService] Timeline task sync error:', error.message);
       }
 
       await client.query('COMMIT');
@@ -720,8 +721,8 @@ class ProductionOrderService {
               }
             }
           }
-        } catch (err) {
-          console.error('[ProductionOrderService] Error sending dispatch notifications:', err.message);
+        } catch (error) {
+          logger.error('[ProductionOrderService] Error sending dispatch notifications:', error.message);
         }
       });
 
@@ -769,7 +770,6 @@ class ProductionOrderService {
         const { notifyUser } = require('../notificationService');
         const { sendWhatsAppMessage } = require('../whatsappService');
         const { notificationQueue } = require('../../queues/queueSetup');
-
         // Fetch Project and PM details
         const projQuery = `
           SELECT p.name, p.pm_id, u.name as pm_name, u.email as pm_email
@@ -838,8 +838,8 @@ class ProductionOrderService {
             }
           }
         }
-      } catch (err) {
-        console.error('[ProductionOrderService] Error sending delivery notifications:', err.message);
+      } catch (error) {
+        logger.error('[ProductionOrderService] Error sending delivery notifications:', error.message);
       }
     });
 
@@ -1084,9 +1084,9 @@ class ProductionOrderService {
 
       await client.query('COMMIT');
       return this.getCuttingListByItem(tenantId, itemId);
-    } catch (err) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw err;
+      throw error;
     } finally {
       client.release();
     }

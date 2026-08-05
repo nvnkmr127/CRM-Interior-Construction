@@ -4,17 +4,17 @@ const { logAction } = require('../auditLog');
 
 async function bulkCreateTasks({ tenantId, userId, projectId, tasks }) {
   if (!tasks || !Array.isArray(tasks) || tasks.length === 0) {
-    const err = new Error('No tasks provided for bulk creation.');
-    err.status = 400;
-    throw err;
+    const error = new Error('No tasks provided for bulk creation.');
+    error.status = 400;
+    throw error;
   }
 
   // 1. Validation Constraints
   if (tasks.length > 100) {
-    const err = new Error('PAYLOAD_TOO_LARGE');
-    err.status = 400;
-    err.details = 'Cannot bulk create more than 100 tasks at a time to prevent system abuse.';
-    throw err;
+    const error = new Error('PAYLOAD_TOO_LARGE');
+    error.status = 400;
+    error.details = 'Cannot bulk create more than 100 tasks at a time to prevent system abuse.';
+    throw error;
   }
 
   const milestoneIds = new Set();
@@ -22,10 +22,10 @@ async function bulkCreateTasks({ tenantId, userId, projectId, tasks }) {
   for (let i = 0; i < tasks.length; i++) {
     const t = tasks[i];
     if (!t.title || !t.title.trim()) {
-      const err = new Error('VALIDATION_ERROR');
-      err.status = 400;
-      err.details = `Task at index ${i} is missing a required title.`;
-      throw err;
+      const error = new Error('VALIDATION_ERROR');
+      error.status = 400;
+      error.details = `Task at index ${i} is missing a required title.`;
+      throw error;
     }
     
     // Smoothly map frontend camelCase to PostgreSQL snake_case payloads
@@ -47,10 +47,10 @@ async function bulkCreateTasks({ tenantId, userId, projectId, tasks }) {
     );
     
     if (rows.length !== milestoneIdsArray.length) {
-      const err = new Error('INVALID_MILESTONE');
-      err.status = 400;
-      err.details = 'One or more provided milestones are invalid or do not belong to the target project.';
-      throw err;
+      const error = new Error('INVALID_MILESTONE');
+      error.status = 400;
+      error.details = 'One or more provided milestones are invalid or do not belong to the target project.';
+      throw error;
     }
   }
 

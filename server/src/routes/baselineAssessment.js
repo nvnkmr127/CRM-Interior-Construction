@@ -31,8 +31,8 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
       req.params.projectId
     );
     return success(res, assessment);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -47,8 +47,8 @@ router.post('/', authorize('projects:manage'), validate(saveAssessmentSchema), a
       body
     );
     return success(res, assessment);
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 

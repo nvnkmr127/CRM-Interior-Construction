@@ -1,6 +1,6 @@
+const logger = require('../../utils/logger');
 const leadRepository = require('../../repositories/leadRepository');
 const { success, fail, getQueryParams } = require('../../utils/v1Response');
-
 /**
  * @swagger
  * tags:
@@ -20,7 +20,7 @@ exports.listCustomers = async (req, res) => {
     const result = await leadRepository.findLeads(tenantId, filters, page, limit, sortColumn, sortDirection);
     return success(res, result);
   } catch (error) {
-    console.error('List Customers Error:', error);
+    logger.error('List Customers Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -33,7 +33,7 @@ exports.getCustomer = async (req, res) => {
     if (!lead || lead.status !== 'won') return fail(res, 'Customer not found', [], 404);
     return success(res, lead);
   } catch (error) {
-    console.error('Get Customer Error:', error);
+    logger.error('Get Customer Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -47,7 +47,7 @@ exports.createCustomer = async (req, res) => {
     const lead = await leadRepository.createLead(tenantId, data);
     return success(res, lead, 201);
   } catch (error) {
-    console.error('Create Customer Error:', error);
+    logger.error('Create Customer Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -64,7 +64,7 @@ exports.updateCustomer = async (req, res) => {
     const updated = await leadRepository.updateLead(tenantId, id, data);
     return success(res, updated);
   } catch (error) {
-    console.error('Update Customer Error:', error);
+    logger.error('Update Customer Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };
@@ -79,7 +79,7 @@ exports.deleteCustomer = async (req, res) => {
     await leadRepository.softDeleteLead(tenantId, id);
     return success(res, { deletedId: id });
   } catch (error) {
-    console.error('Delete Customer Error:', error);
+    logger.error('Delete Customer Error:', error);
     return fail(res, 'Internal Server Error', [error.message], 500);
   }
 };

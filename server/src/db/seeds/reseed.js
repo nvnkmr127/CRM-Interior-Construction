@@ -1,6 +1,7 @@
 const pool = require('../pool');
 const { seedDefaultStages } = require('./defaultLeadStages');
 const { hashPassword } = require('../../services/auth/password');
+const logger = require('../../utils/logger');
 
 async function reseed() {
   try {
@@ -65,8 +66,8 @@ async function reseed() {
     }
     console.log('✓ Reseeded correctly');
     process.exit(0);
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    logger.error(error);
     process.exit(1);
   }
 }

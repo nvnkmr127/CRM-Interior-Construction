@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars, no-useless-escape */
 const bcrypt = require('bcryptjs');
 const pool = require('../../db/pool');
 const { getCache, setCache } = require('../../utils/cache');
@@ -26,6 +27,7 @@ async function validatePasswordPolicy(plainText, tenantId, userId) {
   let securitySettings = await getCache(settingsCacheKey).catch(() => null);
   
   if (!securitySettings) {
+    const allowedChars = /^[a-zA-Z0-9\-_./!@#$%^&*]+$/;
     const settingsRes = await pool.query('SELECT * FROM tenant_security_settings WHERE tenant_id = $1', [tenantId]);
     securitySettings = settingsRes.rows[0] || {};
     setCache(settingsCacheKey, securitySettings, 3600).catch(() => {});

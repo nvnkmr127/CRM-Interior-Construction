@@ -73,10 +73,10 @@ describe('Snag SLA Escalation Engine', () => {
     await slaEngine.checkSnagSLAs();
 
     const mySnags = [snag50, snag100, snag200, snag300, snagOk];
-    const myEvents = events.filter(e => mySnags.includes(e.snag.id));
+    const myEvents = events.filter(e => mySnags.includes(error.snag.id));
 
     expect(myEvents.length).toBe(4);
-    const levels = myEvents.map(e => e.level);
+    const levels = myEvents.map(e => error.level);
     expect(levels).toContain('snag_sla_50');
     expect(levels).toContain('snag_sla_100');
     expect(levels).toContain('snag_sla_200');
@@ -85,7 +85,7 @@ describe('Snag SLA Escalation Engine', () => {
     // Run again, deduplication should prevent duplicates
     const _preCount = events.length;
     await slaEngine.checkSnagSLAs();
-    const myEventsAfter = events.filter(e => mySnags.includes(e.snag.id));
+    const myEventsAfter = events.filter(e => mySnags.includes(error.snag.id));
     expect(myEventsAfter.length).toBe(4);
   });
 });

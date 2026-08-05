@@ -188,8 +188,8 @@ exports.getSalesCycleAnalytics = async (req, res, next) => {
       { stage: 'Negotiation', days: 7.8 }
     ];
     res.json({ success: true, data });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -201,8 +201,8 @@ exports.getSalesProductivity = async (req, res, next) => {
       { rep: 'Charlie', calls: 58, emails: 140, meetings: 15 }
     ];
     res.json({ success: true, data });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -220,8 +220,8 @@ exports.getSLADashboard = async (req, res, next) => {
       }
     };
     res.json({ success: true, data });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -233,8 +233,8 @@ exports.getCustomerAnalytics = async (req, res, next) => {
       { name: 'SMB', value: 300 }
     ];
     res.json({ success: true, data });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -247,8 +247,8 @@ exports.getGeographicAnalytics = async (req, res, next) => {
       { region: 'West', leads: 110, value: 27800, growth: '+12%' }
     ];
     res.json({ success: true, data });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -261,8 +261,8 @@ exports.getMarketingAnalytics = async (req, res, next) => {
       { campaign: 'Social Media', leads: 10 }
     ];
     res.json({ success: true, data });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -274,8 +274,8 @@ exports.getAIRevenueInsights = async (req, res, next) => {
       { type: 'neutral', title: 'Recommendation', desc: 'Consider increasing ad spend in the South region due to high conversion rates.' }
     ];
     res.json({ success: true, data });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -290,8 +290,8 @@ exports.getAIPredictions = async (req, res, next) => {
       { month: 'Jun', predicted: 2390 }
     ];
     res.json({ success: true, data });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -1721,7 +1721,7 @@ exports.getMaterialAnalytics = async (req, res, next) => {
   try {
     // Return mock data due to environment DB connectivity issues (ENOTFOUND)
     const kpis = {
-      materialUsage: 1250, // units (e.g., tons)
+      materialUsage: 1250, // units (error.g., tons)
       materialWaste: 5.2, // %
       returns: 12, // count
       consumptionTrend: 3.5, // % increase

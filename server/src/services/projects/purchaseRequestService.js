@@ -95,9 +95,9 @@ class PurchaseRequestService {
       const finalPr = updateRes.rows[0];
       finalPr.items = await this.getPRItems(client, tenantId, pr.id);
       return finalPr;
-    } catch (err) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw err;
+      throw error;
     } finally {
       client.release();
     }
@@ -232,9 +232,9 @@ class PurchaseRequestService {
       
       updatedPr.items = await this.getPRItems(pool, tenantId, prId);
       return updatedPr;
-    } catch (err) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw err;
+      throw error;
     } finally {
       client.release();
     }
@@ -336,9 +336,9 @@ class PurchaseRequestService {
 
       await client.query('COMMIT');
       return updatePoAmountRes.rows[0];
-    } catch (err) {
+    } catch (error) {
       await client.query('ROLLBACK');
-      throw err;
+      throw error;
     } finally {
       client.release();
     }

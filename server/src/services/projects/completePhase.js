@@ -1,3 +1,4 @@
+const logger = require('../../utils/logger');
 const pool = require('../../config/db');
 const phaseRepository = require('../../repositories/phaseRepository');
 const milestoneRepository = require('../../repositories/milestoneRepository');
@@ -100,7 +101,7 @@ async function completePhase({ tenantId, userId, phaseId }) {
   dispatchEvent(tenantId, 'project.phase_completed', { 
     phase: updatedPhase, 
     project 
-  }).catch(e => console.error('[Webhook Dispatch Error] phase_completed:', e));
+  }).catch(error => logger.error('[Webhook Dispatch Error] phase_completed:', error));
 
   // 7. Return completed phase object
   return updatedPhase;

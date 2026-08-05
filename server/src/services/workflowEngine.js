@@ -1,5 +1,5 @@
+const logger = require('../utils/logger');
 const pool = require('../db/pool');
-
 /**
  * AI Workflow Engine (Foundations)
  * A basic rule engine that evaluates conditions and executes actions.
@@ -19,7 +19,7 @@ class WorkflowEngine {
         }
       }
     } catch (error) {
-      console.error('[Workflow Engine] Error evaluating event:', error);
+      logger.error('[Workflow Engine] Error evaluating event:', error);
     }
   }
 
@@ -50,7 +50,7 @@ class WorkflowEngine {
 
   async _executeActions(actions, _payload) {
     for (const action of actions) {
-      console.log(`[Workflow Engine] Executing Action: ${action.type} ->`, action.payload);
+      logger.info(`[Workflow Engine] Executing Action: ${action.type} ->`, action.payload);
       // In V3/V4, this will plug into email sending, slack notifying, auto-assigning, etc.
     }
   }
