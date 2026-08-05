@@ -120,18 +120,19 @@ router.get('/preferences', async (req, res) => {
 router.patch('/preferences', async (req, res) => {
   const tenantId = req.tenantId;
   const userId = req.user.id;
-  const { email_sla_breaches, push_score_changes, dnd_start_time, dnd_end_time } = req.body;
+  const { email_sla_breaches, push_score_changes, email_daily_digest, dnd_start_time, dnd_end_time } = req.body;
   try {
     await pool.query(`
-      INSERT INTO user_preferences (user_id, tenant_id, email_sla_breaches, push_score_changes, dnd_start_time, dnd_end_time)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO user_preferences (user_id, tenant_id, email_sla_breaches, push_score_changes, email_daily_digest, dnd_start_time, dnd_end_time)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       ON CONFLICT(user_id) DO UPDATE SET
         email_sla_breaches=EXCLUDED.email_sla_breaches,
         push_score_changes=EXCLUDED.push_score_changes,
+        email_daily_digest=EXCLUDED.email_daily_digest,
         dnd_start_time=EXCLUDED.dnd_start_time,
         dnd_end_time=EXCLUDED.dnd_end_time,
         updated_at=CURRENT_TIMESTAMP
-    `, [userId, tenantId, email_sla_breaches ?? true, push_score_changes ?? true, dnd_start_time || '22:00', dnd_end_time || '08:00']);
+    `, [userId, tenantId, email_sla_breaches ?? true, push_score_changes ?? true, email_daily_digest ?? true, dnd_start_time || '22:00', dnd_end_time || '08:00']);
     return success(res, { message: 'Preferences updated' });
   } catch (error) {
     return fail(res, 'INTERNAL_ERROR', 'Failed to update preferences', 500);

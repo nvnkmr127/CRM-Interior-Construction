@@ -95,6 +95,7 @@ function NavItem({ item, collapsed, onClose }) {
               <NavLink
                 key={sub.to}
                 to={sub.to}
+                state={{ reset: Date.now(), fromSidebar: true }}
                 className={() => {
                   const isQueryMatch = sub.to.includes('?') 
                     ? location.pathname + location.search === sub.to || (location.pathname === sub.to.split('?')[0] && !location.search && sub.to.includes('view=dashboard'))
@@ -117,6 +118,7 @@ function NavItem({ item, collapsed, onClose }) {
     <NavLink
       to={item.to}
       end={item.to === '/config' ? false : undefined}
+      state={{ reset: Date.now(), fromSidebar: true }}
       className={({isActive}) => `${styles.navItem} ${isActive ? styles.active : ''}`}
       onClick={onClose}
     >

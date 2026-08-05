@@ -16,8 +16,12 @@ console.warn = function (...args) {
   originalConsoleWarn.apply(console, args);
 };
 
+import { PreferencesProvider } from './store/PreferencesContext.jsx';
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <PreferencesProvider>
+      <App />
+    </PreferencesProvider>
   </StrictMode>,
 )

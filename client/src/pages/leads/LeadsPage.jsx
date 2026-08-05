@@ -127,13 +127,26 @@ export default function LeadsPage() {
     const urlView = params.get('view');
     if (urlView && urlView !== view) {
       setView(urlView);
+      setSelectedLeadId(null);
+      setIsFormOpen(false);
     }
-  }, [location.search]);
+  }, [location.search, view]);
+
+  // Close modals when a sidebar link is clicked (detecting the state timestamp we pass)
+  useEffect(() => {
+    if (location.state?.fromSidebar) {
+      setSelectedLeadId(null);
+      setIsFormOpen(false);
+    }
+  }, [location.state?.reset]);
 
   const handleViewChange = (newView) => {
     setView(newView);
+    setSelectedLeadId(null);
+    setIsFormOpen(false);
     const params = new URLSearchParams(location.search);
     params.set('view', newView);
+    params.delete('id');
     navigate({ search: params.toString() });
   };
   const [selectedLeadId, setSelectedLeadId] = useState(null);

@@ -486,7 +486,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   value={lead.name}
                   onChange={(e) => handleFieldChange('name', e.target.value)}
                   onBlur={(e) => handleFieldBlur('name', e.target.value)}
-                  className="text-xl font-bold bg-transparent border-b border-black focus:border-blue-500 focus:outline-none w-full pb-1 transition-colors"
+                  className="text-3xl font-bold bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none w-full pb-1 transition-colors"
                   style={{ color: 'var(--color-text, inherit)' }}
                   placeholder="Lead Name"
                 />
@@ -586,11 +586,11 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
           </div>
 
           {/* TABS NAVIGATION */}
-          <div className="px-6 border-b border-gray-200 shrink-0" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(16px)' }}>
+          <div className="px-6 shrink-0 mt-4" style={{ background: 'transparent' }}>
             <nav 
               ref={tabsRef}
-              className="flex px-6 gap-6 overflow-x-auto custom-scrollbar"
-              style={{ scrollBehavior: 'smooth', paddingBottom: '8px', marginBottom: '8px' }}
+              className="flex gap-4 overflow-x-auto custom-scrollbar p-2 bg-white border border-gray-200 rounded-xl shadow-sm"
+              style={{ scrollBehavior: 'smooth' }}
             >
               {['overview', 'activity', 'communications', 'tasks', 'followups', 'meeting-schedule', 'stakeholders', 'preferences', 'inspirations', 'estimates', 'negotiation', 'files', 'ai-copilot', 'knowledge-base', 'twin', 'automations'].map(tab => (
                 <button
@@ -599,13 +599,13 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                     setActiveTab(tab);
                     e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
                   }}
-                  className={`whitespace-nowrap pb-3 pt-4 px-1 border-b-2 font-medium text-sm capitalize transition-colors ${
+                  className={`whitespace-nowrap py-2 px-4 rounded-lg font-medium text-base transition-all ${
                     activeTab === tab
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'bg-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
-                  {tab === 'knowledge-base' ? 'AI Knowledge Base' : tab === 'automations' ? 'Automation History' : tab === 'meeting-schedule' ? 'Meeting Schedule' : tab}
+                  {tab === 'knowledge-base' ? 'AI Knowledge Base' : tab === 'automations' ? 'Automation History' : tab === 'meeting-schedule' ? 'Meeting Schedule' : tab.replace('-', ' ')}
                 </button>
               ))}
             </nav>
@@ -614,36 +614,36 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
           {/* TAB CONTENT (SCROLLABLE) */}
           <div className="flex-1 overflow-y-auto p-6">
             {activeTab === 'overview' && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                 {/* COLUMN 1: Data Entry & Details */}
-                <div className="space-y-6 flex flex-col">
+                <div className="space-y-8 flex flex-col">
                   {/* Contact Info */}
-                  <div className="p-5 rounded-xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
-                    <div className="flex justify-between items-center mb-3">
-                      <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Contact Info</h4>
-                      <button onClick={() => setIsLeadFormOpen(true)} className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                  <div className="p-6 rounded-2xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
+                    <div className="flex justify-between items-center mb-4">
+                      <h4 className="text-sm font-bold text-gray-600 uppercase tracking-wider">Contact Info</h4>
+                      <button onClick={() => setIsLeadFormOpen(true)} className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                         Edit
                       </button>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       <div className="flex items-center justify-between group">
-                        <span className="text-sm text-gray-500 w-24">Phone</span>
+                        <span className="text-base text-gray-600 w-28">Phone</span>
                         <input
                           type="text" value={lead.phone || ''}
                           onChange={e => handleFieldChange('phone', e.target.value)}
                           onBlur={e => handleFieldBlur('phone', e.target.value)}
-                          className="flex-1 text-sm font-medium border-transparent focus:border-gray-300 focus:ring-0 px-2 py-1 rounded hover:bg-gray-50 transition-colors"
+                          className="flex-1 text-base font-medium border-transparent focus:border-gray-300 focus:ring-0 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
                           placeholder="Add phone..."
                         />
                       </div>
                       <div className="flex items-center justify-between group">
-                        <span className="text-sm text-gray-500 w-24">Email</span>
+                        <span className="text-base text-gray-600 w-28">Email</span>
                         <input
                           type="email" value={lead.email || ''}
                           onChange={e => handleFieldChange('email', e.target.value)}
                           onBlur={e => handleFieldBlur('email', e.target.value)}
-                          className="flex-1 text-sm font-medium border-transparent focus:border-gray-300 focus:ring-0 px-2 py-1 rounded hover:bg-gray-50 transition-colors"
+                          className="flex-1 text-base font-medium border-transparent focus:border-gray-300 focus:ring-0 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
                           placeholder="Add email..."
                         />
                       </div>
@@ -651,22 +651,22 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   </div>
                   
                   {/* Property & Scope */}
-                  <div className="p-5 rounded-xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
-                    <div className="flex justify-between items-center mb-3">
-                      <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Property Details</h4>
-                      <button onClick={() => setIsLeadFormOpen(true)} className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                  <div className="p-6 rounded-2xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
+                    <div className="flex justify-between items-center mb-4">
+                      <h4 className="text-sm font-bold text-gray-600 uppercase tracking-wider">Property Details</h4>
+                      <button onClick={() => setIsLeadFormOpen(true)} className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                         Edit
                       </button>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-5">
                       <div>
-                        <label className="block text-xs text-gray-500 mb-1">Type of property</label>
+                        <label className="block text-sm text-gray-600 mb-1.5">Type of property</label>
                         <select
                           value={lead.property_type || ''}
                           onChange={e => handleFieldChange('property_type', e.target.value)}
                           onBlur={e => handleFieldBlur('property_type', e.target.value)}
-                          className="w-full text-sm border border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full text-base border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
                         >
                           <option value="">Select...</option>
                           <option value="1bhk">1 BHK</option>
@@ -677,12 +677,12 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-500 mb-1">Product</label>
+                        <label className="block text-sm text-gray-600 mb-1.5">Product</label>
                         <select
                           value={lead.scope || ''}
                           onChange={e => handleFieldChange('scope', e.target.value)}
                           onBlur={e => handleFieldBlur('scope', e.target.value)}
-                          className="w-full text-sm border border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full text-base border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
                         >
                           <option value="">Select...</option>
                           <option value="kitchen">Kitchen</option>
@@ -699,42 +699,42 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                         </select>
                       </div>
                       <div className="col-span-2">
-                        <label className="block text-xs text-gray-500 mb-1">Address</label>
+                        <label className="block text-sm text-gray-600 mb-1.5">Address</label>
                         <input
                           type="text" value={lead.locality || ''}
                           onChange={e => handleFieldChange('locality', e.target.value)}
                           onBlur={e => handleFieldBlur('locality', e.target.value)}
-                          className="w-full text-sm border border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full text-base border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
                           placeholder="e.g. Indiranagar, Bangalore"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-500 mb-1">Budget Max (&#8377;)</label>
+                        <label className="block text-sm text-gray-600 mb-1.5">Budget Max (&#8377;)</label>
                         <input
                           type="number" value={lead.budget_max || ''}
                           onChange={e => handleFieldChange('budget_max', e.target.value)}
                           onBlur={e => handleFieldBlur('budget_max', e.target.value)}
-                          className="w-full text-sm border border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full text-base border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
                           placeholder="e.g. 1500000"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-500 mb-1">Carpet Area</label>
+                        <label className="block text-sm text-gray-600 mb-1.5">Carpet Area</label>
                         <input
                           type="number" value={lead.carpet_area_sqft || ''}
                           onChange={e => handleFieldChange('carpet_area_sqft', e.target.value)}
                           onBlur={e => handleFieldBlur('carpet_area_sqft', e.target.value)}
-                          className="w-full text-sm border border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full text-base border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
                           placeholder="Sq. ft"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-500 mb-1">Segment</label>
+                        <label className="block text-sm text-gray-600 mb-1.5">Segment</label>
                         <select
                           value={lead.segment || ''}
                           onChange={e => handleFieldChange('segment', e.target.value)}
                           onBlur={e => handleFieldBlur('segment', e.target.value)}
-                          className="w-full text-sm border border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full text-base border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
                         >
                           <option value="">Select...</option>
                           <option value="residential">Residential</option>
@@ -744,22 +744,22 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-500 mb-1">Property Name</label>
+                        <label className="block text-sm text-gray-600 mb-1.5">Property Name</label>
                         <input
                           type="text" value={lead.property_name || ''}
                           onChange={e => handleFieldChange('property_name', e.target.value)}
                           onBlur={e => handleFieldBlur('property_name', e.target.value)}
-                          className="w-full text-sm border border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full text-base border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
                           placeholder="e.g. Prestige Shantiniketan"
                         />
                       </div>
                       <div className="col-span-2">
-                        <div className="flex justify-between items-center mb-1">
-                          <label className="block text-xs text-gray-500">Possession Date & Time</label>
+                        <div className="flex justify-between items-center mb-1.5">
+                          <label className="block text-sm text-gray-600">Possession Date & Time</label>
                           <button 
                             type="button" 
                             onClick={() => setIsPossessionManual(!isPossessionManual)} 
-                            className="text-[10px] text-blue-500 hover:text-blue-700 font-medium"
+                            className="text-xs text-blue-500 hover:text-blue-700 font-medium"
                           >
                             {isPossessionManual ? 'Use Calendar' : 'Manual Entry'}
                           </button>
@@ -769,7 +769,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                             type="text" value={lead.possession_month || ''}
                             onChange={e => handleFieldChange('possession_month', e.target.value)}
                             onBlur={e => handleFieldBlur('possession_month', e.target.value)}
-                            className="w-full text-sm border border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full text-base border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="e.g. Q4 2026, Next year"
                           />
                         ) : (
@@ -792,10 +792,10 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                             timeIntervals={15}
                             dateFormat="MMMM d, yyyy h:mm aa"
                             placeholderText="Select Date and Time"
-                            className="w-full text-sm border border-gray-300 rounded p-1.5 pr-10 focus:ring-blue-500 focus:border-blue-500 cursor-pointer hover:border-blue-400 shadow-sm transition-colors"
+                            className="w-full text-base border border-gray-300 rounded-lg p-2 pr-10 focus:ring-blue-500 focus:border-blue-500 cursor-pointer hover:border-blue-400 shadow-sm transition-colors"
                             wrapperClassName="w-full"
                             popperPlacement="bottom-start"
-                            calendarClassName="shadow-xl rounded-xl border-gray-200 font-sans text-sm"
+                            calendarClassName="shadow-xl rounded-xl border-gray-200 font-sans text-base"
                             popperProps={{ strategy: "fixed" }}
                           />
                           <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-blue-500">
@@ -808,17 +808,17 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   </div>
                   
                   {/* Preferences & Tracking */}
-                  <div className="p-5 rounded-xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
-                    <div className="flex justify-between items-center mb-3">
-                      <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Preferences</h4>
-                      <button onClick={() => setIsLeadFormOpen(true)} className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                  <div className="p-6 rounded-2xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
+                    <div className="flex justify-between items-center mb-4">
+                      <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Preferences</h4>
+                      <button onClick={() => setIsLeadFormOpen(true)} className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                         Edit
                       </button>
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-5">
                       <label className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">Do Not Contact (DNC)</span>
+                        <span className="text-base font-medium text-gray-700">Do Not Contact (DNC)</span>
                         <input
                           type="checkbox"
                           checked={lead.dnc_flag || false}
@@ -826,11 +826,11 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                             handleFieldChange('dnc_flag', e.target.checked);
                             handleFieldBlur('dnc_flag', e.target.checked);
                           }}
-                          className="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500"
+                          className="w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
                         />
                       </label>
                       <label className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">Consent given</span>
+                        <span className="text-base font-medium text-gray-700">Consent given</span>
                         <input
                           type="checkbox"
                           checked={lead.consent_whatsapp || false}
@@ -838,16 +838,16 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                             handleFieldChange('consent_whatsapp', e.target.checked);
                             handleFieldBlur('consent_whatsapp', e.target.checked);
                           }}
-                          className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500"
+                          className="w-5 h-5 text-green-600 rounded border-gray-300 focus:ring-green-500"
                         />
                       </label>
                       <div>
-                        <label className="block text-xs text-gray-500 mb-1">Competitor Mentioned</label>
+                        <label className="block text-sm text-gray-500 mb-1.5">Competitor Mentioned</label>
                         <input
                           type="text" value={lead.competitor_mentioned || ''}
                           onChange={e => handleFieldChange('competitor_mentioned', e.target.value)}
                           onBlur={e => handleFieldBlur('competitor_mentioned', e.target.value)}
-                          className="w-full text-sm border border-gray-300 rounded p-1.5 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full text-base border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500"
                           placeholder="e.g. Livspace, HomeLane"
                         />
                       </div>
@@ -861,22 +861,22 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   
                   {/* Upcoming Meeting */}
                   {lead.next_meeting_schedule && (
-                    <div className="p-5 rounded-xl shadow-sm transition-all" style={{ background: 'rgba(255, 165, 0, 0.15)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 165, 0, 0.3)' }}>
-                      <div className="flex justify-between items-center mb-3">
-                        <h4 className="text-xs font-bold text-orange-800 uppercase tracking-wider flex items-center gap-1">
-                          <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <div className="p-6 rounded-2xl shadow-sm transition-all" style={{ background: 'rgba(255, 165, 0, 0.15)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 165, 0, 0.3)' }}>
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-sm font-bold text-orange-800 uppercase tracking-wider flex items-center gap-1.5">
+                          <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                           Upcoming Meeting
                         </h4>
-                        <span className="text-[10px] font-bold text-orange-700 bg-orange-100 border border-orange-200 px-2 py-0.5 rounded uppercase tracking-wide">
+                        <span className="text-xs font-bold text-orange-700 bg-orange-100 border border-orange-200 px-2.5 py-1 rounded uppercase tracking-wide">
                           Scheduled
                         </span>
                       </div>
-                      <div className="space-y-2.5">
-                        <div className="text-sm font-semibold text-gray-800">
+                      <div className="space-y-3">
+                        <div className="text-base font-semibold text-gray-800">
                           {lead.next_meeting_title || 'Lead Consultation Meeting'}
                         </div>
-                        <div className="flex flex-col gap-1.5 text-xs text-gray-600">
-                          <div className="flex items-center gap-1.5">
+                        <div className="flex flex-col gap-2 text-sm text-gray-600">
+                          <div className="flex items-center gap-2">
                             <span className="text-gray-400">📅</span>
                             <span className="font-medium text-gray-700">{formatMeetingSchedule(lead.next_meeting_schedule)}</span>
                             {lead.next_meeting_duration && (
@@ -884,13 +884,13 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                             )}
                           </div>
                           {lead.next_meeting_type && (
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-2">
                               <span className="text-gray-400">📍</span>
                               <span className="font-medium text-gray-700">{lead.next_meeting_type}</span>
                             </div>
                           )}
                           {lead.next_meeting_host && (
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-2">
                               <span className="text-gray-400">👤</span>
                               <span className="font-medium text-gray-700">Host: {lead.next_meeting_host}</span>
                             </div>
@@ -898,14 +898,14 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                         </div>
                         
                         {lead.next_meeting_link && (
-                          <div className="pt-2 border-t border-orange-100 mt-2">
+                          <div className="pt-3 border-t border-orange-100 mt-3">
                             <a
                               href={lead.next_meeting_link}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded shadow-sm transition-colors cursor-pointer"
+                              className="inline-flex items-center justify-center gap-2 w-full px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold rounded-md shadow-sm transition-colors cursor-pointer"
                             >
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                               Join Call / Open Link
                             </a>
                           </div>
@@ -916,56 +916,56 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   
                   {/* AI Insights Section */}
                   {(lead.win_probability !== undefined || lead.ai_score_breakdown) && (
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg shadow-sm border border-blue-100">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-xs font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl shadow-sm border border-blue-100">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-sm font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1.5">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                           AI Insights
                         </h4>
                         {lead.win_probability !== undefined && (
-                          <Badge variant="outline" className={`font-semibold ${lead.win_probability > 70 ? 'text-green-700 bg-green-100 border-green-200' : lead.win_probability > 30 ? 'text-yellow-700 bg-yellow-100 border-yellow-200' : 'text-gray-700 bg-gray-100 border-gray-200'}`}>
+                          <Badge variant="outline" className={`font-semibold text-xs px-2.5 py-1 ${lead.win_probability > 70 ? 'text-green-700 bg-green-100 border-green-200' : lead.win_probability > 30 ? 'text-yellow-700 bg-yellow-100 border-yellow-200' : 'text-gray-700 bg-gray-100 border-gray-200'}`}>
                             {lead.win_probability}% Win Probability
                           </Badge>
                         )}
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-3 mt-4">
-                        <div className="p-2 rounded shadow-sm border transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
-                          <div className="text-[10px] text-gray-500 uppercase font-semibold">Next Action</div>
-                          <div className="text-sm font-medium text-gray-800">{lead.ai_recommendation || 'Follow up'}</div>
+                      <div className="grid grid-cols-2 gap-4 mt-5">
+                        <div className="p-3 rounded-lg shadow-sm border transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
+                          <div className="text-xs text-gray-500 uppercase font-bold mb-1">Next Action</div>
+                          <div className="text-base font-semibold text-gray-800">{lead.ai_recommendation || 'Follow up'}</div>
                         </div>
-                        <div className="p-2 rounded shadow-sm border transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
-                          <div className="text-[10px] text-gray-500 uppercase font-semibold">Budget Confidence</div>
-                          <div className="text-sm font-medium text-gray-800">{lead.budget_confidence || 'High'}</div>
+                        <div className="p-3 rounded-lg shadow-sm border transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
+                          <div className="text-xs text-gray-500 uppercase font-bold mb-1">Budget Confidence</div>
+                          <div className="text-base font-semibold text-gray-800">{lead.budget_confidence || 'High'}</div>
                         </div>
-                        <div className="p-2 rounded shadow-sm border transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
-                          <div className="text-[10px] text-gray-500 uppercase font-semibold">Decision Maker</div>
-                          <div className="text-sm font-medium text-gray-800">{lead.decision_maker || 'Spouse'}</div>
+                        <div className="p-3 rounded-lg shadow-sm border transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
+                          <div className="text-xs text-gray-500 uppercase font-bold mb-1">Decision Maker</div>
+                          <div className="text-base font-semibold text-gray-800">{lead.decision_maker || 'Spouse'}</div>
                         </div>
-                        <div className="p-2 rounded shadow-sm border transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
-                          <div className="text-[10px] text-gray-500 uppercase font-semibold">Risk Level</div>
-                          <div className="text-sm font-medium text-gray-800">{lead.risk_level || 'Low'}</div>
+                        <div className="p-3 rounded-lg shadow-sm border transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
+                          <div className="text-xs text-gray-500 uppercase font-bold mb-1">Risk Level</div>
+                          <div className="text-base font-semibold text-gray-800">{lead.risk_level || 'Low'}</div>
                         </div>
                       </div>
                     </div>
                   )}
                   
                   {/* BUYING INTENT WIDGET */}
-                  <div className="bg-orange-50/50 p-4 rounded-lg shadow-sm border border-orange-100">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-xs font-bold text-orange-800 uppercase tracking-wider flex items-center gap-1">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                  <div className="bg-orange-50/50 p-6 rounded-2xl shadow-sm border border-orange-100">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-sm font-bold text-orange-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                         Buying Intent Engine
                       </h4>
-                      <Button variant="outline" size="sm" onClick={fetchBuyingIntent} disabled={intentLoading} className="text-[10px] py-1 h-7">
+                      <Button variant="outline" size="sm" onClick={fetchBuyingIntent} disabled={intentLoading} className="text-xs py-1.5 h-8">
                         {intentLoading ? 'Analyzing...' : 'Analyze Intent'}
                       </Button>
                     </div>
                     {buyingIntent ? (
-                      <div className="p-3 rounded border flex items-center justify-between shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
+                      <div className="p-4 rounded-lg border flex items-center justify-between shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
                         <div>
-                          <div className="text-xs text-gray-500 uppercase font-semibold">Predicted Intent</div>
-                          <div className={`text-lg font-bold flex items-center gap-2 ${
+                          <div className="text-sm text-gray-500 uppercase font-bold mb-1">Predicted Intent</div>
+                          <div className={`text-xl font-bold flex items-center gap-2 ${
                             buyingIntent.intent === 'Hot' ? 'text-red-600' : 
                             buyingIntent.intent === 'Warm' ? 'text-orange-500' : 'text-blue-500'
                           }`}>
@@ -974,55 +974,55 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                             {buyingIntent.intent === 'Cold' && '❄️ '}
                             {buyingIntent.intent} ({buyingIntent.confidence}%)
                           </div>
-                          <div className="text-xs text-gray-700 mt-1">{buyingIntent.reason}</div>
+                          <div className="text-sm text-gray-700 mt-2">{buyingIntent.reason}</div>
                         </div>
                       </div>
                     ) : (
-                      <div className="text-xs text-orange-600/70 italic text-center py-2">
+                      <div className="text-sm text-orange-600/70 italic text-center py-4 bg-white/40 rounded-lg">
                         Click analyze to run the AI intent prediction model.
                       </div>
                     )}
                   </div>
-                  
+
                   {/* REFERRAL NETWORK WIDGET */}
-                  <div className="bg-indigo-50/50 rounded-lg p-5 border border-indigo-100">
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="text-xl">🤝</span>
-                      <h3 className="text-sm font-bold text-indigo-900 uppercase tracking-wider">Referral Network</h3>
+                  <div className="bg-indigo-50/50 rounded-2xl p-6 border border-indigo-100">
+                    <div className="flex items-center gap-3 mb-5">
+                      <span className="text-2xl">🤝</span>
+                      <h3 className="text-base font-bold text-indigo-900 uppercase tracking-wider">Referral Network</h3>
                     </div>
                     {lead.referrals && lead.referrals.length > 0 ? (
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-end border-b border-indigo-200 pb-2 mb-3">
-                          <div className="text-xs text-indigo-600 font-semibold uppercase">Total Referrals: {lead.referrals.length}</div>
-                          <div className="text-xs text-indigo-600 font-semibold uppercase">
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-end border-b border-indigo-200 pb-3 mb-4">
+                          <div className="text-sm text-indigo-600 font-bold uppercase">Total Referrals: {lead.referrals.length}</div>
+                          <div className="text-sm text-indigo-600 font-bold uppercase">
                             Value: ₹{(lead.referrals.reduce((sum, r) => sum + (parseFloat(r.budget_max) || 0), 0)).toLocaleString()}
                           </div>
                         </div>
                         {lead.referrals.map(ref => (
-                          <div key={ref.id} className="flex justify-between items-center bg-white p-3 rounded shadow-sm border border-indigo-50">
+                          <div key={ref.id} className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-indigo-50">
                             <div>
-                              <div className="font-medium text-gray-900 text-sm">{ref.name}</div>
-                              <div className="text-xs text-gray-500">{ref.stage_name} • {new Date(ref.created_at).toLocaleDateString()}</div>
+                              <div className="font-semibold text-gray-900 text-base">{ref.name}</div>
+                              <div className="text-sm text-gray-500 mt-1">{ref.stage_name} • {new Date(ref.created_at).toLocaleDateString()}</div>
                             </div>
-                            <div className="text-sm font-semibold text-gray-700">
+                            <div className="text-base font-bold text-gray-700">
                               {ref.budget_max ? `₹${Number(ref.budget_max).toLocaleString()}` : 'TBD'}
                             </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-sm text-indigo-400 text-center py-4 bg-white/50 rounded border border-dashed border-indigo-200">
+                      <div className="text-base text-indigo-400 text-center py-6 bg-white/50 rounded-lg border border-dashed border-indigo-200">
                         No referrals recorded yet.
                       </div>
                     )}
-                </div>
+                  </div>
                 </div>
 
                 {/* COLUMN 3: Timeline & Checklist */}
-                <div className="space-y-4 lg:col-span-2 xl:col-span-1 xl:border-l xl:border-gray-100 xl:pl-6">
+                <div className="space-y-6 lg:col-span-2 xl:col-span-1 xl:border-l xl:border-gray-100 xl:pl-8">
                   <DiscoveryCallChecklist lead={lead} onUpdate={fetchLead} />
                   
-                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Activity Timeline</h4>
+                  <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Activity Timeline</h4>
                   <ActivityTimeline leadId={leadId} />
                 </div>
               </div>
@@ -1057,34 +1057,34 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
             )}
 
             {activeTab === 'activity' && (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {/* MOOD TRACKER WIDGET */}
-                <div className="bg-pink-50/50 p-4 rounded-lg shadow-sm border border-pink-100 mb-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-xs font-bold text-pink-800 uppercase tracking-wider flex items-center gap-1">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <div className="bg-pink-50/50 p-6 rounded-2xl shadow-sm border border-pink-100 mb-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-sm font-bold text-pink-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                       AI Mood Tracker
                     </h4>
-                    <Button variant="outline" size="sm" onClick={fetchMood} disabled={moodLoading} className="text-[10px] py-1 h-7">
+                    <Button variant="outline" size="sm" onClick={fetchMood} disabled={moodLoading} className="text-xs py-1.5 h-8">
                       {moodLoading ? 'Analyzing...' : 'Analyze Mood'}
                     </Button>
                   </div>
                   {mood ? (
-                    <div className="p-3 rounded border shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="text-3xl">{mood.emoji}</div>
+                    <div className="p-4 rounded-lg border shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
+                      <div className="flex items-center gap-4 mb-3">
+                        <div className="text-4xl">{mood.emoji}</div>
                         <div>
-                          <div className="text-[10px] text-gray-500 uppercase font-semibold">Current Mood</div>
-                          <div className="text-lg font-bold text-gray-900">{mood.mood}</div>
+                          <div className="text-xs text-gray-500 uppercase font-bold mb-1">Current Mood</div>
+                          <div className="text-xl font-bold text-gray-900">{mood.mood}</div>
                         </div>
                       </div>
-                      <div className="text-xs text-gray-700 bg-pink-50 p-2 rounded border border-pink-100 italic">
+                      <div className="text-sm text-gray-700 bg-pink-50 p-3 rounded-md border border-pink-100 italic">
                         <span className="font-semibold text-pink-800 not-italic mr-1">Coach Tip:</span>
                         {mood.tip}
                       </div>
                     </div>
                   ) : (
-                    <div className="text-xs text-pink-600/70 italic text-center py-2">
+                    <div className="text-sm text-pink-600/70 italic text-center py-4 bg-white/40 rounded-lg">
                       Click analyze to assess the prospect's emotional state based on recent activities.
                     </div>
                   )}
@@ -1109,11 +1109,11 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                 <div className="p-6 rounded-xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
                   <div className="flex items-center justify-between border-b pb-4 mb-6">
                     <div>
-                      <h3 className="text-base font-bold text-gray-900">Upcoming Meeting Schedule</h3>
-                      <p className="text-xs text-gray-500 mt-1">Manage scheduled meetings and joining details for this lead.</p>
+                      <h3 className="text-xl font-bold text-gray-900">Upcoming Meeting Schedule</h3>
+                      <p className="text-sm text-gray-500 mt-1">Manage scheduled meetings and joining details for this lead.</p>
                     </div>
                     {lead.next_meeting_schedule && !isEditingMeeting && (
-                      <span className="px-3 py-1 bg-orange-100 border border-orange-200 text-orange-700 text-xs font-semibold rounded-full uppercase tracking-wider">
+                      <span className="px-3 py-1 bg-orange-100 border border-orange-200 text-orange-700 text-sm font-semibold rounded-full uppercase tracking-wider">
                         📅 Scheduled
                       </span>
                     )}
@@ -1123,23 +1123,23 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                     <form onSubmit={handleMeetingSubmit} className="space-y-4 pt-2">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Meeting Title *</label>
+                          <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Meeting Title *</label>
                           <input
                             type="text"
                             required
                             placeholder="e.g. Initial Consultation, BOQ Review"
                             value={meetingForm.title}
                             onChange={e => setMeetingForm(prev => ({ ...prev, title: e.target.value }))}
-                            className="w-full text-sm border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full text-base border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Meeting Type</label>
+                          <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Meeting Type</label>
                           <select
                             value={meetingForm.meeting_type}
                             onChange={e => setMeetingForm(prev => ({ ...prev, meeting_type: e.target.value }))}
-                            className="w-full text-sm border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full text-base border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
                           >
                             <option value="Google Meet">Google Meet</option>
                             <option value="In-Person Site Visit">In-Person Site Visit</option>
@@ -1149,7 +1149,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Date *</label>
+                          <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Date *</label>
                           <div className="relative">
                             <DatePicker
                               selected={meetingForm.date ? new Date(meetingForm.date) : null}
@@ -1164,10 +1164,10 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                               }}
                               dateFormat="dd MMMM, yyyy"
                               placeholderText="Select Date"
-                              className="w-full text-sm border border-gray-300 rounded-lg p-2 pr-10 focus:ring-blue-500 focus:border-blue-500 cursor-pointer hover:border-blue-400 shadow-sm transition-colors"
+                              className="w-full text-base border border-gray-300 rounded-lg p-2 pr-10 focus:ring-blue-500 focus:border-blue-500 cursor-pointer hover:border-blue-400 shadow-sm transition-colors"
                               wrapperClassName="w-full"
                               popperPlacement="bottom-start"
-                              calendarClassName="shadow-xl rounded-xl border-gray-200 font-sans text-sm"
+                              calendarClassName="shadow-xl rounded-xl border-gray-200 font-sans text-base"
                               popperProps={{ strategy: "fixed" }}
                             />
                             <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-blue-500">
@@ -1177,7 +1177,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Time *</label>
+                          <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Time *</label>
                           <DatePicker
                             selected={meetingForm.time ? new Date(`2000-01-01T${meetingForm.time}`) : null}
                             onChange={(date) => {
@@ -1194,18 +1194,18 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                             timeIntervals={15}
                             timeCaption="Time"
                             dateFormat="h:mm aa"
-                            className="w-full text-sm border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full text-base border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholderText="Select time"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Duration</label>
+                          <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Duration</label>
                           <select
                             value={meetingForm.duration}
                             onChange={e => setMeetingForm(prev => ({ ...prev, duration: e.target.value }))}
-                            className="w-full text-sm border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full text-base border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
                           >
                             <option value="15">15 minutes</option>
                             <option value="30">30 minutes</option>
@@ -1217,11 +1217,11 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Host Assignee</label>
+                          <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Host Assignee</label>
                           <select
                             value={meetingForm.meeting_host}
                             onChange={e => setMeetingForm(prev => ({ ...prev, meeting_host: e.target.value }))}
-                            className="w-full text-sm border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                            className="w-full text-base border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                           >
                             <option value="">Select Host / Assignee</option>
                             {users.map(u => (
@@ -1234,38 +1234,38 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
                         {meetingForm.meeting_type === 'Google Meet' && (
                           <div className="col-span-2">
-                            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Video Call Link</label>
+                            <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Video Call Link</label>
                             <input
                               type="url"
                               placeholder="https://meet.google.com/..."
                               value={meetingForm.meeting_link}
                               onChange={e => setMeetingForm(prev => ({ ...prev, meeting_link: e.target.value }))}
-                              className="w-full text-sm border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+                              className="w-full text-base border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
                             />
-                            <p className="text-[10px] text-gray-400 mt-1">Leave empty to auto-generate a Google Meet link when selected as the type.</p>
+                            <p className="text-xs text-gray-400 mt-1">Leave empty to auto-generate a Google Meet link when selected as the type.</p>
                           </div>
                         )}
 
                         <div className="col-span-2">
-                          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Agenda / Description</label>
+                          <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Agenda / Description</label>
                           <textarea
                             rows={3}
                             placeholder="Describe meeting agenda, files to bring, or client requirements..."
                             value={meetingForm.notes}
                             onChange={e => setMeetingForm(prev => ({ ...prev, notes: e.target.value }))}
-                            className="w-full text-sm border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full text-base border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
                           />
                         </div>
 
                         <div className="col-span-2">
-                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <label className="flex items-center gap-3 cursor-pointer select-none">
                             <input
                               type="checkbox"
                               checked={meetingForm.reminders}
                               onChange={e => setMeetingForm(prev => ({ ...prev, reminders: e.target.checked }))}
-                              className="w-4 h-4 text-orange-600 rounded border-gray-300 focus:ring-orange-500"
+                              className="w-5 h-5 text-orange-600 rounded border-gray-300 focus:ring-orange-500"
                             />
-                            <span className="text-xs font-semibold text-gray-700">Send WhatsApp &amp; Email reminders to the client</span>
+                            <span className="text-sm font-semibold text-gray-700">Send WhatsApp &amp; Email reminders to the client</span>
                           </label>
                         </div>
                       </div>
@@ -1293,22 +1293,22 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                     </form>
                   ) : isConcludingMeeting ? (
                     <form onSubmit={handleConcludeMeeting} className="space-y-4 pt-2">
-                      <div className="bg-green-50/50 p-4 rounded-lg border border-green-200 mb-4">
-                        <h4 className="text-sm font-semibold text-green-800">Conclude "{lead.next_meeting_title || 'Lead Consultation Meeting'}"</h4>
-                        <p className="text-xs text-gray-500 mt-1">
+                      <div className="bg-green-50/50 p-6 rounded-xl border border-green-200 mb-6">
+                        <h4 className="text-base font-semibold text-green-800">Conclude "{lead.next_meeting_title || 'Lead Consultation Meeting'}"</h4>
+                        <p className="text-sm text-gray-500 mt-2">
                           Mark the meeting as completed and record the final summary/discussion details to be indexed in the AI Knowledge Base.
                         </p>
                       </div>
                       
                       <div>
-                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Meeting Summary &amp; Key Decisions *</label>
+                        <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Meeting Summary &amp; Key Decisions *</label>
                         <textarea
                           required
                           rows={6}
                           placeholder="Type meeting outcomes, notes, key choices the client made, next steps, and specific design requests..."
                           value={meetingSummary}
                           onChange={e => setMeetingSummary(e.target.value)}
-                          className="w-full text-sm border border-gray-300 rounded-lg p-3 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full text-base border border-gray-300 rounded-lg p-3 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
 
@@ -1335,54 +1335,54 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       </div>
                     </form>
                   ) : lead.next_meeting_schedule ? (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="md:col-span-2 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                      <div className="md:col-span-2 space-y-6">
                         <div>
-                          <label className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Meeting Title</label>
-                          <h4 className="text-lg font-bold text-gray-800 mt-1">
+                          <label className="text-xs text-gray-400 uppercase font-bold tracking-wider">Meeting Title</label>
+                          <h4 className="text-xl font-bold text-gray-800 mt-1.5">
                             {lead.next_meeting_title || 'Lead Consultation Meeting'}
                           </h4>
                         </div>
 
                         {lead.next_meeting_notes && (
                           <div>
-                            <label className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Agenda / Notes</label>
-                            <p className="text-sm text-gray-600 mt-1 whitespace-pre-line bg-gray-50 p-3 rounded-lg border border-gray-100">
+                            <label className="text-xs text-gray-400 uppercase font-bold tracking-wider">Agenda / Notes</label>
+                            <p className="text-base text-gray-600 mt-1.5 whitespace-pre-line bg-gray-50 p-4 rounded-xl border border-gray-100">
                               {lead.next_meeting_notes}
                             </p>
                           </div>
                         )}
 
-                        <div className="grid grid-cols-2 gap-4 pt-2">
+                        <div className="grid grid-cols-2 gap-6 pt-3">
                           <div>
-                            <label className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Host</label>
-                            <div className="text-sm font-semibold text-gray-700 mt-1 flex items-center gap-2">
-                              <span className="text-base">👤</span>
+                            <label className="text-xs text-gray-400 uppercase font-bold tracking-wider">Host</label>
+                            <div className="text-base font-semibold text-gray-700 mt-1.5 flex items-center gap-2">
+                              <span className="text-xl">👤</span>
                               {lead.next_meeting_host || lead.assignee_name || 'Unassigned'}
                             </div>
                           </div>
                           <div>
-                            <label className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Reminders</label>
-                            <div className="text-sm font-semibold text-gray-700 mt-1 flex items-center gap-1.5">
+                            <label className="text-xs text-gray-400 uppercase font-bold tracking-wider">Reminders</label>
+                            <div className="text-base font-semibold text-gray-700 mt-1.5 flex items-center gap-2">
                               <span className="text-green-600">✓</span> WhatsApp &amp; Email Enabled
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      <div className="bg-gradient-to-br from-amber-50/50 to-orange-50/50 p-5 rounded-xl border border-orange-100 flex flex-col justify-between space-y-4">
-                        <div className="space-y-3">
+                      <div className="bg-gradient-to-br from-amber-50/50 to-orange-50/50 p-6 rounded-2xl border border-orange-100 flex flex-col justify-between space-y-5">
+                        <div className="space-y-4">
                           <div>
-                            <label className="text-[10px] text-orange-800 uppercase font-bold tracking-wider">Date &amp; Time</label>
-                            <div className="text-sm font-bold text-gray-800 mt-1 flex items-center gap-2">
+                            <label className="text-xs text-orange-800 uppercase font-bold tracking-wider">Date &amp; Time</label>
+                            <div className="text-base font-bold text-gray-800 mt-1 flex items-center gap-2">
                               <span>📅</span>
                               {formatMeetingSchedule(lead.next_meeting_schedule)}
                             </div>
                           </div>
                           {lead.next_meeting_duration && (
                             <div>
-                              <label className="text-[10px] text-orange-800 uppercase font-bold tracking-wider">Duration</label>
-                              <div className="text-sm font-semibold text-gray-700 mt-0.5 flex items-center gap-2">
+                              <label className="text-xs text-orange-800 uppercase font-bold tracking-wider">Duration</label>
+                              <div className="text-base font-semibold text-gray-700 mt-1 flex items-center gap-2">
                                 <span>⏱️</span>
                                 {lead.next_meeting_duration} minutes
                               </div>
@@ -1390,8 +1390,8 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                           )}
                           {lead.next_meeting_type && (
                             <div>
-                              <label className="text-[10px] text-orange-800 uppercase font-bold tracking-wider">Type / Location</label>
-                              <div className="text-sm font-semibold text-gray-700 mt-0.5 flex items-center gap-2">
+                              <label className="text-xs text-orange-800 uppercase font-bold tracking-wider">Type / Location</label>
+                              <div className="text-base font-semibold text-gray-700 mt-1 flex items-center gap-2">
                                 <span>📍</span>
                                 {lead.next_meeting_type}
                               </div>
@@ -1434,13 +1434,13 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center py-12 rounded-xl border border-dashed border-gray-200 transition-all" style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(5px)' }}>
-                      <span className="text-4xl block mb-3">📅</span>
-                      <h4 className="text-base font-bold text-gray-700">No Meetings Scheduled</h4>
-                      <p className="text-sm text-gray-400 mt-1 max-w-sm mx-auto">There are no upcoming meetings scheduled for this lead at the moment.</p>
+                    <div className="text-center py-16 rounded-xl border border-dashed border-gray-200 transition-all" style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(5px)' }}>
+                      <span className="text-5xl block mb-4">📅</span>
+                      <h4 className="text-xl font-bold text-gray-700">No Meetings Scheduled</h4>
+                      <p className="text-base text-gray-400 mt-2 max-w-sm mx-auto">There are no upcoming meetings scheduled for this lead at the moment.</p>
                       <button
                         onClick={() => setIsEditingMeeting(true)}
-                        className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors cursor-pointer"
+                        className="mt-6 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors cursor-pointer"
                       >
                         Schedule a Meeting
                       </button>
@@ -1506,47 +1506,47 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               </div>
             )}
             {activeTab === 'estimates' && (
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold text-gray-900">Quotes & Estimates</h3>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={syncEstimates} title="Refresh estimates">
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-bold text-gray-900">Quotes & Estimates</h3>
+                  <div className="flex gap-3">
+                    <Button variant="outline" size="md" onClick={syncEstimates} title="Refresh estimates">
                       &#8635; Sync
                     </Button>
-                    <Button variant="outline" size="sm" onClick={handleCreateEstimate}>
+                    <Button variant="outline" size="md" onClick={handleCreateEstimate}>
                       Generate Estimate
                     </Button>
                   </div>
                 </div>
                 {syncError && (
-                  <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
+                  <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-base">
                     <strong>Sync Failed:</strong> {syncError}
                   </div>
                 )}
                 {estimates.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500 rounded border border-dashed border-gray-300 transition-all" style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(5px)' }}>
-                    <p className="text-sm">No estimates generated yet.</p>
-                    <p className="text-xs mt-1">Click "Generate Estimate" to create a new BOQ.</p>
+                  <div className="text-center py-12 text-gray-500 rounded-xl border border-dashed border-gray-300 transition-all" style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(5px)' }}>
+                    <p className="text-base font-semibold">No estimates generated yet.</p>
+                    <p className="text-sm mt-2">Click "Generate Estimate" to create a new BOQ.</p>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-4">
                     {estimates.map(est => (
-                      <div key={est.id} className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm flex items-center justify-between">
+                      <div key={est.id} className="border border-gray-200 rounded-xl p-5 bg-white shadow-sm flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-semibold text-gray-900">Estimate {est.estimator_reference_id}</p>
-                          <div className="flex items-center gap-2 mt-1">
+                          <p className="text-base font-bold text-gray-900">Estimate {est.estimator_reference_id}</p>
+                          <div className="flex items-center gap-3 mt-2">
                             <Badge variant={est.status === 'accepted' ? 'success' : est.status === 'sent' ? 'primary' : 'secondary'}>
                               {est.status}
                             </Badge>
-                            <span className="text-xs text-gray-500">Created: {new Date(est.created_at).toLocaleDateString()}</span>
-                            <span className="text-xs text-gray-400">&bull;</span>
-                            <span className="text-xs text-blue-600 font-medium">Last Synced: {new Date(est.updated_at || est.created_at).toLocaleString()}</span>
+                            <span className="text-sm text-gray-500">Created: {new Date(est.created_at).toLocaleDateString()}</span>
+                            <span className="text-sm text-gray-400">&bull;</span>
+                            <span className="text-sm text-blue-600 font-medium">Last Synced: {new Date(est.updated_at || est.created_at).toLocaleString()}</span>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-bold text-gray-900">₹{est.total_amount ? Number(est.total_amount).toLocaleString() : '0'}</p>
+                          <p className="text-lg font-bold text-gray-900">₹{est.total_amount ? Number(est.total_amount).toLocaleString() : '0'}</p>
                           {est.pdf_url && (
-                            <a href={est.pdf_url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline mt-1 block">View PDF</a>
+                            <a href={est.pdf_url} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline mt-1.5 block">View PDF</a>
                           )}
                         </div>
                       </div>
@@ -1570,21 +1570,21 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
           </div>
 
           {/* STICKY FOOTER */}
-          <div className="border-t border-gray-200 p-4 shrink-0 flex items-center justify-between relative z-10" style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(16px)' }}>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setIsAssignModalOpen(true)}>Reassign</Button>
-              <Button variant="outline" size="sm" onClick={() => {}}>Park</Button>
-              <Button variant="outline" size="sm" onClick={() => setIsPresentModalOpen(true)}>Log Presentation</Button>
+          <div className="border-t border-gray-200 p-5 shrink-0 flex items-center justify-between relative z-10" style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(16px)' }}>
+            <div className="flex gap-3">
+              <Button variant="outline" size="md" onClick={() => setIsAssignModalOpen(true)}>Reassign</Button>
+              <Button variant="outline" size="md" onClick={() => {}}>Park</Button>
+              <Button variant="outline" size="md" onClick={() => setIsPresentModalOpen(true)}>Log Presentation</Button>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleArchiveToggle} className="text-gray-700 hover:bg-gray-50">
+            <div className="flex gap-3">
+              <Button variant="outline" size="md" onClick={handleArchiveToggle} className="text-gray-700 hover:bg-gray-50">
                 {lead.status === 'archived' ? 'Unarchive' : 'Archive'}
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleDelete} className="text-red-600 hover:text-red-700 hover:bg-red-50">Mark Lost</Button>
+              <Button variant="ghost" size="md" onClick={handleDelete} className="text-red-600 hover:text-red-700 hover:bg-red-50">Mark Lost</Button>
 
               {/* Show Convert button if logic matches a won or late stage */}
               {(lead.stage_id === 'won' || lead.stage_name === 'Won' || lead.stage_name === 'Booking' || lead.stage_id === 'booking') && (
-                <Button variant="primary" size="sm" onClick={() => setIsConvertModalOpen(true)}>Convert to Project</Button>
+                <Button variant="primary" size="md" onClick={() => setIsConvertModalOpen(true)}>Convert to Project</Button>
               )}
             </div>
           </div>

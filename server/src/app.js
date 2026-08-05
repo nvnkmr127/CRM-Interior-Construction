@@ -457,6 +457,7 @@ pool.query(`
       tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
       email_sla_breaches BOOLEAN DEFAULT true,
       push_score_changes BOOLEAN DEFAULT true,
+      email_daily_digest BOOLEAN DEFAULT true,
       dnd_start_time VARCHAR(10) DEFAULT '22:00',
       dnd_end_time VARCHAR(10) DEFAULT '08:00',
       created_at TIMESTAMP DEFAULT NOW(),
