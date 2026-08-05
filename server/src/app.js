@@ -9,10 +9,10 @@ const setupSwagger = require('./config/swagger');
 const logger = require('./utils/logger');
 
 process.on('uncaughtException', (error) => {
-  logger.fatal(error, '[UNCAUGHT EXCEPTION]');
+  logger.error(error, '[UNCAUGHT EXCEPTION]');
 });
 process.on('unhandledRejection', (reason, promise) => {
-  logger.fatal({ reason, promise }, '[UNHANDLED REJECTION]');
+  logger.error({ reason, promise }, '[UNHANDLED REJECTION]');
 });
 
 const app = express();

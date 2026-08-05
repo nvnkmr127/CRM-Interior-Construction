@@ -199,7 +199,7 @@ router.post('/logout', authenticate, async (req, res) => {
 
 router.get('/me', authenticate, async (req, res, next) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user.id || req.user.userId;
 
     const query = `
       SELECT 
@@ -376,9 +376,10 @@ router.post('/change-password', authenticate, async (req, res) => {
   const { newPassword } = req.body;
   if (!newPassword) return fail(res, 'VALIDATION_ERROR', 'newPassword required', 400);
   try {
-    const userResult = await pool.query('SELECT name, email FROM users WHERE id=$1 AND tenant_id=$2', [req.user.userId, req.tenantId]);
+    const userId = req.user.id || req.user.userId;
+    const userResult = await pool.query('SELECT name, email FROM users WHERE id=$1 AND tenant_id=$2', [userId, req.tenantId]);
     if (userResult.rows.length > 0) {
-      queueEmail(req.tenantId, req.user.userId, userResult.rows[0].email, 'Password Changed', 'password_changed', { name: userResult.rows[0].name });
+      queueEmail(req.tenantId, userId, userResult.rows[0].email, 'Password Changed', 'password_changed', { name: userResult.rows[0].name });
     }
     return success(res, { message: 'Password changed successfully (mock)' });
   } catch (error) {
