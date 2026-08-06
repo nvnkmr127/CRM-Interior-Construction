@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styles from './AdvancedFilters.module.css';
 import Select from '../ui/Select';
 
-export default function AdvancedFilters({ onApply, onReset, appliedFilters }) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function AdvancedFilters({ isOpen, onClose, onApply, onReset, appliedFilters }) {
   const [savedFilters, setSavedFilters] = useState([]);
   
   const initialFilters = {
@@ -12,12 +11,7 @@ export default function AdvancedFilters({ onApply, onReset, appliedFilters }) {
     project: [],
     customer: [],
     requester: [],
-    vendor: [],
-    department: [],
-    branch: [],
     priority: [],
-    approvalLevel: [],
-    paymentMethod: [],
     minAmount: '',
     maxAmount: '',
     startDate: '',
@@ -77,15 +71,7 @@ export default function AdvancedFilters({ onApply, onReset, appliedFilters }) {
     setFilters(saved.filters);
   };
 
-  if (!isOpen) {
-    return (
-      <div className={styles.containerCollapsed}>
-        <button className={styles.toggleBtn} onClick={() => setIsOpen(true)}>
-          <span className={styles.icon}>⚡</span> Advanced Filters
-        </button>
-      </div>
-    );
-  }
+  if (!isOpen) return null;
 
   // Mock options for dropdowns (in a real app, these would be fetched from API)
   const statusOptions = [
@@ -115,28 +101,10 @@ export default function AdvancedFilters({ onApply, onReset, appliedFilters }) {
     { value: 'Initech', label: 'Initech' }
   ];
 
-  const vendorOptions = [
-    { value: 'Vendor A', label: 'Vendor A' },
-    { value: 'Vendor B', label: 'Vendor B' },
-    { value: 'Vendor C', label: 'Vendor C' }
-  ];
-
   const requesterOptions = [
     { value: 'Alice Manager', label: 'Alice Manager' },
     { value: 'Bob Director', label: 'Bob Director' },
     { value: 'System', label: 'System' }
-  ];
-
-  const deptOptions = [
-    { value: 'finance', label: 'Finance' },
-    { value: 'sales', label: 'Sales' },
-    { value: 'operations', label: 'Operations' }
-  ];
-
-  const branchOptions = [
-    { value: 'hq', label: 'Headquarters' },
-    { value: 'north', label: 'North Branch' },
-    { value: 'south', label: 'South Branch' }
   ];
 
   const priorityOptions = [
@@ -146,24 +114,11 @@ export default function AdvancedFilters({ onApply, onReset, appliedFilters }) {
     { value: 'low', label: 'Low' }
   ];
 
-  const levelOptions = [
-    { value: 'l1', label: 'Level 1 (Manager)' },
-    { value: 'l2', label: 'Level 2 (Director)' },
-    { value: 'l3', label: 'Level 3 (VP)' }
-  ];
-
-  const paymentMethodOptions = [
-    { value: 'bank_transfer', label: 'Bank Transfer' },
-    { value: 'credit_card', label: 'Credit Card' },
-    { value: 'cash', label: 'Cash' },
-    { value: 'cheque', label: 'Cheque' }
-  ];
-
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <h3>Advanced Enterprise Filters</h3>
-        <button className={styles.closeBtn} onClick={() => setIsOpen(false)}>✕</button>
+        <button className={styles.closeBtn} onClick={onClose}>✕</button>
       </div>
 
       <div className={styles.savedFiltersBar}>
@@ -217,16 +172,6 @@ export default function AdvancedFilters({ onApply, onReset, appliedFilters }) {
         />
 
         <Select 
-          label="Vendor (Mock)"
-          options={vendorOptions}
-          value={filters.vendor}
-          onChange={(v) => setFilters({...filters, vendor: v})}
-          multi={true}
-          searchable={true}
-          placeholder="Select Vendors"
-        />
-
-        <Select 
           label="Requester"
           options={requesterOptions}
           value={filters.requester}
@@ -237,26 +182,6 @@ export default function AdvancedFilters({ onApply, onReset, appliedFilters }) {
         />
 
         <Select 
-          label="Department (Mock)"
-          options={deptOptions}
-          value={filters.department}
-          onChange={(v) => setFilters({...filters, department: v})}
-          multi={true}
-          searchable={true}
-          placeholder="Select Departments"
-        />
-
-        <Select 
-          label="Branch (Mock)"
-          options={branchOptions}
-          value={filters.branch}
-          onChange={(v) => setFilters({...filters, branch: v})}
-          multi={true}
-          searchable={true}
-          placeholder="Select Branches"
-        />
-
-        <Select 
           label="Priority"
           options={priorityOptions}
           value={filters.priority}
@@ -264,26 +189,6 @@ export default function AdvancedFilters({ onApply, onReset, appliedFilters }) {
           multi={true}
           searchable={true}
           placeholder="Select Priorities"
-        />
-
-        <Select 
-          label="Approval Level (Mock)"
-          options={levelOptions}
-          value={filters.approvalLevel}
-          onChange={(v) => setFilters({...filters, approvalLevel: v})}
-          multi={true}
-          searchable={true}
-          placeholder="Select Levels"
-        />
-
-        <Select 
-          label="Payment Method (Mock)"
-          options={paymentMethodOptions}
-          value={filters.paymentMethod}
-          onChange={(v) => setFilters({...filters, paymentMethod: v})}
-          multi={true}
-          searchable={true}
-          placeholder="Select Methods"
         />
 
         {/* Amount Range */}

@@ -91,7 +91,7 @@ export default function AttachmentManager({ approvalId, currentUserRole, current
             <div key={doc.id} style={{ border: '1px solid var(--border-color)', borderRadius: '8px', padding: '12px', background: 'var(--surface-color)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                 <span style={{ fontSize: '24px' }}>
-                  {doc.file_type.includes('pdf') ? '📄' : '🖼️'}
+                  {(doc.file_type || doc.mime_type || '').includes('pdf') ? '📄' : '🖼️'}
                 </span>
                 <div style={{ overflow: 'hidden' }}>
                   <div style={{ fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={doc.file_name}>

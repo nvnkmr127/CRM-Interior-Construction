@@ -148,6 +148,7 @@ export default function FinancialApprovalsPage() {
   const [pendingPage, setPendingPage] = useState(1);
   const [historyPage, setHistoryPage] = useState(1);
   const [advancedFilters, setAdvancedFilters] = useState({});
+  const [isAdvancedFiltersOpen, setIsAdvancedFiltersOpen] = useState(false);
   const [sortOption, setSortOption] = useState('newest');
   
   const ITEMS_PER_PAGE = 10;
@@ -192,6 +193,7 @@ export default function FinancialApprovalsPage() {
     if (advancedFilters.project) params.append('project', advancedFilters.project);
     if (advancedFilters.customer) params.append('customer', advancedFilters.customer);
     if (advancedFilters.requester) params.append('requester', advancedFilters.requester);
+    if (advancedFilters.priority) params.append('priority', advancedFilters.priority);
     if (advancedFilters.minAmount) params.append('min_amount', advancedFilters.minAmount);
     if (advancedFilters.maxAmount) params.append('max_amount', advancedFilters.maxAmount);
     if (advancedFilters.startDate) params.append('start_date', advancedFilters.startDate);
@@ -213,49 +215,7 @@ export default function FinancialApprovalsPage() {
       const res = await api.get(`/financial-approvals?${params.toString()}`);
       const payload = res.data?.data || {};
       let data = Array.isArray(payload) ? payload : (payload.data || []);
-      if (data.length === 0) {
-        data = [
-          {
-            id: 'mock-1',
-            transaction_type: 'invoice',
-            status: 'pending',
-            amount: 50000,
-            project_name: 'Villa Renovation',
-            customer_name: 'John Doe',
-            target_number: 'INV-2023-001',
-            requester_name: 'Alice Smith',
-            threshold_limit: 10000,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            priority: 'high',
-            current_stage: 1,
-            total_stages: 2,
-            approval_chain: [{stage: 1, role: 'finance:invoices', status: 'pending'}, {stage: 2, role: 'admin', status: 'pending'}],
-            target_resolution_date: new Date(Date.now() + 86400000).toISOString()
-          },
-          {
-            id: 'mock-2',
-            transaction_type: 'payment',
-            status: 'pending',
-            amount: 125000,
-            project_name: 'Office Fitout',
-            customer_name: 'Tech Corp',
-            target_number: 'PAY-2023-042',
-            requester_name: 'Bob Jones',
-            threshold_limit: 50000,
-            created_at: new Date(Date.now() - 172800000).toISOString(),
-            updated_at: new Date(Date.now() - 172800000).toISOString(),
-            priority: 'critical',
-            current_stage: 2,
-            total_stages: 3,
-            approval_chain: [{stage: 1, role: 'finance:payments', status: 'approved', approved_at: new Date(Date.now() - 86400000).toISOString(), approved_by: 'System'}, {stage: 2, role: 'admin', status: 'pending'}],
-            target_resolution_date: new Date(Date.now() - 3600000).toISOString()
-          }
-        ];
-        setPendingTotal(2);
-      } else {
-        setPendingTotal(payload.pagination?.total || payload.meta?.total || 0);
-      }
+      setPendingTotal(payload.pagination?.total || payload.meta?.total || 0);
       setPendingList(data);
     } catch (err) {
       console.error(err);
@@ -275,43 +235,7 @@ export default function FinancialApprovalsPage() {
       const res = await api.get(`/financial-approvals?${params.toString()}`);
       const payload = res.data?.data || {};
       let data = Array.isArray(payload) ? payload : (payload.data || []);
-      if (data.length === 0) {
-        data = [
-          {
-            id: 'mock-3',
-            transaction_type: 'discount',
-            status: 'approved',
-            amount: 15000,
-            project_name: 'Retail Store',
-            customer_name: 'Fashion Hub',
-            target_number: 'QT-2023-112',
-            requester_name: 'Charlie Brown',
-            threshold_limit: 5000,
-            created_at: new Date(Date.now() - 432000000).toISOString(),
-            updated_at: new Date(Date.now() - 345600000).toISOString(),
-            priority: 'medium',
-            rejection_reason: null
-          },
-          {
-            id: 'mock-4',
-            transaction_type: 'credit',
-            status: 'rejected',
-            amount: 8500,
-            project_name: 'Cafe Interior',
-            customer_name: 'Brew Beans',
-            target_number: 'CN-2023-018',
-            requester_name: 'Alice Smith',
-            threshold_limit: 5000,
-            created_at: new Date(Date.now() - 864000000).toISOString(),
-            updated_at: new Date(Date.now() - 777600000).toISOString(),
-            priority: 'low',
-            rejection_reason: 'Amount exceeds allowable credit limit without proper documentation.'
-          }
-        ];
-        setHistoryTotal(2);
-      } else {
-        setHistoryTotal(payload.pagination?.total || payload.meta?.total || 0);
-      }
+      setHistoryTotal(payload.pagination?.total || payload.meta?.total || 0);
       setHistoryList(data);
     } catch (err) {
       console.error(err);
@@ -471,14 +395,14 @@ export default function FinancialApprovalsPage() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
+      <div className={styles.header}>
+        <div className={styles.headerTitles}>
           <h1 className={styles.title}>Financial Approvals Queue</h1>
           <p className={styles.subtitle}>Review pending transactions exceeding configured policy thresholds.</p>
         </div>
-        <div className={styles.filterContainer} style={{ display: 'flex', gap: '12px' }}>
+        <div className={styles.filterContainer}>
           {user?.role?.name === 'superadmin' && (
-            <Link to="/settings/approval-matrix" className={styles.primaryBtn} style={{ textDecoration: 'none', padding: '8px 16px', background: '#4f46e5', color: '#fff', borderRadius: '6px' }}>
+            <Link to="/settings/approval-matrix" className={styles.primaryBtn}>
               Manage Matrix
             </Link>
           )}
@@ -516,12 +440,21 @@ export default function FinancialApprovalsPage() {
             <option value="refund">Refund</option>
             <option value="change_order">Change Order</option>
           </select>
+          <button 
+            className={styles.secondaryBtn} 
+            onClick={() => setIsAdvancedFiltersOpen(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <span>⚡</span> Filters
+          </button>
         </div>
       </div>
 
       <FinancialApprovalDashboard />
 
       <AdvancedFilters 
+        isOpen={isAdvancedFiltersOpen}
+        onClose={() => setIsAdvancedFiltersOpen(false)}
         appliedFilters={advancedFilters}
         onApply={setAdvancedFilters} 
         onReset={() => setAdvancedFilters({})}
