@@ -294,9 +294,6 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
   const allChecked = checklistConfig.every(item => !item.required || checklist[item.key] === true);
 
   const handleSubmit = async () => {
-    if (!allChecked) {
-      return toast.error("Please complete the checklist before converting.");
-    }
     if (!formData.projectType || !formData.projectName) {
       return toast.error("Please fill in the required project details.");
     }
@@ -343,7 +340,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={loading || !allChecked}>
+          <Button variant="primary" onClick={handleSubmit} disabled={loading}>
             {loading ? 'Creating...' : 'Create Project'}
           </Button>
         </>

@@ -75,9 +75,10 @@ function formatDate(dateStr) {
 }
 
 function formatValue(val) {
-  if (!val) return '—';
-  const num = typeof val === 'number' ? val : parseFloat(String(val).replace(/[^\d.]/g, ''));
+  if (val === undefined || val === null || val === '') return '—';
+  const num = typeof val === 'number' ? val : parseFloat(String(val).replace(/[^\d.-]/g, ''));
   if (isNaN(num)) return val;
+  if (num === 0) return '₹0';
   if (num >= 10000000) return `₹${(num / 10000000).toFixed(2)} Cr`;
   if (num >= 100000) return `₹${(num / 100000).toFixed(1)}L`;
   return `₹${num.toLocaleString('en-IN')}`;
@@ -410,135 +411,6 @@ function OverviewTab({ project, onRefresh, onEdit }) {
         </div>
       </div>
 
-      {/* Site Logistics & Access Details */}
-      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
-        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
-          Site Logistics & Access Details
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 0 }}>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Lift Availability
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)', textTransform: 'capitalize' }}>
-              {project.lift_availability === 'none' ? 'No Lift (Stairs Only)' : project.lift_availability === 'passenger_only' ? 'Passenger Lift Only' : project.lift_availability === 'service' ? 'Service Lift Available' : project.lift_availability || '—'}
-            </div>
-          </div>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Lift Dimensions
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
-              {project.lift_dimensions || '—'}
-            </div>
-          </div>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Staircase Access
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
-              {project.staircase_access || '—'}
-            </div>
-          </div>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: 'none' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Working Hour Window
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
-              {project.working_hour_window || '—'}
-            </div>
-          </div>
-          <div style={{ padding: '14px 20px', borderBottom: 'none', borderRight: '1px solid var(--color-border)' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Society Contact
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
-              {project.society_contact || '—'}
-            </div>
-          </div>
-          <div style={{ padding: '14px 20px', borderBottom: 'none', borderRight: '1px solid var(--color-border)' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Parking Permission
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)', textTransform: 'capitalize' }}>
-              {project.parking_permission === 'allowed' ? 'Allowed On-Site' : project.parking_permission === 'restricted' ? 'Restricted / Prior Approval' : project.parking_permission === 'street_only' ? 'Street Parking Only' : project.parking_permission || '—'}
-            </div>
-          </div>
-          <div style={{ padding: '14px 20px', borderBottom: 'none', borderRight: 'none' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Material Unloading Area
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
-              {project.unloading_area || '—'}
-            </div>
-          </div>
-          <div style={{ padding: '14px 20px', borderBottom: 'none', borderRight: 'none', gridColumn: 'span 4', borderTop: '1px solid var(--color-border)' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Society NOC Requirements
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
-              {project.noc_requirements || '—'}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Site Access & Key Management */}
-      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
-        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
-          Site Access & Key Management
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 0 }}>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Key Holder Name
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
-              {project.key_holder_name || '—'}
-            </div>
-          </div>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Key Holder Phone
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
-              {project.key_holder_phone || '—'}
-            </div>
-          </div>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: 'none' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Spare Key Location
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
-              {project.spare_key_location || '—'}
-            </div>
-          </div>
-          <div style={{ padding: '14px 20px', borderBottom: 'none', borderRight: '1px solid var(--color-border)' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Society Gate Pass Number
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
-              {project.gate_pass_number || '—'}
-            </div>
-          </div>
-          <div style={{ padding: '14px 20px', borderBottom: 'none', borderRight: '1px solid var(--color-border)' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Access Card Holder
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
-              {project.access_card_holder || '—'}
-            </div>
-          </div>
-          <div style={{ padding: '14px 20px', borderBottom: 'none', borderRight: 'none' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Access Time Restrictions
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
-              {project.access_time_restrictions || '—'}
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Stakeholders & Contacts */}
       <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
@@ -724,65 +596,6 @@ function OverviewTab({ project, onRefresh, onEdit }) {
         )}
       </div>
 
-      {/* External Consultants Assigned */}
-      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
-        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
-          External Consultants Assigned
-        </div>
-        {project.consultants && project.consultants.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {project.consultants.map((consultant, i) => (
-              <div key={consultant.id || i} style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '14px 20px',
-                borderBottom: i < project.consultants.length - 1 ? '1px solid var(--color-border)' : 'none',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{
-                    width: 32, height: 32, borderRadius: '50%',
-                    background: 'var(--color-warning-bg, #fffbeb)', color: 'var(--color-warning, #d97706)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontWeight: 700, fontSize: 'var(--text-xs)',
-                  }}>
-                    📐
-                  </div>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>{consultant.name}</span>
-                      <span style={{
-                        padding: '1px 6px',
-                        fontSize: '10px',
-                        borderRadius: '4px',
-                        background: 'var(--color-accent-bg, #eff6ff)',
-                        color: 'var(--color-accent, #3b82f6)',
-                        fontWeight: 600,
-                        textTransform: 'capitalize'
-                      }}>
-                        {consultant.role ? consultant.role.replace(/_/g, ' ') : 'Consultant'}
-                      </span>
-                      {consultant.firm && (
-                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
-                          Firm: {consultant.firm}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>
-                  {consultant.phone && <div>📞 {consultant.phone}</div>}
-                  {consultant.email && <div>✉️ {consultant.email}</div>}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
-            No external consultants assigned to this project. Click "Edit" to assign consultants.
-          </div>
-        )}
-      </div>
 
       {/* Notes */}
       {project.notes && (
@@ -879,7 +692,28 @@ export default function ProjectDetail() {
     }
   };
 
-  const allTabs = ['Overview', 'Team & Roles', 'Client Profile', 'Site Details', 'Vendors & Consultants', 'Settings', 'Financial Overview', 'Booking', 'Meeting Notes', 'Site Visits', 'Baseline Assessment', 'Delay Notifications', 'Handovers', 'Design Brief', 'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 'Commercial Approval', 'Change Orders', 'BOQ Variance', 'Budget', 'Purchase Requests', 'Purchase Orders', 'Material Deliveries', 'Vendors', 'Vendor Payments', 'Substitutions', 'Factory Production', 'Coordination', 'Phases', 'Gantt Chart', 'Work Activities', 'Room Progress', 'Tasks', 'Daily Site Reports', 'Weekly Reports', 'Documents', 'Drawing Register', 'MEP Checklist', 'Payments', 'Execution QC', 'Snags', 'Punch List', 'Handover', 'Warranties', 'AMCs', 'Handover Readiness', 'Service Tickets', 'Customer Retention', 'Project Closure', 'Retrospective', 'Activity Logs'];
+  const allTabs = [
+    // Initiation & Setup
+    'Overview', 'Client Profile', 'Site Details', 'Team & Roles', 'Vendors & Consultants', 'Booking', 'Baseline Assessment',
+    
+    // Design & Planning
+    'Design Brief', 'Design Assets', 'Material Palettes', 'Substitutions', 'Design Reviews', 'Coordination', 
+    
+    // Financials
+    'Financial Overview', 'Budget', 'Quotations & BOQ', 'BOQ Variance', 'Commercial Approval', 'Payments', 'Change Orders', 'Purchase Requests', 'Purchase Orders', 'Vendors', 'Vendor Payments',
+    
+    // Execution & Monitoring
+    'Phases', 'Gantt Chart', 'Work Activities', 'Room Progress', 'Tasks', 'Factory Production', 'Material Deliveries', 'Daily Site Reports', 'Weekly Reports', 'Site Visits', 'Meeting Notes', 'Delay Notifications', 'MEP Checklist',
+    
+    // Quality & Handover
+    'Execution QC', 'Snags', 'Punch List', 'Handovers', 'Handover Readiness', 'Handover', 'Drawing Register', 'Documents',
+    
+    // Post-Handover & Maintenance
+    'Warranties', 'AMCs', 'Service Tickets', 'Customer Retention',
+    
+    // Closing & Auditing
+    'Project Closure', 'Retrospective', 'Activity Logs', 'Settings'
+  ];
   const tabs = allTabs.filter(tab => canAccessPage(tab));
 
   const reloadProject = () => {
@@ -1292,9 +1126,9 @@ export default function ProjectDetail() {
           <div className={styles.statCard}>
             <span className={styles.statLabel}>Payment Collected</span>
             <span className={styles.statValue}>
-              {formatValue(project.stats?.collectedPayment)}
+              {formatValue(project.stats?.collectedPayment || 0)}
               {' of '}
-              {formatValue(project.stats?.netContractValue || project.contract_value)}
+              {formatValue(project.stats?.netContractValue || project.contract_value || 0)}
             </span>
           </div>
         </div>
@@ -1345,9 +1179,9 @@ export default function ProjectDetail() {
           isOpen={true}
           project={project} 
           onClose={() => setIsEditing(false)} 
-          onSave={(updatedProject) => {
-            setProject({...project, ...updatedProject});
+          onSave={() => {
             setIsEditing(false);
+            reloadProject();
           }} 
         />
       )}

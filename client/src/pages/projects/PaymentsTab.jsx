@@ -4,8 +4,8 @@ import { Badge, Button, Modal, Input, Select, PermissionButton } from '../../com
 import styles from './PaymentsTab.module.css';
 import { getPaymentMilestones, updatePaymentMilestone } from '../../api/paymentMilestones';
 import { getPaymentEscalations } from '../../api/projects';
-import { getInvoiceDraft, createInvoice } from '../../api/invoices';
-import { getCreditNotes, getRefunds, createCreditNote, createRefund } from '../../api/financials';
+import { getInvoiceDraft, createInvoice, getInvoicesByProject, deleteInvoice } from '../../api/invoices';
+import { getCreditNotes, getRefunds, createCreditNote, createRefund, getReceiptsByProject } from '../../api/financials';
 import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
 import PaymentEscalationModal from '../../components/projects/PaymentEscalationModal';
@@ -64,13 +64,12 @@ class PaymentGatewayService {
   }
 }
 // -----------------------------------
-
 export default function PaymentsTab({ projectId, project }) {
   const toast = useToast();
   const [payments, setPayments] = useState([]);
   const [escalations, setEscalations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeSubTab, setActiveSubTab] = useState('breakdown'); // breakdown, logs, milestones, credits, approvals
+  const [activeSubTab, setActiveSubTab] = useState('dashboard'); // breakdown, logs, milestones, credits, approvals
   
   const subTabsRef = useRef(null);
 
@@ -107,6 +106,23 @@ export default function PaymentsTab({ projectId, project }) {
 
   // Finance Approvals Queue State
   const [financeApprovals, setFinanceApprovals] = useState([]);
+  const [approvalsFilter, setApprovalsFilter] = useState('ALL'); // ALL, PENDING, APPROVED, REJECTED
+  const [auditModalOpen, setAuditModalOpen] = useState(false);
+  const [selectedAuditApproval, setSelectedAuditApproval] = useState(null);
+  const fetchApprovals = async () => {
+    try {
+      const res = await api.get('/financial-approvals');
+      // Filter for this project only
+      const projectApprovals = (res.data?.data || []).filter(a => a.project_name === project?.name || a.payload?.projectId === projectId);
+      setFinanceApprovals(projectApprovals);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    fetchApprovals();
+  }, [projectId]);
 
   // RBAC State
   const defaultPermissions = {
@@ -153,7 +169,45 @@ export default function PaymentsTab({ projectId, project }) {
   const [printingInvoice, setPrintingInvoice] = useState(null);
 
   // Immutable Audit Logs States
-  const [auditLogs, setAuditLogs] = useState([]);
+  const initialAuditLogs = [
+    {
+      id: 'audit_init_1',
+      timestamp: new Date(Date.now() - 86400000 * 2).toISOString(),
+      user: 'SYSTEM',
+      ip: '127.0.0.1',
+      device: 'Server',
+      action: 'INITIATED',
+      financialObject: 'Project Ledger',
+      oldValue: 0,
+      newValue: project?.contract_value || 0,
+      reason: 'Project financial tracking created'
+    },
+    {
+      id: 'audit_init_2',
+      timestamp: new Date(Date.now() - 86400000).toISOString(),
+      user: 'Admin',
+      ip: '192.168.1.45',
+      device: 'Windows PC',
+      action: 'GENERATED',
+      financialObject: 'Milestones',
+      oldValue: undefined,
+      newValue: undefined,
+      reason: 'Standard payment schedule generated'
+    },
+    {
+      id: 'audit_init_3',
+      timestamp: new Date().toISOString(),
+      user: 'Finance Manager',
+      ip: '192.168.1.100',
+      device: 'Mac/Linux',
+      action: 'COLLECTED',
+      financialObject: 'Payment',
+      oldValue: 0,
+      newValue: Number(project?.booking_amount || 120000),
+      reason: 'Booking advance auto-collected'
+    }
+  ];
+  const [auditLogs, setAuditLogs] = useState(initialAuditLogs);
   const [auditLogFilter, setAuditLogFilter] = useState('ALL');
 
   const appendAuditLog = (action, financialObject, oldVal, newVal, reason) => {
@@ -200,6 +254,14 @@ export default function PaymentsTab({ projectId, project }) {
 
     let todayCollection = 0;
     let monthlyCollection = 0;
+    
+    const trendMonths = [];
+    const trendCollections = [0, 0, 0, 0, 0, 0, 0];
+    
+    for (let i = 6; i >= 0; i--) {
+       const d = new Date(currentYear, currentMonth - i, 1);
+       trendMonths.push(d.toLocaleString('default', { month: 'short' }));
+    }
 
     payments.forEach(p => {
       (p.paymentEntries || []).forEach(e => {
@@ -210,6 +272,13 @@ export default function PaymentsTab({ projectId, project }) {
          if (eDate.getMonth() === currentMonth && eDate.getFullYear() === currentYear) {
            monthlyCollection += (e.amount || 0);
          }
+         
+         for (let i = 0; i <= 6; i++) {
+           const d = new Date(currentYear, currentMonth - (6 - i), 1);
+           if (eDate.getMonth() === d.getMonth() && eDate.getFullYear() === d.getFullYear()) {
+              trendCollections[i] += (e.amount || 0);
+           }
+         }
       });
     });
 
@@ -218,8 +287,36 @@ export default function PaymentsTab({ projectId, project }) {
     const totalRefunds = refunds.reduce((acc, r) => acc + (Number(r.amount) || 0), 0);
     const totalCreditNotes = creditNotes.reduce((acc, c) => acc + (Number(c.subtotal) || 0), 0);
 
-    // Mock Target
-    const collectionTarget = 5000000; 
+    const aging = [
+      { label: '0-30 Days', val: 0 },
+      { label: '31-60 Days', val: 0 },
+      { label: '61-90 Days', val: 0 },
+      { label: '90+ Days', val: 0 }
+    ];
+    const now = new Date();
+    payments.forEach(p => {
+       if (p.remainingAmount > 0 && p.dueDate) {
+          const dDate = new Date(p.dueDate);
+          const diffDays = Math.floor((now - dDate) / (1000 * 60 * 60 * 24));
+          if (diffDays >= 0) {
+             if (diffDays <= 30) aging[0].val += p.remainingAmount;
+             else if (diffDays <= 60) aging[1].val += p.remainingAmount;
+             else if (diffDays <= 90) aging[2].val += p.remainingAmount;
+             else aging[3].val += p.remainingAmount;
+          }
+       }
+    });
+
+    const maxTrendVal = Math.max(...trendCollections) || 1;
+    const collectionTrend = trendCollections.map((val, idx) => ({
+      label: trendMonths[idx],
+      val,
+      h: Math.round((val / maxTrendVal) * 100)
+    }));
+
+    // Dynamic Target based on Project Budget
+    const fallbackBudget = Number(project?.booking_amount || 0) > 0 ? Number(project.booking_amount) * 10 : 0;
+    const collectionTarget = Number(project?.contract_value || 0) || fallbackBudget || 0;
     const currentTotalCollected = payments.reduce((acc, p) => acc + (p.collectedAmount || 0), 0);
 
     return {
@@ -230,9 +327,11 @@ export default function PaymentsTab({ projectId, project }) {
       totalRefunds,
       totalCreditNotes,
       collectionTarget,
-      currentTotalCollected
+      currentTotalCollected,
+      collectionTrend,
+      aging
     };
-  }, [payments, refunds, creditNotes]);
+  }, [payments, refunds, creditNotes, project]);
 
   const handleExportDashboard = () => {
     toast.success('Finance Dashboard report exported to PDF successfully!');
@@ -586,20 +685,22 @@ export default function PaymentsTab({ projectId, project }) {
     setWriteOffModalOpen(false);
   };
 
-  const requestFinanceApproval = (type, amount, reason, payload) => {
-    const newApproval = {
-      id: 'FIN-' + Date.now(),
-      type,
-      requestedBy: 'Current User',
-      amount: Number(amount),
-      reason,
-      date: new Date().toISOString(),
-      status: 'PENDING',
-      payload,
-      auditTrail: [{ status: 'PENDING', timestamp: new Date().toISOString(), note: 'Request created' }]
-    };
-    setFinanceApprovals(prev => [newApproval, ...prev]);
-    toast.success(`${type} request submitted for Finance Approval.`);
+  const requestFinanceApproval = async (type, amount, reason, payload) => {
+    try {
+      await api.post('/financial-approvals', {
+        type,
+        amount: Number(amount),
+        reason,
+        payload: { ...payload, projectId },
+        project_name: project?.name,
+        customer_name: project?.customer_name,
+        target_number: payload.selectedPayment?.milestone || 'Manual'
+      });
+      fetchApprovals();
+      toast.success(`${type} request submitted for Finance Approval.`);
+    } catch (err) {
+      toast.error('Failed to submit approval request.');
+    }
   };
 
   const executeApprovedAction = async (approval) => {
@@ -659,6 +760,20 @@ export default function PaymentsTab({ projectId, project }) {
           status: 'ISSUED'
         }));
         setReceipts(prev => [...newReceipts, ...prev]);
+
+        // Auto-generate invoice locally
+        const newInvoice = {
+            id: 'INV-AUTO-' + Date.now(),
+            projectId,
+            invoiceDate: new Date().toISOString(),
+            milestoneId: selectedPayment.id,
+            milestoneName: selectedPayment.milestone,
+            customerName: project?.customer_name || 'Customer',
+            amount: splitPayments.reduce((sum, sp) => sum + sp.amount, 0),
+            status: 'GENERATED',
+            version: '1.0'
+        };
+        setInvoices(prev => [newInvoice, ...prev]);
 
       } else if (type === 'Discount' || type === 'Write-off') {
         setPayments(prev => prev.map(p => p.id === payload.milestoneId ? {
@@ -725,18 +840,16 @@ export default function PaymentsTab({ projectId, project }) {
            }));
         }
       }
-
-      setFinanceApprovals(prev => prev.map(a => a.id === approval.id ? {
-        ...a,
-        status: 'APPROVED',
-        auditTrail: [...a.auditTrail, { status: 'APPROVED', timestamp: new Date().toISOString(), note: 'Approved by Finance Admin' }]
-      } : a));
+      
+      // Hit API
+      await api.post(`/financial-approvals/${approval.id}/approve`);
+      fetchApprovals();
 
       // Append to immutable audit log
       let oldV = 0, newV = approval.amount;
       if (type === 'Manual Payment') {
-         oldV = payload.selectedPayment.collectedAmount || 0;
-         newV = payload.newCollected;
+         oldV = payload.selectedPayment?.collectedAmount || 0;
+         newV = payload.newCollected || 0;
       }
       appendAuditLog(`Approve ${type}`, type, oldV, newV, approval.reason);
 
@@ -747,15 +860,14 @@ export default function PaymentsTab({ projectId, project }) {
     }
   };
 
-  const handleRejectAction = (approvalId) => {
-    const reason = prompt('Reason for rejection:');
-    if (!reason) return;
-    setFinanceApprovals(prev => prev.map(a => a.id === approvalId ? {
-      ...a,
-      status: 'REJECTED',
-      auditTrail: [...a.auditTrail, { status: 'REJECTED', timestamp: new Date().toISOString(), note: reason }]
-    } : a));
-    toast.info('Approval request rejected.');
+  const handleRejectAction = async (approvalId) => {
+    try {
+      await api.post(`/financial-approvals/${approvalId}/reject`, { rejectionReason: 'Rejected by Finance Admin' });
+      fetchApprovals();
+      toast.success('Approval request rejected');
+    } catch (err) {
+      toast.error('Failed to reject approval');
+    }
   };
 
   const handleRequestGateOverride = (gate) => {
@@ -867,6 +979,18 @@ export default function PaymentsTab({ projectId, project }) {
     }, 500);
   };
 
+  const handleDeleteInvoice = async (invoiceId) => {
+    if (!window.confirm("Are you sure you want to delete this invoice?")) return;
+    try {
+      await deleteInvoice(invoiceId);
+      setInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
+      toast.success("Invoice deleted successfully");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete invoice");
+    }
+  };
+
   // Payment Links States
   const [paymentLinks, setPaymentLinks] = useState([]);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
@@ -938,7 +1062,8 @@ export default function PaymentsTab({ projectId, project }) {
         const _r = res.data?.data || res.data; 
         let raw = Array.isArray(_r) ? _r : [];
         
-        const totalB = project?.contract_value || 5953277;
+        const fallbackBudget = Number(project?.booking_amount || 0) > 0 ? Number(project.booking_amount) * 10 : 0;
+        const totalB = Number(project?.contract_value || 0) || fallbackBudget || 0;
         
         const defaultMilestoneConfig = [
           { key: 'booking', name: 'Booking', percentage: 10, enabled: true, dependency: null },
@@ -952,10 +1077,9 @@ export default function PaymentsTab({ projectId, project }) {
         const adminConfig = project?.milestone_config || defaultMilestoneConfig;
         const activeMilestones = adminConfig.filter(m => m.enabled);
 
-        // Inject missing full lifecycle milestones
-        activeMilestones.forEach((mConf, index) => {
-          const exists = raw.some(p => (p.title || p.milestone || p.name)?.toLowerCase().includes(mConf.name.toLowerCase()) || p.id?.includes(mConf.key));
-          if (!exists) {
+        // Inject missing full lifecycle milestones ONLY if no milestones exist from API
+        if (raw.length === 0) {
+          activeMilestones.forEach((mConf, index) => {
             let mockDate = new Date(project?.createdAt || Date.now());
             mockDate.setDate(mockDate.getDate() + (index * 15));
             const milestoneAmount = (totalB * mConf.percentage) / 100;
@@ -997,11 +1121,22 @@ export default function PaymentsTab({ projectId, project }) {
             };
             if (index === 0) raw.unshift(mockEntry); // Booking at top
             else raw.push(mockEntry); // Rest appended
-          }
-        });
+          });
+        }
 
-        setPayments(raw.map(p => {
-          const entries = p.payment_entries || [];
+        setPayments(raw.map((p, index) => {
+          const entries = p.payment_entries ? [...p.payment_entries] : [];
+          
+          if (index === 0 && entries.length === 0 && Number(project?.booking_amount || 0) > 0) {
+             entries.push({
+               id: p.id + '_auto_booking',
+               amount: Number(project.booking_amount),
+               paidAt: project?.createdAt || new Date().toISOString(),
+               mode: 'Bank Transfer',
+               collectedByName: 'System Auto',
+               collectedByRole: 'Admin'
+             });
+          }
           if (p.status === 'paid' && entries.length === 0) {
              entries.push({
                id: p.id + '_legacy',
@@ -1041,10 +1176,14 @@ export default function PaymentsTab({ projectId, project }) {
 
     Promise.all([
       getCreditNotes(projectId),
-      getRefunds(projectId)
-    ]).then(([cnRes, refRes]) => {
+      getRefunds(projectId),
+      getInvoicesByProject(projectId),
+      getReceiptsByProject(projectId)
+    ]).then(([cnRes, rfRes, invRes, recRes]) => {
       setCreditNotes(cnRes.data?.data || cnRes.data || []);
-      setRefunds(refRes.data?.data || refRes.data || []);
+      setRefunds(rfRes.data?.data || rfRes.data || []);
+      setInvoices(invRes.data?.data || invRes.data || []);
+      setReceipts(recRes.data?.data || recRes.data || []);
     }).catch(err => {
       console.error('Failed to load credit notes or refunds:', err);
     });
@@ -1053,7 +1192,8 @@ export default function PaymentsTab({ projectId, project }) {
   }, [projectId]);
 
   // Derived Values
-  const totalBudget = project?.contract_value || 5953277;
+  const totalBudgetFallback = Number(project?.booking_amount || 0) > 0 ? Number(project.booking_amount) * 10 : 0;
+  const totalBudget = Number(project?.contract_value || 0) || totalBudgetFallback || 0;
   const totalArea = project?.measurements?.reduce((sum, r) => sum + (Number(r.area) || 0), 0) || 2040;
   const avgRate = totalArea > 0 ? Math.round(totalBudget / totalArea) : 0;
   
@@ -1168,6 +1308,9 @@ export default function PaymentsTab({ projectId, project }) {
       let newStatus = selectedPayment.status;
       if (newCollected >= selectedPayment.amountValue) newStatus = 'paid';
       else if (newCollected > 0) newStatus = 'partially_paid';
+
+      // Update local payment status to reflect it is pending approval
+      setPayments(prev => prev.map(p => p.id === selectedPayment.id ? { ...p, status: 'pending_approval' } : p));
 
       // Send to Finance Approval instead of executing directly
       requestFinanceApproval('Manual Payment', totalSplitAmount, `Payment for ${selectedPayment.milestone}`, {
@@ -1732,27 +1875,27 @@ export default function PaymentsTab({ projectId, project }) {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px' }}>
                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Today's Collection</div>
-                 <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', marginTop: '8px' }}>₹{dashboardData.todayCollection.toLocaleString('en-IN')}</div>
+                 <div style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', marginTop: '8px' }}>₹{dashboardData.todayCollection.toLocaleString('en-IN')}</div>
                </div>
                <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px' }}>
                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Monthly Collection</div>
-                 <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', marginTop: '8px' }}>₹{dashboardData.monthlyCollection.toLocaleString('en-IN')}</div>
+                 <div style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', marginTop: '8px' }}>₹{dashboardData.monthlyCollection.toLocaleString('en-IN')}</div>
                </div>
                <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px' }}>
                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Outstanding</div>
-                 <div style={{ fontSize: '24px', fontWeight: 700, color: '#ef4444', marginTop: '8px' }}>₹{dashboardData.outstanding.toLocaleString('en-IN')}</div>
+                 <div style={{ fontSize: '18px', fontWeight: 700, color: '#ef4444', marginTop: '8px' }}>₹{dashboardData.outstanding.toLocaleString('en-IN')}</div>
                </div>
                <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px' }}>
                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Overdue</div>
-                 <div style={{ fontSize: '24px', fontWeight: 700, color: '#b91c1c', marginTop: '8px' }}>₹{dashboardData.overdue.toLocaleString('en-IN')}</div>
+                 <div style={{ fontSize: '18px', fontWeight: 700, color: '#b91c1c', marginTop: '8px' }}>₹{dashboardData.overdue.toLocaleString('en-IN')}</div>
                </div>
                <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px' }}>
                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Refunds</div>
-                 <div style={{ fontSize: '24px', fontWeight: 700, color: '#f59e0b', marginTop: '8px' }}>₹{dashboardData.totalRefunds.toLocaleString('en-IN')}</div>
+                 <div style={{ fontSize: '18px', fontWeight: 700, color: '#f59e0b', marginTop: '8px' }}>₹{dashboardData.totalRefunds.toLocaleString('en-IN')}</div>
                </div>
                <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px' }}>
                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Credit Notes Issued</div>
-                 <div style={{ fontSize: '24px', fontWeight: 700, color: '#3b82f6', marginTop: '8px' }}>₹{dashboardData.totalCreditNotes.toLocaleString('en-IN')}</div>
+                 <div style={{ fontSize: '18px', fontWeight: 700, color: '#3b82f6', marginTop: '8px' }}>₹{dashboardData.totalCreditNotes.toLocaleString('en-IN')}</div>
                </div>
             </div>
 
@@ -1779,11 +1922,10 @@ export default function PaymentsTab({ projectId, project }) {
                <div className={styles.creditCard} style={{ padding: '24px' }}>
                  <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: '24px' }}>Cash Flow (Inflow vs Outflow)</div>
                  <div style={{ display: 'flex', alignItems: 'flex-end', height: '150px', gap: '8px' }}>
-                   {/* Simple CSS bars for mock data */}
-                   {[40, 70, 50, 90, 60, 100, 80].map((h, i) => (
+                   {dashboardData.collectionTrend.map((item, i) => (
                      <div key={i} style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center' }}>
-                       <div style={{ width: '100%', height: `${h}%`, background: '#3b82f6', borderRadius: '4px 4px 0 0', opacity: 0.8 }} title={`Inflow: ${h}`} />
-                       <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '4px' }}>{['M1','M2','M3','M4','M5','M6','M7'][i]}</div>
+                       <div style={{ width: '100%', height: `${item.h || 5}%`, background: '#3b82f6', borderRadius: '4px 4px 0 0', opacity: 0.8 }} title={`Inflow: ₹${item.val.toLocaleString('en-IN')}`} />
+                       <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '4px' }}>{item.label}</div>
                      </div>
                    ))}
                  </div>
@@ -1793,11 +1935,10 @@ export default function PaymentsTab({ projectId, project }) {
                <div className={styles.creditCard} style={{ padding: '24px' }}>
                  <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: '24px' }}>Collection Trend</div>
                  <div style={{ display: 'flex', alignItems: 'flex-end', height: '150px', gap: '8px' }}>
-                   {/* Simple CSS bars for mock data */}
-                   {[20, 40, 30, 80, 50, 90, 100].map((h, i) => (
+                   {dashboardData.collectionTrend.map((item, i) => (
                      <div key={i} style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center' }}>
-                       <div style={{ width: '100%', height: `${h}%`, background: '#10b981', borderRadius: '4px 4px 0 0', opacity: 0.8 }} title={`Collection: ${h}`} />
-                       <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '4px' }}>{['M1','M2','M3','M4','M5','M6','M7'][i]}</div>
+                       <div style={{ width: '100%', height: `${item.h || 5}%`, background: '#10b981', borderRadius: '4px 4px 0 0', opacity: 0.8 }} title={`Collection: ₹${item.val.toLocaleString('en-IN')}`} />
+                       <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '4px' }}>{item.label}</div>
                      </div>
                    ))}
                  </div>
@@ -1805,14 +1946,13 @@ export default function PaymentsTab({ projectId, project }) {
             </div>
 
             {/* Tables Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
                {/* Receivable Aging */}
                <div className={styles.creditCard} style={{ padding: '24px' }}>
                  <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: '16px' }}>Receivable Aging</div>
                  <table style={{ width: '100%', fontSize: '14px', borderCollapse: 'collapse' }}>
                    <tbody>
-                     {[{label: '0-30 Days', val: 50000}, {label: '31-60 Days', val: 120000}, {label: '61-90 Days', val: 0}, {label: '90+ Days', val: 45000}].map((r, i) => (
+                     {dashboardData.aging.map((r, i) => (
                        <tr key={i} style={{ borderBottom: i !== 3 ? '1px solid #e2e8f0' : 'none' }}>
                          <td style={{ padding: '12px 0', color: '#475569' }}>{r.label}</td>
                          <td style={{ padding: '12px 0', textAlign: 'right', fontWeight: 600, color: i > 1 && r.val > 0 ? '#ef4444' : '#1e293b' }}>₹{r.val.toLocaleString('en-IN')}</td>
@@ -1821,35 +1961,6 @@ export default function PaymentsTab({ projectId, project }) {
                    </tbody>
                  </table>
                </div>
-            </div>
-
-            {/* Top Outstanding Projects */}
-            <div className={styles.creditCard} style={{ padding: '24px' }}>
-               <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: '16px' }}>Top Outstanding Projects (Global Mock)</div>
-               <table style={{ width: '100%', fontSize: '14px', borderCollapse: 'collapse', textAlign: 'left' }}>
-                 <thead>
-                   <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>
-                     <th style={{ padding: '12px 8px', fontWeight: 600 }}>Project</th>
-                     <th style={{ padding: '12px 8px', fontWeight: 600 }}>Client</th>
-                     <th style={{ padding: '12px 8px', fontWeight: 600, textAlign: 'right' }}>Outstanding</th>
-                     <th style={{ padding: '12px 8px', fontWeight: 600, textAlign: 'right' }}>Overdue</th>
-                   </tr>
-                 </thead>
-                 <tbody>
-                   {[
-                     {p: 'Skyline Penthouse', c: 'Arjun Mehta', o: 850000, od: 200000},
-                     {p: 'Oceanview Villa', c: 'Priya Sharma', o: 540000, od: 540000},
-                     {p: 'Tech Hub Office', c: 'NexGen IT', o: 320000, od: 0}
-                   ].map((row, i) => (
-                     <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                       <td style={{ padding: '12px 8px', color: '#1e293b', fontWeight: 500 }}>{row.p}</td>
-                       <td style={{ padding: '12px 8px', color: '#475569' }}>{row.c}</td>
-                       <td style={{ padding: '12px 8px', textAlign: 'right', color: '#1e293b' }}>₹{row.o.toLocaleString('en-IN')}</td>
-                       <td style={{ padding: '12px 8px', textAlign: 'right', color: row.od > 0 ? '#ef4444' : '#10b981' }}>₹{row.od.toLocaleString('en-IN')}</td>
-                     </tr>
-                   ))}
-                 </tbody>
-               </table>
             </div>
 
           </div>
@@ -2417,7 +2528,7 @@ export default function PaymentsTab({ projectId, project }) {
             <div className={styles.breakdownList}>
               <div className={styles.breakdownHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>AVAILABLE COST ITEMS</span>
-                <Button variant="outline" size="small" onClick={handleOpenAddAvailableCostItem}>+ Add Custom Item</Button>
+                <Button variant="outline" size="sm" onClick={handleOpenAddAvailableCostItem}>+ Add Custom Item</Button>
               </div>
               {availableCostItems.map((item, idx) => {
                 const isSelected = selectedCostItems.some(i => i.id === item.id);
@@ -2429,7 +2540,7 @@ export default function PaymentsTab({ projectId, project }) {
                     </div>
                     <Button 
                       variant="outline" 
-                      size="small" 
+                      size="sm" 
                       onClick={() => handleAddCostItem(item)}
                       disabled={isSelected}
                     >
@@ -2443,7 +2554,7 @@ export default function PaymentsTab({ projectId, project }) {
             <div className={styles.breakdownList}>
               <div className={styles.breakdownHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>SELECTED COST BREAKDOWN</span>
-                <Button variant="outline" size="small" onClick={handleOpenAddCostItem}>+ Add Custom Item</Button>
+                <Button variant="outline" size="sm" onClick={handleOpenAddCostItem}>+ Add Custom Item</Button>
               </div>
               {selectedCostItems.length === 0 ? (
                 <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
@@ -2457,8 +2568,8 @@ export default function PaymentsTab({ projectId, project }) {
                       <span className={styles.breakdownValue}>₹{item.value.toLocaleString('en-IN')}</span>
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <Button variant="outline" size="small" onClick={() => handleOpenCustomizeCostItem(item)}>Customize</Button>
-                      <Button variant="danger" size="small" onClick={() => handleRemoveCostItem(item.id)}>Remove</Button>
+                      <Button variant="outline" size="sm" onClick={() => handleOpenCustomizeCostItem(item)}>Customize</Button>
+                      <Button variant="danger" size="sm" onClick={() => handleRemoveCostItem(item.id)}>Remove</Button>
                     </div>
                   </div>
                 ))
@@ -2587,9 +2698,9 @@ export default function PaymentsTab({ projectId, project }) {
                 <div className={styles.mCardHeader}>
                   <div className={styles.mCardTitle}>
                     {p.milestone} 
-                    {!p.dependencyMet && p.status !== 'paid' && p.status !== 'partially_paid' && <span style={{fontSize: '12px', marginLeft: '8px', color: 'var(--color-text-muted)'}}>🔒 (Locked)</span>}
+                    {!p.dependencyMet && p.status !== 'paid' && p.status !== 'partially_paid' && p.status !== 'pending_approval' && <span style={{fontSize: '12px', marginLeft: '8px', color: 'var(--color-text-muted)'}}>🔒 (Locked)</span>}
                   </div>
-                  <Badge variant={p.displayStatus === 'paid' ? 'success' : (p.displayStatus === 'partially_paid' ? 'warning' : (p.isOverdue ? 'danger' : 'neutral'))} size="sm">
+                  <Badge variant={p.displayStatus === 'paid' ? 'success' : (p.displayStatus === 'partially_paid' ? 'warning' : (p.displayStatus === 'pending_approval' ? 'info' : (p.isOverdue ? 'danger' : 'neutral')))} size="sm">
                     {p.displayStatus.replace('_', ' ').toUpperCase()}
                   </Badge>
                 </div>
@@ -2601,11 +2712,11 @@ export default function PaymentsTab({ projectId, project }) {
                   </div>
                   <div className={styles.mCardCol}>
                     <span className={styles.mCardLabel}>Due Date</span>
-                    <span className={styles.mCardValue}>{p.dueDate || '—'}</span>
+                    <span className={styles.mCardValue}>{p.dueDate ? p.dueDate.split('-').reverse().join('/') : '—'}</span>
                   </div>
                 </div>
                 <div className={styles.mCardFooter}>
-                  {p.status !== 'paid' && hasPermission('Create') && (
+                  {p.status !== 'paid' && p.status !== 'pending_approval' && hasPermission('Create') && (
                     <Button 
                       variant="primary" 
                       size="sm" 
@@ -2615,6 +2726,9 @@ export default function PaymentsTab({ projectId, project }) {
                     >
                       {p.dependencyMet ? 'Collect Payment' : 'Dependency Pending'}
                     </Button>
+                  )}
+                  {p.status === 'pending_approval' && (
+                    <span style={{fontSize: '13px', color: '#0ea5e9', fontWeight: 500}}>Waiting for Finance Approval</span>
                   )}
                   {p.status !== 'paid' && p.dependencyMet && hasPermission('Create') && (
                     <Button variant="outline" size="sm" onClick={() => handleGenerateLinkClick(p)}>Generate Link</Button>
@@ -2716,7 +2830,10 @@ export default function PaymentsTab({ projectId, project }) {
                       <span>Milestone Ref: {inv.milestoneId || 'General'}</span>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
                         <span>Status: <Badge variant="success" size="sm">{inv.status}</Badge> | Version: {inv.version}</span>
-                        <Button variant="outline" size="sm" onClick={() => handlePrintPDF(inv)}>Download PDF</Button>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <Button variant="outline" size="sm" onClick={() => handlePrintPDF(inv)}>Download PDF</Button>
+                          <Button variant="danger" size="sm" onClick={() => handleDeleteInvoice(inv.id)}>Delete</Button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -3078,64 +3195,139 @@ export default function PaymentsTab({ projectId, project }) {
           </div>
         )}
 
-        {activeSubTab === 'approvals' && (
+        {activeSubTab === 'approvals' && (() => {
+          const totalPendingAmount = financeApprovals.filter(a => a.status === 'PENDING').reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
+          const pendingCount = financeApprovals.filter(a => a.status === 'PENDING').length;
+          const approvedCount = financeApprovals.filter(a => a.status === 'APPROVED').length;
+          const filteredApprovals = financeApprovals.filter(a => approvalsFilter === 'ALL' || a.status === approvalsFilter);
+
+          return (
           <div className={styles.approvalsList}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h4 style={{ margin: 0 }}>Finance Approvals Queue</h4>
             </div>
+
+            {/* Metrics Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+              <div style={{ background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Pending Amount</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ca8a04' }}>₹{totalPendingAmount.toLocaleString('en-IN')}</div>
+              </div>
+              <div style={{ background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Awaiting Approval</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--color-text)' }}>{pendingCount} Requests</div>
+              </div>
+              <div style={{ background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Total Approved</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--color-success)' }}>{approvedCount} Requests</div>
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+              {['ALL', 'PENDING', 'APPROVED', 'REJECTED'].map(f => (
+                <button 
+                  key={f}
+                  onClick={() => setApprovalsFilter(f)}
+                  style={{
+                    padding: '6px 16px',
+                    borderRadius: '20px',
+                    border: `1px solid ${approvalsFilter === f ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                    background: approvalsFilter === f ? 'var(--color-primary-bg, #eff6ff)' : 'transparent',
+                    color: approvalsFilter === f ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                    fontSize: '13px',
+                    fontWeight: approvalsFilter === f ? 600 : 400,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
             
-            {financeApprovals.length === 0 ? (
-              <div className={styles.emptyState}>No pending approvals.</div>
+            {filteredApprovals.length === 0 ? (
+              <div className={styles.emptyState}>No approvals match this filter.</div>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-                <thead>
-                  <tr style={{ background: 'var(--color-surface-hover)', textAlign: 'left' }}>
-                    <th style={{ padding: '12px', borderBottom: '1px solid var(--color-border)' }}>Date</th>
-                    <th style={{ padding: '12px', borderBottom: '1px solid var(--color-border)' }}>Type</th>
-                    <th style={{ padding: '12px', borderBottom: '1px solid var(--color-border)' }}>Reason</th>
-                    <th style={{ padding: '12px', borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>Amount (₹)</th>
-                    <th style={{ padding: '12px', borderBottom: '1px solid var(--color-border)' }}>Status</th>
-                    <th style={{ padding: '12px', borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {financeApprovals.map(approval => (
-                    <tr key={approval.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                      <td style={{ padding: '12px' }}>{new Date(approval.date).toLocaleDateString('en-IN')}</td>
-                      <td style={{ padding: '12px', fontWeight: 600 }}>{approval.type}</td>
-                      <td style={{ padding: '12px', color: 'var(--color-text-muted)' }}>{approval.reason}</td>
-                      <td style={{ padding: '12px', textAlign: 'right', fontWeight: 600, color: '#ca8a04' }}>{approval.amount.toLocaleString('en-IN')}</td>
-                      <td style={{ padding: '12px' }}>
-                        <Badge size="sm" variant={approval.status === 'APPROVED' ? 'success' : (approval.status === 'REJECTED' ? 'danger' : 'warning')}>
-                          {approval.status}
-                        </Badge>
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'right' }}>
-                        {approval.status === 'PENDING' && (
-                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                            {hasPermission('Approve') ? (
-                              <>
-                                <Button size="sm" variant="outline" onClick={() => handleRejectAction(approval.id)}>Reject</Button>
-                                <Button size="sm" variant="primary" onClick={() => executeApprovedAction(approval)}>Approve</Button>
-                              </>
-                            ) : (
-                               <span style={{fontSize: '12px', color: 'var(--color-text-muted)'}}>Requires Approval</span>
-                            )}
-                          </div>
-                        )}
-                        {approval.status !== 'PENDING' && (
-                          <Button size="sm" variant="ghost" onClick={() => alert(approval.auditTrail.map(a => `${new Date(a.timestamp).toLocaleString()} - ${a.status}: ${a.note}`).join('\n'))}>
-                            View Audit Log
-                          </Button>
-                        )}
-                      </td>
+              <div style={{ overflowX: 'auto', background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--color-surface-hover)', textAlign: 'left' }}>
+                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)' }}>Date</th>
+                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)' }}>Requester</th>
+                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)' }}>Type & Reason</th>
+                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)' }}>Amount & Breakdown</th>
+                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)' }}>Status</th>
+                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {filteredApprovals.map(approval => (
+                      <tr key={approval.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', _hover: { background: 'var(--color-surface-hover)' } }}>
+                        <td style={{ padding: '16px' }}>
+                           <div style={{ fontWeight: 500 }}>{new Date(approval.date).toLocaleDateString('en-IN')}</div>
+                           <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{new Date(approval.date).toLocaleTimeString('en-IN', {hour: '2-digit', minute:'2-digit'})}</div>
+                        </td>
+                        <td style={{ padding: '16px' }}>
+                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                             <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--color-primary-bg)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '12px' }}>
+                                {(approval.requester_name || 'U')[0].toUpperCase()}
+                             </div>
+                             <div>
+                               <div style={{ fontWeight: 500 }}>{approval.requester_name || 'System User'}</div>
+                             </div>
+                           </div>
+                        </td>
+                        <td style={{ padding: '16px' }}>
+                          <div style={{ fontWeight: 600 }}>{approval.type}</div>
+                          <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '4px' }}>{approval.reason || 'No specific reason provided'}</div>
+                        </td>
+                        <td style={{ padding: '16px' }}>
+                          <div style={{ fontWeight: 600, color: approval.status === 'PENDING' ? '#ca8a04' : 'var(--color-text)' }}>
+                            ₹{approval.amount.toLocaleString('en-IN')}
+                          </div>
+                          {approval.payload?.splitPayments && (
+                            <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
+                              {approval.payload.splitPayments.map((sp, idx) => (
+                                <Badge key={idx} size="sm" variant="outline">
+                                  {sp.mode}: ₹{Number(sp.amount).toLocaleString('en-IN')}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: '16px' }}>
+                          <Badge size="sm" variant={approval.status === 'APPROVED' ? 'success' : (approval.status === 'REJECTED' ? 'danger' : 'warning')}>
+                            {approval.status}
+                          </Badge>
+                        </td>
+                        <td style={{ padding: '16px', textAlign: 'right' }}>
+                          {approval.status === 'PENDING' ? (
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                              {hasPermission('Approve') ? (
+                                <>
+                                  <Button size="sm" variant="outline" onClick={() => handleRejectAction(approval.id)}>Reject</Button>
+                                  <Button size="sm" variant="primary" onClick={() => executeApprovedAction(approval)}>Approve</Button>
+                                </>
+                              ) : (
+                                 <span style={{fontSize: '12px', color: 'var(--color-text-muted)'}}>Requires Approval</span>
+                              )}
+                            </div>
+                          ) : (
+                            <Button size="sm" variant="ghost" onClick={() => { setSelectedAuditApproval(approval); setAuditModalOpen(true); }}>
+                              View Audit Trail
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
-        )}
+          );
+        })()}
 
         {activeSubTab === 'rbac' && simulateRole === 'Admin' && (
           <div className={styles.rbacConfigList}>
@@ -3447,7 +3639,16 @@ export default function PaymentsTab({ projectId, project }) {
 
       {/* Printable Receipt Layout */}
       {printingReceipt && (
-        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', minHeight: '100vh', background: '#fff', zIndex: 9999, padding: '40px', boxSizing: 'border-box' }}>
+        <div className="print-only-invoice" style={{ display: 'none', position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'white', zIndex: 999999, padding: '40px', boxSizing: 'border-box' }}>
+           <style>
+             {`
+               @media print {
+                 body * { visibility: hidden; }
+                 .print-only-invoice, .print-only-invoice * { visibility: visible; }
+                 .print-only-invoice { display: block !important; position: absolute; left: 0; top: 0; width: 100%; font-family: 'Inter', sans-serif; }
+               }
+             `}
+           </style>
            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #e5e7eb', paddingBottom: '24px', marginBottom: '32px' }}>
               <div>
                  <h1 style={{ margin: 0, fontSize: '28px', color: '#111827', letterSpacing: '-0.02em' }}>PAYMENT RECEIPT</h1>
@@ -3641,6 +3842,46 @@ export default function PaymentsTab({ projectId, project }) {
         milestone={escalationMilestone}
         daysOverdue={escalationDaysOverdue}
       />
+
+      <Modal isOpen={auditModalOpen} onClose={() => { setAuditModalOpen(false); setSelectedAuditApproval(null); }} title="Approval Audit Trail">
+        {selectedAuditApproval && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px' }}>
+            <div style={{ fontWeight: 600, fontSize: '16px', marginBottom: '8px' }}>
+               Request Ref: {selectedAuditApproval.id}
+            </div>
+            
+            <div style={{ position: 'relative', paddingLeft: '24px', borderLeft: '2px solid var(--color-border)', marginLeft: '8px' }}>
+              {selectedAuditApproval.auditTrail.map((log, index) => (
+                <div key={index} style={{ marginBottom: index === selectedAuditApproval.auditTrail.length - 1 ? '0' : '24px', position: 'relative' }}>
+                  <div style={{ 
+                    position: 'absolute', 
+                    left: '-31px', 
+                    top: '2px', 
+                    width: '12px', 
+                    height: '12px', 
+                    borderRadius: '50%', 
+                    background: log.status === 'APPROVED' ? 'var(--color-success)' : (log.status === 'REJECTED' ? 'var(--color-danger)' : 'var(--color-primary)'),
+                    border: '2px solid var(--color-surface)'
+                  }} />
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-text)' }}>
+                     {log.status}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
+                     {new Date(log.timestamp).toLocaleString('en-IN')}
+                  </div>
+                  <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
+                     {log.note}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+               <Button variant="ghost" onClick={() => { setAuditModalOpen(false); setSelectedAuditApproval(null); }}>Close</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

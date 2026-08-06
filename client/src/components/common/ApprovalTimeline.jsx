@@ -1,4 +1,5 @@
 import React from 'react';
+import { FiUser } from 'react-icons/fi';
 import styles from './ApprovalTimeline.module.css';
 
 /**
@@ -84,7 +85,7 @@ export default function ApprovalTimeline({ stages = [] }) {
                     </div>
                   ) : (
                     <div className={styles.avatar}>
-                      <span className="material-icons" style={{ fontSize: '18px' }}>person_outline</span>
+                      <FiUser style={{ fontSize: '16px' }} />
                     </div>
                   )}
                   <div className={styles.nameRole}>

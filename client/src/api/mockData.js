@@ -630,6 +630,15 @@ export const loadMockDatabase = () => {
       const parsed = JSON.parse(saved);
       const merged = { ...initialMockDatabase, ...parsed };
       
+      // ONE-TIME PURGE OF CONTACTS TO FIX GHOST BUG
+      if (!merged.contacts_purged_v5) {
+        merged.contacts = [...initialMockDatabase.contacts];
+        merged.contacts_purged_v5 = true;
+        // Save immediately to ensure it doesn't wipe new contacts later
+        localStorage.setItem('mockDatabase_v4', JSON.stringify(merged));
+      }
+      
+      
       if (merged.leads && Array.isArray(merged.leads)) {
         if (merged.leads.length <= 2) {
           merged.leads = [...initialMockDatabase.leads];

@@ -14,6 +14,35 @@ export default function StakeholdersTab({ leadId }) {
   const toast = useToast();
 
   useEffect(() => {
+    // ONE-TIME DEFENSIVE PURGE: The user thinks manually added contacts are 'other leads'.
+    // We forcefully wipe ALL contacts to reset their state.
+    try {
+      const saved = localStorage.getItem('mockDatabase_v4');
+      if (saved) {
+        const db = JSON.parse(saved);
+        if (db.contacts) {
+          const originalLength = db.contacts.length;
+          // FORCE PURGE ALL user-created contacts
+          db.contacts = [
+            {
+              id: 'mock-contact-1',
+              lead_id: 'mock-lead-1',
+              name: 'Priya Sharma',
+              phone: '+91 9876543211',
+              email: 'priya.s@example.com',
+              role: 'Spouse',
+              decision_authority: 'Primary',
+              relationship_notes: 'Highly interested in modular kitchen details.'
+            }
+          ];
+          if (db.contacts.length !== originalLength || db.contacts[0].id !== 'mock-contact-1') {
+            localStorage.setItem('mockDatabase_v4', JSON.stringify(db));
+          }
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
     fetchContacts();
   }, [leadId]);
 

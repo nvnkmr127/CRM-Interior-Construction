@@ -970,7 +970,7 @@ export default function FinancialApprovalsPage() {
               <h3 style={{ margin: 0 }}>Activity & Audit Log</h3>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button 
-                  onClick={() => { api.post(`/financial-approvals/${activityApprovalId}/export`, { format: 'csv' }); alert('Exporting activity log...'); }} 
+                  onClick={() => { api.post(`/financial-approvals/${activityApprovalId}/export`, { format: 'csv' }); toast.info('Exporting activity log...'); }} 
                   className={styles.primaryBtn} 
                   style={{ background: 'var(--surface-sunken)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}>
                   ⬇️ Export CSV
