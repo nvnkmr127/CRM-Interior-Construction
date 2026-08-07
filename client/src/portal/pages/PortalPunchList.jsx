@@ -4,6 +4,8 @@ import styles from './PortalPunchList.module.css';
 import { useToast } from '../../store/toastContext';
 import api from '../../api/axios';
 
+import { useConfirm } from '../../store/confirmContext';
+
 const TRADES = [
   { value: 'carpentry', label: 'Carpentry' },
   { value: 'painting', label: 'Painting' },
@@ -17,6 +19,8 @@ const TRADES = [
 ];
 
 export default function PortalPunchList() {
+  const { confirm } = useConfirm();
+
   const [punchLists, setPunchLists] = useState([]);
   const [selectedList, setSelectedList] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -83,7 +87,7 @@ export default function PortalPunchList() {
   };
 
   const handleSignOff = async () => {
-    if (!window.confirm('Are you sure you want to sign off on this pre-handover walkthrough? This signifies that all items have been rectified to your satisfaction.')) return;
+    if (!await confirm('Are you sure you want to sign off on this pre-handover walkthrough? This signifies that all items have been rectified to your satisfaction.')) return;
     try {
       await api.post(`/portal/punch-lists/${selectedList.id}/sign-off`);
       toast.success('✓ Thank you! Walkthrough successfully signed off.');
@@ -125,7 +129,7 @@ export default function PortalPunchList() {
               <div 
                 key={l.id} 
                 className={`${styles.sidebarItem} ${selectedList?.id === l.id ? styles.activeItem : ''}`}
-                onClick={() => {
+                onClick={async () => {
                   setLoading(true);
                   loadSingleList(l.id);
                 }}
@@ -214,7 +218,7 @@ export default function PortalPunchList() {
                       <div className={styles.actionsBlock}>
                         <button 
                           className={styles.verifyBtn} 
-                          onClick={() => handleVerifyItem(item.id)}
+                          onClick={async () => handleVerifyItem(item.id)}
                         >
                           Verify & Check Off
                         </button>

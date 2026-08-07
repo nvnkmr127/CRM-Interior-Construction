@@ -5,7 +5,11 @@ import { getClosureChecklist, updateClosureChecklist, updateProject } from '../.
 import { Badge, Button } from '../../components/ui';
 import { useToast } from '../../store/toastContext';
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function ProjectClosureTab({ projectId, projectStatus, onProjectUpdated }) {
+  const { confirm } = useConfirm();
+
   const [checklist, setChecklist] = useState(null);
   const [autoVerification, setAutoVerification] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -100,7 +104,7 @@ export default function ProjectClosureTab({ projectId, projectStatus, onProjectU
       return;
     }
 
-    if (!window.confirm('Are you sure you want to transition this project to COMPLETED? This will mark the project as closed across all dashboards.')) {
+    if (!await confirm('Are you sure you want to transition this project to COMPLETED? This will mark the project as closed across all dashboards.')) {
       return;
     }
 

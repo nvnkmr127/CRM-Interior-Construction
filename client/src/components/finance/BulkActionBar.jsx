@@ -3,14 +3,18 @@ import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
 import styles from './BulkActionBar.module.css';
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function BulkActionBar({ selectedIds, clearSelection, refreshData }) {
+  const { confirm } = useConfirm();
+
   const [loading, setLoading] = useState(false);
   const toast = useToast();
 
   if (!selectedIds || selectedIds.size === 0) return null;
 
   const handleBulkAction = async (actionStr) => {
-    if (!window.confirm(`Are you sure you want to ${actionStr} ${selectedIds.size} items?`)) return;
+    if (!await confirm(`Are you sure you want to ${actionStr} ${selectedIds.size} items?`)) return;
     
     setLoading(true);
     try {
@@ -41,13 +45,13 @@ export default function BulkActionBar({ selectedIds, clearSelection, refreshData
         <div className={styles.actionButtons}>
           <button 
             disabled={loading}
-            onClick={() => handleBulkAction('approve')} 
+            onClick={async () => handleBulkAction('approve')} 
             className={`${styles.btn} ${styles.btnApprove}`}>
             ✅ Approve All
           </button>
           <button 
             disabled={loading}
-            onClick={() => handleBulkAction('reject')} 
+            onClick={async () => handleBulkAction('reject')} 
             className={`${styles.btn} ${styles.btnReject}`}>
             ❌ Reject All
           </button>

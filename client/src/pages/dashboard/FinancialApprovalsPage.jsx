@@ -24,7 +24,11 @@ import BulkActionBar from '../../components/finance/BulkActionBar';
 import AssignmentModal from '../../components/finance/AssignmentModal';
 
 
+import { useConfirm } from '../../store/confirmContext';
+
 function SLATracker({ approval }) {
+  const { confirm } = useConfirm();
+
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -90,6 +94,8 @@ function SLATracker({ approval }) {
 
 
 function PriorityBadge({ approval, onUpdate }) {
+  const { confirm } = useConfirm();
+
   const [isOpen, setIsOpen] = useState(false);
   const { priority } = approval;
   
@@ -107,7 +113,7 @@ function PriorityBadge({ approval, onUpdate }) {
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
       <span 
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={async () => setIsOpen(!isOpen)}
         style={{ cursor: 'pointer', padding: '4px 10px', borderRadius: 'var(--radius-full)', backgroundColor: bg, color, fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'inline-block', transition: 'all 0.2s' }}
       >
         {priority || 'low'}
@@ -115,7 +121,7 @@ function PriorityBadge({ approval, onUpdate }) {
       {isOpen && (
         <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '4px', zIndex: 50, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', minWidth: '120px', overflow: 'hidden' }}>
           {['low', 'medium', 'high', 'critical'].map(p => (
-            <div key={p} onClick={() => handleUpdate(p)} style={{ padding: '8px 16px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', textTransform: 'capitalize', color: 'var(--color-text)', borderBottom: '1px solid var(--color-border-light)', transition: 'background 0.2s' }}>
+            <div key={p} onClick={async () => handleUpdate(p)} style={{ padding: '8px 16px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', textTransform: 'capitalize', color: 'var(--color-text)', borderBottom: '1px solid var(--color-border-light)', transition: 'background 0.2s' }}>
               {p}
             </div>
           ))}
@@ -126,6 +132,8 @@ function PriorityBadge({ approval, onUpdate }) {
 }
 
 export default function FinancialApprovalsPage() {
+  const { confirm } = useConfirm();
+
   const [budgetStates, setBudgetStates] = useState({});
   const [constructionStates, setConstructionStates] = useState({});
   const [pendingList, setPendingList] = useState([]);
@@ -155,6 +163,8 @@ export default function FinancialApprovalsPage() {
 
   // Reset pagination when search or filters change
   useEffect(() => {
+  const { confirm } = useConfirm();
+
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPendingPage(1);
     setHistoryPage(1);
@@ -278,7 +288,7 @@ export default function FinancialApprovalsPage() {
       toast.error('You do not have permission to approve this transaction.');
       return;
     }
-    if (!window.confirm('Are you sure you want to approve this request?')) return;
+    if (!await confirm('Are you sure you want to approve this request?')) return;
     setSubmitting(true);
     try {
       await api.post(`/financial-approvals/${app.id}/approve`);
@@ -293,7 +303,7 @@ export default function FinancialApprovalsPage() {
   };
 
   const handleReopen = async (app) => {
-    if (!window.confirm('Are you sure you want to reopen this rejected transaction?')) return;
+    if (!await confirm('Are you sure you want to reopen this rejected transaction?')) return;
     setSubmitting(true);
     try {
       await api.post(`/financial-approvals/${app.id}/reopen`);
@@ -442,7 +452,7 @@ export default function FinancialApprovalsPage() {
           </select>
           <button 
             className={styles.secondaryBtn} 
-            onClick={() => setIsAdvancedFiltersOpen(true)}
+            onClick={async () => setIsAdvancedFiltersOpen(true)}
             style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
           >
             <span>⚡</span> Filters
@@ -469,7 +479,7 @@ export default function FinancialApprovalsPage() {
                 {key}: {val}
                 <button 
                   className={styles.chipRemoveBtn}
-                  onClick={() => {
+                  onClick={async () => {
                     const newFilters = { ...advancedFilters };
                     delete newFilters[key];
                     setAdvancedFilters(newFilters);
@@ -479,7 +489,7 @@ export default function FinancialApprovalsPage() {
             ))}
             <button 
               className={styles.clearAllBtn}
-              onClick={() => setAdvancedFilters({})}
+              onClick={async () => setAdvancedFilters({})}
             >Clear All</button>
           </div>
         )}
@@ -653,14 +663,14 @@ export default function FinancialApprovalsPage() {
                     <div className={styles.cardActions}>
                       <div style={{ display: 'flex', width: '100%', gap: '12px' }}>
                         <button
-                          onClick={() => handleApprove(app)}
+                          onClick={async () => handleApprove(app)}
                           disabled={submitting}
                           className={styles.approveBtn}
                         >
                           Approve
                         </button>
                         <button
-                          onClick={() => handleOpenReject(app)}
+                          onClick={async () => handleOpenReject(app)}
                           disabled={submitting}
                           className={styles.rejectBtn}
                         >
@@ -669,13 +679,13 @@ export default function FinancialApprovalsPage() {
                       </div>
                       <div style={{ display: 'flex', gap: '8px', width: '100%', flexWrap: 'wrap' }}>
                         <button 
-                          onClick={() => { setSelectedApproval(app); setCommentsApprovalId(app.id); }}
+                          onClick={async () => { setSelectedApproval(app); setCommentsApprovalId(app.id); }}
                           className={styles.secondaryBtn}
                         >
                           💬 Notes <UnreadBadge approvalId={app.id} refreshCounter={commentsRefreshSeq} />
                         </button>
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             setAttachmentApprovalId(app.id);
                             api.post(`/financial-approvals/${app.id}/view`);
                           }}
@@ -684,14 +694,14 @@ export default function FinancialApprovalsPage() {
                           📎 Files
                         </button>
                         <button
-                          onClick={() => { setActivityApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }}
+                          onClick={async () => { setActivityApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }}
                           className={styles.secondaryBtn}
                         >
                           📋 Logs
                         </button>
                         {(user?.role?.name === 'superadmin' || user?.role?.permissions?.includes('admin')) && (
                           <button 
-                            onClick={() => setAssignApproval(app)}
+                            onClick={async () => setAssignApproval(app)}
                             className={styles.secondaryBtn}
                             style={{ marginLeft: 'auto' }}
                           >
@@ -704,13 +714,13 @@ export default function FinancialApprovalsPage() {
                   {!hasPermission(app) && (
                     <div className={styles.cardActions} style={{ justifyContent: 'flex-start' }}>
                         <button
-                          onClick={() => { setCommentsApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }}
+                          onClick={async () => { setCommentsApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }}
                           className={styles.secondaryBtn}
                         >
                           💬 Notes <UnreadBadge approvalId={app.id} refreshCounter={commentsRefreshSeq} />
                         </button>
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             setAttachmentApprovalId(app.id);
                             api.post(`/financial-approvals/${app.id}/view`);
                           }}
@@ -719,7 +729,7 @@ export default function FinancialApprovalsPage() {
                           📎 Files
                         </button>
                         <button
-                          onClick={() => { setActivityApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }}
+                          onClick={async () => { setActivityApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }}
                           className={styles.secondaryBtn}
                         >
                           📋 Logs
@@ -796,7 +806,7 @@ export default function FinancialApprovalsPage() {
                             </span>
                             {(user?.role?.name === 'superadmin' || user?.role?.permissions?.includes('admin')) && (
                               <button 
-                                onClick={() => handleReopen(app)} 
+                                onClick={async () => handleReopen(app)} 
                                 disabled={submitting}
                                 className={styles.secondaryBtn} 
                                 style={{ marginLeft: '12px', padding: '4px 8px', fontSize: '0.75rem' }}
@@ -811,16 +821,16 @@ export default function FinancialApprovalsPage() {
                       </td>
                     <td className={styles.td}>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                       <button onClick={() => { setCommentsApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }} className={styles.secondaryBtn} style={{ position: 'relative', padding: '6px' }}>
+                       <button onClick={async () => { setCommentsApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }} className={styles.secondaryBtn} style={{ position: 'relative', padding: '6px' }}>
                          💬 <UnreadBadge approvalId={app.id} refreshCounter={commentsRefreshSeq} />
                        </button>
-                       <button onClick={() => {
+                       <button onClick={async () => {
                             setAttachmentApprovalId(app.id);
                             api.post(`/financial-approvals/${app.id}/view`);
                           }} className={styles.secondaryBtn} style={{ padding: '6px' }}>
                          📎
                        </button>
-                       <button onClick={() => { setActivityApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }} className={styles.secondaryBtn} style={{ padding: '6px' }}>
+                       <button onClick={async () => { setActivityApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }} className={styles.secondaryBtn} style={{ padding: '6px' }}>
                          📋
                        </button>
                       </div>
@@ -861,7 +871,7 @@ export default function FinancialApprovalsPage() {
               <div className={styles.modalActions}>
                 <button
                   type="button"
-                  onClick={() => setRejectModalOpen(false)}
+                  onClick={async () => setRejectModalOpen(false)}
                   disabled={submitting}
                   className={styles.cancelBtn}
                 >
@@ -885,7 +895,7 @@ export default function FinancialApprovalsPage() {
           <div className={styles.modal} style={{ maxWidth: '600px', width: '100%', padding: '0' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', borderBottom: '1px solid var(--border-color)' }}>
               <h3 style={{ margin: 0 }}>Discussion & Notes</h3>
-              <button onClick={() => setCommentsApprovalId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+              <button onClick={async () => setCommentsApprovalId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>✕</button>
             </div>
             <ApprovalComments 
               approvalId={commentsApprovalId} 
@@ -903,12 +913,12 @@ export default function FinancialApprovalsPage() {
               <h3 style={{ margin: 0 }}>Activity & Audit Log</h3>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button 
-                  onClick={() => { api.post(`/financial-approvals/${activityApprovalId}/export`, { format: 'csv' }); toast.info('Exporting activity log...'); }} 
+                  onClick={async () => { api.post(`/financial-approvals/${activityApprovalId}/export`, { format: 'csv' }); toast.info('Exporting activity log...'); }} 
                   className={styles.primaryBtn} 
                   style={{ background: 'var(--surface-sunken)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}>
                   ⬇️ Export CSV
                 </button>
-                <button onClick={() => setActivityApprovalId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+                <button onClick={async () => setActivityApprovalId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>✕</button>
               </div>
             </div>
             <ActivityLogTimeline approvalId={activityApprovalId} />
@@ -921,7 +931,7 @@ export default function FinancialApprovalsPage() {
             <div className={styles.modal} style={{ maxWidth: '800px', width: '100%', padding: '0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', borderBottom: '1px solid var(--border-color)' }}>
                 <h3 style={{ margin: 0 }}>Attachments & Documents</h3>
-                <button onClick={() => setAttachmentApprovalId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+                <button onClick={async () => setAttachmentApprovalId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>✕</button>
               </div>
               <div style={{ padding: '24px' }}>
                 <AttachmentManager 

@@ -4,6 +4,8 @@ import { Button, Badge, Modal, Input, Textarea, Select, EmptyState, Spinner } fr
 import { useToast } from '../../store/toastContext';
 import styles from './DesignAssetsTab.module.css';
 import {
+import { useConfirm } from '../../store/confirmContext';
+
   getDesignAssets,
   createDesignAsset,
   updateDesignAsset,
@@ -20,6 +22,8 @@ const ASSET_TYPES = [
 ];
 
 export default function DesignAssetsTab({ projectId }) {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -132,7 +136,7 @@ export default function DesignAssetsTab({ projectId }) {
 
   const handleDeleteAsset = async (id, e) => {
     if (e) e.stopPropagation();
-    if (!window.confirm('Are you sure you want to delete this design asset? This will delete all items inside it.')) return;
+    if (!await confirm('Are you sure you want to delete this design asset? This will delete all items inside it.')) return;
 
     try {
       const res = await deleteDesignAsset(projectId, id);
@@ -231,7 +235,7 @@ export default function DesignAssetsTab({ projectId }) {
   };
 
   const handleDeleteItem = async (itemId) => {
-    if (!window.confirm('Delete this item from the asset?')) return;
+    if (!await confirm('Delete this item from the asset?')) return;
 
     try {
       const res = await deleteDesignAssetItem(projectId, selectedAsset.id, itemId);
@@ -300,7 +304,7 @@ export default function DesignAssetsTab({ projectId }) {
   if (selectedAsset) {
     return (
       <div className={styles.detailContainer}>
-        <button className={styles.backLink} onClick={() => setSelectedAsset(null)}>
+        <button className={styles.backLink} onClick={async () => setSelectedAsset(null)}>
           ← Back to Design Assets
         </button>
 
@@ -330,12 +334,12 @@ export default function DesignAssetsTab({ projectId }) {
           </div>
 
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <Button variant="outline" size="sm" onClick={() => { setEditingAsset(selectedAsset); setIsEditModalOpen(true); }}>
+            <Button variant="outline" size="sm" onClick={async () => { setEditingAsset(selectedAsset); setIsEditModalOpen(true); }}>
               ✏️ Edit Details
             </Button>
             
             {selectedAsset.status === 'draft' || selectedAsset.status === 'revision_requested' ? (
-              <Button variant="primary" size="sm" onClick={() => handleSubmitForApproval(selectedAsset)} disabled={!selectedAsset.items || selectedAsset.items.length === 0}>
+              <Button variant="primary" size="sm" onClick={async () => handleSubmitForApproval(selectedAsset)} disabled={!selectedAsset.items || selectedAsset.items.length === 0}>
                 📤 Submit for Client Approval
               </Button>
             ) : null}
@@ -343,7 +347,7 @@ export default function DesignAssetsTab({ projectId }) {
             <Button
               variant={selectedAsset.is_visible_to_client ? 'success' : 'outline'}
               size="sm"
-              onClick={() => handleToggleVisibility(selectedAsset, !selectedAsset.is_visible_to_client)}
+              onClick={async () => handleToggleVisibility(selectedAsset, !selectedAsset.is_visible_to_client)}
             >
               {selectedAsset.is_visible_to_client ? '👁 Visible to Client' : '🙈 Hidden from Client'}
             </Button>
@@ -366,7 +370,7 @@ export default function DesignAssetsTab({ projectId }) {
         <div>
           <div className={styles.itemsHeader}>
             <h3 className={styles.title} style={{ fontSize: '1.1rem' }}>Items & References</h3>
-            <Button variant="outline" size="sm" onClick={() => setIsAddItemOpen(true)}>
+            <Button variant="outline" size="sm" onClick={async () => setIsAddItemOpen(true)}>
               ➕ Add Item
             </Button>
           </div>
@@ -380,7 +384,7 @@ export default function DesignAssetsTab({ projectId }) {
               <div className={styles.itemsGrid}>
                 {selectedAsset.items.map(item => (
                   <div key={item.id} className={styles.itemCard}>
-                    <div className={styles.itemImgWrapper} onClick={() => setPreviewImageUrl(item.image_url)}>
+                    <div className={styles.itemImgWrapper} onClick={async () => setPreviewImageUrl(item.image_url)}>
                       <img src={item.image_url} alt={item.title || 'Asset Item'} className={styles.itemImg} />
                       <button className={styles.deleteItemBtn} onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }} title="Remove item">
                         ✕
@@ -405,7 +409,7 @@ export default function DesignAssetsTab({ projectId }) {
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>Option A: Upload Local Image</label>
               <input type="file" accept="image/*" onChange={handleFileUpload} style={{ display: 'none' }} id="asset-item-upload" />
-              <div className={styles.uploadTrigger} onClick={() => document.getElementById('asset-item-upload').click()}>
+              <div className={styles.uploadTrigger} onClick={async () => document.getElementById('asset-item-upload').click()}>
                 <div className={styles.uploadIcon}>📷</div>
                 <div className={styles.uploadText}>{isUploading ? 'Reading image...' : 'Click to select an image from your computer'}</div>
               </div>
@@ -448,7 +452,7 @@ export default function DesignAssetsTab({ projectId }) {
             </div>
 
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
-              <Button type="button" variant="outline" onClick={() => setIsAddItemOpen(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={async () => setIsAddItemOpen(false)}>Cancel</Button>
               <Button type="submit" variant="primary" disabled={isUploading || !itemForm.image_url}>Save Item</Button>
             </div>
           </form>
@@ -457,7 +461,7 @@ export default function DesignAssetsTab({ projectId }) {
         {/* Fullscreen Image Preview */}
         {previewImageUrl && (
           <div
-            onClick={() => setPreviewImageUrl(null)}
+            onClick={async () => setPreviewImageUrl(null)}
             style={{
               position: 'fixed',
               top: 0,
@@ -507,7 +511,7 @@ export default function DesignAssetsTab({ projectId }) {
           <h2 className={styles.title}>Mood Boards & Concept Designs</h2>
           <p className={styles.description}>Present design concepts, mood boards, and references to clients and track approvals.</p>
         </div>
-        <Button variant="primary" onClick={() => setIsCreateOpen(true)}>
+        <Button variant="primary" onClick={async () => setIsCreateOpen(true)}>
           ➕ Create Design Asset
         </Button>
       </div>
@@ -515,25 +519,25 @@ export default function DesignAssetsTab({ projectId }) {
       <div className={styles.filters}>
         <button
           className={`${styles.filterBtn} ${activeFilter === 'all' ? styles.filterBtnActive : ''}`}
-          onClick={() => setActiveFilter('all')}
+          onClick={async () => setActiveFilter('all')}
         >
           All Assets ({assets.length})
         </button>
         <button
           className={`${styles.filterBtn} ${activeFilter === 'mood_board' ? styles.filterBtnActive : ''}`}
-          onClick={() => setActiveFilter('mood_board')}
+          onClick={async () => setActiveFilter('mood_board')}
         >
           Mood Boards ({assets.filter(a => a.asset_type === 'mood_board').length})
         </button>
         <button
           className={`${styles.filterBtn} ${activeFilter === 'concept_board' ? styles.filterBtnActive : ''}`}
-          onClick={() => setActiveFilter('concept_board')}
+          onClick={async () => setActiveFilter('concept_board')}
         >
           Concept Boards ({assets.filter(a => a.asset_type === 'concept_board').length})
         </button>
         <button
           className={`${styles.filterBtn} ${activeFilter === 'reference_collection' ? styles.filterBtnActive : ''}`}
-          onClick={() => setActiveFilter('reference_collection')}
+          onClick={async () => setActiveFilter('reference_collection')}
         >
           Reference Collections ({assets.filter(a => a.asset_type === 'reference_collection').length})
         </button>
@@ -552,7 +556,7 @@ export default function DesignAssetsTab({ projectId }) {
       ) : (
         <div className={styles.grid}>
           {filteredAssets.map(asset => (
-            <div key={asset.id} className={styles.assetCard} onClick={() => setSelectedAsset(asset)}>
+            <div key={asset.id} className={styles.assetCard} onClick={async () => setSelectedAsset(asset)}>
               {/* Image Preview strip */}
               <div className={styles.cardPreview}>
                 {asset.items && asset.items.length > 0 ? (
@@ -585,14 +589,14 @@ export default function DesignAssetsTab({ projectId }) {
                   📂 {asset.items?.length || 0} reference{asset.items?.length !== 1 ? 's' : ''}
                 </span>
 
-                <div style={{ display: 'flex', gap: '8px' }} onClick={e => e.stopPropagation()}>
-                  <Button variant="outline" size="sm" onClick={() => handleToggleVisibility(asset, !asset.is_visible_to_client)} title="Toggle Client Visibility">
+                <div style={{ display: 'flex', gap: '8px' }} onClick={async (e) => e.stopPropagation()}>
+                  <Button variant="outline" size="sm" onClick={async () => handleToggleVisibility(asset, !asset.is_visible_to_client)} title="Toggle Client Visibility">
                     {asset.is_visible_to_client ? '👁️' : '🙈'}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => { setEditingAsset(asset); setIsEditModalOpen(true); }} title="Edit Details">
+                  <Button variant="outline" size="sm" onClick={async () => { setEditingAsset(asset); setIsEditModalOpen(true); }} title="Edit Details">
                     ✏️
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleDeleteAsset(asset.id)} title="Delete Asset">
+                  <Button variant="outline" size="sm" onClick={async () => handleDeleteAsset(asset.id)} title="Delete Asset">
                     🗑️
                   </Button>
                 </div>
@@ -649,7 +653,7 @@ export default function DesignAssetsTab({ projectId }) {
           </div>
 
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
-            <Button type="button" variant="outline" onClick={() => setIsCreateModalOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={async () => setIsCreateModalOpen(false)}>Cancel</Button>
             <Button type="submit" variant="primary">Create</Button>
           </div>
         </form>
@@ -716,7 +720,7 @@ export default function DesignAssetsTab({ projectId }) {
             </div>
 
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
-              <Button type="button" variant="outline" onClick={() => { setIsEditModalOpen(false); setEditingAsset(null); }}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={async () => { setIsEditModalOpen(false); setEditingAsset(null); }}>Cancel</Button>
               <Button type="submit" variant="primary">Save Changes</Button>
             </div>
           </form>

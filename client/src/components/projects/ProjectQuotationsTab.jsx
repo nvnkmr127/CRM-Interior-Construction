@@ -7,6 +7,8 @@ import { ApprovalActions, ApprovalHistory } from '../approvals';
 import { useToast } from '../../store/toastContext';
 import styles from './ProjectQuotationsTab.module.css';
 import {
+import { useConfirm } from '../../store/confirmContext';
+
   getQuotations,
   getQuotation,
   createQuotation,
@@ -23,6 +25,8 @@ import {
 } from '../../api/projects';
 
 export default function ProjectQuotationsTab({ projectId }) {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   const [quotations, setQuotations] = useState([]);
   const [activeQuotation, setActiveQuotation] = useState(null);
@@ -271,7 +275,7 @@ export default function ProjectQuotationsTab({ projectId }) {
   };
 
   const handleDeleteItem = async (itemId) => {
-    if (!window.confirm('Are you sure you want to delete this item?')) return;
+    if (!await confirm('Are you sure you want to delete this item?')) return;
     setItemsLoading(true);
     try {
       const res = await deleteBOQItem(projectId, activeQuotation.id, itemId);
@@ -532,7 +536,7 @@ export default function ProjectQuotationsTab({ projectId }) {
                 <div 
                   key={q.id}
                   className={`${styles.versionCard} ${isActive ? styles.activeCard : ''}`}
-                  onClick={() => handleSelectQuotation(q)}
+                  onClick={async () => handleSelectQuotation(q)}
                 >
                   <div className={styles.cardHeader}>
                     <span className={styles.versionTitle}>
@@ -627,7 +631,7 @@ export default function ProjectQuotationsTab({ projectId }) {
                       Comparing Version {comparisonResult.baseQuotation.version} (Base) vs Version {comparisonResult.targetQuotation.version} (Target)
                     </p>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => setCompareMode(false)}>Exit Comparison</Button>
+                  <Button variant="outline" size="sm" onClick={async () => setCompareMode(false)}>Exit Comparison</Button>
                 </div>
 
                 {/* Summary Info */}
@@ -845,7 +849,7 @@ export default function ProjectQuotationsTab({ projectId }) {
                       permission="boq:edit"
                       variant="outline" 
                       size="sm" 
-                      onClick={() => setEditMode(!editMode)}
+                      onClick={async () => setEditMode(!editMode)}
                     >
                       {editMode ? 'Finish Editing' : 'Edit BOQ Items'}
                     </PermissionButton>
@@ -884,7 +888,7 @@ export default function ProjectQuotationsTab({ projectId }) {
                   permission="boq:edit"
                   variant="primary" 
                   size="sm" 
-                  onClick={() => setShowReviseModal(true)}
+                  onClick={async () => setShowReviseModal(true)}
                 >
                   Revise (New Version)
                 </PermissionButton>
@@ -928,7 +932,7 @@ export default function ProjectQuotationsTab({ projectId }) {
                     variant="primary" 
                     size="sm" 
                     className="mt-3"
-                    onClick={() => setShowAddItem(true)}
+                    onClick={async () => setShowAddItem(true)}
                   >
                     + Add First BOQ Item
                   </PermissionButton>
@@ -1198,13 +1202,13 @@ export default function ProjectQuotationsTab({ projectId }) {
                                 <td>
                                   {isItemEditing ? (
                                     <div className="flex gap-1">
-                                      <Button size="xs" variant="primary" onClick={() => handleUpdateItem(item.id)}>Save</Button>
-                                      <Button size="xs" variant="outline" onClick={() => setEditingItem(null)}>Cancel</Button>
+                                      <Button size="xs" variant="primary" onClick={async () => handleUpdateItem(item.id)}>Save</Button>
+                                      <Button size="xs" variant="outline" onClick={async () => setEditingItem(null)}>Cancel</Button>
                                     </div>
                                   ) : (
                                     <div className="flex gap-1">
-                                      <Button size="xs" variant="outline" onClick={() => startEditing(item)}>Edit</Button>
-                                      <Button size="xs" variant="outline" style={{ color: 'red', borderColor: 'red' }} onClick={() => handleDeleteItem(item.id)}>Delete</Button>
+                                      <Button size="xs" variant="outline" onClick={async () => startEditing(item)}>Edit</Button>
+                                      <Button size="xs" variant="outline" style={{ color: 'red', borderColor: 'red' }} onClick={async () => handleDeleteItem(item.id)}>Delete</Button>
                                     </div>
                                   )}
                                 </td>
@@ -1311,7 +1315,7 @@ export default function ProjectQuotationsTab({ projectId }) {
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={() => setShowAddItem(true)}
+                onClick={async () => setShowAddItem(true)}
                 style={{ borderStyle: 'dashed', alignSelf: 'center', width: '200px', marginTop: '16px' }}
               >
                 + Add BOQ Item
@@ -1501,7 +1505,7 @@ export default function ProjectQuotationsTab({ projectId }) {
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end">
-                  <Button type="button" variant="outline" size="sm" onClick={() => setShowAddItem(false)}>Cancel</Button>
+                  <Button type="button" variant="outline" size="sm" onClick={async () => setShowAddItem(false)}>Cancel</Button>
                   <Button type="submit" variant="primary" size="sm">Add to BOQ</Button>
                 </div>
               </form>
@@ -1543,7 +1547,7 @@ export default function ProjectQuotationsTab({ projectId }) {
               />
             </div>
             <div className="flex justify-end gap-2 mt-4">
-              <Button type="button" variant="outline" onClick={() => setShowReviseModal(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={async () => setShowReviseModal(false)}>Cancel</Button>
               <Button type="submit" variant="primary">Create Draft Revision</Button>
             </div>
           </form>

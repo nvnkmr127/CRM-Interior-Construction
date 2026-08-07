@@ -6,6 +6,8 @@ import { getPhases } from '../../api/projects';
 import { usersApi } from '../../api/users';
 import { useToast } from '../../store/toastContext';
 import {
+import { useConfirm } from '../../store/confirmContext';
+
   getWorkActivities,
   createWorkActivity,
   updateWorkActivity,
@@ -30,6 +32,8 @@ const TRADES = [
 ];
 
 export default function WorkActivitiesTab({ projectId, project }) {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   const [activities, setActivities] = useState([]);
   const [phases, setPhases] = useState([]);
@@ -145,7 +149,7 @@ export default function WorkActivitiesTab({ projectId, project }) {
       );
       
       if (err.response?.data?.error?.code === 'DEPENDENCY_UNSATISFIED_SOFT') {
-        if (window.confirm(err.response.data.error.message)) {
+        if (await confirm(err.response.data.error.message)) {
           try {
             await updateWorkActivity(projectId, act.id, { status: nextStatus, force: true });
             toast.success(`Activity marked as ${nextStatus} (Forced)`);
@@ -187,7 +191,7 @@ export default function WorkActivitiesTab({ projectId, project }) {
       }
     } catch (err) {
       if (err.response?.data?.error?.code === 'DEPENDENCY_UNSATISFIED_SOFT') {
-        if (window.confirm(err.response.data.error.message)) {
+        if (await confirm(err.response.data.error.message)) {
           try {
             const payload = { [field]: value === '' ? null : value, force: true };
             const res = await updateWorkActivity(projectId, id, payload);
@@ -245,7 +249,7 @@ export default function WorkActivitiesTab({ projectId, project }) {
 
   // Handle delete
   const handleDeleteActivity = async (id) => {
-    if (!window.confirm('Delete this work activity?')) return;
+    if (!await confirm('Delete this work activity?')) return;
     try {
       await deleteWorkActivity(projectId, id);
       setActivities(prev => prev.filter(a => a.id !== id));
@@ -291,7 +295,7 @@ export default function WorkActivitiesTab({ projectId, project }) {
 
   // Handle photo delete
   const handleDeletePhoto = async (activityId, photoId) => {
-    if (!window.confirm('Are you sure you want to delete this completion photo?')) return;
+    if (!await confirm('Are you sure you want to delete this completion photo?')) return;
     try {
       await deleteWorkActivityPhoto(projectId, activityId, photoId);
       toast.success('Photo evidence deleted.');
@@ -469,7 +473,7 @@ export default function WorkActivitiesTab({ projectId, project }) {
             <div className={styles.tradeChips}>
               <button
                 className={`${styles.chipBtn} ${selectedTrade === 'all' ? styles.chipBtnActive : ''}`}
-                onClick={() => setSelectedTrade('all')}
+                onClick={async () => setSelectedTrade('all')}
               >
                 <span>All Trades</span>
                 <span className={styles.chipCount}>{activities.length}</span>
@@ -480,7 +484,7 @@ export default function WorkActivitiesTab({ projectId, project }) {
                   <button
                     key={t.id}
                     className={`${styles.chipBtn} ${selectedTrade === t.id ? styles.chipBtnActive : ''}`}
-                    onClick={() => setSelectedTrade(t.id)}
+                    onClick={async () => setSelectedTrade(t.id)}
                   >
                     <span>{t.label}</span>
                     {count > 0 && <span className={styles.chipCount}>{count}</span>}
@@ -525,7 +529,7 @@ export default function WorkActivitiesTab({ projectId, project }) {
                     border: 'none',
                     cursor: 'pointer'
                   }}
-                  onClick={() => setSelectedStatus(st)}
+                  onClick={async () => setSelectedStatus(st)}
                 >
                   {st.replace('_', ' ')}
                 </button>
@@ -543,7 +547,7 @@ export default function WorkActivitiesTab({ projectId, project }) {
               <Button
                 variant={showAddForm ? 'primary' : 'outline'}
                 size="sm"
-                onClick={() => setShowAddForm(!showAddForm)}
+                onClick={async () => setShowAddForm(!showAddForm)}
               >
                 {showAddForm ? '✕ Close Form' : '＋ Add Custom Activity'}
               </Button>
@@ -665,7 +669,7 @@ export default function WorkActivitiesTab({ projectId, project }) {
                 />
               </div>
               <div className={styles.formActions}>
-                <Button variant="outline" size="sm" type="button" onClick={() => setShowAddForm(false)}>
+                <Button variant="outline" size="sm" type="button" onClick={async () => setShowAddForm(false)}>
                   Cancel
                 </Button>
                 <Button variant="primary" size="sm" type="submit" disabled={adding}>
@@ -885,7 +889,7 @@ export default function WorkActivitiesTab({ projectId, project }) {
                                   <button
                                     type="button"
                                     className={styles.depRemoveBtn}
-                                    onClick={() => handleRemoveDependency(dep.id)}
+                                    onClick={async () => handleRemoveDependency(dep.id)}
                                   >
                                     ✕
                                   </button>
@@ -931,13 +935,13 @@ export default function WorkActivitiesTab({ projectId, project }) {
                                   src={p.url}
                                   alt={p.caption || 'evidence'}
                                   className={styles.photoImage}
-                                  onClick={() => window.open(p.url, '_blank')}
+                                  onClick={async () => window.open(p.url, '_blank')}
                                   title="View Full Size"
                                 />
                                 <button
                                   type="button"
                                   className={styles.photoRemoveBtn}
-                                  onClick={() => handleDeletePhoto(act.id, p.id)}
+                                  onClick={async () => handleDeletePhoto(act.id, p.id)}
                                 >
                                   ✕
                                 </button>
@@ -980,7 +984,7 @@ export default function WorkActivitiesTab({ projectId, project }) {
                     </div>
 
                     <div className={styles.rowControls}>
-                      <button className={styles.deleteBtn} onClick={() => handleDeleteActivity(act.id)}>
+                      <button className={styles.deleteBtn} onClick={async () => handleDeleteActivity(act.id)}>
                         🗑
                       </button>
                     </div>

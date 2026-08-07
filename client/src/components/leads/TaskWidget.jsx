@@ -15,6 +15,8 @@ import {
 import { Badge, Button, Avatar, Select, Input } from '../ui';
 import { useToast } from '../../store/toastContext';
 
+import { useConfirm } from '../../store/confirmContext';
+
 const PRIORITIES = ['low', 'medium', 'high', 'urgent'];
 const PRIORITY_META = {
   low: { label: 'Low', color: 'bg-gray-100 text-gray-700 border-gray-200', dot: 'bg-gray-400' },
@@ -56,6 +58,8 @@ const EFFORT_OPTIONS = [
 ];
 
 export default function TaskWidget({ leadId, reps }) {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -362,7 +366,7 @@ export default function TaskWidget({ leadId, reps }) {
   };
 
   const handleDeleteTask = async (taskId) => {
-    if (!window.confirm('Are you sure you want to delete this task?')) return;
+    if (!await confirm('Are you sure you want to delete this task?')) return;
     try {
       await deleteGlobalTask(taskId);
       toast.success('Task deleted successfully.');
@@ -479,7 +483,7 @@ export default function TaskWidget({ leadId, reps }) {
           </h3>
           <Button 
             variant={isAdding ? 'outline' : 'primary'}
-            onClick={() => {
+            onClick={async () => {
               setIsAdding(!isAdding);
               if (!isAdding) resetForm();
               setEditingTask(null);
@@ -544,7 +548,7 @@ export default function TaskWidget({ leadId, reps }) {
             </h4>
             <button 
               type="button" 
-              onClick={() => { setIsAdding(false); setEditingTask(null); }}
+              onClick={async () => { setIsAdding(false); setEditingTask(null); }}
               className="text-gray-400 hover:text-gray-700 font-semibold"
             >
               ✕
@@ -645,7 +649,7 @@ export default function TaskWidget({ leadId, reps }) {
                     <button
                       key={p}
                       type="button"
-                      onClick={() => setFormFields({ ...formFields, priority: p })}
+                      onClick={async () => setFormFields({ ...formFields, priority: p })}
                       className={`flex-1 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${
                         formFields.priority === p 
                           ? p === 'urgent' ? 'bg-red-600 text-white shadow-sm' : p === 'high' ? 'bg-orange-500 text-white shadow-sm' : p === 'medium' ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-500 text-white shadow-sm'
@@ -729,7 +733,7 @@ export default function TaskWidget({ leadId, reps }) {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => { setIsAdding(false); setEditingTask(null); }}
+              onClick={async () => { setIsAdding(false); setEditingTask(null); }}
             >
               Cancel
             </Button>
@@ -866,7 +870,7 @@ export default function TaskWidget({ leadId, reps }) {
                   {/* Actions Column */}
                   <div className="flex items-center gap-2 self-end sm:self-auto">
                     <button
-                      onClick={() => handleToggleExpand(task.id)}
+                      onClick={async () => handleToggleExpand(task.id)}
                       className="text-xs px-2.5 py-1.5 rounded bg-gray-100 hover:bg-gray-200 font-bold text-gray-700 focus:outline-none flex items-center gap-1"
                     >
                       {isExpanded ? 'Collapse' : 'Manage & Expand'}
@@ -875,7 +879,7 @@ export default function TaskWidget({ leadId, reps }) {
                       </svg>
                     </button>
                     <button
-                      onClick={() => handleEditClick(task)}
+                      onClick={async () => handleEditClick(task)}
                       className="text-gray-400 hover:text-blue-650 p-1.5 hover:bg-slate-100 rounded transition"
                       title="Edit Task"
                     >
@@ -884,7 +888,7 @@ export default function TaskWidget({ leadId, reps }) {
                       </svg>
                     </button>
                     <button
-                      onClick={() => handleDeleteTask(task.id)}
+                      onClick={async () => handleDeleteTask(task.id)}
                       className="text-gray-400 hover:text-red-600 p-1.5 hover:bg-slate-100 rounded transition"
                       title="Delete Task"
                     >
@@ -944,7 +948,7 @@ export default function TaskWidget({ leadId, reps }) {
                                     </label>
                                     <button 
                                       type="button" 
-                                      onClick={() => handleDeleteTask(sub.id)}
+                                      onClick={async () => handleDeleteTask(sub.id)}
                                       className="text-gray-450 hover:text-red-650"
                                       title="Delete Checklist Item"
                                     >

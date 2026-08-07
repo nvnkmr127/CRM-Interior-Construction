@@ -4,6 +4,8 @@ import { Button, Modal, Input, Textarea, EmptyState, Spinner } from '../ui';
 import { useToast } from '../../store/toastContext';
 import styles from './VendorPaymentsTab.module.css';
 import {
+import { useConfirm } from '../../store/confirmContext';
+
   getVendorPayments,
   getVendorPayment,
   createVendorPayment,
@@ -15,6 +17,8 @@ import {
 } from '../../api/projects';
 
 export default function VendorPaymentsTab({ projectId }) {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
 
   // Data States
@@ -195,7 +199,7 @@ export default function VendorPaymentsTab({ projectId }) {
   };
 
   const handleDeleteMilestone = async (id) => {
-    if (!window.confirm('Are you sure you want to remove this vendor payment obligation?')) return;
+    if (!await confirm('Are you sure you want to remove this vendor payment obligation?')) return;
 
     setActionLoading(true);
     try {
@@ -354,7 +358,7 @@ export default function VendorPaymentsTab({ projectId }) {
                             <Button
                               variant="primary"
                               size="sm"
-                              onClick={() => openLogModal(m)}
+                              onClick={async () => openLogModal(m)}
                               disabled={actionLoading}
                             >
                               Log Payment
@@ -364,7 +368,7 @@ export default function VendorPaymentsTab({ projectId }) {
                             variant="ghost"
                             size="sm"
                             style={{ color: 'var(--color-danger)' }}
-                            onClick={() => handleDeleteMilestone(m.id)}
+                            onClick={async () => handleDeleteMilestone(m.id)}
                             disabled={actionLoading}
                           >
                             Delete
@@ -388,7 +392,7 @@ export default function VendorPaymentsTab({ projectId }) {
         size="lg"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setIsScheduleOpen(false)} disabled={actionLoading}>
+            <Button variant="ghost" onClick={async () => setIsScheduleOpen(false)} disabled={actionLoading}>
               Cancel
             </Button>
             <Button variant="primary" onClick={handleScheduleSubmit} disabled={actionLoading}>
@@ -518,7 +522,7 @@ export default function VendorPaymentsTab({ projectId }) {
           title={`Log Vendor Payment for: ${activeMilestone.name}`}
           footer={
             <>
-              <Button variant="ghost" onClick={() => setIsLogOpen(false)} disabled={actionLoading}>
+              <Button variant="ghost" onClick={async () => setIsLogOpen(false)} disabled={actionLoading}>
                 Cancel
               </Button>
               <Button variant="primary" onClick={handleLogSubmit} disabled={actionLoading}>

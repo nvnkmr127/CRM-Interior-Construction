@@ -3,9 +3,13 @@ import api from '../../api/axios';
 import { useAuth } from '../../store/authContext';
 import styles from './ApprovalComments.module.css';
 
+import { useConfirm } from '../../store/confirmContext';
+
 const EMOJIS = ['👍', '👎', '🎉', '👀', '😂'];
 
 export default function ApprovalComments({ approvalId, currentUserRole, onUnreadChange }) {
+  const { confirm } = useConfirm();
+
   const { user } = useAuth();
   const [comments, setComments] = useState([]);
   const [users, setUsers] = useState([]);
@@ -85,7 +89,7 @@ export default function ApprovalComments({ approvalId, currentUserRole, onUnread
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete comment?')) return;
+    if (!await confirm('Delete comment?')) return;
     try {
       await api.delete(`/financial-approvals/${approvalId}/comments/${id}`);
       fetchComments();
@@ -199,8 +203,8 @@ export default function ApprovalComments({ approvalId, currentUserRole, onUnread
                   onChange={(e) => setEditContent(e.target.value)}
                 />
                 <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                  <button onClick={() => handleEditSubmit(c.id)} className={styles.submitBtn}>Save</button>
-                  <button onClick={() => setEditingId(null)} className={styles.actionButton}>Cancel</button>
+                  <button onClick={async () => handleEditSubmit(c.id)} className={styles.submitBtn}>Save</button>
+                  <button onClick={async () => setEditingId(null)} className={styles.actionButton}>Cancel</button>
                 </div>
               </div>
             ) : (
@@ -223,11 +227,11 @@ export default function ApprovalComments({ approvalId, currentUserRole, onUnread
                 })()}
                 
                 <div className={styles.actions}>
-                  <button className={styles.actionButton} onClick={() => setReplyTo(c.id)}>Reply</button>
+                  <button className={styles.actionButton} onClick={async () => setReplyTo(c.id)}>Reply</button>
                   {isOwner && (
                     <>
-                      <button className={styles.actionButton} onClick={() => { setEditingId(c.id); setEditContent(c.content); }}>Edit</button>
-                      <button className={styles.actionButton} onClick={() => handleDelete(c.id)}>Delete</button>
+                      <button className={styles.actionButton} onClick={async () => { setEditingId(c.id); setEditContent(c.content); }}>Edit</button>
+                      <button className={styles.actionButton} onClick={async () => handleDelete(c.id)}>Delete</button>
                     </>
                   )}
                 </div>
@@ -242,7 +246,7 @@ export default function ApprovalComments({ approvalId, currentUserRole, onUnread
                   <button 
                     key={emoji} 
                     className={`${styles.reactionBtn} ${hasReacted ? styles.active : ''}`}
-                    onClick={() => handleReaction(c.id, emoji)}
+                    onClick={async () => handleReaction(c.id, emoji)}
                   >
                     {emoji} {reacts.length > 0 && reacts.length}
                   </button>
@@ -274,7 +278,7 @@ export default function ApprovalComments({ approvalId, currentUserRole, onUnread
         {replyTo && (
           <div style={{ fontSize: '12px', marginBottom: '8px', color: 'var(--primary-color)', display: 'flex', justifyContent: 'space-between' }}>
             <span>Replying to comment...</span>
-            <button onClick={() => setReplyTo(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'red' }}>Cancel</button>
+            <button onClick={async () => setReplyTo(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'red' }}>Cancel</button>
           </div>
         )}
         
@@ -289,7 +293,7 @@ export default function ApprovalComments({ approvalId, currentUserRole, onUnread
           {showMentions && (
             <div className={styles.mentionDropdown}>
               {users.filter(u => `${u.first_name} ${u.last_name}`.toLowerCase().includes(mentionSearch)).map(u => (
-                <div key={u.id} className={styles.mentionItem} onClick={() => selectMention(u)}>
+                <div key={u.id} className={styles.mentionItem} onClick={async () => selectMention(u)}>
                   {u.first_name} {u.last_name} ({u.role})
                 </div>
               ))}
@@ -317,7 +321,7 @@ export default function ApprovalComments({ approvalId, currentUserRole, onUnread
               <span key={idx} className={styles.attachmentBadge}>
                 {att.name}
                 <button 
-                  onClick={() => setAttachments(attachments.filter((_, i) => i !== idx))}
+                  onClick={async () => setAttachments(attachments.filter((_, i) => i !== idx))}
                   style={{ background: 'none', border: 'none', color: 'red', cursor: 'pointer', marginLeft: '4px' }}
                 >✕</button>
               </span>

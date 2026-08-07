@@ -4,7 +4,11 @@ import { Button, Badge, Input, Select } from '../ui';
 import { useToast } from '../../store/toastContext';
 import api from '../../api/axios';
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function StakeholdersTab({ leadId }) {
+  const { confirm } = useConfirm();
+
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
@@ -101,7 +105,7 @@ export default function StakeholdersTab({ leadId }) {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Remove this stakeholder?')) return;
+    if (!await confirm('Remove this stakeholder?')) return;
     try {
       await api.delete(`/leads/${leadId}/contacts/${id}`);
       setContacts(contacts.filter(c => c.id !== id));
@@ -115,7 +119,7 @@ export default function StakeholdersTab({ leadId }) {
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-gray-800">Stakeholders</h3>
-        <Button onClick={() => setIsAdding(!isAdding)} variant="outline" size="sm">
+        <Button onClick={async () => setIsAdding(!isAdding)} variant="outline" size="sm">
           {isAdding ? 'Cancel' : '+ Add Stakeholder'}
         </Button>
       </div>
@@ -148,7 +152,7 @@ export default function StakeholdersTab({ leadId }) {
              <Input placeholder="Notes" value={editContact.relationship_notes} onChange={e => setEditContact({...editContact, relationship_notes: e.target.value})} />
              <div className="flex gap-2">
                  <Button type="submit">Update</Button>
-                 <Button type="button" variant="outline" onClick={() => setEditingContactId(null)}>Cancel</Button>
+                 <Button type="button" variant="outline" onClick={async () => setEditingContactId(null)}>Cancel</Button>
              </div>
          </form>
       )}
@@ -162,13 +166,13 @@ export default function StakeholdersTab({ leadId }) {
           {contacts.map(contact => (
             <div key={contact.id} className="border p-4 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow relative">
                 <div className="absolute top-4 right-4 flex gap-2">
-                  <button onClick={() => handleEditClick(contact)} className="text-gray-400 hover:text-blue-500">
+                  <button onClick={async () => handleEditClick(contact)} className="text-gray-400 hover:text-blue-500">
                     <svg style={{ width: '18px', height: '18px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                     </svg>
                   </button>
                   <button 
-                    onClick={() => handleDelete(contact.id)}
+                    onClick={async () => handleDelete(contact.id)}
                     className="text-gray-400 hover:text-red-500 font-bold text-sm"
                     title="Remove"
                   >&times;</button>

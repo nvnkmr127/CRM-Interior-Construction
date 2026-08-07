@@ -4,7 +4,11 @@ import { getForms, deleteForm } from '../../../api/leadForms';
 import { useToast } from '../../../store/toastContext';
 import styles from './LeadForms.module.css';
 
+import { useConfirm } from '../../../store/confirmContext';
+
 export default function LeadFormsListPage() {
+  const { confirm } = useConfirm();
+
   const [forms, setForms] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
@@ -29,7 +33,7 @@ export default function LeadFormsListPage() {
   }, []);
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this form?')) return;
+    if (!await confirm('Are you sure you want to delete this form?')) return;
     try {
       await deleteForm(id);
       toast.success('Form deleted');
@@ -50,7 +54,7 @@ export default function LeadFormsListPage() {
     <div className={styles.container}>
       <div className={styles.header}>
         <h2>Lead Forms</h2>
-        <button className={styles.primaryBtn} onClick={() => navigate('/leads/forms/new')}>
+        <button className={styles.primaryBtn} onClick={async () => navigate('/leads/forms/new')}>
           Create Form
         </button>
       </div>
@@ -88,10 +92,10 @@ export default function LeadFormsListPage() {
                   <td>{form.submissions}</td>
                   <td>{new Date(form.created_at).toLocaleDateString()}</td>
                   <td className={styles.actions}>
-                    <button onClick={() => navigate(`/leads/forms/${form.id}/edit`)}>Edit</button>
-                    <button onClick={() => navigate(`/leads/forms/${form.id}/submissions`)}>Submissions</button>
-                    <button onClick={() => copyEmbedCode(form.slug)}>Embed</button>
-                    <button onClick={() => handleDelete(form.id)} className={styles.danger}>Delete</button>
+                    <button onClick={async () => navigate(`/leads/forms/${form.id}/edit`)}>Edit</button>
+                    <button onClick={async () => navigate(`/leads/forms/${form.id}/submissions`)}>Submissions</button>
+                    <button onClick={async () => copyEmbedCode(form.slug)}>Embed</button>
+                    <button onClick={async () => handleDelete(form.id)} className={styles.danger}>Delete</button>
                   </td>
                 </tr>
               ))}

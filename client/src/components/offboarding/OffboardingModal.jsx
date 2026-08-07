@@ -5,7 +5,11 @@ import { useToast } from '../../store/toastContext';
 import styles from './OffboardingModal.module.css';
 import OffboardingStepper from './OffboardingStepper';
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function OffboardingModal({ record, onClose, onUpdated }) {
+  const { confirm } = useConfirm();
+
   const [loading, setLoading] = useState(false);
   const [checklist, setChecklist] = useState({
     knowledge_transfer_done: record.knowledge_transfer_done || false,
@@ -54,7 +58,7 @@ export default function OffboardingModal({ record, onClose, onUpdated }) {
   };
 
   const handleFinalize = async () => {
-    if (!window.confirm('Are you sure you want to finalize offboarding? This will disable the account and archive the user.')) return;
+    if (!await confirm('Are you sure you want to finalize offboarding? This will disable the account and archive the user.')) return;
     setLoading(true);
     try {
       await api.post(`/offboarding/${record.id}/finalize`);

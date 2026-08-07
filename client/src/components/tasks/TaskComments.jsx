@@ -6,7 +6,11 @@ import CommentEditor from './CommentEditor'
 import { Spinner, Avatar } from '../ui'
 import styles from './TaskComments.module.css'
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function TaskComments({ projectId, taskId, isGlobal = false }) {
+  const { confirm } = useConfirm();
+
   const [comments, setComments] = useState([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -104,7 +108,7 @@ export default function TaskComments({ projectId, taskId, isGlobal = false }) {
   }
 
   const handleDelete = async (commentId) => {
-    if (!window.confirm('Delete comment?')) return
+    if (!await confirm('Delete comment?')) return
     try {
       if (isGlobal) {
         await deleteGlobalTaskComment(taskId, commentId)

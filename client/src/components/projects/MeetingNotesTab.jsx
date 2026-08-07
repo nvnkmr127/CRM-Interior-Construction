@@ -4,7 +4,11 @@ import styles from './MeetingNotesTab.module.css'
 import api from '../../api/axios'
 import { useToast } from '../../store/toastContext'
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function MeetingNotesTab({ projectId }) {
+  const { confirm } = useConfirm();
+
   const [meetingNotes, setMeetingNotes] = useState([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -181,7 +185,7 @@ export default function MeetingNotesTab({ projectId }) {
   }
 
   const handleDelete = async (noteId) => {
-    if (window.confirm('Are you sure you want to delete these meeting notes? This will also delete all linked action items.')) {
+    if (await confirm('Are you sure you want to delete these meeting notes? This will also delete all linked action items.')) {
       try {
         const res = await api.delete(`/projects/${projectId}/meeting-notes/${noteId}`)
         if (res.data?.success) {
@@ -324,8 +328,8 @@ export default function MeetingNotesTab({ projectId }) {
                 )}
 
                 <div className={styles.cardFooter}>
-                  <button className={styles.editBtn} onClick={() => openEditModal(note)}>Edit</button>
-                  <button className={styles.deleteBtn} onClick={() => handleDelete(note.id)}>Delete</button>
+                  <button className={styles.editBtn} onClick={async () => openEditModal(note)}>Edit</button>
+                  <button className={styles.deleteBtn} onClick={async () => handleDelete(note.id)}>Delete</button>
                 </div>
               </div>
             )
@@ -339,7 +343,7 @@ export default function MeetingNotesTab({ projectId }) {
           <div className={styles.modalContent}>
             <div className={styles.modalHeader}>
               <h3 className={styles.modalTitle}>{editingNote ? 'Edit Meeting Notes' : 'New Meeting Notes'}</h3>
-              <button className={styles.closeBtn} onClick={() => setModalOpen(false)}>×</button>
+              <button className={styles.closeBtn} onClick={async () => setModalOpen(false)}>×</button>
             </div>
             
             <form onSubmit={handleSave}>
@@ -387,7 +391,7 @@ export default function MeetingNotesTab({ projectId }) {
                       {attendees.map((att, idx) => (
                         <span key={idx} className={styles.attendeeTag}>
                           {att}
-                          <button className={styles.removeTagBtn} type="button" onClick={() => handleRemoveAttendee(att)}>
+                          <button className={styles.removeTagBtn} type="button" onClick={async () => handleRemoveAttendee(att)}>
                             ×
                           </button>
                         </span>
@@ -458,7 +462,7 @@ export default function MeetingNotesTab({ projectId }) {
                         value={item.due_date} 
                         onChange={(e) => handleUpdateActionItemField(idx, 'due_date', e.target.value)}
                       />
-                      <button className={styles.removeRowBtn} type="button" onClick={() => handleRemoveActionItemRow(idx)}>
+                      <button className={styles.removeRowBtn} type="button" onClick={async () => handleRemoveActionItemRow(idx)}>
                         🗑️
                       </button>
                     </div>
@@ -467,7 +471,7 @@ export default function MeetingNotesTab({ projectId }) {
               </div>
 
               <div className={styles.modalFooter}>
-                <button className={styles.cancelBtn} type="button" onClick={() => setModalOpen(false)}>Cancel</button>
+                <button className={styles.cancelBtn} type="button" onClick={async () => setModalOpen(false)}>Cancel</button>
                 <button className={styles.saveBtn} type="submit">Save Notes</button>
               </div>
             </form>

@@ -4,6 +4,8 @@ import { Button, Modal, Input, Textarea, EmptyState, Spinner } from '../ui';
 import { useToast } from '../../store/toastContext';
 import styles from './PurchaseOrdersTab.module.css';
 import {
+import { useConfirm } from '../../store/confirmContext';
+
   getPurchaseOrders,
   getPurchaseOrder,
   createPurchaseOrder,
@@ -16,6 +18,8 @@ import {
 } from '../../api/projects';
 
 export default function PurchaseOrdersTab({ projectId }) {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   
   // Data States
@@ -253,7 +257,7 @@ export default function PurchaseOrdersTab({ projectId }) {
       confirmMsg = 'Cancelling this PO will reverse its associated budget allocations. Proceed?';
     }
 
-    if (!window.confirm(confirmMsg)) return;
+    if (!await confirm(confirmMsg)) return;
 
     setActionLoading(true);
     try {
@@ -281,7 +285,7 @@ export default function PurchaseOrdersTab({ projectId }) {
       return toast.error('Please enter a valid received quantity.');
     }
     if (qty > Number(item.quantity)) {
-      if (!window.confirm(`You are receiving ${qty} units which is greater than the ordered quantity of ${item.quantity}. Do you want to proceed?`)) {
+      if (!await confirm(`You are receiving ${qty} units which is greater than the ordered quantity of ${item.quantity}. Do you want to proceed?`)) {
         return;
       }
     }
@@ -410,7 +414,7 @@ export default function PurchaseOrdersTab({ projectId }) {
               <div
                 key={po.id}
                 className={`${styles.poCard} ${selectedPo?.id === po.id ? styles.poCardActive : ''}`}
-                onClick={() => handleSelectPo(po.id)}
+                onClick={async () => handleSelectPo(po.id)}
               >
                 <div className={styles.poCardHeader}>
                   <span className={styles.poNumber}>{po.po_number}</span>
@@ -525,7 +529,7 @@ export default function PurchaseOrdersTab({ projectId }) {
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      onClick={() => handleUpdateItemReceipt(item.id)}
+                                      onClick={async () => handleUpdateItemReceipt(item.id)}
                                       disabled={actionLoading}
                                       style={{ padding: '2px 6px', fontSize: '10px' }}
                                     >
@@ -549,7 +553,7 @@ export default function PurchaseOrdersTab({ projectId }) {
                     <Button
                       type="button"
                       variant="ghost"
-                      onClick={() => {
+                      onClick={async () => {
                         const key = `${selectedPo.tenant_id}/projects/${projectId}/po/PO_${selectedPo.po_number}.pdf`;
                         window.open(`/api/local-download?key=${encodeURIComponent(key)}`, '_blank');
                       }}
@@ -562,14 +566,14 @@ export default function PurchaseOrdersTab({ projectId }) {
                     <>
                       <Button
                         variant="secondary"
-                        onClick={() => handleUpdateStatus('sent')}
+                        onClick={async () => handleUpdateStatus('sent')}
                         disabled={actionLoading}
                       >
                         Mark as Sent
                       </Button>
                       <Button
                         variant="primary"
-                        onClick={() => handleUpdateStatus('confirmed')}
+                        onClick={async () => handleUpdateStatus('confirmed')}
                         disabled={actionLoading}
                       >
                         Confirm PO
@@ -579,7 +583,7 @@ export default function PurchaseOrdersTab({ projectId }) {
                   {selectedPo.status === 'sent' && (
                     <Button
                       variant="primary"
-                      onClick={() => handleUpdateStatus('confirmed')}
+                      onClick={async () => handleUpdateStatus('confirmed')}
                       disabled={actionLoading}
                     >
                       Confirm PO
@@ -589,7 +593,7 @@ export default function PurchaseOrdersTab({ projectId }) {
                     <>
                       <Button
                         variant="ghost"
-                        onClick={() => handleUpdateStatus('cancelled')}
+                        onClick={async () => handleUpdateStatus('cancelled')}
                         disabled={actionLoading}
                         style={{ color: 'var(--color-danger)' }}
                       >
@@ -597,7 +601,7 @@ export default function PurchaseOrdersTab({ projectId }) {
                       </Button>
                       <Button
                         variant="secondary"
-                        onClick={() => handleUpdateStatus('received')}
+                        onClick={async () => handleUpdateStatus('received')}
                         disabled={actionLoading}
                       >
                         Mark All Fully Received
@@ -623,7 +627,7 @@ export default function PurchaseOrdersTab({ projectId }) {
         size="lg"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setIsCreateModalOpen(false)} disabled={actionLoading}>
+            <Button variant="ghost" onClick={async () => setIsCreateModalOpen(false)} disabled={actionLoading}>
               Cancel
             </Button>
             <Button variant="primary" onClick={handleCreatePO} disabled={actionLoading}>
@@ -655,7 +659,7 @@ export default function PurchaseOrdersTab({ projectId }) {
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => setIsQuickVendorOpen(!isQuickVendorOpen)}
+                  onClick={async () => setIsQuickVendorOpen(!isQuickVendorOpen)}
                   style={{ whiteSpace: 'nowrap', fontSize: '12px' }}
                 >
                   {isQuickVendorOpen ? 'Cancel' : '+ New Vendor'}
@@ -709,7 +713,7 @@ export default function PurchaseOrdersTab({ projectId }) {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => setIsQuickVendorOpen(false)}
+                    onClick={async () => setIsQuickVendorOpen(false)}
                   >
                     Cancel
                   </Button>

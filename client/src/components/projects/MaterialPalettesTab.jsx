@@ -4,6 +4,8 @@ import { Button, Badge, Modal, Input, EmptyState, Spinner } from '../ui';
 import { useToast } from '../../store/toastContext';
 import styles from './MaterialPalettesTab.module.css';
 import {
+import { useConfirm } from '../../store/confirmContext';
+
   getMaterialPalettes,
   getMaterialPaletteBOQItems,
   createMaterialPalette,
@@ -32,6 +34,8 @@ const DECISIONS = [
 ];
 
 export default function MaterialPalettesTab({ projectId }) {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   const [paletteItems, setPaletteItems] = useState([]);
   const [boqItems, setBoqItems] = useState([]);
@@ -161,7 +165,7 @@ export default function MaterialPalettesTab({ projectId }) {
   };
 
   const handleDeleteItem = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this material selection?')) return;
+    if (!await confirm('Are you sure you want to delete this material selection?')) return;
 
     try {
       const res = await deleteMaterialPalette(projectId, id);
@@ -244,7 +248,7 @@ export default function MaterialPalettesTab({ projectId }) {
             Track physical material samples presented to clients, record client decisions (approval/rejection), log sign-offs, and link selections to BOQ items.
           </p>
         </div>
-        <Button variant="primary" onClick={() => setIsCreateOpen(true)}>
+        <Button variant="primary" onClick={async () => setIsCreateOpen(true)}>
           ➕ Add Material Sample
         </Button>
       </div>
@@ -275,7 +279,7 @@ export default function MaterialPalettesTab({ projectId }) {
                           src={item.image_url}
                           alt={item.item_name}
                           className={styles.swatch}
-                          onClick={() => setZoomImageUrl(item.image_url)}
+                          onClick={async () => setZoomImageUrl(item.image_url)}
                           style={{ cursor: 'zoom-in' }}
                         />
                       ) : (
@@ -348,10 +352,10 @@ export default function MaterialPalettesTab({ projectId }) {
                       </div>
 
                       <div className={styles.actions}>
-                        <Button variant="outline" size="sm" onClick={() => { setEditingItem(item); setIsEditOpen(true); }} title="Edit specification">
+                        <Button variant="outline" size="sm" onClick={async () => { setEditingItem(item); setIsEditOpen(true); }} title="Edit specification">
                           ✏️
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleDeleteItem(item.id)} title="Delete selection">
+                        <Button variant="outline" size="sm" onClick={async () => handleDeleteItem(item.id)} title="Delete selection">
                           🗑️
                         </Button>
                       </div>
@@ -488,7 +492,7 @@ export default function MaterialPalettesTab({ projectId }) {
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>Option A: Swatch Picture Upload</label>
             <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, false)} style={{ display: 'none' }} id="palette-item-upload" />
-            <div className={styles.uploadTrigger} onClick={() => document.getElementById('palette-item-upload').click()}>
+            <div className={styles.uploadTrigger} onClick={async () => document.getElementById('palette-item-upload').click()}>
               <div className={styles.uploadIcon}>📸</div>
               <div className={styles.uploadText}>{isUploading ? 'Loading...' : 'Select Swatch Picture'}</div>
             </div>
@@ -513,7 +517,7 @@ export default function MaterialPalettesTab({ projectId }) {
           )}
 
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '12px' }}>
-            <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={async () => setIsCreateOpen(false)}>Cancel</Button>
             <Button type="submit" variant="primary" disabled={isUploading}>Save Selection</Button>
           </div>
         </form>
@@ -643,7 +647,7 @@ export default function MaterialPalettesTab({ projectId }) {
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>Swatch Picture Upload</label>
               <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, true)} style={{ display: 'none' }} id="palette-item-upload-edit" />
-              <div className={styles.uploadTrigger} onClick={() => document.getElementById('palette-item-upload-edit').click()}>
+              <div className={styles.uploadTrigger} onClick={async () => document.getElementById('palette-item-upload-edit').click()}>
                 <div className={styles.uploadIcon}>📸</div>
                 <div className={styles.uploadText}>{isUploading ? 'Loading...' : 'Select Swatch Picture'}</div>
               </div>
@@ -677,7 +681,7 @@ export default function MaterialPalettesTab({ projectId }) {
             </div>
 
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '12px' }}>
-              <Button type="button" variant="outline" onClick={() => { setIsEditOpen(false); setEditingItem(null); }}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={async () => { setIsEditOpen(false); setEditingItem(null); }}>Cancel</Button>
               <Button type="submit" variant="primary" disabled={isUploading}>Save Changes</Button>
             </div>
           </form>
@@ -687,7 +691,7 @@ export default function MaterialPalettesTab({ projectId }) {
       {/* Swatch Zoom overlay */}
       {zoomImageUrl && (
         <div
-          onClick={() => setZoomImageUrl(null)}
+          onClick={async () => setZoomImageUrl(null)}
           style={{
             position: 'fixed',
             top: 0,

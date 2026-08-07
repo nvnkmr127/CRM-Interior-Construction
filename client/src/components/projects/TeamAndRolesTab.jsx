@@ -5,7 +5,11 @@ import { updateProject, getProjectMembers, assignProjectMembers, removeProjectMe
 import { usersApi } from '../../api/users';
 import { useToast } from '../../store/toastContext';
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function TeamAndRolesTab({ project, onRefresh }) {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -46,7 +50,7 @@ export default function TeamAndRolesTab({ project, onRefresh }) {
   };
 
   const handleRemoveMember = async (userId) => {
-    if (!window.confirm('Remove member from project?')) return;
+    if (!await confirm('Remove member from project?')) return;
     try {
       await removeProjectMember(project.id, userId);
       toast.success('Member removed');
@@ -163,7 +167,7 @@ export default function TeamAndRolesTab({ project, onRefresh }) {
           <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
             Project Access List
           </div>
-          <Button variant="primary" size="sm" onClick={() => setAssignModalOpen(true)}>
+          <Button variant="primary" size="sm" onClick={async () => setAssignModalOpen(true)}>
             + Assign Members
           </Button>
         </div>
@@ -189,7 +193,7 @@ export default function TeamAndRolesTab({ project, onRefresh }) {
                     <td style={{ padding: '12px 20px', fontSize: 'var(--text-sm)' }}>{m.name}</td>
                     <td style={{ padding: '12px 20px', fontSize: 'var(--text-sm)' }}>{m.email}</td>
                     <td style={{ padding: '12px 20px', fontSize: 'var(--text-sm)' }}>
-                      <Button variant="danger" size="sm" onClick={() => handleRemoveMember(memberId)}>Remove</Button>
+                      <Button variant="danger" size="sm" onClick={async () => handleRemoveMember(memberId)}>Remove</Button>
                     </td>
                   </tr>
                 );
@@ -265,7 +269,7 @@ export default function TeamAndRolesTab({ project, onRefresh }) {
           />
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
-          <Button variant="outline" onClick={() => setIsEditing(false)} disabled={saving}>Cancel</Button>
+          <Button variant="outline" onClick={async () => setIsEditing(false)} disabled={saving}>Cancel</Button>
           <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button>
         </div>
       </Modal>
@@ -284,7 +288,7 @@ export default function TeamAndRolesTab({ project, onRefresh }) {
           />
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
-          <Button variant="outline" onClick={() => setAssignModalOpen(false)} disabled={assigning}>Cancel</Button>
+          <Button variant="outline" onClick={async () => setAssignModalOpen(false)} disabled={assigning}>Cancel</Button>
           <Button onClick={handleAssignMembers} disabled={assigning || !selectedUsersToAssign.length}>
             {assigning ? 'Assigning...' : 'Assign Users'}
           </Button>

@@ -15,7 +15,11 @@ import { usersApi } from '../../api/users';
 import { Button } from '../../components/ui';
 import { useToast } from '../../store/toastContext';
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function ServiceTicketsTab({ projectId }) {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
 
   const [tickets, setTickets] = useState([]);
@@ -201,7 +205,7 @@ export default function ServiceTicketsTab({ projectId }) {
   };
 
   const handleRemovePart = async (ticketId, partId) => {
-    if (!window.confirm('Remove this part?')) return;
+    if (!await confirm('Remove this part?')) return;
     try {
       await removeServiceTicketPart(projectId, ticketId, partId);
       toast.success('Part removed.');
@@ -298,7 +302,7 @@ export default function ServiceTicketsTab({ projectId }) {
                 <div key={ticket.id} className={styles.ticketCard}>
                   <div
                     className={styles.ticketCardHeader}
-                    onClick={() => setExpandedTicketId(isExpanded ? null : ticket.id)}
+                    onClick={async () => setExpandedTicketId(isExpanded ? null : ticket.id)}
                   >
                     <div className={styles.ticketPrimary}>
                       <span className={styles.ticketTitle}>
@@ -398,7 +402,7 @@ export default function ServiceTicketsTab({ projectId }) {
                           </div>
                           <Button 
                             variant="secondary" 
-                            onClick={() => handleUpdateClassification(ticket.id)}
+                            onClick={async () => handleUpdateClassification(ticket.id)}
                             disabled={submittingClassification}
                           >
                             {submittingClassification ? 'Saving...' : 'Update Classification'}
@@ -410,8 +414,8 @@ export default function ServiceTicketsTab({ projectId }) {
                                 Client Approval Pending for <strong>₹{ticket.chargeable_estimate}</strong>
                               </span>
                               <div style={{ display: 'flex', gap: '8px' }}>
-                                <Button variant="secondary" onClick={() => handleApproveEstimate(ticket.id, 'rejected')} disabled={submittingClassification}>Reject</Button>
-                                <Button variant="primary" onClick={() => handleApproveEstimate(ticket.id, 'approved')} disabled={submittingClassification}>Approve</Button>
+                                <Button variant="secondary" onClick={async () => handleApproveEstimate(ticket.id, 'rejected')} disabled={submittingClassification}>Reject</Button>
+                                <Button variant="primary" onClick={async () => handleApproveEstimate(ticket.id, 'approved')} disabled={submittingClassification}>Approve</Button>
                               </div>
                             </div>
                           )}
@@ -437,7 +441,7 @@ export default function ServiceTicketsTab({ projectId }) {
                                   {part.cost != null && <span style={{ marginLeft: '8px', color: 'var(--color-text-secondary)' }}>Cost: ₹{part.cost}</span>}
                                 </div>
                                 {ticket.status !== 'resolved' && ticket.status !== 'closed' && (
-                                  <span style={{ color: '#ef4444', cursor: 'pointer', fontWeight: 600 }} onClick={() => handleRemovePart(ticket.id, part.id)}>Remove</span>
+                                  <span style={{ color: '#ef4444', cursor: 'pointer', fontWeight: 600 }} onClick={async () => handleRemovePart(ticket.id, part.id)}>Remove</span>
                                 )}
                               </div>
                             ))}
@@ -522,7 +526,7 @@ export default function ServiceTicketsTab({ projectId }) {
 
                                 <Button
                                   variant="secondary"
-                                  onClick={() => handleScheduleVisit(ticket.id)}
+                                  onClick={async () => handleScheduleVisit(ticket.id)}
                                   disabled={submittingVisit}
                                 >
                                   {submittingVisit ? 'Scheduling...' : 'Schedule Visit'}
@@ -545,7 +549,7 @@ export default function ServiceTicketsTab({ projectId }) {
                                     <label className={styles.label} style={{ fontSize: '10px' }}>Cost (₹)</label>
                                     <input type="number" min="0" className={styles.input} value={partCost} onChange={e => setPartCost(e.target.value)} placeholder="Opt" />
                                   </div>
-                                  <Button variant="secondary" onClick={() => handleAddPart(ticket.id)} disabled={submittingPart}>
+                                  <Button variant="secondary" onClick={async () => handleAddPart(ticket.id)} disabled={submittingPart}>
                                     Add Part
                                   </Button>
                                 </div>
@@ -578,7 +582,7 @@ export default function ServiceTicketsTab({ projectId }) {
 
                                 <Button
                                   variant="primary"
-                                  onClick={() => handleResolveTicket(ticket)}
+                                  onClick={async () => handleResolveTicket(ticket)}
                                   disabled={submittingResolution}
                                 >
                                   {submittingResolution ? 'Resolving...' : 'Resolve Ticket & Complete'}

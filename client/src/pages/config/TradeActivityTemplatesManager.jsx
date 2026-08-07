@@ -7,6 +7,8 @@ import { useToast } from '../../store/toastContext';
 import { configApi } from '../../api/config';
 
 
+import { useConfirm } from '../../store/confirmContext';
+
 const TRADES = [
   { id: 'civil', label: 'Civil Work' },
   { id: 'electrical', label: 'Electrical' },
@@ -22,6 +24,8 @@ const TRADES = [
 const ROOM_TYPES = ['General', 'Kitchen', 'Bedroom', 'Bathroom', 'Living Room'];
 
 export default function TradeActivityTemplatesManager() {
+  const { confirm } = useConfirm();
+
   const [templates, setTemplates] = useState([]);
   const [selectedTrade, setSelectedTrade] = useState('civil');
   const [selectedRoomType, setSelectedRoomType] = useState('General');
@@ -141,7 +145,7 @@ export default function TradeActivityTemplatesManager() {
     if (isGlobal) {
       return toast.error('System default templates cannot be deleted.');
     }
-    if (!window.confirm('Are you sure you want to delete this custom template?')) return;
+    if (!await confirm('Are you sure you want to delete this custom template?')) return;
     try {
       await configApi.deleteTradeTemplate(id);
       setTemplates(prev => prev.filter(t => t.id !== id));
@@ -171,7 +175,7 @@ export default function TradeActivityTemplatesManager() {
 
   const handleDeleteDependencyTemplate = async (id, isGlobal) => {
     if (isGlobal) return toast.error('System default dependencies cannot be deleted.');
-    if (!window.confirm('Are you sure you want to delete this custom dependency?')) return;
+    if (!await confirm('Are you sure you want to delete this custom dependency?')) return;
     try {
       await configApi.deleteTradeDependencyTemplate(id);
       setDependencyTemplates(prev => prev.filter(t => t.id !== id));
@@ -210,13 +214,13 @@ export default function TradeActivityTemplatesManager() {
 
       <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', padding: '0 32px' }}>
         <button
-          onClick={() => setActiveTab('activities')}
+          onClick={async () => setActiveTab('activities')}
           className={`${styles.tabBtn} ${activeTab === 'activities' ? styles.tabBtnActive : ''}`}
         >
           Activity Templates
         </button>
         <button
-          onClick={() => setActiveTab('dependencies')}
+          onClick={async () => setActiveTab('dependencies')}
           className={`${styles.tabBtn} ${activeTab === 'dependencies' ? styles.tabBtnActive : ''}`}
         >
           Trade Dependencies
@@ -233,7 +237,7 @@ export default function TradeActivityTemplatesManager() {
               <button
                 key={trade.id}
                 className={`${styles.tradeBtn} ${selectedTrade === trade.id ? styles.tradeBtnActive : ''}`}
-                onClick={() => setSelectedTrade(trade.id)}
+                onClick={async () => setSelectedTrade(trade.id)}
               >
                 <span>{trade.label}</span>
                 <span className={styles.badge}>
@@ -379,7 +383,7 @@ export default function TradeActivityTemplatesManager() {
                             <Button size="sm" variant="outline" onClick={cancelEdit}>
                               Cancel
                             </Button>
-                            <Button size="sm" variant="primary" onClick={() => handleUpdateTemplate(tpl.id)}>
+                            <Button size="sm" variant="primary" onClick={async () => handleUpdateTemplate(tpl.id)}>
                               Save
                             </Button>
                           </div>
@@ -406,10 +410,10 @@ export default function TradeActivityTemplatesManager() {
                           <div className={styles.rowActions}>
                             {!isGlobal && (
                               <>
-                                <button className={styles.editBtn} onClick={() => startEdit(tpl)}>
+                                <button className={styles.editBtn} onClick={async () => startEdit(tpl)}>
                                   ✏️
                                 </button>
-                                <button className={styles.deleteBtn} onClick={() => handleDeleteTemplate(tpl.id, isGlobal)}>
+                                <button className={styles.deleteBtn} onClick={async () => handleDeleteTemplate(tpl.id, isGlobal)}>
                                   🗑️
                                 </button>
                               </>
@@ -437,19 +441,19 @@ export default function TradeActivityTemplatesManager() {
             <div style={{ display: 'flex', gap: 12 }}>
               <Button 
                 variant={enforcementMode === 'hard' ? 'primary' : 'outline'} 
-                onClick={() => handleToggleEnforcementMode('hard')}
+                onClick={async () => handleToggleEnforcementMode('hard')}
               >
                 Hard Block (Prevent update)
               </Button>
               <Button 
                 variant={enforcementMode === 'soft' ? 'primary' : 'outline'} 
-                onClick={() => handleToggleEnforcementMode('soft')}
+                onClick={async () => handleToggleEnforcementMode('soft')}
               >
                 Soft Warning (Allow with confirmation)
               </Button>
               <Button 
                 variant={enforcementMode === 'none' ? 'primary' : 'outline'} 
-                onClick={() => handleToggleEnforcementMode('none')}
+                onClick={async () => handleToggleEnforcementMode('none')}
               >
                 None (Do not enforce)
               </Button>
@@ -500,7 +504,7 @@ export default function TradeActivityTemplatesManager() {
                       )}
                     </div>
                     {!isGlobal && (
-                      <button className={styles.deleteBtn} onClick={() => handleDeleteDependencyTemplate(dep.id, isGlobal)}>🗑️</button>
+                      <button className={styles.deleteBtn} onClick={async () => handleDeleteDependencyTemplate(dep.id, isGlobal)}>🗑️</button>
                     )}
                   </div>
                 );

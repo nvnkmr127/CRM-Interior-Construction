@@ -10,7 +10,11 @@ import { getClaims, createClaim, updateClaim, deleteClaim } from '../../api/warr
 import { usersApi } from '../../api/users';
 import { useToast } from '../../store/toastContext';
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function WarrantiesTab({ projectId }) {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   const [warranties, setWarranties] = useState([]);
   const [handoverItems, setHandoverItems] = useState([]);
@@ -296,7 +300,7 @@ export default function WarrantiesTab({ projectId }) {
   };
 
   const handleVoidWarranty = async (w) => {
-    if (window.confirm(`Are you sure you want to void warranty for ${w.product_name}?`)) {
+    if (await confirm(`Are you sure you want to void warranty for ${w.product_name}?`)) {
       try {
         await updateWarranty(projectId, w.id, { status: 'voided' });
         toast.success('Warranty has been voided.');
@@ -308,7 +312,7 @@ export default function WarrantiesTab({ projectId }) {
   };
 
   const handleDeleteWarranty = async (id) => {
-    if (window.confirm('Are you sure you want to delete this warranty record?')) {
+    if (await confirm('Are you sure you want to delete this warranty record?')) {
       try {
         await deleteWarranty(projectId, id);
         toast.success('Warranty record deleted.');
@@ -382,7 +386,7 @@ export default function WarrantiesTab({ projectId }) {
   };
 
   const handleDeleteClaim = async (id) => {
-    if (window.confirm('Are you sure you want to delete this claim?')) {
+    if (await confirm('Are you sure you want to delete this claim?')) {
       try {
         await deleteClaim(projectId, id);
         toast.success('Claim deleted.');
@@ -464,10 +468,10 @@ export default function WarrantiesTab({ projectId }) {
         <div className={styles.cardHeader}>
           <h3>Installation & Workmanship Warranty</h3>
           {!editingInstallation ? (
-            <Button variant="secondary" size="small" onClick={() => setEditingInstallation(true)}>Edit Terms</Button>
+            <Button variant="secondary" size="small" onClick={async () => setEditingInstallation(true)}>Edit Terms</Button>
           ) : (
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <Button variant="secondary" size="small" onClick={() => {
+              <Button variant="secondary" size="small" onClick={async () => {
                 setEditingInstallation(false);
                 if (project) {
                   setInstallationForm({
@@ -545,10 +549,10 @@ export default function WarrantiesTab({ projectId }) {
             <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>Define what is NOT covered to prevent disputes.</p>
           </div>
           {!editingExclusions ? (
-            <Button variant="secondary" size="small" onClick={() => setEditingExclusions(true)}>Edit Exclusions</Button>
+            <Button variant="secondary" size="small" onClick={async () => setEditingExclusions(true)}>Edit Exclusions</Button>
           ) : (
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <Button variant="secondary" size="small" onClick={() => {
+              <Button variant="secondary" size="small" onClick={async () => {
                 setEditingExclusions(false);
                 if (project) {
                   setExclusionsForm({
@@ -572,7 +576,7 @@ export default function WarrantiesTab({ projectId }) {
                   <button
                     key={exc}
                     type="button"
-                    onClick={() => toggleExclusion(exc)}
+                    onClick={async () => toggleExclusion(exc)}
                     className={`${styles.pill} ${exclusionsForm.exclusions.includes(exc) ? styles.pillActive : ''}`}
                     style={{ border: '1px solid var(--color-border)', background: exclusionsForm.exclusions.includes(exc) ? 'var(--color-primary-light)' : 'transparent', color: exclusionsForm.exclusions.includes(exc) ? 'var(--color-primary-dark)' : 'inherit' }}
                   >
@@ -646,7 +650,7 @@ export default function WarrantiesTab({ projectId }) {
             <button
               key={f}
               className={`${styles.pill} ${activeFilter === f ? styles.pillActive : ''}`}
-              onClick={() => setActiveFilter(f)}
+              onClick={async () => setActiveFilter(f)}
             >
               {f}
             </button>
@@ -744,12 +748,12 @@ export default function WarrantiesTab({ projectId }) {
                             📄 Doc
                           </a>
                         )}
-                        <Button variant="outline" size="sm" onClick={() => handleOpenLogClaim(w.id)}>Raise Claim</Button>
-                        <Button variant="outline" size="sm" onClick={() => handleOpenEdit(w)}>Edit</Button>
+                        <Button variant="outline" size="sm" onClick={async () => handleOpenLogClaim(w.id)}>Raise Claim</Button>
+                        <Button variant="outline" size="sm" onClick={async () => handleOpenEdit(w)}>Edit</Button>
                         {w.eligibility_status === 'active' && (
-                          <Button variant="outline" size="sm" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)' }} onClick={() => handleVoidWarranty(w)}>Void</Button>
+                          <Button variant="outline" size="sm" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)' }} onClick={async () => handleVoidWarranty(w)}>Void</Button>
                         )}
-                        <Button variant="outline" size="sm" style={{ color: 'var(--color-danger)' }} onClick={() => handleDeleteWarranty(w.id)}>Delete</Button>
+                        <Button variant="outline" size="sm" style={{ color: 'var(--color-danger)' }} onClick={async () => handleDeleteWarranty(w.id)}>Delete</Button>
                       </div>
                     </td>
                   </tr>
@@ -774,7 +778,7 @@ export default function WarrantiesTab({ projectId }) {
             <h3 style={{ margin: 0, fontWeight: 700, color: 'var(--color-text)' }}>Warranty Claims workflow</h3>
             <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>Review client-raised claims, assign technicians, check eligibility against brand/vendor details, and log resolutions.</p>
           </div>
-          <Button variant="outline" onClick={() => handleOpenLogClaim()}>+ Log Manual Claim</Button>
+          <Button variant="outline" onClick={async () => handleOpenLogClaim()}>+ Log Manual Claim</Button>
         </div>
 
         {claimsLoading && claims.length === 0 ? (
@@ -845,8 +849,8 @@ export default function WarrantiesTab({ projectId }) {
                       </td>
                       <td>
                         <div className={styles.actionCell}>
-                          <Button variant="outline" size="sm" onClick={() => handleOpenReviewClaim(c)}>Review / Update</Button>
-                          <Button variant="outline" size="sm" style={{ color: 'var(--color-danger)' }} onClick={() => handleDeleteClaim(c.id)}>Delete</Button>
+                          <Button variant="outline" size="sm" onClick={async () => handleOpenReviewClaim(c)}>Review / Update</Button>
+                          <Button variant="outline" size="sm" style={{ color: 'var(--color-danger)' }} onClick={async () => handleDeleteClaim(c.id)}>Delete</Button>
                         </div>
                       </td>
                     </tr>
@@ -1033,7 +1037,7 @@ export default function WarrantiesTab({ projectId }) {
             </FormField>
 
             <div className={styles.modalFooter}>
-              <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={async () => setModalOpen(false)}>Cancel</Button>
               <Button type="submit">{selectedWarranty ? 'Save Changes' : 'Register'}</Button>
             </div>
           </form>
@@ -1100,7 +1104,7 @@ export default function WarrantiesTab({ projectId }) {
             </FormField>
 
             <div className={styles.modalFooter}>
-              <Button type="button" variant="outline" onClick={() => setClaimModalOpen(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={async () => setClaimModalOpen(false)}>Cancel</Button>
               <Button type="submit">Log Claim</Button>
             </div>
           </form>
@@ -1180,7 +1184,7 @@ export default function WarrantiesTab({ projectId }) {
             </FormField>
 
             <div className={styles.modalFooter}>
-              <Button type="button" variant="outline" onClick={() => setReviewModalOpen(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={async () => setReviewModalOpen(false)}>Cancel</Button>
               <Button type="submit">Save Changes</Button>
             </div>
           </form>

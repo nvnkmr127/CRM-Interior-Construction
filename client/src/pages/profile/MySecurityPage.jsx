@@ -3,7 +3,11 @@ import { PageHeader, Card, Button } from '../../components/ui';
 import { useToast } from '../../store/toastContext';
 import api from '../../api/axios';
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function MySecurityPage() {
+  const { confirm } = useConfirm();
+
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
@@ -49,7 +53,7 @@ export default function MySecurityPage() {
   };
 
   const disableMfa = async () => {
-    if (!window.confirm('Are you sure you want to disable Authenticator App 2FA? You will fall back to Email OTP.')) return;
+    if (!await confirm('Are you sure you want to disable Authenticator App 2FA? You will fall back to Email OTP.')) return;
     try {
       await api.post('/security/my-security/disable-mfa');
       toast.success('Two-Factor Authentication Disabled');
@@ -104,7 +108,7 @@ export default function MySecurityPage() {
                       style={{ padding: '8px', borderRadius: '4px', border: '1px solid var(--color-border)', width: '100px' }}
                     />
                     <Button onClick={confirmMfa}>Verify</Button>
-                    <Button variant="secondary" onClick={() => setQrCode(null)}>Cancel</Button>
+                    <Button variant="secondary" onClick={async () => setQrCode(null)}>Cancel</Button>
                   </div>
                 </div>
               )}
@@ -131,7 +135,7 @@ export default function MySecurityPage() {
                   <td style={{ padding: '12px 0', fontSize: '14px' }}>{dev.device_name}</td>
                   <td style={{ padding: '12px 0', fontSize: '14px', color: 'var(--color-text-secondary)' }}>{new Date(dev.last_used_at).toLocaleDateString()}</td>
                   <td style={{ padding: '12px 0' }}>
-                    <Button variant="danger" size="small" onClick={() => revokeDevice(dev.id)}>Revoke</Button>
+                    <Button variant="danger" size="small" onClick={async () => revokeDevice(dev.id)}>Revoke</Button>
                   </td>
                 </tr>
               ))}

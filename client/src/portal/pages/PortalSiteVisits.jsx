@@ -3,7 +3,11 @@ import { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import styles from './PortalDocuments.module.css'; // Reusing some base styling patterns
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function PortalSiteVisits() {
+  const { confirm } = useConfirm();
+
   const [visits, setVisits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedVisit, setExpandedVisit] = useState(null);
@@ -25,7 +29,7 @@ export default function PortalSiteVisits() {
   }, []);
 
   const handleAcknowledge = async (visitId) => {
-    if (!window.confirm('Are you sure you want to acknowledge these outcomes?')) return;
+    if (!await confirm('Are you sure you want to acknowledge these outcomes?')) return;
     try {
       await api.post(`/portal/project/site-visits/${visitId}/acknowledge`);
       fetchVisits();
@@ -82,7 +86,7 @@ export default function PortalSiteVisits() {
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   cursor: 'pointer'
-                }} onClick={() => setExpandedVisit(isExpanded ? null : visit.id)}>
+                }} onClick={async () => setExpandedVisit(isExpanded ? null : visit.id)}>
                   <div>
                     <h3 style={{margin: '0 0 8px 0', fontSize: 18}}>{formatDate(visit.scheduled_at)}</h3>
                     <div style={{display: 'flex', gap: 12, alignItems: 'center'}}>
@@ -143,7 +147,7 @@ export default function PortalSiteVisits() {
                     {isCompleted && !isAcknowledged && (
                       <div style={{marginTop: 16, textAlign: 'right'}}>
                         <button 
-                          onClick={() => handleAcknowledge(visit.id)}
+                          onClick={async () => handleAcknowledge(visit.id)}
                           style={{
                             padding: '10px 20px', 
                             backgroundColor: 'var(--color-success)', 

@@ -5,7 +5,11 @@ import { getTaskTemplates, deleteTaskTemplate } from '../../api/tasks'
 import { useToast } from '../../store/toastContext'
 import styles from './TemplateGalleryModal.module.css'
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function TemplateGalleryModal({ isOpen, onClose, onUseTemplate }) {
+  const { confirm } = useConfirm();
+
   const [templates, setTemplates] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all') // 'all', 'favorites', 'category'
@@ -29,7 +33,7 @@ export default function TemplateGalleryModal({ isOpen, onClose, onUseTemplate })
 
   const handleDelete = async (e, id) => {
     e.stopPropagation()
-    if (window.confirm('Delete this template?')) {
+    if (await confirm('Delete this template?')) {
       try {
         await deleteTaskTemplate(id)
         toast.success('Template deleted')
@@ -58,7 +62,7 @@ export default function TemplateGalleryModal({ isOpen, onClose, onUseTemplate })
               <li 
                 key={cat} 
                 className={filter === cat ? styles.active : ''}
-                onClick={() => setFilter(cat)}
+                onClick={async () => setFilter(cat)}
               >
                 {cat === 'favorites' ? '⭐ Favorites' : cat === 'all' ? 'All Templates' : cat}
               </li>
@@ -86,7 +90,7 @@ export default function TemplateGalleryModal({ isOpen, onClose, onUseTemplate })
                     </span>
                   </div>
                   <div className={styles.cardActions}>
-                    <Button variant="primary" onClick={() => onUseTemplate(t)}>Use Template</Button>
+                    <Button variant="primary" onClick={async () => onUseTemplate(t)}>Use Template</Button>
                     <button className={styles.iconBtn} onClick={(e) => handleDelete(e, t.id)} title="Delete">🗑️</button>
                   </div>
                 </div>

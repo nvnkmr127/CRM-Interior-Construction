@@ -3,6 +3,8 @@ import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
 import styles from './ApprovalMatrixPage.module.css';
 
+import { useConfirm } from '../../store/confirmContext';
+
 const TRANSACTION_TYPES = [
   { value: 'invoice', label: 'Invoice Generation' },
   { value: 'payment', label: 'Payment Milestone' },
@@ -24,6 +26,8 @@ const AVAILABLE_ROLES = [
 ];
 
 export default function ApprovalMatrixPage() {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -146,7 +150,7 @@ export default function ApprovalMatrixPage() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this rule?')) return;
+    if (!await confirm('Are you sure you want to delete this rule?')) return;
     try {
       await api.delete(`/approval-matrix/${id}`);
       toast.success('Rule deleted successfully');
@@ -164,7 +168,7 @@ export default function ApprovalMatrixPage() {
           <h1 className={styles.title}>Approval Matrix</h1>
           <p className={styles.subtitle}>Configure dynamic multi-level approval chains for transactions</p>
         </div>
-        <button className={styles.addButton} onClick={() => handleOpenModal()}>
+        <button className={styles.addButton} onClick={async () => handleOpenModal()}>
           + Create New Rule
         </button>
       </div>
@@ -206,8 +210,8 @@ export default function ApprovalMatrixPage() {
                     ))}
                   </td>
                   <td className={styles.actions}>
-                    <button className={styles.editBtn} onClick={() => handleOpenModal(rule)}>Edit</button>
-                    <button className={styles.deleteBtn} onClick={() => handleDelete(rule.id)}>Delete</button>
+                    <button className={styles.editBtn} onClick={async () => handleOpenModal(rule)}>Edit</button>
+                    <button className={styles.deleteBtn} onClick={async () => handleDelete(rule.id)}>Delete</button>
                   </td>
                 </tr>
               ))}
@@ -221,7 +225,7 @@ export default function ApprovalMatrixPage() {
           <div className={styles.modal}>
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>{editingRule ? 'Edit Rule' : 'Create New Rule'}</h2>
-              <button className={styles.closeBtn} onClick={() => setIsModalOpen(false)}>×</button>
+              <button className={styles.closeBtn} onClick={async () => setIsModalOpen(false)}>×</button>
             </div>
             
             <form onSubmit={handleSubmit}>
@@ -338,7 +342,7 @@ export default function ApprovalMatrixPage() {
                         ))}
                       </select>
                       {formData.required_roles.length > 1 && (
-                        <button type="button" className={styles.removeRoleBtn} onClick={() => handleRemoveRole(index)}>
+                        <button type="button" className={styles.removeRoleBtn} onClick={async () => handleRemoveRole(index)}>
                           Remove
                         </button>
                       )}
@@ -351,7 +355,7 @@ export default function ApprovalMatrixPage() {
               </div>
 
               <div className={styles.formActions}>
-                <button type="button" className={styles.cancelBtn} onClick={() => setIsModalOpen(false)}>
+                <button type="button" className={styles.cancelBtn} onClick={async () => setIsModalOpen(false)}>
                   Cancel
                 </button>
                 <button type="submit" className={styles.saveBtn}>

@@ -4,6 +4,8 @@ import { Button, Badge, Modal, Input, Textarea, EmptyState, Spinner, Select } fr
 import { useToast } from '../../store/toastContext';
 import styles from './ChangeOrdersTab.module.css';
 import {
+import { useConfirm } from '../../store/confirmContext';
+
   getChangeOrders,
   createChangeOrder,
   updateChangeOrder,
@@ -18,6 +20,8 @@ const REASON_LABELS = {
 };
 
 export default function ChangeOrdersTab({ projectId }) {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   const [changeOrders, setChangeOrders] = useState([]);
   const [project, setProject] = useState(null);
@@ -146,7 +150,7 @@ export default function ChangeOrdersTab({ projectId }) {
   };
 
   const handlePublish = async (id) => {
-    if (!window.confirm('Are you sure you want to submit this change order to the client for approval?')) return;
+    if (!await confirm('Are you sure you want to submit this change order to the client for approval?')) return;
     try {
       const res = await updateChangeOrder(projectId, id, { status: 'submitted' });
       if (res.data?.success) {
@@ -160,7 +164,7 @@ export default function ChangeOrdersTab({ projectId }) {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this change order?')) return;
+    if (!await confirm('Are you sure you want to delete this change order?')) return;
     try {
       const res = await deleteChangeOrder(projectId, id);
       if (res.data?.success) {
@@ -368,13 +372,13 @@ export default function ChangeOrdersTab({ projectId }) {
               {/* Staff Actions */}
               {co.status === 'draft' && (
                 <div className={styles.cardActions}>
-                  <Button variant="ghost" size="sm" onClick={() => handleDelete(co.id)}>
+                  <Button variant="ghost" size="sm" onClick={async () => handleDelete(co.id)}>
                     Cancel
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleOpenEditModal(co)}>
+                  <Button variant="ghost" size="sm" onClick={async () => handleOpenEditModal(co)}>
                     Edit Details
                   </Button>
-                  <Button variant="primary" size="sm" onClick={() => handlePublish(co.id)}>
+                  <Button variant="primary" size="sm" onClick={async () => handlePublish(co.id)}>
                     Submit to Client
                   </Button>
                 </div>
@@ -382,7 +386,7 @@ export default function ChangeOrdersTab({ projectId }) {
 
               {co.status === 'submitted' && (
                 <div className={styles.cardActions}>
-                  <Button variant="ghost" size="sm" onClick={() => handleDelete(co.id)}>
+                  <Button variant="ghost" size="sm" onClick={async () => handleDelete(co.id)}>
                     Cancel Change Order
                   </Button>
                 </div>
@@ -399,7 +403,7 @@ export default function ChangeOrdersTab({ projectId }) {
         title={editId ? "Edit Change Order" : "Raise Change Order"}
         footer={
           <>
-            <Button variant="ghost" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+            <Button variant="ghost" onClick={async () => setIsModalOpen(false)}>Cancel</Button>
             <Button variant="primary" onClick={handleSubmit}>{editId ? "Save Changes" : "Raise Change Order"}</Button>
           </>
         }

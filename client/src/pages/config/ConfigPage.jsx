@@ -25,8 +25,6 @@ const TradeActivityTemplatesManager = lazy(() => import('./TradeActivityTemplate
 const AuditTrail = lazy(() => import('./AuditTrail'))
 const RolesManager = lazy(() => import('./RolesManager'))
 const LoginHistoryPage = lazy(() => import('./LoginHistoryPage'))
-const SecuritySettingsPage = lazy(() => import('./SecuritySettingsPage'))
-
 
 export default function ConfigPage() {
   const { user } = useAuth()
@@ -37,7 +35,6 @@ export default function ConfigPage() {
     '/config/team-members': 'Team Members',
     '/config/roles-permissions': 'Roles & Permissions',
     '/config/organization': 'Organization',
-    '/config/security': 'Security',
     '/config/login-history': 'Login History',
     '/config/audit-logs': 'Audit Trail',
     '/config/custom-fields': 'Custom Fields',
@@ -72,7 +69,6 @@ export default function ConfigPage() {
         <Route path="team-members/:id" element={<EmployeeProfilePage />} />
         <Route path="roles-permissions" element={<RolesManager />} />
         <Route path="organization" element={<OrganizationManager />} />
-        <Route path="security" element={<SecuritySettingsPage />} />
         <Route path="login-history" element={<LoginHistoryPage />} />
         <Route path="audit-logs" element={<AuditTrail />} />
         <Route path='custom-fields' element={<CustomFieldsManager />} />

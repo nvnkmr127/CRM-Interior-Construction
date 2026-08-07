@@ -7,7 +7,11 @@ import { Button, Badge, Modal } from '../../components/ui';
 import PredictiveRevenueWidget from '../../components/leads/PredictiveRevenueWidget';
 import HeatMapWidget from '../../components/leads/HeatMapWidget';
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function ManagerDashboard() {
+  const { confirm } = useConfirm();
+
   const [slaBreaches, setSlaBreaches] = useState([]);
   const [pipelineMovement, setPipelineMovement] = useState([]);
   const [repCapacity, setRepCapacity] = useState([]);
@@ -54,7 +58,7 @@ export default function ManagerDashboard() {
   };
 
   const handleApproval = async (id, status) => {
-    if (!window.confirm(`Are you sure you want to ${status} this discount?`)) return;
+    if (!await confirm(`Are you sure you want to ${status} this discount?`)) return;
     try {
       await api.post(`/leads/manager/approvals/${id}/decide`, { status });
       toast.success(`Discount ${status} successfully.`);
@@ -186,8 +190,8 @@ export default function ManagerDashboard() {
                         <div className="text-gray-500 text-xs">₹{req.original_amount}</div>
                       </td>
                       <td className="px-4 py-3 text-right space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => handleApproval(req.id, 'rejected')} className="text-red-600 hover:bg-red-50">Reject</Button>
-                        <Button variant="primary" size="sm" onClick={() => handleApproval(req.id, 'approved')} className="bg-green-600 hover:bg-green-700">Approve</Button>
+                        <Button variant="outline" size="sm" onClick={async () => handleApproval(req.id, 'rejected')} className="text-red-600 hover:bg-red-50">Reject</Button>
+                        <Button variant="primary" size="sm" onClick={async () => handleApproval(req.id, 'approved')} className="bg-green-600 hover:bg-green-700">Approve</Button>
                       </td>
                     </tr>
                   ))}

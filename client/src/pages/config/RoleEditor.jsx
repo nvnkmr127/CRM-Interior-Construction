@@ -2,7 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import styles from './RoleEditor.module.css';
 import { Button, Input } from '../../components/ui';
 
+import { useConfirm } from '../../store/confirmContext';
+
 const TimeSelect = ({ value, onChange }) => {
+  const { confirm } = useConfirm();
+
   let hour = '12';
   let min = '00';
   let ampm = 'AM';
@@ -86,6 +90,8 @@ export default function RoleEditor({
   handleCancelEdit,
   setIsSimulatorOpen
 }) {
+  const { confirm } = useConfirm();
+
   const [activeTab, setActiveTab] = useState('general');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCategories, setExpandedCategories] = useState({});
@@ -104,10 +110,10 @@ export default function RoleEditor({
     });
   }, []);
 
-  const handleCloneRole = (roleId) => {
+  const handleCloneRole = async (roleId) => {
     const roleToClone = existingRoles.find(r => r.id === roleId);
     if (!roleToClone) return;
-    if (!window.confirm(`Are you sure you want to overwrite current permissions with the '${roleToClone.name}' role template?`)) return;
+    if (!await confirm(`Are you sure you want to overwrite current permissions with the '${roleToClone.name}' role template?`)) return;
     
     setIsDirty(true);
     setFormData(prev => ({
@@ -253,7 +259,7 @@ export default function RoleEditor({
             <h2 className={styles.title}>{editingRole.id ? 'Edit Role' : 'Create Role'}</h2>
           </div>
           <div className={styles.headerRight}>
-            <Button variant="secondary" onClick={() => setIsSimulatorOpen(true)}>Simulate Draft</Button>
+            <Button variant="secondary" onClick={async () => setIsSimulatorOpen(true)}>Simulate Draft</Button>
             <Button variant="secondary" onClick={handleCancelEdit}>Cancel</Button>
             <Button variant="primary" onClick={handleSaveRole}>Save Role</Button>
           </div>
@@ -271,7 +277,7 @@ export default function RoleEditor({
             <button
               key={tab}
               className={`${styles.tabBtn} ${activeTab === tab ? styles.tabBtnActive : ''}`}
-              onClick={() => setActiveTab(tab)}
+              onClick={async () => setActiveTab(tab)}
             >
               {tab === 'general' ? 'General & Matrix' :
                tab === 'pages' ? 'Page Permissions' :
@@ -346,7 +352,7 @@ export default function RoleEditor({
                   <div key={category} className={styles.categoryGroup}>
                     <div 
                       className={styles.categoryHeader} 
-                      onClick={() => toggleCategory(category)}
+                      onClick={async () => toggleCategory(category)}
                       tabIndex={0}
                       onKeyDown={(e) => handleKeyDown(e, () => toggleCategory(category))}
                       role="button"
@@ -411,7 +417,7 @@ export default function RoleEditor({
                                         <div 
                                           key={action.id}
                                           className={`${styles.badge} ${getBadgeStyle(action.id, isActive)} ${!isModuleEnabled && !isGlobalAdmin ? styles.badgeDisabled : ''}`}
-                                          onClick={() => {
+                                          onClick={async () => {
                                             if (isGlobalAdmin || !isModuleEnabled) return;
                                             handlePermissionChange(module.id, action.id, !isActive);
                                           }}
@@ -525,7 +531,7 @@ export default function RoleEditor({
                           <button
                             key={day}
                             type="button"
-                            onClick={() => {
+                            onClick={async () => {
                               setIsDirty(true);
                               let newDays = [...(formData.security_policies?.allowed_days || [])];
                               if (isSelected) {

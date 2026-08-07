@@ -4,6 +4,8 @@ import { Button, Modal, Input, Textarea, EmptyState, Spinner } from '../ui';
 import { useToast } from '../../store/toastContext';
 import styles from './PurchaseRequestsTab.module.css';
 import {
+import { useConfirm } from '../../store/confirmContext';
+
   getPurchaseRequests,
   getPurchaseRequest,
   createPurchaseRequest,
@@ -15,6 +17,8 @@ import {
 } from '../../api/projects';
 
 export default function PurchaseRequestsTab({ projectId }) {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   
   // Data States
@@ -234,7 +238,7 @@ export default function PurchaseRequestsTab({ projectId }) {
       confirmMsg = 'Confirm PM approval for this purchase request?';
     }
 
-    if (status !== 'rejected' && !window.confirm(confirmMsg)) return;
+    if (status !== 'rejected' && !await confirm(confirmMsg)) return;
 
     setActionLoading(true);
     try {
@@ -379,7 +383,7 @@ export default function PurchaseRequestsTab({ projectId }) {
               <div
                 key={pr.id}
                 className={`${styles.prCard} ${selectedPr?.id === pr.id ? styles.prCardActive : ''}`}
-                onClick={() => handleSelectPr(pr.id)}
+                onClick={async () => handleSelectPr(pr.id)}
               >
                 <div className={styles.prCardHeader}>
                   <span className={styles.prNumber}>{pr.pr_number}</span>
@@ -501,14 +505,14 @@ export default function PurchaseRequestsTab({ projectId }) {
                     <>
                       <Button
                         variant="secondary"
-                        onClick={() => handleUpdateStatus('cancelled')}
+                        onClick={async () => handleUpdateStatus('cancelled')}
                         disabled={actionLoading}
                       >
                         Cancel Request
                       </Button>
                       <Button
                         variant="primary"
-                        onClick={() => handleUpdateStatus('pending_approval')}
+                        onClick={async () => handleUpdateStatus('pending_approval')}
                         disabled={actionLoading}
                       >
                         Submit for PM Approval
@@ -519,7 +523,7 @@ export default function PurchaseRequestsTab({ projectId }) {
                     <>
                       <Button
                         variant="secondary"
-                        onClick={() => setIsRejectModalOpen(true)}
+                        onClick={async () => setIsRejectModalOpen(true)}
                         disabled={actionLoading}
                         style={{ color: 'var(--color-danger)' }}
                       >
@@ -527,7 +531,7 @@ export default function PurchaseRequestsTab({ projectId }) {
                       </Button>
                       <Button
                         variant="primary"
-                        onClick={() => handleUpdateStatus('approved')}
+                        onClick={async () => handleUpdateStatus('approved')}
                         disabled={actionLoading}
                       >
                         Approve Request
@@ -537,7 +541,7 @@ export default function PurchaseRequestsTab({ projectId }) {
                   {selectedPr.status === 'approved' && (
                     <Button
                       variant="primary"
-                      onClick={() => setIsConvertModalOpen(true)}
+                      onClick={async () => setIsConvertModalOpen(true)}
                       disabled={actionLoading}
                     >
                       Convert to Purchase Order
@@ -562,7 +566,7 @@ export default function PurchaseRequestsTab({ projectId }) {
         size="lg"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setIsCreateModalOpen(false)} disabled={actionLoading}>
+            <Button variant="ghost" onClick={async () => setIsCreateModalOpen(false)} disabled={actionLoading}>
               Cancel
             </Button>
             <Button variant="primary" onClick={handleCreatePR} disabled={actionLoading}>
@@ -687,7 +691,7 @@ export default function PurchaseRequestsTab({ projectId }) {
         title="Reject Purchase Request"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setIsRejectModalOpen(false)}>
+            <Button variant="ghost" onClick={async () => setIsRejectModalOpen(false)}>
               Cancel
             </Button>
             <Button variant="primary" onClick={handleRejectSubmit} disabled={actionLoading} style={{ background: 'var(--color-danger, #dc2626)' }}>
@@ -715,7 +719,7 @@ export default function PurchaseRequestsTab({ projectId }) {
         title="Convert Request to Purchase Order"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setIsConvertModalOpen(false)}>
+            <Button variant="ghost" onClick={async () => setIsConvertModalOpen(false)}>
               Cancel
             </Button>
             <Button variant="primary" onClick={handleConvertToPO} disabled={actionLoading}>

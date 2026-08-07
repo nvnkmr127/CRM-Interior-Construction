@@ -6,9 +6,13 @@ import { useToast } from '../../store/toastContext'
 import { Spinner } from '../ui'
 import styles from './TaskAttachments.module.css'
 
+import { useConfirm } from '../../store/confirmContext';
+
 const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
 
 export default function TaskAttachments({ projectId, taskId, isGlobal = false }) {
+  const { confirm } = useConfirm();
+
   const [attachments, setAttachments] = useState([])
   const [loading, setLoading] = useState(true)
   const [uploads, setUploads] = useState({}) // { id: progress }
@@ -133,7 +137,7 @@ export default function TaskAttachments({ projectId, taskId, isGlobal = false })
   }
 
   const handleDelete = async (attachmentId) => {
-    if (!window.confirm('Delete this attachment?')) return
+    if (!await confirm('Delete this attachment?')) return
     try {
       if (isGlobal) {
         await deleteGlobalTaskAttachment(taskId, attachmentId)
@@ -206,7 +210,7 @@ export default function TaskAttachments({ projectId, taskId, isGlobal = false })
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
-        onClick={() => fileInputRef.current?.click()}
+        onClick={async () => fileInputRef.current?.click()}
       >
         <div className={styles.dropIcon}>☁️</div>
         <div>Drag & drop files here or click to upload</div>

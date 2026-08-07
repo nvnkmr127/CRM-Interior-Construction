@@ -5,7 +5,11 @@ import styles from './TagManagerModal.module.css'
 import { getTaskViews, createTaskView, updateTaskView, deleteTaskView } from '../../api/tasks'
 import { useToast } from '../../store/toastContext'
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function ViewManagerModal({ isOpen, onClose }) {
+  const { confirm } = useConfirm();
+
   const [views, setViews] = useState([])
   const [loading, setLoading] = useState(true)
   const [editingViewId, setEditingViewId] = useState(null)
@@ -28,7 +32,7 @@ export default function ViewManagerModal({ isOpen, onClose }) {
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this view?')) return
+    if (!await confirm('Are you sure you want to delete this view?')) return
     try {
       await deleteTaskView(id)
       setViews(v => v.filter(x => x.id !== id))
@@ -107,19 +111,19 @@ export default function ViewManagerModal({ isOpen, onClose }) {
 
                 <div style={{ display: 'flex', gap: '4px' }}>
                   {!editingViewId && (
-                    <Button variant="ghost" size="sm" onClick={() => {
+                    <Button variant="ghost" size="sm" onClick={async () => {
                       setEditingViewId(view.id)
                       setEditName(view.name)
                     }}>✏️</Button>
                   )}
-                  <Button variant="ghost" size="sm" onClick={() => handleDuplicate(view)} title="Duplicate">📋</Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleUpdate(view.id, { is_shared: !view.is_shared })} title="Toggle Share">
+                  <Button variant="ghost" size="sm" onClick={async () => handleDuplicate(view)} title="Duplicate">📋</Button>
+                  <Button variant="ghost" size="sm" onClick={async () => handleUpdate(view.id, { is_shared: !view.is_shared })} title="Toggle Share">
                     {view.is_shared ? '🔒' : '🌍'}
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleUpdate(view.id, { is_default: true })} title="Set Default">
+                  <Button variant="ghost" size="sm" onClick={async () => handleUpdate(view.id, { is_default: true })} title="Set Default">
                     ⭐
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDelete(view.id)} style={{ color: 'var(--color-danger)' }}>🗑️</Button>
+                  <Button variant="ghost" size="sm" onClick={async () => handleDelete(view.id)} style={{ color: 'var(--color-danger)' }}>🗑️</Button>
                 </div>
               </div>
             ))}

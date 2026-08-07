@@ -5,7 +5,11 @@ import { useToast } from '../../store/toastContext';
 import api from '../../api/axios';
 import { Spinner } from '../../components/ui';
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function PortalMaterialPalettes() {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   const [paletteItems, setPaletteItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,7 +42,7 @@ export default function PortalMaterialPalettes() {
   };
 
   const handleApprove = async (id) => {
-    if (!window.confirm('Do you approve this material selection?')) return;
+    if (!await confirm('Do you approve this material selection?')) return;
     setSubmittingAction(true);
     try {
       const res = await api.post(`/portal/material-palettes/${id}/approve`);
@@ -133,7 +137,7 @@ export default function PortalMaterialPalettes() {
                 {groupedByRoom[roomName].map(item => (
                   <div key={item.id} className={styles.card}>
                     {/* Swatch image */}
-                    <div className={styles.swatchWrapper} onClick={() => item.image_url && setZoomImageUrl(item.image_url)}>
+                    <div className={styles.swatchWrapper} onClick={async () => item.image_url && setZoomImageUrl(item.image_url)}>
                       {item.image_url ? (
                         <img src={item.image_url} alt={item.item_name} className={styles.swatch} />
                       ) : (
@@ -188,20 +192,20 @@ export default function PortalMaterialPalettes() {
                                 onChange={e => setFeedbackText(e.target.value)}
                               />
                               <div className={styles.revisionActions}>
-                                <button className="px-2.5 py-1 text-xs font-medium rounded text-gray-700 bg-gray-100 hover:bg-gray-200" onClick={() => { setRejectingItemId(null); setFeedbackText(''); }}>
+                                <button className="px-2.5 py-1 text-xs font-medium rounded text-gray-700 bg-gray-100 hover:bg-gray-200" onClick={async () => { setRejectingItemId(null); setFeedbackText(''); }}>
                                   Cancel
                                 </button>
-                                <button className="px-2.5 py-1 text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700" onClick={() => handleRequestRevision(item.id)}>
+                                <button className="px-2.5 py-1 text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700" onClick={async () => handleRequestRevision(item.id)}>
                                   Submit
                                 </button>
                               </div>
                             </div>
                           ) : (
                             <div className={styles.btnGroup}>
-                              <button className={styles.approveBtn} onClick={() => handleApprove(item.id)} disabled={submittingAction}>
+                              <button className={styles.approveBtn} onClick={async () => handleApprove(item.id)} disabled={submittingAction}>
                                 ✓ Approve Selection
                               </button>
-                              <button className={styles.revisionBtn} onClick={() => setRejectingItemId(item.id)} disabled={submittingAction}>
+                              <button className={styles.revisionBtn} onClick={async () => setRejectingItemId(item.id)} disabled={submittingAction}>
                                 ✗ Request Change
                               </button>
                             </div>
@@ -232,7 +236,7 @@ export default function PortalMaterialPalettes() {
       {/* Swatch Zoom overlay */}
       {zoomImageUrl && (
         <div
-          onClick={() => setZoomImageUrl(null)}
+          onClick={async () => setZoomImageUrl(null)}
           style={{
             position: 'fixed',
             top: 0,

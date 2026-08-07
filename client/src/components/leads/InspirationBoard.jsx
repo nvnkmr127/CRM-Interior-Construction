@@ -5,7 +5,11 @@ import { useToast } from '../../store/toastContext';
 import api from '../../api/axios';
 import AIDesignProposalModal from './AIDesignProposalModal';
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function InspirationBoard({ leadId }) {
+  const { confirm } = useConfirm();
+
   const [inspirations, setInspirations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
@@ -54,7 +58,7 @@ export default function InspirationBoard({ leadId }) {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this inspiration?')) return;
+    if (!await confirm('Delete this inspiration?')) return;
     try {
       await api.delete(`/leads/${leadId}/inspirations/${id}`);
       setInspirations(inspirations.filter(i => i.id !== id));
@@ -74,10 +78,10 @@ export default function InspirationBoard({ leadId }) {
           <p className="text-sm text-gray-500">Collect reference images for the project</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setIsAdding(!isAdding)}>
+          <Button variant="outline" size="sm" onClick={async () => setIsAdding(!isAdding)}>
             {isAdding ? 'Cancel' : '+ Add Image'}
           </Button>
-          <Button variant="primary" size="sm" onClick={() => setShowAiModal(true)}>
+          <Button variant="primary" size="sm" onClick={async () => setShowAiModal(true)}>
             ✨ AI Design Proposal
           </Button>
         </div>
@@ -115,7 +119,7 @@ export default function InspirationBoard({ leadId }) {
           {inspirations.map(insp => (
             <div key={insp.id} className="relative break-inside-avoid group rounded-xl overflow-hidden border transition-all shadow-sm" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
               <button 
-                onClick={() => handleDelete(insp.id)}
+                onClick={async () => handleDelete(insp.id)}
                 className="absolute top-2 right-2 rounded-full w-6 h-6 flex items-center justify-center text-gray-700 hover:text-red-500 hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-all z-10 shadow-sm"
                 style={{ background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(5px)' }}
                 title="Delete"

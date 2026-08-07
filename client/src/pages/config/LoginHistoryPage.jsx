@@ -5,7 +5,11 @@ import styles from './AuditTrail.module.css'; // Reusing AuditTrail styles as th
 import { Button, Input, Select, DataTable } from '../../components/ui';
 import Badge from "../../components/ui/Badge"; // Assuming Badge exists
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function LoginHistoryPage() {
+  const { confirm } = useConfirm();
+
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -71,7 +75,7 @@ export default function LoginHistoryPage() {
   };
 
   const handleRevoke = async (sessionId) => {
-    if (!window.confirm('Are you sure you want to revoke this active session? The user will be immediately logged out.')) return;
+    if (!await confirm('Are you sure you want to revoke this active session? The user will be immediately logged out.')) return;
     try {
       await api.delete(`/login-history/sessions/${sessionId}`);
       toast.success('Session revoked successfully');
@@ -156,7 +160,7 @@ export default function LoginHistoryPage() {
       render: (log) => {
         if (log.status === 'success' && !log.logout_time && log.active_session_id) {
           return (
-            <Button variant="danger" size="small" onClick={() => handleRevoke(log.active_session_id)}>
+            <Button variant="danger" size="small" onClick={async () => handleRevoke(log.active_session_id)}>
               Revoke Session
             </Button>
           );
@@ -214,14 +218,14 @@ export default function LoginHistoryPage() {
             <Button 
               variant="secondary" 
               disabled={pagination.page === 1}
-              onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+              onClick={async () => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
             >
               Previous
             </Button>
             <Button 
               variant="secondary"
               disabled={pagination.page * pagination.limit >= pagination.total}
-              onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+              onClick={async () => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
             >
               Next
             </Button>

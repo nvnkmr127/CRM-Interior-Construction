@@ -5,6 +5,8 @@ import { Button, Modal, Input, Select, Badge } from '../../components/ui'
 import { useToast } from '../../store/toastContext'
 import { configApi } from '../../api/config'
 
+import { useConfirm } from '../../store/confirmContext';
+
 const PROJECT_TYPES = [
   { value: 'full_interior', label: 'Full Interior' },
   { value: 'modular_kitchen', label: 'Modular Kitchen' },
@@ -14,6 +16,8 @@ const PROJECT_TYPES = [
 ]
 
 export default function TemplateBuilder() {
+  const { confirm } = useConfirm();
+
   const [templates, setTemplates] = useState([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const toast = useToast()
@@ -99,7 +103,7 @@ export default function TemplateBuilder() {
   }
 
   const deleteTemplate = async (id) => {
-    if (!window.confirm('Delete this template?')) return
+    if (!await confirm('Delete this template?')) return
     try {
       await configApi.deleteTemplate(id)
       setTemplates(templates.filter(x => x.id !== id))
@@ -116,7 +120,7 @@ export default function TemplateBuilder() {
           <h1 className={styles.title}>Project Templates</h1>
           <div style={{color:'var(--color-text-secondary)', marginTop: 4}}>Standardize your project delivery.</div>
         </div>
-        <Button variant="primary" onClick={() => openEditor()}>+ New Template</Button>
+        <Button variant="primary" onClick={async () => openEditor()}>+ New Template</Button>
       </div>
 
       <div className={styles.templateList}>
@@ -132,8 +136,8 @@ export default function TemplateBuilder() {
               <p style={{fontSize: 'var(--text-sm)', color:'var(--color-text)', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden'}}>{t.desc}</p>
               
               <div className={styles.cardActions}>
-                <Button variant="ghost" size="sm" onClick={() => openEditor(t)}>Edit</Button>
-                <Button variant="ghost" size="sm" style={{color:'var(--color-danger)'}} onClick={() => deleteTemplate(t.id)}>Delete</Button>
+                <Button variant="ghost" size="sm" onClick={async () => openEditor(t)}>Edit</Button>
+                <Button variant="ghost" size="sm" style={{color:'var(--color-danger)'}} onClick={async () => deleteTemplate(t.id)}>Delete</Button>
                 <Button variant="secondary" size="sm" style={{marginLeft:'auto'}}>Apply to Project</Button>
               </div>
             </div>
@@ -148,7 +152,7 @@ export default function TemplateBuilder() {
         size="xl"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+            <Button variant="ghost" onClick={async () => setIsModalOpen(false)}>Cancel</Button>
             <Button variant="primary" onClick={saveTemplate}>Save Template</Button>
           </>
         }
@@ -177,7 +181,7 @@ export default function TemplateBuilder() {
                   </div>
                   <div style={{flex:2}}><Input placeholder="Phase Name" value={p.name} onChange={e => { const np = [...draft.phases]; np[pIdx].name = e.target.value; setDraft({...draft, phases: np}) }} /></div>
                   <div style={{flex:1}}><Input type="number" placeholder="Days" value={p.duration} onChange={e => { const np = [...draft.phases]; np[pIdx].duration = parseInt(e.target.value); setDraft({...draft, phases: np}) }} /></div>
-                  <Button variant="ghost" size="sm" onClick={() => setDraft({...draft, phases: draft.phases.filter((_, i) => i !== pIdx)})}>✕</Button>
+                  <Button variant="ghost" size="sm" onClick={async () => setDraft({...draft, phases: draft.phases.filter((_, i) => i !== pIdx)})}>✕</Button>
                 </div>
                 
                 <div className={styles.phaseContent}>
@@ -189,15 +193,15 @@ export default function TemplateBuilder() {
                         </div>
                         <div 
                           className={`${styles.paymentToggle} ${m.triggersPayment ? styles.active : ''}`}
-                          onClick={() => { const np = [...draft.phases]; np[pIdx].milestones[mIdx].triggersPayment = !m.triggersPayment; setDraft({...draft, phases: np}) }}
+                          onClick={async () => { const np = [...draft.phases]; np[pIdx].milestones[mIdx].triggersPayment = !m.triggersPayment; setDraft({...draft, phases: np}) }}
                         >
                           ₹ Triggers Payment
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => { const np = [...draft.phases]; np[pIdx].milestones = np[pIdx].milestones.filter((_, i) => i !== mIdx); setDraft({...draft, phases: np}) }}>✕</Button>
+                        <Button variant="ghost" size="sm" onClick={async () => { const np = [...draft.phases]; np[pIdx].milestones = np[pIdx].milestones.filter((_, i) => i !== mIdx); setDraft({...draft, phases: np}) }}>✕</Button>
                       </div>
                     ))}
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => addMilestone(pIdx)} style={{alignSelf:'flex-start'}}>+ Add Milestone</Button>
+                  <Button variant="ghost" size="sm" onClick={async () => addMilestone(pIdx)} style={{alignSelf:'flex-start'}}>+ Add Milestone</Button>
                 </div>
               </div>
             ))}

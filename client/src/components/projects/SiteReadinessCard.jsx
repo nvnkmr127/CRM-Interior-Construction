@@ -4,7 +4,11 @@ import { Button } from '../ui';
 import { useToast } from '../../store/toastContext';
 import { getSiteReadiness, updateSiteReadinessItem, signOffSiteReadiness } from '../../api/siteReadiness';
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function SiteReadinessCard({ projectId, executionPhase, onReadinessUpdate }) {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   const [checklist, setChecklist] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -66,7 +70,7 @@ export default function SiteReadinessCard({ projectId, executionPhase, onReadine
   };
 
   const handleSignOffAll = async () => {
-    if (!window.confirm('Are you sure you want to sign off and complete all site readiness items?')) return;
+    if (!await confirm('Are you sure you want to sign off and complete all site readiness items?')) return;
     setSubmitting(true);
     try {
       const res = await signOffSiteReadiness(projectId);
@@ -199,7 +203,7 @@ export default function SiteReadinessCard({ projectId, executionPhase, onReadine
                 </div>
 
                 <button
-                  onClick={() => setExpandedItem(isExpanded ? null : item.id)}
+                  onClick={async () => setExpandedItem(isExpanded ? null : item.id)}
                   style={{
                     background: 'none',
                     border: 'none',
@@ -235,7 +239,7 @@ export default function SiteReadinessCard({ projectId, executionPhase, onReadine
                     onBlur={e => handleUpdateNotes(item.id, e.target.value)}
                   />
                   <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <Button variant="outline" size="sm" onClick={() => setExpandedItem(null)}>
+                    <Button variant="outline" size="sm" onClick={async () => setExpandedItem(null)}>
                       Save Notes
                     </Button>
                   </div>

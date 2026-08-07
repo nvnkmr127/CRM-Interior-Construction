@@ -29,6 +29,8 @@ import api from '../../api/axios';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
+import { useConfirm } from '../../store/confirmContext';
+
 const formatDatetimeLocal = (dateStr) => {
   if (!dateStr) return '';
   try {
@@ -55,6 +57,8 @@ const formatMeetingSchedule = (dateStr) => {
 };
 
 export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, stages = [] }) {
+  const { confirm } = useConfirm();
+
   const navigate = useNavigate();
   const toast = useToast();
   const [lead, setLead] = useState(null);
@@ -204,7 +208,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
       const payload = {
         title: meetingForm.title,
         notes: meetingForm.notes || `Scheduled meeting: ${meetingForm.title}`,
-        scheduled_at: scheduledAt,
+        scheduledAt: scheduledAt,
         metadata: {
           meeting_type: meetingForm.meeting_type,
           meeting_link: meetingForm.meeting_link || (meetingForm.meeting_type === 'Google Meet' ? `https://meet.google.com/${Math.random().toString(36).substr(2, 3)}-${Math.random().toString(36).substr(2, 4)}-${Math.random().toString(36).substr(2, 3)}` : ''),
@@ -379,7 +383,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   };
 
   const handleDelete = async () => {
-    if (window.confirm('Are you sure you want to PERMANENTLY delete this lead?')) {
+    if (await confirm('Are you sure you want to PERMANENTLY delete this lead?')) {
       try {
         await deleteLead(leadId);
         toast.success('Lead deleted successfully');
@@ -517,11 +521,11 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   <input name="score" type="number" min="0" max="100" defaultValue={lead.score}
                     className="w-16 text-xs border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:border-blue-500" autoFocus />
                   <button type="submit" className="text-xs text-blue-600 font-medium">Save</button>
-                  <button type="button" onClick={() => setEditingScore(false)} className="text-xs text-gray-500">&#x2715;</button>
+                  <button type="button" onClick={async () => setEditingScore(false)} className="text-xs text-gray-500">&#x2715;</button>
                 </form>
               ) : (
                 <div className="relative group flex items-center">
-                  <span onClick={() => setEditingScore(true)} className="cursor-pointer">
+                  <span onClick={async () => setEditingScore(true)} className="cursor-pointer">
                     <ScoreBadge score={lead.score} />
                   </span>
                   {lead.custom_fields?.score_breakdown && lead.custom_fields.score_breakdown.length > 0 && (
@@ -577,9 +581,9 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   {saveStatus === 'error' && <span className="text-red-600">Save failed</span>}
                 </div>
                 {lead.status === 'converted' && lead.converted_to_project_id ? (
-                  <Button variant="outline" size="sm" onClick={() => navigate(`/projects/${lead.converted_to_project_id}`)}>View Project</Button>
+                  <Button variant="outline" size="sm" onClick={async () => navigate(`/projects/${lead.converted_to_project_id}`)}>View Project</Button>
                 ) : (
-                  <Button variant="primary" size="sm" onClick={() => setIsConvertModalOpen(true)}>Convert to Project</Button>
+                  <Button variant="primary" size="sm" onClick={async () => setIsConvertModalOpen(true)}>Convert to Project</Button>
                 )}
               </div>
             </div>
@@ -622,7 +626,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   <div className="p-6 rounded-2xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
                     <div className="flex justify-between items-center mb-4">
                       <h4 className="text-sm font-bold text-gray-600 uppercase tracking-wider">Contact Info</h4>
-                      <button onClick={() => setIsLeadFormOpen(true)} className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                      <button onClick={async () => setIsLeadFormOpen(true)} className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                         Edit
                       </button>
@@ -655,7 +659,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   <div className="p-6 rounded-2xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
                     <div className="flex justify-between items-center mb-4">
                       <h4 className="text-sm font-bold text-gray-600 uppercase tracking-wider">Property Details</h4>
-                      <button onClick={() => setIsLeadFormOpen(true)} className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                      <button onClick={async () => setIsLeadFormOpen(true)} className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                         Edit
                       </button>
@@ -766,7 +770,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                           <label className="block text-sm text-gray-600">Possession Date</label>
                           <button 
                             type="button" 
-                            onClick={() => setIsPossessionManual(!isPossessionManual)} 
+                            onClick={async () => setIsPossessionManual(!isPossessionManual)} 
                             className="text-xs text-blue-500 hover:text-blue-700 font-medium"
                           >
                             {isPossessionManual ? 'Use Calendar' : 'Manual Entry'}
@@ -816,7 +820,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   <div className="p-6 rounded-2xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
                     <div className="flex justify-between items-center mb-4">
                       <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Preferences</h4>
-                      <button onClick={() => setIsLeadFormOpen(true)} className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                      <button onClick={async () => setIsLeadFormOpen(true)} className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                         Edit
                       </button>
@@ -1279,7 +1283,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={() => {
+                          onClick={async () => {
                             setIsEditingMeeting(false);
                           }}
                           disabled={meetingSubmitting}
@@ -1321,7 +1325,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={() => {
+                          onClick={async () => {
                             setIsConcludingMeeting(false);
                             setMeetingSummary('');
                           }}
@@ -1422,7 +1426,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       <div className="md:col-span-3 flex justify-end gap-3 pt-4 border-t">
                         <Button
                           variant="outline"
-                          onClick={() => setIsEditingMeeting(true)}
+                          onClick={async () => setIsEditingMeeting(true)}
                           className="flex items-center gap-1 text-xs"
                         >
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
@@ -1430,7 +1434,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                         </Button>
                         <Button
                           variant="primary"
-                          onClick={() => setIsConcludingMeeting(true)}
+                          onClick={async () => setIsConcludingMeeting(true)}
                           className="flex items-center gap-1 text-xs bg-green-600 border-green-600 hover:bg-green-700 hover:border-green-700 text-white"
                         >
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -1444,7 +1448,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       <h4 className="text-xl font-bold text-gray-700">No Meetings Scheduled</h4>
                       <p className="text-base text-gray-400 mt-2 max-w-sm mx-auto">There are no upcoming meetings scheduled for this lead at the moment.</p>
                       <button
-                        onClick={() => setIsEditingMeeting(true)}
+                        onClick={async () => setIsEditingMeeting(true)}
                         className="mt-6 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors cursor-pointer"
                       >
                         Schedule a Meeting
@@ -1459,7 +1463,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               <div className="space-y-4">
                 <div
                   className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:bg-gray-50 transition-colors cursor-pointer"
-                  onClick={() => document.getElementById(`file-input-${leadId}`).click()}
+                  onClick={async () => document.getElementById(`file-input-${leadId}`).click()}
                   onDragOver={e => e.preventDefault()}
                   onDrop={async (e) => {
                     e.preventDefault();
@@ -1495,14 +1499,14 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                         <div className="flex items-center gap-2">
                           {(f.mime_type?.includes('image') || f.mime_type?.includes('pdf')) && (
                             <button 
-                              onClick={() => handleParseFile(f.id)} 
+                              onClick={async () => handleParseFile(f.id)} 
                               className="text-xs text-primary hover:text-primary-dark font-medium mr-2"
                               title="Extract properties with AI"
                             >
                               ✨ Extract
                             </button>
                           )}
-                          <button onClick={() => deleteFile(f.id)} className="text-gray-400 hover:text-red-500 shrink-0 text-lg leading-none">&times;</button>
+                          <button onClick={async () => deleteFile(f.id)} className="text-gray-400 hover:text-red-500 shrink-0 text-lg leading-none">&times;</button>
                         </div>
                       </li>
                     ))}
@@ -1577,9 +1581,9 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
           {/* STICKY FOOTER */}
           <div className="border-t border-gray-200 p-5 shrink-0 flex items-center justify-between relative z-10" style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(16px)' }}>
             <div className="flex gap-3">
-              <Button variant="outline" size="md" onClick={() => setIsAssignModalOpen(true)}>Reassign</Button>
-              <Button variant="outline" size="md" onClick={() => {}}>Park</Button>
-              <Button variant="outline" size="md" onClick={() => setIsPresentModalOpen(true)}>Log Presentation</Button>
+              <Button variant="outline" size="md" onClick={async () => setIsAssignModalOpen(true)}>Reassign</Button>
+              <Button variant="outline" size="md" onClick={async () => {}}>Park</Button>
+              <Button variant="outline" size="md" onClick={async () => setIsPresentModalOpen(true)}>Log Presentation</Button>
             </div>
             <div className="flex gap-3">
               <Button variant="outline" size="md" onClick={handleArchiveToggle} className="text-gray-700 hover:bg-gray-50">
@@ -1589,7 +1593,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
               {/* Show Convert button if logic matches a won or late stage */}
               {(lead.stage_id === 'won' || lead.stage_name === 'Won' || lead.stage_name === 'Booking' || lead.stage_id === 'booking') && (
-                <Button variant="primary" size="md" onClick={() => setIsConvertModalOpen(true)}>Convert to Project</Button>
+                <Button variant="primary" size="md" onClick={async () => setIsConvertModalOpen(true)}>Convert to Project</Button>
               )}
             </div>
           </div>

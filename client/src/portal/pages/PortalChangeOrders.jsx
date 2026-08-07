@@ -5,6 +5,8 @@ import { useToast } from '../../store/toastContext';
 import api from '../../api/axios';
 import { Spinner, Modal, Button, Input } from '../../components/ui';
 
+import { useConfirm } from '../../store/confirmContext';
+
 const REASON_LABELS = {
   'client-requested': 'Client Requested',
   'design-required': 'Design Required',
@@ -12,6 +14,8 @@ const REASON_LABELS = {
 };
 
 export default function PortalChangeOrders() {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   const [changeOrders, setChangeOrders] = useState([]);
   const [project, setProject] = useState(null);
@@ -92,7 +96,7 @@ export default function PortalChangeOrders() {
   };
 
   const handleReject = async (id) => {
-    if (!window.confirm('Are you sure you want to reject this change order?')) return;
+    if (!await confirm('Are you sure you want to reject this change order?')) return;
     setSubmittingId(id);
     try {
       const res = await api.post(`/portal/change-orders/${id}/reject`);
@@ -264,14 +268,14 @@ export default function PortalChangeOrders() {
                 <div className={styles.cardActions}>
                   <button
                     className={`${styles.btn} ${styles.btnReject}`}
-                    onClick={() => handleReject(co.id)}
+                    onClick={async () => handleReject(co.id)}
                     disabled={submittingId === co.id}
                   >
                     Reject
                   </button>
                   <button
                     className={`${styles.btn} ${styles.btnApprove}`}
-                    onClick={() => handleOpenSignModal(co.id)}
+                    onClick={async () => handleOpenSignModal(co.id)}
                     disabled={submittingId === co.id}
                   >
                     {submittingId === co.id ? 'Processing...' : 'Approve Change Order'}
@@ -290,7 +294,7 @@ export default function PortalChangeOrders() {
         title="Digital Authorization Signature"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setIsSignModalOpen(false)}>Cancel</Button>
+            <Button variant="ghost" onClick={async () => setIsSignModalOpen(false)}>Cancel</Button>
             <Button variant="primary" onClick={handleApprove}>Confirm & Sign</Button>
           </>
         }

@@ -5,7 +5,11 @@ import { usersApi } from '../../api/users';
 import { useToast } from '../../store/toastContext';
 import styles from './SiteVisitsTab.module.css';
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function SiteVisitsTab({ projectId }) {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   const [siteVisits, setSiteVisits] = useState([]);
   const [users, setUsers] = useState([]);
@@ -177,7 +181,7 @@ export default function SiteVisitsTab({ projectId }) {
   };
 
   const handleDeleteVisit = async (visitId) => {
-    if (!window.confirm('Are you sure you want to cancel and delete this site visit?')) return;
+    if (!await confirm('Are you sure you want to cancel and delete this site visit?')) return;
 
     try {
       const res = await api.delete(`/site-visits/${visitId}`);
@@ -276,7 +280,7 @@ export default function SiteVisitsTab({ projectId }) {
   };
 
   const handleDeletePhoto = async (visitId, photoId) => {
-    if (!window.confirm('Delete this photo from the visit log?')) return;
+    if (!await confirm('Delete this photo from the visit log?')) return;
 
     try {
       const res = await api.delete(`/site-visits/${visitId}/photos/${photoId}`);
@@ -324,7 +328,7 @@ export default function SiteVisitsTab({ projectId }) {
     <div className={styles.container}>
       <div className={styles.header}>
         <h2 className={styles.title}>Project Site Visits</h2>
-        <button className={styles.addBtn} onClick={() => handleOpenSchedule(null)}>
+        <button className={styles.addBtn} onClick={async () => handleOpenSchedule(null)}>
           <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
           </svg>
@@ -342,7 +346,7 @@ export default function SiteVisitsTab({ projectId }) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
           </svg>
           <p>No site visits scheduled for this project yet.</p>
-          <button className={styles.addBtn} style={{ margin: '12px auto 0' }} onClick={() => handleOpenSchedule(null)}>
+          <button className={styles.addBtn} style={{ margin: '12px auto 0' }} onClick={async () => handleOpenSchedule(null)}>
             Schedule First Visit
           </button>
         </div>
@@ -380,7 +384,7 @@ export default function SiteVisitsTab({ projectId }) {
                       ✓ Acknowledged by client on {formatDate(visit.client_acknowledged_at)}
                     </div>
                   )}
-                  <button className={styles.editBtn} onClick={() => handleExpandVisit(visit.id)}>
+                  <button className={styles.editBtn} onClick={async () => handleExpandVisit(visit.id)}>
                     {isExpanded ? 'Hide Details' : 'View Details & Photos'}
                   </button>
                 </div>
@@ -456,12 +460,12 @@ export default function SiteVisitsTab({ projectId }) {
                                 src={p.url || p.file_url}
                                 className={styles.photoImg}
                                 alt={p.caption || 'Site Photo'}
-                                onClick={() => setLightboxPhoto(p)}
+                                onClick={async () => setLightboxPhoto(p)}
                               />
                               <button
                                 className={styles.photoDeleteOverlay}
                                 title="Delete Photo"
-                                onClick={() => handleDeletePhoto(visit.id, p.id)}
+                                onClick={async () => handleDeletePhoto(visit.id, p.id)}
                               >
                                 &times;
                               </button>
@@ -494,13 +498,13 @@ export default function SiteVisitsTab({ projectId }) {
                   </span>
                   {visit.status !== 'cancelled' && (
                     <div className={styles.footerActions}>
-                      <button className={styles.editBtn} onClick={() => handleOpenSchedule(visit)}>
+                      <button className={styles.editBtn} onClick={async () => handleOpenSchedule(visit)}>
                         Edit / Reschedule
                       </button>
-                      <button className={styles.recordBtn} onClick={() => handleOpenOutcomes(visit)}>
+                      <button className={styles.recordBtn} onClick={async () => handleOpenOutcomes(visit)}>
                         Record Outcomes
                       </button>
-                      <button className={styles.cancelBtn} onClick={() => handleDeleteVisit(visit.id)}>
+                      <button className={styles.cancelBtn} onClick={async () => handleDeleteVisit(visit.id)}>
                         Cancel Visit
                       </button>
                     </div>
@@ -520,7 +524,7 @@ export default function SiteVisitsTab({ projectId }) {
               <h3 className={styles.modalTitle}>
                 {editingVisit ? 'Reschedule Site Visit' : 'Schedule Site Visit'}
               </h3>
-              <button className={styles.closeBtn} onClick={() => setIsScheduleOpen(false)}>&times;</button>
+              <button className={styles.closeBtn} onClick={async () => setIsScheduleOpen(false)}>&times;</button>
             </div>
             <form onSubmit={handleSaveSchedule}>
               <div className={styles.modalBody}>
@@ -612,7 +616,7 @@ export default function SiteVisitsTab({ projectId }) {
                     {scheduleForm.checklist.map((item, idx) => (
                       <div key={idx} className={styles.agendaItemInputRow}>
                         <div style={{ flex: 1, fontSize: 13, color: 'var(--color-text)' }}>• {item}</div>
-                        <button type="button" className={styles.removeRowBtn} onClick={() => removeChecklistItem(idx)}>
+                        <button type="button" className={styles.removeRowBtn} onClick={async () => removeChecklistItem(idx)}>
                           &times;
                         </button>
                       </div>
@@ -621,7 +625,7 @@ export default function SiteVisitsTab({ projectId }) {
                 </div>
               </div>
               <div className={styles.modalFooter}>
-                <button type="button" className={styles.closeFormBtn} onClick={() => setIsScheduleOpen(false)}>
+                <button type="button" className={styles.closeFormBtn} onClick={async () => setIsScheduleOpen(false)}>
                   Cancel
                 </button>
                 <button type="submit" className={styles.saveBtn}>
@@ -639,7 +643,7 @@ export default function SiteVisitsTab({ projectId }) {
           <div className={styles.modalContent}>
             <div className={styles.modalHeader}>
               <h3 className={styles.modalTitle}>Record Visit Outcomes</h3>
-              <button className={styles.closeBtn} onClick={() => setIsOutcomesOpen(false)}>&times;</button>
+              <button className={styles.closeBtn} onClick={async () => setIsOutcomesOpen(false)}>&times;</button>
             </div>
             <form onSubmit={handleSaveOutcomes}>
               <div className={styles.modalBody}>
@@ -704,7 +708,7 @@ export default function SiteVisitsTab({ projectId }) {
                 </div>
               </div>
               <div className={styles.modalFooter}>
-                <button type="button" className={styles.closeFormBtn} onClick={() => setIsOutcomesOpen(false)}>
+                <button type="button" className={styles.closeFormBtn} onClick={async () => setIsOutcomesOpen(false)}>
                   Cancel
                 </button>
                 <button type="submit" className={styles.saveBtn}>
@@ -718,8 +722,8 @@ export default function SiteVisitsTab({ projectId }) {
 
       {/* LIGHTBOX FOR PHOTO ZOOM */}
       {lightboxPhoto && (
-        <div className={styles.lightboxOverlay} onClick={() => setLightboxPhoto(null)}>
-          <button className={styles.lightboxClose} onClick={() => setLightboxPhoto(null)}>&times;</button>
+        <div className={styles.lightboxOverlay} onClick={async () => setLightboxPhoto(null)}>
+          <button className={styles.lightboxClose} onClick={async () => setLightboxPhoto(null)}>&times;</button>
           <img src={lightboxPhoto.url || lightboxPhoto.file_url} className={styles.lightboxImg} alt="Zoomed View" />
           {lightboxPhoto.caption && (
             <div className={styles.lightboxCaption}>{lightboxPhoto.caption}</div>

@@ -3,7 +3,11 @@ import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
 import styles from './ConfigLayout.module.css'; // Reuse existing config layout
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function SuperAdminSettings() {
+  const { confirm } = useConfirm();
+
   const [stats, setStats] = useState(null);
   const toast = useToast();
 
@@ -12,7 +16,7 @@ export default function SuperAdminSettings() {
   }, []);
 
   const handleGlobalReset = async () => {
-    if (window.confirm("CRITICAL WARNING: This will force ALL users in the organization to reset their passwords on next login. Proceed?")) {
+    if (await confirm("CRITICAL WARNING: This will force ALL users in the organization to reset their passwords on next login. Proceed?")) {
       try {
         await api.post('/superadmin/global-password-reset');
         toast.success("Global password reset initiated.");
@@ -67,7 +71,7 @@ export default function SuperAdminSettings() {
           <h2 style={{ marginBottom: '16px', color: 'var(--color-text-primary)' }}>SSO & SAML Configuration</h2>
           <p style={{ marginBottom: '16px', fontSize: '14px', color: 'var(--color-text-secondary)' }}>Configure Identity Providers (Okta, Azure AD, Google Workspace).</p>
           <button 
-            onClick={() => toast.info('SSO setup portal opening...')}
+            onClick={async () => toast.info('SSO setup portal opening...')}
             style={{ padding: '10px 20px', background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '600' }}
           >
             Configure IdP

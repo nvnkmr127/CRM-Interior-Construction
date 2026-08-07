@@ -5,6 +5,8 @@ import { useToast } from '../../store/toastContext'
 import { Button, Input, Select, Badge, Modal, Textarea, PermissionButton } from '../../components/ui'
 import { format } from 'date-fns'
 
+import { useConfirm } from '../../store/confirmContext';
+
 const SECTIONS = [
   { id: 'overview', label: 'Overview', icon: '👤' },
   { id: 'timeline', label: 'Activity Timeline', icon: '⏱' },
@@ -21,6 +23,8 @@ const SECTIONS = [
 ]
 
 export default function EmployeeProfilePage({ userId, onBack }) {
+  const { confirm } = useConfirm();
+
   const params = useParams()
   const id = userId || params.id
   const navigate = useNavigate()
@@ -98,7 +102,7 @@ export default function EmployeeProfilePage({ userId, onBack }) {
   }
 
   const handleRevokeSession = async (sessionId) => {
-    if (!window.confirm('WARNING: Are you sure you want to forcefully revoke this active session? The user will be immediately logged out.')) return;
+    if (!await confirm('WARNING: Are you sure you want to forcefully revoke this active session? The user will be immediately logged out.')) return;
     try {
       await api.delete(`/sessions/force-logout/${sessionId}`);
       toast.success('Session revoked successfully');
@@ -154,10 +158,10 @@ export default function EmployeeProfilePage({ userId, onBack }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ fontSize: '18px', fontWeight: 600 }}>Personal & Work Information</h3>
               {!isEditing ? (
-                <Button variant="secondary" onClick={() => setIsEditing(true)}>Edit Profile</Button>
+                <Button variant="secondary" onClick={async () => setIsEditing(true)}>Edit Profile</Button>
               ) : (
                 <div style={{ display: 'flex', gap: '12px' }}>
-                  <Button variant="ghost" onClick={() => { setIsEditing(false); setEditForm(user) }}>Cancel</Button>
+                  <Button variant="ghost" onClick={async () => { setIsEditing(false); setEditForm(user) }}>Cancel</Button>
                   <Button variant="primary" onClick={handleSaveProfile}>Save Changes</Button>
                 </div>
               )}
@@ -356,7 +360,7 @@ export default function EmployeeProfilePage({ userId, onBack }) {
                         </td>
                         <td style={{ padding: '12px 8px' }}>
                           {lh.status === 'success' && !lh.logout_time && lh.active_session_id && (
-                            <PermissionButton permission="users:force_logout" variant="danger" size="small" onClick={() => handleRevokeSession(lh.active_session_id)}>
+                            <PermissionButton permission="users:force_logout" variant="danger" size="small" onClick={async () => handleRevokeSession(lh.active_session_id)}>
                               Revoke
                             </PermissionButton>
                           )}
@@ -399,7 +403,7 @@ export default function EmployeeProfilePage({ userId, onBack }) {
                         </td>
                         <td style={{ padding: '12px 8px' }}>
                           {new Date(s.expires_at) > new Date() && (
-                            <PermissionButton permission="users:force_logout" variant="danger" size="small" onClick={() => handleRevokeSession(s.id)}>
+                            <PermissionButton permission="users:force_logout" variant="danger" size="small" onClick={async () => handleRevokeSession(s.id)}>
                               Revoke
                             </PermissionButton>
                           )}
@@ -457,7 +461,7 @@ export default function EmployeeProfilePage({ userId, onBack }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ fontSize: '18px', fontWeight: 600 }}>Internal Notes</h3>
               {!isEditing ? (
-                <Button variant="secondary" onClick={() => setIsEditing(true)}>Edit Notes</Button>
+                <Button variant="secondary" onClick={async () => setIsEditing(true)}>Edit Notes</Button>
               ) : (
                 <Button variant="primary" onClick={handleSaveProfile}>Save Notes</Button>
               )}
@@ -524,8 +528,8 @@ export default function EmployeeProfilePage({ userId, onBack }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <Button variant="ghost" onClick={() => onBack ? onBack() : navigate('/config/team-members')}>Back to List</Button>
-          <Button variant="secondary" onClick={() => navigate(`/config/team-members/${user.id}/settings`)}>Account Settings</Button>
+          <Button variant="ghost" onClick={async () => onBack ? onBack() : navigate('/config/team-members')}>Back to List</Button>
+          <Button variant="secondary" onClick={async () => navigate(`/config/team-members/${user.id}/settings`)}>Account Settings</Button>
         </div>
       </div>
 
@@ -536,7 +540,7 @@ export default function EmployeeProfilePage({ userId, onBack }) {
           {SECTIONS.map(s => (
             <button
               key={s.id}
-              onClick={() => setActiveSection(s.id)}
+              onClick={async () => setActiveSection(s.id)}
               style={{
                 display: 'flex',
                 alignItems: 'center',

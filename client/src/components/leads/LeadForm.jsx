@@ -8,7 +8,11 @@ import { validators, run } from '../../utils/validators';
 import { useFieldPermissions } from '../../hooks/useFieldPermissions';
 import styles from './LeadForm.module.css';
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function LeadForm({ lead, onSave, onClose }) {
+  const { confirm } = useConfirm();
+
   const isEdit = !!lead;
   const toast = useToast();
   const { isHidden, isReadOnly } = useFieldPermissions('leads');
@@ -130,9 +134,9 @@ export default function LeadForm({ lead, onSave, onClose }) {
     }
   };
 
-  const handleClose = () => {
+  const handleClose = async () => {
     if (Object.keys(touched).length > 0) {
-      if (!window.confirm("You have unsaved changes. Are you sure you want to discard them?")) {
+      if (!await confirm("You have unsaved changes. Are you sure you want to discard them?")) {
         return;
       }
     }

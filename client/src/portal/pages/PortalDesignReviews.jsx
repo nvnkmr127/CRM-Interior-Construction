@@ -5,7 +5,11 @@ import { useToast } from '../../store/toastContext';
 import api from '../../api/axios';
 import { Spinner } from '../../components/ui';
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function PortalDesignReviews() {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   const [rounds, setRounds] = useState([]);
   const [drawings, setDrawings] = useState([]);
@@ -107,7 +111,7 @@ export default function PortalDesignReviews() {
   };
 
   const handleFreezeDesign = async () => {
-    if (!window.confirm('Confirming the design scope locks the project structure. Further revisions to drawings cannot be requested without project reopening. Do you wish to confirm?')) return;
+    if (!await confirm('Confirming the design scope locks the project structure. Further revisions to drawings cannot be requested without project reopening. Do you wish to confirm?')) return;
     
     try {
       const res = await api.post('/portal/design-reviews/freeze-design');
@@ -191,7 +195,7 @@ export default function PortalDesignReviews() {
   if (selectedRound) {
     return (
       <div className={styles.detailContainer}>
-        <button className={styles.backBtn} onClick={() => { setSelectedRound(null); setDrawings([]); }}>
+        <button className={styles.backBtn} onClick={async () => { setSelectedRound(null); setDrawings([]); }}>
           ← Back to Design Reviews
         </button>
 
@@ -223,7 +227,7 @@ export default function PortalDesignReviews() {
                   <div className={styles.drawingRow}>
                     <div className={styles.drawingInfo}>
                       {doc.storage_key && (doc.mime_type?.startsWith('image/') || doc.name.toLowerCase().endsWith('.png') || doc.name.toLowerCase().endsWith('.jpg') || doc.name.toLowerCase().endsWith('.jpeg')) ? (
-                        <img src={doc.downloadUrl} alt={doc.name} className={styles.thumbnail} onClick={() => setZoomImageUrl(doc.downloadUrl)} />
+                        <img src={doc.downloadUrl} alt={doc.name} className={styles.thumbnail} onClick={async () => setZoomImageUrl(doc.downloadUrl)} />
                       ) : (
                         <div className={styles.thumbnail} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', cursor: 'default' }}>
                           📐
@@ -262,10 +266,10 @@ export default function PortalDesignReviews() {
                       {!isLocked && selectedRound.status === 'active' && doc.status === 'pending_review' && (
                         <>
                           <div className={styles.actionRow}>
-                            <button className={styles.approveBtn} onClick={() => handleApproveDrawing(doc.id)} disabled={submittingAction}>
+                            <button className={styles.approveBtn} onClick={async () => handleApproveDrawing(doc.id)} disabled={submittingAction}>
                               ✓ Approve
                             </button>
-                            <button className={styles.revisionBtn} onClick={() => setRejectingDocId(rejectingDocId === doc.id ? null : doc.id)} disabled={submittingAction}>
+                            <button className={styles.revisionBtn} onClick={async () => setRejectingDocId(rejectingDocId === doc.id ? null : doc.id)} disabled={submittingAction}>
                               ✗ Revision
                             </button>
                           </div>
@@ -279,10 +283,10 @@ export default function PortalDesignReviews() {
                                 onChange={e => setRevisionNote(e.target.value)}
                               />
                               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                <button className="px-2.5 py-1 text-xs font-medium rounded text-gray-700 bg-gray-100 hover:bg-gray-200" onClick={() => { setRejectingDocId(null); setRevisionNote(''); }}>
+                                <button className="px-2.5 py-1 text-xs font-medium rounded text-gray-700 bg-gray-100 hover:bg-gray-200" onClick={async () => { setRejectingDocId(null); setRevisionNote(''); }}>
                                   Cancel
                                 </button>
-                                <button className="px-2.5 py-1 text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700" onClick={() => handleRequestRevision(doc.id)}>
+                                <button className="px-2.5 py-1 text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700" onClick={async () => handleRequestRevision(doc.id)}>
                                   Submit
                                 </button>
                               </div>
@@ -335,7 +339,7 @@ export default function PortalDesignReviews() {
                         onChange={e => setNewCommentText({ ...newCommentText, [doc.id]: e.target.value })}
                         onKeyDown={e => { if (e.key === 'Enter') handleAddComment(doc.id) }}
                       />
-                      <button className={styles.sendBtn} onClick={() => handleAddComment(doc.id)} disabled={!(newCommentText[doc.id] || '').trim()}>
+                      <button className={styles.sendBtn} onClick={async () => handleAddComment(doc.id)} disabled={!(newCommentText[doc.id] || '').trim()}>
                         Send
                       </button>
                     </div>
@@ -349,7 +353,7 @@ export default function PortalDesignReviews() {
         {/* Zoom Image Overlay */}
         {zoomImageUrl && (
           <div
-            onClick={() => setZoomImageUrl(null)}
+            onClick={async () => setZoomImageUrl(null)}
             style={{
               position: 'fixed',
               top: 0,
@@ -409,7 +413,7 @@ export default function PortalDesignReviews() {
       ) : (
         <div className={styles.roundsGrid}>
           {rounds.map(round => (
-            <div key={round.id} className={styles.roundCard} onClick={() => selectRound(round)}>
+            <div key={round.id} className={styles.roundCard} onClick={async () => selectRound(round)}>
               <div className={styles.roundCardHeader}>
                 <span className={styles.roundName}>{round.name}</span>
                 <span className={`px-2 py-0.5 text-xs font-semibold rounded ${round.status === 'completed' ? 'bg-gray-100 text-gray-800' : 'bg-blue-100 text-blue-800'}`}>

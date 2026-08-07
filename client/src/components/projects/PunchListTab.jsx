@@ -5,6 +5,8 @@ import { Badge, Button, Input, Select, Card } from '../ui';
 import { useToast } from '../../store/toastContext';
 import api from '../../api/axios';
 
+import { useConfirm } from '../../store/confirmContext';
+
 const TRADES = [
   { value: 'carpentry', label: 'Carpentry' },
   { value: 'painting', label: 'Painting' },
@@ -18,6 +20,8 @@ const TRADES = [
 ];
 
 export default function PunchListTab({ projectId }) {
+  const { confirm } = useConfirm();
+
   const [punchLists, setPunchLists] = useState([]);
   const [selectedList, setSelectedList] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -192,7 +196,7 @@ export default function PunchListTab({ projectId }) {
   };
 
   const handleDeleteItem = async (itemId) => {
-    if (!window.confirm('Are you sure you want to delete this walkthrough item?')) return;
+    if (!await confirm('Are you sure you want to delete this walkthrough item?')) return;
     try {
       await api.delete(`/projects/${projectId}/punch-lists/${selectedList.id}/items/${itemId}`);
       toast.success('Item deleted');
@@ -203,7 +207,7 @@ export default function PunchListTab({ projectId }) {
   };
 
   const handleDeleteList = async (listId) => {
-    if (!window.confirm('Delete this walkthrough list and all its items permanently?')) return;
+    if (!await confirm('Delete this walkthrough list and all its items permanently?')) return;
     try {
       await api.delete(`/projects/${projectId}/punch-lists/${listId}`);
       toast.success('Walkthrough list deleted');
@@ -233,7 +237,7 @@ export default function PunchListTab({ projectId }) {
       <div className={styles.sidebar}>
         <div className={styles.sidebarHeader}>
           <h3>Walkthrough Events</h3>
-          <Button size="sm" onClick={() => setShowCreateModal(true)}>+ New Walkthrough</Button>
+          <Button size="sm" onClick={async () => setShowCreateModal(true)}>+ New Walkthrough</Button>
         </div>
         
         {punchLists.length === 0 ? (
@@ -246,7 +250,7 @@ export default function PunchListTab({ projectId }) {
               <div 
                 key={l.id} 
                 className={`${styles.sidebarItem} ${selectedList?.id === l.id ? styles.activeItem : ''}`}
-                onClick={() => {
+                onClick={async () => {
                   setLoading(true);
                   loadSingleList(l.id);
                 }}
@@ -285,7 +289,7 @@ export default function PunchListTab({ projectId }) {
           <div className={styles.emptyState}>
             <h2>Pre-Handover Punch Lists</h2>
             <p>Select a walkthrough event from the sidebar or record a new pre-handover walkthrough to track defects and item sign-offs.</p>
-            <Button onClick={() => setShowCreateModal(true)}>Record First Walkthrough</Button>
+            <Button onClick={async () => setShowCreateModal(true)}>Record First Walkthrough</Button>
           </div>
         ) : (
           <div className={styles.detailsCard}>
@@ -299,14 +303,14 @@ export default function PunchListTab({ projectId }) {
                 </div>
               </div>
               <div className={styles.headerActions}>
-                <Button variant="outline" onClick={() => setShowItemModal(true)}>+ Add Walkthrough Item</Button>
+                <Button variant="outline" onClick={async () => setShowItemModal(true)}>+ Add Walkthrough Item</Button>
               </div>
             </div>
 
             {selectedList.items?.length === 0 ? (
               <div className={styles.emptyItems}>
                 <p>No punch list items added to this walkthrough yet.</p>
-                <Button size="sm" onClick={() => setShowItemModal(true)}>Add Walkthrough Item</Button>
+                <Button size="sm" onClick={async () => setShowItemModal(true)}>Add Walkthrough Item</Button>
               </div>
             ) : (
               <div className={styles.tableResponsive}>
@@ -348,7 +352,7 @@ export default function PunchListTab({ projectId }) {
                         <td className={styles.tdStatus}>{getStatusBadge(item.status)}</td>
                         <td className={styles.tdQc}>
                           {item.status === 'open' && (
-                            <Button size="xs" variant="primary" onClick={() => openResolveModal(item.id)}>
+                            <Button size="xs" variant="primary" onClick={async () => openResolveModal(item.id)}>
                               Close as QC Passed
                             </Button>
                           )}
@@ -357,7 +361,7 @@ export default function PunchListTab({ projectId }) {
                             <div className={styles.qcPassedBlock}>
                               <div className={styles.qcReviewer}>✔ QC Review Done</div>
                               <div className={styles.qcNotes}>Note: "{item.qc_notes}"</div>
-                              <Button size="xs" variant="success" style={{ marginTop: 6 }} onClick={() => handleVerifyItem(item.id)}>
+                              <Button size="xs" variant="success" style={{ marginTop: 6 }} onClick={async () => handleVerifyItem(item.id)}>
                                 Mark Verified (Client Sign-Off)
                               </Button>
                             </div>
@@ -375,7 +379,7 @@ export default function PunchListTab({ projectId }) {
                         <td>
                           <button 
                             className={styles.deleteItemBtn}
-                            onClick={() => handleDeleteItem(item.id)}
+                            onClick={async () => handleDeleteItem(item.id)}
                             title="Delete Item"
                           >
                             🗑
@@ -415,7 +419,7 @@ export default function PunchListTab({ projectId }) {
                 />
               </div>
               <div className={styles.modalActions}>
-                <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)}>Cancel</Button>
+                <Button type="button" variant="outline" onClick={async () => setShowCreateModal(false)}>Cancel</Button>
                 <Button type="submit" variant="primary">Create</Button>
               </div>
             </form>
@@ -475,7 +479,7 @@ export default function PunchListTab({ projectId }) {
                 </select>
               </div>
               <div className={styles.modalActions}>
-                <Button type="button" variant="outline" onClick={() => setShowItemModal(false)}>Cancel</Button>
+                <Button type="button" variant="outline" onClick={async () => setShowItemModal(false)}>Cancel</Button>
                 <Button type="submit" variant="primary">Add Item</Button>
               </div>
             </form>
@@ -501,7 +505,7 @@ export default function PunchListTab({ projectId }) {
                 />
               </div>
               <div className={styles.modalActions}>
-                <Button type="button" variant="outline" onClick={() => setShowResolveModal(false)}>Cancel</Button>
+                <Button type="button" variant="outline" onClick={async () => setShowResolveModal(false)}>Cancel</Button>
                 <Button type="submit" variant="success">Resolve & Pass QC</Button>
               </div>
             </form>

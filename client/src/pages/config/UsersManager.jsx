@@ -19,6 +19,8 @@ import EmployeeProfilePage from './EmployeeProfilePage'
 import EffectivePermissionViewer from './EffectivePermissionViewer'
 import PermissionAssignmentModal from './PermissionAssignmentModal'
 
+import { useConfirm } from '../../store/confirmContext';
+
 const DEFAULT_ROLE_OPTIONS = [
   { value: 'superadmin', label: 'Super Admin' },
   { value: 'pm', label: 'Project Manager' },
@@ -27,6 +29,8 @@ const DEFAULT_ROLE_OPTIONS = [
 ]
 
 export default function UsersManager() {
+  const { confirm } = useConfirm();
+
   const navigate = useNavigate()
   const [users, setUsers] = useState([])
   const [selectedUserId, setSelectedUserId] = useState(null)
@@ -145,7 +149,7 @@ export default function UsersManager() {
   }, [])
 
   const handleBulkDelete = async () => {
-    if (!window.confirm(`WARNING: Are you sure you want to permanently delete ${selectedIds.size} users? This action cannot be undone.`)) return;
+    if (!await confirm(`WARNING: Are you sure you want to permanently delete ${selectedIds.size} users? This action cannot be undone.`)) return;
     try {
       await api.delete('/users/bulk/delete', { data: { userIds: Array.from(selectedIds) } })
       toast.success('Users deleted')
@@ -157,7 +161,7 @@ export default function UsersManager() {
   }
 
   const handleBulkPasswordReset = async () => {
-    if (!window.confirm(`Are you sure you want to send password reset emails to ${selectedIds.size} users?`)) return;
+    if (!await confirm(`Are you sure you want to send password reset emails to ${selectedIds.size} users?`)) return;
     try {
       await api.post('/users/bulk/reset-password', { userIds: Array.from(selectedIds) })
       toast.success('Password reset emails sent')
@@ -188,7 +192,7 @@ export default function UsersManager() {
     {
       key: 'user', label: 'User', width: '25%',
       render: (u) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setSelectedUserId(u.id)}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={async () => setSelectedUserId(u.id)}>
           <Avatar name={u.name || '?'} size="sm" />
           <div>
             <div style={{ fontWeight: 500, color: 'var(--color-primary)', textDecoration: 'underline' }}>{u.name || 'Unknown User'}</div>
@@ -224,7 +228,7 @@ export default function UsersManager() {
       render: (u) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', justifyContent: 'flex-end' }}>
           {u.status === 'pending_approval' || u.status === 'changes_requested' ? (
-            <Button variant="secondary" onClick={() => setApprovalTarget(u)}>Review</Button>
+            <Button variant="secondary" onClick={async () => setApprovalTarget(u)}>Review</Button>
           ) : (
             <>
               <div style={{ minWidth: '160px', textAlign: 'left' }}>
@@ -238,23 +242,23 @@ export default function UsersManager() {
               </div>
 
               {u.status === 'inactive' || u.status === 'archived' || u.status === 'resigned' || u.status === 'terminated' ? (
-                <PermissionButton permission="users:activate_user" variant="primary" onClick={() => {
-                  if (window.confirm(`Are you sure you want to reactivate ${u.name}?`)) setStatusChangeTarget(u)
+                <PermissionButton permission="users:activate_user" variant="primary" onClick={async () => {
+                  if (await confirm(`Are you sure you want to reactivate ${u.name}?`)) setStatusChangeTarget(u)
                 }}>
                   Reactivate
                 </PermissionButton>
               ) : (
-                <PermissionButton permission="users:deactivate_user" variant="danger" onClick={() => {
-                  if (window.confirm(`WARNING: Deactivating ${u.name} will immediately revoke their access. Continue?`)) setOffboardingTarget(u)
+                <PermissionButton permission="users:deactivate_user" variant="danger" onClick={async () => {
+                  if (await confirm(`WARNING: Deactivating ${u.name} will immediately revoke their access. Continue?`)) setOffboardingTarget(u)
                 }}>
                   Deactivate
                 </PermissionButton>
               )}
               
-              <Button variant="ghost" onClick={() => setEffectivePermUserTarget(u)} title="View Effective Permissions">
+              <Button variant="ghost" onClick={async () => setEffectivePermUserTarget(u)} title="View Effective Permissions">
                 <i className="ri-shield-keyhole-line" style={{ fontSize: '1.2rem', color: 'var(--color-primary)' }}></i>
               </Button>
-              <Button variant="ghost" onClick={() => setAssignPermUserTarget(u)} title="Assign Direct/Temporary Permissions">
+              <Button variant="ghost" onClick={async () => setAssignPermUserTarget(u)} title="Assign Direct/Temporary Permissions">
                 <i className="ri-user-settings-line" style={{ fontSize: '1.2rem', color: 'var(--color-secondary)' }}></i>
               </Button>
             </>
@@ -276,7 +280,7 @@ export default function UsersManager() {
             <h2 className={layoutStyles.sectionTitle}>Add Team Member</h2>
             <p className={layoutStyles.sectionDesc}>Create a new employee profile and set permissions.</p>
           </div>
-          <Button variant="ghost" onClick={() => setIsAddMemberOpen(false)}>Back to List</Button>
+          <Button variant="ghost" onClick={async () => setIsAddMemberOpen(false)}>Back to List</Button>
         </div>
         <div style={{ background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
           <AddTeamMemberForm 
@@ -315,31 +319,83 @@ export default function UsersManager() {
               <div style={{ display: 'flex', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-full)', padding: '2px', overflow: 'hidden', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.05)' }}>
                 <button 
                   style={{ padding: '6px 14px', border: 'none', background: viewMode === 'table' ? 'var(--color-bg)' : 'transparent', color: viewMode === 'table' ? 'var(--color-text)' : 'var(--color-text-muted)', borderRadius: 'var(--radius-full)', fontWeight: viewMode === 'table' ? '600' : '500', cursor: 'pointer', transition: 'all 0.2s', boxShadow: viewMode === 'table' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}
-                  onClick={() => setViewMode('table')}
+                  onClick={async () => setViewMode('table')}
                 >Table</button>
                 <button 
                   style={{ padding: '6px 14px', border: 'none', background: viewMode === 'grid' ? 'var(--color-bg)' : 'transparent', color: viewMode === 'grid' ? 'var(--color-text)' : 'var(--color-text-muted)', borderRadius: 'var(--radius-full)', fontWeight: viewMode === 'grid' ? '600' : '500', cursor: 'pointer', transition: 'all 0.2s', boxShadow: viewMode === 'grid' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}
-                  onClick={() => setViewMode('grid')}
+                  onClick={async () => setViewMode('grid')}
                 >Grid</button>
               </div>
-              <Button variant="secondary" onClick={() => setShowImportExport(true)}>Import / Export</Button>
-              <PermissionButton permission="users:invite_user" variant="secondary" onClick={() => setBulkModalType('add')}>Bulk Add</PermissionButton>
-              <PermissionButton permission="users:invite_user" variant="primary" onClick={() => setIsAddMemberOpen(true)}>+ Add Team Member</PermissionButton>
+              <Button variant="secondary" onClick={async () => setShowImportExport(true)}>Import / Export</Button>
+              <PermissionButton permission="users:invite_user" variant="secondary" onClick={async () => setBulkModalType('add')}>Bulk Add</PermissionButton>
+              <PermissionButton permission="users:invite_user" variant="primary" onClick={async () => setIsAddMemberOpen(true)}>+ Add Team Member</PermissionButton>
             </div>
 
         </div>
 
         {selectedIds.size > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--color-surface-hover)', borderRadius: '8px', border: '1px solid var(--color-border)', marginBottom: '16px' }}>
-            <div style={{ fontWeight: 500 }}>{selectedIds.size} users selected</div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <PermissionButton permission="users:assign_roles" size="small" variant="ghost" onClick={() => setBulkModalType('role')}>Change Role</PermissionButton>
-              <PermissionButton permission="users:change_department" size="small" variant="ghost" onClick={() => setBulkModalType('department')}>Change Dept</PermissionButton>
-              <PermissionButton permission="users:change_department" size="small" variant="ghost" onClick={() => setBulkModalType('manager')}>Change Manager</PermissionButton>
-              <PermissionButton permission="users:activate_user||users:deactivate_user" size="small" variant="ghost" onClick={() => setBulkModalType('status')}>Change Status</PermissionButton>
-              <PermissionButton permission="users:reset_password" size="small" variant="ghost" onClick={handleBulkPasswordReset}>Reset Password</PermissionButton>
-              <Button size="small" variant="ghost" onClick={handleBulkExport}>Export CSV</Button>
-              <PermissionButton permission="users:delete_user" size="small" variant="danger" onClick={handleBulkDelete}>Delete</PermissionButton>
+          <div style={{
+            position: 'fixed', top: '100px', right: '32px',
+            background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(16px)',
+            padding: '20px', borderRadius: '16px', minWidth: '240px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0,0,0,0.05)',
+            display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 100,
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '16px', marginBottom: '8px', borderBottom: '1px solid var(--color-border, #f3f4f6)' }}>
+              <div style={{ 
+                background: 'var(--color-primary, #3b82f6)', color: 'white', 
+                width: '32px', height: '32px', borderRadius: '50%', 
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: '700', fontSize: '14px',
+                boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.3)'
+              }}>
+                {selectedIds.size}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                <span style={{ fontWeight: 600, color: 'var(--color-text, #111827)', fontSize: '15px' }}>Users Selected</span>
+                <span style={{ fontSize: '12px', color: 'var(--color-text-muted, #6b7280)' }}>Bulk Actions</span>
+              </div>
+              <button 
+                onClick={() => setSelectedIds(new Set())}
+                style={{ 
+                  background: 'var(--color-surface-hover, #f3f4f6)', border: 'none', cursor: 'pointer', 
+                  color: 'var(--color-text-muted, #6b7280)', width: '28px', height: '28px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  borderRadius: '50%', fontSize: '16px', fontWeight: 'bold',
+                  transition: 'background 0.2s', padding: 0
+                }}
+                title="Clear Selection"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%' }}>
+              <PermissionButton permission="users:assign_roles" variant="ghost" onClick={async () => setBulkModalType('role')} style={{ width: '100%', justifyContent: 'flex-start', padding: '10px 12px', borderRadius: '8px', fontWeight: 500, color: 'var(--color-text-secondary)', display: 'flex', gap: '10px' }}>
+                <i className="ri-shield-user-line" style={{ fontSize: '18px', color: 'var(--color-primary)' }}></i> Change Role
+              </PermissionButton>
+              <PermissionButton permission="users:change_department" variant="ghost" onClick={async () => setBulkModalType('department')} style={{ width: '100%', justifyContent: 'flex-start', padding: '10px 12px', borderRadius: '8px', fontWeight: 500, color: 'var(--color-text-secondary)', display: 'flex', gap: '10px' }}>
+                <i className="ri-building-line" style={{ fontSize: '18px', color: 'var(--color-secondary)' }}></i> Change Dept
+              </PermissionButton>
+              <PermissionButton permission="users:change_department" variant="ghost" onClick={async () => setBulkModalType('manager')} style={{ width: '100%', justifyContent: 'flex-start', padding: '10px 12px', borderRadius: '8px', fontWeight: 500, color: 'var(--color-text-secondary)', display: 'flex', gap: '10px' }}>
+                <i className="ri-user-star-line" style={{ fontSize: '18px', color: '#10b981' }}></i> Change Manager
+              </PermissionButton>
+              <PermissionButton permission="users:activate_user||users:deactivate_user" variant="ghost" onClick={async () => setBulkModalType('status')} style={{ width: '100%', justifyContent: 'flex-start', padding: '10px 12px', borderRadius: '8px', fontWeight: 500, color: 'var(--color-text-secondary)', display: 'flex', gap: '10px' }}>
+                <i className="ri-toggle-line" style={{ fontSize: '18px', color: '#8b5cf6' }}></i> Change Status
+              </PermissionButton>
+              <PermissionButton permission="users:reset_password" variant="ghost" onClick={handleBulkPasswordReset} style={{ width: '100%', justifyContent: 'flex-start', padding: '10px 12px', borderRadius: '8px', fontWeight: 500, color: 'var(--color-text-secondary)', display: 'flex', gap: '10px' }}>
+                <i className="ri-lock-password-line" style={{ fontSize: '18px', color: '#f59e0b' }}></i> Reset Password
+              </PermissionButton>
+              <Button variant="ghost" onClick={handleBulkExport} style={{ width: '100%', justifyContent: 'flex-start', padding: '10px 12px', borderRadius: '8px', fontWeight: 500, color: 'var(--color-text-secondary)', display: 'flex', gap: '10px' }}>
+                <i className="ri-file-download-line" style={{ fontSize: '18px', color: '#0ea5e9' }}></i> Export CSV
+              </Button>
+              
+              <div style={{ height: '1px', width: '100%', background: 'var(--color-border, #f3f4f6)', margin: '8px 0' }}></div>
+              
+              <PermissionButton permission="users:delete_user" variant="ghost" onClick={handleBulkDelete} style={{ width: '100%', justifyContent: 'flex-start', padding: '10px 12px', borderRadius: '8px', fontWeight: 600, color: 'var(--color-danger, #ef4444)', display: 'flex', gap: '10px' }}>
+                <i className="ri-delete-bin-line" style={{ fontSize: '18px' }}></i> Delete Users
+              </PermissionButton>
             </div>
           </div>
         )}
@@ -361,25 +417,25 @@ export default function UsersManager() {
         <div style={{ display: 'flex', gap: '8px', padding: '4px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', marginBottom: '16px', width: 'fit-content' }}>
           <button 
             style={{ padding: '8px 16px', border: 'none', background: activeTab === 'directory' ? 'var(--color-bg)' : 'transparent', color: activeTab === 'directory' ? 'var(--color-primary)' : 'var(--color-text-secondary)', borderRadius: 'var(--radius-md)', fontWeight: activeTab === 'directory' ? 600 : 500, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'directory' ? 'var(--shadow-sm)' : 'none' }} 
-            onClick={() => { setActiveTab('directory'); setSelectedIds(new Set()); }}
+            onClick={async () => { setActiveTab('directory'); setSelectedIds(new Set()); }}
           >
             Active Directory
           </button>
           <button 
             style={{ padding: '8px 16px', border: 'none', background: activeTab === 'approvals' ? 'var(--color-bg)' : 'transparent', color: activeTab === 'approvals' ? 'var(--color-primary)' : 'var(--color-text-secondary)', borderRadius: 'var(--radius-md)', fontWeight: activeTab === 'approvals' ? 600 : 500, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'approvals' ? 'var(--shadow-sm)' : 'none' }} 
-            onClick={() => { setActiveTab('approvals'); setSelectedIds(new Set()); }}
+            onClick={async () => { setActiveTab('approvals'); setSelectedIds(new Set()); }}
           >
             Pending Approvals <Badge variant="neutral">{allUsers.filter(u => u.status === 'pending_approval' || u.status === 'changes_requested').length}</Badge>
           </button>
           <button 
             style={{ padding: '8px 16px', border: 'none', background: activeTab === 'emails' ? 'var(--color-bg)' : 'transparent', color: activeTab === 'emails' ? 'var(--color-primary)' : 'var(--color-text-secondary)', borderRadius: 'var(--radius-md)', fontWeight: activeTab === 'emails' ? 600 : 500, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'emails' ? 'var(--shadow-sm)' : 'none' }} 
-            onClick={() => { setActiveTab('emails'); setSelectedIds(new Set()); }}
+            onClick={async () => { setActiveTab('emails'); setSelectedIds(new Set()); }}
           >
             Email Logs
           </button>
           <button 
             style={{ padding: '8px 16px', border: 'none', background: activeTab === 'offboarding' ? 'var(--color-bg)' : 'transparent', color: activeTab === 'offboarding' ? 'var(--color-primary)' : 'var(--color-text-secondary)', borderRadius: 'var(--radius-md)', fontWeight: activeTab === 'offboarding' ? 600 : 500, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'offboarding' ? 'var(--shadow-sm)' : 'none' }} 
-            onClick={() => { setActiveTab('offboarding'); setSelectedIds(new Set()); }}
+            onClick={async () => { setActiveTab('offboarding'); setSelectedIds(new Set()); }}
           >
             Offboarding
           </button>
@@ -446,7 +502,7 @@ export default function UsersManager() {
           title="Change Role"
           footer={
             <>
-              <Button variant="ghost" onClick={() => setRoleChangeTarget(null)}>Cancel</Button>
+              <Button variant="ghost" onClick={async () => setRoleChangeTarget(null)}>Cancel</Button>
               <Button variant="primary" onClick={confirmRoleChange}>Confirm</Button>
             </>
           }
@@ -542,19 +598,19 @@ export default function UsersManager() {
               { label: 'Deactivate', danger: true, onClick: () => setOffboardingTarget(contextMenu.user) },
               { divider: true },
               { label: '🔥 Login as User (Impersonate)', onClick: async () => {
-                if(window.confirm('WARNING: All actions performed will be logged against your audit trail. Proceed?')) {
+                if(await confirm('WARNING: All actions performed will be logged against your audit trail. Proceed?')) {
                   await api.post(`/superadmin/impersonate/${contextMenu.user.id}`);
                   toast.success('Impersonation mode activated');
                 }
               } },
               { label: '🔥 Force Logout All Sessions', onClick: async () => {
-                if(window.confirm('Force terminate all active sessions for this user?')) {
+                if(await confirm('Force terminate all active sessions for this user?')) {
                   await api.post(`/superadmin/force-logout/${contextMenu.user.id}`);
                   toast.success('Sessions terminated');
                 }
               } },
               { label: '🔥 Emergency Account Lock', danger: true, onClick: async () => {
-                if(window.confirm('CRITICAL: Lock this account immediately?')) {
+                if(await confirm('CRITICAL: Lock this account immediately?')) {
                   await api.post(`/superadmin/emergency-lock/${contextMenu.user.id}`);
                   toast.success('Account locked');
                   fetchUsers();

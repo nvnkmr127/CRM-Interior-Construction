@@ -4,6 +4,8 @@ import { Button, Badge, Modal, Input, EmptyState, Spinner } from '../ui';
 import { useToast } from '../../store/toastContext';
 import styles from './DesignReviewsTab.module.css';
 import {
+import { useConfirm } from '../../store/confirmContext';
+
   getDesignReviewRounds,
   createDesignReviewRound,
   closeDesignReviewRound,
@@ -17,6 +19,8 @@ import {
 } from '../../api/projects';
 
 export default function DesignReviewsTab({ projectId }) {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   const [rounds, setRounds] = useState([]);
   const [drawings, setDrawings] = useState([]);
@@ -110,7 +114,7 @@ export default function DesignReviewsTab({ projectId }) {
   };
 
   const handleCloseRound = async (id) => {
-    if (!window.confirm('Are you sure you want to close this design review round? This locks drawing associations for this round.')) return;
+    if (!await confirm('Are you sure you want to close this design review round? This locks drawing associations for this round.')) return;
 
     try {
       const res = await closeDesignReviewRound(projectId, id);
@@ -149,7 +153,7 @@ export default function DesignReviewsTab({ projectId }) {
   };
 
   const handleFreezeDesign = async () => {
-    if (!window.confirm('Are you sure you want to lock the design scope? This actions freezes current drawings and confirms the design phase. Transition to execution will now be unlocked.')) return;
+    if (!await confirm('Are you sure you want to lock the design scope? This actions freezes current drawings and confirms the design phase. Transition to execution will now be unlocked.')) return;
 
     try {
       const res = await freezeProjectDesign(projectId);
@@ -291,7 +295,7 @@ export default function DesignReviewsTab({ projectId }) {
     const currentRound = rounds.find(r => r.id === selectedRound.id) || selectedRound;
     return (
       <div className={styles.detailView}>
-        <button className={styles.backBtn} onClick={() => { setSelectedRound(null); setExpandedCommentsDocId(null); }}>
+        <button className={styles.backBtn} onClick={async () => { setSelectedRound(null); setExpandedCommentsDocId(null); }}>
           ← Back to Design Reviews
         </button>
 
@@ -322,7 +326,7 @@ export default function DesignReviewsTab({ projectId }) {
 
           <div style={{ display: 'flex', gap: '8px' }}>
             {currentRound.status === 'active' && (
-              <Button variant="outline" size="sm" onClick={() => handleCloseRound(currentRound.id)}>
+              <Button variant="outline" size="sm" onClick={async () => handleCloseRound(currentRound.id)}>
                 🔒 Close Review Round
               </Button>
             )}
@@ -343,7 +347,7 @@ export default function DesignReviewsTab({ projectId }) {
                   <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
                     <div className={styles.drawingInfo}>
                       {doc.mime_type?.startsWith('image/') ? (
-                        <img src={doc.downloadUrl} alt={doc.name} className={styles.thumbnail} onClick={() => setZoomImageUrl(doc.downloadUrl)} />
+                        <img src={doc.downloadUrl} alt={doc.name} className={styles.thumbnail} onClick={async () => setZoomImageUrl(doc.downloadUrl)} />
                       ) : (
                         <div className={styles.thumbnail} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', cursor: 'default' }}>
                           📄
@@ -376,7 +380,7 @@ export default function DesignReviewsTab({ projectId }) {
                       {currentRound.status === 'active' && (
                         <button
                           style={{ fontSize: '0.75rem', color: 'var(--color-danger)', border: 'none', background: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-                          onClick={() => handleAssociateDrawing(doc.id, null)}
+                          onClick={async () => handleAssociateDrawing(doc.id, null)}
                         >
                           Remove from Round
                         </button>
@@ -387,7 +391,7 @@ export default function DesignReviewsTab({ projectId }) {
                   {/* Comment Section Toggle */}
                   <div className={styles.commentSection}>
                     <button
-                      onClick={() => toggleComments(doc.id)}
+                      onClick={async () => toggleComments(doc.id)}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-primary)', padding: 0 }}
                     >
                       {expandedCommentsDocId === doc.id ? '▼' : '▶'} Client Comments & Discussion
@@ -423,7 +427,7 @@ export default function DesignReviewsTab({ projectId }) {
                             style={{ height: '32px', fontSize: '0.8rem' }}
                             onKeyDown={e => { if (e.key === 'Enter') handleAddComment(doc.id) }}
                           />
-                          <Button size="sm" onClick={() => handleAddComment(doc.id)} disabled={!(newCommentsText[doc.id] || '').trim()}>
+                          <Button size="sm" onClick={async () => handleAddComment(doc.id)} disabled={!(newCommentsText[doc.id] || '').trim()}>
                             Send
                           </Button>
                         </div>
@@ -479,7 +483,7 @@ export default function DesignReviewsTab({ projectId }) {
             🔒 Freeze Design & Lock Scope
           </Button>
         ) : (
-          <Button variant="warning" size="sm" onClick={() => setIsChangeOrderModalOpen(true)}>
+          <Button variant="warning" size="sm" onClick={async () => setIsChangeOrderModalOpen(true)}>
             ⚠️ Request Post-Freeze Change
           </Button>
         )}
@@ -490,7 +494,7 @@ export default function DesignReviewsTab({ projectId }) {
           <h2 className={styles.title}>2D Layouts & 3D Renders Approval rounds</h2>
           <p className={styles.description}>Manage named design review rounds, track client feedback loops, and approve individual drawings.</p>
         </div>
-        <Button variant="primary" onClick={() => setIsCreateRoundOpen(true)}>
+        <Button variant="primary" onClick={async () => setIsCreateRoundOpen(true)}>
           ➕ Create Review Round
         </Button>
       </div>
@@ -508,7 +512,7 @@ export default function DesignReviewsTab({ projectId }) {
               <div
                 key={round.id}
                 className={`${styles.roundCard} ${selectedRound?.id === round.id ? styles.roundCardActive : ''}`}
-                onClick={() => setSelectedRound(round)}
+                onClick={async () => setSelectedRound(round)}
               >
                 <div className={styles.roundCardTitle}>
                   <span>{round.name}</span>
@@ -549,7 +553,7 @@ export default function DesignReviewsTab({ projectId }) {
               <div key={doc.id} className={styles.drawingCard} style={{ background: 'white' }}>
                 <div className={styles.drawingInfo}>
                   {doc.mime_type?.startsWith('image/') ? (
-                    <img src={doc.downloadUrl} alt={doc.name} className={styles.thumbnail} onClick={() => setZoomImageUrl(doc.downloadUrl)} />
+                    <img src={doc.downloadUrl} alt={doc.name} className={styles.thumbnail} onClick={async () => setZoomImageUrl(doc.downloadUrl)} />
                   ) : (
                     <div className={styles.thumbnail} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', cursor: 'default' }}>
                       📄
@@ -602,7 +606,7 @@ export default function DesignReviewsTab({ projectId }) {
           </div>
 
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
-            <Button type="button" variant="outline" onClick={() => setIsCreateRoundOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={async () => setIsCreateRoundOpen(false)}>Cancel</Button>
             <Button type="submit" variant="primary">Create Round</Button>
           </div>
         </form>
@@ -611,7 +615,7 @@ export default function DesignReviewsTab({ projectId }) {
       {/* Zoom Image Overlay */}
       {zoomImageUrl && (
         <div
-          onClick={() => setZoomImageUrl(null)}
+          onClick={async () => setZoomImageUrl(null)}
           style={{
             position: 'fixed',
             top: 0,
@@ -637,7 +641,7 @@ export default function DesignReviewsTab({ projectId }) {
         title="Raise Post-Freeze Design Change Order"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setIsChangeOrderModalOpen(false)}>Cancel</Button>
+            <Button variant="ghost" onClick={async () => setIsChangeOrderModalOpen(false)}>Cancel</Button>
             <Button variant="primary" onClick={handleCreatePostFreezeChangeOrder}>Create Change Order</Button>
           </>
         }

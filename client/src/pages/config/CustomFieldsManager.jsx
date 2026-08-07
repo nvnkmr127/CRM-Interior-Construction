@@ -19,6 +19,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { configApi } from '../../api/config';
 import styles from './CustomFieldsManager.module.css';
 
+import { useConfirm } from '../../store/confirmContext';
+
 // SVG Icons
 const DragIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -37,6 +39,8 @@ const TrashIcon = () => (
 );
 
 function SortableRow({ field, onEdit, onDelete, onToggleActive }) {
+  const { confirm } = useConfirm();
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: field.id });
   
   const style = {
@@ -66,8 +70,8 @@ function SortableRow({ field, onEdit, onDelete, onToggleActive }) {
       </td>
       <td className={styles.td}>
         <div className={styles.actions}>
-          <button className={styles.actionBtn} onClick={() => onEdit(field)}><EditIcon/></button>
-          <button className={`${styles.actionBtn} ${styles.actionBtnDelete}`} onClick={() => onDelete(field.id)}><TrashIcon/></button>
+          <button className={styles.actionBtn} onClick={async () => onEdit(field)}><EditIcon/></button>
+          <button className={`${styles.actionBtn} ${styles.actionBtnDelete}`} onClick={async () => onDelete(field.id)}><TrashIcon/></button>
         </div>
       </td>
     </tr>
@@ -75,6 +79,8 @@ function SortableRow({ field, onEdit, onDelete, onToggleActive }) {
 }
 
 export default function CustomFieldsManager() {
+  const { confirm } = useConfirm();
+
   const [activeEntity, setActiveEntity] = useState('lead');
   const [fields, setFields] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -128,7 +134,7 @@ export default function CustomFieldsManager() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this field?')) {
+    if (await confirm('Are you sure you want to delete this field?')) {
       await configApi.deleteCustomField(id);
       setFields(fields.filter(f => f.id !== id));
     }
@@ -194,13 +200,13 @@ export default function CustomFieldsManager() {
             <button 
               key={ent}
               className={`${styles.tab} ${activeEntity === ent ? styles.activeTab : ''}`}
-              onClick={() => setActiveEntity(ent)}
+              onClick={async () => setActiveEntity(ent)}
             >
               {ent.charAt(0).toUpperCase() + ent.slice(1)}s
             </button>
           ))}
         </div>
-        <button className={styles.addButton} onClick={() => openModal()}>+ Add Field</button>
+        <button className={styles.addButton} onClick={async () => openModal()}>+ Add Field</button>
       </div>
 
       <div className={styles.tableContainer}>
@@ -303,7 +309,7 @@ export default function CustomFieldsManager() {
             </div>
 
             <div className={styles.modalActions}>
-              <button className={styles.cancelBtn} onClick={() => setIsModalOpen(false)}>Cancel</button>
+              <button className={styles.cancelBtn} onClick={async () => setIsModalOpen(false)}>Cancel</button>
               <button className={styles.saveBtn} onClick={handleSave}>Save</button>
             </div>
           </div>

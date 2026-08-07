@@ -3,7 +3,11 @@ import React, { useState, useMemo } from 'react';
 import { Modal, DataTable, Button, Input, Pagination } from '../ui';
 import { useToast } from '../../store/toastContext';
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function AnalyticsDrillDownModal({ isOpen, onClose, title, data = [] }) {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   
   // -- State --
@@ -53,8 +57,8 @@ export default function AnalyticsDrillDownModal({ isOpen, onClose, title, data =
     toast.success('Exported to CSV');
   };
 
-  const handleBulkDelete = () => {
-    if (!window.confirm(`Are you sure you want to delete ${selectedIds.size} leads?`)) return;
+  const handleBulkDelete = async () => {
+    if (!await confirm(`Are you sure you want to delete ${selectedIds.size} leads?`)) return;
     toast.success(`Successfully deleted ${selectedIds.size} leads (Simulated)`);
     setSelectedIds(new Set());
   };
@@ -145,7 +149,7 @@ export default function AnalyticsDrillDownModal({ isOpen, onClose, title, data =
               {selectedIds.size} selected
             </span>
             <div style={{ position: 'relative' }}>
-              <Button variant="outline" size="sm" onClick={() => setStageMenuOpen(!stageMenuOpen)}>
+              <Button variant="outline" size="sm" onClick={async () => setStageMenuOpen(!stageMenuOpen)}>
                 Change Stage
               </Button>
               {stageMenuOpen && (
@@ -154,7 +158,7 @@ export default function AnalyticsDrillDownModal({ isOpen, onClose, title, data =
                     <div 
                       key={s} 
                       style={{ padding: '8px 12px', fontSize: '13px', cursor: 'pointer', borderBottom: '1px solid var(--color-border-light)' }}
-                      onClick={() => handleBulkStageChange(s)}
+                      onClick={async () => handleBulkStageChange(s)}
                     >
                       {s}
                     </div>
@@ -163,7 +167,7 @@ export default function AnalyticsDrillDownModal({ isOpen, onClose, title, data =
               )}
             </div>
             <Button variant="danger" size="sm" onClick={handleBulkDelete}>Delete</Button>
-            <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>Cancel</Button>
+            <Button variant="ghost" size="sm" onClick={async () => setSelectedIds(new Set())}>Cancel</Button>
           </div>
         )}
 

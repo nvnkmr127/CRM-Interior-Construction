@@ -3,7 +3,11 @@ import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
 import styles from './ApprovalComments.module.css'; // Reuse basic styles
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function AttachmentManager({ approvalId, currentUserRole, currentUserId }) {
+  const { confirm } = useConfirm();
+
   const [attachments, setAttachments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -53,7 +57,7 @@ export default function AttachmentManager({ approvalId, currentUserRole, current
   };
 
   const handleDelete = async (docId) => {
-    if (!window.confirm('Delete this document permanently?')) return;
+    if (!await confirm('Delete this document permanently?')) return;
     try {
       await api.delete(`/financial-approvals/${approvalId}/attachments/${docId}`);
       toast.success('Document deleted.');
@@ -109,7 +113,7 @@ export default function AttachmentManager({ approvalId, currentUserRole, current
 
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button 
-                  onClick={() => window.open(doc.file_url, '_blank')}
+                  onClick={async () => window.open(doc.file_url, '_blank')}
                   className={styles.secondaryBtn} 
                   style={{ flex: 1, padding: '4px', fontSize: '12px' }}
                 >
@@ -117,7 +121,7 @@ export default function AttachmentManager({ approvalId, currentUserRole, current
                 </button>
                 {canDelete(doc) && (
                   <button 
-                    onClick={() => handleDelete(doc.id)}
+                    onClick={async () => handleDelete(doc.id)}
                     className={styles.secondaryBtn} 
                     style={{ padding: '4px 8px', fontSize: '12px', color: 'red', borderColor: '#fca5a5' }}
                   >

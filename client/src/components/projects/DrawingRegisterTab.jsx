@@ -5,6 +5,8 @@ import { useToast } from '../../store/toastContext';
 import { useS3Upload } from '../../hooks/useS3Upload';
 import styles from './DrawingRegisterTab.module.css';
 import {
+import { useConfirm } from '../../store/confirmContext';
+
   getDrawingRegister,
   createDrawingRegisterEntry,
   updateDrawingRegisterEntry,
@@ -40,6 +42,8 @@ const LAYOUT_LABELS = {
 };
 
 export default function DrawingRegisterTab({ projectId }) {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   const { upload, uploading } = useS3Upload();
 
@@ -330,7 +334,7 @@ export default function DrawingRegisterTab({ projectId }) {
   };
 
   const handleDelete = async (id, drawingNumber, revisionCode) => {
-    if (!window.confirm(`Are you sure you want to delete drawing ${drawingNumber} Revision ${revisionCode}?`)) {
+    if (!await confirm(`Are you sure you want to delete drawing ${drawingNumber} Revision ${revisionCode}?`)) {
       return;
     }
 
@@ -445,7 +449,7 @@ export default function DrawingRegisterTab({ projectId }) {
             ))}
           </select>
         </div>
-        <Button variant="primary" onClick={() => setIsRegisterModalOpen(true)}>
+        <Button variant="primary" onClick={async () => setIsRegisterModalOpen(true)}>
           + Register Drawing
         </Button>
       </div>
@@ -486,7 +490,7 @@ export default function DrawingRegisterTab({ projectId }) {
                     <tr 
                       key={active.drawing_number} 
                       className={`${styles.row} ${selectedDrawingNumber === active.drawing_number ? styles.rowSelected : ''}`}
-                      onClick={() => setSelectedDrawingNumber(active.drawing_number)}
+                      onClick={async () => setSelectedDrawingNumber(active.drawing_number)}
                     >
                       <td className={styles.drawingNo}>
                         {active.drawing_number}
@@ -542,7 +546,7 @@ export default function DrawingRegisterTab({ projectId }) {
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            onClick={() => handleRevisionOpen(group)}
+                            onClick={async () => handleRevisionOpen(group)}
                             title="Add new revision code"
                           >
                             🔄 Revise
@@ -550,7 +554,7 @@ export default function DrawingRegisterTab({ projectId }) {
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            onClick={() => handleEditOpen(active)}
+                            onClick={async () => handleEditOpen(active)}
                           >
                             ✏️
                           </Button>
@@ -558,7 +562,7 @@ export default function DrawingRegisterTab({ projectId }) {
                             variant="ghost" 
                             size="sm" 
                             style={{ color: 'var(--color-danger)' }}
-                            onClick={() => handleDelete(active.id, active.drawing_number, active.revision_code)}
+                            onClick={async () => handleDelete(active.id, active.drawing_number, active.revision_code)}
                           >
                             🗑️
                           </Button>
@@ -581,7 +585,7 @@ export default function DrawingRegisterTab({ projectId }) {
                 </div>
                 <button 
                   className={styles.closeBtn} 
-                  onClick={() => setSelectedDrawingNumber(null)}
+                  onClick={async () => setSelectedDrawingNumber(null)}
                 >
                   ✕
                 </button>
@@ -638,14 +642,14 @@ export default function DrawingRegisterTab({ projectId }) {
                                 <button
                                   type="button"
                                   style={{ background: 'none', border: 'none', color: 'var(--color-success)', cursor: 'pointer', fontSize: '11px', padding: '2px 4px', fontWeight: 500 }}
-                                  onClick={() => handleClientApprove(rev.id)}
+                                  onClick={async () => handleClientApprove(rev.id)}
                                 >
                                   ✔ Approve
                                 </button>
                                 <button
                                   type="button"
                                   style={{ background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '11px', padding: '2px 4px', fontWeight: 500 }}
-                                  onClick={() => handleClientRevision(rev.id)}
+                                  onClick={async () => handleClientRevision(rev.id)}
                                 >
                                   ✖ Revise
                                 </button>
@@ -673,14 +677,14 @@ export default function DrawingRegisterTab({ projectId }) {
                                     <button
                                       type="button"
                                       style={{ background: 'none', border: 'none', color: 'var(--color-success)', cursor: 'pointer', fontSize: '11px', padding: '2px 4px', fontWeight: 500 }}
-                                      onClick={() => handleContractorApprove(rev.id)}
+                                      onClick={async () => handleContractorApprove(rev.id)}
                                     >
                                       ✔ Approve
                                     </button>
                                     <button
                                       type="button"
                                       style={{ background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '11px', padding: '2px 4px', fontWeight: 500 }}
-                                      onClick={() => handleContractorRevision(rev.id)}
+                                      onClick={async () => handleContractorRevision(rev.id)}
                                     >
                                       ✖ Revise
                                     </button>
@@ -703,7 +707,7 @@ export default function DrawingRegisterTab({ projectId }) {
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          onClick={() => handleDownload(rev.document_id)}
+                          onClick={async () => handleDownload(rev.document_id)}
                         >
                           💾 Download
                         </Button>
@@ -715,7 +719,7 @@ export default function DrawingRegisterTab({ projectId }) {
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          onClick={() => handleEditOpen(rev)}
+                          onClick={async () => handleEditOpen(rev)}
                           title="Edit this revision"
                         >
                           ✏️
@@ -724,7 +728,7 @@ export default function DrawingRegisterTab({ projectId }) {
                           variant="ghost" 
                           size="sm" 
                           style={{ color: 'var(--color-danger)' }}
-                          onClick={() => handleDelete(rev.id, rev.drawing_number, rev.revision_code)}
+                          onClick={async () => handleDelete(rev.id, rev.drawing_number, rev.revision_code)}
                           title="Delete this revision"
                         >
                           🗑️
@@ -746,7 +750,7 @@ export default function DrawingRegisterTab({ projectId }) {
         title="Register New Project Drawing"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setIsRegisterModalOpen(false)} disabled={uploading}>
+            <Button variant="ghost" onClick={async () => setIsRegisterModalOpen(false)} disabled={uploading}>
               Cancel
             </Button>
             <Button variant="primary" onClick={handleRegisterSubmit} loading={uploading}>
@@ -858,7 +862,7 @@ export default function DrawingRegisterTab({ projectId }) {
         title={`Add Revision for Drawing ${revisionForm.drawingNumber}`}
         footer={
           <>
-            <Button variant="ghost" onClick={() => setIsRevisionModalOpen(false)} disabled={uploading}>
+            <Button variant="ghost" onClick={async () => setIsRevisionModalOpen(false)} disabled={uploading}>
               Cancel
             </Button>
             <Button variant="primary" onClick={handleRevisionSubmit} loading={uploading}>
@@ -959,7 +963,7 @@ export default function DrawingRegisterTab({ projectId }) {
         title="Edit Drawing Register Details"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setIsEditModalOpen(false)}>
+            <Button variant="ghost" onClick={async () => setIsEditModalOpen(false)}>
               Cancel
             </Button>
             <Button variant="primary" onClick={handleEditSubmit}>

@@ -4,6 +4,8 @@ import { Button, Badge, Card, Modal, Input, Textarea, Select } from '../ui';
 import { useToast } from '../../store/toastContext';
 import styles from './DesignRequirements.module.css';
 import {
+import { useConfirm } from '../../store/confirmContext';
+
   getDesignRequirements,
   updateDesignRequirements,
   createRoomRequirement,
@@ -68,6 +70,8 @@ const BUDGET_CATEGORIES = [
 ];
 
 export default function DesignRequirements({ projectId }) {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   
   // Data states
@@ -244,7 +248,7 @@ export default function DesignRequirements({ projectId }) {
   };
 
   const handleRoomDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this room requirement?')) return;
+    if (!await confirm('Are you sure you want to delete this room requirement?')) return;
     try {
       await deleteRoomRequirement(projectId, id);
       setRooms(rooms.filter(r => r.id !== id));
@@ -284,7 +288,7 @@ export default function DesignRequirements({ projectId }) {
   };
 
   const handleInspirationDelete = async (id) => {
-    if (!window.confirm('Delete this inspiration?')) return;
+    if (!await confirm('Delete this inspiration?')) return;
     try {
       await deleteProjectInspiration(projectId, id);
       setInspirations(inspirations.filter(i => i.id !== id));
@@ -641,14 +645,14 @@ export default function DesignRequirements({ projectId }) {
                       <div className={styles.actions}>
                         <button
                           className={styles.actionBtn}
-                          onClick={() => openEditRoomModal(room)}
+                          onClick={async () => openEditRoomModal(room)}
                           title="Edit"
                         >
                           ✏️
                         </button>
                         <button
                           className={`${styles.actionBtn} ${styles.deleteBtn}`}
-                          onClick={() => handleRoomDelete(room.id)}
+                          onClick={async () => handleRoomDelete(room.id)}
                           title="Delete"
                         >
                           🗑️
@@ -670,7 +674,7 @@ export default function DesignRequirements({ projectId }) {
             <h3 className={styles.sectionTitle}>📸 Inspiration Board</h3>
             <p className={styles.sectionDesc}>References, mood boards, and designs shared by the client</p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setIsAddingInspiration(!isAddingInspiration)}>
+          <Button variant="outline" size="sm" onClick={async () => setIsAddingInspiration(!isAddingInspiration)}>
             {isAddingInspiration ? 'Cancel' : '➕ Add Inspiration'}
           </Button>
         </div>
@@ -680,7 +684,7 @@ export default function DesignRequirements({ projectId }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div className={styles.formField}>
                 <label className={styles.formLabel}>Option A: Upload Image File</label>
-                <div className={styles.uploadTrigger} onClick={() => document.getElementById('insp-file').click()}>
+                <div className={styles.uploadTrigger} onClick={async () => document.getElementById('insp-file').click()}>
                   <input
                     type="file"
                     id="insp-file"
@@ -757,7 +761,7 @@ export default function DesignRequirements({ projectId }) {
               <div key={insp.id} className={styles.inspirationCard}>
                 <button
                   className={styles.deleteIcon}
-                  onClick={() => handleInspirationDelete(insp.id)}
+                  onClick={async () => handleInspirationDelete(insp.id)}
                   title="Delete Inspiration"
                 >
                   &times;
@@ -767,7 +771,7 @@ export default function DesignRequirements({ projectId }) {
                     src={insp.image_url}
                     alt={insp.room_type || 'Inspiration Reference'}
                     className={styles.cardImage}
-                    onClick={() => window.open(insp.image_url, '_blank')}
+                    onClick={async () => window.open(insp.image_url, '_blank')}
                     style={{ cursor: 'pointer' }}
                   />
                 </div>
@@ -843,7 +847,7 @@ export default function DesignRequirements({ projectId }) {
             </div>
 
             <div className={styles.btnGroup} style={{ marginTop: '12px' }}>
-              <Button variant="outline" size="sm" type="button" onClick={() => setIsRoomModalOpen(false)}>
+              <Button variant="outline" size="sm" type="button" onClick={async () => setIsRoomModalOpen(false)}>
                 Cancel
               </Button>
               <Button variant="primary" size="sm" type="submit">

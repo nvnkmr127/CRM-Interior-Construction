@@ -5,6 +5,8 @@ import { Button, Modal, Input, Select } from '../../components/ui'
 import { useToast } from '../../store/toastContext'
 import api from '../../api/axios'
 
+import { useConfirm } from '../../store/confirmContext';
+
 const TRIGGER_TYPES = [
   { id: 'record_created', icon: '◉', label: 'Record Created' },
   { id: 'field_changed', icon: '◉', label: 'Field Changed' },
@@ -17,6 +19,8 @@ const OPERATORS = [{value:'is',label:'is'}, {value:'is_not',label:'is not'}, {va
 const ACTION_TYPES = [{value:'',label:'Select Action'}, {value:'whatsapp',label:'Send WhatsApp'}, {value:'email',label:'Send Email'}, {value:'task',label:'Create Task'}, {value:'update',label:'Update Field'}, {value:'webhook',label:'Call Webhook'}]
 
 export default function AutomationBuilder() {
+  const { confirm } = useConfirm();
+
   const [rules, setRules] = useState([])
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [step, setStep] = useState(1)
@@ -73,7 +77,7 @@ export default function AutomationBuilder() {
   }
 
   const deleteRule = async (id) => {
-    if (!window.confirm('Delete this rule?')) return
+    if (!await confirm('Delete this rule?')) return
     try {
       await api.delete(`/config/automations/${id}`)
       setRules(rules.filter(x => x.id !== id))
@@ -138,7 +142,7 @@ export default function AutomationBuilder() {
           <h1 className={styles.title}>Automation Rules</h1>
           <div className={styles.desc}>Automate workflows and communications across your workspace.</div>
         </div>
-        <Button variant="primary" onClick={() => openWizard()}>+ New Rule</Button>
+        <Button variant="primary" onClick={async () => openWizard()}>+ New Rule</Button>
       </div>
 
       <div className={styles.ruleList}>
@@ -146,7 +150,7 @@ export default function AutomationBuilder() {
           <div key={r.id} className={styles.ruleCard}>
             <div className={styles.cardHeader}>
               <div className={styles.ruleName}>{r.name}</div>
-              <div className={`${styles.toggle} ${r.active ? styles.active : ''}`} onClick={() => toggleActive(r.id)}>
+              <div className={`${styles.toggle} ${r.active ? styles.active : ''}`} onClick={async () => toggleActive(r.id)}>
                 <div className={styles.toggleHandle} />
               </div>
             </div>
@@ -156,9 +160,9 @@ export default function AutomationBuilder() {
             <div className={styles.lastRun}>Last run: {r.lastRun}</div>
             
             <div className={styles.cardActions}>
-              <Button variant="ghost" size="sm" onClick={() => openWizard(r)}>Edit</Button>
-              <Button variant="secondary" size="sm" onClick={() => testRun(r.id)}>Test Run</Button>
-              <Button variant="ghost" size="sm" style={{color:'var(--color-danger)'}} onClick={() => deleteRule(r.id)}>Delete</Button>
+              <Button variant="ghost" size="sm" onClick={async () => openWizard(r)}>Edit</Button>
+              <Button variant="secondary" size="sm" onClick={async () => testRun(r.id)}>Test Run</Button>
+              <Button variant="ghost" size="sm" style={{color:'var(--color-danger)'}} onClick={async () => deleteRule(r.id)}>Delete</Button>
             </div>
           </div>
         ))}
@@ -173,13 +177,13 @@ export default function AutomationBuilder() {
         footer={
           <>
             {step > 1 ? (
-              <Button variant="ghost" onClick={() => setStep(step - 1)}>← Back</Button>
+              <Button variant="ghost" onClick={async () => setStep(step - 1)}>← Back</Button>
             ) : (
-              <Button variant="ghost" onClick={() => setIsWizardOpen(false)}>Cancel</Button>
+              <Button variant="ghost" onClick={async () => setIsWizardOpen(false)}>Cancel</Button>
             )}
             
             {step < 3 ? (
-              <Button variant="primary" onClick={() => setStep(step + 1)}>Next →</Button>
+              <Button variant="primary" onClick={async () => setStep(step + 1)}>Next →</Button>
             ) : (
               <Button variant="primary" onClick={saveRule}>Save Rule</Button>
             )}
@@ -213,7 +217,7 @@ export default function AutomationBuilder() {
                 <div 
                   key={t.id} 
                   className={`${styles.triggerCard} ${draft.triggerType === t.id ? styles.selected : ''}`}
-                  onClick={() => setDraft({...draft, triggerType: t.id})}
+                  onClick={async () => setDraft({...draft, triggerType: t.id})}
                 >
                   <div className={styles.triggerIcon}>{t.icon}</div>
                   <div className={styles.triggerTitle}>{t.label}</div>
@@ -274,7 +278,7 @@ export default function AutomationBuilder() {
                   </div>
                 )}
                 <div>
-                  <Button variant="ghost" size="sm" onClick={() => setDraft({...draft, conditions: draft.conditions.filter((_, idx) => idx !== i)})}>✕</Button>
+                  <Button variant="ghost" size="sm" onClick={async () => setDraft({...draft, conditions: draft.conditions.filter((_, idx) => idx !== i)})}>✕</Button>
                 </div>
               </div>
             ))}
@@ -291,7 +295,7 @@ export default function AutomationBuilder() {
                   <Select options={ACTION_TYPES} value={a.type} onChange={v => {
                     const na = [...draft.actions]; na[i].type = v; setDraft({...draft, actions: na})
                   }} />
-                  <Button variant="ghost" size="sm" style={{color:'var(--color-danger)'}} onClick={() => setDraft({...draft, actions: draft.actions.filter((_, idx) => idx !== i)})}>✕</Button>
+                  <Button variant="ghost" size="sm" style={{color:'var(--color-danger)'}} onClick={async () => setDraft({...draft, actions: draft.actions.filter((_, idx) => idx !== i)})}>✕</Button>
                 </div>
 
                 <div className={styles.actionConfig}>

@@ -10,6 +10,7 @@ import ReopenProjectModal from '../../components/projects/ReopenProjectModal';
 import CancelProjectModal from '../../components/projects/CancelProjectModal';
 import PauseProjectModal from '../../components/projects/PauseProjectModal';
 import ResumeProjectModal from '../../components/projects/ResumeProjectModal';
+import { useConfirm } from '../../store/confirmContext';
 
 // Lazy load tabs
 const PhaseTimeline = React.lazy(() => import('../../components/projects/PhaseTimeline'));
@@ -844,9 +845,16 @@ export default function ProjectDetail() {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
+  const { confirm } = useConfirm();
 
   const handleArchive = async () => {
-    if (window.confirm('Are you sure you want to formally archive this project? The data will remain accessible for reference.')) {
+    const isConfirmed = await confirm({
+      title: 'Archive Project',
+      message: 'Are you sure you want to formally archive this project? The data will remain accessible for reference.',
+      confirmText: 'Archive',
+      cancelText: 'Cancel'
+    });
+    if (isConfirmed) {
       try {
         setArchiving(true);
         await archiveProject(projectId);
@@ -861,7 +869,14 @@ export default function ProjectDetail() {
   };
 
   const handleDelete = async () => {
-    if (window.confirm('Are you sure you want to delete this project?')) {
+    const isConfirmed = await confirm({
+      title: 'Delete Project',
+      message: 'Are you sure you want to delete this project? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      isDanger: true
+    });
+    if (isConfirmed) {
       try {
         await deleteProject(projectId);
         navigate('/projects');
@@ -872,7 +887,13 @@ export default function ProjectDetail() {
   };
 
   const handleLockScope = async () => {
-    if (window.confirm('Are you sure you want to lock the design scope? Once locked, execution can proceed.')) {
+    const isConfirmed = await confirm({
+      title: 'Lock Design Scope',
+      message: 'Are you sure you want to lock the design scope? Once locked, execution can proceed.',
+      confirmText: 'Lock Scope',
+      cancelText: 'Cancel'
+    });
+    if (isConfirmed) {
       try {
         await updateProject(projectId, { is_scope_locked: true });
         setProject(prev => ({ ...prev, is_scope_locked: true }));

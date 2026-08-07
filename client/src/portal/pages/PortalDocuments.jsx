@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react'
 import api from '../../api/axios'
 import styles from './PortalDocuments.module.css'
 
+import { useConfirm } from '../../store/confirmContext';
+
 const FILTERS = ['All', 'Drawings', 'BOQ', 'Renders', 'Contracts', 'Photos', 'Daily Site Reports']
 
 const mapCategory = (type) => {
@@ -24,6 +26,8 @@ const mapCategory = (type) => {
 };
 
 export default function PortalDocuments() {
+  const { confirm } = useConfirm();
+
   const [documents, setDocuments] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState('All')
@@ -75,7 +79,7 @@ export default function PortalDocuments() {
   }
 
   const handleApprove = async (docId) => {
-    if (!window.confirm('Are you sure you want to approve this document? This is a formal approval.')) return;
+    if (!await confirm('Are you sure you want to approve this document? This is a formal approval.')) return;
     try {
       await api.post(`/portal/project/documents/${docId}/approve`)
       fetchDocs()
@@ -151,7 +155,7 @@ export default function PortalDocuments() {
           <button 
             key={f} 
             className={`${styles.filterBtn} ${activeFilter === f ? styles.active : ''}`}
-            onClick={() => setActiveFilter(f)}
+            onClick={async () => setActiveFilter(f)}
           >
             {f}
           </button>
@@ -205,19 +209,19 @@ export default function PortalDocuments() {
               </div>
               
               <div className={styles.cardActions}>
-                <button className={styles.dlBtn} onClick={() => handleDownload(doc.downloadUrl)}>
+                <button className={styles.dlBtn} onClick={async () => handleDownload(doc.downloadUrl)}>
                   ⬇ Download
                 </button>
-                <button className={styles.commentsBtn} onClick={() => handleOpenComments(doc)}>
+                <button className={styles.commentsBtn} onClick={async () => handleOpenComments(doc)}>
                   💬 Discuss
                 </button>
                 
                 {(!doc.clientApprovalStatus || doc.clientApprovalStatus === 'pending') && (
                   <>
-                    <button className={styles.ackBtn} onClick={() => handleApprove(doc.id)} style={{backgroundColor: 'var(--color-success)', color: 'white'}}>
+                    <button className={styles.ackBtn} onClick={async () => handleApprove(doc.id)} style={{backgroundColor: 'var(--color-success)', color: 'white'}}>
                       ✓ Approve
                     </button>
-                    <button className={styles.ackBtn} onClick={() => setRevisionDoc(doc)} style={{backgroundColor: '#fff3cd', color: '#856404'}}>
+                    <button className={styles.ackBtn} onClick={async () => setRevisionDoc(doc)} style={{backgroundColor: '#fff3cd', color: '#856404'}}>
                       ✏️ Request Revision
                     </button>
                   </>
@@ -230,8 +234,8 @@ export default function PortalDocuments() {
 
       {/* Revision Modal */}
       {revisionDoc && (
-        <div className={styles.drawerOverlay} onClick={() => setRevisionDoc(null)}>
-          <div className={styles.modal} onClick={e => e.stopPropagation()} style={{background: 'var(--color-surface)', padding: 24, borderRadius: 12, maxWidth: 400, margin: '10vh auto'}}>
+        <div className={styles.drawerOverlay} onClick={async () => setRevisionDoc(null)}>
+          <div className={styles.modal} onClick={async (e) => e.stopPropagation()} style={{background: 'var(--color-surface)', padding: 24, borderRadius: 12, maxWidth: 400, margin: '10vh auto'}}>
             <h3 style={{marginTop: 0, marginBottom: 8}}>Request Revision</h3>
             <p style={{fontSize: 14, color: 'var(--color-text-secondary)', marginBottom: 16}}>
               Please describe the changes needed for <strong>{revisionDoc.name}</strong>.
@@ -245,7 +249,7 @@ export default function PortalDocuments() {
                 style={{width: '100%', minHeight: 100, padding: 12, borderRadius: 8, border: '1px solid var(--color-border)', marginBottom: 16, fontFamily: 'inherit'}}
               />
               <div style={{display: 'flex', gap: 12, justifyContent: 'flex-end'}}>
-                <button type="button" onClick={() => setRevisionDoc(null)} style={{padding: '8px 16px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)'}}>Cancel</button>
+                <button type="button" onClick={async () => setRevisionDoc(null)} style={{padding: '8px 16px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)'}}>Cancel</button>
                 <button type="submit" style={{padding: '8px 16px', background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer'}}>Submit Request</button>
               </div>
             </form>
@@ -255,11 +259,11 @@ export default function PortalDocuments() {
 
       {/* Comments Sidebar/Drawer */}
       {selectedDoc && (
-        <div className={`${styles.drawerOverlay} ${isDrawerOpen ? styles.show : ''}`} onClick={() => setIsDrawerOpen(false)}>
-          <div className={`${styles.drawer} ${isDrawerOpen ? styles.open : ''}`} onClick={e => e.stopPropagation()}>
+        <div className={`${styles.drawerOverlay} ${isDrawerOpen ? styles.show : ''}`} onClick={async () => setIsDrawerOpen(false)}>
+          <div className={`${styles.drawer} ${isDrawerOpen ? styles.open : ''}`} onClick={async (e) => e.stopPropagation()}>
             <div className={styles.drawerHeader}>
               <div className={styles.drawerTitle}>Document Discussion</div>
-              <button className={styles.closeBtn} onClick={() => setIsDrawerOpen(false)}>×</button>
+              <button className={styles.closeBtn} onClick={async () => setIsDrawerOpen(false)}>×</button>
             </div>
             <div className={styles.drawerDocInfo}>
               <div className={styles.drawerDocName}>{selectedDoc.name}</div>

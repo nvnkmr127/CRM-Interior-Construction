@@ -10,6 +10,8 @@ import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
 import PaymentEscalationModal from '../../components/projects/PaymentEscalationModal';
 
+import { useConfirm } from '../../store/confirmContext';
+
 function numberToWords(num) {
   if (num === 0) return 'ZERO RUPEES ONLY';
   const a = ['','ONE ','TWO ','THREE ','FOUR ', 'FIVE ','SIX ','SEVEN ','EIGHT ','NINE ','TEN ','ELEVEN ','TWELVE ','THIRTEEN ','FOURTEEN ','FIFTEEN ','SIXTEEN ','SEVENTEEN ','EIGHTEEN ','NINETEEN '];
@@ -41,10 +43,10 @@ class PaymentGatewayService {
   }
 
   static async initCashfree(details) {
-    return new Promise((resolve, reject) => {
+    return new Promiseasync ((resolve, reject) => {
       // Mocking SDK load and webhook verification for frontend
-      setTimeout(() => {
-        const isSuccess = window.confirm(`[Cashfree Mock Sandbox]\nAmount: ₹${details.amount}\nMilestone: ${details.milestoneName}\n\nSimulate successful payment webhook verification?`);
+      setTimeoutasync (() => {
+        const isSuccess = await confirm(`[Cashfree Mock Sandbox]\nAmount: ₹${details.amount}\nMilestone: ${details.milestoneName}\n\nSimulate successful payment webhook verification?`);
         if (isSuccess) {
           resolve({
             success: true,
@@ -65,6 +67,8 @@ class PaymentGatewayService {
 }
 // -----------------------------------
 export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   const [payments, setPayments] = useState([]);
   const [escalations, setEscalations] = useState([]);
@@ -980,7 +984,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
   };
 
   const handleDeleteInvoice = async (invoiceId) => {
-    if (!window.confirm("Are you sure you want to delete this invoice?")) return;
+    if (!await confirm("Are you sure you want to delete this invoice?")) return;
     try {
       await deleteInvoice(invoiceId);
       setInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
@@ -1772,8 +1776,8 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
              <Input type="password" placeholder="PIN" maxLength={4} style={{ width: '120px', textAlign: 'center', letterSpacing: '4px' }} value={portalPin} onChange={e => setPortalPin(e.target.value)} />
            </div>
            <div style={{ display: 'flex', gap: '16px' }}>
-             <Button variant="outline" onClick={() => setIsCustomerPortalView(false)}>Exit to Admin</Button>
-             <Button onClick={() => {
+             <Button variant="outline" onClick={async () => setIsCustomerPortalView(false)}>Exit to Admin</Button>
+             <Button onClick={async () => {
                if(portalPin === '1234') { setIsPortalAuthenticated(true); toast.success('Securely Authenticated'); }
                else { toast.error('Invalid PIN'); }
              }}>Authenticate Securely</Button>
@@ -1800,7 +1804,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
 
         {/* Action Bar */}
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-           <Button variant="outline" size="sm" onClick={() => { setIsCustomerPortalView(false); setIsPortalAuthenticated(false); setPortalPin(''); }}>Exit Portal (Admin Only)</Button>
+           <Button variant="outline" size="sm" onClick={async () => { setIsCustomerPortalView(false); setIsPortalAuthenticated(false); setPortalPin(''); }}>Exit Portal (Admin Only)</Button>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
@@ -1839,7 +1843,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
                          {isPaid ? (
                            <Badge variant="success" size="sm">Paid</Badge>
                          ) : (
-                           isPending && <Button size="sm" onClick={() => toast.info('Redirecting to Cashfree secure checkout...')}>Pay Online Now</Button>
+                           isPending && <Button size="sm" onClick={async () => toast.info('Redirecting to Cashfree secure checkout...')}>Pay Online Now</Button>
                          )}
                       </div>
                     </div>
@@ -1863,7 +1867,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
                         <div style={{ fontSize: '14px', fontWeight: 600, color: '#334155' }}>{inv.type.replace('_', ' ')}</div>
                         <div style={{ fontSize: '12px', color: '#64748b' }}>₹{inv.amount.toLocaleString('en-IN')}</div>
                       </div>
-                      <Button variant="ghost" size="sm" onClick={() => handlePrintPDF(inv)}>Download PDF</Button>
+                      <Button variant="ghost" size="sm" onClick={async () => handlePrintPDF(inv)}>Download PDF</Button>
                     </div>
                   ))}
                 </div>
@@ -1893,7 +1897,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
               </select>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setIsCustomerPortalView(true)}>
+          <Button variant="outline" size="sm" onClick={async () => setIsCustomerPortalView(true)}>
             Preview Customer Portal
           </Button>
         </div>
@@ -1945,7 +1949,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
           <button
             key={tab}
             className={`${styles.subTab} ${activeSubTab === tab ? styles.subTabActive : ''}`}
-            onClick={() => setActiveSubTab(tab)}
+            onClick={async () => setActiveSubTab(tab)}
           >
             {tab === 'dashboard' ? 'Dashboard' :
              tab === 'collections' ? 'Collections' :
@@ -2139,7 +2143,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
                           cursor: 'pointer',
                           background: selectedCollectionItem?.id === item.id ? '#f0f9ff' : 'transparent'
                         }}
-                        onClick={() => setSelectedCollectionItem(item)}
+                        onClick={async () => setSelectedCollectionItem(item)}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                           <span style={{ fontWeight: 600, color: '#1e293b' }}>{item.milestone}</span>
@@ -2252,10 +2256,10 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Tally Integration / ERP Sync</h3>
               <div style={{ display: 'flex', gap: '12px' }}>
-                <Button variant="outline" size="sm" onClick={() => handleTriggerSync('Customers')}>Sync Customers</Button>
-                <Button variant="outline" size="sm" onClick={() => handleTriggerSync('Invoices')}>Sync Invoices</Button>
-                <Button variant="outline" size="sm" onClick={() => handleTriggerSync('Payments')}>Sync Payments</Button>
-                <Button variant="outline" size="sm" onClick={() => handleTriggerSync('Ledger Entries')}>Sync Ledger</Button>
+                <Button variant="outline" size="sm" onClick={async () => handleTriggerSync('Customers')}>Sync Customers</Button>
+                <Button variant="outline" size="sm" onClick={async () => handleTriggerSync('Invoices')}>Sync Invoices</Button>
+                <Button variant="outline" size="sm" onClick={async () => handleTriggerSync('Payments')}>Sync Payments</Button>
+                <Button variant="outline" size="sm" onClick={async () => handleTriggerSync('Ledger Entries')}>Sync Ledger</Button>
               </div>
             </div>
 
@@ -2319,7 +2323,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
                       />
                     </div>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => toast.success('Mappings saved successfully.')}>Save Configuration</Button>
+                  <Button variant="outline" size="sm" onClick={async () => toast.success('Mappings saved successfully.')}>Save Configuration</Button>
                 </div>
               </div>
 
@@ -2363,7 +2367,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
                           <td>
                             {log.status === 'FAILED' && (
                               <button 
-                                onClick={() => handleRetrySync(log.id)}
+                                onClick={async () => handleRetrySync(log.id)}
                                 style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
                               >
                                 Retry
@@ -2385,7 +2389,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Payment Adjustments</h3>
               {hasPermission('Manage Invoices') && (
-                <Button variant="primary" size="sm" onClick={() => setAdjustmentModalOpen(true)}>Request Adjustment</Button>
+                <Button variant="primary" size="sm" onClick={async () => setAdjustmentModalOpen(true)}>Request Adjustment</Button>
               )}
             </div>
 
@@ -2522,7 +2526,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
-                      <Button variant="outline" onClick={() => setAdjustmentModalOpen(false)}>Cancel</Button>
+                      <Button variant="outline" onClick={async () => setAdjustmentModalOpen(false)}>Cancel</Button>
                       <Button variant="primary" onClick={handleRequestAdjustment}>Submit for Approval</Button>
                     </div>
                   </div>
@@ -2587,7 +2591,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
                       <td style={{ padding: '12px 8px', color: '#475569' }}>{txn.reference}</td>
                       <td style={{ padding: '12px 8px', textAlign: 'right', color: '#1e293b', fontWeight: 600 }}>₹{txn.amount.toLocaleString('en-IN')}</td>
                       <td style={{ padding: '12px 8px', textAlign: 'right' }}>
-                        <Button variant="outline" size="sm" onClick={() => handleManualReconcile(txn.id, null)}>Manual Link</Button>
+                        <Button variant="outline" size="sm" onClick={async () => handleManualReconcile(txn.id, null)}>Manual Link</Button>
                       </td>
                     </tr>
                   ))}
@@ -2646,7 +2650,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      onClick={() => handleAddCostItem(item)}
+                      onClick={async () => handleAddCostItem(item)}
                       disabled={isSelected}
                     >
                       {isSelected ? 'Added' : 'Add to Breakdown'}
@@ -2673,8 +2677,8 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
                       <span className={styles.breakdownValue}>₹{item.value.toLocaleString('en-IN')}</span>
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <Button variant="outline" size="sm" onClick={() => handleOpenCustomizeCostItem(item)}>Customize</Button>
-                      <Button variant="danger" size="sm" onClick={() => handleRemoveCostItem(item.id)}>Remove</Button>
+                      <Button variant="outline" size="sm" onClick={async () => handleOpenCustomizeCostItem(item)}>Customize</Button>
+                      <Button variant="danger" size="sm" onClick={async () => handleRemoveCostItem(item.id)}>Remove</Button>
                     </div>
                   </div>
                 ))
@@ -2825,7 +2829,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
                     <Button 
                       variant="primary" 
                       size="sm" 
-                      onClick={() => handleMarkPaidClick(p)}
+                      onClick={async () => handleMarkPaidClick(p)}
                       disabled={!p.dependencyMet}
                       style={!p.dependencyMet ? {opacity: 0.5, cursor: 'not-allowed'} : {}}
                     >
@@ -2836,13 +2840,13 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
                     <span style={{fontSize: '13px', color: '#0ea5e9', fontWeight: 500}}>Waiting for Finance Approval</span>
                   )}
                   {p.status !== 'paid' && p.dependencyMet && hasPermission('Create') && (
-                    <Button variant="outline" size="sm" onClick={() => handleGenerateLinkClick(p)}>Generate Link</Button>
+                    <Button variant="outline" size="sm" onClick={async () => handleGenerateLinkClick(p)}>Generate Link</Button>
                   )}
                   {p.status !== 'paid' && p.dependencyMet && hasPermission('Create') && hasPermission('Refund') && (
-                    <Button variant="ghost" size="sm" style={{ color: 'var(--color-text-muted)' }} onClick={() => handleRequestWriteOff(p)}>Write-off</Button>
+                    <Button variant="ghost" size="sm" style={{ color: 'var(--color-text-muted)' }} onClick={async () => handleRequestWriteOff(p)}>Write-off</Button>
                   )}
                   {p.isOverdue && p.daysOverdue >= 15 && (
-                    <Button variant="outline" size="sm" style={{ color: 'var(--color-warning)', borderColor: 'var(--color-warning)' }} onClick={() => {
+                    <Button variant="outline" size="sm" style={{ color: 'var(--color-warning)', borderColor: 'var(--color-warning)' }} onClick={async () => {
                       setEscalationMilestone(p);
                       setEscalationDaysOverdue(p.daysOverdue);
                       setEscalationModalOpen(true);
@@ -2874,7 +2878,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     {gate.status === 'BLOCKED' && (
-                      <Button variant="outline" size="sm" onClick={() => handleRequestGateOverride(gate)}>Admin Override</Button>
+                      <Button variant="outline" size="sm" onClick={async () => handleRequestGateOverride(gate)}>Admin Override</Button>
                     )}
                   </div>
                 </div>
@@ -2902,11 +2906,11 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
                         <span>Status: <Badge variant={link.status === 'paid' ? 'success' : link.status === 'cancelled' || link.status === 'expired' ? 'danger' : link.status === 'viewed' ? 'primary' : 'neutral'} size="sm">{link.status.toUpperCase()}</Badge></span>
                         {link.status === 'sent' || link.status === 'viewed' ? (
                           <div style={{display:'flex', gap: '8px'}}>
-                            <Button variant="ghost" size="sm" onClick={() => { navigator.clipboard.writeText(link.url); toast.success('Link copied'); }}>Copy Link</Button>
-                            <Button variant="outline" size="sm" onClick={() => handleCancelLink(link.id)} style={{color: 'var(--color-danger)', borderColor: 'var(--color-danger)'}}>Cancel Link</Button>
+                            <Button variant="ghost" size="sm" onClick={async () => { navigator.clipboard.writeText(link.url); toast.success('Link copied'); }}>Copy Link</Button>
+                            <Button variant="outline" size="sm" onClick={async () => handleCancelLink(link.id)} style={{color: 'var(--color-danger)', borderColor: 'var(--color-danger)'}}>Cancel Link</Button>
                           </div>
                         ) : link.status === 'expired' || link.status === 'cancelled' ? (
-                          hasPermission('Create') ? <Button variant="outline" size="sm" onClick={() => handleGenerateLinkClick({id: link.milestoneId, milestone: link.milestoneName, remainingAmount: link.amount})}>Regenerate</Button> : null
+                          hasPermission('Create') ? <Button variant="outline" size="sm" onClick={async () => handleGenerateLinkClick({id: link.milestoneId, milestone: link.milestoneName, remainingAmount: link.amount})}>Regenerate</Button> : null
                         ) : null}
                       </div>
                     </div>
@@ -2920,7 +2924,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
           <div className={styles.logsList}>
              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h4 style={{ margin: 0 }}>Invoice History</h4>
-                <Button variant="primary" size="sm" onClick={() => setInvoiceModalOpen(true)}>Generate Invoice</Button>
+                <Button variant="primary" size="sm" onClick={async () => setInvoiceModalOpen(true)}>Generate Invoice</Button>
              </div>
              {invoices.length === 0 ? <div className={styles.emptyState}>No invoices generated.</div> : (
                 invoices.map(inv => (
@@ -2936,8 +2940,8 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
                         <span>Status: <Badge variant="success" size="sm">{inv.status}</Badge> | Version: {inv.version}</span>
                         <div style={{ display: 'flex', gap: '8px' }}>
-                          <Button variant="outline" size="sm" onClick={() => handlePrintPDF(inv)}>Download PDF</Button>
-                          <Button variant="danger" size="sm" onClick={() => handleDeleteInvoice(inv.id)}>Delete</Button>
+                          <Button variant="outline" size="sm" onClick={async () => handlePrintPDF(inv)}>Download PDF</Button>
+                          <Button variant="danger" size="sm" onClick={async () => handleDeleteInvoice(inv.id)}>Delete</Button>
                         </div>
                       </div>
                     </div>
@@ -2968,12 +2972,12 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
                     </div>
                     <div className={styles.cCardFooter}>
                       <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                        <Button variant="outline" size="sm" onClick={() => {
+                        <Button variant="outline" size="sm" onClick={async () => {
                           setPrintingReceipt(rec);
                           setTimeout(() => window.print(), 100);
                         }}>Download PDF</Button>
-                        <Button variant="outline" size="sm" onClick={() => toast.success('Receipt emailed to customer!')}>Email</Button>
-                        <Button variant="outline" size="sm" style={{borderColor: '#25D366', color: '#25D366'}} onClick={() => toast.success('Receipt sent via WhatsApp!')}>WhatsApp</Button>
+                        <Button variant="outline" size="sm" onClick={async () => toast.success('Receipt emailed to customer!')}>Email</Button>
+                        <Button variant="outline" size="sm" style={{borderColor: '#25D366', color: '#25D366'}} onClick={async () => toast.success('Receipt sent via WhatsApp!')}>WhatsApp</Button>
                       </div>
                     </div>
                   </div>
@@ -3127,7 +3131,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
                            Rule: <Badge size="sm" variant={rem.ruleKey.includes('OVERDUE') ? 'danger' : 'primary'}>{rem.ruleLabel}</Badge>
                          </div>
                        </div>
-                       <Button size="sm" onClick={() => handleDispatchReminder(rem.milestoneId, rem.milestoneName, rem.ruleKey)}>Dispatch Now</Button>
+                       <Button size="sm" onClick={async () => handleDispatchReminder(rem.milestoneId, rem.milestoneName, rem.ruleKey)}>Dispatch Now</Button>
                      </div>
                    ))}
                  </div>
@@ -3157,7 +3161,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
                          <td style={{ padding: '12px' }}><Badge size="sm">{log.ruleKey.replace(/_/g, ' ')}</Badge></td>
                          <td style={{ padding: '12px' }}>{log.channels.join(', ')}</td>
                          <td style={{ padding: '12px', textAlign: 'right' }}>
-                           <Button variant="ghost" size="sm" onClick={() => handleManualResend(log)}>Resend</Button>
+                           <Button variant="ghost" size="sm" onClick={async () => handleManualResend(log)}>Resend</Button>
                          </td>
                        </tr>
                      ))}
@@ -3173,7 +3177,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
             <div className={styles.creditsSection}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h4 style={{ margin: 0 }}>Advances & Adjustments</h4>
-                {hasPermission('Create') && <Button variant="outline" size="sm" onClick={() => setManualAdjustmentModalOpen(true)}>Manual Override</Button>}
+                {hasPermission('Create') && <Button variant="outline" size="sm" onClick={async () => setManualAdjustmentModalOpen(true)}>Manual Override</Button>}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' }}>
                 <div style={{ background: 'var(--color-surface-hover)', padding: '16px', borderRadius: '8px' }}>
@@ -3212,7 +3216,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
                              <Badge size="sm" variant={adj.type === 'AUTO' ? 'primary' : 'neutral'}>{adj.type}</Badge>
                              <Badge size="sm" variant={adj.status === 'APPROVED' ? 'success' : 'warning'}>{adj.status.replace('_', ' ')}</Badge>
                              {adj.status === 'PENDING_APPROVAL' && (
-                               <Button size="sm" variant="primary" onClick={() => handleApproveAdjustment(adj.id)}>Approve</Button>
+                               <Button size="sm" variant="primary" onClick={async () => handleApproveAdjustment(adj.id)}>Approve</Button>
                              )}
                           </div>
                         </td>
@@ -3227,7 +3231,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
             <div className={styles.creditsSection} style={{ marginTop: '32px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h4 style={{ margin: 0 }}>Refunds</h4>
-                {hasPermission('Refund') && <Button variant="outline" size="sm" onClick={() => setRefundModalOpen(true)}>Record Refund</Button>}
+                {hasPermission('Refund') && <Button variant="outline" size="sm" onClick={async () => setRefundModalOpen(true)}>Record Refund</Button>}
               </div>
               {refunds.length === 0 ? <div className={styles.emptyState}>No refunds processed.</div> : (
                 refunds.map(ref => (
@@ -3249,7 +3253,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
             <div className={styles.creditsSection} style={{ marginTop: '32px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h4 style={{ margin: 0 }}>Credit Notes</h4>
-                {hasPermission('Create') && <Button variant="outline" size="sm" onClick={() => setCreditNoteModalOpen(true)}>Issue Credit Note</Button>}
+                {hasPermission('Create') && <Button variant="outline" size="sm" onClick={async () => setCreditNoteModalOpen(true)}>Issue Credit Note</Button>}
               </div>
               {creditNotes.length === 0 ? <div className={styles.emptyState}>No credit notes issued.</div> : (
                 creditNotes.map(cn => (
@@ -3271,7 +3275,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
             <div className={styles.creditsSection} style={{ marginTop: '32px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h4 style={{ margin: 0 }}>Debit Notes</h4>
-                {hasPermission('Create') && <Button variant="outline" size="sm" onClick={() => setDebitNoteModalOpen(true)}>Issue Debit Note</Button>}
+                {hasPermission('Create') && <Button variant="outline" size="sm" onClick={async () => setDebitNoteModalOpen(true)}>Issue Debit Note</Button>}
               </div>
               {debitNotes.length === 0 ? <div className={styles.emptyState}>No debit notes issued.</div> : (
                 debitNotes.map(dn => (
@@ -3288,7 +3292,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
                          <span>Status: <Badge variant={dn.status === 'APPROVED' ? 'success' : 'warning'} size="sm">{dn.status.replace('_', ' ')}</Badge></span>
                          <div style={{ display: 'flex', gap: '8px' }}>
                            {dn.status === 'APPROVED' && (
-                             <Button size="sm" variant="outline" onClick={() => handlePrintPDF({...dn, type: 'DEBIT_NOTE'})}>Download PDF</Button>
+                             <Button size="sm" variant="outline" onClick={async () => handlePrintPDF({...dn, type: 'DEBIT_NOTE'})}>Download PDF</Button>
                            )}
                          </div>
                       </div>
@@ -3333,7 +3337,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
               {['ALL', 'PENDING', 'APPROVED', 'REJECTED'].map(f => (
                 <button 
                   key={f}
-                  onClick={() => setApprovalsFilter(f)}
+                  onClick={async () => setApprovalsFilter(f)}
                   style={{
                     padding: '6px 16px',
                     borderRadius: '20px',
@@ -3411,15 +3415,15 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
                             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                               {hasPermission('Approve') ? (
                                 <>
-                                  <Button size="sm" variant="outline" onClick={() => handleRejectAction(approval.id)}>Reject</Button>
-                                  <Button size="sm" variant="primary" onClick={() => executeApprovedAction(approval)}>Approve</Button>
+                                  <Button size="sm" variant="outline" onClick={async () => handleRejectAction(approval.id)}>Reject</Button>
+                                  <Button size="sm" variant="primary" onClick={async () => executeApprovedAction(approval)}>Approve</Button>
                                 </>
                               ) : (
                                  <span style={{fontSize: '12px', color: 'var(--color-text-muted)'}}>Requires Approval</span>
                               )}
                             </div>
                           ) : (
-                            <Button size="sm" variant="ghost" onClick={() => { setSelectedAuditApproval(approval); setAuditModalOpen(true); }}>
+                            <Button size="sm" variant="ghost" onClick={async () => { setSelectedAuditApproval(approval); setAuditModalOpen(true); }}>
                               View Audit Trail
                             </Button>
                           )}
@@ -3502,7 +3506,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
             <Input label="Reason for Manual Adjustment" value={manualAdjustmentForm.reason} onChange={e => setManualAdjustmentForm(prev => ({ ...prev, reason: e.target.value }))} required />
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)', marginTop: '8px' }}>
-              <Button variant="ghost" onClick={() => setManualAdjustmentModalOpen(false)}>Cancel</Button>
+              <Button variant="ghost" onClick={async () => setManualAdjustmentModalOpen(false)}>Cancel</Button>
               <Button variant="primary" onClick={handleManualAdjustment}>Submit for Approval</Button>
             </div>
           </div>
@@ -3532,7 +3536,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
             <Input label="Reason / Justification" value={writeOffForm.reason} onChange={e => setWriteOffForm(prev => ({ ...prev, reason: e.target.value }))} required />
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)', marginTop: '8px' }}>
-              <Button variant="ghost" onClick={() => setWriteOffModalOpen(false)}>Cancel</Button>
+              <Button variant="ghost" onClick={async () => setWriteOffModalOpen(false)}>Cancel</Button>
               <Button variant="primary" onClick={submitWriteOff}>Submit for Approval</Button>
             </div>
           </div>
@@ -3557,7 +3561,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
                  <Select label="Mode" value={split.mode} onChange={v => handleSplitChange(split.id, 'mode', v)} options={[{value:'Bank Transfer',label:'Bank Transfer'}, {value:'UPI',label:'UPI'}, {value:'Cash',label:'Cash'}, {value:'Card',label:'Card'}, {value:'Cheque',label:'Cheque'}, {value:'Cashfree Gateway',label:'Cashfree Gateway'}, {value:'Razorpay Gateway',label:'Razorpay Gateway'}]} />
                  <Input label="Date" type="date" value={split.date} onChange={e => handleSplitChange(split.id, 'date', e.target.value)} />
                  <Input label="Reference No." value={split.reference} onChange={e => handleSplitChange(split.id, 'reference', e.target.value)} />
-                 {splitPayments.length > 1 && <Button variant="ghost" size="sm" onClick={() => handleRemoveSplit(split.id)} style={{color: 'var(--color-danger)', position: 'absolute', top: '4px', right: '4px', padding: '4px'}}>✕</Button>}
+                 {splitPayments.length > 1 && <Button variant="ghost" size="sm" onClick={async () => handleRemoveSplit(split.id)} style={{color: 'var(--color-danger)', position: 'absolute', top: '4px', right: '4px', padding: '4px'}}>✕</Button>}
                </div>
             ))}
             
@@ -3581,7 +3585,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
             />
             
             <div style={{display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)', marginTop: 'var(--space-4)'}}>
-              <Button variant="ghost" onClick={() => setModalOpen(false)}>Cancel</Button>
+              <Button variant="ghost" onClick={async () => setModalOpen(false)}>Cancel</Button>
               <Button variant="primary" onClick={handleConfirmPaid}>Confirm Payment</Button>
             </div>
           </div>
@@ -3627,7 +3631,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
             <Input label="Date" type="date" value={invoiceForm.invoiceDate} onChange={e => setInvoiceForm(prev => ({ ...prev, invoiceDate: e.target.value }))} required />
             
             <div style={{display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)', marginTop: 'var(--space-2)'}}>
-              <Button variant="ghost" onClick={() => setInvoiceModalOpen(false)}>Cancel</Button>
+              <Button variant="ghost" onClick={async () => setInvoiceModalOpen(false)}>Cancel</Button>
               <Button variant="primary" onClick={handleGenerateInvoice}>Generate</Button>
             </div>
           </div>
@@ -3844,7 +3848,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
               ]} 
             />
             <div style={{display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)'}}>
-              <Button variant="ghost" onClick={() => setLinkModalOpen(false)}>Cancel</Button>
+              <Button variant="ghost" onClick={async () => setLinkModalOpen(false)}>Cancel</Button>
               <Button variant="primary" onClick={handleConfirmGenerateLink}>Generate & Send</Button>
             </div>
           </div>
@@ -3860,7 +3864,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
             <Select label="Payment Method" value={refundForm.paymentMethod} onChange={val => setRefundForm(prev => ({ ...prev, paymentMethod: val }))} options={[{ value: 'Bank Transfer', label: 'Bank Transfer' }, { value: 'UPI', label: 'UPI' }]} />
             <Input label="Reason for Refund" value={refundForm.reason} onChange={e => setRefundForm(prev => ({ ...prev, reason: e.target.value }))} required />
             <div style={{display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)'}}>
-              <Button variant="ghost" onClick={() => setRefundModalOpen(false)}>Cancel</Button>
+              <Button variant="ghost" onClick={async () => setRefundModalOpen(false)}>Cancel</Button>
               <Button variant="primary" onClick={handleConfirmRefund}>Record Refund</Button>
             </div>
           </div>
@@ -3875,7 +3879,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
             <Input label="Amount" type="number" value={creditNoteForm.subtotal} onChange={e => setCreditNoteForm(prev => ({ ...prev, subtotal: e.target.value }))} required />
             <Input label="Reason" value={creditNoteForm.reason} onChange={e => setCreditNoteForm(prev => ({ ...prev, reason: e.target.value }))} required />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
-              <Button variant="ghost" onClick={() => setCreditNoteModalOpen(false)}>Cancel</Button>
+              <Button variant="ghost" onClick={async () => setCreditNoteModalOpen(false)}>Cancel</Button>
               <Button variant="primary" onClick={handleConfirmCreditNote}>Confirm Issue</Button>
             </div>
           </div>
@@ -3906,7 +3910,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)', marginTop: '8px' }}>
-              <Button variant="ghost" onClick={() => setDebitNoteModalOpen(false)}>Cancel</Button>
+              <Button variant="ghost" onClick={async () => setDebitNoteModalOpen(false)}>Cancel</Button>
               <Button variant="primary" onClick={handleIssueDebitNote}>Issue Debit Note</Button>
             </div>
           </div>
@@ -3932,7 +3936,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
               required 
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)', marginTop: '8px' }}>
-              <Button variant="ghost" onClick={() => setCostItemModalOpen(false)}>Cancel</Button>
+              <Button variant="ghost" onClick={async () => setCostItemModalOpen(false)}>Cancel</Button>
               <Button variant="primary" onClick={handleSaveCostItem}>Save Item</Button>
             </div>
           </div>
@@ -3982,7 +3986,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-               <Button variant="ghost" onClick={() => { setAuditModalOpen(false); setSelectedAuditApproval(null); }}>Close</Button>
+               <Button variant="ghost" onClick={async () => { setAuditModalOpen(false); setSelectedAuditApproval(null); }}>Close</Button>
             </div>
           </div>
         )}

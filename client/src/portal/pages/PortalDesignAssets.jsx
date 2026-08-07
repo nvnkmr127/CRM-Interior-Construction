@@ -5,7 +5,11 @@ import { useToast } from '../../store/toastContext';
 import api from '../../api/axios';
 import { Spinner } from '../../components/ui';
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function PortalDesignAssets() {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +44,7 @@ export default function PortalDesignAssets() {
   };
 
   const handleApprove = async (id) => {
-    if (!window.confirm('Are you sure you approve this design concept?')) return;
+    if (!await confirm('Are you sure you approve this design concept?')) return;
     setSubmittingAction(true);
     try {
       const res = await api.post(`/portal/design-assets/${id}/approve`);
@@ -128,7 +132,7 @@ export default function PortalDesignAssets() {
   if (selectedAsset) {
     return (
       <div className={styles.detailContainer}>
-        <button className={styles.backBtn} onClick={() => { setSelectedAsset(null); setIsRevisionOpen(false); }}>
+        <button className={styles.backBtn} onClick={async () => { setSelectedAsset(null); setIsRevisionOpen(false); }}>
           ← Back to Design Concepts
         </button>
 
@@ -150,10 +154,10 @@ export default function PortalDesignAssets() {
             {selectedAsset.status === 'pending_approval' && (
               <>
                 <div className={styles.btnGroup}>
-                  <button className={styles.approveBtn} onClick={() => handleApprove(selectedAsset.id)} disabled={submittingAction}>
+                  <button className={styles.approveBtn} onClick={async () => handleApprove(selectedAsset.id)} disabled={submittingAction}>
                     ✓ Approve Concept
                   </button>
-                  <button className={styles.revisionBtn} onClick={() => setIsRevisionOpen(!isRevisionOpen)} disabled={submittingAction}>
+                  <button className={styles.revisionBtn} onClick={async () => setIsRevisionOpen(!isRevisionOpen)} disabled={submittingAction}>
                     ✗ Request Changes
                   </button>
                 </div>
@@ -167,10 +171,10 @@ export default function PortalDesignAssets() {
                       onChange={e => setRevisionFeedback(e.target.value)}
                     />
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                      <button className="px-3 py-1.5 text-xs font-medium rounded text-gray-700 bg-gray-100 hover:bg-gray-200" onClick={() => setIsRevisionOpen(false)}>
+                      <button className="px-3 py-1.5 text-xs font-medium rounded text-gray-700 bg-gray-100 hover:bg-gray-200" onClick={async () => setIsRevisionOpen(false)}>
                         Cancel
                       </button>
-                      <button className="px-3 py-1.5 text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700" onClick={() => handleRequestRevision(selectedAsset.id)}>
+                      <button className="px-3 py-1.5 text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700" onClick={async () => handleRequestRevision(selectedAsset.id)}>
                         Submit Request
                       </button>
                     </div>
@@ -208,7 +212,7 @@ export default function PortalDesignAssets() {
             <div className={styles.itemsGrid}>
               {selectedAsset.items.map(item => (
                 <div key={item.id} className={styles.itemCard}>
-                  <div className={styles.itemImgWrapper} onClick={() => setPreviewImageUrl(item.image_url)}>
+                  <div className={styles.itemImgWrapper} onClick={async () => setPreviewImageUrl(item.image_url)}>
                     <img src={item.image_url} alt={item.title || 'Mood Board Element'} className={styles.itemImg} />
                   </div>
                   {item.title || item.notes ? (
@@ -226,7 +230,7 @@ export default function PortalDesignAssets() {
         {/* Zoom Overlay */}
         {previewImageUrl && (
           <div
-            onClick={() => setPreviewImageUrl(null)}
+            onClick={async () => setPreviewImageUrl(null)}
             style={{
               position: 'fixed',
               top: 0,
@@ -259,25 +263,25 @@ export default function PortalDesignAssets() {
       <div className={styles.filters}>
         <button
           className={`${styles.filterBtn} ${activeFilter === 'all' ? styles.filterBtnActive : ''}`}
-          onClick={() => setActiveFilter('all')}
+          onClick={async () => setActiveFilter('all')}
         >
           All Concepts
         </button>
         <button
           className={`${styles.filterBtn} ${activeFilter === 'mood_board' ? styles.filterBtnActive : ''}`}
-          onClick={() => setActiveFilter('mood_board')}
+          onClick={async () => setActiveFilter('mood_board')}
         >
           Mood Boards
         </button>
         <button
           className={`${styles.filterBtn} ${activeFilter === 'concept_board' ? styles.filterBtnActive : ''}`}
-          onClick={() => setActiveFilter('concept_board')}
+          onClick={async () => setActiveFilter('concept_board')}
         >
           Concept Presentations
         </button>
         <button
           className={`${styles.filterBtn} ${activeFilter === 'reference_collection' ? styles.filterBtnActive : ''}`}
-          onClick={() => setActiveFilter('reference_collection')}
+          onClick={async () => setActiveFilter('reference_collection')}
         >
           Reference Materials
         </button>
@@ -292,7 +296,7 @@ export default function PortalDesignAssets() {
       ) : (
         <div className={styles.grid}>
           {filteredAssets.map(asset => (
-            <div key={asset.id} className={styles.card} onClick={() => setSelectedAsset(asset)}>
+            <div key={asset.id} className={styles.card} onClick={async () => setSelectedAsset(asset)}>
               <div className={styles.previewStrip}>
                 {asset.items && asset.items.length > 0 ? (
                   asset.items.slice(0, 3).map((item, idx) => (

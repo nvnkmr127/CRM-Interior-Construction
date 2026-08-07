@@ -10,6 +10,8 @@ import { DATA_SCOPES, ACTION_DEPENDENCIES, PERMISSION_MODULES, PERMISSION_ACTION
 import { FIELD_PERMISSIONS_SCHEMA } from '../../constants/fieldPermissions'
 import { PAGE_PERMISSIONS_SCHEMA } from '../../constants/pagePermissions'
 
+import { useConfirm } from '../../store/confirmContext';
+
 const BUILT_IN_TEMPLATES = [
   { id: 'tmpl-1', name: 'Project Manager', category: 'built-in', description: 'Full access to projects, schedules, and team assignments.', permissions: ['projects:view', 'projects:create', 'projects:edit', 'projects:delete', 'milestones:view', 'milestones:create', 'milestones:edit'], enabled_modules: ['projects', 'milestones'], data_scopes: { projects: 'department' }, page_permissions: {}, field_permissions: {}, security_policies: {} },
   { id: 'tmpl-2', name: 'Site Supervisor', category: 'built-in', description: 'Access to daily site reports, tasks, and labour tracking.', permissions: ['dailySiteReports:view', 'dailySiteReports:create', 'dailySiteReports:edit', 'tasks:view', 'tasks:create', 'tasks:edit'], enabled_modules: ['dailySiteReports', 'tasks'], data_scopes: { dailySiteReports: 'own', tasks: 'own' }, page_permissions: {}, field_permissions: {}, security_policies: {} },
@@ -19,6 +21,8 @@ const BUILT_IN_TEMPLATES = [
 ];
 
 const TimeSelect = ({ value, onChange }) => {
+  const { confirm } = useConfirm();
+
   let hour = '12';
   let min = '00';
   let ampm = 'AM';
@@ -112,6 +116,8 @@ const TimeSelect = ({ value, onChange }) => {
 
 
 export default function RolesManager() {
+  const { confirm } = useConfirm();
+
   const [searchParams, setSearchParams] = useSearchParams();
   const [roles, setRoles] = useState([])
   const [users, setUsers] = useState([])
@@ -266,7 +272,7 @@ export default function RolesManager() {
   }
 
   const handleRollback = async (versionId) => {
-    if (!window.confirm('Are you sure you want to rollback to this version?')) return;
+    if (!await confirm('Are you sure you want to rollback to this version?')) return;
     try {
       await api.patch(`/roles/${versionRoleTarget.id}/rollback/${versionId}`);
       toast.success('Rollback successful');
@@ -552,7 +558,7 @@ export default function RolesManager() {
       toast.error('Cannot delete superadmin role');
       return;
     }
-    if (!window.confirm(`Are you sure you want to delete the role '${roleToDelete.name}'?`)) return;
+    if (!await confirm(`Are you sure you want to delete the role '${roleToDelete.name}'?`)) return;
     
     try {
       await api.delete(`/roles/${id}`);
@@ -589,13 +595,13 @@ export default function RolesManager() {
       key: 'actions', label: 'Actions', align: 'right', width: '550px',
       render: (r) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
-          <Button variant="ghost" size="sm" onClick={() => handleOpenModal(r)}>Edit</Button>
-          <Button variant="ghost" size="sm" onClick={() => { setCloneSource({ id: r.id, isTemplate: false, name: r.name }); setCloneName(`${r.name} - Copy`); setIsCloneModalOpen(true); }}>Duplicate</Button>
-          <Button variant="ghost" size="sm" onClick={() => handleSaveAsTemplate(r)}>Save as Template</Button>
-          <Button variant="ghost" size="sm" onClick={() => handleOpenVersionModal(r)}>Version History</Button>
-          <Button variant="ghost" size="sm" onClick={() => handleOpenAuditModal(r)}>Audit History</Button>
+          <Button variant="ghost" size="sm" onClick={async () => handleOpenModal(r)}>Edit</Button>
+          <Button variant="ghost" size="sm" onClick={async () => { setCloneSource({ id: r.id, isTemplate: false, name: r.name }); setCloneName(`${r.name} - Copy`); setIsCloneModalOpen(true); }}>Duplicate</Button>
+          <Button variant="ghost" size="sm" onClick={async () => handleSaveAsTemplate(r)}>Save as Template</Button>
+          <Button variant="ghost" size="sm" onClick={async () => handleOpenVersionModal(r)}>Version History</Button>
+          <Button variant="ghost" size="sm" onClick={async () => handleOpenAuditModal(r)}>Audit History</Button>
           {r.name !== 'superadmin' && r.name !== 'Super Admin' ? (
-            <Button variant="danger" size="sm" onClick={() => handleDeleteRole(r.id)}>Delete</Button>
+            <Button variant="danger" size="sm" onClick={async () => handleDeleteRole(r.id)}>Delete</Button>
           ) : (
             <Button variant="danger" size="sm" style={{ visibility: 'hidden', pointerEvents: 'none' }}>Delete</Button>
           )}
@@ -654,7 +660,7 @@ export default function RolesManager() {
               </div>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <Button variant="secondary" onClick={handleOpenTemplateLib}>Template Library</Button>
-                <Button variant="primary" onClick={() => handleOpenModal()}>+ Add Role</Button>
+                <Button variant="primary" onClick={async () => handleOpenModal()}>+ Add Role</Button>
               </div>
             </div>
             <DataTable columns={columns} data={roles} />
@@ -667,7 +673,7 @@ export default function RolesManager() {
                 <p className={layoutStyles.sectionDesc}>Configure granular module permissions below.</p>
               </div>
               <div style={{ display: 'flex', gap: '12px' }}>
-                <Button variant="ghost" onClick={() => setSearchParams({})}>Cancel</Button>
+                <Button variant="ghost" onClick={async () => setSearchParams({})}>Cancel</Button>
                 <Button variant="primary" onClick={handleSave}>Save Role</Button>
               </div>
             </div>
@@ -700,7 +706,7 @@ export default function RolesManager() {
                           onChange={e => {
                             const roleToClone = roles.find(r => r.id === e.target.value);
                             if (!roleToClone) return;
-                            if (!window.confirm(`Are you sure you want to overwrite current permissions with the '${roleToClone.name}' role template?`)) return;
+                            if (!await confirm(`Are you sure you want to overwrite current permissions with the '${roleToClone.name}' role template?`)) return;
                             setFormData(prev => ({
                               ...prev,
                               permissions: roleToClone.permissions || [],
@@ -871,7 +877,7 @@ export default function RolesManager() {
                     <h3 style={{ fontSize: '16px', fontWeight: 600, margin: 0, color: 'var(--color-text)' }}>Permissions</h3>
                     {!formData.permissions.includes('*') && (
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <Button variant="ghost" size="sm" onClick={() => setIsDependencyRefOpen(true)}>View Dependencies</Button>
+                        <Button variant="ghost" size="sm" onClick={async () => setIsDependencyRefOpen(true)}>View Dependencies</Button>
                         <Button variant="ghost" size="sm" onClick={handleSelectAllGlobal}>Select All</Button>
                         <Button variant="ghost" size="sm" onClick={handleClearAllGlobal}>Clear All</Button>
                       </div>
@@ -920,8 +926,8 @@ export default function RolesManager() {
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--color-border)', flexWrap: 'wrap', gap: '12px' }}>
                                 <h3 style={{ margin: 0, color: 'var(--color-text)' }}>{module.label} Permissions</h3>
                                 <div style={{ display: 'flex', gap: '8px' }}>
-                                  <Button variant="ghost" size="sm" onClick={() => handleSelectAllModule(module.id, module.actions)}>Select All</Button>
-                                  <Button variant="ghost" size="sm" onClick={() => handleClearAllModule(module.id, module.actions)}>Clear</Button>
+                                  <Button variant="ghost" size="sm" onClick={async () => handleSelectAllModule(module.id, module.actions)}>Select All</Button>
+                                  <Button variant="ghost" size="sm" onClick={async () => handleClearAllModule(module.id, module.actions)}>Clear</Button>
                                 </div>
                               </div>
 
@@ -1042,7 +1048,7 @@ export default function RolesManager() {
                                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                                     <label className={styles.label} style={{ fontSize: '14px', margin: 0 }}>Page / Tab Access</label>
                                     <div style={{ display: 'flex', gap: '8px' }}>
-                                      <Button variant="ghost" size="sm" onClick={() => {
+                                      <Button variant="ghost" size="sm" onClick={async () => {
                                         setFormData(prev => ({
                                           ...prev,
                                           page_permissions: {
@@ -1051,7 +1057,7 @@ export default function RolesManager() {
                                           }
                                         }));
                                       }}>Select All</Button>
-                                      <Button variant="ghost" size="sm" onClick={() => {
+                                      <Button variant="ghost" size="sm" onClick={async () => {
                                         setFormData(prev => ({
                                           ...prev,
                                           page_permissions: {
@@ -1214,7 +1220,7 @@ export default function RolesManager() {
             </div>
           )}
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-            <Button variant="ghost" onClick={() => setAuditRoleTarget(null)}>Close</Button>
+            <Button variant="ghost" onClick={async () => setAuditRoleTarget(null)}>Close</Button>
           </div>
         </Modal>
 
@@ -1234,7 +1240,7 @@ export default function RolesManager() {
                     </div>
                     {t.description && <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: '0 0 12px 0' }}>{t.description}</p>}
                   </div>
-                  <Button variant="secondary" size="small" style={{ alignSelf: 'flex-start' }} onClick={() => {
+                  <Button variant="secondary" size="small" style={{ alignSelf: 'flex-start' }} onClick={async () => {
                     setCloneSource({ id: t.id, isTemplate: true, name: t.name });
                     setCloneName(`${t.name} (Custom)`);
                     setIsCloneModalOpen(true);
@@ -1254,7 +1260,7 @@ export default function RolesManager() {
               <Input value={cloneName} onChange={e => setCloneName(e.target.value)} autoFocus placeholder="e.g. Project Manager (Senior)" />
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
-              <Button variant="ghost" onClick={() => { setIsCloneModalOpen(false); setCloneName(''); setCloneSource(null); }}>Cancel</Button>
+              <Button variant="ghost" onClick={async () => { setIsCloneModalOpen(false); setCloneName(''); setCloneSource(null); }}>Cancel</Button>
               <Button variant="primary" onClick={executeClone}>Create Role</Button>
             </div>
           </div>
@@ -1274,7 +1280,7 @@ export default function RolesManager() {
             Certain actions inherently require other permissions to function correctly. For example, you cannot 'delete' an item if you cannot 'view' it. Please select the required permissions and try again.
           </p>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button variant="primary" onClick={() => setDependencyErrors([])}>I Understand</Button>
+            <Button variant="primary" onClick={async () => setDependencyErrors([])}>I Understand</Button>
           </div>
         </Modal>
 
@@ -1343,11 +1349,11 @@ export default function RolesManager() {
                           </div>
                         </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
-                          <Button variant="ghost" size="sm" onClick={() => setExpandedVersionId(isExpanded ? null : v.id)}>
+                          <Button variant="ghost" size="sm" onClick={async () => setExpandedVersionId(isExpanded ? null : v.id)}>
                             {isExpanded ? 'Hide Changes' : 'View Changes'}
                           </Button>
                           {!isCurrent && (
-                            <Button variant="secondary" size="sm" onClick={() => handleRollback(v.id)}>Rollback</Button>
+                            <Button variant="secondary" size="sm" onClick={async () => handleRollback(v.id)}>Rollback</Button>
                           )}
                         </div>
                       </div>

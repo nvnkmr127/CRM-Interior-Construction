@@ -5,6 +5,8 @@ import { useToast } from '../../store/toastContext';
 import api from '../../api/axios';
 import styles from './ApiIntegrationPage.module.css';
 
+import { useConfirm } from '../../store/confirmContext';
+
 const AVAILABLE_PERMISSIONS = [
   'Leads Read', 'Leads Write',
   'Customers Read', 'Customers Write',
@@ -14,6 +16,8 @@ const AVAILABLE_PERMISSIONS = [
 ];
 
 export default function ApiIntegrationPage() {
+  const { confirm } = useConfirm();
+
   const [stats, setStats] = useState(null);
   const [recentLogs, setRecentLogs] = useState([]);
   const [tokens, setTokens] = useState([]);
@@ -120,7 +124,7 @@ export default function ApiIntegrationPage() {
   };
 
   const handleRegenerate = async (id) => {
-    if (!window.confirm('Are you sure? Any applications using this key will immediately stop working.')) return;
+    if (!await confirm('Are you sure? Any applications using this key will immediately stop working.')) return;
     try {
       const res = await api.post(`/developer/tokens/${id}/regenerate`, {}, { withCredentials: true });
       toast.success('API Token regenerated successfully');
@@ -132,7 +136,7 @@ export default function ApiIntegrationPage() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this API key? This action cannot be undone.')) return;
+    if (!await confirm('Are you sure you want to delete this API key? This action cannot be undone.')) return;
     try {
       await api.delete(`/developer/tokens/${id}`, { withCredentials: true });
       toast.success('API Token deleted successfully');
@@ -174,14 +178,14 @@ export default function ApiIntegrationPage() {
       )}
 
       <div className={styles.topToolbar}>
-        <button className={styles.newUserBtn} onClick={() => handleOpenModal()}>+ New API Token</button>
+        <button className={styles.newUserBtn} onClick={async () => handleOpenModal()}>+ New API Token</button>
       </div>
 
       <div className={styles.tableContainer}>
         <div className={styles.tableControls}>
           <div className={styles.tableControlsLeft}>
             <div ref={exportMenuRef} style={{ position: 'relative' }}>
-              <button className={styles.exportBtn} onClick={() => setExportMenuOpen(!exportMenuOpen)}>
+              <button className={styles.exportBtn} onClick={async () => setExportMenuOpen(!exportMenuOpen)}>
                 Export ▼
               </button>
               {exportMenuOpen && (
@@ -191,7 +195,7 @@ export default function ApiIntegrationPage() {
                   borderRadius: '4px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
                   zIndex: 10, minWidth: 150, overflow: 'hidden'
                 }}>
-                  <div style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '14px', color: '#374151' }} onClick={() => {
+                  <div style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '14px', color: '#374151' }} onClick={async () => {
                     setExportMenuOpen(false);
                     const headers = ['Name', 'Description', 'Permissions', 'Status', 'Last Used', 'Created'];
                     const rows = tokens.map(token => [
@@ -213,7 +217,7 @@ export default function ApiIntegrationPage() {
                     document.body.removeChild(link);
                     URL.revokeObjectURL(url);
                   }}>Export as CSV</div>
-                  <div style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '14px', color: '#374151' }} onClick={() => {
+                  <div style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '14px', color: '#374151' }} onClick={async () => {
                     setExportMenuOpen(false);
                     const headers = ['Name', 'Description', 'Permissions', 'Status', 'Last Used', 'Created'];
                     const rows = tokens.map(token => [
@@ -235,7 +239,7 @@ export default function ApiIntegrationPage() {
                     document.body.removeChild(link);
                     URL.revokeObjectURL(url);
                   }}>Export as Excel</div>
-                  <div style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '14px', color: '#374151' }} onClick={() => { 
+                  <div style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '14px', color: '#374151' }} onClick={async () => { 
                     setExportMenuOpen(false); 
                     const headers = ['Name', 'Description', 'Permissions', 'Status', 'Last Used', 'Created'];
                     const rows = tokens.map(token => [
@@ -256,7 +260,7 @@ export default function ApiIntegrationPage() {
                     doc.save('api_tokens_export.pdf');
                   }}>Export as PDF</div>
                   <div style={{ borderTop: '1px solid #e5e7eb', margin: '4px 0' }}></div>
-                  <div style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '14px', color: '#374151' }} onClick={() => { setExportMenuOpen(false); window.print(); }}>Print Table</div>
+                  <div style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '14px', color: '#374151' }} onClick={async () => { setExportMenuOpen(false); window.print(); }}>Print Table</div>
                 </div>
               )}
             </div>
@@ -302,16 +306,16 @@ export default function ApiIntegrationPage() {
                 <td>{new Date(token.created_at).toLocaleDateString()}</td>
                 <td>
                   <div className={styles.options}>
-                    <button className={styles.editBtn} onClick={() => handleOpenModal(token)} title="Edit Token">
+                    <button className={styles.editBtn} onClick={async () => handleOpenModal(token)} title="Edit Token">
                       <span role="img" aria-label="edit">✎</span>
                     </button>
-                    <button className={styles.editBtn} onClick={() => handleToggleStatus(token)} title={token.status === 'active' ? 'Disable Token' : 'Enable Token'}>
+                    <button className={styles.editBtn} onClick={async () => handleToggleStatus(token)} title={token.status === 'active' ? 'Disable Token' : 'Enable Token'}>
                       <span role="img" aria-label="toggle status">{token.status === 'active' ? '⏸' : '▶'}</span>
                     </button>
-                    <button className={styles.editBtn} onClick={() => handleRegenerate(token.id)} title="Regenerate Token">
+                    <button className={styles.editBtn} onClick={async () => handleRegenerate(token.id)} title="Regenerate Token">
                       <span role="img" aria-label="regenerate">🔄</span>
                     </button>
-                    <button className={styles.deleteBtn} onClick={() => handleDelete(token.id)} title="Delete Token">
+                    <button className={styles.deleteBtn} onClick={async () => handleDelete(token.id)} title="Delete Token">
                       <span role="img" aria-label="delete" style={{color: 'white'}}>🗑</span>
                     </button>
                   </div>
@@ -398,7 +402,7 @@ export default function ApiIntegrationPage() {
                 </div>
               </div>
               <div className={styles.modalActions}>
-                <button type="button" className={styles.cancelBtn} onClick={() => setIsModalOpen(false)}>Cancel</button>
+                <button type="button" className={styles.cancelBtn} onClick={async () => setIsModalOpen(false)}>Cancel</button>
                 <button type="submit" className={styles.primaryBtn}>Save</button>
               </div>
             </form>
@@ -418,7 +422,7 @@ export default function ApiIntegrationPage() {
             </div>
             <div className={styles.modalActions}>
               <button className={styles.cancelBtn} onClick={copyToClipboard}>Copy to Clipboard</button>
-              <button className={styles.primaryBtn} onClick={() => setSecretModal({ isOpen: false, secret: '' })}>I have copied it</button>
+              <button className={styles.primaryBtn} onClick={async () => setSecretModal({ isOpen: false, secret: '' })}>I have copied it</button>
             </div>
           </div>
         </div>

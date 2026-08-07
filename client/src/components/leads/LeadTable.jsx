@@ -2,6 +2,7 @@
 import React from 'react';
 import { Pagination, EmptyState, ContentLoader, Button } from '../../components/ui';
 import { syncCommunications } from '../../api/leads';
+import { useConfirm } from '../../store/confirmContext';
 import styles from '../../pages/leads/LeadsPage.module.css';
 
 function scoreClass(score) {
@@ -59,8 +60,8 @@ export default function LeadTable({
 }) {
   const [selectedIds, setSelectedIds] = React.useState(new Set());
   const [showBulkStageMenu, setShowBulkStageMenu] = React.useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [syncingLeadIds, setSyncingLeadIds] = React.useState(new Set());
+  const { confirm } = useConfirm();
 
   const handleSyncWhatsApp = async (e, leadId) => {
     e.stopPropagation();
@@ -203,10 +204,18 @@ export default function LeadTable({
   };
 
   const handleBulkDelete = async () => {
+    const isConfirmed = await confirm({
+      title: 'Delete Leads',
+      message: `Are you sure you want to delete the selected ${selectedIds.size} lead(s)? This action cannot be undone.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      isDanger: true
+    });
+    if (!isConfirmed) return;
+
     try {
       await bulkDelete(Array.from(selectedIds));
       clearSelection();
-      setShowDeleteConfirm(false);
     } catch (err) {
       console.error('Failed to bulk delete leads', err);
       alert('Failed to bulk delete leads');
@@ -457,19 +466,67 @@ export default function LeadTable({
 
       {selectedIds.size > 0 && (
         <div style={{
-          position: 'fixed', bottom: '40px', left: '50%', transform: 'translateX(-50%)',
-          background: 'var(--color-surface, #fff)', padding: '16px 24px',
-          borderRadius: '8px', boxShadow: 'var(--shadow-xl, 0 20px 25px -5px rgba(0,0,0,0.1))',
-          display: 'flex', alignItems: 'center', gap: '24px', zIndex: 100, border: '1px solid var(--color-border)'
+          position: 'fixed', top: '80px', left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(12px)',
+          padding: '20px 40px', borderRadius: '16px', minWidth: '600px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0,0,0,0.05)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px', zIndex: 100,
+          transition: 'all 0.3s ease-in-out'
         }}>
-          <div style={{ fontWeight: 500 }}>{selectedIds.size} selected</div>
-          <div style={{ display: 'flex', gap: '12px', position: 'relative' }}>
-            <Button variant="outline" style={{color: 'var(--color-danger, #ef4444)', borderColor: 'var(--color-danger, #ef4444)'}} onClick={() => setShowDeleteConfirm(true)}>Delete</Button>
-            <Button variant="secondary" onClick={clearSelection}>Cancel</Button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ 
+              background: 'var(--color-primary, #3b82f6)', color: 'white', 
+              width: '24px', height: '24px', borderRadius: '50%', 
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontWeight: 'bold', fontSize: '12px'
+            }}>
+              {selectedIds.size}
+            </div>
+            <span style={{ fontWeight: 600, color: 'var(--color-text, #1f2937)' }}>Leads Selected</span>
+          </div>
+
+          <div style={{ width: '1px', height: '24px', background: 'var(--color-border, #e5e7eb)' }}></div>
+          
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', position: 'relative' }}>
+            <Button 
+              variant="secondary" 
+              onClick={() => {
+                const selectedLeads = filteredLeads.filter(l => selectedIds.has(l.id) && l.email);
+                const emails = selectedLeads.map(l => l.email).join(', ');
+                if (emails) {
+                  navigator.clipboard.writeText(emails);
+                  alert(`Copied ${selectedLeads.length} emails to clipboard!`);
+                } else {
+                  alert('No emails found for selected leads.');
+                }
+              }}
+              title="Copy Emails"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              Copy Emails
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              style={{color: 'var(--color-danger, #ef4444)', borderColor: 'var(--color-danger, #ef4444)', display: 'flex', alignItems: 'center', gap: '6px'}} 
+              onClick={handleBulkDelete}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+              Delete
+            </Button>
+            
             <div className={styles.stageMenuWrap} style={{position: 'relative'}}>
-              <Button variant="primary" onClick={() => setShowBulkStageMenu(!showBulkStageMenu)}>Move Stage</Button>
+              <Button 
+                variant="primary" 
+                onClick={() => setShowBulkStageMenu(!showBulkStageMenu)}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12h20"/><path d="m15 5 7 7-7 7"/></svg>
+                Move Stage
+              </Button>
               {showBulkStageMenu && (
-                <div className={styles.stageDropdown} style={{bottom: '100%', top: 'auto', marginBottom: '8px', right: 0, left: 'auto'}}>
+                <div className={styles.stageDropdown} style={{top: '100%', bottom: 'auto', marginTop: '12px', right: 0, left: 'auto', minWidth: '160px', boxShadow: 'var(--shadow-lg, 0 10px 25px rgba(0,0,0,0.1))'}}>
                   {stages.map(s => (
                     <button
                       key={s.id}
@@ -482,33 +539,26 @@ export default function LeadTable({
                 </div>
               )}
             </div>
+
+            <button 
+              onClick={clearSelection}
+              style={{ 
+                background: 'transparent', border: 'none', cursor: 'pointer', 
+                color: 'var(--color-text-secondary, #6b7280)', 
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '6px', borderRadius: '50%', marginLeft: '4px',
+                transition: 'background 0.2s'
+              }}
+              title="Clear Selection"
+              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-surface-hover, rgba(0,0,0,0.05))'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
           </div>
         </div>
       )}
 
-      {showDeleteConfirm && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
-          background: 'rgba(0,0,0,0.5)', zIndex: 1000, 
-          display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>
-          <div style={{
-            background: 'var(--color-surface, #fff)', padding: '24px', borderRadius: '8px',
-            maxWidth: '400px', width: '100%', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'
-          }}>
-            <h3 style={{ marginTop: 0, marginBottom: '12px', fontSize: '18px', fontWeight: 'bold' }}>Delete Leads</h3>
-            <p style={{ color: 'var(--color-text-secondary)', marginBottom: '24px' }}>
-              Are you sure you want to delete the selected {selectedIds.size} lead(s)? This action cannot be undone.
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-              <Button variant="ghost" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
-              <Button variant="primary" style={{ background: 'var(--color-danger, #ef4444)', borderColor: 'var(--color-danger, #ef4444)' }} onClick={handleBulkDelete}>
-                Delete
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

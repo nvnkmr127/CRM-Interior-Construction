@@ -8,7 +8,11 @@ import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import { Avatar, Badge, Button } from '../../components/ui'
 import api from '../../api/axios'
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function ProfilePage() {
+  const { confirm } = useConfirm();
+
   usePageTitle('My Profile')
   useBreadcrumbs([{label:'My Profile'}])
   
@@ -81,7 +85,7 @@ export default function ProfilePage() {
   }
 
   const handleSignOutAll = async () => {
-    if (window.confirm('Are you sure you want to sign out of all devices?')) {
+    if (await confirm('Are you sure you want to sign out of all devices?')) {
       try {
         await api.delete('/auth/sessions')
         toast.success('Signed out of all devices.')
@@ -121,7 +125,7 @@ export default function ProfilePage() {
 
             <div className={styles.avatarSection}>
               <Avatar name={name} size="xl" style={{width: 80, height: 80, fontSize: 32}} />
-              <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()}>Change Photo</Button>
+              <Button variant="ghost" size="sm" onClick={async () => fileInputRef.current?.click()}>Change Photo</Button>
               <input type="file" ref={fileInputRef} className={styles.fileInput} accept="image/*" onChange={handlePhotoUpload} />
             </div>
 

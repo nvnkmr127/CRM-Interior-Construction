@@ -5,7 +5,11 @@ import { getTags, createTag, updateTag, deleteTag } from '../../api/tasks'
 import { useToast } from '../../store/toastContext'
 import styles from './TagManagerModal.module.css'
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function TagManagerModal({ isOpen, onClose }) {
+  const { confirm } = useConfirm();
+
   const [tags, setTags] = useState([])
   const [loading, setLoading] = useState(true)
   const [newTagName, setNewTagName] = useState('')
@@ -45,7 +49,7 @@ export default function TagManagerModal({ isOpen, onClose }) {
   }
 
   const handleDelete = async (id) => {
-    if (window.confirm('Delete this tag? It will be removed from all tasks.')) {
+    if (await confirm('Delete this tag? It will be removed from all tasks.')) {
       try {
         await deleteTag(id)
         loadTags()
@@ -87,7 +91,7 @@ export default function TagManagerModal({ isOpen, onClose }) {
       return
     }
     if (mergeSource) {
-      if (window.confirm('Are you sure you want to merge these tags? This cannot be undone.')) {
+      if (await confirm('Are you sure you want to merge these tags? This cannot be undone.')) {
         // In a real app, this would hit a /api/tags/merge endpoint.
         toast.success('Tags merged successfully (Mocked)')
         setMergeSource(null)
@@ -114,7 +118,7 @@ export default function TagManagerModal({ isOpen, onClose }) {
 
         {mergeSource && (
           <div className={styles.mergeAlert}>
-            Select a target tag to merge into, or <span onClick={() => setMergeSource(null)} style={{textDecoration: 'underline', cursor: 'pointer'}}>cancel</span>.
+            Select a target tag to merge into, or <span onClick={async () => setMergeSource(null)} style={{textDecoration: 'underline', cursor: 'pointer'}}>cancel</span>.
           </div>
         )}
 
@@ -126,7 +130,7 @@ export default function TagManagerModal({ isOpen, onClose }) {
                   <input type="color" value={editColor} onChange={e => setEditColor(e.target.value)} />
                   <input className={styles.input} value={editName} onChange={e => setEditName(e.target.value)} />
                   <Button variant="primary" onClick={saveEdit}>Save</Button>
-                  <Button variant="outline" onClick={() => setEditingId(null)}>Cancel</Button>
+                  <Button variant="outline" onClick={async () => setEditingId(null)}>Cancel</Button>
                 </div>
               ) : (
                 <>
@@ -135,12 +139,12 @@ export default function TagManagerModal({ isOpen, onClose }) {
                     <span className={styles.tagName}>{tag.name}</span>
                   </div>
                   <div className={styles.actions}>
-                    {!mergeSource && <Button variant="outline" onClick={() => handleMerge(tag.id)}>Merge</Button>}
-                    {mergeSource && mergeSource !== tag.id && <Button variant="primary" onClick={() => handleMerge(tag.id)}>Merge Into</Button>}
+                    {!mergeSource && <Button variant="outline" onClick={async () => handleMerge(tag.id)}>Merge</Button>}
+                    {mergeSource && mergeSource !== tag.id && <Button variant="primary" onClick={async () => handleMerge(tag.id)}>Merge Into</Button>}
                     {!mergeSource && (
                       <>
-                        <Button variant="outline" onClick={() => startEdit(tag)}>Edit</Button>
-                        <button className={styles.iconBtn} onClick={() => handleDelete(tag.id)}>🗑️</button>
+                        <Button variant="outline" onClick={async () => startEdit(tag)}>Edit</Button>
+                        <button className={styles.iconBtn} onClick={async () => handleDelete(tag.id)}>🗑️</button>
                       </>
                     )}
                   </div>

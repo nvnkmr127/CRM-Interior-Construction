@@ -4,29 +4,23 @@ import api from '../../api/axios'
 import { useToast } from '../../store/toastContext'
 
 const SECTIONS = [
-  'Basic Information',
-  'Company Information',
-  'Security',
-  'Permissions Sync',
-  'Documents',
-  'Notes'
+  'General Information',
+  'Security'
 ]
 
 const INITIAL_DATA = {
   // Basic
   employeeId: `EMP-${Math.floor(Math.random() * 90000) + 10000}`,
-  firstName: '', middleName: '', lastName: '', displayName: '', gender: '', dob: '', profilePhoto: null,
-  // Contact
-  officialEmail: '', personalEmail: '', mobileNumber: '', emergencyContact: '', address: '', city: '', state: '', country: '', pinCode: '',
+  firstName: '',
+  officialEmail: '', 
+  mobileNumber: '', 
+  address: '',
   // Company
-  department: '', designation: '', role: '', reportingManager: '', branch: '', officeLocation: '', joiningDate: '', employmentType: '', workMode: '', probationEndDate: '',
+  role: '',
+  department: '', 
+  designation: '', 
   // Security
-  username: '', tempPassword: '', forcePasswordReset: true, twoFactorAuth: false,
-  // Permissions (synced via Roles Manager now)
-  // Documents (We will store file names/references here)
-  resume: null, aadhaar: null, pan: null, passport: null, offerLetter: null, nda: null, employmentAgreement: null,
-  // Notes
-  internalNotes: ''
+  username: '', tempPassword: '', forcePasswordReset: true, twoFactorAuth: false
 }
 
 export default function AddTeamMemberForm({ onCancel, onSuccess, roleOptions }) {
@@ -51,9 +45,7 @@ export default function AddTeamMemberForm({ onCancel, onSuccess, roleOptions }) 
   // Auto-save to local storage on changes
   useEffect(() => {
     const timer = setTimeout(() => {
-      // Exclude file objects from serialization
-      const { profilePhoto, resume, aadhaar, pan, passport, offerLetter, nda, employmentAgreement, ...saveData } = formData
-      localStorage.setItem('onboarding_draft', JSON.stringify(saveData))
+      localStorage.setItem('onboarding_draft', JSON.stringify(formData))
     }, 1000)
     return () => clearTimeout(timer)
   }, [formData])
@@ -71,15 +63,13 @@ export default function AddTeamMemberForm({ onCancel, onSuccess, roleOptions }) 
   }
 
   const handleSubmit = async () => {
-    if (!formData.firstName) { toast.error('First Name is required'); setActiveSection(0); return; }
-    if (!formData.officialEmail) { toast.error('Official Email is required'); setActiveSection(0); return; }
-    if (!formData.role) { toast.error('Role is required'); setActiveSection(1); return; }
+    if (!formData.firstName) { toast.error('Name is required'); setActiveSection(0); return; }
+    if (!formData.officialEmail) { toast.error('Email is required'); setActiveSection(0); return; }
+    if (!formData.role) { toast.error('Role is required'); setActiveSection(0); return; }
     setIsSubmitting(true)
     try {
-      // In a real scenario, documents would be uploaded first and URLs attached here
-      // For now, we omit file objects from the JSON payload or replace with mock URLs
       const payload = {
-        name: `${formData.firstName} ${formData.lastName}`.trim(),
+        name: formData.firstName.trim(),
         email: formData.officialEmail,
         roleId: formData.role,
         ...formData
@@ -99,18 +89,20 @@ export default function AddTeamMemberForm({ onCancel, onSuccess, roleOptions }) 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Progress / Sections Header */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', overflowX: 'auto', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', overflowX: 'auto', marginBottom: '28px', gap: '16px' }}>
         {SECTIONS.map((sec, idx) => (
           <div 
             key={sec}
             onClick={() => setActiveSection(idx)}
             style={{ 
-              padding: '12px 16px', 
+              padding: '14px 20px', 
               cursor: 'pointer',
-              borderBottom: activeSection === idx ? '2px solid var(--color-primary)' : '2px solid transparent',
+              borderBottom: activeSection === idx ? '3px solid var(--color-primary)' : '3px solid transparent',
               color: activeSection === idx ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-              fontWeight: activeSection === idx ? 600 : 400,
-              whiteSpace: 'nowrap'
+              fontWeight: activeSection === idx ? 600 : 500,
+              whiteSpace: 'nowrap',
+              transition: 'all 0.2s ease',
+              fontSize: '15px'
             }}
           >
             {idx + 1}. {sec}
@@ -119,100 +111,51 @@ export default function AddTeamMemberForm({ onCancel, onSuccess, roleOptions }) 
       </div>
 
       {/* Form Content */}
-      <div style={{ flex: 1, overflow: 'visible', padding: '0 8px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div style={{ flex: 1, overflow: 'visible', padding: '0 16px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
         {activeSection === 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-
-            <Input label="First Name *" value={formData.firstName} onChange={e => handleInputChange('firstName', e.target.value)} />
-
-            <Input label="Last Name" value={formData.lastName} onChange={e => handleInputChange('lastName', e.target.value)} />
-            <Input label="Display Name" value={formData.displayName} onChange={e => handleInputChange('displayName', e.target.value)} />
-            <Select label="Gender" options={[{value:'Male',label:'Male'}, {value:'Female',label:'Female'}, {value:'Other',label:'Other'}]} value={formData.gender} onChange={v => handleInputChange('gender', v)} />
-            <Input type="date" label="Date of Birth" value={formData.dob} onChange={e => handleInputChange('dob', e.target.value)} />
-            <Input type="file" label="Profile Photo" onChange={e => handleInputChange('profilePhoto', e.target.files[0])} />
-
-            {/* Contact Info (Merged) */}
-            <Input type="email" label="Official Email *" value={formData.officialEmail} onChange={e => handleInputChange('officialEmail', e.target.value)} />
-            <Input type="email" label="Personal Email" value={formData.personalEmail} onChange={e => handleInputChange('personalEmail', e.target.value)} />
-            <Input type="tel" label="Mobile Number" value={formData.mobileNumber} onChange={e => handleInputChange('mobileNumber', e.target.value)} />
-            <Input type="tel" label="Emergency Contact" value={formData.emergencyContact} onChange={e => handleInputChange('emergencyContact', e.target.value)} />
-            <div style={{ gridColumn: '1 / -1' }}>
-              <Textarea label="Address" value={formData.address} onChange={e => handleInputChange('address', e.target.value)} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+              <Input label="Name *" value={formData.firstName} onChange={e => handleInputChange('firstName', e.target.value)} />
+              <Input type="email" label="Email *" value={formData.officialEmail} onChange={e => handleInputChange('officialEmail', e.target.value)} />
+              
+              <Input type="tel" label="Mobile Number" value={formData.mobileNumber} onChange={e => handleInputChange('mobileNumber', e.target.value)} />
+              <Select label="Role *" options={roleOptions} value={formData.role} onChange={v => handleInputChange('role', v)} />
+              
+              <Input label="Department" value={formData.department} onChange={e => handleInputChange('department', e.target.value)} />
+              <Input label="Designation" value={formData.designation} onChange={e => handleInputChange('designation', e.target.value)} />
             </div>
-            <Input label="City" value={formData.city} onChange={e => handleInputChange('city', e.target.value)} />
-            <Input label="State" value={formData.state} onChange={e => handleInputChange('state', e.target.value)} />
-            <Input label="Country" value={formData.country} onChange={e => handleInputChange('country', e.target.value)} />
-            <Input label="PIN Code" value={formData.pinCode} onChange={e => handleInputChange('pinCode', e.target.value)} />
+            
+            <div style={{ width: '100%' }}>
+              <Textarea label="Address" value={formData.address} onChange={e => handleInputChange('address', e.target.value)} rows={3} />
+            </div>
           </div>
         )}
 
         {activeSection === 1 && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            <Select label="Role *" options={roleOptions} value={formData.role} onChange={v => handleInputChange('role', v)} />
-            <Input label="Department" value={formData.department} onChange={e => handleInputChange('department', e.target.value)} />
-            <Input label="Designation" value={formData.designation} onChange={e => handleInputChange('designation', e.target.value)} />
-            <Input label="Reporting Manager" value={formData.reportingManager} onChange={e => handleInputChange('reportingManager', e.target.value)} />
-            <Input label="Branch" value={formData.branch} onChange={e => handleInputChange('branch', e.target.value)} />
-            <Input label="Office Location" value={formData.officeLocation} onChange={e => handleInputChange('officeLocation', e.target.value)} />
-            <Input type="date" label="Joining Date" value={formData.joiningDate} onChange={e => handleInputChange('joiningDate', e.target.value)} />
-            <Input type="date" label="Probation End Date" value={formData.probationEndDate} onChange={e => handleInputChange('probationEndDate', e.target.value)} />
-            <Select label="Employment Type" options={[{value:'Full-time',label:'Full-time'},{value:'Part-time',label:'Part-time'},{value:'Contract',label:'Contract'}]} value={formData.employmentType} onChange={v => handleInputChange('employmentType', v)} />
-            <Select label="Work Mode" options={[{value:'On-site',label:'On-site'},{value:'Remote',label:'Remote'},{value:'Hybrid',label:'Hybrid'}]} value={formData.workMode} onChange={v => handleInputChange('workMode', v)} />
-          </div>
-        )}
-
-        {activeSection === 2 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <Input label="Username" value={formData.username} onChange={e => handleInputChange('username', e.target.value)} />
-            <Input type="password" label="Temporary Password" value={formData.tempPassword} onChange={e => handleInputChange('tempPassword', e.target.value)} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '600px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+              <Input label="Username" value={formData.username} onChange={e => handleInputChange('username', e.target.value)} />
+              <Input type="password" label="Temporary Password" value={formData.tempPassword} onChange={e => handleInputChange('tempPassword', e.target.value)} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 0' }}>
               <Toggle checked={formData.forcePasswordReset} onChange={() => handleInputChange('forcePasswordReset', !formData.forcePasswordReset)} />
-              <span>Force Password Reset on First Login</span>
+              <span style={{ fontSize: '14px', color: 'var(--color-text)' }}>Force Password Reset on First Login</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 0' }}>
               <Toggle checked={formData.twoFactorAuth} onChange={() => handleInputChange('twoFactorAuth', !formData.twoFactorAuth)} />
-              <span>Require Two-Factor Authentication (2FA)</span>
+              <span style={{ fontSize: '14px', color: 'var(--color-text)' }}>Require Two-Factor Authentication (2FA)</span>
             </div>
-          </div>
-        )}
-
-        {activeSection === 3 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '24px', backgroundColor: 'var(--color-surface-hover)', borderRadius: 'var(--radius-lg)' }}>
-            <h3 style={{ margin: 0, color: 'var(--color-primary)' }}>Permissions are managed via Roles</h3>
-            <p style={{ color: 'var(--color-text-secondary)', lineHeight: '1.5' }}>
-              The old manual permission toggles have been deprecated to ensure strict synchronization with the <strong>Roles & Permissions</strong> system. 
-              <br/><br/>
-              By assigning this user the <strong>{roleOptions.find(r => r.value === formData.role)?.label || 'selected'}</strong> role (chosen in Step 2), they will automatically inherit all Data Scopes, Field-Level Permissions, and Action-Level Capabilities defined for that role in the CRM.
-            </p>
-          </div>
-        )}
-
-        {activeSection === 4 && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            <Input type="file" label="Resume" onChange={e => handleInputChange('resume', e.target.files[0])} />
-            <Input type="file" label="Aadhaar Card" onChange={e => handleInputChange('aadhaar', e.target.files[0])} />
-            <Input type="file" label="PAN Card" onChange={e => handleInputChange('pan', e.target.files[0])} />
-            <Input type="file" label="Passport" onChange={e => handleInputChange('passport', e.target.files[0])} />
-            <Input type="file" label="Offer Letter" onChange={e => handleInputChange('offerLetter', e.target.files[0])} />
-            <Input type="file" label="NDA" onChange={e => handleInputChange('nda', e.target.files[0])} />
-            <Input type="file" label="Employment Agreement" onChange={e => handleInputChange('employmentAgreement', e.target.files[0])} />
-          </div>
-        )}
-
-        {activeSection === 5 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <Textarea label="Internal Notes" value={formData.internalNotes} onChange={e => handleInputChange('internalNotes', e.target.value)} rows={6} />
           </div>
         )}
       </div>
 
       {/* Footer */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--color-border)', paddingTop: '16px', marginTop: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--color-border)', paddingTop: '20px', marginTop: '24px', paddingBottom: '8px' }}>
         <Button variant="ghost" onClick={onCancel} disabled={isSubmitting}>Cancel</Button>
-        <div style={{ display: 'flex', gap: '12px' }}>
+        <div style={{ display: 'flex', gap: '16px' }}>
           {activeSection > 0 && <Button variant="ghost" onClick={handleBack} disabled={isSubmitting}>Back</Button>}
           {activeSection < SECTIONS.length - 1 ? (
-            <Button variant="primary" onClick={handleNext}>Next</Button>
+            <Button variant="primary" onClick={handleNext}>Next Step</Button>
           ) : (
             <Button variant="primary" onClick={handleSubmit} disabled={isSubmitting}>
               {isSubmitting ? 'Saving...' : 'Complete Onboarding'}

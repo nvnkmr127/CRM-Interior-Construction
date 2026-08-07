@@ -5,6 +5,8 @@ import { Button, Input, Select } from '../../components/ui';
 import { useToast } from '../../store/toastContext';
 import api from '../../api/axios';
 
+import { useConfirm } from '../../store/confirmContext';
+
 const DEFAULT_ROOMS = ['Living Room', 'Kitchen', 'Master Bedroom', 'Balcony'];
 const DEFAULT_AREAS = ['walls', 'flooring', 'electrical', 'plumbing', 'civil'];
 
@@ -16,6 +18,8 @@ const STATUS_OPTIONS = [
 ];
 
 export default function BaselineAssessmentTab({ projectId }) {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   const [assessment, setAssessment] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -97,8 +101,8 @@ export default function BaselineAssessmentTab({ projectId }) {
     setRooms([...rooms, { room_name: name.trim(), areas, photos: [] }]);
   };
 
-  const handleRemoveRoom = (idx) => {
-    if (window.confirm(`Are you sure you want to remove ${rooms[idx].room_name}?`)) {
+  const handleRemoveRoom = async (idx) => {
+    if (await confirm(`Are you sure you want to remove ${rooms[idx].room_name}?`)) {
       setRooms(rooms.filter((_, i) => i !== idx));
     }
   };
@@ -191,10 +195,10 @@ export default function BaselineAssessmentTab({ projectId }) {
         </div>
         <div className={styles.actions}>
           {!isEditing ? (
-            <Button onClick={() => setIsEditing(true)}>Edit Assessment ✏️</Button>
+            <Button onClick={async () => setIsEditing(true)}>Edit Assessment ✏️</Button>
           ) : (
             <>
-              <Button variant="outline" onClick={() => { setIsEditing(false); fetchAssessment(); }}>Cancel</Button>
+              <Button variant="outline" onClick={async () => { setIsEditing(false); fetchAssessment(); }}>Cancel</Button>
               <Button onClick={handleSave} disabled={saving}>
                 {saving ? 'Saving...' : 'Save Assessment ✓'}
               </Button>
@@ -266,7 +270,7 @@ export default function BaselineAssessmentTab({ projectId }) {
                             src={url} 
                             alt={`${room.room_name} condition thumb`} 
                             className={styles.photoThumb} 
-                            onClick={() => window.open(url, '_blank')}
+                            onClick={async () => window.open(url, '_blank')}
                           />
                         ))}
                       </div>
@@ -317,7 +321,7 @@ export default function BaselineAssessmentTab({ projectId }) {
 
             {rooms.map((room, rIdx) => (
               <div key={rIdx} className={styles.roomEditCard}>
-                <button type="button" className={styles.removeRoomBtn} onClick={() => handleRemoveRoom(rIdx)}>
+                <button type="button" className={styles.removeRoomBtn} onClick={async () => handleRemoveRoom(rIdx)}>
                   Remove Room 🗑️
                 </button>
                 <div style={{ marginBottom: 16, maxWidth: '60%' }}>

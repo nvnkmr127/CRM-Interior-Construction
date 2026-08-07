@@ -4,7 +4,11 @@ import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
 import styles from './DelayNotificationsTab.module.css';
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function DelayNotificationsTab({ projectId }) {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -101,7 +105,7 @@ export default function DelayNotificationsTab({ projectId }) {
       return;
     }
 
-    if (!window.confirm('Send this delay update notification to the client?')) return;
+    if (!await confirm('Send this delay update notification to the client?')) return;
 
     try {
       setSendingId(id);
@@ -128,7 +132,7 @@ export default function DelayNotificationsTab({ projectId }) {
   };
 
   const handleDeleteDraft = async (id) => {
-    if (!window.confirm('Dismiss and delete this delay notification draft?')) return;
+    if (!await confirm('Dismiss and delete this delay notification draft?')) return;
 
     try {
       const res = await api.delete(`/projects/${projectId}/delay-notifications/${id}`);
@@ -243,20 +247,20 @@ export default function DelayNotificationsTab({ projectId }) {
                     <div className={styles.cardFooter}>
                       <button
                         className={styles.deleteBtn}
-                        onClick={() => handleDeleteDraft(dn.id)}
+                        onClick={async () => handleDeleteDraft(dn.id)}
                       >
                         Dismiss / Delete
                       </button>
                       <button
                         className={styles.saveBtn}
-                        onClick={() => handleSaveDraft(dn.id)}
+                        onClick={async () => handleSaveDraft(dn.id)}
                         disabled={savingId === dn.id}
                       >
                         {savingId === dn.id ? 'Saving...' : 'Save Draft'}
                       </button>
                       <button
                         className={styles.sendBtn}
-                        onClick={() => handleSendNotification(dn.id)}
+                        onClick={async () => handleSendNotification(dn.id)}
                         disabled={sendingId === dn.id}
                       >
                         {sendingId === dn.id ? 'Sending...' : 'Send Notification'}

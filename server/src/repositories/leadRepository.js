@@ -132,8 +132,6 @@ async function findLeadById(tenantId, leadId) {
       WHERE a.lead_id = l.id 
         AND a.type = 'meeting' 
         AND a.scheduled_at IS NOT NULL 
-        AND a.scheduled_at != ''
-        AND a.scheduled_at::timestamp >= NOW()
         AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
       ORDER BY a.scheduled_at ASC
       LIMIT 1
@@ -201,8 +199,6 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
       WHERE a.lead_id = l.id 
         AND a.type = 'meeting' 
         AND a.scheduled_at IS NOT NULL 
-        AND a.scheduled_at != ''
-        AND a.scheduled_at::timestamp >= NOW()
         AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
       ORDER BY a.scheduled_at ASC
       LIMIT 1

@@ -13,10 +13,14 @@ import { getTask, getGlobalTask, updateTask, addTaskComment, deleteTask, createT
 import { usersApi } from '../../api/users'
 import { getProject, getProjects } from '../../api/projects'
 
+import { useConfirm } from '../../store/confirmContext';
+
 const PRIORITIES = ['low', 'medium', 'high', 'urgent']
 const PRIORITY_COLORS = { low: 'info', medium: 'warning', high: 'danger', urgent: 'danger' }
 
 export default function TaskDetail({ isOpen, onClose, taskId, projectId, initialTask, inline = false }) {
+  const { confirm } = useConfirm();
+
   const [task, setTask] = useState(null)
   const [loading, setLoading] = useState(false)
   const [title, setTitle] = useState('')
@@ -191,7 +195,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
   }
 
   const handleDelete = async () => {
-    if (window.confirm('Are you sure you want to permanently delete this task?')) {
+    if (await confirm('Are you sure you want to permanently delete this task?')) {
       try {
         if (projectId && projectId !== 'general-tasks' && projectId !== 'lead-tasks') {
           await deleteTask(projectId, task.id, { params: { hard: true } })
@@ -453,7 +457,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
                     {permissions.canDelete && <Button variant="outline" size="sm" className={styles.textMuted} onClick={handleArchive}>Archive</Button>}
                     <Button variant="outline" size="sm" className={styles.textDanger} onClick={handleDelete}>Delete</Button>
                     {permissions.canEdit && (
-                      <Button variant="primary" size="sm" onClick={() => handleStatusChange('done')} disabled={task.status === 'done'}>
+                      <Button variant="primary" size="sm" onClick={async () => handleStatusChange('done')} disabled={task.status === 'done'}>
                         {task.status === 'done' ? '✓ Completed' : 'Mark Complete'}
                       </Button>
                     )}
@@ -583,7 +587,7 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div className={styles.statLabel}>Room / Area</div>
                     {permissions.canEdit && !isEditingRoom && (
-                      <Button variant="ghost" size="sm" style={{ padding: '2px 8px', height: 'auto', fontSize: '11px', fontWeight: 600 }} onClick={() => { setIsEditingRoom(true); setTempRoomName(task.roomName || ''); }}>
+                      <Button variant="ghost" size="sm" style={{ padding: '2px 8px', height: 'auto', fontSize: '11px', fontWeight: 600 }} onClick={async () => { setIsEditingRoom(true); setTempRoomName(task.roomName || ''); }}>
                         Edit
                       </Button>
                     )}

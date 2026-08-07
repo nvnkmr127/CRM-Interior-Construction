@@ -6,7 +6,11 @@ import { getAmcs, createAmc, updateAmc, deleteAmc, createAmcVisit, updateAmcVisi
 import { usersApi } from '../../api/users';
 import { useToast } from '../../store/toastContext';
 
+import { useConfirm } from '../../store/confirmContext';
+
 export default function AmcsTab({ projectId }) {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   const [amcs, setAmcs] = useState([]);
   const [staffList, setStaffList] = useState([]);
@@ -138,7 +142,7 @@ export default function AmcsTab({ projectId }) {
 
   const handleDeleteContract = async (id, e) => {
     e.stopPropagation();
-    if (window.confirm('Are you sure you want to delete this AMC contract? All visits will be deleted too.')) {
+    if (await confirm('Are you sure you want to delete this AMC contract? All visits will be deleted too.')) {
       try {
         await deleteAmc(projectId, id);
         toast.success('AMC contract deleted successfully.');
@@ -207,7 +211,7 @@ export default function AmcsTab({ projectId }) {
   };
 
   const handleDeleteVisit = async (amcId, visitId) => {
-    if (window.confirm('Are you sure you want to delete this scheduled visit?')) {
+    if (await confirm('Are you sure you want to delete this scheduled visit?')) {
       try {
         await deleteAmcVisit(projectId, amcId, visitId);
         toast.success('Visit schedule deleted.');
@@ -269,7 +273,7 @@ export default function AmcsTab({ projectId }) {
             return (
               <div key={a.id} className={styles.amcCard}>
                 {/* Accordion header */}
-                <div className={styles.amcHeader} onClick={() => toggleExpand(a.id)}>
+                <div className={styles.amcHeader} onClick={async () => toggleExpand(a.id)}>
                   <div className={styles.amcTitleArea}>
                     <span style={{ fontSize: 16 }}>{isExpanded ? '▼' : '▶'}</span>
                     <span className={styles.contractNumber}>#{a.contract_number}</span>
@@ -315,7 +319,7 @@ export default function AmcsTab({ projectId }) {
                     <div className={styles.visitsSection}>
                       <div className={styles.visitsHeader}>
                         <span className={styles.sectionTitle}>Maintenance Visit Schedule</span>
-                        <Button size="sm" onClick={() => handleOpenAddVisit(a.id)}>+ Add Visit</Button>
+                        <Button size="sm" onClick={async () => handleOpenAddVisit(a.id)}>+ Add Visit</Button>
                       </div>
 
                       {a.visits && a.visits.length > 0 ? (
@@ -359,11 +363,11 @@ export default function AmcsTab({ projectId }) {
 
                                 <div className={styles.visitActions}>
                                   {isScheduled && (
-                                    <Button variant="outline" size="sm" onClick={() => handleOpenCompleteVisit(a.id, v)}>
+                                    <Button variant="outline" size="sm" onClick={async () => handleOpenCompleteVisit(a.id, v)}>
                                       Mark Completed
                                     </Button>
                                   )}
-                                  <Button variant="outline" size="sm" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)' }} onClick={() => handleDeleteVisit(a.id, v.id)}>
+                                  <Button variant="outline" size="sm" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)' }} onClick={async () => handleDeleteVisit(a.id, v.id)}>
                                     Remove
                                   </Button>
                                 </div>
@@ -515,7 +519,7 @@ export default function AmcsTab({ projectId }) {
             </FormField>
 
             <div className={styles.modalFooter}>
-              <Button type="button" variant="outline" onClick={() => setContractModalOpen(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={async () => setContractModalOpen(false)}>Cancel</Button>
               <Button type="submit">Create Contract</Button>
             </div>
           </form>
@@ -564,7 +568,7 @@ export default function AmcsTab({ projectId }) {
             </FormField>
 
             <div className={styles.modalFooter}>
-              <Button type="button" variant="outline" onClick={() => setVisitModalOpen(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={async () => setVisitModalOpen(false)}>Cancel</Button>
               <Button type="submit">Schedule Visit</Button>
             </div>
           </form>
@@ -614,7 +618,7 @@ export default function AmcsTab({ projectId }) {
             </FormField>
 
             <div className={styles.modalFooter}>
-              <Button type="button" variant="outline" onClick={() => setCompleteVisitModalOpen(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={async () => setCompleteVisitModalOpen(false)}>Cancel</Button>
               <Button type="submit">Complete Visit</Button>
             </div>
           </form>

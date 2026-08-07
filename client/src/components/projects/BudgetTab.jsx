@@ -4,6 +4,8 @@ import { Button, Badge, Spinner } from '../ui';
 import { useToast } from '../../store/toastContext';
 import styles from './BudgetTab.module.css';
 import {
+import { useConfirm } from '../../store/confirmContext';
+
   getBudgetSummary,
   updateBudgetAllocation,
   getExpenses,
@@ -12,6 +14,8 @@ import {
 } from '../../api/projects';
 
 export default function BudgetTab({ projectId }) {
+  const { confirm } = useConfirm();
+
   const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState({ categories: [], totals: { budgeted: 0, committed: 0, actual: 0, variance: 0 } });
@@ -127,7 +131,7 @@ export default function BudgetTab({ projectId }) {
   };
 
   const handleDeleteExpense = async (expenseId) => {
-    if (!window.confirm('Are you sure you want to delete this cost record?')) return;
+    if (!await confirm('Are you sure you want to delete this cost record?')) return;
 
     try {
       const res = await deleteExpense(projectId, expenseId);
@@ -439,7 +443,7 @@ export default function BudgetTab({ projectId }) {
                       <td style={{ textAlign: 'center' }}>
                         <button 
                           className={styles.actionBtnDelete}
-                          onClick={() => handleDeleteExpense(exp.id)}
+                          onClick={async () => handleDeleteExpense(exp.id)}
                         >
                           Delete
                         </button>

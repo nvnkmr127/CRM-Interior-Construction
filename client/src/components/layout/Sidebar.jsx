@@ -68,7 +68,6 @@ const NAV_ITEMS = [
         { to: '/team/roles', icon: '🔑', label: 'Roles & Permissions' },
     ]},
     { to: '/config/organization', icon: '🏢', label: 'Organization', module: 'settings' },
-    { to: '/config/security', icon: '🔒', label: 'Security', module: 'settings' },
     { to: '/config/login-history', icon: '🛡️', label: 'Login History', module: 'settings' },
     { to: '/settings/audit-trail', icon: '📜', label: 'Audit Trail', module: 'settings' }
   ]},
