@@ -1175,8 +1175,64 @@ export const setupMockInterceptor = (api) => {
               }
             }
           }
+          // PROJECT MEMBERS
+          else if (url.includes('/projects') && url.includes('/members')) {
+            const matchList = url.match(/\/projects\/([a-zA-Z0-9-]+)\/members$/);
+            const matchBulk = url.match(/\/projects\/([a-zA-Z0-9-]+)\/members\/bulk$/);
+            const matchSingle = url.match(/\/projects\/([a-zA-Z0-9-]+)\/members\/([a-zA-Z0-9-]+)$/);
+
+            if (!mockDatabase.projectMembers) {
+              mockDatabase.projectMembers = [];
+            }
+
+            if (matchList && method === 'get') {
+              const projectId = matchList[1];
+              const members = mockDatabase.projectMembers.filter(pm => pm.project_id === projectId);
+              // Join with user data
+              const populated = members.map(pm => {
+                const user = mockDatabase.users?.find(u => u.id === pm.user_id) || {};
+                return { ...pm, name: user.name, email: user.email };
+              });
+              responseData.data = populated;
+            } else if (matchBulk && method === 'post') {
+              const projectId = matchBulk[1];
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const { userIds } = payload;
+              
+              if (Array.isArray(userIds)) {
+                userIds.forEach(uid => {
+                  const exists = mockDatabase.projectMembers.find(pm => pm.project_id === projectId && pm.user_id === uid);
+                  if (!exists) {
+                    mockDatabase.projectMembers.push({
+                      id: `mock-pm-${Date.now()}-${uid}`,
+                      project_id: projectId,
+                      user_id: uid,
+                      role_in_project: 'member',
+                      created_at: new Date().toISOString()
+                    });
+                  }
+                });
+                persistDb();
+              }
+              responseData.data = { success: true, message: 'Members assigned successfully' };
+            } else if (matchSingle && method === 'delete') {
+              const projectId = matchSingle[1];
+              const userId = matchSingle[2];
+              mockDatabase.projectMembers = mockDatabase.projectMembers.filter(
+                pm => !(pm.project_id === projectId && pm.user_id === userId)
+              );
+              persistDb();
+              responseData.data = { success: true, message: 'Member removed' };
+            }
+          }
+          // PAYMENT MILESTONES (GLOBAL)
+          else if (url.includes('/payment-milestones') && !url.includes('/projects/')) {
+            if (method === 'get') {
+              responseData.data = mockDatabase.paymentMilestones || [];
+            }
+          }
           // PROJECTS
-          else if (url.includes('/projects') && !url.includes('/tasks') && !url.includes('/comments') && !url.includes('/attachments') && !url.includes('/activity')) {
+          else if (url.includes('/projects') && !url.includes('/tasks') && !url.includes('/comments') && !url.includes('/attachments') && !url.includes('/activity') && !url.includes('/members')) {
             const match = url.match(/\/projects\/([a-zA-Z0-9-]+)$/);
             const projId = match ? match[1] : null;
 
@@ -1276,11 +1332,17 @@ export const setupMockInterceptor = (api) => {
                 const proj = mockDatabase.projects.find(p => p.id === projId);
                 if (proj) {
                   const milestones = mockDatabase.paymentMilestones?.filter(m => m.project_id === projId) || [];
-                  const collected = milestones.filter(m => m.status === 'paid').reduce((acc, m) => acc + Number(m.paid_amount || m.amount || 0), 0);
-                  const total = milestones.reduce((acc, m) => acc + Number(m.amount || 0), 0);
-                  const overdue = milestones.filter(m => m.status === 'overdue').reduce((acc, m) => acc + Number(m.amount || 0), 0);
-                  const pending = milestones.filter(m => m.status === 'invoiced').reduce((acc, m) => acc + Number(m.amount || 0), 0);
                   const baseContract = Number(proj.contract_value || 0);
+                  
+                  let collected = milestones.filter(m => m.status === 'paid' || m.status === 'partially_paid').reduce((acc, m) => acc + Number(m.paid_amount || (m.payment_entries ? m.payment_entries.reduce((s, e) => s + Number(e.amount), 0) : m.amount || 0)), 0);
+                  let total = milestones.reduce((acc, m) => acc + Number(m.amount || 0), 0);
+                  let overdue = milestones.filter(m => m.status === 'overdue').reduce((acc, m) => acc + Number(m.amount || 0), 0);
+                  let pending = milestones.filter(m => m.status === 'invoiced').reduce((acc, m) => acc + Number(m.amount || 0), 0);
+
+                  if (milestones.length === 0 && baseContract > 0) {
+                     total = baseContract;
+                     collected = (baseContract * 0.10) + (baseContract * 0.15 * 0.5);
+                  }
 
                   const stats = {
                     ...(proj.stats || {}),
@@ -1298,15 +1360,22 @@ export const setupMockInterceptor = (api) => {
               } else {
                 responseData.data = mockDatabase.projects.map(proj => {
                   const milestones = mockDatabase.paymentMilestones?.filter(m => m.project_id === proj.id) || [];
-                  const collected = milestones.filter(m => m.status === 'paid').reduce((acc, m) => acc + Number(m.paid_amount || m.amount || 0), 0);
-                  const total = milestones.reduce((acc, m) => acc + Number(m.amount || 0), 0);
+                  const baseContract = Number(proj.contract_value || 0);
+                  let collected = milestones.filter(m => m.status === 'paid' || m.status === 'partially_paid').reduce((acc, m) => acc + Number(m.paid_amount || (m.payment_entries ? m.payment_entries.reduce((s, e) => s + Number(e.amount), 0) : m.amount || 0)), 0);
+                  let total = milestones.reduce((acc, m) => acc + Number(m.amount || 0), 0);
+
+                  if (milestones.length === 0 && baseContract > 0) {
+                     total = baseContract;
+                     collected = (baseContract * 0.10) + (baseContract * 0.15 * 0.5);
+                  }
+
                   return {
                     ...proj,
                     stats: {
                       ...(proj.stats || {}),
                       collectedPayment: proj.stats?.collectedPayment !== undefined && proj.stats.collectedPayment > 0 ? proj.stats.collectedPayment : collected,
                       totalPayment: proj.stats?.totalPayment !== undefined && proj.stats.totalPayment > 0 ? proj.stats.totalPayment : total,
-                      netContractValue: proj.stats?.netContractValue !== undefined ? proj.stats.netContractValue : Number(proj.contract_value || 0)
+                      netContractValue: proj.stats?.netContractValue !== undefined ? proj.stats.netContractValue : baseContract
                     }
                   };
                 });
@@ -1317,6 +1386,21 @@ export const setupMockInterceptor = (api) => {
                 const idx = mockDatabase.projects.findIndex(p => p.id === projId);
                 if (idx !== -1) {
                   const currentProj = mockDatabase.projects[idx];
+                  
+                  // Auto-resolve role names if their IDs are updated
+                  const resolveName = (id) => mockDatabase.users?.find(u => u.id === id)?.name || null;
+                  const resolveIds = (ids) => (Array.isArray(ids) ? ids.map(resolveName).filter(Boolean).join(', ') : resolveName(ids));
+
+                  if ('pm_id' in updates) updates.pm_name = resolveName(updates.pm_id);
+                  if ('designer_ids' in updates) updates.designer_name = resolveIds(updates.designer_ids);
+                  if ('lead_designer_ids' in updates) updates.lead_designer_name = resolveIds(updates.lead_designer_ids);
+                  if ('junior_designer_ids' in updates) updates.junior_designer_name = resolveIds(updates.junior_designer_ids);
+                  if ('site_engineer_ids' in updates) updates.site_engineer_name = resolveIds(updates.site_engineer_ids);
+                  if ('qc_engineer_ids' in updates) updates.qc_engineer_name = resolveIds(updates.qc_engineer_ids);
+                  if ('site_supervisor_ids' in updates) updates.site_supervisor_name = resolveIds(updates.site_supervisor_ids);
+                  if ('crm_executive_ids' in updates) updates.crm_executive_name = resolveIds(updates.crm_executive_ids);
+                  if ('procurement_officer_ids' in updates) updates.procurement_officer_name = resolveIds(updates.procurement_officer_ids);
+
                   const newStatus = updates.status || currentProj.status;
 
                   if (newStatus === 'active' && currentProj.status !== 'active' && Number(currentProj.booking_amount) > 0) {
@@ -3914,6 +3998,11 @@ export const setupMockInterceptor = (api) => {
             responseData.data = users;
           }
           // FINANCIAL APPROVALS
+          else if (url.includes('/debug-db')) {
+             if (method === 'get') {
+                responseData.data = mockDatabase;
+             }
+          }
           else if (url.includes('/financial-approvals')) {
             const urlParts = url.split('?');
             const pathSegments = urlParts[0].split('/');

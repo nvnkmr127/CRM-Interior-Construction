@@ -5,3 +5,5 @@ export const getPaymentMilestones = (projectId) => api.get(`/projects/${projectI
 export const createPaymentMilestone = (data) => api.post('/payment-milestones', data);
 
 export const updatePaymentMilestone = (id, data) => api.patch(`/payment-milestones/${id}`, data);
+
+export const getAllPaymentMilestones = () => api.get('/payment-milestones');

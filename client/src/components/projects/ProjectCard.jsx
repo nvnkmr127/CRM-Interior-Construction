@@ -133,7 +133,7 @@ export default function ProjectCard({ project, onClick }) {
       {/* Bottom: value + deadline */}
       <div className={styles.bottomRow}>
         <span className={styles.value}>
-          {formatValue(displayProject.contract_value || displayProject.value) || '—'}
+          {formatValue(displayProject.stats?.netContractValue || displayProject.contract_value || displayProject.value) || '—'}
         </span>
         {deadlineStr && (
           <span className={displayProject.overdue ? styles.dateOverdue : styles.date}>

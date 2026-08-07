@@ -8,4 +8,6 @@ export const createInvoice = (data) => api.post('/invoices', data);
 
 export const getInvoicesByProject = (projectId) => api.get(`/invoices?projectId=${projectId}`);
 
+export const getAllInvoices = () => api.get(`/invoices`);
+
 export const deleteInvoice = (invoiceId) => api.delete(`/invoices/${invoiceId}`);

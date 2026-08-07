@@ -53,6 +53,7 @@ const ApprovalMatrixPage = lazy(() => import('./pages/settings/ApprovalMatrixPag
 const ConfigPage     = lazy(() => import('./pages/config/ConfigPage'))
 const PortalApp      = lazy(() => import('./portal/PortalApp'))
 const FinancialApprovalsPage = lazy(() => import('./pages/dashboard/FinancialApprovalsPage'))
+const FinanceDashboardPage = lazy(() => import('./pages/finance/FinanceDashboardPage'))
 const GlobalCoordinationPage = lazy(() => import('./pages/projects/GlobalCoordinationPage'))
 const GlobalHandoverDashboard = lazy(() => import('./pages/projects/GlobalHandoverDashboard'))
 const GlobalRetentionDashboard = lazy(() => import('./pages/projects/GlobalRetentionDashboard'))
@@ -122,6 +123,7 @@ export default function App() {
                   <Route path='/team/members' element={<ProtectedRoute requiredModule="settings"><UsersManager /></ProtectedRoute>} />
                   <Route path='/team/roles' element={<ProtectedRoute requiredModule="settings"><RolesManager /></ProtectedRoute>} />
                   <Route path='/financial-approvals' element={<ProtectedRoute requiredModule="finance"><FinancialApprovalsPage /></ProtectedRoute>} />
+                  <Route path='/finance' element={<ProtectedRoute requiredModule="finance"><FinanceDashboardPage /></ProtectedRoute>} />
                   <Route path='/warehouse' element={<ProtectedRoute requiredModule="warehouse"><WarehousePage /></ProtectedRoute>} />
                   <Route path="developer/api" element={<ProtectedRoute requiredModule="settings"><ApiIntegrationPage /></ProtectedRoute>} />
                   <Route path="developer/webhooks" element={<ProtectedRoute requiredModule="settings"><WebhooksManager /></ProtectedRoute>} />

@@ -45,6 +45,7 @@ const NAV_ITEMS = [
     { to: '/analytics/csat', icon: '⭐', label: 'Client Satisfaction', module: 'analytics' },
   ]},
   { group: 'FINANCE', financeOnly: true, items: [
+    { to: '/finance', icon: '💰', label: 'Finance Overview', module: 'finance' },
     { to: '/financial-approvals', icon: '📝', label: 'Financial Approvals', module: 'finance' },
     { to: '/config/financial-settings', icon: '💰', label: 'Financial Thresholds', module: 'settings', adminOnly: true }
   ]},

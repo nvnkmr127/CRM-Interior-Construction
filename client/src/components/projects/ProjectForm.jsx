@@ -16,11 +16,23 @@ const PROJECT_TYPES = [
   { id: 'renovation', icon: '🔨', label: 'Renovation' }
 ]
 
-export default function ProjectForm({ project, onSave, onClose, isOpen }) {
+export default function ProjectForm({ project, onSave, onClose, isOpen, editSection = 'all' }) {
+  const showAll = editSection === 'all';
+  const showDetails = showAll || editSection === 'details';
+  const showTeam = showAll || editSection === 'team';
+  const showRevisions = showAll || editSection === 'revisions';
+
   const toast = useToast()
   const { uploadContract, uploading, progress } = useS3Upload()
   const { isHidden, isReadOnly } = useFieldPermissions('projects')
   const [contractFile, setContractFile] = useState(null)
+  const [isProjectTypeEditable, setIsProjectTypeEditable] = useState(!project)
+  
+  useEffect(() => {
+    if (isOpen) {
+      setIsProjectTypeEditable(!project)
+    }
+  }, [isOpen, project])
   
   const [formData, setFormData] = useState({
     projectType: '',
@@ -214,7 +226,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
   useEffect(() => {
     if (project && isOpen) {
       setFormData({
-        projectType: project.projectType || project.project_type || '',
+        projectType: (project.type || project.projectType || project.project_type || '').toLowerCase().replace(/ /g, '_'),
         clientName: project.clientName || project.client_name || '',
         clientPhone: project.clientPhone || project.client_phone || '',
         clientEmail: project.clientEmail || project.client_email || '',
@@ -488,13 +500,27 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
         </>
       }
     >
-      <div className={styles.sectionTitle} style={{marginTop: 0}}>Project Type</div>
-      <div className={styles.typeSelector}>
+      {showDetails && (
+        <>
+      <div className={styles.sectionTitle} style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '12px'}}>
+        Project Type
+        {!!project && !isProjectTypeEditable && (
+          <Button variant="ghost" size="sm" onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsProjectTypeEditable(true);
+          }}>
+            ✏️ Edit
+          </Button>
+        )}
+      </div>
+      <div className={styles.typeSelector} style={{ opacity: isProjectTypeEditable ? 1 : 0.6, pointerEvents: isProjectTypeEditable ? 'auto' : 'none' }}>
         {PROJECT_TYPES.map(type => (
           <div 
             key={type.id} 
             className={`${styles.typeCard} ${formData.projectType === type.id ? styles.selected : ''}`}
             onClick={() => {
+              if (!isProjectTypeEditable) return;
               setFormData({...formData, projectType: type.id})
               if (errors.projectType) setErrors({...errors, projectType: null})
             }}
@@ -505,11 +531,16 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
         ))}
       </div>
       {errors.projectType && <div className={styles.errorMsg}>{errors.projectType}</div>}
+        </>
+      )}
 
-      <div className={styles.sectionTitle}>Details</div>
-      <div className={styles.grid}>
-        {/* Left Col */}
-        <div>
+      {(showDetails || showTeam) && (
+        <>
+          {showDetails && <div className={styles.sectionTitle}>Details</div>}
+          <div className={styles.grid}>
+            {/* Left Col */}
+            {showDetails && (
+              <div>
           <Input 
             label="Client Name *" 
             value={formData.clientName} 
@@ -549,10 +580,11 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
               error={errors.clientEmail}
             />
           </div>
-        </div>
+            </div>
+          )}
 
-        {/* Right Col */}
-        <div>
+          {/* Right Col */}
+          <div>
           <Input 
             label="Project Name *" 
             placeholder="e.g. Sharma 3BHK - Banjara Hills"
@@ -608,12 +640,16 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
               />
             </div>
           )}
+          </div>
         </div>
-        {/* Project Team Roles Section */}
-        {!!project && (
-          <>
+      </>
+      )}
+      {/* Project Team Roles Section */}
+      {!!project && (
+        <>
+          {showTeam && (
             <div className={styles.fullWidth} style={{ marginTop: 8 }}>
-          <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Project Team & Role Assignments</div>
+              <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Project Team & Role Assignments</div>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '16px' }}>
             <Select 
@@ -683,11 +719,13 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
               onChange={v => setFormData({...formData, procurementOfficer: v})}
             />
           </div>
-        </div>
+            </div>
+          )}
 
         {/* Client Household Profile Section */}
-        <div className={styles.fullWidth} style={{ marginTop: 8 }}>
-          <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Client Household Profile & Preferences</div>
+        {showDetails && (
+          <div className={styles.fullWidth} style={{ marginTop: 8 }}>
+            <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Client Household Profile & Preferences</div>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '16px' }}>
             <Input 
@@ -743,11 +781,13 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
               onChange={e => setFormData({...formData, lifestylePreferences: e.target.value})}
             />
           </div>
-        </div>
+            </div>
+          )}
 
         {/* Structured address fields */}
-        <div className={styles.fullWidth}>
-          <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Site Address Details</div>
+        {showDetails && (
+          <div className={styles.fullWidth}>
+            <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Site Address Details</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '16px' }}>
             <Input 
               label="Flat / Unit No" 
@@ -836,15 +876,17 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
               📍 Get Location
             </Button>
           </div>
-        </div>
+            </div>
+          )}
 
 
 
 
 
         {/* Project Classification & Nature */}
-        <div className={styles.fullWidth} style={{ marginTop: 8 }}>
-          <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Project Classification & Nature</div>
+        {showDetails && (
+          <div className={styles.fullWidth} style={{ marginTop: 8 }}>
+            <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Project Classification & Nature</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
             <Select 
               label="Project Category" 
@@ -920,11 +962,13 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
               onChange={v => setFormData({...formData, segment: v})}
             />
           </div>
-        </div>
+            </div>
+          )}
 
         {/* Site Measurements & Room Dimensions */}
-        <div className={styles.fullWidth} style={{ marginTop: 8 }}>
-          <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Site Measurements & Room Dimensions</div>
+        {showDetails && (
+          <div className={styles.fullWidth} style={{ marginTop: 8 }}>
+            <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Site Measurements & Room Dimensions</div>
           
           {/* Render list of added room measurements */}
           {formData.measurements && formData.measurements.length > 0 ? (
@@ -1068,11 +1112,13 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
               </Button>
             </div>
           </div>
-        </div>
+            </div>
+          )}
 
         {/* Project Stakeholders */}
-        <div className={styles.fullWidth} style={{ marginTop: 8 }}>
-          <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Project Stakeholders & Contacts</div>
+        {showTeam && (
+          <div className={styles.fullWidth} style={{ marginTop: 8 }}>
+            <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Project Stakeholders & Contacts</div>
           
           {/* Render list of added contacts */}
           {formData.contacts && formData.contacts.length > 0 ? (
@@ -1278,11 +1324,13 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
               </Button>
             </div>
           </div>
-        </div>
+            </div>
+          )}
 
         {/* Project Vendors */}
-        <div className={styles.fullWidth} style={{ marginTop: 8 }}>
-          <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Project Vendors Engagement</div>
+        {showTeam && (
+          <div className={styles.fullWidth} style={{ marginTop: 8 }}>
+            <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Project Vendors Engagement</div>
           
           {/* Render list of added vendors */}
           {formData.vendors && formData.vendors.length > 0 ? (
@@ -1427,13 +1475,15 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
               </Button>
             </div>
           </div>
-        </div>
+            </div>
+          )}
 
 
 
         {/* Project Site Execution Team */}
-        <div className={styles.fullWidth} style={{ marginTop: 8 }}>
-          <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Site Execution Team Assignment</div>
+        {showTeam && (
+          <div className={styles.fullWidth} style={{ marginTop: 8 }}>
+            <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Site Execution Team Assignment</div>
           
           {/* Render list of added site team members */}
           {formData.site_team && formData.site_team.length > 0 ? (
@@ -1604,10 +1654,12 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
               </Button>
             </div>
           </div>
-        </div>
+            </div>
+          )}
 
-        <div className={styles.fullWidth} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-          {!isHidden('budget') && (
+        {showDetails && (
+          <div className={styles.fullWidth} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+            {!isHidden('budget') && (
             <div>
               <Input 
                 label="Contract Value (₹)" 
@@ -1630,12 +1682,15 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
               onChange={e => setFormData({...formData, bookingAmount: e.target.value})} 
               disabled={!!project || isReadOnly('budget')}
             />
-          </div>
+            </div>
           )}
-        </div>
+          </div>
+        )}
 
-        <div className={styles.fullWidth} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-          <div>
+        {showRevisions && (
+          <>
+            <div className={styles.fullWidth} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+              <div>
             <Input 
               label="Allowed Design Revisions" 
               type="number"
@@ -1654,11 +1709,14 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
               onChange={e => setFormData({...formData, currentDesignRevisions: e.target.value})} 
               error={errors.currentDesignRevisions}
             />
-          </div>
-        </div>
+              </div>
+            </div>
+          </>
+        )}
 
-        <div className={styles.fullWidth} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '16px', background: 'var(--color-surface-hover, #fafafa)', marginTop: '8px', marginBottom: '8px' }}>
-          <h4 style={{ margin: '0 0 8px 0', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>Stage-Specific Revision Limits</h4>
+        {showRevisions && (
+          <div className={styles.fullWidth} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '16px', background: 'var(--color-surface-hover, #fafafa)', marginTop: '8px', marginBottom: '8px' }}>
+            <h4 style={{ margin: '0 0 8px 0', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>Stage-Specific Revision Limits</h4>
           <p style={{ margin: '0 0 12px 0', fontSize: '11px', color: 'var(--color-text-muted)' }}>Configure permitted revision rounds for each design stage. Exceeding these limits triggers an automatic change order request.</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
             {[
@@ -1684,11 +1742,14 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
                 />
               </div>
             ))}
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className={styles.fullWidth} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-          <div className={styles.datesGrid} style={{ gridColumn: 'span 2', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+        {showDetails && (
+          <>
+            <div className={styles.fullWidth} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+              <div className={styles.datesGrid} style={{ gridColumn: 'span 2', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
             <Input 
               label="Start Date" 
               type="date"
@@ -1754,14 +1815,16 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
             />
             <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-text)' }}>Enforce Task Execution Sequence</span>
           </label>
-          <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginLeft: 28, marginTop: 4 }}>
-            When enabled, site supervisors are blocked from starting or completing tasks out of sequence based on configured dependencies.
-          </p>
-        </div>
+              <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginLeft: 28, marginTop: 4 }}>
+                When enabled, site supervisors are blocked from starting or completing tasks out of sequence based on configured dependencies.
+              </p>
+            </div>
+          </>
+        )}
         </>
         )}
 
-        {!project && (
+        {showDetails && !project && (
           <div className={styles.fullWidth} style={{ marginTop: 16 }}>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Signed Contract Document *</label>
             <div className="flex items-center gap-4">
@@ -1781,7 +1844,6 @@ export default function ProjectForm({ project, onSave, onClose, isOpen }) {
             )}
           </div>
         )}
-      </div>
     </Modal>
   )
 }

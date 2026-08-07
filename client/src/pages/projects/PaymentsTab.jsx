@@ -64,7 +64,7 @@ class PaymentGatewayService {
   }
 }
 // -----------------------------------
-export default function PaymentsTab({ projectId, project }) {
+export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
   const toast = useToast();
   const [payments, setPayments] = useState([]);
   const [escalations, setEscalations] = useState([]);
@@ -1126,17 +1126,6 @@ export default function PaymentsTab({ projectId, project }) {
 
         setPayments(raw.map((p, index) => {
           const entries = p.payment_entries ? [...p.payment_entries] : [];
-          
-          if (index === 0 && entries.length === 0 && Number(project?.booking_amount || 0) > 0) {
-             entries.push({
-               id: p.id + '_auto_booking',
-               amount: Number(project.booking_amount),
-               paidAt: project?.createdAt || new Date().toISOString(),
-               mode: 'Bank Transfer',
-               collectedByName: 'System Auto',
-               collectedByRole: 'Admin'
-             });
-          }
           if (p.status === 'paid' && entries.length === 0) {
              entries.push({
                id: p.id + '_legacy',
@@ -1192,13 +1181,13 @@ export default function PaymentsTab({ projectId, project }) {
   }, [projectId]);
 
   // Derived Values
-  const totalBudgetFallback = Number(project?.booking_amount || 0) > 0 ? Number(project.booking_amount) * 10 : 0;
-  const totalBudget = Number(project?.contract_value || 0) || totalBudgetFallback || 0;
+  const totalBudgetFallback = payments.reduce((sum, p) => sum + (p.amountValue || 0), 0) || (Number(project?.booking_amount || 0) > 0 ? Number(project.booking_amount) * 10 : 0);
+  const totalBudget = project?.stats?.netContractValue || Number(project?.contract_value || 0) || totalBudgetFallback || 0;
   const totalArea = project?.measurements?.reduce((sum, r) => sum + (Number(r.area) || 0), 0) || 2040;
   const avgRate = totalArea > 0 ? Math.round(totalBudget / totalArea) : 0;
   
   const totalPaid = payments.reduce((sum, p) => sum + (p.collectedAmount || 0), 0);
-  const outstandingBalance = totalBudget - totalPaid;
+  const outstandingBalance = payments.reduce((sum, p) => sum + (p.remainingAmount || 0), 0);
   
   const today = new Date().toISOString().split('T')[0];
   const processedPayments = payments.map(p => {
@@ -1398,17 +1387,137 @@ export default function PaymentsTab({ projectId, project }) {
   };
 
   // Available Cost Items Catalog
-  const baseAvailableItems = [
-    { id: 'mk', label: 'Modular Kitchen (Cabinets, Countertop, Accessories)', value: Math.round(totalBudget * 0.25) },
-    { id: 'ws', label: 'Wardrobes & Storage (Bedrooms, Living, Foyer)', value: Math.round(totalBudget * 0.28) },
-    { id: 'fcl', label: 'False Ceiling & Lighting', value: Math.round(totalBudget * 0.12) },
-    { id: 'pw', label: 'Painting & Wallpaper (Premium Finish)', value: Math.round(totalBudget * 0.08) },
-    { id: 'ctw', label: 'Civil & Tiling Work (Bathrooms, Balcony)', value: Math.round(totalBudget * 0.07) },
-    { id: 'epm', label: 'Electrical & Plumbing Modifications', value: Math.round(totalBudget * 0.05) },
-    { id: 'cf', label: 'Custom Furniture (Beds, TV Unit, Study)', value: Math.round(totalBudget * 0.10) },
-    { id: 'sfd', label: 'Soft Furnishings & Decor', value: Math.round(totalBudget * 0.03) },
-    { id: 'dmf', label: 'Design & Management Fees', value: totalBudget - Math.round(totalBudget * 0.98) },
-  ];
+  const baseAvailableItems = React.useMemo(() => {
+    const rawType = project?.type || project?.project_type || 'Full Interior';
+    const type = rawType.replace(/_/g, ' ').toLowerCase();
+    let list = [];
+    if (type === 'full interior') {
+       list = [
+         { label: 'Modular Kitchen (Cabinets, Shutters, Countertop, Accessories)' },
+         { label: 'Wardrobes & Storage (Bedrooms, Walk-in, Loft, Foyer Storage)' },
+         { label: 'TV Unit & Living Furniture (TV Panel, Console, Shelves)' },
+         { label: 'False Ceiling (Gypsum, POP, Cove Lighting)' },
+         { label: 'Lighting Fixtures (Decorative & Functional Lights)' },
+         { label: 'Painting & Wallpaper (Interior Paint, Texture, Wallpaper)' },
+         { label: 'Flooring & Tiling (Bathrooms, Balcony, Feature Tiles)' },
+         { label: 'Electrical Works (Wiring, Switches, Additional Points)' },
+         { label: 'Plumbing Works (Bathroom & Kitchen Modifications)' },
+         { label: 'Bathroom Vanity & Accessories (Vanity, Mirror, Shower Partition)' },
+         { label: 'Doors & Hardware (Door Polish, Locks, Handles)' },
+         { label: 'Custom Furniture (Beds, Study Table, Shoe Rack)' },
+         { label: 'Curtains & Blinds (Windows & Balcony)' },
+         { label: 'Home Decor (Mirrors, Art, Accessories)' },
+         { label: 'Project Management (Design, Site Supervision)' }
+       ];
+    } else if (type === 'modular kitchen') {
+       list = [
+         { label: 'Base Cabinets' },
+         { label: 'Wall Cabinets' },
+         { label: 'Tall Units' },
+         { label: 'Loft Storage' },
+         { label: 'Countertop' },
+         { label: 'Backsplash' },
+         { label: 'Sink & Faucet' },
+         { label: 'Chimney' },
+         { label: 'Hob' },
+         { label: 'Built-in Appliances' },
+         { label: 'Tandem & Accessories' },
+         { label: 'Soft-close Hardware' },
+         { label: 'Electrical Points' },
+         { label: 'Plumbing Modifications' },
+         { label: 'Installation Charges' }
+       ];
+    } else if (type === 'commercial' || type === 'commercial interior') {
+       list = [
+         { label: 'Space Planning' },
+         { label: 'Partitions' },
+         { label: 'Workstations' },
+         { label: 'Cabins' },
+         { label: 'Reception Counter' },
+         { label: 'Conference Room' },
+         { label: 'Pantry' },
+         { label: 'False Ceiling' },
+         { label: 'Flooring' },
+         { label: 'Painting' },
+         { label: 'Branding & Signage' },
+         { label: 'Lighting' },
+         { label: 'Electrical' },
+         { label: 'Data & Networking' },
+         { label: 'HVAC Modifications' },
+         { label: 'Plumbing' },
+         { label: 'Storage Units' },
+         { label: 'Loose Furniture' },
+         { label: 'Fire Safety' },
+         { label: 'Project Management' }
+       ];
+    } else if (type === 'turnkey' || type === 'turnkey project') {
+       list = [
+         { label: 'Design & Drawings' },
+         { label: 'Demolition' },
+         { label: 'Civil Construction' },
+         { label: 'Masonry Work' },
+         { label: 'Flooring' },
+         { label: 'Waterproofing' },
+         { label: 'Plumbing' },
+         { label: 'Electrical' },
+         { label: 'HVAC' },
+         { label: 'False Ceiling' },
+         { label: 'Painting' },
+         { label: 'Doors & Windows' },
+         { label: 'Modular Kitchen' },
+         { label: 'Wardrobes' },
+         { label: 'Furniture' },
+         { label: 'Glass & Aluminium' },
+         { label: 'Railings' },
+         { label: 'Landscaping' },
+         { label: 'Final Cleaning' },
+         { label: 'Project Management' }
+       ];
+    } else if (type === 'renovation') {
+       list = [
+         { label: 'Demolition' },
+         { label: 'Debris Removal' },
+         { label: 'Civil Repairs' },
+         { label: 'Wall Modifications' },
+         { label: 'Waterproofing' },
+         { label: 'Flooring Replacement' },
+         { label: 'Bathroom Renovation' },
+         { label: 'Kitchen Renovation' },
+         { label: 'Electrical Rewiring' },
+         { label: 'Plumbing Replacement' },
+         { label: 'False Ceiling' },
+         { label: 'Painting' },
+         { label: 'Doors & Windows' },
+         { label: 'Wardrobes' },
+         { label: 'Custom Furniture' },
+         { label: 'Deep Cleaning' },
+         { label: 'Project Management' }
+       ];
+    } else {
+       list = [
+         { label: 'Modular Kitchen (Cabinets, Countertop, Accessories)' },
+         { label: 'Wardrobes & Storage (Bedrooms, Living, Foyer)' },
+         { label: 'False Ceiling & Lighting' },
+         { label: 'Painting & Wallpaper (Premium Finish)' },
+         { label: 'Civil & Tiling Work (Bathrooms, Balcony)' },
+         { label: 'Electrical & Plumbing Modifications' },
+         { label: 'Custom Furniture (Beds, TV Unit, Study)' },
+         { label: 'Soft Furnishings & Decor' },
+         { label: 'Design & Management Fees' }
+       ];
+    }
+
+    const itemValue = Math.round(totalBudget / list.length);
+    return list.map((item, idx) => {
+       const isLast = idx === list.length - 1;
+       const val = isLast ? (totalBudget - (itemValue * (list.length - 1))) : itemValue;
+       return {
+         id: `item_${idx}`,
+         label: item.label,
+         value: val
+       };
+    });
+  }, [project, totalBudget]);
 
   const availableCostItems = [...baseAvailableItems, ...customAvailableItems];
 
@@ -1832,7 +1941,7 @@ export default function PaymentsTab({ projectId, project }) {
 
       {/* Sub-Tabs */}
       <div className={styles.subTabsContainer} ref={subTabsRef}>
-        {['dashboard', 'collections', 'tally_sync', 'reconciliation', 'adjustments', 'breakdown', 'logs', 'audit_logs', 'milestones', 'gates', 'links', 'invoices', 'receipts', 'ledger', 'receivables', 'reminders', 'credits', 'approvals', ...(simulateRole === 'Admin' ? ['rbac'] : [])].map(tab => (
+        {['dashboard', 'collections', 'breakdown', 'logs', 'audit_logs', 'milestones', 'gates', 'links', 'invoices', 'receipts', 'ledger', 'receivables', 'reminders', 'approvals'].map(tab => (
           <button
             key={tab}
             className={`${styles.subTab} ${activeSubTab === tab ? styles.subTabActive : ''}`}
@@ -1840,9 +1949,6 @@ export default function PaymentsTab({ projectId, project }) {
           >
             {tab === 'dashboard' ? 'Dashboard' :
              tab === 'collections' ? 'Collections' :
-             tab === 'tally_sync' ? 'ERP Sync' :
-             tab === 'reconciliation' ? 'Bank Recon' :
-             tab === 'adjustments' ? 'Adjustments' :
              tab === 'breakdown' ? 'Cost Breakdown' : 
              tab === 'logs' ? 'History' : 
              tab === 'audit_logs' ? 'Audit Logs' : 
@@ -1854,8 +1960,7 @@ export default function PaymentsTab({ projectId, project }) {
              tab === 'ledger' ? 'Ledger' : 
              tab === 'receivables' ? 'Receivables' : 
              tab === 'reminders' ? 'Reminders' : 
-             tab === 'credits' ? 'Credits/Refunds' :
-             tab === 'approvals' ? 'Approvals' : 'RBAC Config'}
+             tab === 'approvals' ? 'Approvals' : ''}
           </button>
         ))}
       </div>
@@ -2142,7 +2247,7 @@ export default function PaymentsTab({ projectId, project }) {
           </div>
         )}
 
-        {activeSubTab === 'tally_sync' && (
+        {false && activeSubTab === 'tally_sync' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Tally Integration / ERP Sync</h3>
@@ -2275,7 +2380,7 @@ export default function PaymentsTab({ projectId, project }) {
           </div>
         )}
 
-        {activeSubTab === 'adjustments' && (
+        {false && activeSubTab === 'adjustments' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Payment Adjustments</h3>
@@ -2427,7 +2532,7 @@ export default function PaymentsTab({ projectId, project }) {
           </div>
         )}
 
-        {activeSubTab === 'reconciliation' && (
+        {false && activeSubTab === 'reconciliation' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Bank Reconciliation</h3>
@@ -3063,7 +3168,7 @@ export default function PaymentsTab({ projectId, project }) {
           </div>
         )}
 
-        {activeSubTab === 'credits' && (
+        {false && activeSubTab === 'credits' && (
           <div className={styles.creditsList}>
             <div className={styles.creditsSection}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -3329,7 +3434,7 @@ export default function PaymentsTab({ projectId, project }) {
           );
         })()}
 
-        {activeSubTab === 'rbac' && simulateRole === 'Admin' && (
+        {false && activeSubTab === 'rbac' && simulateRole === 'Admin' && (
           <div className={styles.rbacConfigList}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h4 style={{ margin: 0 }}>RBAC Configuration (Admin Only)</h4>

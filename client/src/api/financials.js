@@ -9,3 +9,5 @@ export const createCreditNote = (data) => api.post('/financials/credit-notes', d
 export const createRefund = (data) => api.post('/financials/refunds', data);
 
 export const getReceiptsByProject = (projectId) => api.get(`/receipts?projectId=${projectId}`);
+
+export const getAllReceipts = () => api.get(`/receipts`);

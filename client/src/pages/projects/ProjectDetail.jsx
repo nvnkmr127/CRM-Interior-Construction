@@ -62,11 +62,189 @@ import HandoverModal from '../../components/projects/HandoverModal';
 import DesignStageHeader from '../../components/projects/DesignStageHeader';
 import ActivityLogsTab from '../../components/projects/ActivityLogsTab';
 
+// FinancialOverviewPanel syncs with PaymentsTab's dynamic payment processing
+function FinancialOverviewPanel({ project, projectId }) {
+  const [stats, setStats] = useState({
+    contractValue: 0,
+    billed: 0,
+    collected: 0,
+    outstanding: 0,
+    overdue: 0,
+    pending: 0,
+    totalCost: 0
+  });
+
+  useEffect(() => {
+    let mounted = true;
+    
+    // Initial fallback from project.stats
+    const rawContractValue = project.stats?.netContractValue ?? project.contract_value;
+    const contractValue = Number(rawContractValue) || 0;
+    const billed = project.stats?.netBilled !== undefined ? project.stats.netBilled : (project.stats?.totalPayment || 0);
+    const collected = project.stats?.netCollections !== undefined ? project.stats.netCollections : (project.stats?.collectedPayment || 0);
+    const outstanding = project.stats?.outstandingBalance !== undefined ? project.stats.outstandingBalance : Math.max(0, billed - collected);
+    
+    setStats({
+      contractValue,
+      billed,
+      collected,
+      outstanding,
+      overdue: project.stats?.overduePayments || 0,
+      pending: project.stats?.pendingInvoices || 0,
+      totalCost: project.stats?.totalActualCost || 0
+    });
+
+    // Fetch payments to recalculate collected and outstanding (identical to PaymentsTab mock/fetch logic)
+    import('../../api/paymentMilestones').then(({ getPaymentMilestones }) => {
+      getPaymentMilestones(projectId).then(res => {
+         if (!mounted) return;
+         const _r = res.data?.data || res.data;
+         let raw = Array.isArray(_r) ? _r : [];
+         
+         const totalBudgetFallback = Number(project?.booking_amount || 0) > 0 ? Number(project.booking_amount) * 10 : 0;
+         const totalB = Number(project?.contract_value || 0) || totalBudgetFallback || 0;
+         
+         const defaultMilestoneConfig = [
+          { key: 'booking', name: 'Booking', percentage: 10, enabled: true, dependency: null },
+          { key: 'design', name: 'Design Advance', percentage: 15, enabled: true, dependency: 'booking' },
+          { key: 'production', name: 'Production', percentage: 40, enabled: true, dependency: 'design advance' },
+          { key: 'dispatch', name: 'Dispatch', percentage: 20, enabled: true, dependency: 'production' },
+          { key: 'installation', name: 'Installation', percentage: 10, enabled: true, dependency: 'dispatch' },
+          { key: 'handover', name: 'Final Handover', percentage: 5, enabled: true, dependency: 'installation' }
+         ];
+
+         const adminConfig = project?.milestone_config || defaultMilestoneConfig;
+         const activeMilestones = adminConfig.filter(m => m.enabled);
+
+         if (raw.length === 0) {
+            activeMilestones.forEach((mConf, index) => {
+              let mockDate = new Date(project?.createdAt || Date.now());
+              mockDate.setDate(mockDate.getDate() + (index * 15));
+              const milestoneAmount = (totalB * mConf.percentage) / 100;
+              let mockPaymentEntries = [];
+              let mockStatus = index === 0 ? 'pending' : 'scheduled';
+              if (index === 0) {
+                 mockStatus = 'paid';
+                 mockPaymentEntries = [{ amount: milestoneAmount }];
+              } else if (index === 1) {
+                 mockStatus = 'partially_paid';
+                 mockPaymentEntries = [{ amount: milestoneAmount * 0.5 }];
+              }
+              const mockEntry = {
+                id: `mock_m_${index}`,
+                amount: milestoneAmount,
+                payment_entries: mockPaymentEntries,
+                status: mockStatus
+              };
+              if (index === 0) raw.unshift(mockEntry);
+              else raw.push(mockEntry);
+            });
+         }
+         
+         let computedCollected = 0;
+         let computedRemaining = 0;
+
+         raw.forEach((p, index) => {
+            const entries = p.payment_entries ? [...p.payment_entries] : [];
+            if (index === 0 && entries.length === 0 && Number(project?.booking_amount || 0) > 0) {
+               entries.push({ amount: Number(project.booking_amount) });
+            }
+            if (p.status === 'paid' && entries.length === 0) {
+               entries.push({ amount: Number(p.amount || p.paid_amount || 0) });
+            }
+            const pCollected = entries.reduce((s, e) => s + Number(e.amount || 0), 0);
+            computedCollected += pCollected;
+            computedRemaining += (Number(p.amount || p.paid_amount || 0) - pCollected);
+         });
+
+         setStats(prev => ({
+           ...prev,
+           collected: computedCollected,
+           outstanding: computedRemaining,
+           billed: computedCollected + computedRemaining
+         }));
+      }).catch(err => console.log('Error fetching milestones for overview', err));
+    });
+    
+    return () => { mounted = false; };
+  }, [projectId, project]);
+
+  const effectiveRevenue = stats.contractValue > 0 ? stats.contractValue : stats.billed;
+  const grossProfit = project.stats?.grossProfit !== undefined 
+      ? project.stats.grossProfit 
+      : (effectiveRevenue > 0 || stats.totalCost > 0 ? effectiveRevenue - stats.totalCost : 0);
+      
+  const grossMarginPct = project.stats?.grossMarginPct !== undefined 
+      ? project.stats.grossMarginPct 
+      : (effectiveRevenue > 0 ? Math.round((grossProfit / effectiveRevenue) * 100) : 0);
+
+  return (
+    <div className={styles.financialPanel}>
+      <div className={styles.financialPanelHeader}>Financial Overview</div>
+      <div className={styles.financialGrid}>
+        <div className={styles.financialCard}>
+          <span className={styles.financialLabel}>Contract Value (Net)</span>
+          <span className={styles.financialValue}>
+            {formatValue(stats.contractValue > 0 ? stats.contractValue : project.contract_value)}
+          </span>
+        </div>
+        <div className={styles.financialCard}>
+          <span className={styles.financialLabel}>Billed (Net)</span>
+          <span className={styles.financialValue}>
+            {formatValue(stats.billed)}
+          </span>
+        </div>
+        <div className={styles.financialCard}>
+          <span className={styles.financialLabel}>Collected (Net)</span>
+          <span className={styles.financialValue} style={{ color: 'var(--color-success, #22c55e)' }}>
+            {formatValue(stats.collected)}
+          </span>
+        </div>
+        <div className={styles.financialCard}>
+          <span className={styles.financialLabel}>Outstanding Balance</span>
+          <span className={styles.financialValue} style={{ color: 'var(--color-accent, #3b82f6)' }}>
+            {formatValue(stats.outstanding)}
+          </span>
+        </div>
+        <div className={styles.financialCard}>
+          <span className={styles.financialLabel}>Overdue Amount</span>
+          <span className={`${styles.financialValue} ${stats.overdue > 0 ? styles.financialDanger : ''}`}>
+            {formatValue(stats.overdue)}
+          </span>
+        </div>
+        <div className={styles.financialCard}>
+          <span className={styles.financialLabel}>Pending Invoices</span>
+          <span className={styles.financialValue} style={{ color: 'var(--color-info, #0ea5e9)' }}>
+            {formatValue(stats.pending)}
+          </span>
+        </div>
+        <div className={styles.financialCard}>
+          <span className={styles.financialLabel}>Total Cost</span>
+          <span className={styles.financialValue} style={{ color: 'var(--color-danger, #ef4444)' }}>
+            {formatValue(stats.totalCost)}
+          </span>
+        </div>
+        <div className={styles.financialCard}>
+          <span className={styles.financialLabel}>Gross Profit</span>
+          <span className={styles.financialValue} style={{ color: grossProfit >= 0 && effectiveRevenue > 0 ? 'var(--color-success, #22c55e)' : grossProfit < 0 ? 'var(--color-danger, #ef4444)' : 'inherit' }}>
+            {effectiveRevenue > 0 || stats.totalCost > 0 ? formatValue(grossProfit) : '—'}
+          </span>
+        </div>
+        <div className={styles.financialCard}>
+          <span className={styles.financialLabel}>Gross Margin</span>
+          <span className={styles.financialValue} style={{ color: grossMarginPct >= 20 ? 'var(--color-success, #22c55e)' : (grossMarginPct > 0 ? 'var(--color-warning, #eab308)' : (grossMarginPct < 0 ? 'var(--color-danger, #ef4444)' : 'inherit')) }}>
+            {effectiveRevenue > 0 ? `${grossMarginPct}%` : '—'}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // New Editable Tabs
 const TeamAndRolesTab = React.lazy(() => import('../../components/projects/TeamAndRolesTab'));
 const ClientProfileTab = React.lazy(() => import('../../components/projects/ClientProfileTab'));
 const SiteDetailsTab = React.lazy(() => import('../../components/projects/SiteDetailsTab'));
-const VendorsAndConsultantsTab = React.lazy(() => import('../../components/projects/VendorsAndConsultantsTab'));
 const SettingsTab = React.lazy(() => import('../../components/projects/SettingsTab'));
 
 function formatDate(dateStr) {
@@ -106,7 +284,7 @@ function OverviewTab({ project, onRefresh, onEdit }) {
   const cf = project.custom_fields || {};
 
   const fields = [
-    { label: 'Project Type',    value: project.project_type ? project.project_type.replace(/_/g, ' ') : '—' },
+    { label: 'Project Type',    value: (project.type || project.project_type) ? (project.type || project.project_type).replace(/_/g, ' ') : '—' },
     { label: 'City',            value: project.city || '—' },
     { label: 'Builder Name',    value: project.builder_name || '—' },
     { label: 'Project Category', value: project.project_category ? project.project_category.replace(/_/g, ' ') : '—' },
@@ -149,7 +327,7 @@ function OverviewTab({ project, onRefresh, onEdit }) {
           <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
             Project Details
           </div>
-          <Button variant="outline" size="sm" onClick={onEdit}>
+          <Button variant="outline" size="sm" onClick={() => onEdit('details')}>
             ✏️ Edit
           </Button>
         </div>
@@ -173,8 +351,15 @@ function OverviewTab({ project, onRefresh, onEdit }) {
 
       {/* Design Stage Revisions Tracker */}
       <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden', padding: '20px' }}>
-        <h3 style={{ margin: '0 0 4px 0', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>Stage Revision Limits & Counts</h3>
-        <p style={{ margin: '0 0 16px 0', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Permitted revision rounds and active consumption per design stage.</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+          <div>
+            <h3 style={{ margin: '0 0 4px 0', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>Stage Revision Limits & Counts</h3>
+            <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Permitted revision rounds and active consumption per design stage.</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => onEdit('revisions')}>
+            ✏️ Edit
+          </Button>
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
           {[
             'Requirement Gathering',
@@ -239,8 +424,13 @@ function OverviewTab({ project, onRefresh, onEdit }) {
 
       {/* Team */}
       <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
-        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
-          Team
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid var(--color-border)' }}>
+          <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+            Team
+          </div>
+          <Button variant="outline" size="sm" onClick={() => onEdit('team')}>
+            ✏️ Edit
+          </Button>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 0 }}>
           {[
@@ -647,6 +837,7 @@ export default function ProjectDetail() {
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [editingSection, setEditingSection] = useState('all');
   const [isReopenModalOpen, setIsReopenModalOpen] = useState(false);
   const [isPauseModalOpen, setIsPauseModalOpen] = useState(false);
   const [isResumeModalOpen, setIsResumeModalOpen] = useState(false);
@@ -694,7 +885,7 @@ export default function ProjectDetail() {
 
   const allTabs = [
     // Initiation & Setup
-    'Overview', 'Client Profile', 'Site Details', 'Team & Roles', 'Vendors & Consultants', 'Booking', 'Baseline Assessment',
+    'Overview', 'Client Profile', 'Site Details', 'Team & Roles', 'Booking', 'Baseline Assessment',
     
     // Design & Planning
     'Design Brief', 'Design Assets', 'Material Palettes', 'Substitutions', 'Design Reviews', 'Coordination', 
@@ -740,11 +931,10 @@ export default function ProjectDetail() {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'Overview': return project ? <OverviewTab project={project} onRefresh={reloadProject} onEdit={() => setIsEditing(true)} /> : null;
+      case 'Overview': return project ? <OverviewTab project={project} onRefresh={reloadProject} onEdit={(section = 'all') => { setEditingSection(section); setIsEditing(true); }} /> : null;
       case 'Team & Roles': return <TeamAndRolesTab project={project} onRefresh={reloadProject} />;
       case 'Client Profile': return <ClientProfileTab project={project} onRefresh={reloadProject} />;
       case 'Site Details': return <SiteDetailsTab project={project} onRefresh={reloadProject} />;
-      case 'Vendors & Consultants': return <VendorsAndConsultantsTab project={project} onRefresh={reloadProject} />;
       case 'Settings': return <SettingsTab project={project} onRefresh={reloadProject} />;
       case 'Activity Logs': return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -756,67 +946,7 @@ export default function ProjectDetail() {
           </div>
         </div>
       );
-      case 'Financial Overview': return (
-        <div className={styles.financialPanel}>
-          <div className={styles.financialPanelHeader}>Financial Overview</div>
-          <div className={styles.financialGrid}>
-            <div className={styles.financialCard}>
-              <span className={styles.financialLabel}>Contract Value (Net)</span>
-              <span className={styles.financialValue}>
-                {formatValue(project.stats?.netContractValue || project.contract_value)}
-              </span>
-            </div>
-            <div className={styles.financialCard}>
-              <span className={styles.financialLabel}>Billed (Net)</span>
-              <span className={styles.financialValue}>
-                {formatValue(project.stats?.netBilled !== undefined ? project.stats.netBilled : project.stats?.totalPayment)}
-              </span>
-            </div>
-            <div className={styles.financialCard}>
-              <span className={styles.financialLabel}>Collected (Net)</span>
-              <span className={styles.financialValue} style={{ color: 'var(--color-success, #22c55e)' }}>
-                {formatValue(project.stats?.netCollections !== undefined ? project.stats.netCollections : project.stats?.collectedPayment)}
-              </span>
-            </div>
-            <div className={styles.financialCard}>
-              <span className={styles.financialLabel}>Outstanding Balance</span>
-              <span className={styles.financialValue} style={{ color: 'var(--color-accent, #3b82f6)' }}>
-                {formatValue(project.stats?.outstandingBalance !== undefined ? project.stats.outstandingBalance : (project.stats?.totalPayment - project.stats?.collectedPayment))}
-              </span>
-            </div>
-            <div className={styles.financialCard}>
-              <span className={styles.financialLabel}>Overdue Amount</span>
-              <span className={`${styles.financialValue} ${project.stats?.overduePayments > 0 ? styles.financialDanger : ''}`}>
-                {formatValue(project.stats?.overduePayments || 0)}
-              </span>
-            </div>
-            <div className={styles.financialCard}>
-              <span className={styles.financialLabel}>Pending Invoices</span>
-              <span className={styles.financialValue} style={{ color: 'var(--color-info, #0ea5e9)' }}>
-                {formatValue(project.stats?.pendingInvoices || 0)}
-              </span>
-            </div>
-            <div className={styles.financialCard}>
-              <span className={styles.financialLabel}>Total Cost</span>
-              <span className={styles.financialValue} style={{ color: 'var(--color-danger, #ef4444)' }}>
-                {formatValue(project.stats?.totalActualCost || 0)}
-              </span>
-            </div>
-            <div className={styles.financialCard}>
-              <span className={styles.financialLabel}>Gross Profit</span>
-              <span className={styles.financialValue} style={{ color: (project.stats?.grossProfit || 0) >= 0 ? 'var(--color-success, #22c55e)' : 'var(--color-danger, #ef4444)' }}>
-                {formatValue(project.stats?.grossProfit !== undefined ? project.stats.grossProfit : (project.stats?.netContractValue || project.contract_value))}
-              </span>
-            </div>
-            <div className={styles.financialCard}>
-              <span className={styles.financialLabel}>Gross Margin</span>
-              <span className={styles.financialValue} style={{ color: (project.stats?.grossMarginPct || 0) >= 20 ? 'var(--color-success, #22c55e)' : (project.stats?.grossMarginPct || 0) >= 0 ? 'var(--color-warning, #eab308)' : 'var(--color-danger, #ef4444)' }}>
-                {project.stats?.grossMarginPct !== undefined ? `${project.stats.grossMarginPct}%` : '100%'}
-              </span>
-            </div>
-          </div>
-        </div>
-      );
+      case 'Financial Overview': return <FinancialOverviewPanel project={project} projectId={projectId} />;
       case 'Booking': return <BookingTab projectId={projectId} projectStatus={project?.status} onProjectUpdated={reloadProject} />;
       case 'Meeting Notes': return <MeetingNotesTab projectId={projectId} />;
       case 'Site Visits': return <SiteVisitsTab projectId={projectId} />;
@@ -850,7 +980,7 @@ export default function ProjectDetail() {
       case 'Documents': return <DocumentPanel projectId={projectId} />;
       case 'Drawing Register': return <DrawingRegisterTab projectId={projectId} />;
       case 'MEP Checklist': return <MepChecklistTab projectId={projectId} />;
-      case 'Payments': return <PaymentsTab projectId={projectId} project={project} />;
+      case 'Payments': return <PaymentsTab projectId={projectId} project={project} onProjectUpdated={reloadProject} />;
       case 'Execution QC': return <ExecutionQCTab projectId={projectId} project={project} />;
       case 'Snags': return <SnagsDashboard projectId={projectId} />;
       case 'Handover': return <HandoverChecklist projectId={projectId} />;
@@ -900,7 +1030,7 @@ export default function ProjectDetail() {
   const taskTotal = project.stats?.totalTasks     ?? 0;
   const currentPhase = project.phases?.find(p => p.status !== 'completed')?.name
     || project.phases?.[project.phases.length - 1]?.name
-    || '—';
+    || (project.status ? project.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '—');
 
   if (!canAccessPage(activeTab)) {
     return (
@@ -937,7 +1067,7 @@ export default function ProjectDetail() {
             <div className={styles.projName}>
               {project.name}{' '}
               <Badge variant={project.status === 'active' ? 'info' : project.status === 'completed' ? 'success' : 'warning'} dot>
-                {project.status || 'Unknown'}
+                {project.status ? project.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Unknown'}
               </Badge>{' '}
               {project.is_scope_locked ? (
                 <Badge variant="success">🔒 Scope Locked</Badge>
@@ -945,13 +1075,28 @@ export default function ProjectDetail() {
                 <Badge variant="warning">🔓 Scope Unlocked</Badge>
               )}
             </div>
-            <div className={styles.clientName}>{project.client_name || '—'}</div>
+            <div className={styles.clientName} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {project.client_name || '—'}
+              {(project.type || project.project_type) && (
+                <span style={{ 
+                  background: 'var(--color-surface-hover, #f1f5f9)', 
+                  padding: '2px 8px', 
+                  borderRadius: '4px', 
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: 'var(--color-text-secondary, #475569)',
+                  border: '1px solid var(--color-border, #e2e8f0)'
+                }}>
+                  {(project.type || project.project_type).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                </span>
+              )}
+            </div>
           </div>
           <div className={styles.headerRight}>
-            <div className={styles.value}>{formatValue(project.contract_value)}</div>
+            <div className={styles.value}>{formatValue(project.stats?.netContractValue || project.contract_value)}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <PermissionButton module="projects" action="edit">
-                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                <Button variant="outline" size="sm" onClick={() => { setEditingSection('all'); setIsEditing(true); }}>
                   ✏️ Edit
                 </Button>
               </PermissionButton>
@@ -1137,14 +1282,13 @@ export default function ProjectDetail() {
         <div className={styles.headerNav} ref={navRef}>
           {[
             { id: 'Overview', icon: '📝', label: 'Overview' },
-            { id: 'Team & Roles', icon: '👥', label: 'Team & Roles' },
             { id: 'Client Profile', icon: '👤', label: 'Client Profile' },
             { id: 'Site Details', icon: '📍', label: 'Site Details' },
-            { id: 'Vendors & Consultants', icon: '🤝', label: 'Vendors & Consultants' },
-            { id: 'Settings', icon: '⚙️', label: 'Settings' },
             { id: 'Financial Overview', icon: '💰', label: 'Financial Overview' },
             { id: 'Payments', icon: '💸', label: 'Payments' },
-            { id: 'Activity Logs', icon: '📋', label: 'Activity Logs' }
+            { id: 'Team & Roles', icon: '👥', label: 'Team & Roles' },
+            { id: 'Activity Logs', icon: '📋', label: 'Activity Logs' },
+            { id: 'Settings', icon: '⚙️', label: 'Settings' }
           ].filter(tab => canAccessPage(tab.id)).map(tab => {
             const isActive = activeTab === tab.id;
             return (
@@ -1176,6 +1320,7 @@ export default function ProjectDetail() {
 
       {isEditing && (
         <ProjectForm 
+          editSection={editingSection}
           isOpen={true}
           project={project} 
           onClose={() => setIsEditing(false)} 
