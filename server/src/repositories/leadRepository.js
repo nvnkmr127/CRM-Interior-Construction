@@ -133,7 +133,7 @@ async function findLeadById(tenantId, leadId) {
         AND a.type = 'meeting' 
         AND a.scheduled_at IS NOT NULL 
         AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
-      ORDER BY a.scheduled_at ASC
+      ORDER BY (CASE WHEN a.scheduled_at ~ '^\\d{4}-\\d{2}-\\d{2}' THEN CAST(a.scheduled_at AS timestamptz) >= CURRENT_TIMESTAMP ELSE false END) DESC, a.scheduled_at ASC
       LIMIT 1
     ) AS next_mtg ON true
     WHERE l.tenant_id = $1 AND l.id = $2 AND l.deleted_at IS NULL
@@ -200,7 +200,7 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
         AND a.type = 'meeting' 
         AND a.scheduled_at IS NOT NULL 
         AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
-      ORDER BY a.scheduled_at ASC
+      ORDER BY (CASE WHEN a.scheduled_at ~ '^\\d{4}-\\d{2}-\\d{2}' THEN CAST(a.scheduled_at AS timestamptz) >= CURRENT_TIMESTAMP ELSE false END) DESC, a.scheduled_at ASC
       LIMIT 1
     ) AS next_mtg ON true
     WHERE l.tenant_id = $1 AND l.deleted_at IS NULL AND (${scopeFilter})

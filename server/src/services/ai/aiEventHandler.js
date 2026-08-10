@@ -1,5 +1,5 @@
 const logger = require('../../utils/logger');
-const eventBus = require('../eventBus');
+const eventBus = require('../../utils/eventBus');
 const { aiQueue } = require('../../queues/queueSetup');
 
 // Subscribe to Lead events

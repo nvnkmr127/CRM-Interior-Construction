@@ -9,6 +9,7 @@ import {
   useSensors 
 } from '@dnd-kit/core';
 import { 
+
   arrayMove, 
   SortableContext, 
   sortableKeyboardCoordinates, 
@@ -17,8 +18,9 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { configApi } from '../../api/config';
+import layoutStyles from './ConfigLayout.module.css';
 import styles from './CustomFieldsManager.module.css';
-
+import { Button, Modal, Input, Select } from '../../components/ui';
 import { useConfirm } from '../../store/confirmContext';
 
 // SVG Icons
@@ -39,8 +41,6 @@ const TrashIcon = () => (
 );
 
 function SortableRow({ field, onEdit, onDelete, onToggleActive }) {
-  const { confirm } = useConfirm();
-
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: field.id });
   
   const style = {
@@ -69,9 +69,9 @@ function SortableRow({ field, onEdit, onDelete, onToggleActive }) {
         />
       </td>
       <td className={styles.td}>
-        <div className={styles.actions}>
-          <button className={styles.actionBtn} onClick={async () => onEdit(field)}><EditIcon/></button>
-          <button className={`${styles.actionBtn} ${styles.actionBtnDelete}`} onClick={async () => onDelete(field.id)}><TrashIcon/></button>
+        <div className={styles.actions} style={{ display: 'flex', gap: '8px' }}>
+          <Button variant="ghost" size="sm" onClick={() => onEdit(field)}><EditIcon/></Button>
+          <Button variant="ghost" size="sm" style={{color:'var(--color-danger)'}} onClick={() => onDelete(field.id)}><TrashIcon/></Button>
         </div>
       </td>
     </tr>
@@ -193,128 +193,135 @@ export default function CustomFieldsManager() {
   };
 
   return (
-    <div className={`${styles.container} fade-in`}>
-      <div className={styles.header}>
-        <div className={styles.tabs}>
+    <div className={`${layoutStyles.configSection} fade-in`} style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      <div className={layoutStyles.sectionHeader} style={{ flexShrink: 0, margin: 0, padding: '24px 32px', borderBottom: '1px solid var(--color-border)', backgroundColor: '#fff' }}>
+        <div>
+          <h2 className={layoutStyles.sectionTitle}>Custom Fields</h2>
+          <p className={layoutStyles.sectionDesc}>Manage custom data fields for leads, projects, and tasks.</p>
+        </div>
+        <Button variant="primary" onClick={() => openModal()}>+ Add Field</Button>
+      </div>
+
+      <div style={{ flexShrink: 0, padding: '0 32px', backgroundColor: '#fff', borderBottom: '1px solid var(--color-border)' }}>
+        <div style={{ display: 'flex', gap: '24px', paddingTop: '16px' }}>
           {['lead', 'project', 'task'].map(ent => (
-            <button 
+            <div 
               key={ent}
-              className={`${styles.tab} ${activeEntity === ent ? styles.activeTab : ''}`}
-              onClick={async () => setActiveEntity(ent)}
+              onClick={() => setActiveEntity(ent)}
+              style={{ 
+                cursor: 'pointer', 
+                paddingBottom: '12px', 
+                borderBottom: activeEntity === ent ? '2px solid var(--color-accent)' : '2px solid transparent', 
+                fontWeight: activeEntity === ent ? 600 : 500, 
+                color: activeEntity === ent ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+                transition: 'all 0.2s'
+              }}
             >
               {ent.charAt(0).toUpperCase() + ent.slice(1)}s
-            </button>
+            </div>
           ))}
         </div>
-        <button className={styles.addButton} onClick={async () => openModal()}>+ Add Field</button>
       </div>
 
-      <div className={styles.tableContainer}>
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th className={styles.th} style={{width: '40px'}}></th>
-                <th className={styles.th}>Label</th>
-                <th className={styles.th}>Internal Name</th>
-                <th className={styles.th}>Type</th>
-                <th className={styles.th}>Required</th>
-                <th className={styles.th}>Active</th>
-                <th className={styles.th}>Actions</th>
-              </tr>
-            </thead>
-            <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
-              <tbody>
-                {fields.map(field => (
-                  <SortableRow 
-                    key={field.id} 
-                    field={field} 
-                    onEdit={openModal} 
-                    onDelete={handleDelete}
-                    onToggleActive={handleToggleActive}
-                  />
-                ))}
-                {fields.length === 0 && !loading && (
-                  <tr><td colSpan="7" style={{padding: '20px', textAlign: 'center', color: 'var(--color-text-muted)'}}>No custom fields found.</td></tr>
-                )}
-              </tbody>
-            </SortableContext>
-          </table>
-        </DndContext>
-      </div>
-
-      {isModalOpen && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalContent}>
-            <h3 style={{marginTop: 0}}>{editingField ? 'Edit Field' : 'Add Custom Field'}</h3>
-            
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Label</label>
-              <input 
-                className={styles.input} 
-                value={formData.label} 
-                onChange={(e) => setFormData({...formData, label: e.target.value, name: generateName(e.target.value)})}
-                placeholder="e.g. Budget Range"
-              />
-            </div>
-
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Internal Name</label>
-              <input 
-                className={styles.input} 
-                value={formData.name} 
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                disabled={!!editingField}
-              />
-            </div>
-
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Field Type</label>
-              <select 
-                className={styles.select}
-                value={formData.field_type}
-                onChange={(e) => setFormData({...formData, field_type: e.target.value})}
-                disabled={!!editingField}
-              >
-                <option value="text">Text</option>
-                <option value="number">Number</option>
-                <option value="date">Date</option>
-                <option value="dropdown">Dropdown</option>
-                <option value="multi_select">Multi Select</option>
-                <option value="file">File</option>
-                <option value="boolean">Yes/No</option>
-              </select>
-            </div>
-
-            {['dropdown', 'multi_select'].includes(formData.field_type) && (
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Options (comma separated)</label>
-                <input 
-                  className={styles.input} 
-                  value={formData.optionsStr} 
-                  onChange={(e) => setFormData({...formData, optionsStr: e.target.value})}
-                  placeholder="e.g. <5L, 5-10L, >10L"
-                />
-              </div>
-            )}
-
-            <div className={styles.checkboxContainer}>
-              <input 
-                type="checkbox" 
-                id="isRequired"
-                checked={formData.is_required}
-                onChange={(e) => setFormData({...formData, is_required: e.target.checked})}
-              />
-              <label htmlFor="isRequired" className={styles.label}>Required Field</label>
-            </div>
-
-            <div className={styles.modalActions}>
-              <button className={styles.cancelBtn} onClick={async () => setIsModalOpen(false)}>Cancel</button>
-              <button className={styles.saveBtn} onClick={handleSave}>Save</button>
-            </div>
-          </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
+        <div style={{ backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <table className={styles.table} style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
+              <thead>
+                <tr style={{ backgroundColor: 'var(--color-surface-2)', borderBottom: '1px solid var(--color-border)' }}>
+                  <th style={{ width: '40px', padding: '12px 16px' }}></th>
+                  <th style={{ padding: '12px 16px', fontWeight: 500, color: 'var(--color-text-secondary)' }}>Label</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 500, color: 'var(--color-text-secondary)' }}>Internal Name</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 500, color: 'var(--color-text-secondary)' }}>Type</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 500, color: 'var(--color-text-secondary)' }}>Required</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 500, color: 'var(--color-text-secondary)' }}>Active</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 500, color: 'var(--color-text-secondary)' }}>Actions</th>
+                </tr>
+              </thead>
+              <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
+                <tbody>
+                  {fields.map(field => (
+                    <SortableRow 
+                      key={field.id} 
+                      field={field} 
+                      onEdit={openModal} 
+                      onDelete={handleDelete}
+                      onToggleActive={handleToggleActive}
+                    />
+                  ))}
+                  {fields.length === 0 && !loading && (
+                    <tr><td colSpan="7" style={{padding: '32px', textAlign: 'center', color: 'var(--color-text-muted)'}}>No custom fields found for this entity.</td></tr>
+                  )}
+                </tbody>
+              </SortableContext>
+            </table>
+          </DndContext>
         </div>
-      )}
+      </div>
+
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingField ? 'Edit Custom Field' : 'Add Custom Field'}
+        size="md"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+            <Button variant="primary" onClick={handleSave}>Save Field</Button>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <Input 
+            label="Field Label" 
+            placeholder="e.g. Budget Range" 
+            value={formData.label} 
+            onChange={(e) => setFormData({...formData, label: e.target.value, name: generateName(e.target.value)})} 
+          />
+
+          <Input 
+            label="Internal Name" 
+            value={formData.name} 
+            onChange={(e) => setFormData({...formData, name: e.target.value})} 
+            disabled={!!editingField}
+          />
+
+          <Select 
+            label="Field Type"
+            value={formData.field_type}
+            onChange={(v) => setFormData({...formData, field_type: v})}
+            disabled={!!editingField}
+            options={[
+              { value: 'text', label: 'Text' },
+              { value: 'number', label: 'Number' },
+              { value: 'date', label: 'Date' },
+              { value: 'dropdown', label: 'Dropdown' },
+              { value: 'multi_select', label: 'Multi Select' },
+              { value: 'file', label: 'File' },
+              { value: 'boolean', label: 'Yes/No' }
+            ]}
+          />
+
+          {['dropdown', 'multi_select'].includes(formData.field_type) && (
+            <Input 
+              label="Options (comma separated)" 
+              placeholder="e.g. Option A, Option B, Option C" 
+              value={formData.optionsStr} 
+              onChange={(e) => setFormData({...formData, optionsStr: e.target.value})} 
+            />
+          )}
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--text-sm)', cursor: 'pointer', marginTop: '8px' }}>
+            <input 
+              type="checkbox" 
+              checked={formData.is_required} 
+              onChange={(e) => setFormData({...formData, is_required: e.target.checked})}
+              style={{ width: '16px', height: '16px' }}
+            />
+            Required Field
+          </label>
+        </div>
+      </Modal>
     </div>
   );
 }

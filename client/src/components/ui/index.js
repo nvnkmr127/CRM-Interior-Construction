@@ -23,3 +23,4 @@ export { default as PageHeader } from './PageHeader';
 export { default as Checkbox } from './Checkbox';
 export { default as PermissionButton } from './PermissionButton';
 export { default as ApprovalBadge } from './ApprovalBadge';
+export { default as OrgNodeCard } from './OrgNodeCard';

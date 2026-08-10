@@ -1,0 +1,21 @@
+import api from './axios';
+
+export const getAll = async (params) => {
+  return await api.get('/budget', { params });
+};
+
+export const getById = async (id) => {
+  return await api.get(`/budget/${id}`);
+};
+
+export const create = async (data) => {
+  return await api.post('/budget', data);
+};
+
+export const update = async (id, data) => {
+  return await api.put(`/budget/${id}`, data);
+};
+
+export const remove = async (id) => {
+  return await api.delete(`/budget/${id}`);
+};

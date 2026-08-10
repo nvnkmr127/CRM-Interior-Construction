@@ -1,5 +1,5 @@
 const logger = require('../../utils/logger');
-const eventBus = require('../eventBus');
+const eventBus = require('../../utils/eventBus');
 const pool = require('../../db/pool');
 class TimelineWriter {
   constructor() {
@@ -8,10 +8,12 @@ class TimelineWriter {
 
   listen() {
     eventBus.on('*', async (event) => {
+      require('fs').appendFileSync('d:/Digicloudify softwares/CRM-Interior-Construction/debug_timeline.txt', `\n[${new Date().toISOString()}] RECEIVED *: ` + JSON.stringify(event));
       try {
         await this.handleEvent(event);
       } catch (error) {
         logger.error('[TimelineWriter] Error writing to timeline:', error);
+        require('fs').appendFileSync('d:/Digicloudify softwares/CRM-Interior-Construction/debug_timeline.txt', `\nERROR: ` + error.message);
       }
     });
   }
@@ -41,6 +43,9 @@ class TimelineWriter {
         summary = `Stage changed from ${oldStage} to ${newStage}${payload.mandatoryFieldsText || ''}`;
       } else if (eventName === 'lead.created') {
         summary = 'Lead created';
+      } else if (eventName === 'lead.assigned') {
+        eventType = 'system.assignment';
+        summary = `Lead reassigned`;
       } else if (eventName === 'lead.file_uploaded') {
         const fileName = payload.file?.file_name || 'A file';
         summary = `Uploaded file: ${fileName}`;

@@ -30,10 +30,10 @@ function KpiCard({ label, value, sub, accentColor, icon }) {
 }
 
 const DATE_RANGES = [
-  { key: '30D', label: 'Last 30 Days' },
-  { key: '90D', label: 'Last 90 Days' },
-  { key: '1Y', label: 'Last Year' },
-  { key: 'ALL', label: 'All Time' },
+  { value: '30D', label: 'Last 30 Days' },
+  { value: '90D', label: 'Last 90 Days' },
+  { value: '1Y', label: 'Last Year' },
+  { value: 'ALL', label: 'All Time' },
 ];
 
 export default function DelayAnalysisReportPage() {
@@ -97,17 +97,31 @@ export default function DelayAnalysisReportPage() {
   };
 
   return (
-    <div className={styles.page}>
-      <div className={styles.filters}>
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <div className={styles.titleWrapper}>
+          <h1>
+            <span className={styles.titleIcon}>⏱</span>
+            Delay Analysis Report
+          </h1>
+          <p className={styles.subtitle}>
+            Identify bottlenecks and track project timeline deviations.
+          </p>
+        </div>
+      </div>
+
+      <div className={styles.toolbar}>
         <div style={{ width: 200 }}>
           <Select
             options={DATE_RANGES}
-            value={DATE_RANGES.find(o => o.key === period)}
-            onChange={(opt) => setPeriod(opt.key)}
+            value={period}
+            onChange={(val) => setPeriod(val)}
             placeholder="Select Period"
           />
         </div>
       </div>
+
+      <div className={styles.content}>
 
       {loading ? (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading delay analytics...</div>
@@ -123,13 +137,13 @@ export default function DelayAnalysisReportPage() {
             />
             <KpiCard
               label="Most Frequent Cause"
-              value={data.frequencyByCause.length ? data.frequencyByCause.reduce((max, obj) => obj.count > max.count ? obj : max, data.frequencyByCause[0]).name : '—'}
+              value={data?.frequencyByCause?.length ? data.frequencyByCause.reduce((max, obj) => obj.count > max.count ? obj : max, data.frequencyByCause[0]).name : '—'}
               sub="Based on schedule revisions"
               icon="⚠️"
             />
             <KpiCard
               label="Avg Delay Duration"
-              value={`${data.durationByType.length ? Math.round(data.durationByType.reduce((sum, o) => sum + o.avgDays, 0) / data.durationByType.length) : 0} Days`}
+              value={`${data?.durationByType?.length ? Math.round(data.durationByType.reduce((sum, o) => sum + o.avgDays, 0) / data.durationByType.length) : 0} Days`}
               sub="Across all project types"
               icon="📅"
             />
@@ -141,7 +155,7 @@ export default function DelayAnalysisReportPage() {
               <h3 className={styles.chartTitle}>Delay Frequency by Cause</h3>
               <p className={styles.chartDesc}>Number of delays categorized by root cause.</p>
               <div style={{ width: '100%', height: 300 }}>
-                {data.frequencyByCause.length > 0 ? (
+                {data?.frequencyByCause?.length > 0 ? (
                   <ResponsiveContainer>
                     <PieChart>
                       <Pie
@@ -173,7 +187,7 @@ export default function DelayAnalysisReportPage() {
               <h3 className={styles.chartTitle}>Avg Delay Duration by Project Type</h3>
               <p className={styles.chartDesc}>Which types of projects experience the longest delays.</p>
               <div style={{ width: '100%', height: 300 }}>
-                {data.durationByType.length > 0 ? (
+                {data?.durationByType?.length > 0 ? (
                   <ResponsiveContainer>
                     <BarChart data={data.durationByType} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
@@ -196,9 +210,9 @@ export default function DelayAnalysisReportPage() {
               <h3 className={styles.chartTitle}>Delay Trends Over Time</h3>
               <p className={styles.chartDesc}>Total days of delay recorded per month.</p>
               <div style={{ width: '100%', height: 350 }}>
-                {data.trendByMonth.length > 0 ? (
+                {data?.trendByMonth?.length > 0 ? (
                   <ResponsiveContainer>
-                    <AreaChart data={data.trendByMonth || []} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <AreaChart data={data.trendByMonth} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorDelay" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor={ACCENT} stopOpacity={0.3} />
@@ -222,6 +236,7 @@ export default function DelayAnalysisReportPage() {
           </div>
         </>
       )}
+      </div>
     </div>
   );
 }

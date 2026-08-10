@@ -20,6 +20,8 @@ export default function WebhooksManager() {
   const [editTarget, setEditTarget] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [logsTarget, setLogsTarget] = useState(null)
+  const [webhookLogs, setWebhookLogs] = useState([])
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false)
   
   const [appliedFilters, setAppliedFilters] = useState({})
   const [sortBy, setSortBy] = useState({ key: 'name', dir: 'asc' })
@@ -42,6 +44,14 @@ export default function WebhooksManager() {
   useEffect(() => {
     fetchWebhooks()
   }, [])
+
+  useEffect(() => {
+    if (logsTarget) {
+      fetchLogs(logsTarget.id)
+    } else {
+      setWebhookLogs([])
+    }
+  }, [logsTarget])
 
   const stats = useMemo(() => {
     const total = webhooks.length;
@@ -85,6 +95,18 @@ export default function WebhooksManager() {
       setWebhooks(formatted)
     } catch (err) {
       toast.error('Failed to load webhooks')
+    }
+  }
+
+  const fetchLogs = async (webhookId) => {
+    setIsLoadingLogs(true)
+    try {
+      const res = await api.get('/logs/webhook-events', { params: { webhook_id: webhookId } })
+      setWebhookLogs(res.data.data || [])
+    } catch (err) {
+      toast.error('Failed to load webhook logs')
+    } finally {
+      setIsLoadingLogs(false)
     }
   }
 
@@ -234,10 +256,10 @@ export default function WebhooksManager() {
     setEditTarget({...editTarget, secret: newSecret});
   }
 
-  const saveWebhook = async () => {
+  const saveWebhook = async (e) => {
+    if (e) e.preventDefault();
     if (!editTarget.name || !editTarget.url) return toast.error('Name and URL are required')
     
-    // Map headers array to object
     const headersObj = {}
     editTarget.headers.forEach(h => {
       if (h.key && h.value) headersObj[h.key] = h.value
@@ -308,8 +330,8 @@ export default function WebhooksManager() {
       label: 'Webhook Name',
       sortable: true,
       render: (w) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ fontWeight: 500, color: 'var(--color-text)' }}>{w.name}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={() => openEditor(w)}>
+          <div style={{ fontWeight: 500, color: 'var(--color-primary)' }}>{w.name}</div>
           {w.debugMode && <Badge variant="warning" size="sm">Debug ON</Badge>}
         </div>
       )
@@ -341,8 +363,19 @@ export default function WebhooksManager() {
       key: 'status',
       label: 'Status',
       sortable: true,
+      render: (w) => (
+        <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
+          <div className={`${styles.toggle} ${w.active ? styles.active : ''}`} onClick={() => toggleActive(w.id)}>
+            <div className={styles.toggleHandle} />
+          </div>
+          {w.active ? <span style={{fontSize:'var(--text-sm)'}}>Active</span> : <span style={{fontSize:'var(--text-sm)', color:'var(--color-text-muted)'}}>Inactive</span>}
+        </div>
+      )
+    },
+    {
+      key: 'delivery',
+      label: 'Delivery Status',
       render: (w) => {
-        if (!w.active) return <Badge variant="neutral">Inactive</Badge>
         if (!w.lastDelivery) return <Badge variant="neutral">No Deliveries</Badge>
         return w.lastDelivery.success 
           ? <Badge variant="success">Healthy</Badge>
@@ -353,8 +386,10 @@ export default function WebhooksManager() {
       key: 'debug',
       label: 'Debug Mode',
       render: (w) => (
-        <div className={`${styles.toggle} ${w.debugMode ? styles.active : ''}`} onClick={() => toggleDebug(w.id)}>
-          <div className={styles.toggleHandle} />
+        <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
+          <div className={`${styles.toggle} ${w.debugMode ? styles.active : ''}`} onClick={() => toggleDebug(w.id)}>
+            <div className={styles.toggleHandle} />
+          </div>
         </div>
       )
     },
@@ -363,37 +398,6 @@ export default function WebhooksManager() {
       label: 'Created Date',
       sortable: true,
       render: (w) => <div style={{ fontSize: 'var(--text-sm)' }}>{new Date(w.createdAt).toLocaleDateString()}</div>
-    },
-    {
-      key: 'lastDelivery',
-      label: 'Last Delivery',
-      sortable: true,
-      render: (w) => w.lastDelivery ? <div style={{ fontSize: 'var(--text-sm)' }}>{new Date(w.lastDelivery.time).toLocaleString()}</div> : <span style={{color: 'var(--color-text-muted)'}}>N/A</span>
-    },
-    {
-      key: 'lastResponse',
-      label: 'Last Response',
-      render: (w) => <div style={{ fontSize: 'var(--text-sm)' }}>{w.lastResponse}</div>
-    },
-    {
-      key: 'totalSuccess',
-      label: 'Total Success',
-      sortable: false,
-      align: 'right',
-      render: (w) => <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-success)' }}>{w.totalSuccess}</div>
-    },
-    {
-      key: 'totalFailed',
-      label: 'Total Failed',
-      sortable: true,
-      align: 'right',
-      render: (w) => <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-danger)' }}>{w.totalFailed}</div>
-    },
-    {
-      key: 'createdBy',
-      label: 'Created By',
-      sortable: true,
-      render: (w) => <div style={{ fontSize: 'var(--text-sm)' }}>{w.createdBy}</div>
     },
     {
       key: 'actions',
@@ -418,117 +422,165 @@ export default function WebhooksManager() {
     }
   ]
 
-  if (isEditOpen) {
+  if (isEditOpen && editTarget) {
     return (
-      <div className={`${layoutStyles.configSection} fade-in`}>
-        <div className={layoutStyles.sectionHeader}>
+      <div className="fade-in bg-slate-50" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+        <div className={layoutStyles.sectionHeader} style={{ flexShrink: 0, margin: 0, padding: '24px 32px', borderBottom: '1px solid var(--color-border)', backgroundColor: '#fff' }}>
           <div>
-            <h2 className={layoutStyles.sectionTitle}>{editTarget?.id ? 'Edit Webhook' : 'Add Webhook'}</h2>
-            <p className={layoutStyles.sectionDesc}>Configure your webhook endpoint and events.</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+              <Button variant="ghost" size="sm" onClick={() => setIsEditOpen(false)} style={{ padding: '4px 8px' }}>← Back</Button>
+              <h2 className={layoutStyles.sectionTitle} style={{ margin: 0 }}>{editTarget?.id ? 'Edit Webhook' : 'New Webhook'}</h2>
+              {editTarget.id && (
+                <Badge variant={editTarget.active ? 'success' : 'neutral'}>{editTarget.active ? 'Active' : 'Inactive'}</Badge>
+              )}
+            </div>
+            <p className={layoutStyles.sectionDesc} style={{ marginLeft: 60 }}>Configure your webhook endpoint, authentication, and subscribed events.</p>
           </div>
           <div style={{ display: 'flex', gap: 16 }}>
             <Button variant="ghost" onClick={() => setIsEditOpen(false)}>Cancel</Button>
             <Button variant="primary" onClick={saveWebhook}>Save Webhook</Button>
           </div>
         </div>
-        <div className={styles.modalBody} style={{ background: 'var(--color-surface)', padding: 24, borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
-          {/* Left Col */}
-          <div className={styles.col}>
-            <Input label="Webhook Name" value={editTarget.name} onChange={e => setEditTarget({...editTarget, name: e.target.value})} required />
-            <Input label="Description" value={editTarget.description || ''} onChange={e => setEditTarget({...editTarget, description: e.target.value})} />
+
+        <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
+          <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', gap: 32, alignItems: 'flex-start' }}>
             
-            <div style={{ display: 'flex', gap: 12 }}>
-              <div style={{ width: 120 }}>
-                <Select 
-                  label="Request Method" 
-                  options={[{value:'POST',label:'POST'},{value:'PUT',label:'PUT'},{value:'PATCH',label:'PATCH'},{value:'GET',label:'GET'},{value:'DELETE',label:'DELETE'}]} 
-                  value={editTarget.method || 'POST'} 
-                  onChange={v => setEditTarget({...editTarget, method: v})} 
-                />
+            {/* Left Column - Configuration */}
+            <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div style={{ background: '#fff', padding: 24, borderRadius: 12, border: '1px solid var(--color-border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: 20 }}>Endpoint Configuration</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <Input label="Webhook Name" value={editTarget.name} onChange={e => setEditTarget({...editTarget, name: e.target.value})} required placeholder="e.g. ERP Integration" />
+                  <Input label="Description" value={editTarget.description || ''} onChange={e => setEditTarget({...editTarget, description: e.target.value})} placeholder="Optional description" />
+                  
+                  <div style={{ display: 'flex', gap: 16 }}>
+                    <div style={{ width: 140 }}>
+                      <Select 
+                        label="Method" 
+                        options={[{value:'POST',label:'POST'},{value:'PUT',label:'PUT'},{value:'PATCH',label:'PATCH'},{value:'GET',label:'GET'},{value:'DELETE',label:'DELETE'}]} 
+                        value={editTarget.method || 'POST'} 
+                        onChange={v => setEditTarget({...editTarget, method: v})} 
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <Input label="Endpoint URL" value={editTarget.url} onChange={e => setEditTarget({...editTarget, url: e.target.value})} required placeholder="https://api.example.com/webhook" />
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div style={{ flex: 1 }}>
-                <Input label="Endpoint URL" value={editTarget.url} onChange={e => setEditTarget({...editTarget, url: e.target.value})} required />
+
+              <div style={{ background: '#fff', padding: 24, borderRadius: 12, border: '1px solid var(--color-border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: 20 }}>Security & Headers</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div>
+                    <label style={{display: 'block', fontSize: 'var(--text-sm)', fontWeight: 500, marginBottom: 6}}>Webhook Secret (HMAC-SHA256 Signature)</label>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      <div style={{ flex: 1 }}>
+                        <Input value={editTarget.secret} onChange={e => setEditTarget({...editTarget, secret: e.target.value})} placeholder="Leave blank to auto-generate" />
+                      </div>
+                      <Button variant="secondary" onClick={generateSecret}>Regenerate</Button>
+                    </div>
+                    <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: 6 }}>This secret is used to sign requests so your server can verify they came from us.</p>
+                  </div>
+                  
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12}}>
+                      <label style={{fontSize: 'var(--text-sm)', fontWeight: 500}}>Custom Headers</label>
+                      <Button variant="ghost" size="sm" onClick={() => setEditTarget({...editTarget, headers: [...editTarget.headers, {key:'', value:''}]})}>+ Add Header</Button>
+                    </div>
+                    
+                    {editTarget.headers.length === 0 ? (
+                      <div style={{ padding: 16, background: 'var(--color-background)', borderRadius: 8, textAlign: 'center', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
+                        No custom headers configured.
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {editTarget.headers.map((h, i) => (
+                          <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                            <div style={{ flex: 1 }}><Input placeholder="Header Key (e.g. Authorization)" value={h.key} onChange={e => {
+                              const newHeaders = [...editTarget.headers]
+                              newHeaders[i].key = e.target.value
+                              setEditTarget({...editTarget, headers: newHeaders})
+                            }} /></div>
+                            <div style={{ flex: 1 }}><Input placeholder="Header Value" value={h.value} onChange={e => {
+                              const newHeaders = [...editTarget.headers]
+                              newHeaders[i].value = e.target.value
+                              setEditTarget({...editTarget, headers: newHeaders})
+                            }} /></div>
+                            <Button variant="ghost" size="sm" onClick={() => setEditTarget({...editTarget, headers: editTarget.headers.filter((_, idx) => idx !== i)})}>✕</Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ background: '#fff', padding: 24, borderRadius: 12, border: '1px solid var(--color-border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: 20 }}>Advanced Settings</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div style={{ width: 200 }}>
+                    <Select 
+                      label="Max Retry Attempts" 
+                      options={[{value:0,label:'0 (No retries)'},{value:1,label:'1'},{value:3,label:'3 (Recommended)'},{value:5,label:'5'}]} 
+                      value={editTarget.retryCount} 
+                      onChange={v => setEditTarget({...editTarget, retryCount: v})} 
+                    />
+                  </div>
+                  
+                  <Input label="Internal Notes" value={editTarget.notes || ''} onChange={e => setEditTarget({...editTarget, notes: e.target.value})} placeholder="Notes for the development team" />
+
+                  <div style={{ display: 'flex', gap: 32, marginTop: 16, padding: 16, background: 'var(--color-background)', borderRadius: 8 }}>
+                    <label style={{display:'flex', alignItems:'center', gap:12, fontSize:'var(--text-sm)', cursor:'pointer', fontWeight: 500}}>
+                      <div className={`${styles.toggle} ${editTarget.active ? styles.active : ''}`}>
+                        <input style={{display:'none'}} type="checkbox" checked={editTarget.active} onChange={e => setEditTarget({...editTarget, active: e.target.checked})} />
+                        <div className={styles.toggleHandle} />
+                      </div>
+                      Active Status
+                    </label>
+                    
+                    <label style={{display:'flex', alignItems:'center', gap:12, fontSize:'var(--text-sm)', cursor:'pointer', fontWeight: 500}}>
+                      <div className={`${styles.toggle} ${editTarget.debugMode ? styles.active : ''}`}>
+                        <input style={{display:'none'}} type="checkbox" checked={editTarget.debugMode} onChange={e => setEditTarget({...editTarget, debugMode: e.target.checked})} />
+                        <div className={styles.toggleHandle} />
+                      </div>
+                      Debug Mode (Log full payloads)
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div>
-              <label style={{display: 'block', fontSize: 'var(--text-sm)', fontWeight: 500, marginBottom: 4}}>Secret Key (used for HMAC signing)</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <div style={{ flex: 1 }}>
-                  <Input value={editTarget.secret} onChange={e => setEditTarget({...editTarget, secret: e.target.value})} placeholder="Auto-generate if empty" />
-                </div>
-                <Button variant="secondary" onClick={generateSecret}>Generate</Button>
+            {/* Right Column - Events */}
+            <div style={{ flex: 1, background: '#fff', padding: 24, borderRadius: 12, border: '1px solid var(--color-border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 600, margin: 0 }}>Event Subscriptions</h3>
+                <Badge variant="primary">{editTarget.events.size} selected</Badge>
               </div>
-            </div>
-            
-            <div>
-              <div style={{fontSize:'var(--text-sm)', fontWeight:500, marginBottom:8}}>Custom Headers (Optional)</div>
-              <div className={styles.headersList}>
-                {editTarget.headers.map((h, i) => (
-                  <div key={i} className={styles.headerRow}>
-                    <Input placeholder="Key" value={h.key} onChange={e => {
-                      const newHeaders = [...editTarget.headers]
-                      newHeaders[i].key = e.target.value
-                      setEditTarget({...editTarget, headers: newHeaders})
-                    }} />
-                    <Input placeholder="Value" value={h.value} onChange={e => {
-                      const newHeaders = [...editTarget.headers]
-                      newHeaders[i].value = e.target.value
-                      setEditTarget({...editTarget, headers: newHeaders})
-                    }} />
-                    <Button variant="ghost" size="sm" onClick={() => setEditTarget({...editTarget, headers: editTarget.headers.filter((_, idx) => idx !== i)})}>✕</Button>
+              <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: 20 }}>Select the events that should trigger this webhook. When these events occur in the CRM, a payload will be sent to your endpoint.</p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                {eventRegistry.getEventGroups().map(group => (
+                  <div key={group.label}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--color-text-muted)', letterSpacing: '0.5px', marginBottom: 12, borderBottom: '1px solid var(--color-border)', paddingBottom: 8 }}>
+                      {group.label}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {group.events.map(ev => (
+                        <label key={ev} style={{display:'flex', alignItems:'flex-start', gap: 12, cursor: 'pointer', padding: '6px 8px', borderRadius: 6, background: editTarget.events.has(ev) ? 'var(--color-primary-light)' : 'transparent', transition: 'background 0.2s'}}>
+                          <input type="checkbox" style={{ marginTop: 4 }} checked={editTarget.events.has(ev)} onChange={() => toggleEvent(ev)} />
+                          <div>
+                            <div style={{ fontSize: '14px', fontWeight: 500, color: editTarget.events.has(ev) ? 'var(--color-primary-dark)' : 'var(--color-text)' }}>{ev}</div>
+                            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: 2 }}>Triggers on {ev.split('.')[1]} action</div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                 ))}
-                <Button variant="ghost" size="sm" onClick={() => setEditTarget({...editTarget, headers: [...editTarget.headers, {key:'', value:''}]})}>+ Add Header</Button>
               </div>
             </div>
 
-            <Select 
-              label="Retry Count" 
-              options={[{value:1,label:'1'},{value:2,label:'2'},{value:3,label:'3'},{value:5,label:'5'}]} 
-              value={editTarget.retryCount} 
-              onChange={v => setEditTarget({...editTarget, retryCount: v})} 
-            />
-            
-            <Input label="Notes" value={editTarget.notes || ''} onChange={e => setEditTarget({...editTarget, notes: e.target.value})} />
-
-            <div style={{ display: 'flex', gap: 24, marginTop: 16 }}>
-              <label style={{display:'flex', alignItems:'center', gap:8, fontSize:'var(--text-sm)', cursor:'pointer'}}>
-                <div className={`${styles.toggle} ${editTarget.active ? styles.active : ''}`}>
-                  <input style={{display:'none'}} type="checkbox" checked={editTarget.active} onChange={e => setEditTarget({...editTarget, active: e.target.checked})} />
-                  <div className={styles.toggleHandle} />
-                </div>
-                Status (Active)
-              </label>
-              
-              <label style={{display:'flex', alignItems:'center', gap:8, fontSize:'var(--text-sm)', cursor:'pointer'}}>
-                <div className={`${styles.toggle} ${editTarget.debugMode ? styles.active : ''}`}>
-                  <input style={{display:'none'}} type="checkbox" checked={editTarget.debugMode} onChange={e => setEditTarget({...editTarget, debugMode: e.target.checked})} />
-                  <div className={styles.toggleHandle} />
-                </div>
-                Debug Mode
-              </label>
-            </div>
-          </div>
-
-          {/* Right Col */}
-          <div className={styles.col}>
-            <div style={{fontSize:'var(--text-sm)', fontWeight:500}}>Events</div>
-            <div className={styles.eventsGrid}>
-              {eventRegistry.getEventGroups().map(group => (
-                <div key={group.label} className={styles.eventGroup}>
-                  <div className={styles.eventTitle}>{group.label}</div>
-                  {group.events.map(ev => (
-                    <label key={ev} className={styles.eventRow} style={{display:'flex', alignItems:'center', gap: 8, padding: '4px 0'}}>
-                      <input type="checkbox" checked={editTarget.events.has(ev)} onChange={() => toggleEvent(ev)} />
-                      <span>
-                        {ev} <span style={{color: 'var(--color-text-muted)', fontSize: '0.9em', marginLeft: 4}}>- Triggered on all {ev} activities</span>
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </div>
@@ -536,126 +588,109 @@ export default function WebhooksManager() {
   }
 
   return (
-    <div className={`${layoutStyles.configSection} fade-in`}>
-      <div className={layoutStyles.sectionHeader}>
-        <div>
-          <h2 className={layoutStyles.sectionTitle}>Outbound Webhooks</h2>
-          <p className={layoutStyles.sectionDesc}>Send real-time events to external systems.</p>
-        </div>
-        <div style={{ display: 'flex', gap: 16 }}>
-          <div ref={exportMenuRef} style={{ position: 'relative' }}>
-            <Button variant="secondary" onClick={() => setExportMenuOpen(!exportMenuOpen)}>Export ▼</Button>
-            {exportMenuOpen && (
-              <div style={{
-                position: 'absolute', top: '100%', right: 0, marginTop: 4,
-                background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-md)', boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                zIndex: 10, minWidth: 150, overflow: 'hidden'
-              }}>
-                <div style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 'var(--text-sm)' }} onClick={() => {
-                  setExportMenuOpen(false);
-                  const headers = ['Name', 'URL', 'Active', 'Events', 'Created By', 'Created At'];
-                  const rows = processedWebhooks.map(w => [w.name, w.url, w.active, w.events.join('|'), w.createdBy, w.createdAt]);
-                  const csvString = headers.join(',') + '\n' + rows.map(e => e.map(cell => `"${(cell||'').toString().replace(/"/g, '""')}"`).join(',')).join('\n');
-                  const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-                  const url = URL.createObjectURL(blob);
-                  const link = document.createElement("a");
-                  link.setAttribute("href", url);
-                  link.setAttribute("download", "webhooks_export.csv");
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                  URL.revokeObjectURL(url);
-                }}>Export as CSV</div>
-                <div style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 'var(--text-sm)' }} onClick={() => {
-                  setExportMenuOpen(false);
-                  const headers = ['Name', 'URL', 'Active', 'Events', 'Created By', 'Created At'];
-                  const rows = processedWebhooks.map(w => [w.name, w.url, w.active, w.events.join('|'), w.createdBy, w.createdAt]);
-                  const csvString = headers.join(',') + '\n' + rows.map(e => e.map(cell => `"${(cell||'').toString().replace(/"/g, '""')}"`).join(',')).join('\n');
-                  const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-                  const url = URL.createObjectURL(blob);
-                  const link = document.createElement("a");
-                  link.setAttribute("href", url);
-                  link.setAttribute("download", "webhooks_export.xlsx");
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                  URL.revokeObjectURL(url);
-                }}>Export as Excel</div>
-                <div style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 'var(--text-sm)' }} onClick={() => { 
-                  setExportMenuOpen(false); 
-                  const headers = ['Name', 'URL', 'Active', 'Events', 'Created By', 'Created At'];
-                  const rows = processedWebhooks.map(w => [w.name, w.url, w.active ? 'Yes' : 'No', w.events.join(', '), w.createdBy, w.createdAt]);
-                  const doc = new jsPDF();
-                  doc.text("Webhooks Export", 14, 15);
-                  autoTable(doc, {
-                    head: [headers],
-                    body: rows,
-                    startY: 20,
-                  });
-                  doc.save('webhooks_export.pdf');
-                }}>Export as PDF</div>
-                <div style={{ borderTop: '1px solid var(--color-border)', margin: '4px 0' }}></div>
-                <div style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 'var(--text-sm)' }} onClick={() => { setExportMenuOpen(false); window.print(); }}>Print Table</div>
-              </div>
-            )}
+    <div className="fade-in" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 0, height: '100%', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+        <div className={layoutStyles.sectionHeader} style={{ flexShrink: 0, margin: 0, padding: '16px 24px', borderBottom: '1px solid var(--color-border)' }}>
+          <div>
+            <h2 className={layoutStyles.sectionTitle}>Outbound Webhooks</h2>
+            <p className={layoutStyles.sectionDesc}>Send real-time events to external systems.</p>
           </div>
-          <Button variant="primary" onClick={() => openEditor()}>+ Add Webhook</Button>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <div ref={exportMenuRef} style={{ position: 'relative' }}>
+              <Button variant="secondary" onClick={() => setExportMenuOpen(!exportMenuOpen)}>Export ▼</Button>
+              {exportMenuOpen && (
+                <div style={{
+                  position: 'absolute', top: '100%', right: 0, marginTop: 4,
+                  background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-md)', boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                  zIndex: 10, minWidth: 150, overflow: 'hidden'
+                }}>
+                  <div style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 'var(--text-sm)' }} onClick={() => { handleExport('csv'); setExportMenuOpen(false); }}>Export as CSV</div>
+                  <div style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 'var(--text-sm)' }} onClick={() => { handleExport('excel'); setExportMenuOpen(false); }}>Export as Excel</div>
+                  <div style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 'var(--text-sm)' }} onClick={() => { 
+                    setExportMenuOpen(false); 
+                    const headers = ['Name', 'URL', 'Active', 'Events', 'Created By', 'Created At'];
+                    const rows = processedWebhooks.map(w => [w.name, w.url, w.active ? 'Yes' : 'No', w.events.join(', '), w.createdBy, w.createdAt]);
+                    const doc = new jsPDF();
+                    doc.text("Webhooks Export", 14, 15);
+                    autoTable(doc, {
+                      head: [headers],
+                      body: rows,
+                      startY: 20,
+                    });
+                    doc.save('webhooks_export.pdf');
+                  }}>Export as PDF</div>
+                  <div style={{ borderTop: '1px solid var(--color-border)', margin: '4px 0' }}></div>
+                  <div style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 'var(--text-sm)' }} onClick={() => { setExportMenuOpen(false); window.print(); }}>Print Table</div>
+                </div>
+              )}
+            </div>
+            <Button variant="primary" onClick={() => openEditor()}>+ Add Webhook</Button>
+          </div>
         </div>
-      </div>
 
-      <div className={styles.kpiGrid}>
-        <KPICard 
-          title="Total Webhooks" 
-          value={stats.total} 
-          description={`${stats.active} Active • ${stats.disabled} Disabled`} 
-          icon="↗" 
-        />
-        <KPICard 
-          title="Today's Deliveries" 
-          value={stats.todaysDeliveries} 
-          trend={{ direction: 'down', value: stats.todaysFailures, label: 'Failures', type: 'danger' }} 
-          icon="📬" 
-        />
-        <KPICard 
-          title="Pending Retries" 
-          value={stats.pendingRetries} 
-          description="Queued for redelivery" 
-          icon="↻" 
-        />
-        <KPICard 
-          title="Avg Response Time" 
-          value={`${stats.avgResponseTime}ms`} 
-          description="Across all webhooks" 
-          icon="⚡" 
-        />
-      </div>
-
-      <WebhookFilters 
-        onApply={setAppliedFilters} 
-        appliedFilters={appliedFilters} 
-        rightContent={
-          <div style={{ width: 300 }}>
-            <Input 
-              placeholder="Search webhooks..." 
-              onChange={(e) => {
-                // Add search logic if needed
-              }}
+        {/* Content Area */}
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: '24px', overflowY: 'auto', backgroundColor: '#f8fafc' }}>
+          
+          {/* KPIs */}
+          <div className={styles.kpiGrid} style={{ flexShrink: 0, marginBottom: '24px' }}>
+            <KPICard 
+              title="Total Webhooks" 
+              value={stats.total} 
+              description={`${stats.active} Active • ${stats.disabled} Disabled`} 
+              icon="↗" 
+            />
+            <KPICard 
+              title="Today's Deliveries" 
+              value={stats.todaysDeliveries} 
+              trend={{ direction: 'down', value: stats.todaysFailures, label: 'Failures', type: 'danger' }} 
+              icon="📬" 
+            />
+            <KPICard 
+              title="Pending Retries" 
+              value={stats.pendingRetries} 
+              description="Queued for redelivery" 
+              icon="↻" 
+            />
+            <KPICard 
+              title="Avg Response Time" 
+              value={`${stats.avgResponseTime}ms`} 
+              description="Across all webhooks" 
+              icon="⚡" 
             />
           </div>
-        }
-      />
 
-      <DataTable 
-        columns={tableColumns} 
-        data={processedWebhooks} 
-        emptyMessage="No webhooks configured yet." 
-        emptyAction={<Button variant="primary" onClick={() => openEditor()}>+ Add Webhook</Button>}
-        sortBy={sortBy}
-        onSort={handleSort}
-      />
+          {/* Filters */}
+          <div style={{ flexShrink: 0, marginBottom: '16px' }}>
+            <WebhookFilters 
+              onApply={setAppliedFilters} 
+              appliedFilters={appliedFilters} 
+              rightContent={
+                <div style={{ width: 300 }}>
+                  <Input 
+                    placeholder="Search webhooks..." 
+                    onChange={(e) => {
+                      // search logic if needed
+                    }}
+                  />
+                </div>
+              }
+            />
+          </div>
 
-
+          {/* Table */}
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
+            <DataTable 
+              columns={tableColumns} 
+              data={processedWebhooks} 
+              emptyMessage="No webhooks configured yet." 
+              emptyAction={<Button variant="primary" onClick={() => openEditor()}>+ Add Webhook</Button>}
+              sortBy={sortBy}
+              onSort={handleSort}
+            />
+          </div>
+        </div>
+      </div>
 
       {/* Delete Modal */}
       <Modal
@@ -672,6 +707,8 @@ export default function WebhooksManager() {
         <p>Are you sure you want to delete the webhook <strong>{deleteTarget?.name}</strong>?</p>
       </Modal>
 
+      {/* The editor was replaced with a full-page view above */}
+
       {/* Logs Drawer */}
       <Drawer
         isOpen={!!logsTarget}
@@ -679,8 +716,56 @@ export default function WebhooksManager() {
         title={`Delivery Logs: ${logsTarget?.name}`}
         width={700}
       >
-        <div style={{ padding: 16 }}>
-          <p style={{ color: 'var(--color-text-muted)' }}>Delivery logs will be listed here, showing payload history and HTTP responses. {logsTarget?.debugMode ? 'Debug mode is ON, full request/response bodies will be captured.' : 'Debug mode is OFF.'}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <div style={{ padding: 16, borderBottom: '1px solid var(--color-border)', background: 'var(--color-surface)', flexShrink: 0 }}>
+            <p style={{ color: 'var(--color-text-muted)', margin: 0, fontSize: 'var(--text-sm)' }}>
+              {logsTarget?.debugMode ? 'Debug mode is ON. Full request/response bodies are captured.' : 'Debug mode is OFF. Only metadata is captured.'}
+            </p>
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+            {isLoadingLogs ? (
+              <div style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Loading logs...</div>
+            ) : webhookLogs.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>No logs found for this webhook.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {webhookLogs.map(log => (
+                  <div key={log.id} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 12, background: 'var(--color-surface)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {log.response_status >= 200 && log.response_status < 300 ? (
+                          <Badge variant="success">HTTP {log.response_status}</Badge>
+                        ) : (
+                          <Badge variant="danger">HTTP {log.response_status || 'ERR'}</Badge>
+                        )}
+                        <span style={{ fontWeight: 500, fontSize: 'var(--text-sm)' }}>Event: {log.event_type}</span>
+                      </div>
+                      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
+                        {new Date(log.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 'var(--text-xs)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                      <div><span style={{ color: 'var(--color-text-muted)' }}>Attempt:</span> {log.attempt_count}</div>
+                      <div><span style={{ color: 'var(--color-text-muted)' }}>Latency:</span> {log.latency_ms ? `${log.latency_ms}ms` : 'N/A'}</div>
+                    </div>
+                    {log.error_message && (
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-danger)', background: 'var(--color-danger-light, #fee2e2)', padding: 8, borderRadius: 4, marginBottom: 8 }}>
+                        {log.error_message}
+                      </div>
+                    )}
+                    {logsTarget?.debugMode && log.request_payload && (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ fontSize: 'var(--text-xs)', fontWeight: 500, marginBottom: 4 }}>Payload</div>
+                        <pre style={{ fontSize: '10px', background: 'var(--color-background)', padding: 8, borderRadius: 4, overflowX: 'auto', margin: 0 }}>
+                          {typeof log.request_payload === 'string' ? log.request_payload : JSON.stringify(log.request_payload, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </Drawer>
     </div>

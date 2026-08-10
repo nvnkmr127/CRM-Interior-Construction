@@ -456,7 +456,7 @@ export default function UsersManager() {
                     else next.delete(id)
                     setSelectedIds(next)
                   }}
-                  onRowClick={() => navigate(`/config/team-members/${u.id}`)}
+                  onRowClick={() => navigate(`/team/members/${u.id}`)}
                   onContextMenu={(e, row) => {
                     setContextMenu({
                       x: e.clientX,
@@ -592,7 +592,7 @@ export default function UsersManager() {
             y={contextMenu.y}
             onClose={() => setContextMenu(null)}
             options={[
-              { label: 'View Profile', onClick: () => navigate(`/config/team-members/${contextMenu.user.id}`) },
+              { label: 'View Profile', onClick: () => navigate(`/team/members/${contextMenu.user.id}`) },
               { label: 'Change Status', onClick: () => setStatusChangeTarget(contextMenu.user) },
               
               { label: 'Deactivate', danger: true, onClick: () => setOffboardingTarget(contextMenu.user) },

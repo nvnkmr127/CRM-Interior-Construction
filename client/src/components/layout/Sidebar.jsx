@@ -25,58 +25,42 @@ const NAV_ITEMS = [
         { to: '/projects/retention-dashboard', icon: '🤝', label: 'Retention Dashboard' },
     ]},
   ]},
-  { group: 'ANALYTICS', items: [
-    { to: '/analytics/leads',    icon: '▲', label: 'Lead Analytics', module: 'analytics', permission: 'analytics:view_lead_analytics' },
-    { label: 'Project Analytics', icon: '◉', module: 'analytics', permission: 'analytics:view_project_analytics', subItems: [
-        { to: '/analytics/projects', icon: '◉', label: 'Project Health' },
-        { to: '/analytics/boq-variance', icon: '📊', label: 'BOQ Variance' },
-        { to: '/analytics/profitability', icon: '💎', label: 'Project Profitability' },
-    ]},
-    { label: 'Resource Analytics', icon: '👤', module: 'analytics', subItems: [
-        { to: '/analytics/resources', icon: '👤', label: 'Resource Utilisation' },
-        { to: '/analytics/resource-workload', icon: '👥', label: 'Resource Workload' },
-    ]},
-    { label: 'Vendor Analytics', icon: '🤝', module: 'analytics', subItems: [
-        { to: '/analytics/vendors', icon: '🤝', label: 'Vendor Performance' },
-        { to: '/analytics/vendors-capacity', icon: '⚖️', label: 'Vendor Capacity' },
-    ]},
-    { to: '/analytics/collection-forecast', icon: '📈', label: 'Finance Analytics', module: 'analytics', permission: 'analytics:view_finance_analytics' },
-    { to: '/analytics/inventory', icon: '📦', label: 'Inventory Analytics', module: 'analytics', permission: 'analytics:view_inventory_analytics' },
-    { to: '/analytics/csat', icon: '⭐', label: 'Client Satisfaction', module: 'analytics' },
+  { group: 'REPORTS & ANALYTICS', items: [
+    { to: '/analytics/hub', icon: '📑', label: 'Reports', module: 'analytics' }
   ]},
   { group: 'FINANCE', financeOnly: true, items: [
     { to: '/finance', icon: '💰', label: 'Finance Overview', module: 'finance' },
     { to: '/financial-approvals', icon: '📝', label: 'Financial Approvals', module: 'finance' },
-    { to: '/config/financial-settings', icon: '💰', label: 'Financial Thresholds', module: 'settings', adminOnly: true }
+    { to: '/financial-settings', icon: '💰', label: 'Financial Thresholds', module: 'settings', adminOnly: true }
   ]},
   { group: 'SALES SETUP', adminOnly: true, items: [
-    { to: '/config/lead-stages', icon: '◎', label: 'Lead Stages', module: 'settings' },
-    { to: '/config/custom-fields', icon: '⊡', label: 'Custom Fields', module: 'settings' },
+    { to: '/lead-stages', icon: '◎', label: 'Lead Stages', module: 'settings' },
+    { to: '/custom-fields', icon: '⊡', label: 'Custom Fields', module: 'settings' },
     { to: '/leads/forms', icon: '📝', label: 'Lead Forms', module: 'leads' }
   ]},
   { group: 'PROJECT SETUP', adminOnly: true, items: [
-    { to: '/config/templates', icon: '◈', label: 'Project Templates', module: 'settings' },
-    { to: '/config/trade-activities', icon: '🛠', label: 'Trade Templates', module: 'settings' },
-    { to: '/config/qc-checklists', icon: '☑', label: 'Trade QC Checklists', module: 'settings' },
-    { to: '/config/conversion-checklist', icon: '☑', label: 'Conversion Checklist', module: 'settings' },
-    { to: '/config/automations', icon: '⚙', label: 'Automations', module: 'settings' },
-    { to: '/config/vendor-lead-times', icon: '⏱', label: 'Vendor Lead Times', module: 'settings' },
+    { to: '/templates', icon: '◈', label: 'Project Templates', module: 'settings' },
+    { to: '/trade-activities', icon: '🛠', label: 'Trade Templates', module: 'settings' },
+    { to: '/qc-checklists', icon: '☑', label: 'Trade QC Checklists', module: 'settings' },
+    { to: '/conversion-checklist', icon: '☑', label: 'Conversion Checklist', module: 'settings' },
+    { to: '/automations', icon: '⚙', label: 'Automations', module: 'settings' },
+    { to: '/vendor-lead-times', icon: '⏱', label: 'Vendor Lead Times', module: 'settings' },
   ]},
   { group: 'TEAM & SECURITY', adminOnly: true, items: [
     { label: 'Team Management', icon: '👥', module: 'settings', subItems: [
         { to: '/team/members', icon: '◉', label: 'Team Members' },
         { to: '/team/roles', icon: '🔑', label: 'Roles & Permissions' },
     ]},
-    { to: '/config/organization', icon: '🏢', label: 'Organization', module: 'settings' },
-    { to: '/config/login-history', icon: '🛡️', label: 'Login History', module: 'settings' },
+    { to: '/organization', icon: '🏢', label: 'Organization', module: 'settings' },
+    { to: '/login-history', icon: '🛡️', label: 'Login History', module: 'settings' },
     { to: '/settings/audit-trail', icon: '📜', label: 'Audit Trail', module: 'settings' }
   ]},
   { group: 'INTEGRATIONS', adminOnly: true, items: [
-    { to: '/config/api-keys', icon: '⊙', label: 'API Keys', module: 'settings' },
+    { to: '/api-keys', icon: '⊙', label: 'API Keys', module: 'settings' },
     { to: '/developer/api', icon: '🔌', label: 'API Integration', module: 'settings' },
     { to: '/developer/webhooks', icon: '🪝', label: 'Webhooks', module: 'settings' },
-    { to: '/config/email-templates', icon: '📧', label: 'Email Templates', module: 'settings' },
-    { to: '/config/logs', icon: '≡', label: 'Logs', module: 'settings' },
+    { to: '/email-templates', icon: '📧', label: 'Email Templates', module: 'settings' },
+    { to: '/logs', icon: '≡', label: 'Logs', module: 'settings' },
   ]}
 ]
 

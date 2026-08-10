@@ -1,0 +1,77 @@
+.orgTree {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+}
+
+.orgNodeContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding: 20px 5px 0 5px;
+}
+
+.orgNodeContainer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 20px;
+  background-color: #cbd5e1;
+}
+
+/* Remove top line for root nodes */
+.orgTree > .orgNodeContainer::before {
+  display: none;
+}
+.orgTree > .orgNodeContainer {
+  padding-top: 0;
+  flex: 1 1 280px;
+  max-width: 400px;
+}
+
+.orgChildren {
+  display: flex;
+  justify-content: center;
+  position: relative;
+  padding-top: 20px;
+  margin-top: 20px;
+}
+
+.orgChildren::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 20px;
+  background-color: #cbd5e1;
+}
+
+/* Horizontal line connecting children */
+.orgChildren .orgNodeContainer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 100%;
+  height: 1px;
+  background-color: #cbd5e1;
+}
+
+/* First child right half line */
+.orgChildren .orgNodeContainer:first-child::after {
+  left: 50%;
+  width: 50%;
+}
+
+/* Last child left half line */
+.orgChildren .orgNodeContainer:last-child::after {
+  left: 0;
+  width: 50%;
+  /* if only one child, no horizontal line needed */
+}
+.orgChildren .orgNodeContainer:only-child::after {
+  display: none;
+}

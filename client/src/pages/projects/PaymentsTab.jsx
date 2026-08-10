@@ -43,9 +43,9 @@ class PaymentGatewayService {
   }
 
   static async initCashfree(details) {
-    return new Promiseasync ((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       // Mocking SDK load and webhook verification for frontend
-      setTimeoutasync (() => {
+      setTimeout(async () => {
         const isSuccess = await confirm(`[Cashfree Mock Sandbox]\nAmount: ₹${details.amount}\nMilestone: ${details.milestoneName}\n\nSimulate successful payment webhook verification?`);
         if (isSuccess) {
           resolve({
@@ -68,7 +68,6 @@ class PaymentGatewayService {
 // -----------------------------------
 export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
   const { confirm } = useConfirm();
-
   const toast = useToast();
   const [payments, setPayments] = useState([]);
   const [escalations, setEscalations] = useState([]);

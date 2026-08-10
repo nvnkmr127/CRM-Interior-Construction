@@ -67,7 +67,7 @@ export default function EmployeeProfilePage({ userId, onBack }) {
       setEditForm(res.data.data)
     } catch (err) {
       toast.error('Failed to load user data')
-      navigate('/config/team-members')
+      navigate('/team/members')
     } finally {
       setLoading(false)
     }
@@ -528,8 +528,8 @@ export default function EmployeeProfilePage({ userId, onBack }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <Button variant="ghost" onClick={async () => onBack ? onBack() : navigate('/config/team-members')}>Back to List</Button>
-          <Button variant="secondary" onClick={async () => navigate(`/config/team-members/${user.id}/settings`)}>Account Settings</Button>
+          <Button variant="ghost" onClick={async () => onBack ? onBack() : navigate('/team/members')}>Back to List</Button>
+          <Button variant="secondary" onClick={async () => navigate(`/team/members/${user.id}/settings`)}>Account Settings</Button>
         </div>
       </div>
 

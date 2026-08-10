@@ -249,7 +249,9 @@ export const setupMockInterceptor = (api) => {
                 email: payload.email || null,
                 role: payload.role || null,
                 decision_authority: payload.decision_authority || 'Influencer',
-                relationship_notes: payload.relationship_notes || null
+                relationship_notes: payload.relationship_notes || null,
+                notes: payload.notes || null,
+                created_at: new Date().toISOString()
               };
               if (!mockDatabase.contacts) mockDatabase.contacts = [];
               mockDatabase.contacts.push(newContact);
@@ -266,12 +268,51 @@ export const setupMockInterceptor = (api) => {
                   responseData.data = mockDatabase.contacts[idx];
                 }
               }
-            } else if (method === 'delete') {
-              if (contactId) {
-                if (!mockDatabase.contacts) mockDatabase.contacts = [];
+            } else if (method === 'delete' && contactId) {
+              if (mockDatabase.contacts) {
                 mockDatabase.contacts = mockDatabase.contacts.filter(c => c.id !== contactId);
                 persistDb();
                 responseData.data = { success: true };
+              }
+            }
+          }
+          // ORGANIZATION
+          else if (url.includes('/org/hierarchy')) {
+            if (method === 'get') {
+              responseData.data = mockDatabase.users || [
+                { id: 'mock-user-1', name: 'Alice CEO', email: 'alice@example.com', manager_id: null, role_name: 'CEO', department_id: 'mock-dept-1', branch_id: 'mock-branch-1' },
+                { id: 'mock-user-2', name: 'Amit S.', email: 'amit@example.com', manager_id: 'mock-user-1', role_name: 'Sales Head', department_id: 'mock-dept-2', branch_id: 'mock-branch-1' },
+                { id: 'mock-user-3', name: 'Ravi Developer', email: 'ravi@example.com', manager_id: 'mock-user-1', role_name: 'Lead Developer', department_id: 'mock-dept-3', branch_id: 'mock-branch-1' }
+              ];
+              // Ensure we initialize it in the DB for persistence if needed
+              if (!mockDatabase.users) {
+                mockDatabase.users = responseData.data;
+                persistDb();
+              }
+            }
+          }
+          else if (url.includes('/org/departments')) {
+            if (method === 'get') {
+              responseData.data = mockDatabase.departments || [
+                { id: 'mock-dept-1', name: 'Management', code: 'MGT', parent_id: null, manager_id: 'mock-user-1' },
+                { id: 'mock-dept-2', name: 'Sales', code: 'SLS', parent_id: 'mock-dept-1', manager_id: 'mock-user-2' },
+                { id: 'mock-dept-3', name: 'Engineering', code: 'ENG', parent_id: 'mock-dept-1', manager_id: 'mock-user-3' }
+              ];
+              if (!mockDatabase.departments) {
+                mockDatabase.departments = responseData.data;
+                persistDb();
+              }
+            }
+          }
+          else if (url.includes('/org/branches')) {
+            if (method === 'get') {
+              responseData.data = mockDatabase.branches || [
+                { id: 'mock-branch-1', name: 'HQ', location: 'New York', timezone: 'EST', parent_id: null, manager_id: 'mock-user-1' },
+                { id: 'mock-branch-2', name: 'London Office', location: 'London', timezone: 'GMT', parent_id: 'mock-branch-1', manager_id: 'mock-user-2' }
+              ];
+              if (!mockDatabase.branches) {
+                mockDatabase.branches = responseData.data;
+                persistDb();
               }
             }
           }
@@ -579,6 +620,134 @@ export const setupMockInterceptor = (api) => {
                   (p.client_name && p.client_name.toLowerCase().includes(q))
                 );
                 responseData.data = { leads, projects, tasks: [] };
+              }
+            }
+          }
+          // LEAD ACTIVITIES
+          else if (url.includes('/activities') && url.includes('/leads/')) {
+            const urlParts = url.split('?');
+            const match = urlParts[0].match(/\/leads\/([a-zA-Z0-9-]+)\/activities(?:\/([a-zA-Z0-9-]+))?$/);
+            const leadId = match ? match[1] : null;
+            const activityId = match ? match[2] : null;
+
+            if (!mockDatabase.activities) mockDatabase.activities = [];
+
+            if (method === 'get') {
+              if (leadId) {
+                let list = mockDatabase.activities.filter(a => a.lead_id === leadId);
+                list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                responseData.data = list;
+              }
+            } else if (method === 'post') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const newActivity = {
+                id: `mock-act-${Date.now()}`,
+                lead_id: leadId,
+                type: payload.type || 'note',
+                title: payload.title || null,
+                notes: payload.notes || '',
+                outcome: payload.outcome || null,
+                scheduled_at: payload.scheduledAt || null,
+                metadata: payload.metadata || {},
+                created_at: new Date().toISOString(),
+                user_name: 'Admin User'
+              };
+              mockDatabase.activities.push(newActivity);
+
+              if (newActivity.type === 'meeting' && newActivity.scheduled_at) {
+                const leadIdx = mockDatabase.leads.findIndex(l => l.id === leadId);
+                if (leadIdx !== -1) {
+                  mockDatabase.leads[leadIdx] = {
+                    ...mockDatabase.leads[leadIdx],
+                    next_meeting_id: newActivity.id,
+                    next_meeting_schedule: newActivity.scheduled_at,
+                    next_meeting_title: newActivity.title || 'Lead Consultation Meeting',
+                    next_meeting_type: newActivity.metadata?.meeting_type || 'Google Meet',
+                    next_meeting_link: newActivity.metadata?.meeting_link || '',
+                    next_meeting_host: newActivity.metadata?.meeting_host || null,
+                    next_meeting_duration: newActivity.metadata?.duration || 30,
+                    next_meeting_notes: newActivity.notes || ''
+                  };
+                }
+              }
+
+              persistDb();
+              responseData.data = newActivity;
+            } else if (method === 'patch' || method === 'put') {
+              if (activityId) {
+                const updates = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                const idx = mockDatabase.activities.findIndex(a => a.id === activityId);
+                if (idx !== -1) {
+                  const oldActivity = mockDatabase.activities[idx];
+                  const updatedActivity = { ...oldActivity, ...updates };
+                  
+                  if (updates.scheduledAt !== undefined) {
+                    updatedActivity.scheduled_at = updates.scheduledAt;
+                  }
+
+                  mockDatabase.activities[idx] = updatedActivity;
+
+                  if (updatedActivity.type === 'meeting') {
+                    const leadIdx = mockDatabase.leads.findIndex(l => l.id === leadId);
+                    if (leadIdx !== -1) {
+                      const currentLead = mockDatabase.leads[leadIdx];
+                      
+                      if (updatedActivity.outcome === 'concluded' || updatedActivity.outcome === 'completed') {
+                        const remainingMeetings = mockDatabase.activities.filter(a => 
+                          a.lead_id === leadId && 
+                          a.type === 'meeting' && 
+                          a.scheduled_at &&
+                          a.id !== activityId &&
+                          a.outcome !== 'concluded' && 
+                          a.outcome !== 'completed'
+                        );
+                        remainingMeetings.sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at));
+                        const nextMtg = remainingMeetings[0];
+
+                        if (nextMtg) {
+                          mockDatabase.leads[leadIdx] = {
+                            ...currentLead,
+                            next_meeting_id: nextMtg.id,
+                            next_meeting_schedule: nextMtg.scheduled_at,
+                            next_meeting_title: nextMtg.title || 'Lead Consultation Meeting',
+                            next_meeting_type: nextMtg.metadata?.meeting_type || 'Google Meet',
+                            next_meeting_link: nextMtg.metadata?.meeting_link || '',
+                            next_meeting_host: nextMtg.metadata?.meeting_host || null,
+                            next_meeting_duration: nextMtg.metadata?.duration || 30,
+                            next_meeting_notes: nextMtg.notes || ''
+                          };
+                        } else {
+                          mockDatabase.leads[leadIdx] = {
+                            ...currentLead,
+                            next_meeting_id: null,
+                            next_meeting_schedule: null,
+                            next_meeting_title: null,
+                            next_meeting_type: null,
+                            next_meeting_link: null,
+                            next_meeting_host: null,
+                            next_meeting_duration: null,
+                            next_meeting_notes: null
+                          };
+                        }
+                      } else {
+                        mockDatabase.leads[leadIdx] = {
+                          ...currentLead,
+                          next_meeting_id: updatedActivity.id,
+                          next_meeting_schedule: updatedActivity.scheduled_at,
+                          next_meeting_title: updatedActivity.title || 'Lead Consultation Meeting',
+                          next_meeting_type: updatedActivity.metadata?.meeting_type || 'Google Meet',
+                          next_meeting_link: updatedActivity.metadata?.meeting_link || '',
+                          next_meeting_host: updatedActivity.metadata?.meeting_host || null,
+                          next_meeting_duration: updatedActivity.metadata?.duration || 30,
+                          next_meeting_notes: updatedActivity.notes || ''
+                        };
+                      }
+                    }
+                  }
+
+                  persistDb();
+                  responseData.data = updatedActivity;
+                }
               }
             }
           }
@@ -1817,8 +1986,8 @@ export const setupMockInterceptor = (api) => {
           }
           // LEAD STAGES
           else if (url.includes('/config/lead-stages')) {
-            if (method === 'get') {
-              responseData.data = [
+            if (!mockDatabase.leadStages) {
+              mockDatabase.leadStages = [
                 { id: 'stage-1', name: 'Lead Capture', color: '#6B6B6B', sort_order: 1 },
                 { id: 'stage-2', name: 'AI Qualification', color: '#1A3A5C', sort_order: 2 },
                 { id: 'stage-3', name: 'Lead Assignment', color: '#2D5A8E', sort_order: 3 },
@@ -1834,6 +2003,52 @@ export const setupMockInterceptor = (api) => {
                 { id: 'stage-13', name: 'Negotiation', color: '#FF7F50', sort_order: 13 },
                 { id: 'stage-14', name: 'Closing', color: '#2D6A4F', sort_order: 14 }
               ];
+              persistDb();
+            }
+
+            if (url.includes('/reorder') && method === 'patch') {
+              const { orderedIds } = JSON.parse(config.data);
+              mockDatabase.leadStages = orderedIds.map((id, index) => {
+                const stage = mockDatabase.leadStages.find(s => s.id === id);
+                return { ...stage, sort_order: index + 1 };
+              });
+              persistDb();
+              responseData.data = mockDatabase.leadStages;
+            } else if (method === 'get') {
+              responseData.data = mockDatabase.leadStages.sort((a, b) => a.sort_order - b.sort_order);
+            } else if (method === 'post') {
+              const data = JSON.parse(config.data);
+              const newStage = {
+                id: `stage-${Date.now()}`,
+                name: data.name,
+                color: data.color || '#6B7280',
+                is_won: !!data.is_won,
+                is_lost: !!data.is_lost,
+                wip_limit: data.wip_limit || null,
+                mandatory_fields: data.mandatory_fields || [],
+                sort_order: mockDatabase.leadStages.length + 1,
+                ...data
+              };
+              mockDatabase.leadStages.push(newStage);
+              persistDb();
+              responseData.data = newStage;
+            } else if (method === 'put' || method === 'patch') {
+              const match = url.match(/\/config\/lead-stages\/([a-zA-Z0-9-]+)$/);
+              if (match) {
+                const id = match[1];
+                const updates = JSON.parse(config.data);
+                mockDatabase.leadStages = mockDatabase.leadStages.map(s => s.id === id ? { ...s, ...updates } : s);
+                persistDb();
+                responseData.data = mockDatabase.leadStages.find(s => s.id === id);
+              }
+            } else if (method === 'delete') {
+              const match = url.match(/\/config\/lead-stages\/([a-zA-Z0-9-]+)$/);
+              if (match) {
+                const id = match[1];
+                mockDatabase.leadStages = mockDatabase.leadStages.filter(s => s.id !== id);
+                persistDb();
+                responseData.data = { success: true };
+              }
             }
           }
 
@@ -4231,6 +4446,21 @@ export const setupMockInterceptor = (api) => {
               } else {
                 return Promise.reject({ response: { status: 404, data: { message: 'Not found' } } });
               }
+            }
+          }
+          // WEBHOOK LOGS
+          else if (url.includes('/logs/webhook-events')) {
+            if (method === 'get') {
+              const urlParts = url.split('?');
+              const params = new URLSearchParams(urlParts[1]);
+              const webhookId = params.get('webhook_id');
+              
+              const mockLogs = [
+                { id: 'log1', webhook_id: webhookId, event_type: 'lead.created', response_status: 200, latency_ms: 120, attempt_count: 1, created_at: new Date(Date.now() - 1000*60*5).toISOString(), request_payload: { id: 'lead1', status: 'new' } },
+                { id: 'log2', webhook_id: webhookId, event_type: 'lead.updated', response_status: 500, latency_ms: 300, attempt_count: 1, created_at: new Date(Date.now() - 1000*60*60).toISOString(), request_payload: { id: 'lead1', status: 'qualified' }, error_message: 'Internal Server Error' },
+                { id: 'log3', webhook_id: webhookId, event_type: 'lead.updated', response_status: 200, latency_ms: 145, attempt_count: 2, created_at: new Date(Date.now() - 1000*60*58).toISOString(), request_payload: { id: 'lead1', status: 'qualified' } }
+              ];
+              responseData.data = mockLogs;
             }
           }
           else if (isMutation) {

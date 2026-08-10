@@ -1,4 +1,5 @@
 const pool = require('../../db/pool');
+const eventBus = require('../../utils/eventBus');
 
 exports.logActivity = async (data) => {
   const { tenantId, leadId, userId, type, title, notes, scheduledAt, outcome, metadata } = data;
@@ -7,7 +8,15 @@ exports.logActivity = async (data) => {
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
     [tenantId, leadId, userId, type, title, notes, scheduledAt || null, outcome, metadata || {}]
   );
-  return rows[0];
+  const activity = rows[0];
+  
+  eventBus.emit('activity.created', {
+    eventName: 'activity.created',
+    payload: activity,
+    context: { tenantId, userId }
+  });
+
+  return activity;
 };
 
 exports.listActivities = async ({ tenantId, leadId, limit = 50 }) => {

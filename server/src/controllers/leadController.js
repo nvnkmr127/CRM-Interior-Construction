@@ -195,10 +195,7 @@ exports.updateActivityHandler = async (req, res, next) => {
       return fail(res, 'FORBIDDEN', 'System generated logs cannot be edited.', 403);
     }
 
-    const updated = await updateActivity({
-      tenantId,
-      activityId,
-      leadId,
+    const updated = await updateActivity(tenantId, activityId, {
       title,
       notes,
       outcome,

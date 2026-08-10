@@ -38,7 +38,7 @@ const ExpandableText = ({ text }) => {
   );
 };
 
-export default function ActivityTimeline({ leadId, onTaskAdded }) {
+export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger }) {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 20 });
@@ -138,8 +138,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
     recognition.start();
     setIsListening(true);
   };
-
-  // You might want to fetch reps for task assignment
+  // You might want to fetch reps for task assignment
   const [reps, setReps] = useState([]);
   useEffect(() => {
     api.get('/users?role=sales_rep').then(res => setReps(res.data?.data || [])).catch(() => {});
@@ -167,7 +166,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded }) {
 
   useEffect(() => {
     fetchActivities(1, false);
-  }, [leadId, filter]);
+  }, [leadId, filter, refreshTrigger]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

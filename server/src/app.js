@@ -19,7 +19,6 @@ const app = express();
 
 
 setupSwagger(app);
-
 // Initialize EventBus Subscribers
 try { require('./services/notifications/notificationEventHandler'); } catch (error) { console.warn('Failed to load notificationEventHandler:', error.message); }
 try { require('./services/ai/aiEventHandler'); } catch (error) { console.warn('Failed to load aiEventHandler:', error.message); }

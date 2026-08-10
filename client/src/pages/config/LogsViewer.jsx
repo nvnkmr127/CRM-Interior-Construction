@@ -12,7 +12,19 @@ export default function LogsViewer() {
   const [automations, setAutomations] = useState([])
   const [inbounds, setInbounds] = useState([])
   const [selectedLog, setSelectedLog] = useState(null)
+  
+  // Interlink CRM Webhooks
+  const [webhooks, setWebhooks] = useState([])
+  const [deliveryFilters, setDeliveryFilters] = useState({ webhook: 'all', status: 'all', date: '' })
+  const [autoFilters, setAutoFilters] = useState({ status: 'all', search: '' })
+  
   const toast = useToast()
+
+  useEffect(() => {
+    configApi.getWebhooks().then(data => {
+      setWebhooks(data.data || data || [])
+    }).catch(console.error)
+  }, [])
 
   useEffect(() => {
     if (activeTab === 'deliveries') {
@@ -116,89 +128,124 @@ export default function LogsViewer() {
     { key: 'duration', label: 'Duration', render: (r) => `${r.duration}ms` }
   ]
 
+  const filteredDeliveries = deliveries.filter(d => {
+    if (deliveryFilters.webhook !== 'all' && d.webhook !== deliveryFilters.webhook) return false;
+    if (deliveryFilters.status !== 'all') {
+      const isSuccess = d.status >= 200 && d.status < 300;
+      if (deliveryFilters.status === 'success' && !isSuccess) return false;
+      if (deliveryFilters.status === 'failed' && isSuccess) return false;
+    }
+    if (deliveryFilters.date) {
+      const dDate = new Date(d.timestamp).toISOString().split('T')[0];
+      if (dDate !== deliveryFilters.date) return false;
+    }
+    return true;
+  });
+
+  const filteredAutomations = automations.filter(a => {
+    if (autoFilters.status !== 'all' && a.status !== autoFilters.status) return false;
+    if (autoFilters.search && !a.ruleName.toLowerCase().includes(autoFilters.search.toLowerCase())) return false;
+    return true;
+  });
+
+  const webhookOptions = [
+    { value: 'all', label: 'All Webhooks' },
+    ...webhooks.map(w => ({ value: w.name, label: w.name }))
+  ];
+
   return (
-    <div className={`${layoutStyles.configSection} fade-in`}>
-      <div className={layoutStyles.sectionHeader}>
+    <div className="fade-in bg-slate-50" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      <div className={layoutStyles.sectionHeader} style={{ flexShrink: 0, margin: 0, padding: '24px 32px', borderBottom: '1px solid var(--color-border)', backgroundColor: '#fff' }}>
         <div>
           <h2 className={layoutStyles.sectionTitle}>System Logs</h2>
           <p className={layoutStyles.sectionDesc}>Review API calls, webhook deliveries, and automation runs.</p>
         </div>
       </div>
 
-      <div className={styles.tabs}>
-        <div className={`${styles.tab} ${activeTab === 'deliveries' ? styles.active : ''}`} onClick={() => setActiveTab('deliveries')}>Webhook Deliveries</div>
-        <div className={`${styles.tab} ${activeTab === 'automations' ? styles.active : ''}`} onClick={() => setActiveTab('automations')}>Automation Runs</div>
-        <div className={`${styles.tab} ${activeTab === 'inbound' ? styles.active : ''}`} onClick={() => setActiveTab('inbound')}>Inbound Webhooks</div>
+      <div style={{ flexShrink: 0, padding: '0 32px', backgroundColor: '#fff', borderBottom: '1px solid var(--color-border)' }}>
+        <div className={styles.tabs} style={{ marginBottom: 0, borderBottom: 'none' }}>
+          <div className={`${styles.tab} ${activeTab === 'deliveries' ? styles.active : ''}`} onClick={() => setActiveTab('deliveries')}>Webhook Deliveries</div>
+          <div className={`${styles.tab} ${activeTab === 'automations' ? styles.active : ''}`} onClick={() => setActiveTab('automations')}>Automation Runs</div>
+          <div className={`${styles.tab} ${activeTab === 'inbound' ? styles.active : ''}`} onClick={() => setActiveTab('inbound')}>Inbound Webhooks</div>
+        </div>
       </div>
 
-      {activeTab === 'deliveries' && (
-        <div>
-          <div className={styles.filters}>
-            <Select 
-              label="Webhook" 
-              options={[{value:'all',label:'All Webhooks'}, {value:'zapier',label:'Zapier Lead Sync'}, {value:'erp',label:'ERP Integration'}]} 
-              value="all" 
-              onChange={()=>{}}
-            />
-            <Select 
-              label="Status" 
-              options={[{value:'all',label:'All Statuses'}, {value:'success',label:'Success (2xx)'}, {value:'failed',label:'Failed (4xx/5xx)'}]} 
-              value="all" 
-              onChange={()=>{}}
-            />
-            <Input label="Date range" type="date" value="" onChange={()=>{}} />
+      <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
+        {activeTab === 'deliveries' && (
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div className={styles.filters} style={{ flexShrink: 0, marginBottom: 24 }}>
+              <Select 
+                label="Webhook" 
+                options={webhookOptions} 
+                value={deliveryFilters.webhook} 
+                onChange={(v) => setDeliveryFilters({...deliveryFilters, webhook: v})}
+              />
+              <Select 
+                label="Status" 
+                options={[{value:'all',label:'All Statuses'}, {value:'success',label:'Success (2xx)'}, {value:'failed',label:'Failed (4xx/5xx)'}]} 
+                value={deliveryFilters.status} 
+                onChange={(v) => setDeliveryFilters({...deliveryFilters, status: v})}
+              />
+              <Input label="Date range" type="date" value={deliveryFilters.date} onChange={(e) => setDeliveryFilters({...deliveryFilters, date: e.target.value})} />
+            </div>
+            <div style={{ flex: 1, backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
+              <DataTable 
+                columns={deliveryColumns} 
+                data={filteredDeliveries} 
+                emptyMessage="No webhook deliveries found matching your filters."
+              />
+            </div>
           </div>
-          <div className={layoutStyles.glassCard}>
-            <DataTable 
-              columns={deliveryColumns} 
-              data={deliveries} 
-            />
-          </div>
-        </div>
-      )}
+        )}
 
-      {activeTab === 'automations' && (
-        <div>
-          <div className={styles.filters}>
-            <Select 
-              label="Status" 
-              options={[{value:'all',label:'All Statuses'}, {value:'completed',label:'Completed'}, {value:'failed',label:'Failed'}, {value:'skipped',label:'Skipped'}]} 
-              value="all" 
-              onChange={()=>{}}
-            />
-            <Input label="Rule Name" placeholder="Search rules..." value="" onChange={()=>{}} />
-          </div>
-          <DataTable 
-            columns={automationColumns} 
-            data={automations} 
-            expandable 
-            renderExpandedRow={(row) => (
-              <div className={styles.expandedContent}>
-                <div style={{display:'flex', gap:'32px'}}>
-                  <div style={{flex:1}}>
-                    <div style={{fontWeight:500, marginBottom:8, fontSize:'var(--text-sm)'}}>Matched Conditions</div>
-                    {row.matchedConditions.length > 0 ? (
-                      <ul style={{fontSize:'13px', margin:0, paddingLeft:20}}>{row.matchedConditions.map((c,i)=><li key={i}>{c}</li>)}</ul>
-                    ) : <div style={{fontSize:'13px', color:'var(--color-text-muted)'}}>None</div>}
-                  </div>
-                  {row.errors && (
-                    <div style={{flex:1}}>
-                      <div style={{fontWeight:500, color:'var(--color-danger)', marginBottom:8, fontSize:'var(--text-sm)'}}>Errors</div>
-                      <div className={styles.codeBlock} style={{color:'#f87171'}}>{row.errors.join('\n')}</div>
-                    </div>
-                  )}
-                </div>
+        {activeTab === 'automations' && (
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div className={styles.filters} style={{ flexShrink: 0, marginBottom: 24 }}>
+              <Select 
+                label="Status" 
+                options={[{value:'all',label:'All Statuses'}, {value:'completed',label:'Completed'}, {value:'failed',label:'Failed'}, {value:'skipped',label:'Skipped'}]} 
+                value={autoFilters.status} 
+                onChange={(v) => setAutoFilters({...autoFilters, status: v})}
+              />
+              <div style={{ width: 300 }}>
+                <Input label="Search Rule" placeholder="Search rule name..." value={autoFilters.search} onChange={(e) => setAutoFilters({...autoFilters, search: e.target.value})} />
               </div>
-            )}
-          />
-        </div>
-      )}
+            </div>
+            <div style={{ flex: 1, backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
+              <DataTable 
+                columns={automationColumns} 
+                data={filteredAutomations} 
+                expandable 
+                emptyMessage="No automation runs found."
+                renderExpandedRow={(row) => (
+                  <div className={styles.expandedContent}>
+                    <div style={{display:'flex', gap:'32px'}}>
+                      <div style={{flex:1}}>
+                        <div style={{fontWeight:500, marginBottom:8, fontSize:'var(--text-sm)'}}>Matched Conditions</div>
+                        {row.matchedConditions.length > 0 ? (
+                          <ul style={{fontSize:'13px', margin:0, paddingLeft:20}}>{row.matchedConditions.map((c,i)=><li key={i}>{c}</li>)}</ul>
+                        ) : <div style={{fontSize:'13px', color:'var(--color-text-muted)'}}>None</div>}
+                      </div>
+                      {row.errors && (
+                        <div style={{flex:1}}>
+                          <div style={{fontWeight:500, color:'var(--color-danger)', marginBottom:8, fontSize:'var(--text-sm)'}}>Errors</div>
+                          <div className={styles.codeBlock} style={{color:'#f87171'}}>{row.errors.join('\n')}</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              />
+            </div>
+          </div>
+        )}
 
       {activeTab === 'inbound' && (
         <div style={{padding:'32px', textAlign:'center', color:'var(--color-text-muted)'}}>
           Inbound Webhook logs are currently empty.
         </div>
       )}
+      </div>
 
       {/* Log Inspector Modal */}
       <Modal
@@ -221,32 +268,33 @@ export default function LogsViewer() {
             </div>
 
             <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-              <div style={{ background: 'var(--color-background)', padding: '8px 16px', fontWeight: 500, borderBottom: '1px solid var(--color-border)' }}>Request Payload</div>
-              <pre className={styles.codeBlock} style={{ margin: 0, border: 'none', borderRadius: 0, maxHeight: 300, overflow: 'auto' }}>
-                {typeof selectedLog.payload === 'object' ? JSON.stringify(selectedLog.payload, null, 2) : selectedLog.payload}
+              <div style={{ background: 'var(--color-background)', padding: '10px 16px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Request Payload</div>
+              <pre style={{ margin: 0, background: '#f8fafc', color: '#334155', padding: '16px', fontSize: '13px', fontFamily: 'var(--font-mono)', border: 'none', borderRadius: 0, maxHeight: 300, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                {selectedLog.payload ? (typeof selectedLog.payload === 'object' ? JSON.stringify(selectedLog.payload, null, 2) : selectedLog.payload) : <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>No payload data</span>}
               </pre>
             </div>
 
             {selectedLog.debugMode && selectedLog.reqHeaders && (
               <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-                <div style={{ background: 'var(--color-background)', padding: '8px 16px', fontWeight: 500, borderBottom: '1px solid var(--color-border)' }}>Request Headers (Debug)</div>
-                <pre className={styles.codeBlock} style={{ margin: 0, border: 'none', borderRadius: 0, maxHeight: 200, overflow: 'auto' }}>
+                <div style={{ background: 'var(--color-background)', padding: '10px 16px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Request Headers (Debug)</div>
+                <pre style={{ margin: 0, background: '#f8fafc', color: '#334155', padding: '16px', fontSize: '13px', fontFamily: 'var(--font-mono)', border: 'none', borderRadius: 0, maxHeight: 200, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                   {typeof selectedLog.reqHeaders === 'string' ? JSON.stringify(JSON.parse(selectedLog.reqHeaders), null, 2) : JSON.stringify(selectedLog.reqHeaders, null, 2)}
                 </pre>
               </div>
             )}
 
             <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-              <div style={{ background: 'var(--color-background)', padding: '8px 16px', fontWeight: 500, borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{ background: 'var(--color-background)', padding: '10px 16px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 <span>Response Body</span>
-                <span>Status: {selectedLog.status}</span>
+                <Badge variant={selectedLog.status >= 200 && selectedLog.status < 300 ? 'success' : 'danger'}>Status: {selectedLog.status || 'N/A'}</Badge>
               </div>
-              <pre className={styles.codeBlock} style={{ margin: 0, border: 'none', borderRadius: 0, maxHeight: 300, overflow: 'auto' }}>
+              <pre style={{ margin: 0, background: '#f8fafc', color: '#334155', padding: '16px', fontSize: '13px', fontFamily: 'var(--font-mono)', border: 'none', borderRadius: 0, maxHeight: 300, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                 {(() => {
+                  if (!selectedLog.responseBody) return <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>No response body</span>;
                   try {
                     return JSON.stringify(JSON.parse(selectedLog.responseBody), null, 2);
                   } catch {
-                    return selectedLog.responseBody || 'No response body';
+                    return selectedLog.responseBody;
                   }
                 })()}
               </pre>
@@ -254,8 +302,8 @@ export default function LogsViewer() {
 
             {selectedLog.debugMode && selectedLog.resHeaders && (
               <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-                <div style={{ background: 'var(--color-background)', padding: '8px 16px', fontWeight: 500, borderBottom: '1px solid var(--color-border)' }}>Response Headers (Debug)</div>
-                <pre className={styles.codeBlock} style={{ margin: 0, border: 'none', borderRadius: 0, maxHeight: 200, overflow: 'auto' }}>
+                <div style={{ background: 'var(--color-background)', padding: '10px 16px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Response Headers (Debug)</div>
+                <pre style={{ margin: 0, background: '#f8fafc', color: '#334155', padding: '16px', fontSize: '13px', fontFamily: 'var(--font-mono)', border: 'none', borderRadius: 0, maxHeight: 200, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                   {typeof selectedLog.resHeaders === 'string' ? JSON.stringify(JSON.parse(selectedLog.resHeaders), null, 2) : JSON.stringify(selectedLog.resHeaders, null, 2)}
                 </pre>
               </div>
@@ -263,8 +311,8 @@ export default function LogsViewer() {
 
             {selectedLog.error && (
               <div style={{ border: '1px solid var(--color-danger)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-                <div style={{ background: '#fef2f2', color: 'var(--color-danger)', padding: '8px 16px', fontWeight: 500, borderBottom: '1px solid var(--color-danger)' }}>Error Information</div>
-                <pre className={styles.codeBlock} style={{ margin: 0, border: 'none', borderRadius: 0, maxHeight: 200, overflow: 'auto', color: 'var(--color-danger)', background: '#fff' }}>
+                <div style={{ background: '#fef2f2', color: 'var(--color-danger)', padding: '10px 16px', fontWeight: 600, borderBottom: '1px solid var(--color-danger)', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Error Information</div>
+                <pre style={{ margin: 0, background: '#fff', color: 'var(--color-danger)', padding: '16px', fontSize: '13px', fontFamily: 'var(--font-mono)', border: 'none', borderRadius: 0, maxHeight: 200, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                   {typeof selectedLog.error === 'object' ? JSON.stringify(selectedLog.error, null, 2) : selectedLog.error}
                 </pre>
               </div>

@@ -5,12 +5,12 @@ import { createGlobalTask } from '../../api/tasks';
 import { getProjects } from '../../api/projects';
 import { useToast } from '../../store/toastContext';
 
-export default function GlobalTaskFormModal({ isOpen, onClose, onSuccess }) {
+export default function GlobalTaskFormModal({ isOpen, onClose, onSuccess, initialProjectId }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('medium');
   const [dueDate, setDueDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [projectId, setProjectId] = useState('');
+  const [projectId, setProjectId] = useState(initialProjectId || '');
   const [projects, setProjects] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const toast = useToast();
@@ -21,7 +21,7 @@ export default function GlobalTaskFormModal({ isOpen, onClose, onSuccess }) {
       setDescription('');
       setPriority('medium');
       setDueDate(new Date().toISOString().split('T')[0]);
-      setProjectId('');
+      setProjectId(initialProjectId || '');
       
       // Fetch projects for dropdown
       getProjects()
@@ -90,8 +90,9 @@ export default function GlobalTaskFormModal({ isOpen, onClose, onSuccess }) {
           <select
             value={projectId}
             onChange={e => setProjectId(e.target.value)}
-            style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+            style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', opacity: initialProjectId ? 0.7 : 1 }}
             required
+            disabled={!!initialProjectId}
           >
             <option value="">Select a Project...</option>
             {projects.map(p => (

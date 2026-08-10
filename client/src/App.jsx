@@ -33,6 +33,7 @@ const ProjectsPage   = lazy(() => import('./pages/projects/ProjectsPage'))
 const ProjectDetail  = lazy(() => import('./pages/projects/ProjectDetail'))
 const MyTasksPage    = lazy(() => import('./pages/tasks/MyTasksPage'))
 const LeadAnalytics  = lazy(() => import('./pages/analytics/LeadAnalyticsPage'))
+const ReportsHubPage = lazy(() => import('./pages/analytics/ReportsHubPage'))
 const ManagerDashboard = lazy(() => import('./pages/leads/ManagerDashboard'))
 const ProjectAnalytics= lazy(() => import('./pages/analytics/ProjectAnalyticsPage'))
 const BOQVarianceReportPage = lazy(() => import('./pages/analytics/BOQVarianceReportPage'))
@@ -66,6 +67,23 @@ const WebhooksManager = lazy(() => import('./pages/config/WebhooksManager'))
 const UsersManager = lazy(() => import('./pages/config/UsersManager'))
 const RolesManager = lazy(() => import('./pages/config/RolesManager'))
 const SuperAdminSettings = lazy(() => import('./pages/config/SuperAdminSettings'))
+
+// Flattened config imports
+const CustomFieldsManager = lazy(() => import('./pages/config/CustomFieldsManager'))
+const LeadStagesManager   = lazy(() => import('./pages/config/LeadStagesManager'))
+const TemplateBuilder     = lazy(() => import('./pages/config/TemplateBuilder'))
+const AutomationBuilder   = lazy(() => import('./pages/config/AutomationBuilder'))
+const EmailTemplateBuilder = lazy(() => import('./pages/config/EmailTemplateBuilder'))
+const ApiKeysManager      = lazy(() => import('./pages/config/ApiKeysManager'))
+const LogsViewer          = lazy(() => import('./pages/config/LogsViewer'))
+const OrganizationManager = lazy(() => import('./pages/config/OrganizationManager'))
+const ConversionChecklistManager = lazy(() => import('./pages/config/ConversionChecklistManager'))
+const QcChecklistsManager = lazy(() => import('./pages/config/QcChecklistsManager'))
+const FinancialSettings = lazy(() => import('./pages/config/FinancialSettings'))
+const LeadTimesManager = lazy(() => import('./pages/config/LeadTimesManager'))
+const TradeActivityTemplatesManager = lazy(() => import('./pages/config/TradeActivityTemplatesManager'))
+const LoginHistoryPage = lazy(() => import('./pages/config/LoginHistoryPage'))
+
 
 
 export default function App() {
@@ -104,6 +122,7 @@ export default function App() {
                     <Route path='/factory/production' element={<ProtectedRoute requiredModule="factory"><GlobalFactoryProductionPage /></ProtectedRoute>} />
                     <Route path='/projects/:id' element={<ProtectedRoute requiredModule="projects"><ProjectDetail /></ProtectedRoute>} />
                     <Route path='/tasks' element={<ProtectedRoute requiredModule="tasks"><MyTasksPage /></ProtectedRoute>} />
+                    <Route path='/analytics/hub' element={<ProtectedRoute requiredModule="analytics"><ReportsHubPage /></ProtectedRoute>} />
                     <Route path='/analytics/leads' element={<ProtectedRoute requiredModule="analytics"><LeadAnalytics /></ProtectedRoute>} />
                     <Route path='/analytics/projects' element={<ProtectedRoute requiredModule="analytics"><ProjectAnalytics /></ProtectedRoute>} />
                     <Route path='/analytics/boq-variance' element={<ProtectedRoute requiredModule="analytics"><BOQVarianceReportPage /></ProtectedRoute>} />
@@ -121,9 +140,26 @@ export default function App() {
                     <Route path='/settings/preferences' element={<ProtectedRoute requiredModule="settings"><PreferencesPage /></ProtectedRoute>} />
                     <Route path='/settings/audit-trail' element={<ProtectedRoute requiredModule="settings"><AuditTrailPage /></ProtectedRoute>} />
                     <Route path='/settings/approval-matrix' element={<ProtectedRoute requiredModule="settings"><ApprovalMatrixPage /></ProtectedRoute>} />
-                    <Route path='/config/*' element={<ProtectedRoute requiredModule="settings"><ConfigPage /></ProtectedRoute>} />
                     <Route path='/team/members' element={<ProtectedRoute requiredModule="settings"><UsersManager /></ProtectedRoute>} />
                     <Route path='/team/roles' element={<ProtectedRoute requiredModule="settings"><RolesManager /></ProtectedRoute>} />
+                    
+                    {/* Flattened Config Routes */}
+                    <Route path='/financial-settings' element={<ProtectedRoute requiredModule="settings"><FinancialSettings /></ProtectedRoute>} />
+                    <Route path='/lead-stages' element={<ProtectedRoute requiredModule="settings"><LeadStagesManager /></ProtectedRoute>} />
+                    <Route path='/custom-fields' element={<ProtectedRoute requiredModule="settings"><CustomFieldsManager /></ProtectedRoute>} />
+                    <Route path='/templates' element={<ProtectedRoute requiredModule="settings"><TemplateBuilder /></ProtectedRoute>} />
+                    <Route path='/trade-activities' element={<ProtectedRoute requiredModule="settings"><TradeActivityTemplatesManager /></ProtectedRoute>} />
+                    <Route path='/qc-checklists' element={<ProtectedRoute requiredModule="settings"><QcChecklistsManager /></ProtectedRoute>} />
+                    <Route path='/conversion-checklist' element={<ProtectedRoute requiredModule="settings"><ConversionChecklistManager /></ProtectedRoute>} />
+                    <Route path='/automations' element={<ProtectedRoute requiredModule="settings"><AutomationBuilder /></ProtectedRoute>} />
+                    <Route path='/vendor-lead-times' element={<ProtectedRoute requiredModule="settings"><LeadTimesManager /></ProtectedRoute>} />
+                    <Route path='/organization' element={<ProtectedRoute requiredModule="settings"><OrganizationManager /></ProtectedRoute>} />
+                    <Route path='/login-history' element={<ProtectedRoute requiredModule="settings"><LoginHistoryPage /></ProtectedRoute>} />
+                    <Route path='/api-keys' element={<ProtectedRoute requiredModule="settings"><ApiKeysManager /></ProtectedRoute>} />
+                    <Route path='/email-templates' element={<ProtectedRoute requiredModule="settings"><EmailTemplateBuilder /></ProtectedRoute>} />
+                    <Route path='/logs' element={<ProtectedRoute requiredModule="settings"><LogsViewer /></ProtectedRoute>} />
+                    {/* End Flattened Config Routes */}
+
                     <Route path='/financial-approvals' element={<ProtectedRoute requiredModule="finance"><FinancialApprovalsPage /></ProtectedRoute>} />
                     <Route path='/finance' element={<ProtectedRoute requiredModule="finance"><FinanceDashboardPage /></ProtectedRoute>} />
                     <Route path='/warehouse' element={<ProtectedRoute requiredModule="warehouse"><WarehousePage /></ProtectedRoute>} />

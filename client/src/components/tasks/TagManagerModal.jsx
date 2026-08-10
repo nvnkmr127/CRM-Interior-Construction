@@ -85,7 +85,7 @@ export default function TagManagerModal({ isOpen, onClose }) {
   // Let's implement a simple merge by making an API call to a mock endpoint if it existed, 
   // or just handle it purely visually for now or add a custom mock logic.
   // We'll leave merge as a visual prompt that delegates to a future backend.
-  const handleMerge = (targetId) => {
+  const handleMerge = async (targetId) => {
     if (mergeSource === targetId) {
       setMergeSource(null)
       return

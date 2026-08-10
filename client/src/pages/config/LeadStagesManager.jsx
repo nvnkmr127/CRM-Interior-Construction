@@ -19,7 +19,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 import layoutStyles from './ConfigLayout.module.css'
 import styles from './LeadStagesManager.module.css'
-import { Button, Badge, Modal } from '../../components/ui'
+import { Button, Badge, Modal, Input } from '../../components/ui'
 import { useToast } from '../../store/toastContext'
 import api from '../../api/axios'
 
@@ -129,6 +129,8 @@ function SortableStage({ stage, updateStage, deleteStage }) {
 export default function LeadStagesManager() {
   const [stages, setStages] = useState([])
   const [stageToDelete, setStageToDelete] = useState(null)
+  const [isAddOpen, setIsAddOpen] = useState(false)
+  const [newStageForm, setNewStageForm] = useState({ name: '', color: '#6B7280', wip_limit: '', is_won: false, is_lost: false, mandatory_fields: '' })
   const toast = useToast()
 
   useEffect(() => {
@@ -188,13 +190,22 @@ export default function LeadStagesManager() {
     }
   }
 
-  const addStage = async () => {
-    const newStageName = window.prompt("Enter new stage name:")
-    if (!newStageName) return
+  const addStage = () => {
+    setNewStageForm({ name: '', color: '#6B7280', wip_limit: '', is_won: false, is_lost: false, mandatory_fields: '' })
+    setIsAddOpen(true)
+  }
 
+  const handleCreateStage = async () => {
+    if (!newStageForm.name.trim()) return toast.error('Stage name is required')
     try {
-      const res = await api.post('/config/lead-stages', { name: newStageName })
-      toast.success('Stage created')
+      const payload = {
+        ...newStageForm,
+        wip_limit: newStageForm.wip_limit ? parseInt(newStageForm.wip_limit, 10) : null,
+        mandatory_fields: newStageForm.mandatory_fields ? newStageForm.mandatory_fields.split(',').map(f => f.trim()).filter(Boolean) : []
+      }
+      await api.post('/config/lead-stages', payload)
+      toast.success('Stage created successfully')
+      setIsAddOpen(false)
       fetchStages()
     } catch (err) {
       toast.error('Failed to create stage')
@@ -267,6 +278,85 @@ export default function LeadStagesManager() {
         ) : (
           <p>Are you sure you want to delete this stage?</p>
         )}
+      </Modal>
+
+      {/* Add Stage Modal */}
+      <Modal
+        isOpen={isAddOpen}
+        onClose={() => setIsAddOpen(false)}
+        title="Add New Lead Stage"
+        size="md"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setIsAddOpen(false)}>Cancel</Button>
+            <Button variant="primary" onClick={handleCreateStage}>Create Stage</Button>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <Input 
+            label="Stage Name" 
+            placeholder="e.g. Qualified Lead" 
+            value={newStageForm.name} 
+            onChange={(e) => setNewStageForm({...newStageForm, name: e.target.value})} 
+          />
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text-secondary)' }}>
+              Stage Color
+            </label>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {PRESET_COLOURS.map(c => (
+                <div 
+                  key={c} 
+                  style={{
+                    width: '32px', height: '32px', borderRadius: '50%', background: c, cursor: 'pointer',
+                    border: newStageForm.color === c ? '3px solid var(--color-surface)' : '2px solid transparent',
+                    boxShadow: newStageForm.color === c ? `0 0 0 2px ${c}` : 'none'
+                  }}
+                  onClick={() => setNewStageForm({...newStageForm, color: c})}
+                />
+              ))}
+            </div>
+          </div>
+
+          <Input 
+            label="WIP Limit (optional)" 
+            type="number"
+            placeholder="Maximum leads allowed in this stage" 
+            value={newStageForm.wip_limit} 
+            onChange={(e) => setNewStageForm({...newStageForm, wip_limit: e.target.value})} 
+          />
+
+          <Input 
+            label="Mandatory Fields (comma separated)" 
+            placeholder="e.g. Budget, Timeframe" 
+            value={newStageForm.mandatory_fields} 
+            onChange={(e) => setNewStageForm({...newStageForm, mandatory_fields: e.target.value})} 
+          />
+
+          <div style={{ display: 'flex', gap: '24px', marginTop: '8px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+              <input 
+                type="checkbox" 
+                checked={newStageForm.is_won} 
+                onChange={(e) => setNewStageForm({...newStageForm, is_won: e.target.checked, is_lost: e.target.checked ? false : newStageForm.is_lost})}
+                style={{ width: '16px', height: '16px' }}
+              />
+              Is Won Stage
+            </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+              <input 
+                type="checkbox" 
+                checked={newStageForm.is_lost} 
+                onChange={(e) => setNewStageForm({...newStageForm, is_lost: e.target.checked, is_won: e.target.checked ? false : newStageForm.is_won})}
+                style={{ width: '16px', height: '16px' }}
+              />
+              Is Lost Stage
+            </label>
+          </div>
+        </div>
       </Modal>
     </div>
   )

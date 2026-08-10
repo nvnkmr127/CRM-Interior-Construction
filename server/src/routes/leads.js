@@ -3,7 +3,7 @@ const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const validate = require('../middleware/validate');
 const dataScope = require('../middleware/dataScope');
-const { createLeadSchema, logActivitySchema } = require('../../shared/validators/leadSchemas');
+const { createLeadSchema, logActivitySchema } = require('../../../shared/validators/leadSchemas');
 const leadController = require('../controllers/leadController');
 const aiRateLimiter = require('../middleware/aiRateLimiter');
 

@@ -23,7 +23,7 @@ const {
   confirmBookingSchema,
   coordinationSchema,
   applySchema
-} = require('../../shared/validators/projectSchemas');
+} = require('../../../shared/validators/projectSchemas');
 const { success, fail, paginate } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');

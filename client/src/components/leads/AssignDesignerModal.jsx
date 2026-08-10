@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Select } from '../ui';
 import { useToast } from '../../store/toastContext';
+import { logActivity } from '../../api/leads';
 import api from '../../api/axios';
 
 export default function AssignDesignerModal({ leadId, currentAssigneeId, isOpen, onClose, onAssigned }) {
@@ -41,6 +42,21 @@ export default function AssignDesignerModal({ leadId, currentAssigneeId, isOpen,
       const res = await api.patch(`/leads/${leadId}`, { assignee_id: selectedUserId });
       if (res.data.success) {
         toast.success('Lead reassigned successfully!');
+        
+        // Log the assignment as an activity
+        const assignedUser = users.find(u => u.value === selectedUserId);
+        const assigneeName = assignedUser ? assignedUser.label.split(' (')[0] : 'Unknown';
+        try {
+          await logActivity(leadId, {
+            type: 'note',
+            title: 'Lead Reassigned',
+            notes: `Lead was reassigned to ${assigneeName}`
+          });
+        } catch (e) {
+          console.error('Failed to log reassignment activity', e);
+          toast.error('Lead reassigned, but failed to log timeline activity.');
+        }
+
         onAssigned(res.data.data);
         onClose();
       }

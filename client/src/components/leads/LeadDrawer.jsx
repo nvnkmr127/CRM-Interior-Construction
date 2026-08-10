@@ -149,6 +149,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   // Mood state
   const [mood, setMood] = useState(null);
   const [moodLoading, setMoodLoading] = useState(false);
+  const [activityRefresh, setActivityRefresh] = useState(0);
 
   // Team users list state
   const [users, setUsers] = useState([]);
@@ -187,7 +188,10 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
     setLoading(true);
     try {
       const res = await getLead(leadId);
-      if (res.success) setLead(res.data);
+      if (res.success) {
+        setLead(res.data);
+        return res.data;
+      }
     } catch (e) {
       console.error(e);
       toast.error('Failed to load lead details');
@@ -232,8 +236,15 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
       }
       
       setIsEditingMeeting(false);
-      fetchLead();
-      if (onLeadUpdated) onLeadUpdated();
+      const freshLead = await fetchLead();
+      
+      // Only call onLeadUpdated if we actually got a lead back, and explicitly pass the object
+      if (onLeadUpdated && freshLead && freshLead.id) {
+        onLeadUpdated(freshLead);
+      } else if (onLeadUpdated && lead && lead.id) {
+        onLeadUpdated(lead);
+      }
+      
     } catch (err) {
       console.error(err);
       toast.error('Failed to save meeting details');
@@ -259,8 +270,8 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
       toast.success('Meeting marked as concluded and saved to AI Knowledge Base');
       setIsConcludingMeeting(false);
       setMeetingSummary('');
-      fetchLead();
-      if (onLeadUpdated) onLeadUpdated();
+      const freshLead = await fetchLead();
+      if (onLeadUpdated) onLeadUpdated(freshLead || lead);
     } catch (err) {
       console.error(err);
       toast.error('Failed to conclude meeting');
@@ -311,6 +322,18 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
         setLead(prev => ({ ...prev, updated_at: res.data.data.updated_at }));
         onLeadUpdated?.(res.data.data);
         if (field === 'score') setLead(prev => ({ ...prev, score: value }));
+        
+        try {
+          const fieldName = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          await logActivity(leadId, {
+            type: 'note',
+            title: `Lead Updated: ${fieldName}`,
+            notes: `Changed ${fieldName} to "${value}"`
+          });
+          setActivityRefresh(prev => prev + 1);
+        } catch (e) {
+          console.error('Failed to log field update activity', e);
+        }
       }
     } catch (e) {
       setSaveStatus('error');
@@ -357,6 +380,18 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
         setLead(res.data);
         onLeadUpdated?.(res.data);
         toast.success(`Stage updated successfully.`);
+        
+        try {
+          const stageName = stages.find(s => s.id === newStageId)?.name || newStageId;
+          await logActivity(leadId, {
+            type: 'note',
+            title: `Stage Changed`,
+            notes: `Lead moved to stage: ${stageName}`
+          });
+          setActivityRefresh(prev => prev + 1);
+        } catch (e) {
+          console.error('Failed to log stage change activity', e);
+        }
       }
     } catch (e) {
       setLead(prev => ({ ...prev, stage_id: oldStageId }));
@@ -372,6 +407,17 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
         toast.success(`Lead ${newStatus === 'archived' ? 'archived' : 'unarchived'} successfully`);
         setLead(prev => ({ ...prev, status: newStatus, updated_at: res.data.data.updated_at }));
         onLeadUpdated?.(res.data.data);
+        
+        try {
+          await logActivity(leadId, {
+            type: 'note',
+            title: `Lead ${newStatus === 'archived' ? 'Archived' : 'Unarchived'}`,
+            notes: `Lead status changed to ${newStatus}`
+          });
+          setActivityRefresh(prev => prev + 1);
+        } catch (e) {
+          console.error('Failed to log archive activity', e);
+        }
       }
     } catch (e) {
       if (e.response?.data?.error?.code === 'OPTIMISTIC_LOCK_FAILED') {
@@ -552,27 +598,40 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   {lead.win_probability}% Win Probability
                 </Badge>
               )}
-              {lead.assignee_name && (
-                <div className="flex items-center gap-1.5 bg-gray-100 rounded-full px-2.5 py-1 text-xs font-medium text-gray-700 cursor-pointer hover:bg-gray-200" title="Reassign">
-                  {lead.assignee_avatar ? (
-                    <img src={lead.assignee_avatar} alt="" className="w-4 h-4 rounded-full" />
-                  ) : (
-                    <div className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center" style={{fontSize: '8px'}}>{lead.assignee_name[0]}</div>
-                  )}
-                  {lead.assignee_name}
-                </div>
-              )}
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="relative w-48">
-                <select
-                  value={lead.stage_id}
-                  onChange={handleStageSelect}
-                  className="block w-full pl-3 pr-10 py-1.5 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 cursor-pointer"
-                >
-                  {stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
+              <div className="flex items-center gap-3">
+                <div className="relative w-48">
+                  <select
+                    value={lead.stage_id}
+                    onChange={handleStageSelect}
+                    className="block w-full pl-3 pr-10 py-1.5 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 cursor-pointer"
+                  >
+                    {stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+                  {(() => {
+                    const assigneeName = lead.assignee_name || (lead.assignee_id ? users.find(u => u.id === lead.assignee_id)?.name : null);
+                    const displayName = assigneeName || 'Unassigned';
+                    
+                    return (
+                      <div 
+                        className="flex items-center gap-1.5 bg-gray-100 rounded-full px-2.5 py-1 text-xs font-medium text-gray-700 cursor-pointer hover:bg-gray-200" 
+                        title="Reassign"
+                        onClick={() => setIsAssignModalOpen(true)}
+                      >
+                        {lead.assignee_avatar ? (
+                          <img src={lead.assignee_avatar} alt="" className="w-4 h-4 rounded-full" />
+                        ) : (
+                          <div className="w-4 h-4 rounded-full bg-gray-300 text-gray-700 flex items-center justify-center font-bold" style={{fontSize: '8px'}}>
+                            {displayName[0].toUpperCase()}
+                          </div>
+                        )}
+                        {displayName}
+                      </div>
+                    );
+                  })()}
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-xs text-gray-500 font-medium">
@@ -1032,7 +1091,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   <DiscoveryCallChecklist lead={lead} onUpdate={fetchLead} />
                   
                   <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Activity Timeline</h4>
-                  <ActivityTimeline leadId={leadId} />
+                  <ActivityTimeline leadId={leadId} refreshTrigger={activityRefresh} />
                 </div>
               </div>
             )}
@@ -1099,7 +1158,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   )}
                 </div>
 
-                <ActivityTimeline leadId={leadId} />
+                <ActivityTimeline leadId={leadId} refreshTrigger={activityRefresh} />
               </div>
             )}
 
@@ -1642,6 +1701,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               onAssigned={(updatedLead) => {
                 setLead(prev => ({ ...prev, ...updatedLead }));
                 onLeadUpdated?.(updatedLead);
+                setActivityRefresh(prev => prev + 1);
               }}
             />
           )}

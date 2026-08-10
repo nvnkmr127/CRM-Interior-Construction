@@ -1,7 +1,15 @@
 const logger = require('../utils/logger');
 const EventEmitter = require('events');
 
-class EventBus extends EventEmitter {}
+class EventBus extends EventEmitter {
+  emit(eventName, ...args) {
+    const result = super.emit(eventName, ...args);
+    if (eventName !== '*') {
+      super.emit('*', ...args);
+    }
+    return result;
+  }
+}
 
 // Create a singleton instance
 const eventBus = new EventBus();

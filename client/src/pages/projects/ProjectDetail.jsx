@@ -15,7 +15,7 @@ import { useConfirm } from '../../store/confirmContext';
 // Lazy load tabs
 const PhaseTimeline = React.lazy(() => import('../../components/projects/PhaseTimeline'));
 const GanttChart = React.lazy(() => import('../../components/projects/GanttChart'));
-const TaskKanban = React.lazy(() => import('../../components/tasks/TaskKanban'));
+const ProjectTasksTab = React.lazy(() => import('../../components/projects/ProjectTasksTab'));
 const DocumentPanel = React.lazy(() => import('../../components/projects/DocumentPanel'));
 const DrawingRegisterTab = React.lazy(() => import('../../components/projects/DrawingRegisterTab'));
 const PaymentsTab = React.lazy(() => import('./PaymentsTab'));
@@ -995,7 +995,7 @@ export default function ProjectDetail() {
       case 'Gantt Chart': return <GanttChart projectId={projectId} project={project} />;
       case 'Work Activities': return <WorkActivitiesTab projectId={projectId} project={project} />;
       case 'Room Progress': return <RoomProgressTab projectId={projectId} />;
-      case 'Tasks': return <TaskKanban projectId={projectId} />;
+      case 'Tasks': return <ProjectTasksTab projectId={projectId} project={project} />;
       case 'Daily Site Reports': return <DailySiteReportsTab projectId={projectId} />;
       case 'Weekly Reports': return <WeeklyReportsTab projectId={projectId} />;
       case 'Documents': return <DocumentPanel projectId={projectId} />;
@@ -1308,6 +1308,7 @@ export default function ProjectDetail() {
             { id: 'Financial Overview', icon: '💰', label: 'Financial Overview' },
             { id: 'Payments', icon: '💸', label: 'Payments' },
             { id: 'Team & Roles', icon: '👥', label: 'Team & Roles' },
+            { id: 'Tasks', icon: '✅', label: 'Tasks' },
             { id: 'Activity Logs', icon: '📋', label: 'Activity Logs' },
             { id: 'Settings', icon: '⚙️', label: 'Settings' }
           ].filter(tab => canAccessPage(tab.id)).map(tab => {
