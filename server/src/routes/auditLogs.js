@@ -47,7 +47,7 @@ router.get('/', checkAuditAccess, async (req, res, next) => {
     }
     if (entity_id) {
       queryParams.push(entity_id);
-      queryConditions.push(`al.entity_id = $${queryParams.length}`);
+      queryConditions.push(`al.entity_id::text = $${queryParams.length}`);
     }
     if (search) {
       queryParams.push(`%${search}%`);
@@ -128,7 +128,7 @@ router.get('/export', _authorize('settings:export_csv'), async (req, res, next) 
     }
     if (entity_id) {
       queryParams.push(entity_id);
-      queryConditions.push(`al.entity_id = $${queryParams.length}`);
+      queryConditions.push(`al.entity_id::text = $${queryParams.length}`);
     }
     if (search) {
       queryParams.push(`%${search}%`);

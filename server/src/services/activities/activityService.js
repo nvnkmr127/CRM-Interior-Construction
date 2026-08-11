@@ -19,12 +19,26 @@ exports.logActivity = async (data) => {
   return activity;
 };
 
-exports.listActivities = async ({ tenantId, leadId, limit = 50 }) => {
-  const { rows } = await pool.query(
-    `SELECT * FROM activities WHERE tenant_id = $1 AND lead_id = $2 ORDER BY created_at DESC LIMIT $3`,
-    [tenantId, leadId, limit]
-  );
-  return { data: rows };
+exports.listActivities = async ({ tenantId, leadId, type, page = 1, limit = 50 }) => {
+  let query = `SELECT * FROM activities WHERE tenant_id = $1 AND lead_id = $2`;
+  const params = [tenantId, leadId];
+  
+  if (type) {
+    query += ` AND type = $${params.length + 1}`;
+    params.push(type);
+  }
+  
+  // Total count for pagination
+  const countQuery = `SELECT COUNT(*) as total FROM activities WHERE tenant_id = $1 AND lead_id = $2${type ? ' AND type = $3' : ''}`;
+  const countRes = await pool.query(countQuery, type ? [tenantId, leadId, type] : [tenantId, leadId]);
+  const total = parseInt(countRes.rows[0].total, 10);
+  
+  query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+  const offset = (page - 1) * limit;
+  params.push(limit, offset);
+  
+  const { rows } = await pool.query(query, params);
+  return { data: rows, total, page, limit };
 };
 
 exports.updateActivity = async (tenantId, activityId, data) => {
@@ -41,4 +55,12 @@ exports.updateActivity = async (tenantId, activityId, data) => {
     [title, notes, scheduledAt || null, outcome, metadata || {}, activityId, tenantId]
   );
   return rows[0];
+};
+
+exports.deleteActivity = async (tenantId, activityId) => {
+  await pool.query(
+    'DELETE FROM activities WHERE id = $1 AND tenant_id = $2',
+    [activityId, tenantId]
+  );
+  return true;
 };

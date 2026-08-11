@@ -7,208 +7,250 @@ import { useToast } from '../../store/toastContext';
 const styles = {
   wrapper: {
     display: 'flex',
-    height: '620px',
+    height: '640px',
     overflow: 'hidden',
-    background: 'var(--color-bg)',
+    background: 'rgba(255, 255, 255, 0.45)',
+    backdropFilter: 'blur(20px)',
     fontFamily: 'var(--font-sans)',
-    borderRadius: 'var(--radius-lg)',
-    border: '1px solid var(--color-border)',
+    borderRadius: '24px',
+    border: '1px solid rgba(255, 255, 255, 0.5)',
+    boxShadow: '0 12px 40px 0 rgba(31, 38, 135, 0.06), inset 0 0 0 1px rgba(255, 255, 255, 0.4)',
   },
   vaultPanel: {
     width: '420px',
-    borderRight: '1px solid var(--color-border)',
-    background: 'var(--color-surface)',
+    borderRight: '1px solid rgba(0, 0, 0, 0.08)',
+    background: 'rgba(255, 255, 255, 0.6)',
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
     flexShrink: 0,
   },
   vaultHeader: {
-    padding: '16px 20px',
-    borderBottom: '1px solid var(--color-border)',
-    background: 'var(--color-surface)',
+    padding: '20px 24px',
+    borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
+    background: 'rgba(255, 255, 255, 0.2)',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   vaultTitle: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    fontWeight: 700,
-    fontSize: '15px',
-    color: 'var(--color-text)',
-    margin: '0 0 4px 0',
+    gap: '10px',
+    fontWeight: 800,
+    fontSize: '16px',
+    color: '#1f2937',
+    margin: 0,
   },
   vaultIcon: {
-    fontSize: '16px',
+    fontSize: '18px',
   },
   vaultSubtext: {
     fontSize: '12px',
-    color: 'var(--color-text-secondary)',
-    margin: 0,
+    color: '#6b7280',
+    margin: '4px 0 0 0',
     lineHeight: '1.4',
   },
   searchWrapper: {
-    padding: '12px 16px',
-    borderBottom: '1px solid var(--color-border)',
-    background: 'var(--color-surface-2)',
+    padding: '16px 20px',
+    borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
+    background: 'rgba(255, 255, 255, 0.1)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+  },
+  filterRow: {
+    display: 'flex',
+    gap: '6px',
+    overflowX: 'auto',
+    paddingBottom: '4px',
+  },
+  filterPill: {
+    fontSize: '11px',
+    fontWeight: 700,
+    padding: '5px 10px',
+    borderRadius: '10px',
+    border: '1px solid rgba(0,0,0,0.06)',
+    background: '#fff',
+    color: '#4b5563',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    whiteSpace: 'nowrap',
+  },
+  filterPillActive: {
+    background: '#3b82f6',
+    color: '#fff',
+    borderColor: '#3b82f6',
+    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.25)',
   },
   searchInput: {
     width: '100%',
-    padding: '8px 12px',
-    border: '1px solid var(--color-border)',
-    borderRadius: 'var(--radius-md)',
-    fontSize: '12.5px',
-    background: 'var(--color-surface)',
-    color: 'var(--color-text)',
+    padding: '10px 14px',
+    border: '1px solid rgba(0, 0, 0, 0.08)',
+    borderRadius: '12px',
+    fontSize: '13px',
+    background: '#fff',
+    color: '#1f2937',
     outline: 'none',
-    transition: 'border-color 0.2s ease',
+    boxShadow: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.02)',
+    transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
   },
   cardList: {
     flex: 1,
     overflowY: 'auto',
-    padding: '16px',
+    padding: '20px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '12px',
-    background: 'var(--color-bg)',
+    gap: '14px',
+    background: 'rgba(0, 0, 0, 0.01)',
   },
   card: {
-    background: 'var(--color-surface)',
-    border: '1px solid var(--color-border)',
-    borderRadius: 'var(--radius-md)',
-    padding: '14px',
+    background: '#fff',
+    border: '1px solid rgba(0, 0, 0, 0.05)',
+    borderRadius: '16px',
+    padding: '16px',
     cursor: 'pointer',
-    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-    boxShadow: 'var(--shadow-xs)',
+    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.02)',
     position: 'relative',
     overflow: 'hidden',
     flexShrink: 0,
   },
   cardActive: {
-    border: '1px solid var(--color-accent)',
-    boxShadow: 'var(--shadow-sm)',
-    background: 'var(--color-accent-light)',
+    borderColor: '#3b82f6',
+    boxShadow: '0 8px 24px rgba(59, 130, 246, 0.08), 0 1px 2px rgba(59, 130, 246, 0.05)',
+    background: 'rgba(59, 130, 246, 0.01)',
   },
   cardHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '8px',
+    marginBottom: '10px',
   },
   badge: {
     fontSize: '10px',
-    fontWeight: 600,
-    padding: '2px 8px',
-    borderRadius: 'var(--radius-full)',
+    fontWeight: 700,
+    padding: '3px 9px',
+    borderRadius: '8px',
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
   },
   badgeMeeting: {
-    background: 'rgba(232, 147, 90, 0.1)',
-    color: 'var(--color-accent-dark)',
+    background: '#eff6ff',
+    color: '#1d4ed8',
+    border: '1px solid #dbeafe',
   },
   badgeObjection: {
-    background: 'rgba(220, 38, 38, 0.08)',
-    color: 'var(--color-danger)',
+    background: '#fef2f2',
+    color: '#b91c1c',
+    border: '1px solid #fee2e2',
   },
   badgePreference: {
-    background: 'rgba(37, 99, 235, 0.08)',
-    color: 'var(--color-info)',
+    background: '#f5f3ff',
+    color: '#6d28d9',
+    border: '1px solid #ede9fe',
   },
   cardDate: {
     fontSize: '11px',
-    color: 'var(--color-text-secondary)',
+    color: '#9ca3af',
+    fontWeight: 550,
   },
   cardTitle: {
-    fontSize: '13px',
-    fontWeight: 600,
-    color: 'var(--color-text)',
-    margin: '0 0 6px 0',
+    fontSize: '14px',
+    fontWeight: 750,
+    color: '#111827',
+    margin: '0 0 8px 0',
     display: 'flex',
     alignItems: 'center',
-    gap: '6px',
+    gap: '8px',
   },
   cardSummary: {
     fontSize: '12px',
-    color: 'var(--color-text-secondary)',
-    lineHeight: '1.45',
-    margin: '0 0 10px 0',
+    color: '#4b5563',
+    lineHeight: '1.5',
+    margin: '0 0 12px 0',
   },
   bulletList: {
-    margin: '0 0 10px 0',
+    margin: '0 0 12px 0',
     paddingLeft: '16px',
-    fontSize: '11.5px',
-    color: 'var(--color-text)',
-    lineHeight: '1.5',
+    fontSize: '12px',
+    color: '#374151',
+    lineHeight: '1.6',
   },
   bulletItem: {
-    marginBottom: '4px',
+    marginBottom: '6px',
   },
   cardFooter: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderTop: '1px dashed var(--color-border)',
-    paddingTop: '8px',
-    marginTop: '8px',
+    borderTop: '1px dashed rgba(0, 0, 0, 0.05)',
+    paddingTop: '10px',
+    marginTop: '10px',
   },
   cardMetadata: {
     fontSize: '11px',
-    color: 'var(--color-text-secondary)',
+    color: '#9ca3af',
   },
   cardBtn: {
     background: 'none',
     border: 'none',
-    color: 'var(--color-accent-dark)',
+    color: '#2563eb',
     fontSize: '11px',
-    fontWeight: 600,
+    fontWeight: 700,
     cursor: 'pointer',
     padding: 0,
     display: 'flex',
     alignItems: 'center',
-    gap: '2px',
+    gap: '3px',
+    transition: 'color 0.2s',
   },
   chatPanel: {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
-    background: 'var(--color-surface)',
+    background: 'rgba(255, 255, 255, 0.8)',
   },
   chatHeader: {
-    padding: '16px 20px',
-    borderBottom: '1px solid var(--color-border)',
-    background: 'var(--color-surface)',
+    padding: '20px 24px',
+    borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
+    background: 'rgba(255, 255, 255, 0.4)',
     flexShrink: 0,
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   chatTitle: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    fontWeight: 700,
-    fontSize: '15px',
-    color: 'var(--color-text)',
-    margin: '0 0 4px 0',
+    fontWeight: 800,
+    fontSize: '16px',
+    color: '#1f2937',
+    margin: 0,
   },
   dot: {
     width: '8px',
     height: '8px',
     borderRadius: '50%',
-    background: 'var(--color-success)',
+    background: '#10b981',
     display: 'inline-block',
+    boxShadow: '0 0 8px #10b981',
   },
   chatSubtext: {
     fontSize: '12px',
-    color: 'var(--color-text-secondary)',
-    margin: 0,
+    color: '#6b7280',
+    margin: '2px 0 0 0',
   },
   messageList: {
     flex: 1,
     overflowY: 'auto',
-    padding: '20px',
+    padding: '24px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '16px',
-    background: 'var(--color-bg)',
+    gap: '18px',
+    background: 'rgba(0,0,0,0.005)',
   },
   rowUser: {
     display: 'flex',
@@ -220,90 +262,115 @@ const styles = {
   },
   bubbleUser: {
     maxWidth: '80%',
-    background: 'var(--color-accent)',
+    background: 'linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)',
     color: '#fff',
-    borderRadius: '12px 12px 2px 12px',
-    padding: '10px 14px',
+    borderRadius: '16px 16px 2px 16px',
+    padding: '12px 16px',
     fontSize: '13.5px',
-    lineHeight: 1.5,
-    boxShadow: 'var(--shadow-sm)',
+    lineHeight: 1.55,
+    boxShadow: '0 4px 16px rgba(37, 99, 235, 0.15)',
   },
   bubbleAssistant: {
     maxWidth: '80%',
-    background: 'var(--color-surface)',
-    border: '1px solid var(--color-border)',
-    color: 'var(--color-text)',
-    borderRadius: '12px 12px 12px 2px',
-    padding: '12px 16px',
+    background: '#fff',
+    border: '1px solid rgba(0, 0, 0, 0.05)',
+    color: '#1f2937',
+    borderRadius: '16px 16px 16px 2px',
+    padding: '14px 18px',
     fontSize: '13.5px',
-    lineHeight: 1.5,
-    boxShadow: 'var(--shadow-sm)',
+    lineHeight: 1.55,
+    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.02)',
   },
   bubbleSystem: {
     width: '100%',
     textAlign: 'center',
     background: 'transparent',
-    color: 'var(--color-text-secondary)',
+    color: '#9ca3af',
     fontSize: '11px',
-    padding: '4px 0',
+    padding: '6px 0',
+    letterSpacing: '0.02em',
   },
   roleLabel: {
     fontSize: '9px',
-    fontWeight: 700,
+    fontWeight: 800,
     textTransform: 'uppercase',
-    letterSpacing: '0.06em',
+    letterSpacing: '0.08em',
     marginBottom: '6px',
     opacity: 0.8,
   },
   suggestionArea: {
-    padding: '10px 16px',
-    background: 'var(--color-surface)',
-    borderTop: '1px solid var(--color-border)',
+    padding: '12px 20px',
+    background: 'rgba(255,255,255,0.4)',
+    borderTop: '1px solid rgba(0, 0, 0, 0.05)',
     display: 'flex',
     flexWrap: 'wrap',
     gap: '8px',
   },
   suggestionPill: {
     fontSize: '11.5px',
-    padding: '6px 12px',
-    borderRadius: 'var(--radius-full)',
-    border: '1px solid var(--color-border)',
-    background: 'var(--color-bg)',
-    color: 'var(--color-text)',
+    fontWeight: 600,
+    padding: '7px 14px',
+    borderRadius: '9999px',
+    border: '1px solid rgba(0,0,0,0.06)',
+    background: '#fff',
+    color: '#4b5563',
     cursor: 'pointer',
-    transition: 'all 0.15s ease',
+    transition: 'all 0.2s ease',
     outline: 'none',
   },
   inputArea: {
-    padding: '12px 16px',
-    background: 'var(--color-surface)',
-    borderTop: '1px solid var(--color-border)',
+    padding: '16px 20px',
+    background: 'rgba(255, 255, 255, 0.6)',
+    borderTop: '1px solid rgba(0, 0, 0, 0.06)',
     flexShrink: 0,
   },
   form: {
     display: 'flex',
-    gap: '8px',
+    gap: '10px',
   },
   input: {
     flex: 1,
-    padding: '10px 14px',
-    border: '1px solid var(--color-border)',
-    borderRadius: 'var(--radius-md)',
+    padding: '12px 16px',
+    border: '1px solid rgba(0, 0, 0, 0.08)',
+    borderRadius: '12px',
     fontSize: '13.5px',
-    background: 'var(--color-bg)',
-    color: 'var(--color-text)',
+    background: '#fff',
+    color: '#1f2937',
     outline: 'none',
+    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)',
     transition: 'border-color 0.2s ease',
   },
   typingBubble: {
     maxWidth: '80%',
-    background: 'var(--color-surface)',
-    border: '1px solid var(--color-border)',
-    borderRadius: '12px 12px 12px 2px',
-    padding: '10px 14px',
+    background: '#fff',
+    border: '1px solid rgba(0,0,0,0.05)',
+    borderRadius: '16px 16px 16px 2px',
+    padding: '12px 18px',
     fontSize: '13px',
-    color: 'var(--color-text-secondary)',
-    fontStyle: 'italic',
+    color: '#6b7280',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    boxShadow: '0 4px 16px rgba(0,0,0,0.02)',
+  },
+  createFormWrapper: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
+    background: '#fff',
+    border: '1px solid rgba(0,0,0,0.06)',
+    borderRadius: '16px',
+    padding: '20px',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
+  },
+  formLabel: {
+    display: 'block',
+    fontSize: '11px',
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    color: '#6b7280',
+    marginBottom: '6px',
+    letterSpacing: '0.04em',
   },
 };
 
@@ -319,9 +386,16 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRecordId, setSelectedRecordId] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  
-  const toast = useToast();
-  const bottomRef = useRef(null);
+  const [loadingRecords, setLoadingRecords] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newRecord, setNewRecord] = useState({
+    type: 'Meeting Summary',
+    title: '',
+    summary: '',
+    host: lead?.assignee_name || 'AI Assistant',
+    details: '',
+  });
 
   // Initial Mock Records in AI Knowledge Vault
   const [records, setRecords] = useState([
@@ -374,6 +448,77 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
     }
   ]);
 
+  const mapActivityToRecord = (act) => {
+    const notesText = act.notes || '';
+    const lines = notesText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const title = act.title || 'Meeting Summary';
+    const summary = lines[0] || 'Concluded meeting notes and outcomes.';
+    const details = lines.slice(1).map(l => l.replace(/^[-•*✓]\s*/, ''));
+
+    const host = act.metadata?.meeting_host || act.user_name || 'Coordinator';
+
+    let formattedDate = 'Recent';
+    try {
+      const d = new Date(act.scheduled_at || act.created_at);
+      formattedDate = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) + 
+                      ' at ' + 
+                      d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    } catch (e) {
+      // fallback
+    }
+
+    return {
+      id: act.id,
+      type: 'Meeting Summary',
+      title: title,
+      date: formattedDate,
+      host: host,
+      summary: summary,
+      details: details.length > 0 ? details : ['Key points and decisions recorded in meeting notes.'],
+      status: 'Indexed',
+      icon: '📅',
+      rawActivity: act
+    };
+  };
+
+  const fetchRecords = async () => {
+    setLoadingRecords(true);
+    try {
+      const res = await api.get(`/leads/${leadId}/activities`, {
+        params: { type: 'meeting', limit: 100 }
+      });
+      const activities = res.data?.data || res.data || [];
+      const concludedMeetings = activities.filter(a => 
+        a.outcome === 'concluded' || a.outcome === 'completed'
+      );
+      const fetchedRecords = concludedMeetings.map(mapActivityToRecord);
+      
+      setRecords(prev => {
+        const mocks = prev.filter(r => r.id.startsWith('rec-'));
+        const combined = [...fetchedRecords, ...mocks];
+        const unique = [];
+        const seen = new Set();
+        for (const r of combined) {
+          if (!seen.has(r.id)) {
+            seen.add(r.id);
+            unique.push(r);
+          }
+        }
+        return unique;
+      });
+    } catch (err) {
+      console.error('Failed to fetch knowledge vault records:', err);
+    } finally {
+      setLoadingRecords(false);
+    }
+  };
+
+  useEffect(() => {
+    if (leadId) {
+      fetchRecords();
+    }
+  }, [leadId]);
+
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -391,13 +536,104 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
     }));
   };
 
-  const handleDeleteRecord = (id) => {
-    setRecords(prev => prev.map(r => {
-      if (r.id === id) {
-        return { ...r, summary: 'Data has been cleared.', details: [] };
+  const handleDeleteRecord = async (id) => {
+    if (id.startsWith('rec-')) {
+      setRecords(prev => prev.map(r => {
+        if (r.id === id) {
+          return { ...r, summary: 'Data has been cleared.', details: [] };
+        }
+        return r;
+      }));
+    } else {
+      if (!window.confirm('Are you sure you want to permanently delete this meeting record from the Knowledge Vault?')) return;
+      try {
+        await api.delete(`/leads/${leadId}/activities/${id}`);
+        toast.success('Record deleted from Knowledge Vault');
+        fetchRecords();
+      } catch (err) {
+        console.error(err);
+        toast.error('Failed to delete record from Knowledge Vault');
       }
-      return r;
-    }));
+    }
+  };
+
+  const handleSaveChanges = async () => {
+    setIsEditing(false);
+    setLoading(true);
+    try {
+      for (const rec of records) {
+        if (!rec.id.startsWith('rec-')) {
+          const lines = [rec.summary, ...rec.details];
+          const notesText = lines.join('\n');
+          await api.patch(`/leads/${leadId}/activities/${rec.id}`, {
+            title: rec.title,
+            notes: notesText,
+            outcome: 'concluded',
+            metadata: {
+              ...rec.rawActivity?.metadata,
+              meeting_host: rec.host
+            }
+          });
+        }
+      }
+      toast.success('Knowledge Vault updated successfully');
+      fetchRecords();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to save some changes to Knowledge Vault.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateRecord = async (e) => {
+    e.preventDefault();
+    if (!newRecord.title || !newRecord.summary) {
+      toast.error('Title and Summary are required');
+      return;
+    }
+    setLoading(true);
+    try {
+      const type = newRecord.type === 'Meeting Summary' ? 'meeting' : 'note';
+      const points = newRecord.details.split('\n').map(p => p.trim()).filter(p => p.length > 0);
+      const notes = [newRecord.summary, ...points].join('\n');
+      
+      const payload = {
+        type,
+        title: newRecord.title,
+        notes,
+        outcome: type === 'meeting' ? 'concluded' : null,
+        metadata: {
+          meeting_host: newRecord.host
+        }
+      };
+
+      await api.post(`/leads/${leadId}/activities`, payload);
+      toast.success('Record successfully added to Knowledge Vault');
+      setShowCreateForm(false);
+      setNewRecord({
+        type: 'Meeting Summary',
+        title: '',
+        summary: '',
+        host: lead?.assignee_name || 'AI Assistant',
+        details: '',
+      });
+      fetchRecords();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to create Knowledge Vault record');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClearChat = () => {
+    setMessages([
+      {
+        role: 'system',
+        content: `AI Knowledge Assistant connected. Ask me anything about ${lead?.name || 'this lead'}'s history, interactions, or preferences.`,
+      },
+    ]);
   };
 
   const sendQuery = async (queryText) => {
@@ -433,11 +669,14 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
     sendQuery(question);
   };
 
-  const filteredRecords = records.filter(r => 
-    r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.summary.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredRecords = records.filter(r => {
+    const matchesSearch = r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.summary.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (selectedCategory === 'All') return matchesSearch;
+    return r.type === selectedCategory && matchesSearch;
+  });
 
   const getBadgeStyle = (type) => {
     switch (type) {
@@ -458,22 +697,46 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
             ✏️ Edit Section
           </Button>
         ) : (
-          <Button size='sm' variant='ghost' onClick={() => setIsEditing(false)} style={{ color: '#ef4444', padding: '4px 10px', fontSize: '12px', height: '28px' }}>
-            Cancel Edit
-          </Button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Button size='sm' variant='primary' onClick={handleSaveChanges} style={{ fontSize: '12px', height: '28px' }}>
+              💾 Save Changes
+            </Button>
+            <Button size='sm' variant='ghost' onClick={() => { setIsEditing(false); fetchRecords(); }} style={{ color: '#ef4444', padding: '4px 10px', fontSize: '12px', height: '28px' }}>
+              Cancel Edit
+            </Button>
+          </div>
         )}
       </div>
       <div style={styles.wrapper}>
       {/* LEFT PANEL: Knowledge Vault Column */}
       <div style={styles.vaultPanel}>
         <div style={styles.vaultHeader}>
-          <h3 style={styles.vaultTitle}>
-            <span style={styles.vaultIcon}>🗄️</span>
-            AI Knowledge Vault
-          </h3>
-          <p style={styles.vaultSubtext}>
-            Concluded meetings, objections, and client details are indexed here.
-          </p>
+          <div>
+            <h3 style={styles.vaultTitle}>
+              <span style={styles.vaultIcon}>🗄️</span>
+              AI Knowledge Vault
+            </h3>
+            <p style={styles.vaultSubtext}>
+              Concluded meetings, objections, and preferences are indexed.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowCreateForm(prev => !prev)}
+            style={{
+              padding: '6px 12px',
+              background: showCreateForm ? '#f3f4f6' : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+              color: showCreateForm ? '#4b5563' : '#fff',
+              border: 'none',
+              borderRadius: '10px',
+              fontSize: '11.5px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: showCreateForm ? 'none' : '0 4px 12px rgba(37, 99, 235, 0.2)',
+              transition: 'all 0.2s',
+            }}
+          >
+            {showCreateForm ? 'View Vault' : '+ Add Record'}
+          </button>
         </div>
 
         {/* Search bar */}
@@ -485,11 +748,111 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
+          <div style={styles.filterRow}>
+            {[
+              { id: 'All', label: '🗂️ All' },
+              { id: 'Meeting Summary', label: '📅 Meetings' },
+              { id: 'Objection Log', label: '⚖️ Objections' },
+              { id: 'Preference Sheet', label: '🎨 Preferences' },
+            ].map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
+                style={{
+                  ...styles.filterPill,
+                  ...(selectedCategory === cat.id ? styles.filterPillActive : {}),
+                }}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Vault list */}
         <div style={styles.cardList}>
-          {filteredRecords.length === 0 ? (
+          {showCreateForm ? (
+            <form onSubmit={handleCreateRecord} style={styles.createFormWrapper}>
+              <h4 style={{ fontSize: '13.5px', fontWeight: 800, color: '#111827', marginBottom: '2px' }}>
+                ✏️ Add New Knowledge Record
+              </h4>
+              <div>
+                <label style={styles.formLabel}>Record Type</label>
+                <select
+                  value={newRecord.type}
+                  onChange={(e) => setNewRecord(prev => ({ ...prev, type: e.target.value }))}
+                  style={{ ...styles.searchInput, background: '#fff' }}
+                >
+                  <option value="Meeting Summary">Meeting Summary</option>
+                  <option value="Objection Log">Objection Log</option>
+                  <option value="Preference Sheet">Preference Sheet</option>
+                </select>
+              </div>
+              <div>
+                <label style={styles.formLabel}>Title</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Price Negotiation Notes"
+                  value={newRecord.title}
+                  onChange={(e) => setNewRecord(prev => ({ ...prev, title: e.target.value }))}
+                  style={styles.searchInput}
+                />
+              </div>
+              <div>
+                <label style={styles.formLabel}>Author / Host</label>
+                <input
+                  type="text"
+                  required
+                  value={newRecord.host}
+                  onChange={(e) => setNewRecord(prev => ({ ...prev, host: e.target.value }))}
+                  style={styles.searchInput}
+                />
+              </div>
+              <div>
+                <label style={styles.formLabel}>Summary Sentence</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Brief 1-sentence recap..."
+                  value={newRecord.summary}
+                  onChange={(e) => setNewRecord(prev => ({ ...prev, summary: e.target.value }))}
+                  style={styles.searchInput}
+                />
+              </div>
+              <div>
+                <label style={styles.formLabel}>Key Details (One Bullet Per Line)</label>
+                <textarea
+                  rows={4}
+                  placeholder="- Budget was challenging due to civil works&#10;- Suggested pre-fabricated cabinetry to save time"
+                  value={newRecord.details}
+                  onChange={(e) => setNewRecord(prev => ({ ...prev, details: e.target.value }))}
+                  style={{ ...styles.searchInput, height: '90px', resize: 'vertical' }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', paddingTop: '6px' }}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setShowCreateForm(false)}
+                  style={{ fontSize: '12px' }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  style={{ fontSize: '12px', background: '#3b82f6', borderColor: '#3b82f6' }}
+                >
+                  Save Record
+                </Button>
+              </div>
+            </form>
+          ) : loadingRecords ? (
+            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--color-text-secondary)', fontSize: '13px' }}>
+              🔄 Indexing Knowledge Vault...
+            </div>
+          ) : filteredRecords.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--color-text-secondary)', fontSize: '13px' }}>
               No indexed records match your search.
             </div>
@@ -545,7 +908,7 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
                       style={{ ...styles.searchInput, padding: '4px 8px', minHeight: '60px', marginBottom: '10px', resize: 'vertical' }}
                     />
                     <ul style={styles.bulletList}>
-                      {record.details.map((detail, idx) => (
+                      {(record.details || []).map((detail, idx) => (
                         <li key={idx} style={{...styles.bulletItem, display: 'flex', gap: '4px', alignItems: 'flex-start'}}>
                           <span style={{ marginTop: '2px' }}>•</span>
                           <input 
@@ -567,7 +930,7 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
                     <p style={styles.cardSummary}>{record.summary}</p>
                     
                     <ul style={styles.bulletList}>
-                      {record.details.map((detail, idx) => (
+                      {(record.details || []).map((detail, idx) => (
                         <li key={idx} style={styles.bulletItem}>• {detail}</li>
                       ))}
                     </ul>
@@ -595,13 +958,35 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
       {/* RIGHT PANEL: AI Q&A Assistant Chat */}
       <div style={styles.chatPanel}>
         <div style={styles.chatHeader}>
-          <h3 style={styles.chatTitle}>
-            <span style={styles.dot} />
-            AI Knowledge Assistant
-          </h3>
-          <p style={styles.chatSubtext}>
-            Ask detailed questions regarding timeline, design decisions, budget, or objections.
-          </p>
+          <div>
+            <h3 style={styles.chatTitle}>
+              <span style={styles.dot} />
+              AI Knowledge Assistant
+            </h3>
+            <p style={styles.chatSubtext}>
+              Ask detailed questions regarding timeline, design decisions, budget, or objections.
+            </p>
+          </div>
+          {messages.length > 1 && (
+            <button
+              onClick={handleClearChat}
+              style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                color: '#ef4444',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                borderRadius: '6px',
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+            >
+              🗑️ Clear Chat
+            </button>
+          )}
         </div>
 
         {/* Chat message list */}
@@ -636,7 +1021,14 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
 
           {loading && (
             <div style={styles.rowOther}>
-              <div style={styles.typingBubble}>Analyzing knowledge vault…</div>
+              <div style={styles.typingBubble}>
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                </div>
+                <span>Analyzing knowledge vault…</span>
+              </div>
             </div>
           )}
           <div ref={bottomRef} />

@@ -38,7 +38,7 @@ const ExpandableText = ({ text }) => {
   );
 };
 
-export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger }) {
+export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger, onActivityLogged }) {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 20 });
@@ -70,6 +70,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger }
         const updatedActivity = res.data?.data || res.data || { notes: editNotes, title: editTitle };
         setActivities(prev => prev.map(a => a.id === activityId ? { ...a, ...updatedActivity } : a));
         setEditingActivityId(null);
+        if (onActivityLogged) onActivityLogged();
       }
     } catch (err) {
       alert('Failed to update activity.');
@@ -138,7 +139,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger }
     recognition.start();
     setIsListening(true);
   };
-  // You might want to fetch reps for task assignment
+  // You might want to fetch reps for task assignment
   const [reps, setReps] = useState([]);
   useEffect(() => {
     api.get('/users?role=sales_rep').then(res => setReps(res.data?.data || [])).catch(() => {});
@@ -160,7 +161,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger }
     } catch (error) {
       console.error('Failed to load timeline events', error);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -223,6 +224,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger }
         meeting_duration: '30', meeting_link: '', meeting_host: '', meeting_reminders: false
       });
       setActiveForm(null);
+      if (onActivityLogged) onActivityLogged();
     } catch (err) {
       alert('Failed to save.');
     } finally {
@@ -291,7 +293,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger }
           <div>
             <button
               onClick={() => setIsMeetingModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm bg-indigo-100 text-indigo-700 border border-indigo-300 hover:bg-indigo-200"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm bg-indigo-100 text-indigo-750 border border-indigo-300 hover:bg-indigo-200"
             >
               <span className="text-lg leading-none">🎙️</span> AI Summarize
             </button>
@@ -442,7 +444,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger }
                     type="checkbox"
                     checked={formData.meeting_reminders}
                     onChange={(e) => setFormData(prev => ({ ...prev, meeting_reminders: e.target.checked }))}
-                    className="rounded text-blue-600"
+                    className="rounded text-blue-650"
                   />
                   Send Client Reminders (WhatsApp & Email)
                 </label>
@@ -496,7 +498,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger }
                   <button
                     type="button"
                     onClick={toggleListening}
-                    className={`absolute right-3 bottom-4 p-1.5 rounded-full transition-colors ${isListening ? 'bg-red-100 text-red-600 animate-pulse' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}
+                    className={`absolute right-3 bottom-4 p-1.5 rounded-full transition-colors ${isListening ? 'bg-red-100 text-red-650 animate-pulse' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-650'}`}
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
                   </button>
@@ -528,7 +530,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger }
                 <button
                   type="button"
                   onClick={toggleListening}
-                  className={`absolute right-3 bottom-4 p-1.5 rounded-full transition-colors ${isListening ? 'bg-red-100 text-red-600 animate-pulse' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}
+                  className={`absolute right-3 bottom-4 p-1.5 rounded-full transition-colors ${isListening ? 'bg-red-100 text-red-650 animate-pulse' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-650'}`}
                   title={isListening ? "Stop listening" : "Start Voice Dictation"}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
@@ -612,13 +614,13 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger }
                     {editingActivityId === activity.id ? (
                       <form onSubmit={(e) => handleUpdateActivity(e, activity.id)} className="space-y-3 mt-2">
                         <div>
-                          <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Title</label>
-                          <input
-                            type="text"
-                            value={editTitle}
-                            onChange={(e) => setEditTitle(e.target.value)}
-                            className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none"
-                          />
+                           <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Title</label>
+                           <input
+                             type="text"
+                             value={editTitle}
+                             onChange={(e) => setEditTitle(e.target.value)}
+                             className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none"
+                           />
                         </div>
                         <div>
                           <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Notes</label>
@@ -634,7 +636,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger }
                           <button
                             type="button"
                             onClick={() => setEditingActivityId(null)}
-                            className="px-3 py-1.5 text-xs font-semibold text-gray-600 hover:text-gray-800 border border-gray-300 rounded shadow-sm hover:bg-gray-50 transition-all"
+                            className="px-3 py-1.5 text-xs font-semibold text-gray-600 hover:text-gray-800 border border-gray-300 rounded shadow-sm hover:bg-gray-55 transition-all"
                             style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' }}
                           >
                             Cancel
@@ -689,6 +691,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger }
                                   await logActivity(leadId, { type: 'note', notes: `Accepted AI Task: ${task.title}` });
                                   fetchActivities(1, false);
                                   if (onTaskAdded) onTaskAdded();
+                                  if (onActivityLogged) onActivityLogged();
                                 }}
                                 className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition-colors font-medium whitespace-nowrap ml-2"
                               >
@@ -727,6 +730,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger }
           onSummarySaved={() => {
             fetchActivities(1, false);
             setIsMeetingModalOpen(false);
+            if (onActivityLogged) onActivityLogged();
           }} 
         />
       )}

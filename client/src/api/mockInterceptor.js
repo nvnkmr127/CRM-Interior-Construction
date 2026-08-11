@@ -365,7 +365,7 @@ export const setupMockInterceptor = (api) => {
             }
           }
           // TAGS
-          if (url.includes('/tags')) {
+          else if (url.includes('/tags')) {
             if (!mockDatabase.tags) mockDatabase.tags = [];
             const urlParts = url.split('?');
             const match = urlParts[0].match(/\/tags\/([a-zA-Z0-9-]+)$/);
@@ -413,7 +413,7 @@ export const setupMockInterceptor = (api) => {
             }
           }
           // TASK VIEWS
-          if (url.includes('/task-views')) {
+          else if (url.includes('/task-views')) {
             if (!mockDatabase.taskViews) mockDatabase.taskViews = [];
             const urlParts = url.split('?');
             const match = urlParts[0].match(/\/task-views\/([a-zA-Z0-9-]+)$/);
@@ -462,7 +462,7 @@ export const setupMockInterceptor = (api) => {
             }
           }
           // TASK TEMPLATES
-          if (url.includes('/task-templates')) {
+          else if (url.includes('/task-templates')) {
             if (!mockDatabase.taskTemplates) mockDatabase.taskTemplates = [];
             const urlParts = url.split('?');
             const match = urlParts[0].match(/\/task-templates\/([a-zA-Z0-9-]+)$/);
@@ -635,6 +635,11 @@ export const setupMockInterceptor = (api) => {
             if (method === 'get') {
               if (leadId) {
                 let list = mockDatabase.activities.filter(a => a.lead_id === leadId);
+                const queryParams = new URLSearchParams(urlParts[1] || '');
+                const typeParam = queryParams.get('type');
+                if (typeParam) {
+                  list = list.filter(a => a.type === typeParam);
+                }
                 list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
                 responseData.data = list;
               }
@@ -692,14 +697,15 @@ export const setupMockInterceptor = (api) => {
                     if (leadIdx !== -1) {
                       const currentLead = mockDatabase.leads[leadIdx];
                       
-                      if (updatedActivity.outcome === 'concluded' || updatedActivity.outcome === 'completed') {
+                      if (updatedActivity.outcome === 'concluded' || updatedActivity.outcome === 'completed' || updatedActivity.outcome === 'cancelled') {
                         const remainingMeetings = mockDatabase.activities.filter(a => 
                           a.lead_id === leadId && 
                           a.type === 'meeting' && 
                           a.scheduled_at &&
                           a.id !== activityId &&
                           a.outcome !== 'concluded' && 
-                          a.outcome !== 'completed'
+                          a.outcome !== 'completed' &&
+                          a.outcome !== 'cancelled'
                         );
                         remainingMeetings.sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at));
                         const nextMtg = remainingMeetings[0];
@@ -748,6 +754,53 @@ export const setupMockInterceptor = (api) => {
                   persistDb();
                   responseData.data = updatedActivity;
                 }
+              }
+            } else if (method === 'delete' && activityId) {
+              if (mockDatabase.activities) {
+                const leadIdx = mockDatabase.leads.findIndex(l => l.id === leadId);
+                if (leadIdx !== -1 && mockDatabase.leads[leadIdx].next_meeting_id === activityId) {
+                  const remainingMeetings = mockDatabase.activities.filter(a => 
+                    a.lead_id === leadId && 
+                    a.type === 'meeting' && 
+                    a.scheduled_at &&
+                    a.id !== activityId &&
+                    a.outcome !== 'concluded' && 
+                    a.outcome !== 'completed' &&
+                    a.outcome !== 'cancelled'
+                  );
+                  remainingMeetings.sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at));
+                  const nextMtg = remainingMeetings[0];
+
+                  const currentLead = mockDatabase.leads[leadIdx];
+                  if (nextMtg) {
+                    mockDatabase.leads[leadIdx] = {
+                      ...currentLead,
+                      next_meeting_id: nextMtg.id,
+                      next_meeting_schedule: nextMtg.scheduled_at,
+                      next_meeting_title: nextMtg.title || 'Lead Consultation Meeting',
+                      next_meeting_type: nextMtg.metadata?.meeting_type || 'Google Meet',
+                      next_meeting_link: nextMtg.metadata?.meeting_link || '',
+                      next_meeting_host: nextMtg.metadata?.meeting_host || null,
+                      next_meeting_duration: nextMtg.metadata?.duration || 30,
+                      next_meeting_notes: nextMtg.notes || ''
+                    };
+                  } else {
+                    mockDatabase.leads[leadIdx] = {
+                      ...currentLead,
+                      next_meeting_id: null,
+                      next_meeting_schedule: null,
+                      next_meeting_title: null,
+                      next_meeting_type: null,
+                      next_meeting_link: null,
+                      next_meeting_host: null,
+                      next_meeting_duration: null,
+                      next_meeting_notes: null
+                    };
+                  }
+                }
+                mockDatabase.activities = mockDatabase.activities.filter(a => a.id !== activityId);
+                persistDb();
+                responseData.data = { success: true };
               }
             }
           }
@@ -4085,7 +4138,7 @@ export const setupMockInterceptor = (api) => {
             ];
           }
 
-          if (url.includes('/roles/permissions-schema')) {
+          else if (url.includes('/roles/permissions-schema')) {
             // Handled dynamically by constants, return empty array here to satisfy Promise.all
             responseData.data = { modules: [], actions: [] };
           }

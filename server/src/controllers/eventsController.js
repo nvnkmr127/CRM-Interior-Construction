@@ -42,6 +42,7 @@ exports.getEvents = async (req, res, next) => {
     
     const projectId = req.query.projectId;
     const userId = req.query.userId;
+    const leadId = req.query.leadId;
     const entity = req.query.entity;
     const action = req.query.action;
     const startDate = req.query.startDate;
@@ -54,17 +55,33 @@ exports.getEvents = async (req, res, next) => {
 
     if (projectId) {
       baseFilter += ` AND (
-        (al.entity = 'project' AND al.entity_id = $${filterValues.length + 1})
-        OR (al.entity = 'task' AND al.entity_id IN (SELECT id FROM tasks WHERE project_id = $${filterValues.length + 1}))
-        OR (al.entity = 'document' AND al.entity_id IN (SELECT id FROM documents WHERE project_id = $${filterValues.length + 1}))
-        OR (al.entity = 'payment_milestone' AND al.entity_id IN (SELECT id FROM payment_milestones WHERE project_id = $${filterValues.length + 1}))
-        OR (al.entity = 'project_work_activity' AND al.entity_id IN (SELECT id FROM project_work_activities WHERE project_id = $${filterValues.length + 1}))
-        OR (al.entity = 'handover_checklist' AND al.entity_id IN (SELECT id FROM handover_checklists WHERE project_id = $${filterValues.length + 1}))
-        OR (al.entity = 'warranty' AND al.entity_id IN (SELECT id FROM warranties WHERE project_id = $${filterValues.length + 1}))
-        OR (al.entity = 'amc' AND al.entity_id IN (SELECT id FROM amcs WHERE project_id = $${filterValues.length + 1}))
-        OR (al.entity = 'service_ticket' AND al.entity_id IN (SELECT id FROM service_tickets WHERE project_id = $${filterValues.length + 1}))
+        (al.entity = 'project' AND al.entity_id::text = $${filterValues.length + 1})
+        OR (al.entity = 'task' AND al.entity_id::text IN (SELECT id::text FROM tasks WHERE project_id = $${filterValues.length + 1}))
+        OR (al.entity = 'document' AND al.entity_id::text IN (SELECT id::text FROM documents WHERE project_id = $${filterValues.length + 1}))
+        OR (al.entity = 'payment_milestone' AND al.entity_id::text IN (SELECT id::text FROM payment_milestones WHERE project_id = $${filterValues.length + 1}))
+        OR (al.entity = 'project_work_activity' AND al.entity_id::text IN (SELECT id::text FROM project_work_activities WHERE project_id = $${filterValues.length + 1}))
+        OR (al.entity = 'handover_checklist' AND al.entity_id::text IN (SELECT id::text FROM handover_checklists WHERE project_id = $${filterValues.length + 1}))
+        OR (al.entity = 'warranty' AND al.entity_id::text IN (SELECT id::text FROM warranties WHERE project_id = $${filterValues.length + 1}))
+        OR (al.entity = 'amc' AND al.entity_id::text IN (SELECT id::text FROM amcs WHERE project_id = $${filterValues.length + 1}))
+        OR (al.entity = 'service_ticket' AND al.entity_id::text IN (SELECT id::text FROM service_tickets WHERE project_id = $${filterValues.length + 1}))
       ) `;
       filterValues.push(projectId);
+    }
+
+    if (leadId) {
+      baseFilter += ` AND (
+        (al.entity = 'lead' AND al.entity_id::text = $${filterValues.length + 1})
+        OR (al.entity = 'task' AND al.entity_id::text IN (SELECT id::text FROM tasks WHERE lead_id = $${filterValues.length + 1}))
+        OR (al.entity = 'lead_requirements' AND al.entity_id::text IN (SELECT id::text FROM lead_requirements WHERE lead_id = $${filterValues.length + 1}))
+        OR (al.entity = 'lead_measurements' AND al.entity_id::text IN (SELECT id::text FROM lead_measurements WHERE lead_id = $${filterValues.length + 1}))
+        OR (al.entity = 'lead_preferences' AND al.entity_id::text IN (SELECT id::text FROM lead_preferences WHERE lead_id = $${filterValues.length + 1}))
+        OR (al.entity = 'lead_inspirations' AND al.entity_id::text IN (SELECT id::text FROM lead_inspirations WHERE lead_id = $${filterValues.length + 1}))
+        OR (al.entity = 'lead_contacts' AND al.entity_id::text IN (SELECT id::text FROM lead_contacts WHERE lead_id = $${filterValues.length + 1}))
+        OR (al.entity = 'lead_followups' AND al.entity_id::text IN (SELECT id::text FROM lead_followups WHERE lead_id = $${filterValues.length + 1}))
+        OR (al.entity = 'quotation' AND al.entity_id::text IN (SELECT id::text FROM quotations WHERE lead_id = $${filterValues.length + 1}))
+        OR (al.entity = 'activity' AND al.entity_id::text IN (SELECT id::text FROM activities WHERE lead_id = $${filterValues.length + 1}))
+      ) `;
+      filterValues.push(leadId);
     }
 
     if (userId) {

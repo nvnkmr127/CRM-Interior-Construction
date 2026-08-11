@@ -3,7 +3,7 @@ const logger = require('../utils/logger');
 const pool = require('../db/pool');
 const { success, fail, paginate } = require('../utils/response');
 const { changeStage } = require('../services/leads/changeStage');
-const { logActivity, listActivities, updateActivity } = require('../services/activities/activityService');
+const { logActivity, listActivities, updateActivity, deleteActivity } = require('../services/activities/activityService');
 const { createLead } = require('../services/leads/createLead');
 const { findLeads } = require('../repositories/leadRepository');
 const { updateLead } = require('../services/leads/updateLead');
@@ -146,6 +146,22 @@ exports.logActivityHandler = async (req, res, next) => {
     }
 
     const activity = await logActivity({ tenantId, userId, leadId, ...activityData });
+
+    // Log to system audit logs
+    try {
+      const { logAction } = require('../services/auditLog');
+      await logAction({
+        tenantId,
+        userId,
+        action: 'lead_activity.created',
+        entity: 'lead',
+        entityId: leadId,
+        newValue: activity
+      });
+    } catch (auditError) {
+      logger.error('Failed to write activity creation to audit log:', auditError);
+    }
+
     return success(res, activity, {}, 201);
   } catch (error) {
     if (error.message.includes('INVALID_ACTIVITY_TYPE')) return fail(res, 'VALIDATION_ERROR', error.message, 400);
@@ -203,7 +219,70 @@ exports.updateActivityHandler = async (req, res, next) => {
       metadata
     });
 
+    // Log to system audit logs
+    try {
+      const { logAction } = require('../services/auditLog');
+      const { userId } = getTenantAndUser(req);
+      await logAction({
+        tenantId,
+        userId,
+        action: 'lead_activity.updated',
+        entity: 'lead',
+        entityId: leadId,
+        oldValue: currentActivity,
+        newValue: updated
+      });
+    } catch (auditError) {
+      logger.error('Failed to write activity update to audit log:', auditError);
+    }
+
     return success(res, updated);
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+exports.deleteActivityHandler = async (req, res, next) => {
+  try {
+    const { tenantId, userId } = getTenantAndUser(req);
+    const leadId = req.params.id;
+    const activityId = req.params.aid;
+
+    const actRes = await pool.query(
+      'SELECT * FROM activities WHERE id = $1 AND lead_id = $2 AND tenant_id = $3',
+      [activityId, leadId, tenantId]
+    );
+
+    if (actRes.rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Activity not found', 404);
+    }
+
+    const currentActivity = actRes.rows[0];
+    const VALID_TYPES = ['call', 'note', 'email', 'whatsapp', 'site_visit', 'meeting'];
+    if (!VALID_TYPES.includes(currentActivity.type)) {
+      return fail(res, 'FORBIDDEN', 'System generated logs cannot be deleted.', 403);
+    }
+
+    await deleteActivity(tenantId, activityId);
+
+    // Log to system audit logs
+    try {
+      const { logAction } = require('../services/auditLog');
+      await logAction({
+        tenantId,
+        userId,
+        action: 'lead_activity.deleted',
+        entity: 'lead',
+        entityId: leadId,
+        oldValue: currentActivity,
+        newValue: null
+      });
+    } catch (auditError) {
+      logger.error('Failed to write activity deletion to audit log:', auditError);
+    }
+
+    return success(res, { success: true });
   } catch (error) {
     next(error);
   }
@@ -1026,22 +1105,61 @@ exports.summarizeMeetingHandler = async function summarizeMeetingHandler(req, re
   try {
     const { tenantId, userId } = getTenantAndUser(req);
     const { id: leadId } = req.params;
-    const { transcript } = req.body;
+    const { transcript, meetingId } = req.body;
 
     if (!transcript) return res.status(400).json({ success: false, error: { message: 'Transcript required' } });
 
     const aiService = require('../services/aiService');
     const summaryResult = await aiService.summarizeMeeting(transcript);
 
-    const { logActivity } = require('../services/activities/activityService');
+    // Fetch sales coach feedback
+    let coachFeedback = null;
+    try {
+      coachFeedback = await aiService.analyzeMeetingForCoaching(transcript);
+    } catch (coachErr) {
+      logger.error('Failed to get sales coach feedback in summarizeMeetingHandler:', coachErr);
+    }
+
+    const { logActivity, updateActivity } = require('../services/activities/activityService');
     const { findLeadById } = require('../repositories/leadRepository');
 
     const lead = await findLeadById(tenantId, leadId);
     if (!lead) return res.status(404).json({ success: false, error: { message: 'Lead not found' } });
 
-    // 1. Log Activity Note
+    // Determine which meeting activity to update/conclude
+    const activeMeetingId = meetingId || lead.next_meeting_id;
     const noteContent = `**AI Meeting Summary**\n\n**Sentiment:** ${summaryResult.customer_sentiment}\n\n**Summary:**\n${summaryResult.summary}`;
-    await logActivity({ tenantId, leadId, type: 'meeting', notes: noteContent, createdBy: userId });
+
+    let mergedMetadata = {
+      customer_sentiment: summaryResult.customer_sentiment,
+      action_items: summaryResult.action_items,
+      sales_coach: coachFeedback
+    };
+
+    if (activeMeetingId) {
+      const actRes = await pool.query('SELECT metadata FROM activities WHERE id = $1 AND tenant_id = $2', [activeMeetingId, tenantId]);
+      if (actRes.rows.length > 0) {
+        mergedMetadata = {
+          ...(actRes.rows[0].metadata || {}),
+          ...mergedMetadata
+        };
+      }
+      await updateActivity(tenantId, activeMeetingId, {
+        outcome: 'concluded',
+        notes: noteContent,
+        metadata: mergedMetadata
+      });
+    } else {
+      await logActivity({
+        tenantId,
+        leadId,
+        type: 'meeting',
+        notes: noteContent,
+        outcome: 'concluded',
+        createdBy: userId,
+        metadata: mergedMetadata
+      });
+    }
 
     // 2. Create Tasks for Action Items
     const createdTasks = [];
@@ -1066,7 +1184,7 @@ exports.summarizeMeetingHandler = async function summarizeMeetingHandler(req, re
       }
     }
 
-    res.json({ success: true, data: { ...summaryResult, tasks_created: createdTasks.length } });
+    res.json({ success: true, data: { ...summaryResult, sales_coach: coachFeedback, tasks_created: createdTasks.length } });
   } catch (error) {
     logger.error('summarizeMeetingHandler error:', error);
     return next(new Error('System error or unhandled exception'));

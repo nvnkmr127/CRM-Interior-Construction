@@ -264,3 +264,14 @@ export const updateActivity = async (leadId, activityId, data) => {
   const response = await api.patch(`/leads/${leadId}/activities/${activityId}`, data);
   return response.data;
 };
+
+/**
+ * Delete an activity for a lead.
+ * @param {string} leadId - The UUID of the lead.
+ * @param {string} activityId - The UUID of the activity.
+ * @returns {Promise<{ success: boolean }>} Result.
+ */
+export const deleteActivity = async (leadId, activityId) => {
+  const response = await api.delete(`/leads/${leadId}/activities/${activityId}`);
+  return response.data;
+};

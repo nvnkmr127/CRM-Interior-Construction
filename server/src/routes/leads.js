@@ -48,6 +48,7 @@ router.post('/:id/convert-to-project', authenticate, authorize('leads:update'), 
 router.post('/:id/activities', authenticate, validate(logActivitySchema), leadController.logActivityHandler);
 router.get('/:id/activities', authenticate, leadController.getActivitiesHandler);
 router.patch('/:id/activities/:aid', authenticate, validate(logActivitySchema.partial()), leadController.updateActivityHandler);
+router.delete('/:id/activities/:aid', authenticate, leadController.deleteActivityHandler);
 router.get('/:id/timeline', authenticate, leadController.getTimelineHandler);
 router.get('/:id/automation-events', authenticate, authorize('leads:read'), leadController.getAutomationEventsHandler);
 

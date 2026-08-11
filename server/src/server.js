@@ -54,4 +54,24 @@ app.listen(PORT, () => {
   startSlaTracking();
   startEmailQueue();
   startCronJobs();
+
+  // Temporary DB debug dump
+  const fs = require('fs');
+  pool.query('SELECT id, name, email, phone FROM leads')
+    .then(leadsRes => {
+      return pool.query('SELECT * FROM lead_contacts').then(contactsRes => {
+        fs.writeFileSync(
+          path.join(__dirname, '../scratch/db_dump.json'),
+          JSON.stringify({ leads: leadsRes.rows, contacts: contactsRes.rows }, null, 2)
+        );
+        console.log('--- DB DUMP WRITTEN SUCCESS ---');
+      });
+    })
+    .catch(err => {
+      fs.writeFileSync(
+        path.join(__dirname, '../scratch/db_dump.json'),
+        JSON.stringify({ error: err.message }, null, 2)
+      );
+      console.error('DB DUMP ERROR:', err);
+    });
 });

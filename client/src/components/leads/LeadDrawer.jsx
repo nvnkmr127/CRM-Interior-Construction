@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../store/toastContext';
-import { Button, Badge, Select } from '../ui';
+import { Button, Badge, Select, Modal } from '../ui';
 import ScoreBadge from './ScoreBadge';
 import ActivityTimeline from './ActivityTimeline';
 import TaskWidget from './TaskWidget';
@@ -24,7 +24,7 @@ import NegotiationDesk from './NegotiationDesk';
 import DesignPresentationModal from './DesignPresentationModal';
 import EstimatorBuilder from './EstimatorBuilder';
 import AssignDesignerModal from './AssignDesignerModal';
-import { getLead, changeLeadStage, deleteLead, updateActivity, logActivity } from '../../api/leads';
+import { getLead, changeLeadStage, deleteLead, updateActivity, logActivity, getActivities, deleteActivity } from '../../api/leads';
 import api from '../../api/axios';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -56,6 +56,36 @@ const formatMeetingSchedule = (dateStr) => {
   });
 };
 
+const getMeetingCountdown = (dateStr) => {
+  if (!dateStr) return null;
+  const target = new Date(dateStr);
+  const now = new Date();
+  const diffMs = target.getTime() - now.getTime();
+  
+  if (diffMs < 0) {
+    const twoHoursInMs = 2 * 60 * 60 * 1000;
+    if (Math.abs(diffMs) < twoHoursInMs) {
+      return '⏱️ In Progress';
+    }
+    return '📅 Past Meeting';
+  }
+  
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffDays > 0) {
+    return `⏱️ Starts in ${diffDays} day${diffDays > 1 ? 's' : ''}`;
+  }
+  if (diffHours > 0) {
+    return `⏱️ Starts in ${diffHours} hour${diffHours > 1 ? 's' : ''}`;
+  }
+  if (diffMins > 0) {
+    return `⏱️ Starts in ${diffMins} minute${diffMins > 1 ? 's' : ''}`;
+  }
+  return '⏱️ Starting now';
+};
+
 export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, stages = [] }) {
   const { confirm } = useConfirm();
 
@@ -67,6 +97,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
   const [isPresentModalOpen, setIsPresentModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [meetingToDelete, setMeetingToDelete] = useState(null);
   const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
 
   // Auto-saving state
@@ -88,6 +119,14 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   const [isConcludingMeeting, setIsConcludingMeeting] = useState(false);
   const [meetingSummary, setMeetingSummary] = useState('');
   const [meetingSubmitting, setMeetingSubmitting] = useState(false);
+  const [meetings, setMeetings] = useState([]);
+  const [meetingsLoading, setMeetingsLoading] = useState(false);
+  const [expandedMeetingId, setExpandedMeetingId] = useState(null);
+  const [concludeMode, setConcludeMode] = useState('ai'); // 'ai' or 'manual'
+  const [meetingTranscript, setMeetingTranscript] = useState('');
+  const [aiSummarizing, setAiSummarizing] = useState(false);
+  const [aiResult, setAiResult] = useState(null);
+  const [aiCoachFeedback, setAiCoachFeedback] = useState(null);
   const [meetingForm, setMeetingForm] = useState({
     title: '',
     meeting_type: 'Google Meet',
@@ -184,6 +223,31 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
     }
   }, [activeTab, leadId]);
 
+  const fetchMeetingsList = async () => {
+    if (!leadId) return;
+    setMeetingsLoading(true);
+    try {
+      const res = await getActivities(leadId, { type: 'meeting', limit: 100 });
+      if (res.success) {
+        setMeetings(res.data);
+      } else if (Array.isArray(res)) {
+        setMeetings(res);
+      } else {
+        setMeetings(res.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to load meetings:', err);
+    } finally {
+      setMeetingsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'meeting-schedule' && leadId) {
+      fetchMeetingsList();
+    }
+  }, [activeTab, leadId]);
+
   const fetchLead = async () => {
     setLoading(true);
     try {
@@ -237,6 +301,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
       
       setIsEditingMeeting(false);
       const freshLead = await fetchLead();
+      fetchMeetingsList();
       
       // Only call onLeadUpdated if we actually got a lead back, and explicitly pass the object
       if (onLeadUpdated && freshLead && freshLead.id) {
@@ -250,6 +315,86 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
       toast.error('Failed to save meeting details');
     } finally {
       setMeetingSubmitting(false);
+    }
+  };
+
+  const handleCancelMeeting = async (meetingId) => {
+    if (!window.confirm('Are you sure you want to cancel this meeting?')) return;
+    setMeetingSubmitting(true);
+    try {
+      await updateActivity(leadId, meetingId, {
+        outcome: 'cancelled',
+        notes: 'Meeting was cancelled by client/coordinator'
+      });
+      toast.success('Meeting marked as cancelled');
+      const freshLead = await fetchLead();
+      fetchMeetingsList();
+      if (onLeadUpdated) onLeadUpdated(freshLead || lead);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to cancel meeting');
+    } finally {
+      setMeetingSubmitting(false);
+    }
+  };
+
+  const handleDeleteMeeting = (meetingId) => {
+    setMeetingToDelete(meetingId);
+  };
+
+  const handleDeleteMeetingConfirm = async () => {
+    if (!meetingToDelete) return;
+    setMeetingSubmitting(true);
+    try {
+      await deleteActivity(leadId, meetingToDelete);
+      toast.success('Meeting deleted successfully');
+      setMeetingToDelete(null);
+      const freshLead = await fetchLead();
+      fetchMeetingsList();
+      if (onLeadUpdated) onLeadUpdated(freshLead || lead);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete meeting');
+    } finally {
+      setMeetingSubmitting(false);
+    }
+  };
+
+
+  const handleAiSummarize = async (e) => {
+    if (e) e.preventDefault();
+    if (!meetingTranscript.trim()) {
+      toast.error('Please enter meeting notes or transcript for AI analysis');
+      return;
+    }
+    setAiSummarizing(true);
+    setAiResult(null);
+    setAiCoachFeedback(null);
+    try {
+      const res = await api.post(`/leads/${leadId}/meeting-summary`, {
+        transcript: meetingTranscript,
+        meetingId: lead.next_meeting_id
+      });
+      if (res.data.success) {
+        const data = res.data.data;
+        setAiResult(data);
+        if (data.sales_coach) {
+          setAiCoachFeedback(data.sales_coach);
+        }
+        toast.success('Meeting concluded and tasks generated via Gemini AI!');
+        
+        // Refresh local listings
+        const freshLead = await fetchLead();
+        fetchMeetingsList();
+        if (onLeadUpdated) onLeadUpdated(freshLead || lead);
+      } else {
+        toast.error('Failed to parse summary');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to analyze notes with AI');
+    } finally {
+      setAiSummarizing(false);
     }
   };
 
@@ -271,6 +416,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
       setIsConcludingMeeting(false);
       setMeetingSummary('');
       const freshLead = await fetchLead();
+      fetchMeetingsList();
       if (onLeadUpdated) onLeadUpdated(freshLead || lead);
     } catch (err) {
       console.error(err);
@@ -1091,7 +1237,15 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   <DiscoveryCallChecklist lead={lead} onUpdate={fetchLead} />
                   
                   <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Activity Timeline</h4>
-                  <ActivityTimeline leadId={leadId} refreshTrigger={activityRefresh} />
+                  <ActivityTimeline 
+                    leadId={leadId} 
+                    refreshTrigger={activityRefresh} 
+                    onActivityLogged={async () => {
+                      const freshLead = await fetchLead();
+                      fetchMeetingsList();
+                      if (onLeadUpdated) onLeadUpdated(freshLead || lead);
+                    }}
+                  />
                 </div>
               </div>
             )}
@@ -1158,7 +1312,15 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   )}
                 </div>
 
-                <ActivityTimeline leadId={leadId} refreshTrigger={activityRefresh} />
+                <ActivityTimeline 
+                  leadId={leadId} 
+                  refreshTrigger={activityRefresh} 
+                  onActivityLogged={async () => {
+                    const freshLead = await fetchLead();
+                    fetchMeetingsList();
+                    if (onLeadUpdated) onLeadUpdated(freshLead || lead);
+                  }}
+                />
               </div>
             )}
 
@@ -1173,20 +1335,30 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
             )}
 
             {activeTab === 'meeting-schedule' && (
-              <div className="space-y-6">
-                <div className="p-6 rounded-xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
+              <div className="space-y-6 animate-fadeIn">
+                
+                {/* 1. MAIN MEETING CONTROL CENTER */}
+                <div className="p-6 rounded-2xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
+                  
+                  {/* HEADER */}
                   <div className="flex items-center justify-between border-b pb-4 mb-6">
                     <div>
-                      <h3 className="text-xl font-bold text-gray-900">Upcoming Meeting Schedule</h3>
-                      <p className="text-sm text-gray-500 mt-1">Manage scheduled meetings and joining details for this lead.</p>
+                      <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                        <span>📅</span> Meetings Hub
+                      </h3>
+                      <p className="text-sm text-gray-500 mt-1">Schedule client consultations, log summaries, and get AI Sales Coaching.</p>
                     </div>
-                    {lead.next_meeting_schedule && !isEditingMeeting && (
-                      <span className="px-3 py-1 bg-orange-100 border border-orange-200 text-orange-700 text-sm font-semibold rounded-full uppercase tracking-wider">
-                        📅 Scheduled
-                      </span>
+                    {!isEditingMeeting && !isConcludingMeeting && (
+                      <button
+                        onClick={async () => setIsEditingMeeting(true)}
+                        className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <span>+</span> Schedule Meeting
+                      </button>
                     )}
                   </div>
 
+                  {/* WORKSPACES */}
                   {isEditingMeeting ? (
                     <form onSubmit={handleMeetingSubmit} className="space-y-4 pt-2">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1360,158 +1532,535 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       </div>
                     </form>
                   ) : isConcludingMeeting ? (
-                    <form onSubmit={handleConcludeMeeting} className="space-y-4 pt-2">
-                      <div className="bg-green-50/50 p-6 rounded-xl border border-green-200 mb-6">
-                        <h4 className="text-base font-semibold text-green-800">Conclude "{lead.next_meeting_title || 'Lead Consultation Meeting'}"</h4>
-                        <p className="text-sm text-gray-500 mt-2">
-                          Mark the meeting as completed and record the final summary/discussion details to be indexed in the AI Knowledge Base.
+                    <div className="space-y-5 pt-2">
+                      <div className="bg-green-50/50 p-5 rounded-xl border border-green-200">
+                        <h4 className="text-base font-bold text-green-800 flex items-center gap-1.5">
+                          <span>✅</span> Conclude "{lead.next_meeting_title || 'Lead Consultation Meeting'}"
+                        </h4>
+                        <p className="text-sm text-gray-500 mt-1">
+                          Select the conclusion method. The AI Summarizer automatically extracts tasks and logs feedback.
                         </p>
                       </div>
-                      
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Meeting Summary &amp; Key Decisions *</label>
-                        <textarea
-                          required
-                          rows={6}
-                          placeholder="Type meeting outcomes, notes, key choices the client made, next steps, and specific design requests..."
-                          value={meetingSummary}
-                          onChange={e => setMeetingSummary(e.target.value)}
-                          className="w-full text-base border border-gray-300 rounded-lg p-3 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
 
-                      <div className="flex justify-end gap-3 pt-4 border-t">
-                        <Button
+                      {/* WORKSPACE TOGGLES */}
+                      <div className="flex bg-gray-100 p-1 rounded-lg max-w-sm">
+                        <button
                           type="button"
-                          variant="outline"
-                          onClick={async () => {
-                            setIsConcludingMeeting(false);
-                            setMeetingSummary('');
-                          }}
-                          disabled={meetingSubmitting}
+                          onClick={() => setConcludeMode('ai')}
+                          className={`flex-1 text-center py-2 text-xs font-bold rounded-md transition-all ${concludeMode === 'ai' ? 'bg-white shadow-sm text-blue-600 font-extrabold' : 'text-gray-500 hover:text-gray-900'}`}
                         >
-                          Cancel
-                        </Button>
-                        <Button
-                          type="submit"
-                          variant="primary"
-                          disabled={meetingSubmitting || !meetingSummary.trim()}
-                          className="bg-green-600 border-green-600 hover:bg-green-700 hover:border-green-700 text-white"
+                          🤖 AI Summarizer & Coach
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConcludeMode('manual')}
+                          className={`flex-1 text-center py-2 text-xs font-bold rounded-md transition-all ${concludeMode === 'manual' ? 'bg-white shadow-sm text-blue-600 font-extrabold' : 'text-gray-500 hover:text-gray-900'}`}
                         >
-                          {meetingSubmitting ? 'Saving...' : 'Conclude & Save to Knowledge Base'}
-                        </Button>
-                      </div>
-                    </form>
-                  ) : lead.next_meeting_schedule ? (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                      <div className="md:col-span-2 space-y-6">
-                        <div>
-                          <label className="text-xs text-gray-400 uppercase font-bold tracking-wider">Meeting Title</label>
-                          <h4 className="text-xl font-bold text-gray-800 mt-1.5">
-                            {lead.next_meeting_title || 'Lead Consultation Meeting'}
-                          </h4>
-                        </div>
-
-                        {lead.next_meeting_notes && (
-                          <div>
-                            <label className="text-xs text-gray-400 uppercase font-bold tracking-wider">Agenda / Notes</label>
-                            <p className="text-base text-gray-600 mt-1.5 whitespace-pre-line bg-gray-50 p-4 rounded-xl border border-gray-100">
-                              {lead.next_meeting_notes}
-                            </p>
-                          </div>
-                        )}
-
-                        <div className="grid grid-cols-2 gap-6 pt-3">
-                          <div>
-                            <label className="text-xs text-gray-400 uppercase font-bold tracking-wider">Host</label>
-                            <div className="text-base font-semibold text-gray-700 mt-1.5 flex items-center gap-2">
-                              <span className="text-xl">👤</span>
-                              {lead.next_meeting_host || lead.assignee_name || 'Unassigned'}
-                            </div>
-                          </div>
-                          <div>
-                            <label className="text-xs text-gray-400 uppercase font-bold tracking-wider">Reminders</label>
-                            <div className="text-base font-semibold text-gray-700 mt-1.5 flex items-center gap-2">
-                              <span className="text-green-600">✓</span> WhatsApp &amp; Email Enabled
-                            </div>
-                          </div>
-                        </div>
+                          📝 Manual Notes
+                        </button>
                       </div>
 
-                      <div className="bg-gradient-to-br from-amber-50/50 to-orange-50/50 p-6 rounded-2xl border border-orange-100 flex flex-col justify-between space-y-5">
+                      {concludeMode === 'ai' ? (
                         <div className="space-y-4">
-                          <div>
-                            <label className="text-xs text-orange-800 uppercase font-bold tracking-wider">Date &amp; Time</label>
-                            <div className="text-base font-bold text-gray-800 mt-1 flex items-center gap-2">
-                              <span>📅</span>
-                              {formatMeetingSchedule(lead.next_meeting_schedule)}
-                            </div>
-                          </div>
-                          {lead.next_meeting_duration && (
-                            <div>
-                              <label className="text-xs text-orange-800 uppercase font-bold tracking-wider">Duration</label>
-                              <div className="text-base font-semibold text-gray-700 mt-1 flex items-center gap-2">
-                                <span>⏱️</span>
-                                {lead.next_meeting_duration} minutes
+                          {!aiResult ? (
+                            <form onSubmit={handleAiSummarize} className="space-y-4">
+                              <div>
+                                <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Paste Meeting Transcript or Raw Notes</label>
+                                <textarea
+                                  required
+                                  rows={8}
+                                  placeholder="Paste the transcription text, voice notes transcript, or a detailed brain dump of the meeting. E.g., 'Client wants a 3BHK design. Budget is tight under 15L. Kitchen must have an island. Sarah will send 3D quotes. Client mentioned they are also talking to Livspace...'"
+                                  value={meetingTranscript}
+                                  onChange={e => setMeetingTranscript(e.target.value)}
+                                  className="w-full text-base border border-gray-300 rounded-lg p-3 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+                                  disabled={aiSummarizing}
+                                />
                               </div>
-                            </div>
-                          )}
-                          {lead.next_meeting_type && (
-                            <div>
-                              <label className="text-xs text-orange-800 uppercase font-bold tracking-wider">Type / Location</label>
-                              <div className="text-base font-semibold text-gray-700 mt-1 flex items-center gap-2">
-                                <span>📍</span>
-                                {lead.next_meeting_type}
+
+                              <div className="flex justify-end gap-3 pt-4 border-t">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setIsConcludingMeeting(false);
+                                    setMeetingTranscript('');
+                                  }}
+                                  disabled={aiSummarizing}
+                                >
+                                  Cancel
+                                </Button>
+                                <button
+                                  type="submit"
+                                  disabled={aiSummarizing || !meetingTranscript.trim()}
+                                  className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white text-sm font-bold rounded-lg shadow-sm hover:shadow transition-all disabled:opacity-50 cursor-pointer"
+                                >
+                                  {aiSummarizing ? '🤖 AI is analyzing...' : '✨ Generate AI Summary & Conclude'}
+                                </button>
+                              </div>
+                            </form>
+                          ) : (
+                            <div className="space-y-6 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                              <div className="flex items-center justify-between border-b pb-3">
+                                <h4 className="text-lg font-bold text-gray-900 flex items-center gap-1.5">
+                                  <span>🤖</span> Gemini AI Analysis Complete
+                                </h4>
+                                <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full flex items-center gap-1 border border-green-200">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping"></span> Concluded & Saved
+                                </span>
+                              </div>
+
+                              {/* SENTIMENT */}
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm font-bold text-gray-500 uppercase tracking-wider">Sentiment:</span>
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${
+                                  aiResult.customer_sentiment === 'Positive' ? 'bg-green-50 text-green-700 border border-green-200' :
+                                  aiResult.customer_sentiment === 'Negative' ? 'bg-red-50 text-red-700 border border-red-200' :
+                                  'bg-gray-50 text-gray-700 border border-gray-200'
+                                }`}>
+                                  <span>{aiResult.customer_sentiment === 'Positive' ? '🙂' : aiResult.customer_sentiment === 'Negative' ? '😞' : '😐'}</span>
+                                  {aiResult.customer_sentiment}
+                                </span>
+                              </div>
+
+                              {/* SUMMARY */}
+                              <div>
+                                <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Summary</h5>
+                                <p className="text-gray-800 bg-gray-50 p-4 rounded-lg border border-gray-100 text-sm leading-relaxed whitespace-pre-line">
+                                  {aiResult.summary}
+                                </p>
+                              </div>
+
+                              {/* TASKS CREATED */}
+                              <div>
+                                <h5 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Auto-Generated Tasks ({aiResult.tasks_created || 0})</h5>
+                                {aiResult.action_items && aiResult.action_items.length > 0 ? (
+                                  <div className="space-y-2">
+                                    {aiResult.action_items.map((item, idx) => (
+                                      <div key={idx} className="flex items-start gap-2.5 p-2.5 rounded-lg bg-indigo-50/50 border border-indigo-100/50 text-sm animate-fadeIn">
+                                        <span className="text-indigo-600 font-bold mt-0.5">✓</span>
+                                        <div>
+                                          <p className="font-semibold text-gray-800">{typeof item === 'string' ? item : item.title}</p>
+                                          <p className="text-xs text-gray-500 mt-0.5">Due in {typeof item === 'object' && item.due_in_days ? item.due_in_days : 1} day(s)</p>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-sm text-gray-500 italic">No tasks needed for this transcript.</p>
+                                )}
+                              </div>
+
+                              {/* SALES COACH FEEDBACK */}
+                              {aiCoachFeedback && (
+                                <div className="mt-4 p-5 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-orange-100 animate-fadeIn">
+                                  <h5 className="text-xs font-bold text-orange-800 uppercase tracking-wider flex items-center gap-1.5 mb-3">
+                                    <span>🧠</span> AI Sales Coach Feedback
+                                  </h5>
+                                  <p className="text-sm text-gray-700 italic mb-4 leading-relaxed">
+                                    "{aiCoachFeedback.feedback}"
+                                  </p>
+
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {aiCoachFeedback.strengths && aiCoachFeedback.strengths.length > 0 && (
+                                      <div>
+                                        <h6 className="text-xs font-bold text-green-700 uppercase mb-2">Strengths</h6>
+                                        <ul className="space-y-1.5 text-xs text-gray-600">
+                                          {aiCoachFeedback.strengths.map((str, sIdx) => (
+                                            <li key={sIdx} className="flex items-start gap-1">
+                                              <span className="text-green-600 font-bold">•</span>
+                                              <span>{str}</span>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                    {aiCoachFeedback.missed_questions && aiCoachFeedback.missed_questions.length > 0 && (
+                                      <div>
+                                        <h6 className="text-xs font-bold text-red-700 uppercase mb-2">Missed Opportunities</h6>
+                                        <ul className="space-y-1.5 text-xs text-gray-600">
+                                          {aiCoachFeedback.missed_questions.map((q, qIdx) => (
+                                            <li key={qIdx} className="flex items-start gap-1">
+                                              <span className="text-red-500 font-bold">•</span>
+                                              <span>{q}</span>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="flex justify-end pt-4 border-t">
+                                <Button
+                                  variant="primary"
+                                  onClick={() => {
+                                    setIsConcludingMeeting(false);
+                                    setAiResult(null);
+                                    setAiCoachFeedback(null);
+                                    setMeetingTranscript('');
+                                  }}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                                >
+                                  Done & Close
+                                </Button>
                               </div>
                             </div>
                           )}
                         </div>
+                      ) : (
+                        <form onSubmit={handleConcludeMeeting} className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Meeting Summary &amp; Key Decisions *</label>
+                            <textarea
+                              required
+                              rows={6}
+                              placeholder="Type meeting outcomes, notes, key choices the client made, next steps, and specific design requests..."
+                              value={meetingSummary}
+                              onChange={e => setMeetingSummary(e.target.value)}
+                              className="w-full text-base border border-gray-300 rounded-lg p-3 focus:ring-blue-500 focus:border-blue-500"
+                            />
+                          </div>
 
-                        {lead.next_meeting_link && (
-                          <div className="pt-2">
+                          <div className="flex justify-end gap-3 pt-4 border-t">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => {
+                                setIsConcludingMeeting(false);
+                                setMeetingSummary('');
+                              }}
+                              disabled={meetingSubmitting}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              type="submit"
+                              variant="primary"
+                              disabled={meetingSubmitting || !meetingSummary.trim()}
+                              className="bg-green-600 border-green-600 hover:bg-green-700 hover:border-green-700 text-white"
+                            >
+                              {meetingSubmitting ? 'Saving...' : 'Conclude & Save to Knowledge Base'}
+                            </Button>
+                          </div>
+                        </form>
+                      )}
+                    </div>
+                  ) : lead.next_meeting_schedule ? (
+                    <div className="relative overflow-hidden p-6 rounded-2xl border shadow-sm transition-all" style={{ background: 'rgba(255, 165, 0, 0.06)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 165, 0, 0.18)' }}>
+                      
+                      {/* Decorative glowing gradient blur */}
+                      <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-orange-400 opacity-10 blur-3xl"></div>
+                      <div className="absolute -bottom-12 -left-12 w-48 h-48 rounded-full bg-amber-400 opacity-10 blur-3xl"></div>
+
+                      <div className="relative flex flex-col md:flex-row gap-6 justify-between items-start md:items-center border-b border-orange-100 pb-5 mb-5">
+                        <div className="space-y-1">
+                          <span className="px-2.5 py-1 bg-orange-100 text-orange-700 border border-orange-200 text-[10px] font-extrabold uppercase tracking-widest rounded-md">
+                            Next Consultation
+                          </span>
+                          <h4 className="text-2xl font-extrabold tracking-tight mt-1 text-gray-900">{lead.next_meeting_title || 'Lead Consultation Meeting'}</h4>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <span className="px-3 py-1.5 bg-orange-600 text-white text-xs font-extrabold rounded-lg shadow-sm uppercase tracking-wider">
+                            {getMeetingCountdown(lead.next_meeting_schedule)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="relative grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="md:col-span-2 space-y-4">
+                          {lead.next_meeting_notes && (
+                            <div>
+                              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Agenda / Description</span>
+                              <p className="text-sm text-gray-700 mt-1.5 bg-white/70 p-4 rounded-xl border border-gray-200 whitespace-pre-line leading-relaxed shadow-sm">
+                                {lead.next_meeting_notes}
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="flex items-center gap-3 bg-white/70 p-3 rounded-xl border border-gray-250 shadow-sm">
+                              <span className="text-2xl">👤</span>
+                              <div>
+                                <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Host</span>
+                                <span className="text-sm font-semibold text-gray-700">{lead.next_meeting_host || lead.assignee_name || 'Unassigned'}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 bg-white/70 p-3 rounded-xl border border-gray-250 shadow-sm">
+                              <span className="text-2xl">🔔</span>
+                              <div>
+                                <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Reminders</span>
+                                <span className="text-sm font-semibold text-gray-700">WhatsApp &amp; Email</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="bg-white/60 p-5 rounded-2xl border border-gray-200 flex flex-col justify-between space-y-4 shadow-sm">
+                          <div className="space-y-3.5">
+                            <div>
+                              <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Date &amp; Time</span>
+                              <div className="text-sm font-bold text-gray-800 mt-1 flex items-center gap-2">
+                                <span>📅</span>
+                                {formatMeetingSchedule(lead.next_meeting_schedule)}
+                              </div>
+                            </div>
+                            {lead.next_meeting_duration && (
+                              <div>
+                                <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Duration</span>
+                                <div className="text-sm font-semibold text-gray-700 mt-1 flex items-center gap-2">
+                                  <span>⏱️</span>
+                                  {lead.next_meeting_duration} minutes
+                                </div>
+                              </div>
+                            )}
+                            {lead.next_meeting_type && (
+                              <div>
+                                <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Meeting Type</span>
+                                <div className="text-sm font-semibold text-gray-700 mt-1 flex items-center gap-2">
+                                  <span>📍</span>
+                                  {lead.next_meeting_type}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {lead.next_meeting_link && (
                             <a
                               href={lead.next_meeting_link}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-lg shadow-md transition-colors hover:shadow-lg cursor-pointer"
+                              className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                              Join Call
+                              Join Meeting
                             </a>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
 
-                      <div className="md:col-span-3 flex justify-end gap-3 pt-4 border-t">
-                        <Button
-                          variant="outline"
-                          onClick={async () => setIsEditingMeeting(true)}
-                          className="flex items-center gap-1 text-xs"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                          Edit Meeting Details
-                        </Button>
-                        <Button
-                          variant="primary"
-                          onClick={async () => setIsConcludingMeeting(true)}
-                          className="flex items-center gap-1 text-xs bg-green-600 border-green-600 hover:bg-green-700 hover:border-green-700 text-white"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                          Conclude Meeting
-                        </Button>
+                      {/* ACTIONS TOOLBAR */}
+                      <div className="flex flex-wrap items-center justify-between border-t border-orange-100 pt-4 mt-6 gap-3">
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={async () => handleCancelMeeting(lead.next_meeting_id)}
+                            className="px-3.5 py-2 hover:bg-red-50 text-red-600 hover:text-red-700 text-xs font-bold rounded-lg border border-red-200 transition-all flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            Cancel Meeting
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => handleDeleteMeeting(lead.next_meeting_id)}
+                            className="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg border border-red-600 transition-all flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            Delete Meeting
+                          </button>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={async () => setIsEditingMeeting(true)}
+                            className="px-3.5 py-2 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-lg border border-gray-200 transition-all flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                            Reschedule
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAiResult(null);
+                              setAiCoachFeedback(null);
+                              setMeetingTranscript('');
+                              setMeetingSummary('');
+                              setConcludeMode('ai');
+                              setIsConcludingMeeting(true);
+                            }}
+                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-extrabold rounded-lg shadow-sm border border-green-600 hover:border-green-750 transition-all flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            Conclude Meeting
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center py-16 rounded-xl border border-dashed border-gray-200 transition-all" style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(5px)' }}>
-                      <span className="text-5xl block mb-4">📅</span>
-                      <h4 className="text-xl font-bold text-gray-700">No Meetings Scheduled</h4>
-                      <p className="text-base text-gray-400 mt-2 max-w-sm mx-auto">There are no upcoming meetings scheduled for this lead at the moment.</p>
+                    <div className="text-center py-12 rounded-2xl border border-dashed border-gray-300 bg-white/30 backdrop-blur-sm">
+                      <span className="text-5xl block mb-3 animate-bounce">📅</span>
+                      <h4 className="text-lg font-bold text-gray-800">No Meetings Scheduled</h4>
+                      <p className="text-sm text-gray-400 mt-1 max-w-xs mx-auto">Build momentum by scheduling a design consultation.</p>
                       <button
                         onClick={async () => setIsEditingMeeting(true)}
-                        className="mt-6 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors cursor-pointer"
+                        className="mt-5 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold rounded-lg shadow transition-all hover:scale-105 cursor-pointer"
                       >
-                        Schedule a Meeting
+                        Schedule Now
                       </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. MEETING HISTORY & TIMELINE */}
+                <div className="p-6 rounded-2xl shadow-sm transition-all bg-white border border-gray-100">
+                  <div className="border-b pb-3 mb-5">
+                    <h4 className="text-base font-bold text-gray-800 flex items-center gap-2">
+                      <span>📜</span> Meeting History &amp; Logs
+                    </h4>
+                  </div>
+
+                  {meetingsLoading ? (
+                    <div className="space-y-4">
+                      {[1, 2].map(n => (
+                        <div key={n} className="h-16 bg-gray-50 rounded-xl animate-pulse"></div>
+                      ))}
+                    </div>
+                  ) : meetings.filter(a => a.id !== lead.next_meeting_id).length === 0 ? (
+                    <p className="text-sm text-gray-400 italic text-center py-6">No historical meetings recorded yet.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {meetings
+                        .filter(a => a.id !== lead.next_meeting_id)
+                        .map((act) => {
+                          const isConcluded = act.outcome === 'concluded' || act.outcome === 'completed';
+                          const isCancelled = act.outcome === 'cancelled';
+                          const isExpanded = expandedMeetingId === act.id;
+                          
+                          // Safe access to AI metadata
+                          const meta = act.metadata || {};
+                          const sentiment = meta.customer_sentiment || null;
+                          const actionItems = meta.action_items || [];
+                          const coach = meta.sales_coach || null;
+
+                          return (
+                            <div key={act.id} className="border border-gray-150 rounded-xl overflow-hidden shadow-sm bg-white hover:border-gray-300 transition-all">
+                              
+                              {/* HEADER */}
+                              <div className="p-4 bg-gray-50/50 flex flex-wrap justify-between items-center gap-3">
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2.5">
+                                    <h5 className="font-bold text-gray-900 text-sm">{act.title || 'Meeting Log'}</h5>
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider ${
+                                      isConcluded ? 'bg-green-100 text-green-700 border border-green-200' :
+                                      isCancelled ? 'bg-red-100 text-red-700 border border-red-200' :
+                                      'bg-gray-100 text-gray-650 border border-gray-200'
+                                    }`}>
+                                      {act.outcome || (new Date(act.scheduled_at) < new Date() ? 'completed' : 'scheduled')}
+                                    </span>
+                                    {sentiment && (
+                                      <span className="text-xs" title={`Customer Sentiment: ${sentiment}`}>
+                                        {sentiment === 'Positive' ? '🟢 Positive' : sentiment === 'Negative' ? '🔴 Negative' : '🟡 Neutral'}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-gray-400 flex flex-wrap gap-x-4 gap-y-1">
+                                    <span>📅 {formatMeetingSchedule(act.scheduled_at || act.created_at)}</span>
+                                    <span>👤 Host: {meta.meeting_host || act.user_name || 'Coordinator'}</span>
+                                    {meta.duration && <span>⏱️ {meta.duration} mins</span>}
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  {isConcluded && (
+                                    <button
+                                      onClick={() => setExpandedMeetingId(isExpanded ? null : act.id)}
+                                      className="px-3 py-1.5 hover:bg-gray-100 text-blue-600 hover:text-blue-800 text-xs font-bold rounded-lg border border-gray-200 transition-colors flex items-center gap-1 cursor-pointer"
+                                    >
+                                      {isExpanded ? 'Hide Details ▲' : 'View AI Summary ▾'}
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      await handleDeleteMeeting(act.id);
+                                    }}
+                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg border border-transparent hover:border-red-200 transition-colors cursor-pointer"
+                                    title="Delete Meeting"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* ACCORDION CONTENT */}
+                              {isExpanded && isConcluded && (
+                                <div className="p-5 border-t border-gray-100 space-y-4 bg-slate-50/50 animate-fadeIn">
+                                  
+                                  {/* NOTES SUMMARY */}
+                                  <div>
+                                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">AI Notes Summary</span>
+                                    <p className="text-sm text-gray-700 leading-relaxed bg-white p-3 rounded-lg border border-gray-100 whitespace-pre-line">
+                                      {act.notes}
+                                    </p>
+                                  </div>
+
+                                  {/* ACTION ITEMS CHECKLIST */}
+                                  {actionItems && actionItems.length > 0 && (
+                                    <div>
+                                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-2">Extracted Tasks</span>
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                        {actionItems.map((item, idx) => (
+                                          <div key={idx} className="flex items-start gap-2 bg-white p-2.5 rounded-lg border border-gray-100 text-xs shadow-sm">
+                                            <span className="text-indigo-650 font-bold">✓</span>
+                                            <div>
+                                              <p className="font-semibold text-gray-800">{typeof item === 'string' ? item : item.title}</p>
+                                              <p className="text-[10px] text-gray-400 mt-0.5">Due in {typeof item === 'object' && item.due_in_days ? item.due_in_days : 1} days</p>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* SALES COACH FEEDBACK */}
+                                  {coach && (
+                                    <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-orange-100">
+                                      <span className="text-[10px] text-orange-850 font-bold uppercase tracking-wider block mb-2">Sales Coach Feedback</span>
+                                      <p className="text-xs text-gray-700 italic mb-3">"{coach.feedback}"</p>
+                                      
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-orange-200/40">
+                                        {coach.strengths && coach.strengths.length > 0 && (
+                                          <div>
+                                            <span className="text-[10px] text-green-700 font-bold uppercase block mb-1.5">Strengths</span>
+                                            <ul className="space-y-1 text-xs text-gray-600">
+                                              {coach.strengths.map((str, sIdx) => (
+                                                <li key={sIdx} className="flex items-start gap-1">
+                                                  <span className="text-green-600">•</span>
+                                                  <span>{str}</span>
+                                                </li>
+                                              ))}
+                                            </ul>
+                                          </div>
+                                        )}
+                                        {coach.missed_questions && coach.missed_questions.length > 0 && (
+                                          <div>
+                                            <span className="text-[10px] text-red-700 font-bold uppercase block mb-1.5">Missed Questions</span>
+                                            <ul className="space-y-1 text-xs text-gray-600">
+                                              {coach.missed_questions.map((q, qIdx) => (
+                                                <li key={qIdx} className="flex items-start gap-1">
+                                                  <span className="text-red-500">•</span>
+                                                  <span>{q}</span>
+                                                </li>
+                                              ))}
+                                            </ul>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* NON-EXPANDED SIMPLE NOTE */}
+                              {!isConcluded && act.notes && (
+                                <div className="p-4 border-t border-gray-100 text-sm text-gray-600">
+                                  {act.notes}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                     </div>
                   )}
                 </div>
@@ -1717,6 +2266,45 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                 fetchLead();
               }}
             />
+          )}
+
+          {meetingToDelete && (
+            <Modal
+              isOpen={!!meetingToDelete}
+              onClose={() => setMeetingToDelete(null)}
+              size="sm"
+            >
+              <div className="p-6 text-center space-y-4">
+                <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto text-3xl">
+                  ⚠️
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Delete Scheduled Meeting?</h3>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Are you sure you want to permanently delete this meeting? This action is irreversible and will remove all meeting data.
+                  </p>
+                </div>
+                <div className="flex gap-3 justify-center pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setMeetingToDelete(null)}
+                    disabled={meetingSubmitting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-750"
+                    onClick={async () => {
+                      await handleDeleteMeetingConfirm();
+                    }}
+                    disabled={meetingSubmitting}
+                  >
+                    {meetingSubmitting ? 'Deleting...' : 'Yes, Delete'}
+                  </Button>
+                </div>
+              </div>
+            </Modal>
           )}
         </div>
       )}
