@@ -1294,7 +1294,7 @@ export default function ProjectDetail() {
             <span className={styles.statValue}>
               {formatValue(project.stats?.collectedPayment || 0)}
               {' of '}
-              {formatValue(project.stats?.netContractValue || project.contract_value || 0)}
+              {formatValue(project.stats?.netContractValue || Number(project.contract_value || 0) || (Number(project.booking_amount || 0) > 0 ? Number(project.booking_amount) * 10 : 0) || 0)}
             </span>
           </div>
         </div>

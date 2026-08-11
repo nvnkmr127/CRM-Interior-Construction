@@ -227,50 +227,31 @@ export const getEstimates = async (leadId) => {
   return response.data;
 };
 
-/**
- * Fetch site measurements for a lead.
- * @param {string} leadId - The UUID of the lead.
- * @returns {Promise<{ success: boolean, data: Array }>} List of measurements.
- */
 export const getLeadMeasurements = async (leadId) => {
   const response = await api.get(`/leads/${leadId}/measurements`);
   return response.data;
 };
 
-/**
- * Capture a new measurement for a lead.
- * @param {string} leadId - The UUID of the lead.
- * @param {Object} data - Measurement details.
- * @returns {Promise<{ success: boolean, data: Object }>} Created measurement.
- */
 export const createLeadMeasurement = async (leadId, data) => {
   const response = await api.post(`/leads/${leadId}/measurements`, data);
   return response.data;
 };
 
 export const getAutomationEvents = async (leadId) => {
-  const response = await api.get(/leads//automation-events);
+  const response = await api.get(`/leads/${leadId}/automation-events`);
   return response.data.data;
 };
 
-/**
- * Update an existing activity for a lead.
- * @param {string} leadId - The UUID of the lead.
- * @param {string} activityId - The UUID of the activity.
- * @param {Object} data - The updated activity data.
- * @returns {Promise<{ success: boolean, data: Object }>} The updated activity.
- */
+export const triggerAutomationEvent = async (leadId, data) => {
+  const response = await api.post(`/leads/${leadId}/automation-events`, data);
+  return response.data;
+};
+
 export const updateActivity = async (leadId, activityId, data) => {
   const response = await api.patch(`/leads/${leadId}/activities/${activityId}`, data);
   return response.data;
 };
 
-/**
- * Delete an activity for a lead.
- * @param {string} leadId - The UUID of the lead.
- * @param {string} activityId - The UUID of the activity.
- * @returns {Promise<{ success: boolean }>} Result.
- */
 export const deleteActivity = async (leadId, activityId) => {
   const response = await api.delete(`/leads/${leadId}/activities/${activityId}`);
   return response.data;

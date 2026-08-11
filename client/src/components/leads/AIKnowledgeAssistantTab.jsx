@@ -1,8 +1,9 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useRef, useEffect } from 'react';
-import { Button } from '../ui';
+import { Button, Badge, Input, Textarea, Select } from '../ui';
 import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
+import { useConfirm } from '../../store/confirmContext';
 
 const styles = {
   wrapper: {
@@ -78,10 +79,10 @@ const styles = {
     whiteSpace: 'nowrap',
   },
   filterPillActive: {
-    background: '#3b82f6',
+    background: 'var(--color-accent)',
     color: '#fff',
-    borderColor: '#3b82f6',
-    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.25)',
+    borderColor: 'var(--color-accent)',
+    boxShadow: '0 4px 12px rgba(139, 92, 246, 0.25)',
   },
   searchInput: {
     width: '100%',
@@ -117,9 +118,9 @@ const styles = {
     flexShrink: 0,
   },
   cardActive: {
-    borderColor: '#3b82f6',
-    boxShadow: '0 8px 24px rgba(59, 130, 246, 0.08), 0 1px 2px rgba(59, 130, 246, 0.05)',
-    background: 'rgba(59, 130, 246, 0.01)',
+    borderColor: 'var(--color-accent)',
+    boxShadow: '0 8px 24px rgba(139, 92, 246, 0.08), 0 1px 2px rgba(139, 92, 246, 0.05)',
+    background: 'rgba(139, 92, 246, 0.01)',
   },
   cardHeader: {
     display: 'flex',
@@ -195,7 +196,7 @@ const styles = {
   cardBtn: {
     background: 'none',
     border: 'none',
-    color: '#2563eb',
+    color: 'var(--color-accent)',
     fontSize: '11px',
     fontWeight: 700,
     cursor: 'pointer',
@@ -262,13 +263,13 @@ const styles = {
   },
   bubbleUser: {
     maxWidth: '80%',
-    background: 'linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)',
+    background: 'linear-gradient(135deg, var(--color-accent) 0%, #6366f1 100%)',
     color: '#fff',
     borderRadius: '16px 16px 2px 16px',
     padding: '12px 16px',
     fontSize: '13.5px',
     lineHeight: 1.55,
-    boxShadow: '0 4px 16px rgba(37, 99, 235, 0.15)',
+    boxShadow: '0 4px 16px rgba(139, 92, 246, 0.15)',
   },
   bubbleAssistant: {
     maxWidth: '80%',
@@ -375,6 +376,7 @@ const styles = {
 };
 
 export default function AIKnowledgeAssistantTab({ leadId, lead }) {
+  const { confirm } = useConfirm();
   const [messages, setMessages] = useState([
     {
       role: 'system',
@@ -384,6 +386,7 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const bottomRef = useRef(null);
   const [selectedRecordId, setSelectedRecordId] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [loadingRecords, setLoadingRecords] = useState(false);
@@ -538,14 +541,17 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
 
   const handleDeleteRecord = async (id) => {
     if (id.startsWith('rec-')) {
-      setRecords(prev => prev.map(r => {
-        if (r.id === id) {
-          return { ...r, summary: 'Data has been cleared.', details: [] };
-        }
-        return r;
-      }));
+      if (await confirm('Are you sure you want to clear this mock knowledge record?')) {
+        setRecords(prev => prev.map(r => {
+          if (r.id === id) {
+            return { ...r, summary: 'Data has been cleared.', details: [] };
+          }
+          return r;
+        }));
+        toast.success('Record cleared');
+      }
     } else {
-      if (!window.confirm('Are you sure you want to permanently delete this meeting record from the Knowledge Vault?')) return;
+      if (!await confirm('Are you sure you want to permanently delete this meeting record from the Knowledge Vault?')) return;
       try {
         await api.delete(`/leads/${leadId}/activities/${id}`);
         toast.success('Record deleted from Knowledge Vault');
@@ -693,15 +699,15 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         {!isEditing ? (
-          <Button size='sm' variant='outline' onClick={() => setIsEditing(true)} style={{ background: '#fff', border: '1px solid #d1d5db', color: '#374151', padding: '4px 10px', fontSize: '12px', height: '28px' }}>
+          <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
             ✏️ Edit Section
           </Button>
         ) : (
           <div style={{ display: 'flex', gap: '8px' }}>
-            <Button size='sm' variant='primary' onClick={handleSaveChanges} style={{ fontSize: '12px', height: '28px' }}>
+            <Button size="sm" variant="primary" onClick={handleSaveChanges}>
               💾 Save Changes
             </Button>
-            <Button size='sm' variant='ghost' onClick={() => { setIsEditing(false); fetchRecords(); }} style={{ color: '#ef4444', padding: '4px 10px', fontSize: '12px', height: '28px' }}>
+            <Button size="sm" variant="outline" onClick={() => { setIsEditing(false); fetchRecords(); }} className="text-red-500 border-red-200 hover:bg-red-50">
               Cancel Edit
             </Button>
           </div>
@@ -720,31 +726,19 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
               Concluded meetings, objections, and preferences are indexed.
             </p>
           </div>
-          <button
+          <Button
             onClick={() => setShowCreateForm(prev => !prev)}
-            style={{
-              padding: '6px 12px',
-              background: showCreateForm ? '#f3f4f6' : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-              color: showCreateForm ? '#4b5563' : '#fff',
-              border: 'none',
-              borderRadius: '10px',
-              fontSize: '11.5px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              boxShadow: showCreateForm ? 'none' : '0 4px 12px rgba(37, 99, 235, 0.2)',
-              transition: 'all 0.2s',
-            }}
+            variant={showCreateForm ? 'outline' : 'primary'}
+            size="sm"
           >
             {showCreateForm ? 'View Vault' : '+ Add Record'}
-          </button>
+          </Button>
         </div>
 
         {/* Search bar */}
         <div style={styles.searchWrapper}>
-          <input
-            type="text"
+          <Input
             placeholder="Search indexed knowledge..."
-            style={styles.searchInput}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -776,73 +770,64 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
               <h4 style={{ fontSize: '13.5px', fontWeight: 800, color: '#111827', marginBottom: '2px' }}>
                 ✏️ Add New Knowledge Record
               </h4>
-              <div>
-                <label style={styles.formLabel}>Record Type</label>
-                <select
-                  value={newRecord.type}
-                  onChange={(e) => setNewRecord(prev => ({ ...prev, type: e.target.value }))}
-                  style={{ ...styles.searchInput, background: '#fff' }}
-                >
-                  <option value="Meeting Summary">Meeting Summary</option>
-                  <option value="Objection Log">Objection Log</option>
-                  <option value="Preference Sheet">Preference Sheet</option>
-                </select>
-              </div>
-              <div>
-                <label style={styles.formLabel}>Title</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Price Negotiation Notes"
-                  value={newRecord.title}
-                  onChange={(e) => setNewRecord(prev => ({ ...prev, title: e.target.value }))}
-                  style={styles.searchInput}
-                />
-              </div>
-              <div>
-                <label style={styles.formLabel}>Author / Host</label>
-                <input
-                  type="text"
-                  required
-                  value={newRecord.host}
-                  onChange={(e) => setNewRecord(prev => ({ ...prev, host: e.target.value }))}
-                  style={styles.searchInput}
-                />
-              </div>
-              <div>
-                <label style={styles.formLabel}>Summary Sentence</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Brief 1-sentence recap..."
-                  value={newRecord.summary}
-                  onChange={(e) => setNewRecord(prev => ({ ...prev, summary: e.target.value }))}
-                  style={styles.searchInput}
-                />
-              </div>
-              <div>
-                <label style={styles.formLabel}>Key Details (One Bullet Per Line)</label>
-                <textarea
-                  rows={4}
-                  placeholder="- Budget was challenging due to civil works&#10;- Suggested pre-fabricated cabinetry to save time"
-                  value={newRecord.details}
-                  onChange={(e) => setNewRecord(prev => ({ ...prev, details: e.target.value }))}
-                  style={{ ...styles.searchInput, height: '90px', resize: 'vertical' }}
-                />
-              </div>
+              
+              <Select
+                label="Record Type"
+                value={newRecord.type}
+                onChange={(e) => setNewRecord(prev => ({ ...prev, type: e.target.value }))}
+              >
+                <option value="Meeting Summary">Meeting Summary</option>
+                <option value="Objection Log">Objection Log</option>
+                <option value="Preference Sheet">Preference Sheet</option>
+              </Select>
+
+              <Input
+                label="Title"
+                type="text"
+                required
+                placeholder="e.g. Price Negotiation Notes"
+                value={newRecord.title}
+                onChange={(e) => setNewRecord(prev => ({ ...prev, title: e.target.value }))}
+              />
+
+              <Input
+                label="Author / Host"
+                type="text"
+                required
+                value={newRecord.host}
+                onChange={(e) => setNewRecord(prev => ({ ...prev, host: e.target.value }))}
+              />
+
+              <Input
+                label="Summary Sentence"
+                type="text"
+                required
+                placeholder="Brief 1-sentence recap..."
+                value={newRecord.summary}
+                onChange={(e) => setNewRecord(prev => ({ ...prev, summary: e.target.value }))}
+              />
+
+              <Textarea
+                label="Key Details (One Bullet Per Line)"
+                rows={3}
+                placeholder="- Budget was challenging due to civil works&#10;- Suggested pre-fabricated cabinetry to save time"
+                value={newRecord.details}
+                onChange={(e) => setNewRecord(prev => ({ ...prev, details: e.target.value }))}
+              />
+
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', paddingTop: '6px' }}>
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
+                  size="sm"
                   onClick={() => setShowCreateForm(false)}
-                  style={{ fontSize: '12px' }}
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   variant="primary"
-                  style={{ fontSize: '12px', background: '#3b82f6', borderColor: '#3b82f6' }}
+                  size="sm"
                 >
                   Save Record
                 </Button>
@@ -867,9 +852,15 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
                 onClick={() => setSelectedRecordId(record.id)}
               >
                 <div style={styles.cardHeader}>
-                  <span style={{ ...styles.badge, ...getBadgeStyle(record.type) }}>
+                  <Badge variant={
+                    record.type === 'Meeting Summary' 
+                      ? 'info' 
+                      : record.type === 'Objection Log' 
+                        ? 'danger' 
+                        : 'accent'
+                  }>
                     {record.type}
-                  </span>
+                  </Badge>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={styles.cardDate}>{record.date}</span>
                     <button 
@@ -968,24 +959,15 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
             </p>
           </div>
           {messages.length > 1 && (
-            <button
+            <Button
               onClick={handleClearChat}
-              style={{
-                fontSize: '11px',
-                fontWeight: 700,
-                color: '#ef4444',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '4px 8px',
-                borderRadius: '6px',
-                transition: 'background 0.2s',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+              variant="outline"
+              size="sm"
+              className="text-red-500 border-red-200 hover:bg-red-55"
+              style={{ padding: '4px 10px', height: '28px', fontSize: '11.5px' }}
             >
               🗑️ Clear Chat
-            </button>
+            </Button>
           )}
         </div>
 

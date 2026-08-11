@@ -18,8 +18,6 @@ export default function ClientProfileTab({ project, onRefresh }) {
       spouseName: project.spouse_name || '',
       spousePhone: project.spouse_phone || '',
       spouseEmail: project.spouse_email || '',
-      numberOfFamilyMembers: project.number_of_family_members || '',
-      lifestylePreferences: project.lifestyle_preferences || '',
       preferredCommunicationChannel: project.preferred_communication_channel || '',
       agreementSignedBy: project.agreement_signed_by || '',
       agreementSignedAt: project.agreement_signed_at ? project.agreement_signed_at.split('T')[0] : '',
@@ -37,8 +35,6 @@ export default function ClientProfileTab({ project, onRefresh }) {
         spouse_name: formData.spouseName || null,
         spouse_phone: formData.spousePhone || null,
         spouse_email: formData.spouseEmail || null,
-        number_of_family_members: formData.numberOfFamilyMembers ? Number(formData.numberOfFamilyMembers) : null,
-        lifestyle_preferences: formData.lifestylePreferences || null,
         preferred_communication_channel: formData.preferredCommunicationChannel || null,
         agreement_signed_by: formData.agreementSignedBy || null,
         agreement_signed_at: formData.agreementSignedAt || null,
@@ -66,9 +62,7 @@ export default function ClientProfileTab({ project, onRefresh }) {
     { label: 'Spouse Name', value: project.spouse_name || '—' },
     { label: 'Spouse Phone', value: project.spouse_phone || '—' },
     { label: 'Spouse Email', value: project.spouse_email || '—' },
-    { label: 'Number of Family Members', value: project.number_of_family_members || '—' },
     { label: 'Preferred Comm. Channel', value: project.preferred_communication_channel || '—' },
-    { label: 'Lifestyle Preferences', value: project.lifestyle_preferences || '—' },
     { label: 'Agreement Signed By', value: project.agreement_signed_by || '—' },
     { label: 'Agreement Signed Date', value: formatDate(project.agreement_signed_at) },
     { label: 'Signature Method', value: project.agreement_signature_method ? project.agreement_signature_method.replace(/_/g, ' ') : '—' },
@@ -133,25 +127,11 @@ export default function ClientProfileTab({ project, onRefresh }) {
             onChange={e => setFormData({...formData, spouseEmail: e.target.value})}
           />
           <Input 
-            label="Number of Family Members" 
-            type="number"
-            value={formData.numberOfFamilyMembers}
-            onChange={e => setFormData({...formData, numberOfFamilyMembers: e.target.value})}
-          />
-          <Input 
             label="Preferred Communication Channel" 
             placeholder="e.g. WhatsApp, Email"
             value={formData.preferredCommunicationChannel}
             onChange={e => setFormData({...formData, preferredCommunicationChannel: e.target.value})}
           />
-          <div style={{ gridColumn: '1 / -1' }}>
-            <Input 
-              label="Lifestyle Preferences / Notes" 
-              placeholder="Any specific lifestyle choices affecting design..."
-              value={formData.lifestylePreferences}
-              onChange={e => setFormData({...formData, lifestylePreferences: e.target.value})}
-            />
-          </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
           <Button variant="outline" onClick={() => setIsEditing(false)} disabled={saving}>Cancel</Button>

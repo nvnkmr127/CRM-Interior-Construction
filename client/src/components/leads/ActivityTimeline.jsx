@@ -185,6 +185,14 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger, 
     fetchActivities(1, false);
   }, [leadId, filter, refreshTrigger]);
 
+  useEffect(() => {
+    if (activeForm) {
+      setFilter(activeForm);
+    } else {
+      setFilter('all');
+    }
+  }, [activeForm]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -218,7 +226,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger, 
           status: 'open'
         });
         if (onTaskAdded) onTaskAdded();
-        await logActivity(leadId, { type: 'note', notes: `Scheduled task: ${formData.title} due on ${formData.due_date}` });
+        await logActivity(leadId, { type: 'task', notes: `Scheduled task: ${formData.title} due on ${formData.due_date}` });
       } else if (activeForm === 'site_visit') {
         if (!formData.notes.trim()) return;
         const metadata = {

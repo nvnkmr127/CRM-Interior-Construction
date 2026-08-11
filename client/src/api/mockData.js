@@ -534,6 +534,42 @@ export const initialMockDatabase = {
       outcome: 'Site visit scheduled for next week',
       created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
       user_name: 'Amit S.'
+    },
+    {
+      id: 'mock-act-3',
+      lead_id: 'mock-lead-1',
+      type: 'email',
+      title: 'Project Brochure Sent',
+      notes: 'Sent the standard premium modular kitchen catalog and pricing overview.',
+      created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      user_name: 'Amit S.'
+    },
+    {
+      id: 'mock-act-4',
+      lead_id: 'mock-lead-1',
+      type: 'site_visit',
+      title: 'Kitchen Site Measurement',
+      notes: 'Took full site dimensions for cabinet layouts. Noted plumbing points alignment.',
+      created_at: new Date(Date.now() - 1.5 * 24 * 60 * 60 * 1000).toISOString(),
+      user_name: 'Amit S.'
+    },
+    {
+      id: 'mock-act-5',
+      lead_id: 'mock-lead-1',
+      type: 'meeting',
+      title: 'Concept Alignment Meeting',
+      notes: 'Reviewed preliminary floor plans and Japandi color schemes. Client approved kitchen zoning.',
+      created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+      user_name: 'Amit S.'
+    },
+    {
+      id: 'mock-act-6',
+      lead_id: 'mock-lead-1',
+      type: 'task',
+      title: 'Draft BOQ Estimation',
+      notes: 'Scheduled task: Draft detailed BOQ for kitchen cabinet components and marble countertops.',
+      created_at: new Date(Date.now() - 0.5 * 24 * 60 * 60 * 1000).toISOString(),
+      user_name: 'Amit S.'
     }
   ],
   dashboardStats: {
@@ -638,6 +674,22 @@ export const loadMockDatabase = () => {
         localStorage.setItem('mockDatabase_v4', JSON.stringify(merged));
       }
       
+      if (merged.activities && Array.isArray(merged.activities)) {
+        const newIds = ['mock-act-3', 'mock-act-4', 'mock-act-5', 'mock-act-6'];
+        let updated = false;
+        newIds.forEach(id => {
+          if (!merged.activities.some(a => a.id === id)) {
+            const seedAct = initialMockDatabase.activities.find(a => a.id === id);
+            if (seedAct) {
+              merged.activities.push(seedAct);
+              updated = true;
+            }
+          }
+        });
+        if (updated) {
+          localStorage.setItem('mockDatabase_v4', JSON.stringify(merged));
+        }
+      }
       
       if (merged.leads && Array.isArray(merged.leads)) {
         if (merged.leads.length <= 2) {

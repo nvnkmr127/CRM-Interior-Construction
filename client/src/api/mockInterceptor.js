@@ -383,7 +383,7 @@ export const setupMockInterceptor = (api) => {
               mockDatabase.activities.push({
                 id: `mock-act-${Date.now()}`,
                 lead_id: leadId,
-                type: 'note',
+                type: 'task',
                 title: 'Scheduled Follow-up',
                 notes: `Scheduled follow-up: ${payload.title} due on ${formattedDate}`,
                 created_at: new Date().toISOString(),
@@ -417,7 +417,7 @@ export const setupMockInterceptor = (api) => {
                   mockDatabase.activities.push({
                     id: `mock-act-${Date.now()}`,
                     lead_id: leadId,
-                    type: 'note',
+                    type: 'task',
                     title: 'Updated Follow-up',
                     notes: summary,
                     created_at: new Date().toISOString(),
@@ -439,7 +439,7 @@ export const setupMockInterceptor = (api) => {
                 mockDatabase.activities.push({
                   id: `mock-act-${Date.now()}`,
                   lead_id: leadId,
-                  type: 'note',
+                  type: 'task',
                   title: 'Cancelled Follow-up',
                   notes: `Cancelled follow-up: ${title}`,
                   created_at: new Date().toISOString(),
@@ -976,6 +976,94 @@ export const setupMockInterceptor = (api) => {
                 
                 timelineEvents.sort((x, y) => new Date(y.created_at) - new Date(x.created_at));
                 responseData.data = timelineEvents;
+              } else {
+                responseData.data = [];
+              }
+            } else if (url.includes('/automation-events')) {
+              const match = url.match(/\/leads\/([a-zA-Z0-9-]+)\/automation-events/);
+              const leadId = match ? match[1] : null;
+              if (leadId) {
+                if (!mockDatabase.automationEvents) {
+                  mockDatabase.automationEvents = [
+                    {
+                      id: 'auto-ev-1',
+                      lead_id: 'mock-lead-1',
+                      workflow: 'Lead Allocation Routing',
+                      trigger_type: 'Lead Created',
+                      action_type: 'Round Robin Assignment',
+                      status: 'success',
+                      error_message: null,
+                      executed_at: new Date(Date.now() - 3600000 * 24 * 3).toISOString(),
+                      duration_ms: 145
+                    },
+                    {
+                      id: 'auto-ev-2',
+                      lead_id: 'mock-lead-1',
+                      workflow: 'Auto Welcome Email Campaign',
+                      trigger_type: 'Lead Stage Updated (New -> Contacted)',
+                      action_type: 'Send Email Template (Welcome)',
+                      status: 'success',
+                      error_message: null,
+                      executed_at: new Date(Date.now() - 3600000 * 24 * 2).toISOString(),
+                      duration_ms: 322
+                    },
+                    {
+                      id: 'auto-ev-3',
+                      lead_id: 'mock-lead-1',
+                      workflow: 'High Value Alert SMS Trigger',
+                      trigger_type: 'Design Budget Set > $50k',
+                      action_type: 'Send WhatsApp notification to Architect Manager',
+                      status: 'success',
+                      error_message: null,
+                      executed_at: new Date(Date.now() - 3600000 * 12).toISOString(),
+                      duration_ms: 88
+                    },
+                    {
+                      id: 'auto-ev-4',
+                      lead_id: 'mock-lead-1',
+                      workflow: 'Sync Contact details with External ERP System',
+                      trigger_type: 'Stakeholder Added',
+                      action_type: 'REST Webhook dispatch',
+                      status: 'failed',
+                      error_message: 'External API Gateway returned 504 Gateway Timeout.',
+                      executed_at: new Date(Date.now() - 3600000 * 2).toISOString(),
+                      duration_ms: 5000
+                    }
+                  ];
+                  mockDatabase.automationEvents = mockDatabase.automationEvents.concat(
+                    (mockDatabase.leads || []).filter(l => l.id !== 'mock-lead-1').map((l, index) => ({
+                      id: `auto-ev-dyn-${l.id}`,
+                      lead_id: l.id,
+                      workflow: 'Lead Allocation Routing',
+                      trigger_type: 'Lead Created',
+                      action_type: 'Round Robin Assignment',
+                      status: 'success',
+                      error_message: null,
+                      executed_at: new Date(Date.now() - 3600000 * 24 * (index + 1)).toISOString(),
+                      duration_ms: 120
+                    }))
+                  );
+                  persistDb();
+                }
+                if (method === 'get') {
+                  responseData.data = mockDatabase.automationEvents.filter(ev => ev.lead_id === leadId);
+                } else if (method === 'post') {
+                  const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                  const newEvent = {
+                    id: `auto-ev-${Date.now()}`,
+                    lead_id: leadId,
+                    workflow: payload.workflow || 'Custom Workflow Trigger',
+                    trigger_type: payload.trigger_type || 'Manual Action',
+                    action_type: payload.action_type || 'Run Task',
+                    status: payload.status || 'success',
+                    error_message: payload.error_message || null,
+                    executed_at: new Date().toISOString(),
+                    duration_ms: payload.duration_ms || Math.floor(Math.random() * 200 + 50)
+                  };
+                  mockDatabase.automationEvents.unshift(newEvent);
+                  persistDb();
+                  responseData.data = newEvent;
+                }
               } else {
                 responseData.data = [];
               }
@@ -1579,66 +1667,116 @@ export const setupMockInterceptor = (api) => {
             if (url.includes('/projects')) {
               const parts = url.split('?')[0].split('/');
               const projectId = parts[parts.indexOf('projects') + 1];
-              let milestones = mockDatabase.paymentMilestones?.filter(m => m.project_id === projectId) || [];
+              
+              if (!mockDatabase.paymentMilestones) mockDatabase.paymentMilestones = [];
+              let milestones = mockDatabase.paymentMilestones.filter(m => m.project_id === projectId) || [];
+              
+              // Migration: If milestones exist but they are all scheduled or have no historical paid records (older than 5 days),
+              // shift them back by 3 months to seed a realistic trend.
+              const hasHistoricalData = milestones.some(m => {
+                const entries = m.payment_entries || [];
+                return entries.some(e => {
+                  const diff = new Date() - new Date(e.paidAt);
+                  return diff > 24 * 60 * 60 * 1000 * 5;
+                });
+              });
+              
+              if (milestones.length > 0 && !hasHistoricalData) {
+                mockDatabase.paymentMilestones = mockDatabase.paymentMilestones.filter(m => m.project_id !== projectId);
+                milestones = [];
+              }
               
               if (milestones.length === 0) {
-                 const proj = mockDatabase.projects?.find(p => p.id === projectId);
-                 if (proj) {
-                     const fallbackBudget = Number(proj.booking_amount || 0) > 0 ? Number(proj.booking_amount) * 10 : 0;
-                     const totalB = Number(proj.contract_value || 0) || fallbackBudget || 500000;
-                     const defaultConf = [
-                       { key: 'booking', name: 'Booking', percentage: 10 },
-                       { key: 'design', name: 'Design Advance', percentage: 15 },
-                       { key: 'production', name: 'Production', percentage: 40 },
-                       { key: 'dispatch', name: 'Dispatch', percentage: 20 },
-                       { key: 'installation', name: 'Installation', percentage: 10 },
-                       { key: 'handover', name: 'Final Handover', percentage: 5 }
-                     ];
-                     if (!mockDatabase.paymentMilestones) mockDatabase.paymentMilestones = [];
-                     
-                     defaultConf.forEach((mConf, index) => {
-                         let mockDate = new Date(proj.createdAt || Date.now());
-                         mockDate.setDate(mockDate.getDate() + (index * 15));
-                         const milestoneAmount = (totalB * mConf.percentage) / 100;
-                         
-                         let mockPaymentEntries = [];
-                         let mockStatus = index === 0 ? 'pending' : 'scheduled';
-                         if (index === 0) {
-                             mockStatus = 'paid';
-                             mockPaymentEntries = [{
-                               id: `mock_txn_${Date.now()}_1`,
-                               amount: milestoneAmount,
-                               paidAt: mockDate.toISOString(),
-                               mode: 'Bank Transfer',
-                               collectedByName: 'System Mock',
-                               collectedByRole: 'Admin'
-                             }];
-                         } else if (index === 1) {
-                             mockStatus = 'partially_paid';
-                             mockPaymentEntries = [{
-                               id: `mock_txn_${Date.now()}_2`,
-                               amount: milestoneAmount * 0.5,
-                               paidAt: mockDate.toISOString(),
-                               mode: 'UPI',
-                               collectedByName: 'System Mock',
-                               collectedByRole: 'Admin'
-                             }];
-                         }
-                         
-                         const newM = {
-                            id: `mock_m_${mConf.key}_${index}`,
-                            project_id: projectId,
-                            name: mConf.name,
-                            amount: milestoneAmount,
-                            status: mockStatus,
-                            due_date: mockDate.toISOString(),
-                            payment_entries: mockPaymentEntries
-                         };
-                         mockDatabase.paymentMilestones.push(newM);
-                         milestones.push(newM);
-                     });
-                     persistDb();
-                 }
+                  const proj = mockDatabase.projects?.find(p => p.id === projectId);
+                  if (proj) {
+                      const fallbackBudget = Number(proj.booking_amount || 0) > 0 ? Number(proj.booking_amount) * 10 : 0;
+                      const totalB = Number(proj.contract_value || 0) || fallbackBudget || 500000;
+                      const defaultConf = [
+                        { key: 'booking', name: 'Booking', percentage: 10 },
+                        { key: 'design', name: 'Design Advance', percentage: 15 },
+                        { key: 'production', name: 'Production', percentage: 40 },
+                        { key: 'dispatch', name: 'Dispatch', percentage: 20 },
+                        { key: 'installation', name: 'Installation', percentage: 10 },
+                        { key: 'handover', name: 'Final Handover', percentage: 5 }
+                      ];
+                      
+                      const projectCreated = proj.created_at || proj.createdAt;
+                      let baseDate = projectCreated ? new Date(projectCreated) : new Date();
+                      
+                      // Force base date to be 3 months ago if project was created recently, to seed a realistic trend
+                      if (new Date() - baseDate < 24 * 60 * 60 * 1000 * 5) {
+                          baseDate = new Date();
+                          baseDate.setMonth(baseDate.getMonth() - 3);
+                      }
+                      
+                      defaultConf.forEach((mConf, index) => {
+                          let mockDate = new Date(baseDate);
+                          mockDate.setDate(mockDate.getDate() + (index * 15));
+                          const milestoneAmount = (totalB * mConf.percentage) / 100;
+                          
+                          let mockPaymentEntries = [];
+                          let mockStatus = 'scheduled';
+                          
+                          if (index === 0) {
+                              mockStatus = 'paid';
+                              mockPaymentEntries = [{
+                                id: `mock_txn_${Date.now()}_0`,
+                                amount: milestoneAmount,
+                                paidAt: mockDate.toISOString(),
+                                mode: 'Bank Transfer',
+                                collectedByName: 'System Mock',
+                                collectedByRole: 'Admin'
+                              }];
+                          } else if (index === 1) {
+                              mockStatus = 'paid';
+                              mockPaymentEntries = [{
+                                id: `mock_txn_${Date.now()}_1`,
+                                amount: milestoneAmount,
+                                paidAt: mockDate.toISOString(),
+                                mode: 'UPI',
+                                collectedByName: 'System Mock',
+                                collectedByRole: 'Admin'
+                              }];
+                          } else if (index === 2) {
+                              mockStatus = 'paid';
+                              mockPaymentEntries = [{
+                                id: `mock_txn_${Date.now()}_2`,
+                                amount: milestoneAmount,
+                                paidAt: mockDate.toISOString(),
+                                mode: 'Bank Transfer',
+                                collectedByName: 'System Mock',
+                                collectedByRole: 'Admin'
+                              }];
+                          } else if (index === 3) {
+                              mockStatus = 'partially_paid';
+                              mockPaymentEntries = [{
+                                id: `mock_txn_${Date.now()}_3`,
+                                amount: milestoneAmount * 0.5,
+                                paidAt: mockDate.toISOString(),
+                                mode: 'UPI',
+                                collectedByName: 'System Mock',
+                                collectedByRole: 'Admin'
+                              }];
+                          } else if (index === 4) {
+                              mockStatus = 'overdue';
+                          } else if (index === 5) {
+                              mockStatus = 'scheduled';
+                          }
+                          
+                          const newM = {
+                             id: `mock_m_${mConf.key}_${index}`,
+                             project_id: projectId,
+                             name: mConf.name,
+                             amount: milestoneAmount,
+                             status: mockStatus,
+                             due_date: mockDate.toISOString(),
+                             payment_entries: mockPaymentEntries
+                          };
+                          mockDatabase.paymentMilestones.push(newM);
+                          milestones.push(newM);
+                      });
+                      persistDb();
+                  }
               }
               responseData.data = milestones;
             } else {
@@ -1834,6 +1972,7 @@ export const setupMockInterceptor = (api) => {
                      collected = (baseContract * 0.10) + (baseContract * 0.15 * 0.5);
                   }
 
+                  const computedNetContract = proj.stats?.netContractValue || baseContract || total || (Number(proj.booking_amount || 0) > 0 ? Number(proj.booking_amount) * 10 : 0);
                   const stats = {
                     ...(proj.stats || {}),
                     collectedPayment: proj.stats?.collectedPayment !== undefined && proj.stats.collectedPayment > 0 ? proj.stats.collectedPayment : collected,
@@ -1841,9 +1980,13 @@ export const setupMockInterceptor = (api) => {
                     overduePayments: overdue,
                     pendingInvoices: pending,
                     outstandingBalance: Math.max(total - collected, 0),
-                    netContractValue: proj.stats?.netContractValue !== undefined ? proj.stats.netContractValue : baseContract
+                    netContractValue: computedNetContract
                   };
-                  responseData.data = { ...proj, stats };
+                  responseData.data = {
+                    ...proj,
+                    contract_value: proj.contract_value || computedNetContract,
+                    stats
+                  };
                 } else {
                   responseData.data = null;
                 }
@@ -1859,13 +2002,16 @@ export const setupMockInterceptor = (api) => {
                      collected = (baseContract * 0.10) + (baseContract * 0.15 * 0.5);
                   }
 
+                  const computedNetContract = proj.stats?.netContractValue || baseContract || total || (Number(proj.booking_amount || 0) > 0 ? Number(proj.booking_amount) * 10 : 0);
+
                   return {
                     ...proj,
+                    contract_value: proj.contract_value || computedNetContract,
                     stats: {
                       ...(proj.stats || {}),
                       collectedPayment: proj.stats?.collectedPayment !== undefined && proj.stats.collectedPayment > 0 ? proj.stats.collectedPayment : collected,
                       totalPayment: proj.stats?.totalPayment !== undefined && proj.stats.totalPayment > 0 ? proj.stats.totalPayment : total,
-                      netContractValue: proj.stats?.netContractValue !== undefined ? proj.stats.netContractValue : baseContract
+                      netContractValue: computedNetContract
                     }
                   };
                 });
@@ -1984,6 +2130,7 @@ export const setupMockInterceptor = (api) => {
                                        customerName: 'Customer',
                                        amount: amountPaid,
                                        status: 'GENERATED',
+                                       type: 'TAX_INVOICE',
                                        version: '1.0'
                                    };
                                    mockDatabase.invoices.push(newInvoice);
@@ -2004,6 +2151,7 @@ export const setupMockInterceptor = (api) => {
               const newInvoice = {
                 id: 'INV-' + Date.now(),
                 ...payload,
+                type: payload.type || 'TAX_INVOICE',
                 status: 'GENERATED',
                 date: new Date().toISOString(),
                 version: '1.0'
@@ -4716,6 +4864,7 @@ export const setupMockInterceptor = (api) => {
                                 customerName: approval.customer_name || 'Customer',
                                 amount: totalAmount,
                                 status: 'GENERATED',
+                                type: 'TAX_INVOICE',
                                 version: '1.0'
                             };
                             mockDatabase.invoices.unshift(newInvoice);
