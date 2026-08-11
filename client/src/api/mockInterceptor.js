@@ -210,6 +210,7 @@ export const setupMockInterceptor = (api) => {
                 title: payload.title || null,
                 notes: payload.notes || '',
                 outcome: payload.outcome || null,
+                scheduled_at: payload.scheduledAt || null,
                 created_at: new Date().toISOString(),
                 user_name: 'Amit S.'
               };
@@ -220,6 +221,10 @@ export const setupMockInterceptor = (api) => {
             } else if (method === 'patch' || method === 'put') {
               if (activityId) {
                 const updates = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                if (updates.scheduledAt !== undefined) {
+                  updates.scheduled_at = updates.scheduledAt;
+                  delete updates.scheduledAt;
+                }
                 if (!mockDatabase.activities) mockDatabase.activities = [];
                 const idx = mockDatabase.activities.findIndex(a => a.id === activityId);
                 if (idx !== -1) {
@@ -227,6 +232,13 @@ export const setupMockInterceptor = (api) => {
                   persistDb();
                   responseData.data = mockDatabase.activities[idx];
                 }
+              }
+            } else if (method === 'delete') {
+              if (activityId) {
+                if (!mockDatabase.activities) mockDatabase.activities = [];
+                mockDatabase.activities = mockDatabase.activities.filter(a => a.id !== activityId);
+                persistDb();
+                responseData.data = { success: true };
               }
             }
           }

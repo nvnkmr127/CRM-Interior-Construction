@@ -319,7 +319,13 @@ class ProjectRepository {
         (SELECT count(id)::int FROM project_phases WHERE project_id = p.id AND tenant_id = $1) as phase_count,
         (SELECT count(id)::int FROM project_phases WHERE project_id = p.id AND tenant_id = $1 AND status = 'completed') as completed_phase_count,
         (SELECT count(id)::int FROM tasks WHERE project_id = p.id AND tenant_id = $1 AND deleted_at IS NULL) as total_tasks,
-        (SELECT count(id)::int FROM tasks WHERE project_id = p.id AND tenant_id = $1 AND deleted_at IS NULL AND status = 'done') as completed_tasks
+        (SELECT count(id)::int FROM tasks WHERE project_id = p.id AND tenant_id = $1 AND deleted_at IS NULL AND status = 'done') as completed_tasks,
+        (SELECT name FROM project_phases WHERE project_id = p.id AND tenant_id = $1 AND status != 'completed' ORDER BY sort_order ASC, created_at ASC LIMIT 1) as phase,
+        COALESCE(
+          (SELECT ROUND(COUNT(CASE WHEN status = 'done' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0))
+           FROM tasks 
+           WHERE project_id = p.id AND tenant_id = $1 AND deleted_at IS NULL)
+        , 0)::int as progress
       FROM projects p
       LEFT JOIN users pm ON p.pm_id = pm.id
       LEFT JOIN users d ON p.designer_id = d.id

@@ -47,34 +47,11 @@ const purchaseOrdersRoutes = require('./purchaseOrders');
 const purchaseRequestsRoutes = require('./purchaseRequests');
 const materialDeliveriesRoutes = require('./materialDeliveries');
 const vendorPaymentsRoutes = require('./vendorPayments');
-const materialSubstitutionsRoutes = require('./materialSubstitutions');
-const productionOrdersRoutes = require('./productionOrders');
-const workActivitiesRoutes = require('./workActivities');
-const siteReadinessRoutes = require('./siteReadiness');
-const taskDependenciesRoutes = require('./taskDependencies');
-const dailySiteReportsRoutes = require('./dailySiteReports');
-const roomProgressRoutes = require('./roomProgress');
-const meetingNotesRoutes = require('./meetingNotes');
-const delayNotificationsRoutes = require('./delayNotifications');
-const drawingRegisterRoutes = require('./drawingRegister');
-const punchListsRoutes = require('./punchLists');
-const warrantiesRoutes = require('./warranties');
-const amcsRoutes = require('./amcs');
-const warrantyClaimsRoutes = require('./warrantyClaims');
-const projectClosuresRoutes = require('./projectClosures');
-const projectRetrospectivesRoutes = require('./projectRetrospectives');
-const baselineAssessmentRoutes = require('./baselineAssessment');
-const siteExpensesRoutes = require('./siteExpenses');
-const materialUsagesRoutes = require('./materialUsages');
-const labourAttendanceRoutes = require('./labourAttendance');
-const paymentEscalationsRoutes = require('./paymentEscalations');
-
 
 const verifyProjectBooked = require('../middleware/verifyBooking');
+const enforceProjectAccess = require('../middleware/enforceProjectAccess');
 
 const router = express.Router();
-
-const enforceProjectAccess = require('../middleware/enforceProjectAccess');
 
 router.get('/debug-db', async (req, res, next) => {
   try {
@@ -101,7 +78,11 @@ router.get('/:id/activities', authorize('projects:read'), async (req, res, next)
   try {
     const { pool } = require('../config/db');
     const { rows } = await pool.query(
-      'SELECT * FROM activities WHERE project_id = $1 AND tenant_id = $2 ORDER BY created_at DESC',
+      `SELECT a.*, u.name as user_name 
+       FROM activities a
+       LEFT JOIN users u ON a.user_id = u.id
+       WHERE a.project_id = $1 AND a.tenant_id = $2 
+       ORDER BY a.created_at DESC`,
       [req.params.id, req.tenantId]
     );
     return success(res, rows);
@@ -113,14 +94,89 @@ router.get('/:id/activities', authorize('projects:read'), async (req, res, next)
 // Add Project Activity
 router.post('/:id/activities', authorize('projects:write'), async (req, res, next) => {
   try {
-    const { type, title, notes, outcome, metadata } = req.body;
+    const { type, title, notes, outcome, metadata, scheduledAt } = req.body;
     const { pool } = require('../config/db');
     const { rows } = await pool.query(
-      `INSERT INTO activities (project_id, tenant_id, type, title, notes, outcome, metadata, user_id, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) RETURNING *`,
-      [req.params.id, req.tenantId, type || 'note', title, notes, outcome, metadata, req.user?.id || null]
+      `INSERT INTO activities (project_id, tenant_id, type, title, notes, outcome, metadata, user_id, scheduled_at, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW()) RETURNING *`,
+      [req.params.id, req.tenantId, type || 'note', title, notes, outcome, metadata, req.user?.id || null, scheduledAt || null]
     );
-    return success(res, rows[0]);
+    
+    const newActivity = rows[0];
+    if (newActivity && newActivity.user_id) {
+      const userRes = await pool.query('SELECT name FROM users WHERE id = $1', [newActivity.user_id]);
+      if (userRes.rows.length > 0) {
+        newActivity.user_name = userRes.rows[0].name;
+      }
+    }
+
+    return success(res, newActivity);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Update Project Activity
+router.patch('/:id/activities/:aid', authorize('projects:write'), async (req, res, next) => {
+  try {
+    const { title, notes, outcome, metadata, scheduledAt } = req.body;
+    const { pool } = require('../config/db');
+    
+    const actRes = await pool.query(
+      'SELECT * FROM activities WHERE id = $1 AND project_id = $2 AND tenant_id = $3',
+      [req.params.aid, req.params.id, req.tenantId]
+    );
+    
+    if (actRes.rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Activity not found', 404);
+    }
+    
+    const { rows } = await pool.query(
+      `UPDATE activities 
+       SET title = COALESCE($1, title), 
+           notes = COALESCE($2, notes), 
+           outcome = COALESCE($3, outcome),
+           metadata = COALESCE($4, metadata),
+           scheduled_at = COALESCE($5, scheduled_at),
+           created_at = created_at
+       WHERE id = $6 AND project_id = $7 AND tenant_id = $8
+       RETURNING *`,
+      [title, notes, outcome, metadata || null, scheduledAt || null, req.params.aid, req.params.id, req.tenantId]
+    );
+    
+    const updatedRow = rows[0];
+    if (updatedRow && updatedRow.user_id) {
+      const userRes = await pool.query('SELECT name FROM users WHERE id = $1', [updatedRow.user_id]);
+      if (userRes.rows.length > 0) {
+        updatedRow.user_name = userRes.rows[0].name;
+      }
+    }
+    
+    return success(res, updatedRow);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete Project Activity
+router.delete('/:id/activities/:aid', authorize('projects:write'), async (req, res, next) => {
+  try {
+    const { pool } = require('../config/db');
+    const actRes = await pool.query(
+      'SELECT * FROM activities WHERE id = $1 AND project_id = $2 AND tenant_id = $3',
+      [req.params.aid, req.params.id, req.tenantId]
+    );
+    
+    if (actRes.rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Activity not found', 404);
+    }
+    
+    await pool.query(
+      'DELETE FROM activities WHERE id = $1 AND project_id = $2 AND tenant_id = $3',
+      [req.params.aid, req.params.id, req.tenantId]
+    );
+    
+    return success(res, { message: 'Activity deleted successfully' });
   } catch (error) {
     next(error);
   }

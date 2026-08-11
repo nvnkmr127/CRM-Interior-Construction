@@ -29,10 +29,16 @@ function StatusBadge({ status, deleted }) {
     on_hold: { color: 'var(--color-warning)', bg: 'var(--color-warning-bg)' },
     completed: { color: 'var(--color-success)', bg: 'var(--color-success-bg)' },
     overdue: { color: 'var(--color-danger)', bg: 'var(--color-danger-bg)' },
+    pending_payment: { color: 'var(--color-warning)', bg: 'var(--color-warning-bg)' },
     deleted: { color: 'var(--color-text-secondary)', bg: 'var(--color-surface-2)' },
   };
   const s = deleted ? 'deleted' : status?.toLowerCase();
   const style = map[s] || { color: 'var(--color-text-secondary)', bg: 'var(--color-surface-2)' };
+  
+  const displayStatus = s === 'deleted' 
+    ? 'Deleted' 
+    : (status ? status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Unknown');
+
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 5,
@@ -41,7 +47,7 @@ function StatusBadge({ status, deleted }) {
       color: style.color, background: style.bg,
     }}>
       <span style={{ width: 6, height: 6, borderRadius: '50%', background: style.color, flexShrink: 0 }} />
-      {s === 'deleted' ? 'Deleted' : status}
+      {displayStatus}
     </span>
   );
 }
