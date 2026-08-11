@@ -33,7 +33,7 @@ class TimelineWriter {
 
     // Extract common payload fields based on event names
     if (eventName.startsWith('lead.')) {
-      leadId = payload.id || (payload.lead && payload.lead.id);
+      leadId = payload.id || payload.leadId || (payload.lead && payload.lead.id);
       entity = 'lead';
       entityId = leadId;
       
@@ -52,6 +52,61 @@ class TimelineWriter {
       } else if (eventName === 'lead.estimates_synced') {
         summary = `Estimates synced via ${payload.source === 'webhook' ? 'webhook' : 'manual pull'}`;
         if (payload.referenceId) summary += ` (Ref: ${payload.referenceId})`;
+      } else if (eventName === 'lead.stakeholder_added') {
+        eventType = 'activity.note';
+        summary = `Added stakeholder: ${payload.name}${payload.role ? ` (${payload.role})` : ''}`;
+        entity = 'lead_contacts';
+        entityId = payload.contactId;
+      } else if (eventName === 'lead.stakeholder_updated') {
+        eventType = 'activity.note';
+        summary = `Updated stakeholder: ${payload.name}${payload.role ? ` (${payload.role})` : ''}`;
+        entity = 'lead_contacts';
+        entityId = payload.contactId;
+      } else if (eventName === 'lead.stakeholder_removed') {
+        eventType = 'activity.note';
+        summary = `Removed stakeholder: ${payload.name}`;
+        entity = 'lead_contacts';
+        entityId = payload.contactId;
+      } else if (eventName === 'lead.followup_scheduled') {
+        eventType = 'activity.note';
+        summary = `Scheduled follow-up: ${payload.title} due on ${payload.formattedDate}`;
+        entity = 'lead_followups';
+        entityId = payload.followupId;
+      } else if (eventName === 'lead.followup_completed') {
+        eventType = 'activity.note';
+        summary = `Completed follow-up: ${payload.title}`;
+        entity = 'lead_followups';
+        entityId = payload.followupId;
+      } else if (eventName === 'lead.followup_reverted') {
+        eventType = 'activity.note';
+        summary = `Marked follow-up: ${payload.title} as pending`;
+        entity = 'lead_followups';
+        entityId = payload.followupId;
+      } else if (eventName === 'lead.followup_cancelled') {
+        eventType = 'activity.note';
+        summary = `Cancelled follow-up: ${payload.title}`;
+        entity = 'lead_followups';
+        entityId = payload.followupId;
+      } else if (eventName === 'lead.inspiration_added') {
+        eventType = 'activity.note';
+        summary = `Added inspiration image${payload.roomType ? ` for ${payload.roomType}` : ''}`;
+        entity = 'lead_inspirations';
+        entityId = payload.inspirationId;
+      } else if (eventName === 'lead.inspiration_deleted') {
+        eventType = 'activity.note';
+        summary = `Deleted inspiration image${payload.roomType ? ` for ${payload.roomType}` : ''}`;
+        entity = 'lead_inspirations';
+        entityId = payload.inspirationId;
+      } else if (eventName === 'lead.negotiation_updated') {
+        eventType = 'activity.note';
+        summary = `Updated negotiation terms (Quoted: ₹${payload.quotedPrice || 0}, Target: ₹${payload.targetPrice || 0})`;
+        entity = 'lead';
+        entityId = leadId;
+      } else if (eventName === 'lead.file_deleted') {
+        eventType = 'activity.note';
+        summary = `Deleted file: ${payload.fileName}`;
+        entity = 'lead';
+        entityId = leadId;
       } else if (eventName === 'lead.updated') {
         // Timeline event is handled in updateLead for stages, but we can capture other updates if needed
         // We'll skip generic updates to avoid spam
@@ -103,6 +158,11 @@ class TimelineWriter {
       entity = 'ai_insight';
       entityId = payload.id;
       summary = `AI Insight: ${payload.summary || 'Insight generated'}`;
+    } else if (eventName === 'estimate.created') {
+      leadId = payload.leadId;
+      entity = 'estimate';
+      entityId = payload.id;
+      summary = `Created estimate for amount: ${payload.total_amount || 0}`;
     } else if (eventName === 'activity.created') {
       // Legacy generic activities
       leadId = payload.lead_id;
@@ -132,6 +192,24 @@ class TimelineWriter {
         tenant_id, lead_id, event_type, entity, entity_id, summary, user_id
       ) VALUES ($1, $2, $3, $4, $5, $6, $7)
     `, [tenantId, leadId, eventType, entity, entityId, summary, userId || null]);
+
+    // Avoid double writing to audit_logs for actions logged directly in services
+    const skippedAuditEvents = ['lead.stage_changed', 'lead.created', 'lead.deleted', 'lead.updated'];
+    if (!skippedAuditEvents.includes(eventName)) {
+      try {
+        const { logAction } = require('../auditLog');
+        await logAction({
+          tenantId,
+          userId,
+          action: eventName,
+          entity: entity || 'lead',
+          entityId: entityId || leadId,
+          newValue: payload
+        });
+      } catch (auditError) {
+        logger.error('[TimelineWriter] Error writing to audit_logs:', auditError);
+      }
+    }
   }
 }
 

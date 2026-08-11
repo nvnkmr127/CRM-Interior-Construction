@@ -10,6 +10,7 @@ const { updateLead } = require('../services/leads/updateLead');
 const aiService = require('../services/aiService');
 const leadRepository = require('../repositories/leadRepository');
 const activityService = require('../services/activities/activityService');
+const eventBus = require('../utils/eventBus');
 
 
 
@@ -631,17 +632,19 @@ exports.getFilesHandler = async function getFilesHandler(req, res, next) {
 
 exports.deleteFileHandler = async function deleteFileHandler(req, res, next) {
   try {
-    const { tenantId } = getTenantAndUser(req);
+    const { tenantId, userId } = getTenantAndUser(req);
     const { id: leadId, fileId } = req.params;
     const storage = require('../utils/storage');
 
     const fileRes = await pool.query(
-      'SELECT storage_key FROM lead_files WHERE id = $1 AND lead_id = $2 AND tenant_id = $3',
+      'SELECT file_name, storage_key FROM lead_files WHERE id = $1 AND lead_id = $2 AND tenant_id = $3',
       [fileId, leadId, tenantId]
     );
     
+    let fileName = 'file';
     if (fileRes.rows.length > 0) {
-      const { storage_key } = fileRes.rows[0];
+      const { file_name, storage_key } = fileRes.rows[0];
+      fileName = file_name;
       if (storage_key && !storage_key.startsWith('data:')) {
         await storage.deleteFile(storage_key);
       }
@@ -651,6 +654,14 @@ exports.deleteFileHandler = async function deleteFileHandler(req, res, next) {
       'DELETE FROM lead_files WHERE id = $1 AND lead_id = $2 AND tenant_id = $3',
       [fileId, leadId, tenantId]
     );
+
+    // Emit event for decoupled tracking
+    eventBus.emit('lead.file_deleted', {
+      tenantId,
+      userId,
+      leadId,
+      fileName
+    });
     
     res.json({ success: true, data: { deleted: fileId } });
   } catch (error) {
@@ -722,12 +733,12 @@ exports.createFollowupHandler = async function createFollowupHandler(req, res, n
 
 exports.updateFollowupHandler = async function updateFollowupHandler(req, res, next) {
   try {
-    const { tenantId } = getTenantAndUser(req);
+    const { tenantId, userId } = getTenantAndUser(req);
     const { id: leadId, fid } = req.params;
     const { is_done, title, due_at, notes } = req.body;
     
     const { updateFollowup } = require('../services/leads/followupService');
-    const data = await updateFollowup({ tenantId, leadId, fid, is_done, title, due_at, notes });
+    const data = await updateFollowup({ tenantId, userId, leadId, fid, is_done, title, due_at, notes });
     
     res.json({ success: true, data });
   } catch (error) {
@@ -740,11 +751,11 @@ exports.updateFollowupHandler = async function updateFollowupHandler(req, res, n
 
 exports.deleteFollowupHandler = async function deleteFollowupHandler(req, res, next) {
   try {
-    const { tenantId } = getTenantAndUser(req);
+    const { tenantId, userId } = getTenantAndUser(req);
     const { id: leadId, fid } = req.params;
     
     const { deleteFollowup } = require('../services/leads/followupService');
-    await deleteFollowup({ tenantId, leadId, fid });
+    await deleteFollowup({ tenantId, userId, leadId, fid });
     
     res.json({ success: true });
   } catch (error) {
@@ -846,12 +857,12 @@ exports.getContactsHandler = async function getContactsHandler(req, res, next) {
 
 exports.createContactHandler = async function createContactHandler(req, res, next) {
   try {
-    const { tenantId } = getTenantAndUser(req);
+    const { tenantId, userId } = getTenantAndUser(req);
     const { id: leadId } = req.params;
     const { name, phone, email, role, decision_authority, relationship_notes } = req.body;
 
     const { createContact } = require('../services/leads/contactService');
-    const data = await createContact({ tenantId, leadId, name, phone, email, role, decision_authority, relationship_notes });
+    const data = await createContact({ tenantId, userId, leadId, name, phone, email, role, decision_authority, relationship_notes });
     res.json({ success: true, data });
   } catch (error) {
     logger.error('createContactHandler error:', error);
@@ -861,10 +872,10 @@ exports.createContactHandler = async function createContactHandler(req, res, nex
 
 exports.deleteContactHandler = async function deleteContactHandler(req, res, next) {
   try {
-    const { tenantId } = getTenantAndUser(req);
+    const { tenantId, userId } = getTenantAndUser(req);
     const { id: leadId, cid } = req.params;
     const { deleteContact } = require('../services/leads/contactService');
-    await deleteContact({ tenantId, leadId, cid });
+    await deleteContact({ tenantId, userId, leadId, cid });
     res.json({ success: true });
   } catch (error) {
     logger.error('deleteContactHandler error:', error);
@@ -874,12 +885,12 @@ exports.deleteContactHandler = async function deleteContactHandler(req, res, nex
 
 exports.updateContactHandler = async function updateContactHandler(req, res, next) {
   try {
-    const { tenantId } = getTenantAndUser(req);
+    const { tenantId, userId } = getTenantAndUser(req);
     const { id: leadId, cid } = req.params;
     const { name, phone, email, role, decision_authority, relationship_notes } = req.body;
 
     const { updateContact } = require('../services/leads/contactService');
-    const data = await updateContact({ tenantId, leadId, cid, name, phone, email, role, decision_authority, relationship_notes });
+    const data = await updateContact({ tenantId, userId, leadId, cid, name, phone, email, role, decision_authority, relationship_notes });
     res.json({ success: true, data });
   } catch (error) {
     if (error.code === 'NOT_FOUND') {
@@ -907,7 +918,7 @@ exports.getInspirationsHandler = async function getInspirationsHandler(req, res,
 
 exports.createInspirationHandler = async function createInspirationHandler(req, res, next) {
   try {
-    const { tenantId } = getTenantAndUser(req);
+    const { tenantId, userId } = getTenantAndUser(req);
     const { id: leadId } = req.params;
     const { image_url, room_type, notes } = req.body;
 
@@ -916,6 +927,15 @@ exports.createInspirationHandler = async function createInspirationHandler(req, 
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
       [tenantId, leadId, image_url, room_type, notes]
     );
+
+    // Emit event for decoupled tracking
+    eventBus.emit('lead.inspiration_added', {
+      tenantId,
+      userId,
+      leadId,
+      inspirationId: result.rows[0].id,
+      roomType: room_type
+    });
 
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
@@ -926,9 +946,23 @@ exports.createInspirationHandler = async function createInspirationHandler(req, 
 
 exports.deleteInspirationHandler = async function deleteInspirationHandler(req, res, next) {
   try {
-    const { tenantId } = getTenantAndUser(req);
+    const { tenantId, userId } = getTenantAndUser(req);
     const { id: leadId, iid } = req.params;
+
+    const inspRes = await pool.query('SELECT room_type FROM lead_inspirations WHERE id = $1 AND lead_id = $2 AND tenant_id = $3', [iid, leadId, tenantId]);
+    const room_type = inspRes.rows[0]?.room_type;
+
     await pool.query('DELETE FROM lead_inspirations WHERE id = $1 AND lead_id = $2 AND tenant_id = $3', [iid, leadId, tenantId]);
+
+    // Emit event for decoupled tracking
+    eventBus.emit('lead.inspiration_deleted', {
+      tenantId,
+      userId,
+      leadId,
+      inspirationId: iid,
+      roomType: room_type
+    });
+
     res.json({ success: true });
   } catch (error) {
     logger.error('deleteInspirationHandler error:', error);
@@ -1593,7 +1627,7 @@ exports.generateProposalHandler = async (req, res, next) => {
 
 exports.updateNegotiationHandler = async (req, res, next) => {
   try {
-    const { tenantId, _userId } = getTenantAndUser(req);
+    const { tenantId, userId } = getTenantAndUser(req);
     const leadId = req.params.id;
     const { target_price, quoted_price, notes } = req.body;
 
@@ -1612,6 +1646,15 @@ exports.updateNegotiationHandler = async (req, res, next) => {
       'UPDATE leads SET custom_fields = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3 RETURNING *',
       [JSON.stringify(cf), leadId, tenantId]
     );
+
+    // Emit event for decoupled tracking
+    eventBus.emit('lead.negotiation_updated', {
+      tenantId,
+      userId,
+      leadId,
+      quotedPrice: quoted_price,
+      targetPrice: target_price
+    });
 
     res.json({ success: true, data: rows[0] });
   } catch (error) {
@@ -2183,7 +2226,7 @@ exports.mergeLeadsHandler = async (req, res, next) => {
 
 exports.createNativeEstimateHandler = async (req, res, next) => {
   try {
-    const { tenantId, _userId } = getTenantAndUser(req);
+    const { tenantId, userId } = getTenantAndUser(req);
     const { id } = req.params;
     const { estimator_reference_id, status, total_amount, pdf_url, payload } = req.body;
 
@@ -2195,11 +2238,14 @@ exports.createNativeEstimateHandler = async (req, res, next) => {
     const values = [tenantId, id, estimator_reference_id, status || 'draft', total_amount, pdf_url, payload || {}];
     const result = await pool.query(query, values);
     
-    // Log timeline event
-    await pool.query(
-      `INSERT INTO lead_timeline (tenant_id, lead_id, event_type, summary) VALUES ($1, $2, 'estimate.created', $3)`,
-      [tenantId, id, `Created estimate for amount: ${total_amount}`]
-    );
+    // Emit event for decoupled tracking
+    eventBus.emit('estimate.created', {
+      tenantId,
+      userId,
+      leadId: id,
+      id: result.rows[0].id,
+      total_amount
+    });
 
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) {

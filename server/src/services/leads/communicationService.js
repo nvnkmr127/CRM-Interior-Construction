@@ -1,6 +1,7 @@
 const logger = require('../../utils/logger');
 const pool = require('../../db/pool');
 const { sendWhatsAppMessage, pullWhatsAppChatStatus } = require('../whatsappService');
+const eventBus = require('../../utils/eventBus');
 async function createCommunication({ tenantId, userId, leadId, type, notes, metadata }) {
   if (!['email', 'whatsapp', 'call', 'sms'].includes(type)) {
     const error = new Error('Invalid communication type');
@@ -37,7 +38,18 @@ async function createCommunication({ tenantId, userId, leadId, type, notes, meta
     [tenantId, leadId, type, notes, userId, finalMetadata]
   );
   
-  return rows[0];
+  const activity = rows[0];
+  try {
+    eventBus.emit('activity.created', {
+      eventName: 'activity.created',
+      payload: activity,
+      context: { tenantId, userId }
+    });
+  } catch (e) {
+    logger.error('Failed to emit activity.created for communication', e);
+  }
+  
+  return activity;
 }
 
 async function syncWhatsApp({ tenantId, leadId }) {
@@ -103,9 +115,9 @@ async function syncWhatsApp({ tenantId, leadId }) {
         );
 
         if (dupRes.rowCount === 0) {
-          await client.query(
+          const insRes = await client.query(
             `INSERT INTO activities (tenant_id, lead_id, type, notes, metadata, created_at)
-             VALUES ($1, $2, 'whatsapp', $3, $4, $5)`,
+             VALUES ($1, $2, 'whatsapp', $3, $4, $5) RETURNING *`,
             [
               tenantId,
               leadId,
@@ -118,6 +130,17 @@ async function syncWhatsApp({ tenantId, leadId }) {
               msg.timestamp || new Date()
             ]
           );
+
+          const activity = insRes.rows[0];
+          try {
+            eventBus.emit('activity.created', {
+              eventName: 'activity.created',
+              payload: activity,
+              context: { tenantId, userId: null }
+            });
+          } catch (e) {
+            logger.error('Failed to emit activity.created for sync WhatsApp message', e);
+          }
         }
       }
 

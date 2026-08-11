@@ -5,7 +5,27 @@ class EventBus extends EventEmitter {
   emit(eventName, ...args) {
     const result = super.emit(eventName, ...args);
     if (eventName !== '*') {
-      super.emit('*', ...args);
+      let eventObj;
+      const firstArg = args[0];
+      if (firstArg && typeof firstArg === 'object') {
+        if (firstArg.eventName && 'payload' in firstArg && 'context' in firstArg) {
+          eventObj = firstArg;
+        } else {
+          const { tenantId, userId } = firstArg;
+          eventObj = {
+            eventName,
+            payload: firstArg,
+            context: { tenantId, userId }
+          };
+        }
+      } else {
+        eventObj = {
+          eventName,
+          payload: firstArg,
+          context: {}
+        };
+      }
+      super.emit('*', eventObj);
     }
     return result;
   }

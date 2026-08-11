@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 const pool = require('../../db/pool');
+const eventBus = require('../../utils/eventBus');
 
 async function getFollowups({ tenantId, leadId }) {
   const result = await pool.query(
@@ -25,10 +26,26 @@ async function createFollowup({ tenantId, userId, leadId, title, due_at, assigne
      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
     [tenantId, leadId, userId, assignee_id || userId, title, due_at, notes || null]
   );
+
+  const formattedDate = new Date(due_at).toLocaleDateString();
+  // Emit event for decoupled tracking
+  eventBus.emit('lead.followup_scheduled', {
+    tenantId,
+    userId,
+    leadId,
+    followupId: result.rows[0].id,
+    title,
+    formattedDate
+  });
+
   return result.rows[0];
 }
 
-async function updateFollowup({ tenantId, leadId, fid, is_done, title, due_at, notes }) {
+async function updateFollowup({ tenantId, userId, leadId, fid, is_done, title, due_at, notes }) {
+  // Get old status to check if is_done changed
+  const oldRes = await pool.query('SELECT title, is_done FROM lead_followups WHERE id = $1 AND lead_id = $2 AND tenant_id = $3', [fid, leadId, tenantId]);
+  const oldFollowup = oldRes.rows[0];
+
   const result = await pool.query(
     `UPDATE lead_followups SET
       is_done = COALESCE($1, is_done),
@@ -47,14 +64,45 @@ async function updateFollowup({ tenantId, leadId, fid, is_done, title, due_at, n
     error.statusCode = 404;
     throw error;
   }
-  return result.rows[0];
+
+  const newFollowup = result.rows[0];
+  let eventName = 'lead.followup_updated';
+  if (oldFollowup && oldFollowup.is_done !== newFollowup.is_done) {
+    eventName = newFollowup.is_done 
+      ? 'lead.followup_completed' 
+      : 'lead.followup_reverted';
+  }
+
+  // Emit event for decoupled tracking
+  eventBus.emit(eventName, {
+    tenantId,
+    userId,
+    leadId,
+    followupId: fid,
+    title: newFollowup.title
+  });
+
+  return newFollowup;
 }
 
-async function deleteFollowup({ tenantId, leadId, fid }) {
-  const result = await pool.query(
+async function deleteFollowup({ tenantId, userId, leadId, fid }) {
+  const oldRes = await pool.query('SELECT title FROM lead_followups WHERE id = $1 AND lead_id = $2 AND tenant_id = $3', [fid, leadId, tenantId]);
+  const title = oldRes.rows[0]?.title || 'Follow-up';
+
+  await pool.query(
     'DELETE FROM lead_followups WHERE id = $1 AND lead_id = $2 AND tenant_id = $3',
     [fid, leadId, tenantId]
   );
+
+  // Emit event for decoupled tracking
+  eventBus.emit('lead.followup_cancelled', {
+    tenantId,
+    userId,
+    leadId,
+    followupId: fid,
+    title
+  });
+
   return true;
 }
 

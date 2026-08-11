@@ -471,10 +471,13 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
         
         try {
           const fieldName = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          const notesText = field === 'lifestyle_preferences' 
+            ? 'Updated lifestyle & design preferences' 
+            : `Changed ${fieldName} to "${value}"`;
           await logActivity(leadId, {
             type: 'note',
             title: `Lead Updated: ${fieldName}`,
-            notes: `Changed ${fieldName} to "${value}"`
+            notes: notesText
           });
           setActivityRefresh(prev => prev + 1);
         } catch (e) {

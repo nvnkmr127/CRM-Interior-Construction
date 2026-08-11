@@ -20,11 +20,10 @@ async function updateLead({ tenantId, userId, leadId, data, txClient = null, ski
       await logAction({
         tenantId,
         userId,
-        action: 'UPDATE_LEAD',
-        resourceType: 'lead',
-        resourceId: leadId,
-        details: { updatedKeys: Object.keys(data) },
-        txClient
+        action: 'lead.updated',
+        entity: 'lead',
+        entityId: leadId,
+        newValue: { updatedKeys: Object.keys(data) }
       });
     } catch (err) {
       logger.error('Failed to log action UPDATE_LEAD', err);

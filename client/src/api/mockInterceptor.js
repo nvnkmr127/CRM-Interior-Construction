@@ -255,6 +255,18 @@ export const setupMockInterceptor = (api) => {
               };
               if (!mockDatabase.contacts) mockDatabase.contacts = [];
               mockDatabase.contacts.push(newContact);
+              
+              if (!mockDatabase.activities) mockDatabase.activities = [];
+              mockDatabase.activities.push({
+                id: `mock-act-${Date.now()}`,
+                lead_id: leadId,
+                type: 'note',
+                title: 'Added Stakeholder',
+                notes: `Added stakeholder: ${newContact.name}${newContact.role ? ` (${newContact.role})` : ''}`,
+                created_at: new Date().toISOString(),
+                user_name: 'Admin User'
+              });
+              
               persistDb();
               responseData.data = newContact;
             } else if (method === 'patch' || method === 'put') {
@@ -264,13 +276,40 @@ export const setupMockInterceptor = (api) => {
                 const idx = mockDatabase.contacts.findIndex(c => c.id === contactId);
                 if (idx !== -1) {
                   mockDatabase.contacts[idx] = { ...mockDatabase.contacts[idx], ...updates };
+                  const updatedContact = mockDatabase.contacts[idx];
+                  
+                  if (!mockDatabase.activities) mockDatabase.activities = [];
+                  mockDatabase.activities.push({
+                    id: `mock-act-${Date.now()}`,
+                    lead_id: leadId,
+                    type: 'note',
+                    title: 'Updated Stakeholder',
+                    notes: `Updated stakeholder: ${updatedContact.name}${updatedContact.role ? ` (${updatedContact.role})` : ''}`,
+                    created_at: new Date().toISOString(),
+                    user_name: 'Admin User'
+                  });
+                  
                   persistDb();
                   responseData.data = mockDatabase.contacts[idx];
                 }
               }
             } else if (method === 'delete' && contactId) {
               if (mockDatabase.contacts) {
+                const contactToDelete = mockDatabase.contacts.find(c => c.id === contactId);
+                const name = contactToDelete ? contactToDelete.name : 'Stakeholder';
                 mockDatabase.contacts = mockDatabase.contacts.filter(c => c.id !== contactId);
+                
+                if (!mockDatabase.activities) mockDatabase.activities = [];
+                mockDatabase.activities.push({
+                  id: `mock-act-${Date.now()}`,
+                  lead_id: leadId,
+                  type: 'note',
+                  title: 'Removed Stakeholder',
+                  notes: `Removed stakeholder: ${name}`,
+                  created_at: new Date().toISOString(),
+                  user_name: 'Admin User'
+                });
+                
                 persistDb();
                 responseData.data = { success: true };
               }
@@ -338,6 +377,19 @@ export const setupMockInterceptor = (api) => {
               };
               if (!mockDatabase.followups) mockDatabase.followups = [];
               mockDatabase.followups.push(newFollowup);
+              
+              const formattedDate = new Date(payload.due_at).toLocaleDateString();
+              if (!mockDatabase.activities) mockDatabase.activities = [];
+              mockDatabase.activities.push({
+                id: `mock-act-${Date.now()}`,
+                lead_id: leadId,
+                type: 'note',
+                title: 'Scheduled Follow-up',
+                notes: `Scheduled follow-up: ${payload.title} due on ${formattedDate}`,
+                created_at: new Date().toISOString(),
+                user_name: 'Admin User'
+              });
+              
               persistDb();
               responseData.data = newFollowup;
             } else if (method === 'patch' || method === 'put') {
@@ -346,11 +398,32 @@ export const setupMockInterceptor = (api) => {
                 if (!mockDatabase.followups) mockDatabase.followups = [];
                 const idx = mockDatabase.followups.findIndex(f => f.id === followupId);
                 if (idx !== -1) {
+                  const oldFollowup = mockDatabase.followups[idx];
                   let doneUpdates = {};
                   if (updates.is_done !== undefined) {
                     doneUpdates.done_at = updates.is_done ? new Date().toISOString() : null;
                   }
                   mockDatabase.followups[idx] = { ...mockDatabase.followups[idx], ...updates, ...doneUpdates };
+                  const newFollowup = mockDatabase.followups[idx];
+                  
+                  let summary = `Updated follow-up: ${newFollowup.title}`;
+                  if (oldFollowup && oldFollowup.is_done !== newFollowup.is_done) {
+                    summary = newFollowup.is_done 
+                      ? `Completed follow-up: ${newFollowup.title}` 
+                      : `Marked follow-up: ${newFollowup.title} as pending`;
+                  }
+                  
+                  if (!mockDatabase.activities) mockDatabase.activities = [];
+                  mockDatabase.activities.push({
+                    id: `mock-act-${Date.now()}`,
+                    lead_id: leadId,
+                    type: 'note',
+                    title: 'Updated Follow-up',
+                    notes: summary,
+                    created_at: new Date().toISOString(),
+                    user_name: 'Admin User'
+                  });
+                  
                   persistDb();
                   responseData.data = mockDatabase.followups[idx];
                 }
@@ -358,7 +431,21 @@ export const setupMockInterceptor = (api) => {
             } else if (method === 'delete') {
               if (followupId) {
                 if (!mockDatabase.followups) mockDatabase.followups = [];
+                const oldFollowup = mockDatabase.followups.find(f => f.id === followupId);
+                const title = oldFollowup ? oldFollowup.title : 'Follow-up';
                 mockDatabase.followups = mockDatabase.followups.filter(f => f.id !== followupId);
+                
+                if (!mockDatabase.activities) mockDatabase.activities = [];
+                mockDatabase.activities.push({
+                  id: `mock-act-${Date.now()}`,
+                  lead_id: leadId,
+                  type: 'note',
+                  title: 'Cancelled Follow-up',
+                  notes: `Cancelled follow-up: ${title}`,
+                  created_at: new Date().toISOString(),
+                  user_name: 'Admin User'
+                });
+                
                 persistDb();
                 responseData.data = { success: true };
               }
@@ -555,13 +642,39 @@ export const setupMockInterceptor = (api) => {
 
                 if (!mockDatabase.files) mockDatabase.files = [];
                 mockDatabase.files.push(newFile);
+                
+                if (!mockDatabase.activities) mockDatabase.activities = [];
+                mockDatabase.activities.push({
+                  id: `mock-act-${Date.now()}`,
+                  lead_id: leadId,
+                  type: 'note',
+                  title: 'File Uploaded',
+                  notes: `Uploaded file: ${fileName}`,
+                  created_at: new Date().toISOString(),
+                  user_name: 'Admin User'
+                });
+                
                 persistDb();
                 responseData.data = newFile;
               }
             } else if (method === 'delete') {
               if (fileId) {
                 if (!mockDatabase.files) mockDatabase.files = [];
+                const fileToDelete = mockDatabase.files.find(f => f.id === fileId);
+                const fileName = fileToDelete ? fileToDelete.file_name : 'file';
                 mockDatabase.files = mockDatabase.files.filter(f => f.id !== fileId);
+                
+                if (!mockDatabase.activities) mockDatabase.activities = [];
+                mockDatabase.activities.push({
+                  id: `mock-act-${Date.now()}`,
+                  lead_id: leadId,
+                  type: 'note',
+                  title: 'File Deleted',
+                  notes: `Deleted file: ${fileName}`,
+                  created_at: new Date().toISOString(),
+                  user_name: 'Admin User'
+                });
+                
                 persistDb();
                 responseData.data = { success: true };
               }
@@ -587,12 +700,38 @@ export const setupMockInterceptor = (api) => {
               };
               if (!mockDatabase.inspirations) mockDatabase.inspirations = [];
               mockDatabase.inspirations.push(newInsp);
+              
+              if (!mockDatabase.activities) mockDatabase.activities = [];
+              mockDatabase.activities.push({
+                id: `mock-act-${Date.now()}`,
+                lead_id: leadId,
+                type: 'note',
+                title: 'Inspiration Added',
+                notes: `Added inspiration image${payload.room_type ? ` for ${payload.room_type}` : ''}`,
+                created_at: new Date().toISOString(),
+                user_name: 'Admin User'
+              });
+              
               persistDb();
               responseData.data = newInsp;
             } else if (method === 'delete') {
               if (inspirationId) {
                 if (!mockDatabase.inspirations) mockDatabase.inspirations = [];
+                const inspToDelete = mockDatabase.inspirations.find(i => i.id === inspirationId);
+                const room_type = inspToDelete ? inspToDelete.room_type : '';
                 mockDatabase.inspirations = mockDatabase.inspirations.filter(i => i.id !== inspirationId);
+                
+                if (!mockDatabase.activities) mockDatabase.activities = [];
+                mockDatabase.activities.push({
+                  id: `mock-act-${Date.now()}`,
+                  lead_id: leadId,
+                  type: 'note',
+                  title: 'Inspiration Deleted',
+                  notes: `Deleted inspiration image${room_type ? ` for ${room_type}` : ''}`,
+                  created_at: new Date().toISOString(),
+                  user_name: 'Admin User'
+                });
+                
                 persistDb();
                 responseData.data = { success: true };
               }
@@ -807,9 +946,105 @@ export const setupMockInterceptor = (api) => {
           // LEADS
           else if (url.includes('/leads')) {
             if (url.includes('/timeline')) {
-              responseData.data = [];
+              const urlParts = url.split('?');
+              const match = urlParts[0].match(/\/leads\/([a-zA-Z0-9-]+)\/timeline/);
+              const leadId = match ? match[1] : null;
+              if (leadId) {
+                if (!mockDatabase.activities) mockDatabase.activities = [];
+                let list = mockDatabase.activities.filter(a => a.lead_id === leadId);
+                
+                const queryParams = new URLSearchParams(urlParts[1] || '');
+                const typeParam = queryParams.get('type');
+                if (typeParam && typeParam !== 'all') {
+                  if (typeParam === 'system') {
+                    list = list.filter(a => ['stage_changed', 'assignment', 'system'].includes(a.type));
+                  } else {
+                    list = list.filter(a => a.type === typeParam);
+                  }
+                }
+                
+                const timelineEvents = list.map(a => ({
+                  id: a.id,
+                  type: a.type,
+                  title: a.title || `Activity: ${a.type}`,
+                  notes: a.notes,
+                  user_name: a.user_name || 'System User',
+                  user_avatar: null,
+                  created_at: a.created_at,
+                  isSystem: ['stage_changed', 'assignment', 'system'].includes(a.type)
+                }));
+                
+                timelineEvents.sort((x, y) => new Date(y.created_at) - new Date(x.created_at));
+                responseData.data = timelineEvents;
+              } else {
+                responseData.data = [];
+              }
             } else if (url.includes('/estimates')) {
-              responseData.data = [];
+              const match = url.match(/\/leads\/([a-zA-Z0-9-]+)\/estimates/);
+              const leadId = match ? match[1] : null;
+              if (leadId) {
+                if (!mockDatabase.estimates) mockDatabase.estimates = [];
+                if (method === 'get') {
+                  responseData.data = mockDatabase.estimates.filter(e => e.lead_id === leadId);
+                } else if (method === 'post') {
+                  const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                  const newEstimate = {
+                    id: `mock-est-${Date.now()}`,
+                    lead_id: leadId,
+                    total_amount: payload.total_amount || 0,
+                    status: payload.status || 'draft',
+                    created_at: new Date().toISOString()
+                  };
+                  mockDatabase.estimates.push(newEstimate);
+                  
+                  if (!mockDatabase.activities) mockDatabase.activities = [];
+                  mockDatabase.activities.push({
+                    id: `mock-act-${Date.now()}`,
+                    lead_id: leadId,
+                    type: 'system',
+                    title: 'Created Estimate',
+                    notes: `Created estimate for amount: ${payload.total_amount || 0}`,
+                    created_at: new Date().toISOString(),
+                    user_name: 'Admin User'
+                  });
+                  persistDb();
+                  responseData.data = newEstimate;
+                }
+              } else {
+                responseData.data = [];
+              }
+            } else if (url.includes('/stage')) {
+              const match = url.match(/\/leads\/([a-zA-Z0-9-]+)\/stage$/);
+              const leadId = match ? match[1] : null;
+              if (leadId && method === 'post') {
+                const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                const leadIdx = mockDatabase.leads.findIndex(l => l.id === leadId);
+                if (leadIdx !== -1) {
+                  const currentLead = mockDatabase.leads[leadIdx];
+                  const oldStageId = currentLead.stage_id;
+                  currentLead.stage_id = payload.stageId;
+                  mockDatabase.leads[leadIdx] = currentLead;
+                  
+                  if (!mockDatabase.leadStages) {
+                    mockDatabase.leadStages = [];
+                  }
+                  const oldStage = mockDatabase.leadStages.find(s => s.id === oldStageId)?.name || 'Unknown';
+                  const newStage = mockDatabase.leadStages.find(s => s.id === payload.stageId)?.name || 'Unknown';
+                  
+                  if (!mockDatabase.activities) mockDatabase.activities = [];
+                  mockDatabase.activities.push({
+                    id: `mock-act-${Date.now()}`,
+                    lead_id: leadId,
+                    type: 'stage_changed',
+                    title: 'Stage Changed',
+                    notes: `Stage changed from ${oldStage} to ${newStage}`,
+                    created_at: new Date().toISOString(),
+                    user_name: 'Admin User'
+                  });
+                  persistDb();
+                  responseData.data = currentLead;
+                }
+              }
             } else if (url.includes('/buying-intent')) {
               responseData.data = { intent: 'Warm', confidence: 80, reason: 'Mocked intent.' };
             } else if (url.includes('/buying-intent')) {
@@ -859,6 +1094,18 @@ export const setupMockInterceptor = (api) => {
                       custom_fields: cf,
                       updated_at: new Date().toISOString()
                     };
+                    
+                    if (!mockDatabase.activities) mockDatabase.activities = [];
+                    mockDatabase.activities.push({
+                      id: `mock-act-${Date.now()}`,
+                      lead_id: leadId,
+                      type: 'note',
+                      title: 'Negotiation Terms Updated',
+                      notes: `Updated negotiation terms (Quoted: ₹${payload.quoted_price || 0}, Target: ₹${payload.target_price || 0})`,
+                      created_at: new Date().toISOString(),
+                      user_name: 'Admin User'
+                    });
+                    
                     persistDb();
                     responseData.data = mockDatabase.leads[idx];
                   }
@@ -1154,7 +1401,28 @@ export const setupMockInterceptor = (api) => {
                   const updates = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
                   const idx = mockDatabase.leads.findIndex(l => l.id === leadId);
                   if (idx !== -1) {
+                    const prevLead = mockDatabase.leads[idx];
                     mockDatabase.leads[idx] = { ...mockDatabase.leads[idx], ...updates };
+                    
+                    const changedFields = [];
+                    for (const key of Object.keys(updates)) {
+                      if (updates[key] !== prevLead[key] && key !== 'updated_at' && key !== 'custom_fields' && key !== 'assignee_id') {
+                        changedFields.push(key);
+                      }
+                    }
+                    if (changedFields.length > 0) {
+                      if (!mockDatabase.activities) mockDatabase.activities = [];
+                      mockDatabase.activities.push({
+                        id: `mock-act-${Date.now()}`,
+                        lead_id: leadId,
+                        type: 'system',
+                        title: 'Lead Updated',
+                        notes: `Updated lead: ${changedFields.join(', ')}`,
+                        created_at: new Date().toISOString(),
+                        user_name: 'Admin User'
+                      });
+                    }
+                    
                     persistDb();
                     responseData.data = mockDatabase.leads[idx];
                   }

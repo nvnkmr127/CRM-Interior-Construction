@@ -1,11 +1,12 @@
 /* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, react-hooks/exhaustive-deps, no-empty */
 import React, { useEffect, useState } from 'react';
-import { getLeadTimeline, logActivity } from '../../api/leads';
+import { getLeadTimeline, logActivity, deleteActivity } from '../../api/leads';
 import api from '../../api/axios';
 import { formatDistanceToNow, format } from 'date-fns';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import AIMeetingModal from './AIMeetingModal';
+import { useConfirm } from '../../store/confirmContext';
 
 const Icons = {
   note: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>,
@@ -39,6 +40,7 @@ const ExpandableText = ({ text }) => {
 };
 
 export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger, onActivityLogged }) {
+  const { confirm } = useConfirm();
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 20 });
@@ -76,6 +78,20 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger, 
       alert('Failed to update activity.');
     } finally {
       setIsUpdating(false);
+    }
+  };
+  
+  const handleDeleteClick = async (activityId) => {
+    if (await confirm('Are you sure you want to permanently remove this activity log from the lead\'s history?')) {
+      try {
+        const res = await deleteActivity(leadId, activityId);
+        if (res?.success || res?.data?.success) {
+          setActivities(prev => prev.filter(a => a.id !== activityId));
+          if (onActivityLogged) onActivityLogged();
+        }
+      } catch (err) {
+        alert(err.response?.data?.error?.message || 'Failed to delete activity.');
+      }
     }
   };
 
@@ -161,7 +177,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger, 
     } catch (error) {
       console.error('Failed to load timeline events', error);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
@@ -599,15 +615,26 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger, 
                         <span className="text-gray-400 text-xs ml-1 font-medium cursor-help" title={exactDate}>· {timeAgo}</span>
                       </div>
                       {!isSystem && editingActivityId !== activity.id && (
-                        <button
-                          onClick={() => handleEditClick(activity)}
-                          className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-blue-600 transition-colors ml-2 shrink-0"
-                          title="Edit Activity"
-                        >
-                          <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                          </svg>
-                        </button>
+                        <div className="flex items-center gap-1 shrink-0 ml-2">
+                          <button
+                            onClick={() => handleEditClick(activity)}
+                            className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-blue-600 transition-colors"
+                            title="Edit Activity"
+                          >
+                            <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(activity.id)}
+                            className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-red-650 transition-colors"
+                            title="Delete Activity"
+                          >
+                            <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                          </button>
+                        </div>
                       )}
                     </div>
                     
@@ -734,6 +761,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger, 
           }} 
         />
       )}
+
     </div>
   );
 }

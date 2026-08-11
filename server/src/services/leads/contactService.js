@@ -1,4 +1,5 @@
 const pool = require('../../db/pool');
+const eventBus = require('../../utils/eventBus');
 
 async function getContacts({ tenantId, leadId }) {
   const result = await pool.query(
@@ -8,16 +9,27 @@ async function getContacts({ tenantId, leadId }) {
   return result.rows;
 }
 
-async function createContact({ tenantId, leadId, name, phone, email, role, decision_authority, relationship_notes }) {
+async function createContact({ tenantId, userId, leadId, name, phone, email, role, decision_authority, relationship_notes }) {
   const result = await pool.query(
     `INSERT INTO lead_contacts (tenant_id, lead_id, name, phone, email, role, decision_authority, relationship_notes)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
     [tenantId, leadId, name, phone, email, role, decision_authority, relationship_notes]
   );
+
+  // Emit event for decoupled tracking
+  eventBus.emit('lead.stakeholder_added', {
+    tenantId,
+    userId,
+    leadId,
+    contactId: result.rows[0].id,
+    name,
+    role
+  });
+
   return result.rows[0];
 }
 
-async function updateContact({ tenantId, leadId, cid, name, phone, email, role, decision_authority, relationship_notes }) {
+async function updateContact({ tenantId, userId, leadId, cid, name, phone, email, role, decision_authority, relationship_notes }) {
   const result = await pool.query(
     `UPDATE lead_contacts 
      SET name = $1, phone = $2, email = $3, role = $4, decision_authority = $5, relationship_notes = $6, updated_at = NOW()
@@ -32,11 +44,34 @@ async function updateContact({ tenantId, leadId, cid, name, phone, email, role, 
     throw error;
   }
 
+  // Emit event for decoupled tracking
+  eventBus.emit('lead.stakeholder_updated', {
+    tenantId,
+    userId,
+    leadId,
+    contactId: result.rows[0].id,
+    name,
+    role
+  });
+
   return result.rows[0];
 }
 
-async function deleteContact({ tenantId, leadId, cid }) {
+async function deleteContact({ tenantId, userId, leadId, cid }) {
+  const contactRes = await pool.query('SELECT name FROM lead_contacts WHERE id = $1 AND lead_id = $2 AND tenant_id = $3', [cid, leadId, tenantId]);
+  const name = contactRes.rows[0]?.name || 'Stakeholder';
+
   await pool.query('DELETE FROM lead_contacts WHERE id = $1 AND lead_id = $2 AND tenant_id = $3', [cid, leadId, tenantId]);
+
+  // Emit event for decoupled tracking
+  eventBus.emit('lead.stakeholder_removed', {
+    tenantId,
+    userId,
+    leadId,
+    contactId: cid,
+    name
+  });
+
   return true;
 }
 
