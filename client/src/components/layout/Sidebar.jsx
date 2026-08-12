@@ -145,7 +145,11 @@ function NavItem({ item, collapsed, onClose }) {
 
 export default function Sidebar({ collapsed, mobileOpen, onClose }) {
   const { user } = useAuth()
-  const isAdmin = user?.role?.name === 'superadmin'
+  const isAdmin = 
+    user?.role === 'superadmin' || 
+    user?.role?.name?.toLowerCase() === 'superadmin' || 
+    user?.role?.name?.toLowerCase() === 'super admin' || 
+    (user?.role?.permissions && user.role.permissions.includes('*'))
   const hasFinancePermission = isAdmin || (user?.role?.permissions && (
     user.role.permissions.includes('finance:invoices') ||
     user.role.permissions.includes('finance:payments') ||

@@ -1,8 +1,14 @@
+const BASELINE_TIME = 1786536584000; // 2026-08-12T17:39:44+05:30
+
+const getMockDate = (offsetMs = 0) => {
+  return new Date(BASELINE_TIME + offsetMs).toISOString();
+};
+
 export const initialMockDatabase = {
   leads: [
     {
       id: 'mock-lead-1',
-      created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: getMockDate(-5 * 24 * 60 * 60 * 1000),
       name: 'Rohan Sharma',
       email: 'rohan.sharma@example.com',
       phone: '+91 9876543210',
@@ -31,7 +37,7 @@ export const initialMockDatabase = {
     },
     {
       id: 'mock-lead-2',
-      created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: getMockDate(-2 * 24 * 60 * 60 * 1000),
       name: 'Anita Desai',
       email: 'anita.d@example.com',
       phone: '+91 9123456789',
@@ -60,7 +66,7 @@ export const initialMockDatabase = {
     },
     {
       id: 'mock-lead-3',
-      created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: getMockDate(-10 * 24 * 60 * 60 * 1000),
       name: 'Kalyan Kumar',
       email: 'kalyan.kumar@example.com',
       phone: '+91 9888877777',
@@ -89,7 +95,7 @@ export const initialMockDatabase = {
     },
     {
       id: 'mock-lead-4',
-      created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: getMockDate(-3 * 24 * 60 * 60 * 1000),
       name: 'Meera Nair',
       email: 'meera.nair@example.com',
       phone: '+91 9900112233',
@@ -118,7 +124,7 @@ export const initialMockDatabase = {
     },
     {
       id: 'mock-lead-5',
-      created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: getMockDate(-7 * 24 * 60 * 60 * 1000),
       name: 'Vikram Malhotra',
       email: 'vikram.m@example.com',
       phone: '+91 9811223344',
@@ -147,7 +153,7 @@ export const initialMockDatabase = {
     },
     {
       id: 'mock-lead-6',
-      created_at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: getMockDate(-4 * 24 * 60 * 60 * 1000),
       name: 'Siddharth Roy',
       email: 'siddharth@example.com',
       phone: '+91 9777666555',
@@ -176,7 +182,7 @@ export const initialMockDatabase = {
     },
     {
       id: 'mock-lead-7',
-      created_at: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: getMockDate(-15 * 24 * 60 * 60 * 1000),
       name: 'Ananya Sen',
       email: 'ananya.sen@example.com',
       phone: '+91 9666555444',
@@ -205,7 +211,7 @@ export const initialMockDatabase = {
     },
     {
       id: 'mock-lead-8',
-      created_at: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: getMockDate(-12 * 24 * 60 * 60 * 1000),
       name: 'Rakesh Patel',
       email: 'rakesh.patel@example.com',
       phone: '+91 9555444333',
@@ -234,7 +240,7 @@ export const initialMockDatabase = {
     },
     {
       id: 'mock-lead-9',
-      created_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: getMockDate(-20 * 24 * 60 * 60 * 1000),
       name: 'Pooja Hegde',
       email: 'pooja.h@example.com',
       phone: '+91 9444333222',
@@ -263,7 +269,7 @@ export const initialMockDatabase = {
     },
     {
       id: 'mock-lead-10',
-      created_at: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: getMockDate(-25 * 24 * 60 * 60 * 1000),
       name: 'Karan Johar',
       email: 'karan.j@example.com',
       phone: '+91 9333222111',
@@ -333,9 +339,9 @@ export const initialMockDatabase = {
         grossProfit: 2700000,
         grossMarginPct: 60
       },
-      target_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+      target_date: '2026-08-30T10:00:00.000Z',
       overdue: false,
-      created_at: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: '2026-06-01T10:00:00.000Z',
       is_scope_locked: true,
       vendors: [
         { id: 'vendor-1', vendor_name: 'PowerFix Solutions', scope_of_work: 'Electrical Work', agreed_rate: 150000, status: 'approved' },
@@ -358,9 +364,9 @@ export const initialMockDatabase = {
       totalTasks: 25,
       phase: 'Design',
       value: 12000000,
-      target_date: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+      target_date: getMockDate(60 * 24 * 60 * 60 * 1000),
       overdue: false,
-      created_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: getMockDate(-20 * 24 * 60 * 60 * 1000),
       is_scope_locked: false
     }
   ],
@@ -386,7 +392,7 @@ export const initialMockDatabase = {
       title: 'Procure Italian Marble',
       status: 'in_progress',
       assignee: 'Rahul K.',
-      due_date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+      due_date: getMockDate(2 * 24 * 60 * 60 * 1000),
       priority: 'high'
     },
     {
@@ -395,7 +401,7 @@ export const initialMockDatabase = {
       title: 'Electrical Wiring Approval',
       status: 'completed',
       assignee: 'Amit S.',
-      due_date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+      due_date: getMockDate(-5 * 24 * 60 * 60 * 1000),
       priority: 'medium'
     }
   ],
@@ -438,7 +444,7 @@ export const initialMockDatabase = {
       id: 'mock-followup-1',
       lead_id: 'mock-lead-1',
       title: 'Call back to discuss modular kitchen',
-      due_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      due_at: getMockDate(24 * 60 * 60 * 1000),
       notes: 'Wants to see color samples.',
       is_done: false,
       done_at: null
@@ -447,7 +453,7 @@ export const initialMockDatabase = {
       id: 'mock-followup-2',
       lead_id: 'mock-lead-1',
       title: 'Send initial quotation draft',
-      due_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      due_at: getMockDate(-2 * 60 * 60 * 1000),
       notes: 'Based on 3BHK layout provided.',
       is_done: false,
       done_at: null
@@ -494,7 +500,7 @@ export const initialMockDatabase = {
       type: 'system',
       title: 'Project Initiated',
       notes: 'Project has been transitioned from lead to active project state.',
-      created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: getMockDate(-5 * 24 * 60 * 60 * 1000),
       user_name: 'System'
     },
     {
@@ -503,7 +509,7 @@ export const initialMockDatabase = {
       type: 'meeting',
       title: 'Kickoff Meeting',
       notes: 'Discussed timeline, budget, and design preferences with client.',
-      created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: getMockDate(-3 * 24 * 60 * 60 * 1000),
       user_name: 'Priya Sharma'
     },
     {
@@ -512,7 +518,7 @@ export const initialMockDatabase = {
       type: 'site_visit',
       title: 'Initial Site Inspection',
       notes: 'Checked site readiness for electrical and plumbing work.',
-      created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: getMockDate(-1 * 24 * 60 * 60 * 1000),
       user_name: 'Rahul V.'
     },
     {
@@ -522,7 +528,7 @@ export const initialMockDatabase = {
       title: 'Initial contact notes',
       notes: 'Customer is looking for premium modular kitchen designs. Prefers warm lighting.',
       outcome: 'Interested',
-      created_at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: getMockDate(-4 * 24 * 60 * 60 * 1000),
       user_name: 'Amit S.'
     },
     {
@@ -532,7 +538,7 @@ export const initialMockDatabase = {
       title: 'Follow-up Call',
       notes: 'Called to discuss scheduling a site visit.',
       outcome: 'Site visit scheduled for next week',
-      created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: getMockDate(-2 * 24 * 60 * 60 * 1000),
       user_name: 'Amit S.'
     },
     {
@@ -541,7 +547,7 @@ export const initialMockDatabase = {
       type: 'email',
       title: 'Project Brochure Sent',
       notes: 'Sent the standard premium modular kitchen catalog and pricing overview.',
-      created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: getMockDate(-3 * 24 * 60 * 60 * 1000),
       user_name: 'Amit S.'
     },
     {
@@ -550,7 +556,7 @@ export const initialMockDatabase = {
       type: 'site_visit',
       title: 'Kitchen Site Measurement',
       notes: 'Took full site dimensions for cabinet layouts. Noted plumbing points alignment.',
-      created_at: new Date(Date.now() - 1.5 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: getMockDate(-1.5 * 24 * 60 * 60 * 1000),
       user_name: 'Amit S.'
     },
     {
@@ -559,7 +565,7 @@ export const initialMockDatabase = {
       type: 'meeting',
       title: 'Concept Alignment Meeting',
       notes: 'Reviewed preliminary floor plans and Japandi color schemes. Client approved kitchen zoning.',
-      created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: getMockDate(-1 * 24 * 60 * 60 * 1000),
       user_name: 'Amit S.'
     },
     {
@@ -568,7 +574,7 @@ export const initialMockDatabase = {
       type: 'task',
       title: 'Draft BOQ Estimation',
       notes: 'Scheduled task: Draft detailed BOQ for kitchen cabinet components and marble countertops.',
-      created_at: new Date(Date.now() - 0.5 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: getMockDate(-0.5 * 24 * 60 * 60 * 1000),
       user_name: 'Amit S.'
     }
   ],
@@ -602,7 +608,7 @@ export const initialMockDatabase = {
       assigned_user_name: 'Priya M.',
       handover_notes: 'Concept design completed. Client signed off on moodboard. Handing over for detailed 2D drawings and BOQ estimation.',
       creator_name: 'Rahul K.',
-      created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+      created_at: getMockDate(-10 * 24 * 60 * 60 * 1000)
     }
   ],
   paymentMilestones: [
@@ -613,9 +619,9 @@ export const initialMockDatabase = {
       title: 'Booking Advance',
       phase_name: 'Initiation',
       amount: 297663.85,
-      due_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+      due_date: getMockDate(-30 * 24 * 60 * 60 * 1000),
       status: 'paid',
-      paid_at: new Date(Date.now() - 29 * 24 * 60 * 60 * 1000).toISOString(),
+      paid_at: getMockDate(-29 * 24 * 60 * 60 * 1000),
       payment_mode: 'Bank Transfer',
       collected_by_name: 'Priya M.',
       collected_by_role: 'sales_head',
@@ -628,9 +634,9 @@ export const initialMockDatabase = {
       title: 'Design Sign-off',
       phase_name: 'Design',
       amount: 1190655.4,
-      due_date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+      due_date: getMockDate(-15 * 24 * 60 * 60 * 1000),
       status: 'paid',
-      paid_at: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+      paid_at: getMockDate(-14 * 24 * 60 * 60 * 1000),
       payment_mode: 'UPI',
       collected_by_name: 'Amit S.',
       collected_by_role: 'project_manager',
@@ -643,7 +649,7 @@ export const initialMockDatabase = {
       title: 'Material Delivery 1',
       phase_name: 'Execution',
       amount: 2381310.8,
-      due_date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      due_date: getMockDate(-2 * 24 * 60 * 60 * 1000),
       status: 'scheduled'
     },
     {
@@ -653,10 +659,11 @@ export const initialMockDatabase = {
       title: 'Handover',
       phase_name: 'Closure',
       amount: 2083646.95,
-      due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      due_date: getMockDate(30 * 24 * 60 * 60 * 1000),
       status: 'scheduled'
     }
-  ]
+  ],
+  financeApprovals: []
 };
 
 export const loadMockDatabase = () => {
@@ -671,6 +678,13 @@ export const loadMockDatabase = () => {
         merged.contacts = [...initialMockDatabase.contacts];
         merged.contacts_purged_v5 = true;
         // Save immediately to ensure it doesn't wipe new contacts later
+        localStorage.setItem('mockDatabase_v4', JSON.stringify(merged));
+      }
+      
+      // ONE-TIME PURGE OF PAYMENT MILESTONES TO ALIGN DATES
+      if (!merged.payment_milestones_aligned_v6) {
+        merged.paymentMilestones = [];
+        merged.payment_milestones_aligned_v6 = true;
         localStorage.setItem('mockDatabase_v4', JSON.stringify(merged));
       }
       

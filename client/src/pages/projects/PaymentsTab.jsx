@@ -179,7 +179,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
   const initialAuditLogs = [
     {
       id: 'audit_init_1',
-      timestamp: new Date(Date.now() - 86400000 * 2).toISOString(),
+      timestamp: new Date(1786536584000 - 86400000 * 2).toISOString(),
       user: 'SYSTEM',
       ip: '127.0.0.1',
       device: 'Server',
@@ -191,7 +191,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
     },
     {
       id: 'audit_init_2',
-      timestamp: new Date(Date.now() - 86400000).toISOString(),
+      timestamp: new Date(1786536584000 - 86400000).toISOString(),
       user: 'Admin',
       ip: '192.168.1.45',
       device: 'Windows PC',
@@ -203,7 +203,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
     },
     {
       id: 'audit_init_3',
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(1786536584000).toISOString(),
       user: 'Finance Manager',
       ip: '192.168.1.100',
       device: 'Mac/Linux',
@@ -725,8 +725,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
     requestFinanceApproval(writeOffForm.type, writeOffForm.amount, writeOffForm.reason, { ...writeOffForm });
     setWriteOffModalOpen(false);
   };
-
-  const requestFinanceApproval = async (type, amount, reason, payload) => {
+  const requestFinanceApproval = async (type, amount, reason, payload) => {
     try {
       await api.post('/financial-approvals', {
         type,
@@ -734,7 +733,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
         reason,
         payload: { ...payload, projectId },
         project_name: project?.name,
-        customer_name: project?.customer_name,
+        customer_name: project?.client_name || project?.customer_name,
         target_number: payload.selectedPayment?.milestone || 'Manual'
       });
       fetchApprovals();
@@ -1121,7 +1120,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
         // Inject missing full lifecycle milestones ONLY if no milestones exist from API
         if (raw.length === 0) {
           activeMilestones.forEach((mConf, index) => {
-            let mockDate = new Date(project?.createdAt || Date.now());
+            let mockDate = new Date(project?.created_at || project?.createdAt || Date.now());
             mockDate.setDate(mockDate.getDate() + (index * 15));
             const milestoneAmount = (totalB * mConf.percentage) / 100;
             let mockPaymentEntries = [];

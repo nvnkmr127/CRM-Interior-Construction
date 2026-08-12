@@ -8,7 +8,8 @@ export function useFieldPermissions(moduleName) {
     if (!user || !user.role) return {};
     
     // Superadmin override
-    if (user.role.name === 'superadmin') {
+    const rName = user.role.name?.toLowerCase();
+    if (user.role === 'superadmin' || rName === 'superadmin' || rName === 'super admin' || (user.role.permissions && user.role.permissions.includes('*'))) {
        return new Proxy({}, {
            get: () => 'editable'
        });

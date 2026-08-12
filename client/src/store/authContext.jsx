@@ -3,6 +3,7 @@ import { createContext, useState, useEffect, useContext, useMemo, useCallback } 
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { loadMockDatabase } from '../api/mockData';
+import { ROLE_DEFAULTS } from '../constants/roleDefaults';
 
 const AuthContext = createContext();
 
@@ -65,6 +66,50 @@ export function AuthProvider({ children }) {
       if (import.meta.env.DEV) {
         const mockSession = localStorage.getItem('mockSession');
         if (mockSession) {
+          try {
+            const parsedSession = JSON.parse(mockSession);
+            const mockDatabase = JSON.parse(localStorage.getItem('mockDatabase_v4') || '{}');
+            const usersList = mockDatabase.users || [];
+            const currentUserObj = usersList.find(u => u.id === parsedSession.id || u.email === parsedSession.email);
+            if (currentUserObj) {
+              const rolesList = mockDatabase.roles || [];
+              const userRoleVal = currentUserObj.role_id || currentUserObj.role;
+              const r = rolesList.find(role => role.id === userRoleVal || role.name === userRoleVal);
+              
+              const roleKey = Object.keys(ROLE_DEFAULTS).find(
+                key => key.toLowerCase() === (currentUserObj.role_name || '').toLowerCase() || 
+                       key.toLowerCase() === (userRoleVal || '').toLowerCase()
+              );
+              const defaults = roleKey ? ROLE_DEFAULTS[roleKey] : null;
+              
+              let permissions = defaults?.permissions || [];
+              let enabled_modules = defaults?.enabled_modules || ['projects', 'tasks', 'leads', 'dashboards'];
+              
+              if (r) {
+                permissions = r.permissions || [];
+                enabled_modules = r.enabled_modules || [];
+              }
+
+              const updatedMockUser = {
+                ...parsedSession,
+                name: currentUserObj.name,
+                email: currentUserObj.email,
+                avatar_url: currentUserObj.avatar_url || null,
+                role: {
+                  id: userRoleVal,
+                  name: currentUserObj.role_name || userRoleVal,
+                  permissions,
+                  enabled_modules
+                }
+              };
+              setUser(updatedMockUser);
+              localStorage.setItem('mockSession', JSON.stringify(updatedMockUser));
+              setLoading(false);
+              return;
+            }
+          } catch (e) {
+            console.error("Failed to restore dynamic mock session", e);
+          }
           setUser(JSON.parse(mockSession));
           setLoading(false);
           return;
@@ -92,6 +137,20 @@ export function AuthProvider({ children }) {
     // Attempt to restore session
     // We rely on the /auth/me endpoint which checks the httpOnly cookie
     restoreSession();
+
+    const handleStorageChange = (e) => {
+      if (e.key === 'mockSession') {
+        if (e.newValue) {
+          try {
+            setUser(JSON.parse(e.newValue));
+          } catch (err) {}
+        } else {
+          setUser(null);
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   const login = useCallback(async (email, password, tenantSlug) => {
@@ -120,11 +179,28 @@ export function AuthProvider({ children }) {
         
         if (foundUser) {
           const matchedRole = foundUser.role_id || foundUser.role;
+          const roleKey = Object.keys(ROLE_DEFAULTS).find(
+            key => key.toLowerCase() === (foundUser.role_name || '').toLowerCase() || 
+                   key.toLowerCase() === (matchedRole || '').toLowerCase()
+          );
+          const defaults = roleKey ? ROLE_DEFAULTS[roleKey] : null;
+          
+          const rolesList = mockDatabase.roles || [];
+          const r = rolesList.find(role => role.id === matchedRole || role.name === foundUser.role_name);
+          
+          let permissions = defaults?.permissions || [];
+          let enabled_modules = defaults?.enabled_modules || ['projects', 'tasks', 'leads', 'dashboards'];
+          
+          if (r) {
+            permissions = r.permissions || [];
+            enabled_modules = r.enabled_modules || [];
+          }
+
           const roleObj = {
             id: matchedRole || 'pm',
             name: foundUser.role_name || 'Project Manager',
-            permissions: ['*'],
-            enabled_modules: ['projects', 'tasks', 'leads', 'dashboards', 'analytics', 'settings']
+            permissions,
+            enabled_modules
           };
 
           const mockUser = {

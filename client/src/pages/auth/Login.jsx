@@ -38,7 +38,11 @@ export default function Login() {
 
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
-      const isAdmin = user?.role?.name === 'superadmin';
+      const isAdmin = 
+        user?.role === 'superadmin' || 
+        user?.role?.name?.toLowerCase() === 'superadmin' || 
+        user?.role?.name?.toLowerCase() === 'super admin' || 
+        (user?.role?.permissions && user.role.permissions.includes('*'));
       const modules = user?.role?.enabled_modules || [];
       
       if (isAdmin || modules.includes('dashboards')) {

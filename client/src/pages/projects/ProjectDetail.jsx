@@ -265,7 +265,8 @@ function formatValue(val) {
 
 function daysRemaining(targetDate) {
   if (!targetDate) return null;
-  const diff = Math.ceil((new Date(targetDate) - Date.now()) / 86400000);
+  const now = import.meta.env.DEV ? 1786536584000 : Date.now();
+  const diff = Math.ceil((new Date(targetDate) - now) / 86400000);
   return diff;
 }
 

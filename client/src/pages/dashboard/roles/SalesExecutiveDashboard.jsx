@@ -464,7 +464,7 @@ export default function SalesExecutiveDashboard() {
             <div className={styles.cardBody} style={{ paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 4 }}>
-                  <span style={{ color: 'var(--color-text-secondary)' }}>Revenue (₹{stats.targets.actualRevenue}L / ₹{stats.targets.targetRevenue}L)</span>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>Revenue (₹{(stats.targets.actualRevenue / 100000).toFixed(1)}L / ₹{(stats.targets.targetRevenue / 100000).toFixed(1)}L)</span>
                   <span style={{ fontWeight: 500 }}>{stats.targets.targetRevenue > 0 ? Math.min(100, Math.round((stats.targets.actualRevenue / stats.targets.targetRevenue) * 100)) : 0}%</span>
                 </div>
                 <div style={{ height: 8, background: 'var(--color-bg-alt)', borderRadius: 4, overflow: 'hidden' }}>

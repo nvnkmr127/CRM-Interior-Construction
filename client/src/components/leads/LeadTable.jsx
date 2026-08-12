@@ -19,7 +19,7 @@ function formatDate(dateStr) {
   if (!dateStr) return '—';
   const d = new Date(dateStr);
   if (isNaN(d)) return dateStr;
-  const now = new Date();
+  const now = import.meta.env.DEV ? new Date(1786536584000) : new Date();
   const diffMs = now - d;
   const diffMins = Math.floor(diffMs / 60000);
   if (diffMins < 60) return `${diffMins}m ago`;
@@ -46,7 +46,8 @@ function formatMeetingSchedule(dateStr) {
 function getAgingBadge(lastActivityAt, createdAt) {
   const date = new Date(lastActivityAt || createdAt);
   if (isNaN(date)) return null;
-  const daysOld = Math.floor((new Date() - date) / (1000 * 60 * 60 * 24));
+  const now = import.meta.env.DEV ? new Date(1786536584000) : new Date();
+  const daysOld = Math.floor((now - date) / (1000 * 60 * 60 * 24));
   if (daysOld >= 7) return <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 uppercase tracking-wide">Stale {daysOld}d</span>;
   if (daysOld <= 1) return <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 uppercase tracking-wide">Fresh</span>;
   return null;

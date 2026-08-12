@@ -1,5 +1,6 @@
 /* eslint-disable no-dupe-else-if, no-unused-vars */
 import { loadMockDatabase, saveMockDatabase } from './mockData';
+import { ROLE_DEFAULTS } from '../constants/roleDefaults';
 
 export const setupMockInterceptor = (api) => {
   api.interceptors.request.use(
@@ -35,7 +36,7 @@ export const setupMockInterceptor = (api) => {
           };
 
           if (!mockDatabase.tasks) {
-            const today = new Date();
+            const today = new Date(1786536584000);
             const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
             const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
             mockDatabase.tasks = [
@@ -769,12 +770,12 @@ export const setupMockInterceptor = (api) => {
               const activeLeadsCount = (mockDatabase.leads || []).filter(l => !l.deleted_at).length;
               
               // Won this month
-              const startOfMonth = new Date();
+              const startOfMonth = new Date(1786536584000);
               startOfMonth.setDate(1);
               startOfMonth.setHours(0, 0, 0, 0);
               const wonLeads = (mockDatabase.leads || []).filter(l => {
                 const isWon = l.status === 'converted' || l.status === 'won';
-                const updatedAt = l.updated_at ? new Date(l.updated_at) : new Date();
+                const updatedAt = l.updated_at ? new Date(l.updated_at) : new Date(1786536584000);
                 return isWon && updatedAt >= startOfMonth;
               });
               const wonValue = wonLeads.reduce((sum, l) => sum + Number(l.budget_max || l.budget || 0), 0);
@@ -784,10 +785,10 @@ export const setupMockInterceptor = (api) => {
                 const s = p.status?.toLowerCase();
                 return !s || !['on_hold', 'completed', 'overdue', 'cancelled', 'deleted'].includes(s);
               });
-              const overdueProjectsCount = activeProjects.filter(p => p.target_date && new Date(p.target_date) < new Date()).length;
+              const overdueProjectsCount = activeProjects.filter(p => p.target_date && new Date(p.target_date) < new Date(1786536584000)).length;
 
               // Tasks due
-              const todayStr = new Date().toISOString().split('T')[0];
+              const todayStr = new Date(1786536584000).toISOString().split('T')[0];
               const activeTasks = (mockDatabase.tasks || []).filter(t => t.status !== 'done');
               const dueTodayTasks = activeTasks.filter(t => t.due_date === todayStr).length;
               const overdueTasks = activeTasks.filter(t => t.due_date && t.due_date < todayStr).length;
@@ -1791,20 +1792,7 @@ export const setupMockInterceptor = (api) => {
               if (!mockDatabase.paymentMilestones) mockDatabase.paymentMilestones = [];
               let milestones = mockDatabase.paymentMilestones.filter(m => m.project_id === projectId) || [];
               
-              // Migration: If milestones exist but they are all scheduled or have no historical paid records (older than 5 days),
-              // shift them back by 3 months to seed a realistic trend.
-              const hasHistoricalData = milestones.some(m => {
-                const entries = m.payment_entries || [];
-                return entries.some(e => {
-                  const diff = new Date() - new Date(e.paidAt);
-                  return diff > 24 * 60 * 60 * 1000 * 5;
-                });
-              });
-              
-              if (milestones.length > 0 && !hasHistoricalData) {
-                mockDatabase.paymentMilestones = mockDatabase.paymentMilestones.filter(m => m.project_id !== projectId);
-                milestones = [];
-              }
+
               
               if (milestones.length === 0) {
                   const proj = mockDatabase.projects?.find(p => p.id === projectId);
@@ -1838,50 +1826,29 @@ export const setupMockInterceptor = (api) => {
                           let mockStatus = 'scheduled';
                           
                           if (index === 0) {
-                              mockStatus = 'paid';
-                              mockPaymentEntries = [{
-                                id: `mock_txn_${Date.now()}_0`,
-                                amount: milestoneAmount,
-                                paidAt: mockDate.toISOString(),
-                                mode: 'Bank Transfer',
-                                collectedByName: 'System Mock',
-                                collectedByRole: 'Admin'
-                              }];
-                          } else if (index === 1) {
-                              mockStatus = 'paid';
-                              mockPaymentEntries = [{
-                                id: `mock_txn_${Date.now()}_1`,
-                                amount: milestoneAmount,
-                                paidAt: mockDate.toISOString(),
-                                mode: 'UPI',
-                                collectedByName: 'System Mock',
-                                collectedByRole: 'Admin'
-                              }];
-                          } else if (index === 2) {
-                              mockStatus = 'paid';
-                              mockPaymentEntries = [{
-                                id: `mock_txn_${Date.now()}_2`,
-                                amount: milestoneAmount,
-                                paidAt: mockDate.toISOString(),
-                                mode: 'Bank Transfer',
-                                collectedByName: 'System Mock',
-                                collectedByRole: 'Admin'
-                              }];
-                          } else if (index === 3) {
-                              mockStatus = 'partially_paid';
-                              mockPaymentEntries = [{
-                                id: `mock_txn_${Date.now()}_3`,
-                                amount: milestoneAmount * 0.5,
-                                paidAt: mockDate.toISOString(),
-                                mode: 'UPI',
-                                collectedByName: 'System Mock',
-                                collectedByRole: 'Admin'
-                              }];
-                          } else if (index === 4) {
-                              mockStatus = 'overdue';
-                          } else if (index === 5) {
-                              mockStatus = 'scheduled';
-                          }
+                               mockStatus = 'paid';
+                               mockPaymentEntries = [{
+                                 id: `mock_txn_${Date.now()}_0`,
+                                 amount: milestoneAmount,
+                                 paidAt: mockDate.toISOString(),
+                                 mode: 'Bank Transfer',
+                                 collectedByName: 'System Mock',
+                                 collectedByRole: 'Admin'
+                               }];
+                           } else if (index === 1) {
+                               mockStatus = 'partially_paid';
+                               mockPaymentEntries = [{
+                                 id: `mock_txn_${Date.now()}_1`,
+                                 amount: milestoneAmount * 0.5,
+                                 paidAt: mockDate.toISOString(),
+                                 mode: 'UPI',
+                                 collectedByName: 'System Mock',
+                                 collectedByRole: 'Admin'
+                               }];
+                           } else {
+                               mockStatus = 'scheduled';
+                               mockPaymentEntries = [];
+                           }
                           
                           const newM = {
                              id: `mock_m_${mConf.key}_${index}`,
@@ -2111,7 +2078,59 @@ export const setupMockInterceptor = (api) => {
                   responseData.data = null;
                 }
               } else {
-                responseData.data = mockDatabase.projects.map(proj => {
+                const mockSession = localStorage.getItem('mockSession');
+                let currentUser = null;
+                if (mockSession) {
+                  try {
+                    currentUser = JSON.parse(mockSession);
+                  } catch (e) {}
+                }
+
+                let filteredProjects = [...mockDatabase.projects];
+                
+                const isAdmin = 
+                  currentUser?.role === 'superadmin' || 
+                  currentUser?.role?.name?.toLowerCase() === 'superadmin' || 
+                  currentUser?.role?.name?.toLowerCase() === 'super admin' || 
+                  (currentUser?.role?.permissions && currentUser.role.permissions.includes('*'));
+
+                if (currentUser && !isAdmin) {
+                  const roleKey = Object.keys(ROLE_DEFAULTS).find(
+                    key => key.toLowerCase() === (currentUser.role?.name || '').toLowerCase() || 
+                           key.toLowerCase() === (currentUser.role?.id || '').toLowerCase()
+                  );
+                  const defaults = roleKey ? ROLE_DEFAULTS[roleKey] : null;
+                  const scopes = currentUser.role?.data_scopes || defaults?.data_scopes || {};
+                  const projectScope = scopes.projects || 'assigned';
+
+                  if (projectScope === 'assigned' || projectScope === 'own' || projectScope === 'department') {
+                    filteredProjects = filteredProjects.filter(proj => {
+                      const isPm = proj.pm_id === currentUser.id;
+                      const isDesigner = proj.designer_id === currentUser.id;
+                      const isLeadDesigner = proj.lead_designer_id === currentUser.id;
+                      const isJuniorDesigner = proj.junior_designer_id === currentUser.id;
+                      const isSiteEng = proj.site_engineer_id === currentUser.id;
+                      const isSiteSup = proj.site_supervisor_id === currentUser.id;
+                      const isCrmExec = proj.crm_executive_id === currentUser.id;
+                      const isProcOff = proj.procurement_officer_id === currentUser.id;
+
+                      const cName = currentUser.name?.toLowerCase();
+                      const pmNameMatch = proj.pm_name?.toLowerCase() === cName;
+                      const designerNameMatch = proj.designer_name?.toLowerCase() === cName;
+                      const leadDesignerNameMatch = proj.lead_designer_name?.toLowerCase() === cName;
+                      const juniorDesignerNameMatch = proj.junior_designer_name?.toLowerCase() === cName;
+                      const siteEngineerNameMatch = proj.site_engineer_name?.toLowerCase() === cName;
+                      const siteSupervisorNameMatch = proj.site_supervisor_name?.toLowerCase() === cName;
+                      const crmExecutiveNameMatch = proj.crm_executive_name?.toLowerCase() === cName;
+                      const procurementOfficerNameMatch = proj.procurement_officer_name?.toLowerCase() === cName;
+
+                      return isPm || isDesigner || isLeadDesigner || isJuniorDesigner || isSiteEng || isSiteSup || isCrmExec || isProcOff ||
+                             pmNameMatch || designerNameMatch || leadDesignerNameMatch || juniorDesignerNameMatch || siteEngineerNameMatch || siteSupervisorNameMatch || crmExecutiveNameMatch || procurementOfficerNameMatch;
+                    });
+                  }
+                }
+
+                responseData.data = filteredProjects.map(proj => {
                   const milestones = mockDatabase.paymentMilestones?.filter(m => m.project_id === proj.id) || [];
                   const baseContract = Number(proj.contract_value || 0);
                   let collected = milestones.filter(m => m.status === 'paid' || m.status === 'partially_paid').reduce((acc, m) => acc + Number(m.paid_amount || (m.payment_entries ? m.payment_entries.reduce((s, e) => s + Number(e.amount), 0) : m.amount || 0)), 0);
@@ -4935,13 +4954,23 @@ export const setupMockInterceptor = (api) => {
                   approvals = approvals.filter(a => statuses.includes(a.status?.toLowerCase()));
                 }
 
-                responseData.data = approvals.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                const sortedApprovals = approvals.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                console.log('[Mock DB] GET /financial-approvals. Current approvals:', sortedApprovals);
+                responseData.data = {
+                  data: sortedApprovals,
+                  pagination: {
+                    total: sortedApprovals.length,
+                    page: Number(queryParams.get('page') || 1),
+                    limit: Number(queryParams.get('limit') || 10)
+                  }
+                };
               }
             } else if (method === 'post' && !id) {
               const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const type = (payload.type === 'Manual Payment') ? 'payment' : (payload.type || 'payment');
               const newApproval = {
                 id: payload.id || `FIN-${Date.now()}`,
-                transaction_type: payload.type || 'payment',
+                transaction_type: type,
                 status: 'pending',
                 amount: payload.amount || 0,
                 project_name: payload.project_name || 'Project',
@@ -4960,6 +4989,20 @@ export const setupMockInterceptor = (api) => {
                 payload: payload.payload || {},
                 auditTrail: payload.auditTrail || [{ status: 'PENDING', timestamp: new Date().toISOString(), note: 'Request created' }]
               };
+              
+              // Update status of payment milestone in database to pending_approval
+              if (type === 'payment') {
+                const milestoneId = payload.payload?.selectedPayment?.id;
+                if (milestoneId) {
+                  if (!mockDatabase.paymentMilestones) mockDatabase.paymentMilestones = [];
+                  const paymentIndex = mockDatabase.paymentMilestones.findIndex(m => m.id === milestoneId);
+                  if (paymentIndex !== -1) {
+                    mockDatabase.paymentMilestones[paymentIndex].status = 'pending_approval';
+                  }
+                }
+              }
+
+              console.log('[Mock DB] POST /financial-approvals. Created approval:', newApproval);
               mockDatabase.financeApprovals.unshift(newApproval);
               persistDb();
               responseData.data = newApproval;
@@ -5096,6 +5139,44 @@ export const setupMockInterceptor = (api) => {
                 { id: 'log3', webhook_id: webhookId, event_type: 'lead.updated', response_status: 200, latency_ms: 145, attempt_count: 2, created_at: new Date(Date.now() - 1000*60*58).toISOString(), request_payload: { id: 'lead1', status: 'qualified' } }
               ];
               responseData.data = mockLogs;
+            }
+          }
+          else if (url.includes('/users/') || url.match(/\/users\/[^/]+$/)) {
+            const match = url.match(/\/users\/([^/]+)$/);
+            const userId = match ? match[1] : null;
+            if (userId && (method === 'patch' || method === 'put')) {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              if (!mockDatabase.users) mockDatabase.users = [];
+              const idx = mockDatabase.users.findIndex(u => u.id === userId);
+              if (idx !== -1) {
+                let roleName = payload.role;
+                if (payload.roleId) {
+                  // Check custom roles
+                  const r = (mockDatabase.roles || []).find(role => role.id === payload.roleId);
+                  if (r) {
+                    roleName = r.name;
+                  } else {
+                    // Check built-in templates / DEFAULT_ROLE_OPTIONS
+                    const d = [
+                      { value: 'superadmin', label: 'Super Admin' },
+                      { value: 'pm', label: 'Project Manager' },
+                      { value: 'designer', label: 'Designer' },
+                      { value: 'sales', label: 'Sales' }
+                    ].find(opt => opt.value === payload.roleId);
+                    if (d) roleName = d.label;
+                  }
+                }
+                
+                mockDatabase.users[idx] = { 
+                  ...mockDatabase.users[idx], 
+                  ...payload, 
+                  role_id: payload.roleId || mockDatabase.users[idx].role_id,
+                  role_name: roleName || mockDatabase.users[idx].role_name,
+                  role: payload.roleId || payload.role || mockDatabase.users[idx].role
+                };
+                persistDb();
+                responseData.data = mockDatabase.users[idx];
+              }
             }
           }
           else if (isMutation) {

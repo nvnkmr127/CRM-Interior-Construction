@@ -7,7 +7,8 @@ export const usePermissions = () => {
     if (!user || !user.role) return false;
 
     // Superadmin override
-    if (user.role.name === 'superadmin' || (user.role.permissions && user.role.permissions.includes('*'))) {
+    const rName = user.role.name?.toLowerCase();
+    if (user.role === 'superadmin' || rName === 'superadmin' || rName === 'super admin' || (user.role.permissions && user.role.permissions.includes('*'))) {
       return true;
     }
 
@@ -18,7 +19,8 @@ export const usePermissions = () => {
   const isModuleEnabled = (module) => {
     if (!user || !user.role) return false;
 
-    if (user.role.name === 'superadmin' || (user.role.permissions && user.role.permissions.includes('*'))) {
+    const rName = user.role.name?.toLowerCase();
+    if (user.role === 'superadmin' || rName === 'superadmin' || rName === 'super admin' || (user.role.permissions && user.role.permissions.includes('*'))) {
       return true;
     }
 

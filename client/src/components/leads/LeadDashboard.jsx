@@ -2,9 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { dashboardApi } from '../../api/dashboard';
 import { Card, Button } from '../ui';
+import { useAuth } from '../../store/authContext';
 import styles from './LeadDashboard.module.css';
 
 export default function LeadDashboard({ leads, loading, onLeadClick }) {
+  const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
@@ -64,7 +66,7 @@ export default function LeadDashboard({ leads, loading, onLeadClick }) {
   return (
     <div className={styles.dashboardContainer}>
       <header className={styles.greetingHeader}>
-        <h2>Good Morning, Rahul 👋</h2>
+        <h2>Good Morning, {user?.name?.split(' ')[0] || 'Rahul'} 👋</h2>
         <p>Here is your daily focus to move leads closer to booking.</p>
       </header>
 

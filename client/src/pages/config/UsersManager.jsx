@@ -19,8 +19,9 @@ import api from '../../api/axios'
 import EmployeeProfilePage from './EmployeeProfilePage'
 import EffectivePermissionViewer from './EffectivePermissionViewer'
 import PermissionAssignmentModal from './PermissionAssignmentModal'
-import { getMockTeamCredentials, updateMockTeamCredentials } from '../../store/authContext'
+import { getMockTeamCredentials, updateMockTeamCredentials, useAuth } from '../../store/authContext'
 
+import { ROLE_DEFAULTS } from '../../constants/roleDefaults'
 import { useConfirm } from '../../store/confirmContext';
 
 const DEFAULT_ROLE_OPTIONS = [
@@ -32,6 +33,7 @@ const DEFAULT_ROLE_OPTIONS = [
 
 export default function UsersManager() {
   const { confirm } = useConfirm();
+  const { user: currentUser } = useAuth();
 
   const navigate = useNavigate()
   const [users, setUsers] = useState([])
@@ -184,12 +186,53 @@ export default function UsersManager() {
 
   const confirmRoleChange = async () => {
     if (!roleChangeTarget) return
-    setUsers(prev => prev.map(u => u.id === roleChangeTarget.user.id ? { ...u, role: roleChangeTarget.newRole } : u))
     try {
-      await api.patch(`/users/${roleChangeTarget.user.id}`, { role: roleChangeTarget.newRole })
+      const res = await api.patch(`/users/${roleChangeTarget.user.id}`, { roleId: roleChangeTarget.newRole })
+      const updatedUser = res.data?.data || res.data;
+      const matchedOpt = roleOptions.find(o => o.value === roleChangeTarget.newRole);
+      const newRoleName = matchedOpt ? matchedOpt.label : undefined;
+      setUsers(prev => prev.map(u => u.id === updatedUser.id ? { 
+        ...u, 
+        ...updatedUser, 
+        role_name: newRoleName || updatedUser.role_name || u.role_name,
+        role: roleChangeTarget.newRole
+      } : u))
+
+      // Sync current user session immediately if updating the logged-in user
+      if (currentUser && (updatedUser.id === currentUser.id || updatedUser.email === currentUser.email)) {
+        const mockDatabase = JSON.parse(localStorage.getItem('mockDatabase_v4') || '{}');
+        const rolesList = mockDatabase.roles || [];
+        const r = rolesList.find(role => role.id === roleChangeTarget.newRole || role.name === newRoleName);
+        
+        const roleKey = Object.keys(ROLE_DEFAULTS).find(
+          key => key.toLowerCase() === (newRoleName || '').toLowerCase() || 
+                 key.toLowerCase() === (roleChangeTarget.newRole || '').toLowerCase()
+        );
+        const defaults = roleKey ? ROLE_DEFAULTS[roleKey] : null;
+        
+        let permissions = defaults?.permissions || [];
+        let enabled_modules = defaults?.enabled_modules || ['projects', 'tasks', 'leads', 'dashboards'];
+        
+        if (r) {
+          permissions = r.permissions || [];
+          enabled_modules = r.enabled_modules || [];
+        }
+        
+        const updatedSessionUser = {
+          ...currentUser,
+          role: {
+            id: roleChangeTarget.newRole,
+            name: newRoleName,
+            permissions,
+            enabled_modules
+          }
+        };
+        localStorage.setItem('mockSession', JSON.stringify(updatedSessionUser));
+        window.dispatchEvent(new StorageEvent('storage', { key: 'mockSession', newValue: JSON.stringify(updatedSessionUser) }));
+      }
+
       toast.success(`${roleChangeTarget.user.name}'s role updated`)
-    } catch {
-      setUsers(prev => prev.map(u => u.id === roleChangeTarget.user.id ? { ...u, role: roleChangeTarget.user.role } : u))
+    } catch (err) {
       toast.error('Failed to update role')
     }
     setRoleChangeTarget(null)
@@ -241,7 +284,15 @@ export default function UsersManager() {
               <div style={{ minWidth: '160px', textAlign: 'left' }}>
                 <PermissionButton permission="users:assign_roles" asChild>
                   <Select 
-                    value={u.role_id || u.role} 
+                    value={(() => {
+                      const currentVal = u.role_id || u.role;
+                      const opt = roleOptions.find(o => o.value === currentVal);
+                      if (!opt && u.role_name) {
+                        const matchedOpt = roleOptions.find(o => o.label.toLowerCase() === u.role_name.toLowerCase());
+                        if (matchedOpt) return matchedOpt.value;
+                      }
+                      return currentVal;
+                    })()} 
                     options={roleOptions} 
                     onChange={(val) => setRoleChangeTarget({ user: u, newRole: val })}
                   />

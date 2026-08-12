@@ -10,7 +10,11 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { tab } = useParams();
 
-  const isAdmin = user?.role?.name === 'superadmin';
+  const isAdmin = 
+    user?.role === 'superadmin' || 
+    user?.role?.name?.toLowerCase() === 'superadmin' || 
+    user?.role?.name?.toLowerCase() === 'super admin' || 
+    (user?.role?.permissions && user.role.permissions.includes('*'));
 
   const checkPermission = (perm) => {
     if (isAdmin) return true;

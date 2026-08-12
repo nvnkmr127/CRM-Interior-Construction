@@ -9,6 +9,7 @@ import api from '../../api/axios'
 import { DATA_SCOPES, ACTION_DEPENDENCIES, PERMISSION_MODULES, PERMISSION_ACTIONS } from '../../constants/permissions'
 import { FIELD_PERMISSIONS_SCHEMA } from '../../constants/fieldPermissions'
 import { PAGE_PERMISSIONS_SCHEMA } from '../../constants/pagePermissions'
+import { ROLE_DEFAULTS } from '../../constants/roleDefaults'
 
 import { useConfirm } from '../../store/confirmContext';
 
@@ -301,6 +302,25 @@ export default function RolesManager() {
     }
   }
 
+  const handleRoleNameChange = (val) => {
+    const defaults = ROLE_DEFAULTS[val];
+    if (defaults) {
+      setFormData(prev => ({
+        ...prev,
+        name: val,
+        description: defaults.description || prev.description,
+        permissions: defaults.permissions || [],
+        enabled_modules: defaults.enabled_modules || [],
+        data_scopes: defaults.data_scopes || {},
+        field_permissions: defaults.field_permissions || {},
+        page_permissions: defaults.page_permissions || {},
+        security_policies: defaults.security_policies || {}
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, name: val }));
+    }
+  }
+
   const handleTogglePermission = (permId) => {
     if (formData.permissions.includes('*')) {
       if (permId !== '*') return; // If superadmin, can't toggle specific perms easily
@@ -482,13 +502,17 @@ export default function RolesManager() {
         setRoles(prev => prev.map(r => r.id === editingRole.id ? { ...r, ...formData } : r))
         toast.success('Role updated successfully')
       } else {
-        const newRole = { ...formData, id: `role-${Date.now()}` }
         try {
-          await api.post('/roles', formData)
-        } catch (e) { } // Ignore mock backend errors
+          const res = await api.post('/roles', formData)
+          const savedRole = res.data?.data || res.data
+          setRoles(prev => [...prev, savedRole])
+          toast.success('Role created successfully')
+        } catch (e) {
+          const newRole = { ...formData, id: `role-${Date.now()}` }
+          setRoles(prev => [...prev, newRole])
+          toast.success('Role created successfully')
+        }
         fetchRolesAndSchema()
-        setRoles(prev => [...prev, newRole])
-        toast.success('Role created successfully')
       }
       setSearchParams({})
     } catch (err) {
@@ -554,8 +578,11 @@ export default function RolesManager() {
     const roleToDelete = roles.find(r => r.id === id);
     if (!roleToDelete) return;
     if (roleToDelete.name === 'superadmin' || roleToDelete.name === 'Super Admin') {
-      toast.error('Cannot delete superadmin role');
-      return;
+      const superAdminCount = roles.filter(r => r.name === 'superadmin' || r.name === 'Super Admin').length;
+      if (superAdminCount <= 1) {
+        toast.error('Cannot delete the last superadmin role');
+        return;
+      }
     }
     if (!await confirm(`Are you sure you want to delete the role '${roleToDelete.name}'?`)) return;
     
@@ -599,7 +626,7 @@ export default function RolesManager() {
           <Button variant="ghost" size="sm" onClick={async () => handleSaveAsTemplate(r)}>Save as Template</Button>
           <Button variant="ghost" size="sm" onClick={async () => handleOpenVersionModal(r)}>Version History</Button>
           <Button variant="ghost" size="sm" onClick={async () => handleOpenAuditModal(r)}>Audit History</Button>
-          {r.name !== 'superadmin' && r.name !== 'Super Admin' ? (
+          {(r.name !== 'superadmin' && r.name !== 'Super Admin') || roles.filter(role => role.name === 'superadmin' || role.name === 'Super Admin').length > 1 ? (
             <Button variant="danger" size="sm" onClick={async () => handleDeleteRole(r.id)}>Delete</Button>
           ) : (
             <Button variant="danger" size="sm" style={{ visibility: 'hidden', pointerEvents: 'none' }}>Delete</Button>
@@ -687,44 +714,39 @@ export default function RolesManager() {
                   <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '20px', color: 'var(--color-text)' }}>Basic Details</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <div className={styles.formGroup} style={{ margin: 0 }}>
-                      <label className={styles.label}>Role Name</label>
-                      <Input
+                      <label className={styles.label}>Role</label>
+                      <Select
+                        options={[
+                          { value: 'superadmin', label: 'Superadmin' },
+                          { value: 'admin', label: 'Admin' },
+                          { value: 'Project Manager', label: 'Project Manager' },
+                          { value: 'Designer', label: 'Designer' },
+                          { value: 'Lead Designer', label: 'Lead Designer' },
+                          { value: 'Junior Designer', label: 'Junior Designer' },
+                          { value: 'Sales', label: 'Sales' },
+                          { value: 'Sales Representative', label: 'Sales Representative' },
+                          { value: 'Site Engineer', label: 'Site Engineer' },
+                          { value: 'Site Supervisor', label: 'Site Supervisor' },
+                          { value: 'Procurement Officer', label: 'Procurement Officer' },
+                          { value: 'Procurement Manager', label: 'Procurement Manager' },
+                          { value: 'Finance Manager', label: 'Finance Manager' },
+                          { value: 'Finance Controller', label: 'Finance Controller' },
+                          { value: 'QC Engineer', label: 'QC Engineer' },
+                          { value: 'QC Inspector', label: 'QC Inspector' },
+                          { value: 'Handover Specialist', label: 'Handover Specialist' },
+                          { value: 'Warranty Manager', label: 'Warranty Manager' },
+                          { value: 'CRM Executive', label: 'CRM Executive' },
+                          { value: 'Customer Support Rep', label: 'Customer Support Rep' }
+                        ]}
                         value={formData.name}
-                        onChange={e => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="e.g. Sales Manager"
-                        disabled={formData.name === 'superadmin'}
+                        onChange={handleRoleNameChange}
+                        placeholder="Select Role"
+                        searchable={true}
+                        disabled={editingRole?.name === 'superadmin'}
                       />
                     </div>
                     
-                    {!editingRole && roles.length > 0 && (
-                      <div className={styles.formGroup} style={{ margin: 0 }}>
-                        <label className={styles.label}>Clone Permissions From Existing Role</label>
-                        <select 
-                          className="input-field"
-                          style={{ width: '100%', padding: '10px' }}
-                          onChange={async e => {
-                            const roleToClone = roles.find(r => r.id === e.target.value);
-                            if (!roleToClone) return;
-                            if (!await confirm(`Are you sure you want to overwrite current permissions with the '${roleToClone.name}' role template?`)) return;
-                            setFormData(prev => ({
-                              ...prev,
-                              permissions: roleToClone.permissions || [],
-                              enabled_modules: roleToClone.enabled_modules || [],
-                              data_scopes: roleToClone.data_scopes || {},
-                              page_permissions: roleToClone.page_permissions || {},
-                              field_permissions: roleToClone.field_permissions || {},
-                              security_policies: roleToClone.security_policies || {}
-                            }));
-                          }}
-                          value=""
-                        >
-                          <option value="" disabled>Select a role to copy permissions...</option>
-                          {roles.map(r => (
-                            <option key={r.id} value={r.id}>{r.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
+
 
                     <div className={styles.formGroup} style={{ margin: 0 }}>
                       <label className={styles.label}>Description</label>

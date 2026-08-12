@@ -163,8 +163,6 @@ export default function FinancialApprovalsPage() {
 
   // Reset pagination when search or filters change
   useEffect(() => {
-  const { confirm } = useConfirm();
-
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPendingPage(1);
     setHistoryPage(1);
@@ -253,7 +251,8 @@ export default function FinancialApprovalsPage() {
   };
 
   const hasPermission = (app) => {
-    if (user?.role?.name === 'superadmin') return true;
+    const rName = user?.role?.name?.toLowerCase();
+    if (user?.role === 'superadmin' || rName === 'superadmin' || rName === 'super admin' || (user?.role?.permissions && user.role.permissions.includes('*'))) return true;
     
     const uid = user?.id || user?.userId;
     if (app.assigned_to === uid || app.backup_approver === uid) return true;
@@ -411,7 +410,7 @@ export default function FinancialApprovalsPage() {
           <p className={styles.subtitle}>Review pending transactions exceeding configured policy thresholds.</p>
         </div>
         <div className={styles.filterContainer}>
-          {user?.role?.name === 'superadmin' && (
+          {(user?.role === 'superadmin' || user?.role?.name?.toLowerCase() === 'superadmin' || user?.role?.name?.toLowerCase() === 'super admin' || (user?.role?.permissions && user.role.permissions.includes('*'))) && (
             <Link to="/settings/approval-matrix" className={styles.primaryBtn}>
               Manage Matrix
             </Link>
@@ -699,7 +698,7 @@ export default function FinancialApprovalsPage() {
                         >
                           📋 Logs
                         </button>
-                        {(user?.role?.name === 'superadmin' || user?.role?.permissions?.includes('admin')) && (
+                        {(user?.role === 'superadmin' || user?.role?.name?.toLowerCase() === 'superadmin' || user?.role?.name?.toLowerCase() === 'super admin' || user?.role?.permissions?.includes('admin')) && (
                           <button 
                             onClick={async () => setAssignApproval(app)}
                             className={styles.secondaryBtn}
@@ -804,7 +803,7 @@ export default function FinancialApprovalsPage() {
                             <span className={styles.rejectionText}>
                               <HighlightText text={app.rejection_reason} highlight={searchQuery} />
                             </span>
-                            {(user?.role?.name === 'superadmin' || user?.role?.permissions?.includes('admin')) && (
+                            {(user?.role === 'superadmin' || user?.role?.name?.toLowerCase() === 'superadmin' || user?.role?.name?.toLowerCase() === 'super admin' || user?.role?.permissions?.includes('admin')) && (
                               <button 
                                 onClick={async () => handleReopen(app)} 
                                 disabled={submitting}

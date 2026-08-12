@@ -24,7 +24,13 @@ export default function LeadsPage() {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const isAdmin = user?.role === 'admin' || user?.role?.name === 'admin' || user?.role === 'superadmin' || user?.role?.name === 'superadmin';
+  const isAdmin = 
+    user?.role === 'admin' || 
+    user?.role?.name?.toLowerCase() === 'admin' || 
+    user?.role === 'superadmin' || 
+    user?.role?.name?.toLowerCase() === 'superadmin' || 
+    user?.role?.name?.toLowerCase() === 'super admin' || 
+    (user?.role?.permissions && user.role.permissions.includes('*'));
   const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
   
   const [search, setSearch] = useState(params.get('search') || '');

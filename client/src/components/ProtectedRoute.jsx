@@ -19,7 +19,11 @@ export default function ProtectedRoute({ children, requiredPermission, requiredM
     return <Navigate to='/login' replace />
   }
 
-  const isAdmin = user?.role?.name === 'superadmin'
+  const isAdmin = 
+    user?.role === 'superadmin' || 
+    user?.role?.name?.toLowerCase() === 'superadmin' || 
+    user?.role?.name?.toLowerCase() === 'super admin' || 
+    (user?.role?.permissions && user.role.permissions.includes('*'));
 
   if (requiredPermission) {
     const perms = user?.role?.permissions || []

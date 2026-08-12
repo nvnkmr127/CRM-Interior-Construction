@@ -56,7 +56,13 @@ export default function ConfigPage() {
   useBreadcrumbs([{ label: currentTitle }])
 
   // Guard: only superadmin can access config
-  if (user?.role?.name !== 'superadmin') {
+  const isSuperAdmin = 
+    user?.role === 'superadmin' || 
+    user?.role?.name?.toLowerCase() === 'superadmin' || 
+    user?.role?.name?.toLowerCase() === 'super admin' || 
+    (user?.role?.permissions && user.role.permissions.includes('*'));
+
+  if (!isSuperAdmin) {
     return <Navigate to='/forbidden' replace />
   }
 
