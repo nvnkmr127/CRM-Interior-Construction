@@ -11,13 +11,12 @@ const router = express.Router();
 router.use(authenticate);
 
 // Cache stats for 5 minutes
-router.get('/stats', cacheResponse(300), async (req, res) => {
-  const tenantId = req.tenantId; // or req.user.tenantId depending on how authenticate works
+router.get('/stats', async (req, res) => {
+  const tenantId = req.tenantId || (req.user && req.user.tenantId);
   const userId = req.user.id;
 
   try {
     const data = await analyticsService.getGlobalStats(tenantId, userId);
-
 
     return success(res, data);
   } catch (error) {
@@ -56,7 +55,7 @@ router.get('/activity', async (req, res) => {
 });
 
 // Cache pipeline for 10 minutes
-router.get('/pipeline', cacheResponse(600), async (req, res) => {
+router.get('/pipeline', async (req, res) => {
   const tenantId = req.tenantId;
 
   try {
@@ -119,7 +118,7 @@ router.get('/payments-due', async (req, res) => {
 });
 
 // Phase 1: Role-Specific Dashboards
-router.get('/sales', cacheResponse(300), async (req, res, next) => {
+router.get('/sales', async (req, res, next) => {
   try {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
     const userId = req.user && (req.user.id || req.user.userId);
@@ -220,5 +219,3 @@ router.get('/procurement', cacheResponse(300), async (req, res, next) => {
 });
 
 module.exports = router;
-
-// Fix for duplicate statuses

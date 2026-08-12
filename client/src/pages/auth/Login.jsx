@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../store/authContext';
+import { useAuth, getMockTeamCredentials } from '../../store/authContext';
 import { useToast } from '../../store/toastContext';
 import { useForm } from '../../hooks/useForm';
 import { validators, run } from '../../utils/validators';
@@ -10,7 +10,7 @@ import ForcePasswordResetModal from '../../components/auth/ForcePasswordResetMod
 import styles from './Login.module.css';
 
 export default function Login() {
-  const { login, isAuthenticated, loading, setUser } = useAuth();
+  const { login, isAuthenticated, loading, setUser, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -37,10 +37,23 @@ export default function Login() {
   const [forceResetUserId, setForceResetUserId] = useState(null);
 
   useEffect(() => {
-    if (!loading && isAuthenticated) {
-      navigate('/dashboard', { replace: true });
+    if (!loading && isAuthenticated && user) {
+      const isAdmin = user?.role?.name === 'superadmin';
+      const modules = user?.role?.enabled_modules || [];
+      
+      if (isAdmin || modules.includes('dashboards')) {
+        navigate('/dashboard', { replace: true });
+      } else if (modules.includes('projects')) {
+        navigate('/projects', { replace: true });
+      } else if (modules.includes('leads')) {
+        navigate('/leads', { replace: true });
+      } else if (modules.includes('tasks')) {
+        navigate('/tasks', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     }
-  }, [isAuthenticated, loading, navigate]);
+  }, [isAuthenticated, loading, navigate, user]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -64,7 +77,7 @@ export default function Login() {
           setShowForceReset(true);
         } else {
           toast.success('Welcome back!');
-          navigate('/dashboard', { replace: true });
+          // Navigation is handled by the useEffect based on the user's role
         }
       } else {
         // Mock error handling for redesign requirements based on common messages
@@ -217,17 +230,39 @@ export default function Login() {
                 {isSubmitting ? 'Signing in...' : 'Sign In'}
               </Button>
               {import.meta.env.DEV && (
-                <Button 
-                  type="button" 
-                  variant="secondary"
-                  size="lg"
-                  className={styles.submitBtn} 
-                  disabled={isSubmitting}
-                  onClick={() => login('admin@mock.com', 'password', 'mock')}
-                  style={{ flex: 1, background: 'var(--color-bg-subtle)', color: 'var(--color-text)' }}
-                >
-                  Auto Login
-                </Button>
+                <div style={{ display: 'flex', gap: '10px', flex: 1.5 }}>
+                  <Button 
+                    type="button" 
+                    variant="secondary"
+                    size="lg"
+                    className={styles.submitBtn} 
+                    disabled={isSubmitting}
+                    onClick={() => {
+                      handleChange('tenantSlug', 'mock');
+                      handleChange('email', 'admin@mock.com');
+                      handleChange('password', 'password');
+                    }}
+                    style={{ flex: 1, background: 'var(--color-bg-subtle)', color: 'var(--color-text)', padding: '0 10px' }}
+                  >
+                    Admin
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="secondary"
+                    size="lg"
+                    className={styles.submitBtn} 
+                    disabled={isSubmitting}
+                    onClick={() => {
+                      const mockTeam = getMockTeamCredentials();
+                      handleChange('tenantSlug', 'mock');
+                      handleChange('email', mockTeam.email);
+                      handleChange('password', mockTeam.password);
+                    }}
+                    style={{ flex: 1, background: 'var(--color-bg-subtle)', color: 'var(--color-text)', padding: '0 10px' }}
+                  >
+                    Team
+                  </Button>
+                </div>
               )}
             </div>
           </form>
@@ -250,12 +285,10 @@ export default function Login() {
         onVerified={(data) => {
           setShowMfa(false);
           setMfaData(null);
-          // Manually update user context since we handled mfa intercept
-          // The /validate endpoint sets the cookies and returns { accessToken, refreshToken, user }
           if (data.data?.user) {
              setUser(data.data.user);
              toast.success('MFA Verified. Welcome back!');
-             navigate('/dashboard', { replace: true });
+             // Navigation handled by useEffect
           }
         }}
       />

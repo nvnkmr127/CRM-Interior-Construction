@@ -10,6 +10,7 @@ import EmailLogsTab from './EmailLogsTab'
 import { useToast } from '../../store/toastContext'
 import { SearchFilterBar, AdvancedImportExportModal } from '../../components/ui'
 import OffboardingDashboard from '../../components/offboarding/OffboardingDashboard'
+
 import InitiateOffboardingModal from '../../components/offboarding/InitiateOffboardingModal'
 import ContextMenu from '../../components/ui/ContextMenu'
 import UserGridCard from '../../components/ui/UserGridCard'
@@ -18,6 +19,7 @@ import api from '../../api/axios'
 import EmployeeProfilePage from './EmployeeProfilePage'
 import EffectivePermissionViewer from './EffectivePermissionViewer'
 import PermissionAssignmentModal from './PermissionAssignmentModal'
+import { getMockTeamCredentials, updateMockTeamCredentials } from '../../store/authContext'
 
 import { useConfirm } from '../../store/confirmContext';
 
@@ -51,6 +53,11 @@ export default function UsersManager() {
   const [contextMenu, setContextMenu] = useState(null)
   const [effectivePermUserTarget, setEffectivePermUserTarget] = useState(null)
   const [assignPermUserTarget, setAssignPermUserTarget] = useState(null)
+  
+  const [isMockConfigOpen, setIsMockConfigOpen] = useState(false)
+  const [mockConfigData, setMockConfigData] = useState({})
+  const [refreshKey, setRefreshKey] = useState(0)
+
   const toast = useToast()
 
   const [roles, setRoles] = useState([])
@@ -268,8 +275,120 @@ export default function UsersManager() {
     }
   ]
 
-    if (selectedUserId) {
-    return <EmployeeProfilePage userId={selectedUserId} onBack={() => setSelectedUserId(null)} />;
+  const renderMockConfigModal = () => {
+    if (!isMockConfigOpen) return null;
+    return (
+      <Modal isOpen={isMockConfigOpen} title="Configure Dev Login" onClose={() => setIsMockConfigOpen(false)} size="md">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '8px 4px' }}>
+          
+          <div style={{ 
+            padding: '16px', 
+            background: 'linear-gradient(145deg, var(--color-bg-subtle), transparent)', 
+            borderRadius: '8px', 
+            borderLeft: '4px solid var(--color-primary)',
+            color: 'var(--color-text-muted)',
+            fontSize: '0.9rem',
+            lineHeight: '1.5'
+          }}>
+            <strong style={{ color: 'var(--color-primary)', display: 'block', marginBottom: '4px' }}>Mock Environment Override</strong>
+            Configure the credentials and role that will be automatically loaded when using the <strong>Team</strong> login button in dev mode.
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <Input 
+              label="Display Name"
+              placeholder="e.g. Rahul K. (PM)"
+              value={mockConfigData.name || ''} 
+              onChange={e => setMockConfigData({...mockConfigData, name: e.target.value})} 
+            />
+            <Select 
+              label="System Role"
+              value={mockConfigData.role?.id || ''} 
+              options={roleOptions} 
+              onChange={val => {
+                const roleId = val;
+                const selectedRole = roles.find(r => r.id === roleId);
+                if (selectedRole) {
+                  setMockConfigData({...mockConfigData, role: selectedRole});
+                } else {
+                  const fallback = DEFAULT_ROLE_OPTIONS.find(d => d.value === roleId);
+                  if (fallback) {
+                    let fallbackModules = ['projects', 'tasks', 'leads', 'dashboards', 'analytics', 'settings'];
+                    if (roleId === 'pm') fallbackModules = ['projects', 'tasks', 'dashboards'];
+                    if (roleId === 'designer') fallbackModules = ['projects', 'tasks'];
+                    if (roleId === 'sales') fallbackModules = ['leads', 'dashboards'];
+                    setMockConfigData({...mockConfigData, role: { id: fallback.value, name: fallback.label, permissions: ['*'], enabled_modules: fallbackModules }});
+                  }
+                }
+              }} 
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <Input 
+              label="Email Address"
+              type="email"
+              value={mockConfigData.email || ''} 
+              onChange={e => setMockConfigData({...mockConfigData, email: e.target.value})} 
+            />
+            <Input 
+              label="Password"
+              type="text"
+              value={mockConfigData.password || ''} 
+              onChange={e => setMockConfigData({...mockConfigData, password: e.target.value})} 
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
+            <Button variant="ghost" onClick={() => setIsMockConfigOpen(false)}>Cancel</Button>
+            <Button variant="primary" style={{ minWidth: '160px' }} onClick={async () => {
+              updateMockTeamCredentials(mockConfigData);
+              try {
+                if (selectedUserId) {
+                  await api.patch(`/users/${selectedUserId}`, { 
+                    email: mockConfigData.email, 
+                    role_id: mockConfigData.role?.id, 
+                    role_name: mockConfigData.role?.name,
+                    role: mockConfigData.role?.name 
+                  });
+                  // Also manually dispatch an event or refetch so EmployeeProfilePage can refresh
+                  fetchUsers(); 
+                  setRefreshKey(prev => prev + 1);
+                }
+              } catch (err) {
+                console.error("Failed to update user profile", err);
+              }
+              setIsMockConfigOpen(false);
+              toast.success('Dev login credentials updated! They will be used next time you log in.');
+            }}>Save Configuration</Button>
+          </div>
+        </div>
+      </Modal>
+    );
+  };
+
+  if (selectedUserId) {
+    return (
+      <>
+        <EmployeeProfilePage 
+          key={`${selectedUserId}-${refreshKey}`}
+          userId={selectedUserId} 
+          onBack={() => setSelectedUserId(null)}
+          onConfigureMock={(userToMock) => {
+            const saved = getMockTeamCredentials();
+            const isSameUser = saved && (saved.email === userToMock.email || saved.id === userToMock.id);
+            setMockConfigData({
+              name: userToMock.name,
+              email: userToMock.email,
+              password: isSameUser ? (saved.password || 'password') : 'password',
+              role: userToMock.role ? { id: userToMock.role, name: userToMock.role_name } : null
+            });
+            setIsMockConfigOpen(true);
+          }}
+        />
+        {renderMockConfigModal()}
+      </>
+    );
   }
 
   if (isAddMemberOpen) {
@@ -328,6 +447,7 @@ export default function UsersManager() {
               </div>
               <Button variant="secondary" onClick={async () => setShowImportExport(true)}>Import / Export</Button>
               <PermissionButton permission="users:invite_user" variant="secondary" onClick={async () => setBulkModalType('add')}>Bulk Add</PermissionButton>
+
               <PermissionButton permission="users:invite_user" variant="primary" onClick={async () => setIsAddMemberOpen(true)}>+ Add Team Member</PermissionButton>
             </div>
 
@@ -620,6 +740,8 @@ export default function UsersManager() {
             ]}
           />
         )}
+
+        {renderMockConfigModal()}
       </div>
     </div>
   )

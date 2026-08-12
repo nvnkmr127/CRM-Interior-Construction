@@ -400,7 +400,7 @@ export const initialMockDatabase = {
     }
   ],
   users: [
-    { id: 'mock-user-1', name: 'Rahul K.', role: 'project_manager' },
+    { id: 'mock-user-1', name: 'Rahul K.', role: 'project_manager', email: 'rahul@gmail.com', password: 'password', role_id: 'pm', role_name: 'Project Manager' },
     { id: 'mock-user-2', name: 'Amit S.', role: 'sales_rep' },
     { id: 'mock-user-3', name: 'Priya M.', role: 'designer' },
     { id: 'mock-user-4', name: 'Sanjay D.', role: 'lead_designer' },
@@ -717,8 +717,21 @@ export const loadMockDatabase = () => {
         });
       }
       
-      // Force users to always be fresh from initialMockDatabase
-      merged.users = [...initialMockDatabase.users];
+      if (merged.users && Array.isArray(merged.users)) {
+        merged.users = merged.users.map(u => {
+          const initialU = initialMockDatabase.users.find(i => i.id === u.id);
+          return { ...initialU, ...u };
+        });
+        
+        // Add any missing users from initial database
+        initialMockDatabase.users.forEach(initU => {
+          if (!merged.users.some(u => u.id === initU.id)) {
+            merged.users.push(initU);
+          }
+        });
+      } else {
+        merged.users = [...initialMockDatabase.users];
+      }
 
       if (merged.tasks && Array.isArray(merged.tasks)) {
         const now = new Date();

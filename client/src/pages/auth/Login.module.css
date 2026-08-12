@@ -3,6 +3,32 @@
   grid-template-columns: 1fr 1fr; 
   height: 100vh; 
   background-color: var(--color-surface);
+
+  /* Force light theme variables on login page */
+  --color-surface:        #FFFFFF;
+  --color-surface-2:      #F5F0E8;
+  --color-surface-3:      #EDE8DF;
+  --color-bg:             #FAF8F5;
+  --color-text:           #1C1C1E;
+  --color-text-secondary: #6B7280;
+  --color-text-muted:     #9CA3AF;
+  --color-text-inverse:   #FFFFFF;
+  --color-border:         #E5E1D8;
+  --color-border-strong:  #D0C9BC;
+  --color-border-focus:   #E8935A;
+  --color-sidebar-bg:     #1A1A2E;
+  --color-sidebar-hover:  #16213E;
+  --color-accent:         #E8935A;
+  --color-accent-dark:    #C4813E;
+  --color-accent-light:   #FDF0E8;
+  --color-success:        #059669;
+  --color-success-bg:     #ECFDF5;
+  --color-warning:        #D97706;
+  --color-warning-bg:     #FFFBEB;
+  --color-danger:         #DC2626;
+  --color-danger-bg:      #FEF2F2;
+  --color-info:           #2563EB;
+  --color-info-bg:        #EFF6FF;
 }
 
 .leftPanel { 

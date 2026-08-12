@@ -158,7 +158,7 @@ export default function ProjectAnalyticsPage() {
           const totalProjects = statusData.reduce((s, d) => s + d.count, 0)
           setData({
             kpis: {
-              active: statusData.find(s => s.id === 'active')?.count || 0,
+              active: statusData.filter(s => !['completed', 'cancelled', 'on_hold', 'deleted'].includes(s.id)).reduce((sum, s) => sum + s.count, 0),
               revenue: topProjects.reduce((a, b) => a + b.value, 0),
               onTimeRate: 100 - (delayedProjects.length > 0 ? Math.round((delayedProjects.length / (totalProjects || 1)) * 100) : 0),
               avgDuration: 0,

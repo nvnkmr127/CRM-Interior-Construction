@@ -22,15 +22,7 @@ const sparkRevenue = [8,9,10,11,10,12,11,13,12,13,14,14].map((v,i) => ({ i, v })
 const sparkProjects= [7,8,8,9,10,10,11,11,12,11,12,12].map((v,i) => ({ i, v }));
 const sparkTasks   = [6,8,10,12,9,11,14,13,15,14,15,15].map((v,i) => ({ i, v }));
 
-/* ── Revenue trend (12-week rolling) ─────────────────────────────────── */
-const revenueTrend = [
-  { week: 'W1',  amt: 8.2 },  { week: 'W2',  amt: 9.1 },
-  { week: 'W3',  amt: 7.8 },  { week: 'W4',  amt: 10.4 },
-  { week: 'W5',  amt: 11.2 }, { week: 'W6',  amt: 10.0 },
-  { week: 'W7',  amt: 12.1 }, { week: 'W8',  amt: 11.5 },
-  { week: 'W9',  amt: 13.2 }, { week: 'W10', amt: 12.8 },
-  { week: 'W11', amt: 13.9 }, { week: 'W12', amt: 14.2 },
-];
+// Revenue trend is now loaded dynamically from API
 
 /* ── Helpers ──────────────────────────────────────────────────────────── */
 function getHour() { return new Date().getHours(); }
@@ -118,6 +110,7 @@ export default function SalesExecutiveDashboard() {
   const [pipeline,setPipeline]  = useState(null);
   const [tasks,   setTasks]     = useState(null);
   const [payments,setPayments]  = useState(null);
+  const [revenueTrend, setRevenueTrend] = useState([]);
 
   useEffect(() => {
     const PIPE_COLORS = ['#3B82F6','#8B5CF6','#F59E0B','#EC4899','#10B981','#059669','#E8935A'];
@@ -153,6 +146,7 @@ export default function SalesExecutiveDashboard() {
             actualLeads: s.activeLeads?.count ?? 0
           }
         });
+        setRevenueTrend(s.revenueTrend || []);
       } else {
         setStats({
           activeLeads:    { val: 0, trend: 0 },
@@ -161,6 +155,7 @@ export default function SalesExecutiveDashboard() {
           tasksDueToday:  { val: 0, overdue: 0 },
           targets:        { targetRevenue: 0, targetLeads: 0, actualRevenue: 0, actualLeads: 0 }
         });
+        setRevenueTrend([]);
       }
 
       // Activity

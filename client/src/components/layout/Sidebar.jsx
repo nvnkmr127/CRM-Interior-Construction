@@ -16,22 +16,16 @@ const NAV_ITEMS = [
     { to: '/projects', icon: '◈', label: 'Projects', module: 'projects' },
     { to: '/tasks',      icon: '◻', label: 'My Tasks', module: 'tasks' },
   ]},
-  { group: 'OPERATIONS', items: [
-    { label: 'Project Operations', icon: '⚙️', module: 'projects', subItems: [
-        { to: '/projects/resources', icon: '👥', label: 'Resource Capacity' },
-        { to: '/projects/absences', icon: '🌴', label: 'Absence Management' },
-        { to: '/projects/coordination', icon: '🔄', label: 'Production Coordination' },
-        { to: '/projects/handover-dashboard', icon: '📋', label: 'Handover Dashboard' },
-        { to: '/projects/retention-dashboard', icon: '🤝', label: 'Retention Dashboard' },
-    ]},
-  ]},
-  { group: 'REPORTS & ANALYTICS', items: [
-    { to: '/analytics/hub', icon: '📑', label: 'Reports', module: 'analytics' }
-  ]},
-  { group: 'FINANCE', financeOnly: true, items: [
-    { to: '/finance', icon: '💰', label: 'Finance Overview', module: 'finance' },
-    { to: '/financial-approvals', icon: '📝', label: 'Financial Approvals', module: 'finance' },
-    { to: '/financial-settings', icon: '💰', label: 'Financial Thresholds', module: 'settings', adminOnly: true }
+  { group: 'ANALYTICS', items: [
+    { label: 'Analytics', icon: '📊', module: 'analytics', subItems: [
+        { to: '/analytics/leads', icon: '▲', label: 'Lead Analytics', module: 'analytics', permission: 'analytics:view_lead_analytics' },
+        { to: '/analytics/projects', icon: '◉', label: 'Project Analytics', module: 'analytics', permission: 'analytics:view_project_analytics' },
+        { to: '/analytics/csat', icon: '⭐', label: 'Client Satisfaction', module: 'analytics', permission: 'analytics:view_lead_analytics' },
+        { to: '/analytics/delay-analysis', icon: '⏱️', label: 'Delay Analysis', module: 'analytics', permission: 'analytics:view_project_analytics' },
+        { to: '/analytics/boq-variance', icon: '📊', label: 'BOQ Variance', module: 'analytics', permission: 'analytics:view_project_analytics' },
+        { to: '/analytics/resources', icon: '👤', label: 'Resource Utilisation', module: 'analytics' },
+        { to: '/analytics/resource-workload', icon: '👥', label: 'Resource Workload', module: 'analytics' }
+    ]}
   ]},
   { group: 'SALES SETUP', adminOnly: true, items: [
     { to: '/lead-stages', icon: '◎', label: 'Lead Stages', module: 'settings' },
@@ -43,8 +37,28 @@ const NAV_ITEMS = [
     { to: '/trade-activities', icon: '🛠', label: 'Trade Templates', module: 'settings' },
     { to: '/qc-checklists', icon: '☑', label: 'Trade QC Checklists', module: 'settings' },
     { to: '/conversion-checklist', icon: '☑', label: 'Conversion Checklist', module: 'settings' },
-    { to: '/automations', icon: '⚙', label: 'Automations', module: 'settings' },
-    { to: '/vendor-lead-times', icon: '⏱', label: 'Vendor Lead Times', module: 'settings' },
+    { to: '/automations', icon: '⚙', label: 'Automations', module: 'settings' }
+  ]},
+  { group: 'PROJECT OPERATIONS', items: [
+    { to: '/projects/coordination', icon: '🔄', label: 'Production Coordination', module: 'projects' },
+    { to: '/projects/handover-dashboard', icon: '📋', label: 'Handover Dashboard', module: 'projects' },
+    { to: '/projects/retention-dashboard', icon: '🤝', label: 'Retention Dashboard', module: 'projects' }
+  ]},
+  { group: 'RESOURCE OPERATIONS', items: [
+    { to: '/projects/resources', icon: '👥', label: 'Resource Capacity', module: 'projects' },
+    { to: '/projects/absences', icon: '🌴', label: 'Absence Management', module: 'projects' }
+  ]},
+  { group: 'VENDORS', items: [
+    { to: '/analytics/vendors', icon: '🤝', label: 'Vendor Performance', module: 'analytics' },
+    { to: '/analytics/vendors-capacity', icon: '⚖️', label: 'Vendor Capacity', module: 'analytics' },
+    { to: '/vendor-lead-times', icon: '⏱', label: 'Vendor Lead Times', module: 'settings', adminOnly: true }
+  ]},
+  { group: 'FINANCE', items: [
+    { to: '/finance', icon: '💰', label: 'Finance Overview', module: 'finance' },
+    { to: '/financial-approvals', icon: '📝', label: 'Financial Approvals', module: 'finance' },
+    { to: '/analytics/profitability', icon: '💎', label: 'Project Profitability', module: 'analytics', permission: 'analytics:view_finance_analytics' },
+    { to: '/analytics/collection-forecast', icon: '📈', label: 'Collection Forecast', module: 'analytics', permission: 'analytics:view_finance_analytics' },
+    { to: '/financial-settings', icon: '💰', label: 'Financial Thresholds', module: 'settings', adminOnly: true }
   ]},
   { group: 'TEAM & SECURITY', adminOnly: true, items: [
     { label: 'Team Management', icon: '👥', module: 'settings', subItems: [
@@ -55,7 +69,7 @@ const NAV_ITEMS = [
     { to: '/login-history', icon: '🛡️', label: 'Login History', module: 'settings' },
     { to: '/settings/audit-trail', icon: '📜', label: 'Audit Trail', module: 'settings' }
   ]},
-  { group: 'INTEGRATIONS', adminOnly: true, items: [
+  { group: 'DEVELOPER TOOLS', adminOnly: true, items: [
     { to: '/api-keys', icon: '⊙', label: 'API Keys', module: 'settings' },
     { to: '/developer/api', icon: '🔌', label: 'API Integration', module: 'settings' },
     { to: '/developer/webhooks', icon: '🪝', label: 'Webhooks', module: 'settings' },

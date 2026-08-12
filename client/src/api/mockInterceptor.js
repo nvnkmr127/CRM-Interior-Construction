@@ -4,6 +4,20 @@ import { loadMockDatabase, saveMockDatabase } from './mockData';
 export const setupMockInterceptor = (api) => {
   api.interceptors.request.use(
     (config) => {
+      // Prevent 502 Bad Gateway console spam on initial load when backend is down
+      if (import.meta.env.DEV && config.url === '/auth/me' && !localStorage.getItem('mockSession')) {
+        config.adapter = () => {
+          return Promise.resolve({
+            status: 401,
+            data: { success: false, message: 'No active session' },
+            headers: {},
+            config,
+            request: {}
+          });
+        };
+        return config;
+      }
+
       if (import.meta.env.DEV && localStorage.getItem('mockSession')) {
         const method = (config.method || 'get').toLowerCase();
         const isMutation = ['post', 'patch', 'put', 'delete'].includes(method);
@@ -746,7 +760,101 @@ export const setupMockInterceptor = (api) => {
                 
                 persistDb();
                 responseData.data = { success: true };
-              }
+            }
+          }
+        }
+          // DASHBOARD STATS
+          else if (url.includes('/dashboard/stats')) {
+            if (method === 'get') {
+              const activeLeadsCount = (mockDatabase.leads || []).filter(l => !l.deleted_at).length;
+              
+              // Won this month
+              const startOfMonth = new Date();
+              startOfMonth.setDate(1);
+              startOfMonth.setHours(0, 0, 0, 0);
+              const wonLeads = (mockDatabase.leads || []).filter(l => {
+                const isWon = l.status === 'converted' || l.status === 'won';
+                const updatedAt = l.updated_at ? new Date(l.updated_at) : new Date();
+                return isWon && updatedAt >= startOfMonth;
+              });
+              const wonValue = wonLeads.reduce((sum, l) => sum + Number(l.budget_max || l.budget || 0), 0);
+              
+              // Active projects
+              const activeProjects = (mockDatabase.projects || []).filter(p => {
+                const s = p.status?.toLowerCase();
+                return !s || !['on_hold', 'completed', 'overdue', 'cancelled', 'deleted'].includes(s);
+              });
+              const overdueProjectsCount = activeProjects.filter(p => p.target_date && new Date(p.target_date) < new Date()).length;
+
+              // Tasks due
+              const todayStr = new Date().toISOString().split('T')[0];
+              const activeTasks = (mockDatabase.tasks || []).filter(t => t.status !== 'done');
+              const dueTodayTasks = activeTasks.filter(t => t.due_date === todayStr).length;
+              const overdueTasks = activeTasks.filter(t => t.due_date && t.due_date < todayStr).length;
+
+              responseData.data = {
+                activeLeads: { count: activeLeadsCount, trend: 0 },
+                wonThisMonth: { count: wonLeads.length, value: wonValue },
+                activeProjects: { count: activeProjects.length, overdueCount: overdueProjectsCount },
+                tasksDueToday: { count: dueTodayTasks, overdueCount: overdueTasks },
+                salesTargets: { targetRevenue: 1000000, targetLeads: 20 },
+                revenueTrend: [
+                  { week: 'W1',  amt: 8.2 },  { week: 'W2',  amt: 9.1 },
+                  { week: 'W3',  amt: 7.8 },  { week: 'W4',  amt: 10.4 },
+                  { week: 'W5',  amt: 11.2 }, { week: 'W6',  amt: 10.0 },
+                  { week: 'W7',  amt: 12.1 }, { week: 'W8',  amt: 11.5 },
+                  { week: 'W9',  amt: 13.2 }, { week: 'W10', amt: 12.8 },
+                  { week: 'W11', amt: 13.9 }, { week: 'W12', amt: 14.2 },
+                ]
+              };
+            }
+          }
+          // DASHBOARD ACTIVITY
+          else if (url.includes('/dashboard/activity')) {
+            if (method === 'get') {
+              responseData.data = mockDatabase.activities || [];
+            }
+          }
+          // DASHBOARD PIPELINE
+          else if (url.includes('/dashboard/pipeline')) {
+            if (method === 'get') {
+              const stages = [
+                { id: 'new', name: 'New Leads', count: 0 },
+                { id: 'contacted', name: 'Contacted', count: 0 },
+                { id: 'qualified', name: 'Qualified', count: 0 },
+                { id: 'proposal', name: 'Proposal Sent', count: 0 },
+                { id: 'negotiation', name: 'Negotiation', count: 0 },
+                { id: 'won', name: 'Won', count: 0 },
+                { id: 'lost', name: 'Lost', count: 0 }
+              ];
+              (mockDatabase.leads || []).forEach(lead => {
+                const stageId = lead.stage_id || 'new';
+                const stage = stages.find(s => s.id === stageId);
+                if (stage) stage.count++;
+              });
+              responseData.data = stages;
+            }
+          }
+          // DASHBOARD PAYMENTS DUE
+          else if (url.includes('/dashboard/payments-due')) {
+            if (method === 'get') {
+              const paymentsDue = [];
+              (mockDatabase.projects || []).forEach(proj => {
+                if (proj.payments) {
+                  proj.payments.forEach(p => {
+                    if (p.status !== 'paid') {
+                      paymentsDue.push({
+                        id: p.id,
+                        project_name: proj.name,
+                        title: p.milestone_name || p.name || 'Milestone Payment',
+                        amount: p.amount,
+                        due_date: p.due_date,
+                      });
+                    }
+                  });
+                }
+              });
+              responseData.data = paymentsDue;
             }
           }
           // GLOBAL SEARCH
@@ -2249,40 +2357,54 @@ export const setupMockInterceptor = (api) => {
             } else if (url.includes('/approve') || url.includes('/reject') || url.includes('/request-changes')) {
               responseData.data = { success: true };
             } else if (method === 'get') {
-              const getParam = (name) => {
-                if (config.params && config.params[name] !== undefined) {
-                  return config.params[name];
+              const urlNoQuery = url.split('?')[0];
+              const isSingleUser = urlNoQuery.match(/\/users\/[^/]+$/) && !urlNoQuery.endsWith('/users');
+              
+              if (isSingleUser) {
+                const parts = urlNoQuery.split('/');
+                const id = parts[parts.length - 1];
+                const user = (mockDatabase.users || []).find(u => u.id === id);
+                responseData.data = user || {};
+              } else if (urlNoQuery.includes('/projects') || urlNoQuery.includes('/tasks') || 
+                         urlNoQuery.includes('/sessions') || urlNoQuery.includes('/login-history') || 
+                         urlNoQuery.includes('/audit') || urlNoQuery.includes('/timeline')) {
+                responseData.data = [];
+              } else {
+                const getParam = (name) => {
+                  if (config.params && config.params[name] !== undefined) {
+                    return config.params[name];
+                  }
+                  const urlParts = url.split('?');
+                  if (urlParts[1]) {
+                    const searchParams = new URLSearchParams(urlParts[1]);
+                    return searchParams.get(name);
+                  }
+                  return undefined;
+                };
+                let filtered = [...(mockDatabase.users || [])];
+                
+                const searchVal = getParam('search');
+                if (searchVal) {
+                  const s = searchVal.toLowerCase().trim();
+                  filtered = filtered.filter(u => {
+                    const name = String(u.name || '').toLowerCase();
+                    const email = String(u.email || '').toLowerCase();
+                    return name.includes(s) || email.includes(s);
+                  });
                 }
-                const urlParts = url.split('?');
-                if (urlParts[1]) {
-                  const searchParams = new URLSearchParams(urlParts[1]);
-                  return searchParams.get(name);
+                
+                const roleVal = getParam('role');
+                if (roleVal) {
+                  filtered = filtered.filter(u => u.role_name === roleVal || u.role_id === roleVal);
                 }
-                return undefined;
-              };
-              let filtered = [...(mockDatabase.users || [])];
-              
-              const searchVal = getParam('search');
-              if (searchVal) {
-                const s = searchVal.toLowerCase().trim();
-                filtered = filtered.filter(u => {
-                  const name = String(u.name || '').toLowerCase();
-                  const email = String(u.email || '').toLowerCase();
-                  return name.includes(s) || email.includes(s);
-                });
+                
+                const statusVal = getParam('status');
+                if (statusVal) {
+                  filtered = filtered.filter(u => u.status === statusVal);
+                }
+  
+                responseData.data = filtered;
               }
-              
-              const roleVal = getParam('role');
-              if (roleVal) {
-                filtered = filtered.filter(u => u.role_name === roleVal || u.role_id === roleVal);
-              }
-              
-              const statusVal = getParam('status');
-              if (statusVal) {
-                filtered = filtered.filter(u => u.status === statusVal);
-              }
-
-              responseData.data = filtered;
             } else if (url.includes('/add-member') && method === 'post') {
               const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
               const newUser = {
@@ -4652,9 +4774,40 @@ export const setupMockInterceptor = (api) => {
               };
             }
           }
-          else if (url.includes('/analytics/')) {
+           else if (url.includes('/analytics/')) {
              if (method === 'get') {
-               if (url.includes('/analytics/leads/funnel') || 
+               if (url.includes('/analytics/resource-utilisation')) {
+                 const users = JSON.parse(JSON.stringify(mockDatabase.users || []));
+                 const projects = mockDatabase.projects || [];
+                 const tasks = mockDatabase.tasks || [];
+                 
+                 responseData.data = users.map(u => {
+                   const uProjects = projects.filter(p => (p.pm_id === u.id || p.pm_name === u.name || p.designer_id === u.id || p.designer_name === u.name) && p.status !== 'completed');
+                   const activeProjects = uProjects.map(p => ({ id: p.id, name: p.name, hoursAllocated: 10 }));
+                   const totalHoursAllocated = activeProjects.length * 10;
+                   const weeklyCapacity = 40;
+                   
+                   const uTasks = tasks.filter(t => t.assigned_to === u.id || t.assignee_name === u.name);
+                   const completedTasks = uTasks.filter(t => t.status === 'done' || t.status === 'completed').length;
+                   const totalTasks = uTasks.length;
+                   
+                   return {
+                     id: u.id,
+                     name: u.name,
+                     email: u.email || `${u.name.toLowerCase().replace(' ', '.')}@mock.com`,
+                     roleName: u.role ? u.role.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Unknown',
+                     activeProjectsCount: activeProjects.length,
+                     activeProjects,
+                     totalHoursAllocated,
+                     weeklyCapacity,
+                     workloadScore: Math.min((totalHoursAllocated / weeklyCapacity) * 100, 150) || 0,
+                     completedTasks,
+                     totalTasks,
+                     completionPercentage: totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0,
+                     availability: weeklyCapacity - totalHoursAllocated
+                   };
+                 });
+               } else if (url.includes('/analytics/leads/funnel') || 
                    url.includes('/analytics/leads/by_source') || 
                    url.includes('/analytics/leads/rep_performance') || 
                    url.includes('/analytics/leads/lost_reasons') ||

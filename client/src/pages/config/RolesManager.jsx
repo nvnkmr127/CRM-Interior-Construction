@@ -192,8 +192,7 @@ export default function RolesManager() {
     };
     window.addEventListener('keydown', handleKeyDown);
 
-    return (
-    ) => window.removeEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isModalOpen]);
 
   useEffect(() => {
@@ -703,7 +702,7 @@ export default function RolesManager() {
                         <select 
                           className="input-field"
                           style={{ width: '100%', padding: '10px' }}
-                          onChange={e => {
+                          onChange={async e => {
                             const roleToClone = roles.find(r => r.id === e.target.value);
                             if (!roleToClone) return;
                             if (!await confirm(`Are you sure you want to overwrite current permissions with the '${roleToClone.name}' role template?`)) return;

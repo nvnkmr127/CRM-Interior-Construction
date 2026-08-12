@@ -33,7 +33,6 @@ const ProjectsPage   = lazy(() => import('./pages/projects/ProjectsPage'))
 const ProjectDetail  = lazy(() => import('./pages/projects/ProjectDetail'))
 const MyTasksPage    = lazy(() => import('./pages/tasks/MyTasksPage'))
 const LeadAnalytics  = lazy(() => import('./pages/analytics/LeadAnalyticsPage'))
-const ReportsHubPage = lazy(() => import('./pages/analytics/ReportsHubPage'))
 const ManagerDashboard = lazy(() => import('./pages/leads/ManagerDashboard'))
 const ProjectAnalytics= lazy(() => import('./pages/analytics/ProjectAnalyticsPage'))
 const BOQVarianceReportPage = lazy(() => import('./pages/analytics/BOQVarianceReportPage'))
@@ -122,7 +121,6 @@ export default function App() {
                     <Route path='/factory/production' element={<ProtectedRoute requiredModule="factory"><GlobalFactoryProductionPage /></ProtectedRoute>} />
                     <Route path='/projects/:id' element={<ProtectedRoute requiredModule="projects"><ProjectDetail /></ProtectedRoute>} />
                     <Route path='/tasks' element={<ProtectedRoute requiredModule="tasks"><MyTasksPage /></ProtectedRoute>} />
-                    <Route path='/analytics/hub' element={<ProtectedRoute requiredModule="analytics"><ReportsHubPage /></ProtectedRoute>} />
                     <Route path='/analytics/leads' element={<ProtectedRoute requiredModule="analytics"><LeadAnalytics /></ProtectedRoute>} />
                     <Route path='/analytics/projects' element={<ProtectedRoute requiredModule="analytics"><ProjectAnalytics /></ProtectedRoute>} />
                     <Route path='/analytics/boq-variance' element={<ProtectedRoute requiredModule="analytics"><BOQVarianceReportPage /></ProtectedRoute>} />

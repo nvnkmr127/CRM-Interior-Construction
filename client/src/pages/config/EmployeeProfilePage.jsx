@@ -4,6 +4,7 @@ import api from '../../api/axios'
 import { useToast } from '../../store/toastContext'
 import { Button, Input, Select, Badge, Modal, Textarea, PermissionButton } from '../../components/ui'
 import { format } from 'date-fns'
+import layoutStyles from './ConfigLayout.module.css'
 
 import { useConfirm } from '../../store/confirmContext';
 
@@ -22,7 +23,14 @@ const SECTIONS = [
   { id: 'performance', label: 'Performance', icon: '⭐' },
 ]
 
-export default function EmployeeProfilePage({ userId, onBack }) {
+const DEFAULT_ROLE_OPTIONS = [
+  { value: 'superadmin', label: 'Super Admin' },
+  { value: 'pm', label: 'Project Manager' },
+  { value: 'designer', label: 'Designer' },
+  { value: 'sales', label: 'Sales' }
+]
+
+export default function EmployeeProfilePage({ userId, onBack, onConfigureMock }) {
   const { confirm } = useConfirm();
 
   const params = useParams()
@@ -46,8 +54,21 @@ export default function EmployeeProfilePage({ userId, onBack }) {
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState({})
 
+  // Account Settings Modal
+  const [isAccountSettingsOpen, setIsAccountSettingsOpen] = useState(false)
+  const [roles, setRoles] = useState([])
+  const [accountForm, setAccountForm] = useState({
+    email: '',
+    role_id: '',
+    status: '',
+    password: ''
+  })
+
   useEffect(() => {
     fetchUserData()
+    api.get('/roles')
+      .then(res => setRoles(res.data.data || []))
+      .catch(console.error)
   }, [id])
 
   useEffect(() => {
@@ -65,6 +86,12 @@ export default function EmployeeProfilePage({ userId, onBack }) {
       const res = await api.get(`/users/${id}`)
       setUser(res.data.data)
       setEditForm(res.data.data)
+      setAccountForm({
+        email: res.data.data.email || '',
+        role_id: res.data.data.role_id || res.data.data.role || '',
+        status: res.data.data.status || 'active',
+        password: ''
+      })
     } catch (err) {
       toast.error('Failed to load user data')
       navigate('/team/members')
@@ -144,6 +171,32 @@ export default function EmployeeProfilePage({ userId, onBack }) {
     }
   }
 
+  const handleSaveAccountSettings = async () => {
+    try {
+      const selectedRoleObj = roles.find(r => r.id === accountForm.role_id) || DEFAULT_ROLE_OPTIONS.find(d => d.value === accountForm.role_id);
+      const roleName = selectedRoleObj ? (selectedRoleObj.name || selectedRoleObj.label) : '';
+
+      const patchData = {
+        email: accountForm.email,
+        role_id: accountForm.role_id,
+        role_name: roleName,
+        role: accountForm.role_id,
+        status: accountForm.status
+      }
+
+      if (accountForm.password) {
+        patchData.password = accountForm.password
+      }
+
+      await api.patch(`/users/${id}`, patchData)
+      toast.success('Account settings updated successfully')
+      setIsAccountSettingsOpen(false)
+      fetchUserData()
+    } catch (err) {
+      toast.error('Failed to update account settings')
+    }
+  }
+
   if (loading) return <div>Loading Profile...</div>
   if (!user) return null
 
@@ -154,9 +207,9 @@ export default function EmployeeProfilePage({ userId, onBack }) {
     switch (activeSection) {
       case 'overview':
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 600 }}>Personal & Work Information</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '16px' }}>
+              <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--color-text)' }}>Personal & Work Information</h3>
               {!isEditing ? (
                 <Button variant="secondary" onClick={async () => setIsEditing(true)}>Edit Profile</Button>
               ) : (
@@ -167,42 +220,42 @@ export default function EmployeeProfilePage({ userId, onBack }) {
               )}
             </div>
 
-            <div style={{ background: 'var(--color-background-soft)', padding: '24px', borderRadius: '8px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px' }}>Full Name</label>
-                {isEditing ? <Input value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} /> : <div style={{ fontWeight: 500 }}>{user.name}</div>}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Full Name</span>
+                {isEditing ? <Input value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} /> : <div style={{ fontSize: '15px', fontWeight: 500, color: 'var(--color-text)' }}>{user.name}</div>}
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px' }}>Official Email</label>
-                <div style={{ fontWeight: 500 }}>{user.email} (Non-editable)</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Official Email</span>
+                <div style={{ fontSize: '15px', fontWeight: 500, color: 'var(--color-text)' }}>{user.email} <span style={{fontSize:'12px', color:'var(--color-text-muted)'}}>(Non-editable)</span></div>
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px' }}>Phone / Mobile</label>
-                {isEditing ? <Input value={formProfile.mobileNumber || ''} onChange={e => setEditForm({...editForm, profile_data: {...formProfile, mobileNumber: e.target.value}})} /> : <div style={{ fontWeight: 500 }}>{profile.mobileNumber || 'N/A'}</div>}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Phone / Mobile</span>
+                {isEditing ? <Input value={formProfile.mobileNumber || ''} onChange={e => setEditForm({...editForm, profile_data: {...formProfile, mobileNumber: e.target.value}})} /> : <div style={{ fontSize: '15px', fontWeight: 500, color: 'var(--color-text)' }}>{profile.mobileNumber || 'N/A'}</div>}
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px' }}>Date of Birth</label>
-                {isEditing ? <Input type="date" value={formProfile.dob || ''} onChange={e => setEditForm({...editForm, profile_data: {...formProfile, dob: e.target.value}})} /> : <div style={{ fontWeight: 500 }}>{profile.dob || 'N/A'}</div>}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Date of Birth</span>
+                {isEditing ? <Input type="date" value={formProfile.dob || ''} onChange={e => setEditForm({...editForm, profile_data: {...formProfile, dob: e.target.value}})} /> : <div style={{ fontSize: '15px', fontWeight: 500, color: 'var(--color-text)' }}>{profile.dob || 'N/A'}</div>}
               </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px' }}>Address</label>
-                {isEditing ? <Input value={formProfile.address || ''} onChange={e => setEditForm({...editForm, profile_data: {...formProfile, address: e.target.value}})} /> : <div style={{ fontWeight: 500 }}>{profile.address || 'N/A'}</div>}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: '1 / -1' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Address</span>
+                {isEditing ? <Input value={formProfile.address || ''} onChange={e => setEditForm({...editForm, profile_data: {...formProfile, address: e.target.value}})} /> : <div style={{ fontSize: '15px', fontWeight: 500, color: 'var(--color-text)' }}>{profile.address || 'N/A'}</div>}
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px' }}>Department</label>
-                {isEditing ? <Input value={formProfile.department || ''} onChange={e => setEditForm({...editForm, profile_data: {...formProfile, department: e.target.value}})} /> : <div style={{ fontWeight: 500 }}>{profile.department || 'N/A'}</div>}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Department</span>
+                {isEditing ? <Input value={formProfile.department || ''} onChange={e => setEditForm({...editForm, profile_data: {...formProfile, department: e.target.value}})} /> : <div style={{ fontSize: '15px', fontWeight: 500, color: 'var(--color-text)' }}>{profile.department || 'N/A'}</div>}
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px' }}>Designation</label>
-                {isEditing ? <Input value={formProfile.designation || ''} onChange={e => setEditForm({...editForm, profile_data: {...formProfile, designation: e.target.value}})} /> : <div style={{ fontWeight: 500 }}>{profile.designation || 'N/A'}</div>}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Designation</span>
+                {isEditing ? <Input value={formProfile.designation || ''} onChange={e => setEditForm({...editForm, profile_data: {...formProfile, designation: e.target.value}})} /> : <div style={{ fontSize: '15px', fontWeight: 500, color: 'var(--color-text)' }}>{profile.designation || 'N/A'}</div>}
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px' }}>Joining Date</label>
-                {isEditing ? <Input type="date" value={formProfile.joiningDate || ''} onChange={e => setEditForm({...editForm, profile_data: {...formProfile, joiningDate: e.target.value}})} /> : <div style={{ fontWeight: 500 }}>{profile.joiningDate || 'N/A'}</div>}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Joining Date</span>
+                {isEditing ? <Input type="date" value={formProfile.joiningDate || ''} onChange={e => setEditForm({...editForm, profile_data: {...formProfile, joiningDate: e.target.value}})} /> : <div style={{ fontSize: '15px', fontWeight: 500, color: 'var(--color-text)' }}>{profile.joiningDate || 'N/A'}</div>}
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px' }}>Employment Type</label>
-                {isEditing ? <Input value={formProfile.employmentType || ''} onChange={e => setEditForm({...editForm, profile_data: {...formProfile, employmentType: e.target.value}})} /> : <div style={{ fontWeight: 500 }}>{profile.employmentType || 'N/A'}</div>}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Employment Type</span>
+                {isEditing ? <Input value={formProfile.employmentType || ''} onChange={e => setEditForm({...editForm, profile_data: {...formProfile, employmentType: e.target.value}})} /> : <div style={{ fontSize: '15px', fontWeight: 500, color: 'var(--color-text)' }}>{profile.employmentType || 'N/A'}</div>}
               </div>
             </div>
           </div>
@@ -497,46 +550,122 @@ export default function EmployeeProfilePage({ userId, onBack }) {
     }
   }
 
+  const renderAccountSettingsModal = () => {
+    if (!isAccountSettingsOpen) return null;
+    const roleOptions = [
+      { value: 'superadmin', label: 'Super Admin' },
+      ...roles.map(r => ({ value: r.id, label: r.name })),
+      ...DEFAULT_ROLE_OPTIONS.filter(d => !roles.some(r => r.id === d.value || r.name.toLowerCase() === d.label.toLowerCase()))
+    ];
+
+    const statusOptions = [
+      { value: 'active', label: 'Active' },
+      { value: 'suspended', label: 'Suspended' },
+      { value: 'pending_approval', label: 'Pending Approval' }
+    ];
+
+    return (
+      <Modal isOpen={isAccountSettingsOpen} title="Account Settings" onClose={() => setIsAccountSettingsOpen(false)} size="md">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '8px 4px' }}>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <Input 
+              label="Email Address"
+              type="email"
+              value={accountForm.email} 
+              onChange={e => setAccountForm({...accountForm, email: e.target.value})} 
+            />
+            <Select 
+              label="System Role"
+              value={accountForm.role_id} 
+              options={roleOptions} 
+              onChange={val => setAccountForm({...accountForm, role_id: val})} 
+            />
+            <Select 
+              label="Account Status"
+              value={accountForm.status} 
+              options={statusOptions} 
+              onChange={val => setAccountForm({...accountForm, status: val})} 
+            />
+            <Input 
+              label="Reset Password"
+              placeholder="Leave empty to keep current password"
+              type="text"
+              value={accountForm.password} 
+              onChange={e => setAccountForm({...accountForm, password: e.target.value})} 
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
+            <Button variant="ghost" onClick={() => setIsAccountSettingsOpen(false)}>Cancel</Button>
+            <Button variant="primary" style={{ minWidth: '160px' }} onClick={handleSaveAccountSettings}>Save Changes</Button>
+          </div>
+        </div>
+      </Modal>
+    );
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       {/* Header (Name Card) */}
-      <div style={{ 
-        background: 'var(--color-background)', 
-        border: '1px solid var(--color-border)', 
-        borderRadius: '12px', 
-        padding: '24px',
+      <div className={layoutStyles.glassCard} style={{ 
+        padding: '32px 40px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-        color: 'black'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--color-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: 'bold' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+          <div style={{ 
+            width: '90px', 
+            height: '90px', 
+            borderRadius: '50%', 
+            background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent, #6366f1) 100%)', 
+            color: 'white', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            fontSize: '36px', 
+            fontWeight: 'bold',
+            boxShadow: '0 8px 16px -4px rgba(0,0,0,0.1)'
+          }}>
             {user?.name?.charAt(0)?.toUpperCase() || '?'}
           </div>
           <div>
-            <h1 style={{ fontSize: '24px', fontWeight: 700, margin: '0 0 4px 0', color: 'black' }}>{user?.name || 'Unknown User'}</h1>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', fontSize: '14px', color: 'black' }}>
-              <span>{user?.email || 'No email'}</span>
-              <span>•</span>
-              <span>{user?.role_name || 'No Role'}</span>
-              <span>•</span>
+            <h1 style={{ fontSize: '28px', fontWeight: 800, margin: '0 0 8px 0', color: 'var(--color-text)', letterSpacing: '-0.02em' }}>{user?.name || 'Unknown User'}</h1>
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'center', fontSize: '14px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>✉ {user?.email || 'No email provided'}</span>
+              <span style={{ color: 'var(--color-border)' }}>|</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>🛡 {user?.role_name || 'No Role Assigned'}</span>
+              <span style={{ color: 'var(--color-border)' }}>|</span>
               <Badge variant={user?.status === 'active' ? 'success' : 'secondary'}>{user?.status?.toUpperCase() || 'UNKNOWN'}</Badge>
             </div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <Button variant="ghost" onClick={async () => onBack ? onBack() : navigate('/team/members')}>Back to List</Button>
-          <Button variant="secondary" onClick={async () => navigate(`/team/members/${user.id}/settings`)}>Account Settings</Button>
+          <Button variant="ghost" onClick={async () => onBack ? onBack() : navigate('/team/members')}>← Back to Team</Button>
+          {onConfigureMock && (
+            <Button variant="secondary" onClick={() => onConfigureMock(user)}>
+              <span style={{ marginRight: '6px' }}>⚙</span> Configure Dev Login
+            </Button>
+          )}
+          <Button variant="secondary" onClick={() => setIsAccountSettingsOpen(true)}>Account Settings</Button>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '250px 1fr', gap: '32px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '32px', alignItems: 'start' }}>
         
         {/* Left Navigation */}
-        <div className="hide-scrollbar" style={{ position: 'sticky', top: '24px', alignSelf: 'start', display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: 'calc(100vh - 48px)', overflowY: 'auto', paddingRight: '8px' }}>
+        <div className={layoutStyles.glassCard} style={{ 
+          position: 'sticky', 
+          top: '24px', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '4px', 
+          padding: '16px',
+          maxHeight: 'calc(100vh - 48px)', 
+          overflowY: 'auto'
+        }}>
           {SECTIONS.map(s => (
             <button
               key={s.id}
@@ -547,28 +676,41 @@ export default function EmployeeProfilePage({ userId, onBack }) {
                 gap: '12px',
                 padding: '12px 16px',
                 width: '100%',
-                background: activeSection === s.id ? 'var(--color-primary-light)' : 'transparent',
+                background: activeSection === s.id ? 'var(--color-primary-subtle)' : 'transparent',
                 color: activeSection === s.id ? 'var(--color-primary)' : 'var(--color-text)',
                 border: 'none',
                 borderRadius: '8px',
                 textAlign: 'left',
-                fontWeight: activeSection === s.id ? 600 : 400,
+                fontWeight: activeSection === s.id ? 600 : 500,
                 cursor: 'pointer',
-                transition: 'all 0.2s'
+                transition: 'background 0.2s, color 0.2s',
+                outline: 'none'
+              }}
+              onMouseEnter={(e) => {
+                if (activeSection !== s.id) {
+                  e.currentTarget.style.background = 'var(--color-bg-subtle)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (activeSection !== s.id) {
+                  e.currentTarget.style.background = 'transparent';
+                }
               }}
             >
-              <span>{s.icon}</span>
+              <span style={{ fontSize: '18px', opacity: activeSection === s.id ? 1 : 0.6 }}>{s.icon}</span>
               {s.label}
             </button>
           ))}
         </div>
 
         {/* Content Area */}
-        <div style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '32px', minHeight: '600px' }}>
+        <div className={layoutStyles.glassCard} style={{ padding: '40px', minHeight: '600px' }}>
           {renderSection()}
         </div>
 
       </div>
+
+      {renderAccountSettingsModal()}
     </div>
   )
 }

@@ -14,6 +14,7 @@ export default function DashboardPage() {
 
   const checkPermission = (perm) => {
     if (isAdmin) return true;
+    if (user?.role?.permissions?.includes('*')) return true;
     const [mod] = perm.split(':');
     return user?.role?.permissions?.includes(perm) || user?.role?.permissions?.includes(`${mod}:*`);
   };
