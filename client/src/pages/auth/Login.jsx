@@ -235,7 +235,7 @@ export default function Login() {
               </Button>
               {import.meta.env.DEV && (
                 <div style={{ display: 'flex', gap: '10px', flex: 1.5 }}>
-                  <Button 
+                   <Button 
                     type="button" 
                     variant="secondary"
                     size="lg"
@@ -249,6 +249,21 @@ export default function Login() {
                     style={{ flex: 1, background: 'var(--color-bg-subtle)', color: 'var(--color-text)', padding: '0 10px' }}
                   >
                     Admin
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="secondary"
+                    size="lg"
+                    className={styles.submitBtn} 
+                    disabled={isSubmitting}
+                    onClick={() => {
+                      handleChange('tenantSlug', 'mock');
+                      handleChange('email', 'sales@mock.com');
+                      handleChange('password', 'password');
+                    }}
+                    style={{ flex: 1, background: 'var(--color-bg-subtle)', color: 'var(--color-text)', padding: '0 10px' }}
+                  >
+                    Sales
                   </Button>
                   <Button 
                     type="button" 

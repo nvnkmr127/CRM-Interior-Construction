@@ -736,7 +736,9 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
         customer_name: project?.client_name || project?.customer_name,
         target_number: payload.selectedPayment?.milestone || 'Manual'
       });
-      fetchApprovals();
+      if (typeof fetchApprovals === 'function') {
+        fetchApprovals();
+      }
       toast.success(`${type} request submitted for Finance Approval.`);
     } catch (err) {
       toast.error('Failed to submit approval request.');

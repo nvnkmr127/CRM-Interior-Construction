@@ -4878,6 +4878,8 @@ export const setupMockInterceptor = (api) => {
             const id = pathSegments[baseIndex + 1];
             const action = pathSegments[baseIndex + 2];
 
+            console.log('[Mock DB] Route: /financial-approvals matched. Method:', method, 'ID:', id, 'Action:', action);
+
             if (method === 'get') {
               if (id === 'stats') {
                 const now = new Date();
@@ -4955,7 +4957,7 @@ export const setupMockInterceptor = (api) => {
                 }
 
                 const sortedApprovals = approvals.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-                console.log('[Mock DB] GET /financial-approvals. Current approvals:', sortedApprovals);
+                console.log('[Mock DB] GET /financial-approvals. Raw DB approvals:', mockDatabase.financeApprovals, 'Filtered approvals:', sortedApprovals);
                 responseData.data = {
                   data: sortedApprovals,
                   pagination: {

@@ -171,6 +171,22 @@ export function AuthProvider({ children }) {
         setUser(mockUser);
         localStorage.setItem('mockSession', JSON.stringify(mockUser));
         return { success: true };
+      } else if (email === 'sales@mock.com' && password === 'password') {
+        const mockUser = {
+          id: 'mock-user-2',
+          name: 'Amit S.',
+          email: 'sales@mock.com',
+          avatar_url: null,
+          role: {
+            id: 'sales_rep',
+            name: 'sales_rep',
+            permissions: ['leads:view', 'leads:edit', 'leads:create', 'projects:view', 'finance:payments', 'finance:invoices', 'dashboard:view'],
+            enabled_modules: ['leads', 'projects', 'tasks', 'dashboards']
+          }
+        };
+        setUser(mockUser);
+        localStorage.setItem('mockSession', JSON.stringify(mockUser));
+        return { success: true };
       } else {
         // Authenticate against users in mock database
         const mockDatabase = loadMockDatabase();
