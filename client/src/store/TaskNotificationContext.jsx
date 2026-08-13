@@ -80,18 +80,27 @@ export const useTaskNotificationStore = create((set) => ({
 
     // Cross-browser SSE sync (via relay)
     try {
-      // Close existing connection if HMR triggers a reload
-      if (window._mockSseConnection) {
-        window._mockSseConnection.close();
-      }
-      
-      const eventSource = new EventSource('/api/mock-sync/stream');
-      window._mockSseConnection = eventSource;
-      
-      eventSource.onmessage = (event) => {
+      function connectSSE() {
+        if (window._mockSseConnection) {
+          window._mockSseConnection.close();
+        }
+        
+        const eventSource = new EventSource('/api/mock-sync/stream');
+        window._mockSseConnection = eventSource;
+        
+        eventSource.onopen = () => console.log('🟢 [SSE] Connected to mock-sync stream!');
+        
+        eventSource.onerror = (err) => {
+          console.error('🔴 [SSE] Connection lost. Reconnecting in 3s...', err);
+          eventSource.close();
+          setTimeout(connectSSE, 3000);
+        };
+        
+        eventSource.onmessage = (event) => {
           if (event.data) {
             try {
               const data = JSON.parse(event.data);
+              console.log('📡 [SSE] Received event:', data.type);
               if (data.type === 'SYNC_NOTIFICATIONS' && data.notification) {
                 // If it's for Sales, inject it into localStorage if we are Sales!
                 const activeSession = localStorage.getItem('mockSession');
@@ -116,12 +125,22 @@ export const useTaskNotificationStore = create((set) => ({
                 // Keep the browser's mock database perfectly in sync!
                 localStorage.setItem('mockDatabase_v4', JSON.stringify(data.database));
                 window.dispatchEvent(new Event('app:mock-db-change'));
+                
+                // Show temporary visual indicator that a sync happened
+                const toast = document.createElement('div');
+                toast.innerText = '🔄 Live Data Synced from other browser';
+                toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#10b981;color:white;padding:8px 16px;border-radius:20px;font-size:12px;z-index:9999;box-shadow:0 4px 6px rgba(0,0,0,0.1);transition:opacity 0.5s;';
+                document.body.appendChild(toast);
+                setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000);
               }
             } catch (err) {}
           }
         };
+      }
+      
+      connectSSE();
     } catch (e) {
-      console.warn('SSE EventSource failed', e);
+      console.log('Mock SSE sync disabled or failed', e);
     }
   },
 

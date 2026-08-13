@@ -1,8 +1,13 @@
 const db = require('../../config/db');
 const readPool = db.readPool || db;
 
-exports.getGlobalStats = async (tenantId, userId) => {
-  const activeLeadsRes = await readPool.query(`SELECT COUNT(*) FROM leads WHERE tenant_id=$1 AND (assignee_id=$2 OR assignee_id IS NULL) AND deleted_at IS NULL`, [tenantId, userId]);
+exports.getGlobalStats = async (tenantId, userId, userRole) => {
+  const isGlobal = userRole === 'superadmin' || userRole === 'admin' || (typeof userRole === 'object' && (userRole?.name?.toLowerCase() === 'superadmin' || userRole?.name?.toLowerCase() === 'super admin' || userRole?.name?.toLowerCase() === 'admin'));
+  
+  const assigneeFilter = isGlobal ? '' : `AND (assignee_id=$2 OR assignee_id IS NULL)`;
+  const params = isGlobal ? [tenantId] : [tenantId, userId];
+  
+  const activeLeadsRes = await readPool.query(`SELECT COUNT(*) FROM leads WHERE tenant_id=$1 ${assigneeFilter} AND deleted_at IS NULL`, params);
   const wonThisMonthRes = await readPool.query(`
     SELECT COUNT(*) as count, COALESCE(SUM(l.budget_max), 0) as won_value
     FROM leads l
@@ -21,14 +26,14 @@ exports.getGlobalStats = async (tenantId, userId) => {
       COUNT(*) FILTER (WHERE due_date::date = CURRENT_DATE) as due_today,
       COUNT(*) FILTER (WHERE due_date::date < CURRENT_DATE AND status!='done') as overdue
     FROM tasks
-    WHERE tenant_id=$1 AND (assignee_id=$2 OR assignee_id IS NULL) AND deleted_at IS NULL AND status!='done'
-  `, [tenantId, userId]);
+    WHERE tenant_id=$1 ${assigneeFilter} AND deleted_at IS NULL AND status!='done'
+  `, params);
   const prevWeekLeadsRes = await readPool.query(`
     SELECT COUNT(*) FROM leads
-    WHERE tenant_id=$1 AND (assignee_id=$2 OR assignee_id IS NULL) AND deleted_at IS NULL
+    WHERE tenant_id=$1 ${assigneeFilter} AND deleted_at IS NULL
     AND created_at >= NOW() - INTERVAL '14 days'
     AND created_at < NOW() - INTERVAL '7 days'
-  `, [tenantId, userId]);
+  `, params);
   const targetsRes = await readPool.query(`SELECT 0 as target_revenue, 0 as target_leads`);
   
   const revenueTrendRes = await readPool.query(`

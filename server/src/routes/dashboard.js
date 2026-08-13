@@ -14,9 +14,10 @@ router.use(authenticate);
 router.get('/stats', async (req, res) => {
   const tenantId = req.tenantId || (req.user && req.user.tenantId);
   const userId = req.user.id;
+  const userRole = req.user.role;
 
   try {
-    const data = await analyticsService.getGlobalStats(tenantId, userId);
+    const data = await analyticsService.getGlobalStats(tenantId, userId, userRole);
 
     return success(res, data);
   } catch (error) {

@@ -225,28 +225,27 @@ router.use('/:projectId/purchase-orders', verifyProjectBooked, purchaseOrdersRou
 router.use('/:projectId/purchase-requests', verifyProjectBooked, purchaseRequestsRoutes);
 router.use('/:projectId/material-deliveries', verifyProjectBooked, materialDeliveriesRoutes);
 router.use('/:projectId/vendor-payments', verifyProjectBooked, vendorPaymentsRoutes);
-router.use('/:projectId/material-substitutions', verifyProjectBooked, materialSubstitutionsRoutes);
-router.use('/:projectId/production-orders', verifyProjectBooked, productionOrdersRoutes);
-router.use('/:projectId/work-activities', verifyProjectBooked, workActivitiesRoutes);
-router.use('/:projectId/site-readiness', verifyProjectBooked, siteReadinessRoutes);
-router.use('/:projectId/task-dependencies', verifyProjectBooked, taskDependenciesRoutes);
-router.use('/:projectId/daily-reports', verifyProjectBooked, dailySiteReportsRoutes);
-router.use('/:projectId/room-progress', verifyProjectBooked, roomProgressRoutes);
-router.use('/:projectId/meeting-notes', verifyProjectBooked, meetingNotesRoutes);
-router.use('/:projectId/delay-notifications', verifyProjectBooked, delayNotificationsRoutes);
-router.use('/:projectId/drawing-register', verifyProjectBooked, drawingRegisterRoutes);
-router.use('/:projectId/punch-lists', verifyProjectBooked, punchListsRoutes);
-router.use('/:projectId/warranties', verifyProjectBooked, warrantiesRoutes);
-router.use('/:projectId/amcs', verifyProjectBooked, amcsRoutes);
-router.use('/:projectId/warranty-claims', verifyProjectBooked, warrantyClaimsRoutes);
-router.use('/:projectId/closure-checklist', verifyProjectBooked, projectClosuresRoutes);
-router.use('/:projectId/retrospective', verifyProjectBooked, projectRetrospectivesRoutes);
-router.use('/:projectId/baseline-assessment', verifyProjectBooked, baselineAssessmentRoutes);
-router.use('/:projectId/attendance', verifyProjectBooked, labourAttendanceRoutes);
-router.use('/:projectId/payment-escalations', verifyProjectBooked, paymentEscalationsRoutes);
-router.use('/:projectId/site-expenses', verifyProjectBooked, siteExpensesRoutes);
-router.use('/:projectId/material-usages', verifyProjectBooked, materialUsagesRoutes);
-
+// router.use('/:projectId/material-substitutions', verifyProjectBooked, materialSubstitutionsRoutes);
+// router.use('/:projectId/production-orders', verifyProjectBooked, productionOrdersRoutes);
+// router.use('/:projectId/work-activities', verifyProjectBooked, workActivitiesRoutes);
+// router.use('/:projectId/site-readiness', verifyProjectBooked, siteReadinessRoutes);
+// router.use('/:projectId/task-dependencies', verifyProjectBooked, taskDependenciesRoutes);
+// router.use('/:projectId/daily-reports', verifyProjectBooked, dailySiteReportsRoutes);
+// router.use('/:projectId/room-progress', verifyProjectBooked, roomProgressRoutes);
+// router.use('/:projectId/meeting-notes', verifyProjectBooked, meetingNotesRoutes);
+// router.use('/:projectId/delay-notifications', verifyProjectBooked, delayNotificationsRoutes);
+// router.use('/:projectId/drawing-register', verifyProjectBooked, drawingRegisterRoutes);
+// router.use('/:projectId/punch-lists', verifyProjectBooked, punchListsRoutes);
+// router.use('/:projectId/warranties', verifyProjectBooked, warrantiesRoutes);
+// router.use('/:projectId/amcs', verifyProjectBooked, amcsRoutes);
+// router.use('/:projectId/warranty-claims', verifyProjectBooked, warrantyClaimsRoutes);
+// router.use('/:projectId/closure-checklist', verifyProjectBooked, projectClosuresRoutes);
+// router.use('/:projectId/retrospective', verifyProjectBooked, projectRetrospectivesRoutes);
+// router.use('/:projectId/baseline-assessment', verifyProjectBooked, baselineAssessmentRoutes);
+// router.use('/:projectId/attendance', verifyProjectBooked, labourAttendanceRoutes);
+// router.use('/:projectId/payment-escalations', verifyProjectBooked, paymentEscalationsRoutes);
+// router.use('/:projectId/site-expenses', verifyProjectBooked, siteExpensesRoutes);
+// router.use('/:projectId/material-usages', verifyProjectBooked, materialUsagesRoutes);
 
 
 // Standard CRUD routes

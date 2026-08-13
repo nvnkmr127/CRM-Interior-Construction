@@ -1085,7 +1085,30 @@ export const setupMockInterceptor = (api) => {
           }
           // LEADS
           else if (url.includes('/leads')) {
-            if (url.includes('/timeline')) {
+            if (url.includes('/stats')) {
+              const session = JSON.parse(localStorage.getItem('mockSession') || '{}');
+              const currentUserId = session?.id || session?.user?.id;
+              const currentRole = session?.role || {};
+              
+              let leadsScope = (mockDatabase.leads || []).filter(l => !l.deleted_at);
+              if (currentRole.id === 'sales_rep') {
+                leadsScope = leadsScope.filter(l => l.assignee_id === currentUserId);
+              }
+              
+              const totalLeads = leadsScope.length;
+              const wonLeads = leadsScope.filter(l => l.status === 'converted' || l.status === 'won');
+              const totalWon = wonLeads.length;
+              const avgScore = totalLeads > 0 ? Math.round(leadsScope.reduce((sum, l) => sum + (l.score || 0), 0) / totalLeads) : 0;
+              const convPct = totalLeads > 0 ? Math.round((totalWon / totalLeads) * 100) : 0;
+              
+              responseData.data = {
+                total: totalLeads,
+                wonThisMonth: totalWon,
+                avgScore,
+                convPct
+              };
+              responseData.success = true;
+            } else if (url.includes('/timeline')) {
               const urlParts = url.split('?');
               const match = urlParts[0].match(/\/leads\/([a-zA-Z0-9-]+)\/timeline/);
               const leadId = match ? match[1] : null;

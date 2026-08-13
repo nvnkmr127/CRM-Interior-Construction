@@ -1,0 +1,7 @@
+2026-08-13T10:15:38.804Z - New SSE connection. Total clients: 1
+2026-08-13T10:15:40.863Z - SSE disconnected. Total clients: 0
+2026-08-13T10:17:24.847Z - New SSE connection. Total clients: 1
+2026-08-13T10:17:24.856Z - New SSE connection. Total clients: 2
+2026-08-13T10:18:58.751Z - New SSE connection. Total clients: 1
+2026-08-13T10:19:04.391Z - New SSE connection. Total clients: 1
+2026-08-13T10:45:01.056Z - New SSE connection. Total clients: 1

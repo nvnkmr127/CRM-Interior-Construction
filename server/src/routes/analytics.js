@@ -120,6 +120,12 @@ router.get('/leads/summary', async (req, res, next) => {
   try {
     const { from, to } = getDates(req);
     const tenantId = req.tenantId;
+    const userRole = req.user?.role;
+
+    const isGlobal = userRole === 'superadmin' || userRole === 'admin' || (typeof userRole === 'object' && (userRole?.name?.toLowerCase() === 'superadmin' || userRole?.name?.toLowerCase() === 'super admin' || userRole?.name?.toLowerCase() === 'admin'));
+    const assigneeFilter = isGlobal ? '' : `AND (l.assignee_id=$4 OR l.assignee_id IS NULL)`;
+    const params = [tenantId, from.toISOString(), to.toISOString()];
+    if (!isGlobal) params.push(req.user.id);
 
     const query = `
       SELECT 
@@ -134,9 +140,9 @@ router.get('/leads/summary', async (req, res, next) => {
         AVG(EXTRACT(EPOCH FROM (l.updated_at - l.created_at))/86400) FILTER (WHERE ls.is_won = true) as avg_time_to_close_days
       FROM leads l
       LEFT JOIN lead_stages ls ON l.stage_id = ls.id
-      WHERE l.tenant_id = $1 AND l.created_at BETWEEN $2 AND $3
+      WHERE l.tenant_id = $1 AND l.deleted_at IS NULL AND l.created_at BETWEEN $2 AND $3 ${assigneeFilter}
     `;
-    const result = await pool.query(query, [tenantId, from.toISOString(), to.toISOString()]);
+    const result = await pool.query(query, params);
     const row = result.rows[0];
 
     const total = parseInt(row.total_leads, 10) || 0;
