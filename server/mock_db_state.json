@@ -1,0 +1,6000 @@
+{
+  "type": "SYNC_DATABASE",
+  "database": {
+    "leads": [
+      {
+        "id": "mock-lead-1",
+        "created_at": "2026-06-29T06:55:19.432Z",
+        "name": "Rohan Sharma",
+        "email": "rohan.sharma@example.com",
+        "phone": "+91 9876543210",
+        "status": "qualified",
+        "probability": 85,
+        "revenue_potential": 2500000,
+        "budget_max": 2500000,
+        "budget": 2000000,
+        "decision_complexity": "Medium",
+        "urgency": "High",
+        "latitude": 12.9216,
+        "longitude": 77.5446,
+        "stage_id": "stage-1",
+        "stage_name": "Lead Capture",
+        "stage_color": "#6B6B6B",
+        "score": 82,
+        "buying_intent": "Warm",
+        "ai_recommendation": "Schedule discovery call",
+        "assignee_id": "mock-user-2",
+        "assignee_name": "Amit S.",
+        "source": "Website",
+        "ai_score_breakdown": {
+          "Buying Intent": 88,
+          "Budget Confidence": 72
+        }
+      },
+      {
+        "id": "mock-lead-2",
+        "created_at": "2026-07-02T06:55:19.432Z",
+        "name": "Anita Desai",
+        "email": "anita.d@example.com",
+        "phone": "+91 9123456789",
+        "status": "new",
+        "probability": 25,
+        "revenue_potential": 1200000,
+        "budget_max": 1200000,
+        "budget": 1000000,
+        "decision_complexity": "Low",
+        "urgency": "Medium",
+        "latitude": 12.935,
+        "longitude": 77.53,
+        "stage_id": "stage-4",
+        "stage_name": "First Contact",
+        "stage_color": "#C4956A",
+        "score": 45,
+        "buying_intent": "Cold",
+        "ai_recommendation": "Send intro brochure",
+        "assignee_id": "mock-user-2",
+        "assignee_name": "Amit S.",
+        "source": "Facebook",
+        "ai_score_breakdown": {
+          "Buying Intent": 45,
+          "Budget Confidence": 60
+        }
+      },
+      {
+        "id": "mock-lead-3",
+        "created_at": "2026-06-24T06:55:19.432Z",
+        "name": "Kalyan Kumar",
+        "email": "kalyan.kumar@example.com",
+        "phone": "+91 9888877777",
+        "status": "qualified",
+        "probability": 90,
+        "revenue_potential": 3500000,
+        "budget_max": 3500000,
+        "budget": 3000000,
+        "decision_complexity": "Medium",
+        "urgency": "High",
+        "latitude": 12.925,
+        "longitude": 77.541,
+        "stage_id": "stage-8",
+        "stage_name": "Site Visit Conducted",
+        "stage_color": "#0000A0",
+        "score": 92,
+        "buying_intent": "Hot",
+        "ai_recommendation": "Prepare quotation draft",
+        "assignee_id": "mock-user-2",
+        "assignee_name": "Amit S.",
+        "source": "Referral",
+        "ai_score_breakdown": {
+          "Buying Intent": 95,
+          "Budget Confidence": 90
+        }
+      },
+      {
+        "id": "mock-lead-4",
+        "created_at": "2026-07-01T06:55:19.432Z",
+        "name": "Meera Nair",
+        "email": "meera.nair@example.com",
+        "phone": "+91 9900112233",
+        "status": "new",
+        "probability": 60,
+        "revenue_potential": 1800000,
+        "budget_max": 1800000,
+        "budget": 1500000,
+        "decision_complexity": "Low",
+        "urgency": "Medium",
+        "latitude": 12.912,
+        "longitude": 77.562,
+        "stage_id": "stage-2",
+        "stage_name": "AI Qualification",
+        "stage_color": "#1A3A5C",
+        "score": 78,
+        "buying_intent": "Warm",
+        "ai_recommendation": "Verify carpet area details",
+        "assignee_id": "mock-user-1",
+        "assignee_name": "Rahul K.",
+        "source": "IndiaMART",
+        "ai_score_breakdown": {
+          "Buying Intent": 80,
+          "Budget Confidence": 76
+        }
+      },
+      {
+        "id": "mock-lead-5",
+        "created_at": "2026-06-27T06:55:19.432Z",
+        "name": "Vikram Malhotra",
+        "email": "vikram.m@example.com",
+        "phone": "+91 9811223344",
+        "status": "qualified",
+        "probability": 70,
+        "revenue_potential": 5000000,
+        "budget_max": 5000000,
+        "budget": 4500000,
+        "decision_complexity": "High",
+        "urgency": "High",
+        "latitude": 12.952,
+        "longitude": 77.584,
+        "stage_id": "stage-5",
+        "stage_name": "Discovery Call",
+        "stage_color": "#8B5E0A",
+        "score": 64,
+        "buying_intent": "Warm",
+        "ai_recommendation": "Discuss design style preferences",
+        "assignee_id": "mock-user-1",
+        "assignee_name": "Rahul K.",
+        "source": "Direct",
+        "ai_score_breakdown": {
+          "Buying Intent": 60,
+          "Budget Confidence": 68
+        }
+      },
+      {
+        "id": "mock-lead-6",
+        "created_at": "2026-06-30T06:55:19.432Z",
+        "name": "Siddharth Roy",
+        "email": "siddharth@example.com",
+        "phone": "+91 9777666555",
+        "status": "converted",
+        "probability": 80,
+        "revenue_potential": 4200000,
+        "budget_max": 4200000,
+        "budget": 4000000,
+        "decision_complexity": "Medium",
+        "urgency": "High",
+        "latitude": 12.905,
+        "longitude": 77.512,
+        "stage_id": "stage-7",
+        "stage_name": "Site Visit Scheduling",
+        "stage_color": "#1589FF",
+        "score": 88,
+        "buying_intent": "Hot",
+        "ai_recommendation": "Confirm site visit date and time",
+        "assignee_id": "mock-user-3",
+        "assignee_name": "Priya M.",
+        "source": "Website",
+        "ai_score_breakdown": {
+          "Buying Intent": 90,
+          "Budget Confidence": 86
+        }
+      },
+      {
+        "id": "mock-lead-7",
+        "created_at": "2026-06-19T06:55:19.432Z",
+        "name": "Ananya Sen",
+        "email": "ananya.sen@example.com",
+        "phone": "+91 9666555444",
+        "status": "converted",
+        "probability": 95,
+        "revenue_potential": 3000000,
+        "budget_max": 3000000,
+        "budget": 3000000,
+        "decision_complexity": "Medium",
+        "urgency": "Medium",
+        "latitude": 12.964,
+        "longitude": 77.555,
+        "stage_id": "stage-11",
+        "stage_name": "Design Presentation",
+        "stage_color": "#FF00FF",
+        "score": 95,
+        "buying_intent": "Hot",
+        "ai_recommendation": "Present living room 3D render",
+        "assignee_id": "mock-user-3",
+        "assignee_name": "Priya M.",
+        "source": "Referral",
+        "ai_score_breakdown": {
+          "Buying Intent": 98,
+          "Budget Confidence": 92
+        }
+      },
+      {
+        "id": "mock-lead-8",
+        "created_at": "2026-06-22T06:55:19.432Z",
+        "name": "Rakesh Patel",
+        "email": "rakesh.patel@example.com",
+        "phone": "+91 9555444333",
+        "status": "qualified",
+        "probability": 75,
+        "revenue_potential": 2200000,
+        "budget_max": 2200000,
+        "budget": 2000000,
+        "decision_complexity": "Low",
+        "urgency": "Low",
+        "latitude": 12.932,
+        "longitude": 77.575,
+        "stage_id": "stage-12",
+        "stage_name": "Quotation",
+        "stage_color": "#43BFC7",
+        "score": 81,
+        "buying_intent": "Warm",
+        "ai_recommendation": "Follow up on initial quotation draft",
+        "assignee_id": "mock-user-2",
+        "assignee_name": "Amit S.",
+        "source": "Direct",
+        "ai_score_breakdown": {
+          "Buying Intent": 80,
+          "Budget Confidence": 82
+        }
+      },
+      {
+        "id": "mock-lead-9",
+        "created_at": "2026-06-14T06:55:19.432Z",
+        "name": "Pooja Hegde",
+        "email": "pooja.h@example.com",
+        "phone": "+91 9444333222",
+        "status": "qualified",
+        "probability": 90,
+        "revenue_potential": 6000000,
+        "budget_max": 6000000,
+        "budget": 5500000,
+        "decision_complexity": "High",
+        "urgency": "High",
+        "latitude": 12.978,
+        "longitude": 77.592,
+        "stage_id": "stage-13",
+        "stage_name": "Negotiation",
+        "stage_color": "#FF7F50",
+        "score": 90,
+        "buying_intent": "Hot",
+        "ai_recommendation": "Offer 5% discount on woodwork package",
+        "assignee_id": "mock-user-2",
+        "assignee_name": "Amit S.",
+        "source": "Website",
+        "ai_score_breakdown": {
+          "Buying Intent": 92,
+          "Budget Confidence": 88
+        }
+      },
+      {
+        "name": "mahesh babu",
+        "phone": "7879892103",
+        "email": "mb@gmail.com",
+        "source": "Facebook",
+        "stageId": "stage-1",
+        "assigneeId": "mock-user-11",
+        "notes": "ddfdf",
+        "custom_fields": {},
+        "builder_name": "senthil",
+        "possession_date": "",
+        "house_status": "Under Construction",
+        "loan_approved": true,
+        "interior_style": "modern",
+        "material_preference": "wood",
+        "preferred_communication": "call",
+        "preferred_language": "english",
+        "referral_source": "",
+        "dnc_flag": false,
+        "consent_whatsapp": false,
+        "competitor_mentioned": "",
+        "id": "mock-1784542061319",
+        "created_at": "2026-07-20T10:07:41.319Z",
+        "status": "new",
+        "probability": 10,
+        "latitude": 12.890793873591461,
+        "longitude": 77.50671050006585
+      },
+      {
+        "name": "harsha",
+        "phone": "8765412390",
+        "email": "hars@gmail.com",
+        "source": "Website",
+        "stageId": "stage-1",
+        "assigneeId": "mock-user-18",
+        "notes": "nothing",
+        "custom_fields": {},
+        "builder_name": "kal",
+        "possession_date": "2026-10-12",
+        "house_status": "Under Construction",
+        "loan_approved": false,
+        "interior_style": "minimal",
+        "material_preference": "wood",
+        "preferred_communication": "call",
+        "preferred_language": "english",
+        "referral_source": "",
+        "dnc_flag": false,
+        "consent_whatsapp": false,
+        "competitor_mentioned": "homelane",
+        "id": "mock-1784543595362",
+        "created_at": "2026-07-20T10:33:15.362Z",
+        "status": "new",
+        "probability": 10,
+        "latitude": 12.911280775100622,
+        "longitude": 77.49839232549947
+      },
+      {
+        "name": "akash",
+        "phone": "9876506789",
+        "email": "wss@gmail.com",
+        "source": "Facebook",
+        "stageId": "stage-1",
+        "assigneeId": "mock-user-15",
+        "notes": "sds",
+        "custom_fields": {},
+        "builder_name": "df",
+        "possession_date": "2026-10-10",
+        "house_status": "Under Construction",
+        "loan_approved": false,
+        "interior_style": "modern",
+        "material_preference": "wood",
+        "preferred_communication": "call",
+        "preferred_language": "arabic",
+        "referral_source": "",
+        "dnc_flag": false,
+        "consent_whatsapp": false,
+        "competitor_mentioned": "livspace",
+        "id": "mock-1784546591904",
+        "created_at": "2026-07-20T11:23:11.904Z",
+        "status": "new",
+        "probability": 10,
+        "latitude": 12.956770439441486,
+        "longitude": 77.52689488305758,
+        "segment": "",
+        "assignee_id": "mock-user-10"
+      },
+      {
+        "name": "Mahesh Babu",
+        "phone": "7854126390",
+        "email": "mb@gmail.com",
+        "source": "Facebook",
+        "stageId": "stage-1",
+        "notes": "",
+        "custom_fields": {},
+        "builder_name": "",
+        "possession_date": "",
+        "house_status": "",
+        "loan_approved": false,
+        "interior_style": "",
+        "material_preference": "",
+        "preferred_communication": "",
+        "preferred_language": "",
+        "referral_source": "",
+        "dnc_flag": false,
+        "consent_whatsapp": false,
+        "id": "mock-1785412058900",
+        "created_at": "2026-07-30T11:47:38.900Z",
+        "status": "new",
+        "probability": 10,
+        "latitude": 12.882149286309541,
+        "longitude": 77.56417799269998
+      },
+      {
+        "name": "madhu bhai ",
+        "phone": "9876506789",
+        "email": "md@gmai.com",
+        "source": "IndiaMART",
+        "stageId": "stage-1",
+        "notes": "",
+        "custom_fields": {},
+        "builder_name": "",
+        "possession_date": "",
+        "house_status": "",
+        "loan_approved": false,
+        "interior_style": "",
+        "material_preference": "",
+        "preferred_communication": "",
+        "preferred_language": "",
+        "referral_source": "",
+        "dnc_flag": false,
+        "consent_whatsapp": false,
+        "id": "mock-1785475119745",
+        "created_at": "2026-07-31T05:18:39.745Z",
+        "status": "new",
+        "probability": 10,
+        "latitude": 12.959003642792169,
+        "longitude": 77.49001503014092
+      },
+      {
+        "name": "Test",
+        "phone": "9876543210",
+        "email": "test@gmail.com",
+        "source": "Facebook",
+        "stageId": "stage-1",
+        "assigneeId": "mock-user-7",
+        "notes": "NA",
+        "custom_fields": {},
+        "builder_name": "pk",
+        "possession_date": "2026-03-10",
+        "house_status": "Ready to Move",
+        "loan_approved": false,
+        "interior_style": "Modern",
+        "material_preference": "Modular",
+        "preferred_communication": "Watsapp",
+        "preferred_language": "Telugu,English",
+        "referral_source": "",
+        "dnc_flag": false,
+        "consent_whatsapp": false,
+        "id": "mock-1785948676789",
+        "created_at": "2026-08-05T16:51:16.789Z",
+        "status": "converted",
+        "probability": 10,
+        "latitude": 12.928785297704314,
+        "longitude": 77.5010093629449,
+        "property_type": "3bhk",
+        "scope": "fullhouse",
+        "locality": "ganesh nagar, nizamabad",
+        "budget_max": "1200000",
+        "carpet_area_sqft": "1155",
+        "segment": "residential",
+        "property_name": "myhome fields",
+        "assignee_id": "mock-user-14",
+        "next_meeting_id": null,
+        "next_meeting_schedule": null,
+        "next_meeting_title": null,
+        "next_meeting_type": null,
+        "next_meeting_link": null,
+        "next_meeting_host": null,
+        "next_meeting_duration": null,
+        "next_meeting_notes": null,
+        "stage_id": "4"
+      },
+      {
+        "name": "kamal",
+        "phone": "9876506789",
+        "email": "ka@gmail.com",
+        "source": "Direct",
+        "stageId": "1",
+        "assigneeId": "mock-user-1",
+        "notes": "asap",
+        "custom_fields": {},
+        "builder_name": "pavann",
+        "possession_date": "2026-10-12",
+        "house_status": "Ready to Move",
+        "loan_approved": false,
+        "interior_style": "modern",
+        "material_preference": "wood",
+        "preferred_communication": "call",
+        "preferred_language": "english",
+        "referral_source": "",
+        "dnc_flag": false,
+        "consent_whatsapp": false,
+        "id": "mock-1786604727893",
+        "created_at": "2026-08-13T07:05:27.893Z",
+        "status": "new",
+        "probability": 10,
+        "latitude": 12.929924076358882,
+        "longitude": 77.5649944773052
+      },
+      {
+        "name": "kajal",
+        "phone": "6868686868",
+        "email": "kl@gmail.com",
+        "source": "IndiaMART",
+        "stageId": "1",
+        "assigneeId": "mock-user-1",
+        "notes": "",
+        "custom_fields": {},
+        "builder_name": "",
+        "possession_date": "",
+        "house_status": "",
+        "loan_approved": false,
+        "interior_style": "",
+        "material_preference": "",
+        "preferred_communication": "",
+        "preferred_language": "",
+        "referral_source": "",
+        "dnc_flag": false,
+        "consent_whatsapp": false,
+        "id": "mock-1786612988137",
+        "created_at": "2026-08-13T09:23:08.137Z",
+        "status": "new",
+        "probability": 10,
+        "assignee_id": "mock-user-1",
+        "stage_id": "1",
+        "latitude": 12.969444588771406,
+        "longitude": 77.55107105463652
+      },
+      {
+        "name": "samantha",
+        "phone": "6868686868",
+        "email": "sama@gmail.com",
+        "source": "Direct",
+        "stageId": "1",
+        "assigneeId": "mock-user-1",
+        "notes": "",
+        "custom_fields": {},
+        "builder_name": "",
+        "possession_date": "",
+        "house_status": "",
+        "loan_approved": false,
+        "interior_style": "",
+        "material_preference": "",
+        "preferred_communication": "",
+        "preferred_language": "",
+        "referral_source": "",
+        "dnc_flag": false,
+        "consent_whatsapp": false,
+        "id": "mock-1786613541272",
+        "created_at": "2026-08-13T09:32:21.272Z",
+        "status": "new",
+        "probability": 10,
+        "assignee_id": "mock-user-1",
+        "stage_id": "1",
+        "latitude": 12.910227541409693,
+        "longitude": 77.57925014317068
+      },
+      {
+        "name": "ram",
+        "phone": "6868686868",
+        "email": "ram@gmail.com",
+        "source": "Referral",
+        "stageId": "1",
+        "assigneeId": "mock-user-1",
+        "notes": "",
+        "custom_fields": {},
+        "builder_name": "",
+        "possession_date": "",
+        "house_status": "",
+        "loan_approved": false,
+        "interior_style": "",
+        "material_preference": "",
+        "preferred_communication": "",
+        "preferred_language": "",
+        "referral_source": "",
+        "dnc_flag": false,
+        "consent_whatsapp": false,
+        "id": "mock-1786613834052",
+        "created_at": "2026-08-13T09:37:14.052Z",
+        "status": "new",
+        "probability": 10,
+        "assignee_id": "mock-user-1",
+        "stage_id": "1",
+        "latitude": 12.939154494245875,
+        "longitude": 77.5351279693475
+      },
+      {
+        "name": "surya",
+        "phone": "9216547893",
+        "email": "su@gmail.com",
+        "source": "Website",
+        "stageId": "1",
+        "assigneeId": "mock-user-1",
+        "notes": "",
+        "custom_fields": {},
+        "builder_name": "",
+        "possession_date": "",
+        "house_status": "",
+        "loan_approved": false,
+        "interior_style": "",
+        "material_preference": "",
+        "preferred_communication": "",
+        "preferred_language": "",
+        "referral_source": "",
+        "dnc_flag": false,
+        "consent_whatsapp": false,
+        "id": "mock-1786614100338",
+        "created_at": "2026-08-13T09:41:40.338Z",
+        "status": "converted",
+        "probability": 10,
+        "assignee_id": "mock-user-1",
+        "stage_id": "1",
+        "latitude": 12.957496536322886,
+        "longitude": 77.56661684884992
+      },
+      {
+        "name": "raghu",
+        "phone": "6868686868",
+        "email": "",
+        "source": "IndiaMART",
+        "stageId": "1",
+        "assigneeId": "mock-user-1",
+        "notes": "",
+        "custom_fields": {},
+        "builder_name": "",
+        "possession_date": "",
+        "house_status": "",
+        "loan_approved": false,
+        "interior_style": "",
+        "material_preference": "",
+        "preferred_communication": "",
+        "preferred_language": "",
+        "referral_source": "",
+        "dnc_flag": false,
+        "consent_whatsapp": false,
+        "id": "mock-1786615698091",
+        "created_at": "2026-08-13T10:08:18.092Z",
+        "status": "converted",
+        "probability": 10,
+        "assignee_id": "mock-user-1",
+        "stage_id": "1",
+        "latitude": 12.898818194806877,
+        "longitude": 77.51658627824453
+      }
+    ],
+    "projects": [
+      {
+        "id": "mock-proj-1",
+        "name": "Luxury Villa Interior - Phase 6",
+        "client_name": "Mr. Sharma",
+        "pm_id": "mock-user-11",
+        "pm_name": "Manoj G.",
+        "sales_rep_id": "mock-user-1",
+        "sales_rep_name": "Rahul K.",
+        "designer_id": "mock-user-3",
+        "designer_name": "Priya M.",
+        "lead_designer_id": "mock-user-4",
+        "lead_designer_name": "Sanjay D.",
+        "junior_designer_id": "mock-user-5",
+        "junior_designer_name": "Neha V.",
+        "site_engineer_id": "mock-user-6",
+        "site_engineer_name": "Vikram Singh",
+        "qc_engineer_id": "mock-user-7",
+        "qc_engineer_name": "Arjun P.",
+        "site_supervisor_id": "mock-user-8",
+        "site_supervisor_name": "Ramesh K.",
+        "crm_executive_id": "mock-user-9",
+        "crm_executive_name": "Anita B.",
+        "procurement_officer_id": "mock-user-10",
+        "procurement_officer_name": "Karan T.",
+        "type": "Residential",
+        "status": "active",
+        "progress": 65,
+        "completedTasks": 12,
+        "totalTasks": 20,
+        "phase": "Execution",
+        "value": 4500000,
+        "contract_value": 4500000,
+        "stats": {
+          "netContractValue": 4500000,
+          "netBilled": 3000000,
+          "netCollections": 2500000,
+          "outstandingBalance": 500000,
+          "overduePayments": 100000,
+          "pendingInvoices": 2,
+          "totalActualCost": 1800000,
+          "grossProfit": 2700000,
+          "grossMarginPct": 60
+        },
+        "target_date": "2026-07-19T06:55:19.432Z",
+        "overdue": false,
+        "created_at": "2026-05-25T06:55:19.432Z",
+        "is_scope_locked": true,
+        "vendors": [
+          {
+            "id": "vendor-1",
+            "vendor_name": "PowerFix Solutions",
+            "scope_of_work": "Electrical Work",
+            "agreed_rate": 150000,
+            "status": "approved"
+          },
+          {
+            "id": "vendor-2",
+            "vendor_name": "WoodCraft Carpentry",
+            "scope_of_work": "Woodwork & Cabinetry",
+            "agreed_rate": 850000,
+            "status": "approved"
+          }
+        ],
+        "site_team": [
+          {
+            "id": "st-1",
+            "vendor_id": "vendor-1",
+            "vendor_name": "PowerFix Solutions",
+            "role": "electrician",
+            "name": "John Doe",
+            "phone": "9876543210",
+            "email": "john@powerfix.com",
+            "status": "active"
+          },
+          {
+            "id": "st-2",
+            "vendor_id": "vendor-2",
+            "vendor_name": "WoodCraft Carpentry",
+            "role": "carpenter",
+            "name": "Bob Smith",
+            "phone": "9876543211",
+            "email": "bob@woodcraft.com",
+            "status": "active"
+          }
+        ],
+        "client_phone": "9854671023",
+        "client_email": null,
+        "spouse_name": null,
+        "spouse_phone": null,
+        "spouse_email": null,
+        "number_of_family_members": null,
+        "lifestyle_preferences": null,
+        "preferred_communication_channel": null,
+        "agreement_signed_by": null,
+        "agreement_signed_at": null,
+        "agreement_signature_method": null
+      },
+      {
+        "id": "mock-proj-1784549386059",
+        "name": "Ananya Sen's Project",
+        "client_name": "Ananya Sen",
+        "status": "pending_payment",
+        "booking_amount": 300000,
+        "payment_terms": "10_40_40_10",
+        "progress": 0,
+        "created_at": "2026-07-20T12:09:46.059Z",
+        "value": 3000000,
+        "target_date": "2026-10-18",
+        "pm_id": "u1",
+        "agreement_signed_by": "Ananya Sen",
+        "agreement_signed_at": "2026-07-20",
+        "agreement_signature_method": "digital",
+        "designer_ids": [
+          "mock-user-3"
+        ],
+        "lead_designer_ids": [
+          "mock-user-4"
+        ],
+        "junior_designer_ids": [
+          "mock-user-5"
+        ],
+        "site_engineer_ids": [
+          "mock-user-6"
+        ],
+        "qc_engineer_ids": [
+          "mock-user-7"
+        ],
+        "site_supervisor_ids": null,
+        "crm_executive_ids": null,
+        "procurement_officer_ids": null
+      },
+      {
+        "id": "mock-proj-1785998742831",
+        "name": "Test's Project",
+        "client_name": "Test",
+        "status": "active",
+        "booking_amount": 120000,
+        "payment_terms": "10_40_40_10",
+        "progress": 0,
+        "created_at": "2026-08-06T06:45:42.831Z",
+        "value": "1200000",
+        "target_date": "2026-11-04",
+        "pm_id": "mock-user-11",
+        "agreement_signed_by": "Test",
+        "agreement_signed_at": "2026-08-06",
+        "agreement_signature_method": "digital",
+        "type": "commercial",
+        "client_phone": "8974563211",
+        "client_email": null,
+        "site_address": "",
+        "designer_id": "mock-user-3",
+        "pm_hours_allocated": 10,
+        "designer_hours_allocated": 20,
+        "contract_value": 1200000,
+        "start_date": null,
+        "template_id": null,
+        "flat_number": null,
+        "floor": null,
+        "building_name": null,
+        "street": null,
+        "city": null,
+        "pincode": null,
+        "landmark": null,
+        "latitude": null,
+        "longitude": null,
+        "builder_name": null,
+        "society_name": null,
+        "rera_id": null,
+        "noc_status": "pending",
+        "occupancy_certificate_status": "pending",
+        "property_handover_date": null,
+        "contacts": [],
+        "carpet_area": null,
+        "built_up_area": null,
+        "number_of_rooms": null,
+        "project_category": null,
+        "project_sub_category": null,
+        "property_type": null,
+        "property_age": null,
+        "renovation_scope": null,
+        "segment": null,
+        "allowed_design_revisions": 3,
+        "current_design_revisions": 0,
+        "stage_revision_limits": {},
+        "enforce_dependencies": true,
+        "measurements": [],
+        "vendors": [],
+        "consultants": [],
+        "site_team": [],
+        "spouse_name": null,
+        "spouse_phone": null,
+        "spouse_email": null,
+        "number_of_family_members": null,
+        "lifestyle_preferences": null,
+        "preferred_communication_channel": "WhatsApp",
+        "lift_availability": "none",
+        "lift_dimensions": null,
+        "staircase_access": null,
+        "working_hour_window": null,
+        "society_contact": null,
+        "parking_permission": "allowed",
+        "unloading_area": null,
+        "noc_requirements": null,
+        "key_holder_name": null,
+        "key_holder_phone": null,
+        "spare_key_location": null,
+        "gate_pass_number": null,
+        "access_card_holder": null,
+        "access_time_restrictions": null,
+        "lead_designer_id": null,
+        "junior_designer_id": null,
+        "site_engineer_id": null,
+        "qc_engineer_id": null,
+        "site_supervisor_id": null,
+        "crm_executive_id": null,
+        "procurement_officer_id": null,
+        "pm_name": "Manoj G."
+      },
+      {
+        "id": "mock-proj-1786102205835",
+        "name": "Siddharth Roy's Project",
+        "client_name": "Siddharth Roy",
+        "status": "pending_payment",
+        "booking_amount": 420000,
+        "payment_terms": "10_40_40_10",
+        "progress": 0,
+        "created_at": "2026-08-07T11:30:05.835Z",
+        "value": 4200000,
+        "target_date": "2026-11-05",
+        "pm_id": "u1",
+        "agreement_signed_by": "Siddharth Roy",
+        "agreement_signed_at": "2026-08-07",
+        "agreement_signature_method": "digital",
+        "type": "commercial",
+        "client_phone": "9874563201",
+        "client_email": null,
+        "site_address": "",
+        "designer_id": null,
+        "pm_hours_allocated": 10,
+        "designer_hours_allocated": null,
+        "contract_value": null,
+        "start_date": null,
+        "template_id": null,
+        "flat_number": null,
+        "floor": null,
+        "building_name": null,
+        "street": null,
+        "city": null,
+        "pincode": null,
+        "landmark": null,
+        "latitude": null,
+        "longitude": null,
+        "builder_name": null,
+        "society_name": null,
+        "rera_id": null,
+        "noc_status": "pending",
+        "occupancy_certificate_status": "pending",
+        "property_handover_date": null,
+        "contacts": [],
+        "carpet_area": null,
+        "built_up_area": null,
+        "number_of_rooms": null,
+        "project_category": null,
+        "project_sub_category": null,
+        "property_type": null,
+        "property_age": null,
+        "renovation_scope": null,
+        "segment": null,
+        "allowed_design_revisions": 3,
+        "current_design_revisions": 0,
+        "stage_revision_limits": {},
+        "enforce_dependencies": true,
+        "measurements": [],
+        "vendors": [],
+        "consultants": [],
+        "site_team": [],
+        "spouse_name": null,
+        "spouse_phone": null,
+        "spouse_email": null,
+        "number_of_family_members": null,
+        "lifestyle_preferences": null,
+        "preferred_communication_channel": "WhatsApp",
+        "lift_availability": "none",
+        "lift_dimensions": null,
+        "staircase_access": null,
+        "working_hour_window": null,
+        "society_contact": null,
+        "parking_permission": "allowed",
+        "unloading_area": null,
+        "noc_requirements": null,
+        "key_holder_name": null,
+        "key_holder_phone": null,
+        "spare_key_location": null,
+        "gate_pass_number": null,
+        "access_card_holder": null,
+        "access_time_restrictions": null,
+        "lead_designer_id": null,
+        "junior_designer_id": null,
+        "site_engineer_id": null,
+        "qc_engineer_id": null,
+        "site_supervisor_id": null,
+        "crm_executive_id": null,
+        "procurement_officer_id": null,
+        "pm_name": null
+      },
+      {
+        "id": "mock-proj-1786621628167",
+        "name": "raghu's Project",
+        "client_name": "raghu",
+        "status": "pending_payment",
+        "booking_amount": 150000,
+        "payment_terms": "10_40_40_10",
+        "progress": 0,
+        "created_at": "2026-08-13T11:47:08.167Z",
+        "value": "1500000",
+        "target_date": "2026-11-11",
+        "pm_id": "u1",
+        "agreement_signed_by": "raghu",
+        "agreement_signed_at": "2026-08-13",
+        "agreement_signature_method": "digital"
+      },
+      {
+        "id": "mock-proj-1786622261541",
+        "name": "surya's Project",
+        "client_name": "surya",
+        "status": "pending_payment",
+        "booking_amount": 150000,
+        "payment_terms": "10_40_40_10",
+        "progress": 0,
+        "created_at": "2026-08-13T11:57:41.541Z",
+        "value": "1500000",
+        "target_date": "2026-11-11",
+        "pm_id": "u1",
+        "agreement_signed_by": "surya",
+        "agreement_signed_at": "2026-08-13",
+        "agreement_signature_method": "digital"
+      },
+      {
+        "id": "mock-proj-1786622564570",
+        "name": "raghu's Project",
+        "client_name": "raghu",
+        "status": "active",
+        "booking_amount": 150000,
+        "payment_terms": "10_40_40_10",
+        "progress": 0,
+        "created_at": "2026-08-13T12:02:44.570Z",
+        "created_by": "mock-user-1",
+        "sales_rep_id": "mock-user-1",
+        "sales_rep_name": "Rahul K.",
+        "value": "1500000",
+        "target_date": "2026-11-11",
+        "pm_id": "u1",
+        "agreement_signed_by": "raghu",
+        "agreement_signed_at": "2026-08-13",
+        "agreement_signature_method": "digital"
+      }
+    ],
+    "phases": [
+      {
+        "id": "mock-phase-1",
+        "project_id": "mock-proj-1",
+        "name": "Design & Concept",
+        "status": "completed",
+        "is_execution": false,
+        "sort_order": 1
+      },
+      {
+        "id": "mock-phase-2",
+        "project_id": "mock-proj-1",
+        "name": "Procurement & Execution",
+        "status": "in_progress",
+        "is_execution": true,
+        "sort_order": 2
+      },
+      {
+        "id": "mock-phase-3",
+        "project_id": "mock-proj-2",
+        "name": "Design & Concept",
+        "status": "in_progress",
+        "is_execution": false,
+        "sort_order": 1
+      },
+      {
+        "id": "mock-phase-4",
+        "project_id": "mock-proj-2",
+        "name": "Procurement & Execution",
+        "status": "pending",
+        "is_execution": true,
+        "sort_order": 2
+      }
+    ],
+    "milestones": [
+      {
+        "id": "mock-m-1",
+        "phase_id": "mock-phase-1",
+        "status": "completed",
+        "name": "Concept Drawings Approved"
+      },
+      {
+        "id": "mock-m-2",
+        "phase_id": "mock-phase-2",
+        "status": "pending",
+        "name": "Procurement List Approved"
+      },
+      {
+        "id": "mock-m-3",
+        "phase_id": "mock-phase-3",
+        "status": "completed",
+        "name": "Client Feedback Incorporated"
+      },
+      {
+        "id": "mock-m-4",
+        "phase_id": "mock-phase-4",
+        "status": "pending",
+        "name": "Site Handover"
+      }
+    ],
+    "documents": [
+      {
+        "id": "mock-doc-1",
+        "project_id": "mock-proj-1",
+        "doc_type": "contract",
+        "status": "approved",
+        "name": "Signed Client Contract"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "mock-task-1",
+        "project_id": "mock-proj-1",
+        "title": "Procure Italian Marble",
+        "status": "done",
+        "assignee": "Rahul K.",
+        "due_date": "2026-07-06T06:55:19.432Z",
+        "priority": "high"
+      },
+      {
+        "id": "mock-task-2",
+        "project_id": "mock-proj-1",
+        "title": "Electrical Wiring Approval",
+        "status": "done",
+        "assignee": "Amit S.",
+        "due_date": "2026-06-29T06:55:19.432Z",
+        "priority": "medium"
+      },
+      {
+        "id": "mock-task-1784028670599",
+        "lead_id": null,
+        "project_id": null,
+        "title": "Update Electrical Layout",
+        "start_date": null,
+        "due_date": null,
+        "assigned_to": null,
+        "assignee_name": null,
+        "status": "soft_deleted",
+        "priority": "high",
+        "description": "FWD: WhatsApp Conversation\nClient: I need the electrical layout updated by Friday.\nManager: Ok, I will assign it as a high priority task.",
+        "checklist": [],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0
+      },
+      {
+        "id": "mock-task-1784193919199",
+        "lead_id": null,
+        "project_id": "mock-proj-1",
+        "title": "review architect drawing",
+        "start_date": "2026-07-29T00:00:00.000Z",
+        "due_date": "2026-07-29T00:00:00.000Z",
+        "assigned_to": null,
+        "assignee_name": null,
+        "status": "done",
+        "priority": "urgent",
+        "description": "asap",
+        "checklist": [],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0
+      },
+      {
+        "id": "mock-task-1784610805450",
+        "lead_id": null,
+        "project_id": null,
+        "title": "hjhj",
+        "start_date": null,
+        "due_date": null,
+        "assigned_to": null,
+        "assignee_name": null,
+        "status": "done",
+        "priority": "medium",
+        "description": "",
+        "checklist": [],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0,
+        "updateMode": "single"
+      },
+      {
+        "id": "mock-task-1785152548694",
+        "lead_id": null,
+        "project_id": "mock-proj-2",
+        "title": "ccv",
+        "start_date": null,
+        "due_date": null,
+        "assigned_to": null,
+        "assignee_name": null,
+        "status": "done",
+        "priority": "medium",
+        "description": "",
+        "checklist": [],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0
+      },
+      {
+        "id": "mock-task-1785223923762",
+        "lead_id": null,
+        "project_id": "mock-proj-2",
+        "title": "fall ceiling",
+        "start_date": "2026-01-31T00:00:00.000Z",
+        "due_date": "2026-01-31T00:00:00.000Z",
+        "assigned_to": null,
+        "assignee_name": null,
+        "status": "done",
+        "priority": "medium",
+        "description": "",
+        "checklist": [],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0
+      },
+      {
+        "id": "mock-task-1785228768472",
+        "lead_id": null,
+        "project_id": "mock-proj-1",
+        "title": "fdf",
+        "start_date": "2026-02-12T00:00:00.000Z",
+        "due_date": "2026-02-12T00:00:00.000Z",
+        "assigned_to": null,
+        "assignee_name": null,
+        "status": "done",
+        "priority": "urgent",
+        "description": "2",
+        "checklist": [],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0
+      },
+      {
+        "id": "mock-task-1785236753943",
+        "lead_id": null,
+        "project_id": "mock-proj-1",
+        "title": "gh",
+        "start_date": null,
+        "due_date": null,
+        "assigned_to": null,
+        "assignee_name": null,
+        "status": "done",
+        "priority": "medium",
+        "description": "",
+        "checklist": [],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0,
+        "updateMode": "single"
+      },
+      {
+        "id": "mock-task-1785236760173",
+        "lead_id": null,
+        "project_id": "mock-proj-2",
+        "title": "tyt",
+        "start_date": null,
+        "due_date": null,
+        "assigned_to": null,
+        "assignee_name": null,
+        "status": "done",
+        "priority": "medium",
+        "description": "",
+        "checklist": [],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0
+      },
+      {
+        "id": "mock-task-1785236771132",
+        "lead_id": null,
+        "project_id": "mock-proj-1784549386059",
+        "title": "opop",
+        "start_date": null,
+        "due_date": null,
+        "assigned_to": null,
+        "assignee_name": null,
+        "status": "done",
+        "priority": "medium",
+        "description": "",
+        "checklist": [],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0,
+        "updateMode": "single"
+      },
+      {
+        "id": "mock-task-1785236780620",
+        "lead_id": null,
+        "project_id": "mock-proj-1",
+        "title": "qwqwq",
+        "start_date": null,
+        "due_date": null,
+        "assigned_to": null,
+        "assignee_name": null,
+        "status": "done",
+        "priority": "medium",
+        "description": "",
+        "checklist": [],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0
+      },
+      {
+        "id": "mock-task-1785237859044",
+        "lead_id": null,
+        "project_id": "mock-proj-1",
+        "title": "rer",
+        "start_date": null,
+        "due_date": null,
+        "assigned_to": null,
+        "assignee_name": null,
+        "status": "done",
+        "priority": "medium",
+        "description": "",
+        "checklist": [],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0
+      },
+      {
+        "id": "mock-task-1785237869388",
+        "lead_id": null,
+        "project_id": "mock-proj-2",
+        "title": "rerr",
+        "start_date": null,
+        "due_date": null,
+        "assigned_to": null,
+        "assignee_name": null,
+        "status": "done",
+        "priority": "medium",
+        "description": "",
+        "checklist": [],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0,
+        "updateMode": "single"
+      },
+      {
+        "id": "mock-task-1785238869719",
+        "lead_id": null,
+        "project_id": "mock-proj-2",
+        "title": "fhfhh",
+        "start_date": null,
+        "due_date": null,
+        "assigned_to": null,
+        "assignee_name": null,
+        "status": "done",
+        "priority": "medium",
+        "description": "",
+        "checklist": [],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0,
+        "updateMode": "single"
+      },
+      {
+        "id": "mock-task-1785238880540",
+        "lead_id": null,
+        "project_id": "mock-proj-2",
+        "title": "fgfg",
+        "start_date": null,
+        "due_date": null,
+        "assigned_to": null,
+        "assignee_name": null,
+        "status": "done",
+        "priority": "medium",
+        "description": "",
+        "checklist": [],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0
+      },
+      {
+        "id": "mock-task-1785239086772",
+        "lead_id": null,
+        "project_id": "mock-proj-1",
+        "title": "grg",
+        "start_date": null,
+        "due_date": null,
+        "assigned_to": null,
+        "assignee_name": null,
+        "status": "done",
+        "priority": "medium",
+        "description": "",
+        "checklist": [],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0
+      },
+      {
+        "id": "mock-task-1785239091236",
+        "lead_id": null,
+        "project_id": "mock-proj-1",
+        "title": "gfg",
+        "start_date": null,
+        "due_date": null,
+        "assigned_to": null,
+        "assignee_name": null,
+        "status": "done",
+        "priority": "medium",
+        "description": "",
+        "checklist": [],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0
+      },
+      {
+        "id": "mock-task-1785239095438",
+        "lead_id": null,
+        "project_id": "mock-proj-2",
+        "title": "gfg",
+        "start_date": null,
+        "due_date": null,
+        "assigned_to": null,
+        "assignee_name": null,
+        "status": "done",
+        "priority": "medium",
+        "description": "",
+        "checklist": [],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0
+      },
+      {
+        "id": "mock-task-1785239100724",
+        "lead_id": null,
+        "project_id": "mock-proj-1",
+        "title": "fgfg",
+        "start_date": null,
+        "due_date": null,
+        "assigned_to": null,
+        "assignee_name": null,
+        "status": "done",
+        "priority": "medium",
+        "description": "",
+        "checklist": [],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0,
+        "updateMode": "single"
+      },
+      {
+        "id": "mock-task-1785239106540",
+        "lead_id": null,
+        "project_id": "mock-proj-1",
+        "title": "jkj",
+        "start_date": null,
+        "due_date": null,
+        "assigned_to": null,
+        "assignee_name": null,
+        "status": "done",
+        "priority": "medium",
+        "description": "",
+        "checklist": [],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0
+      },
+      {
+        "id": "mock-task-1785239917229",
+        "lead_id": null,
+        "project_id": "mock-proj-1",
+        "title": "ggggg",
+        "start_date": null,
+        "due_date": null,
+        "assigned_to": "mock-user-2",
+        "assignee_name": "Amit S.",
+        "status": "cancelled",
+        "priority": "medium",
+        "description": "",
+        "checklist": [],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0,
+        "assignee_id": "mock-user-2",
+        "assigneeId": "mock-user-2",
+        "assigneeName": "Amit S.",
+        "updateMode": "single",
+        "dueDate": "2027-10-10"
+      },
+      {
+        "id": "mock-task-1785300063849",
+        "lead_id": null,
+        "project_id": "mock-proj-1784549386059",
+        "title": "qwqwq",
+        "start_date": null,
+        "due_date": null,
+        "assigned_to": null,
+        "assignee_name": null,
+        "status": "done",
+        "priority": "medium",
+        "description": "",
+        "checklist": [],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0,
+        "updateMode": "single"
+      },
+      {
+        "id": "mock-task-1785303972246",
+        "lead_id": null,
+        "project_id": "mock-proj-1",
+        "title": "hi",
+        "start_date": "2027-02-12T00:00:00.000Z",
+        "due_date": "2027-02-12T00:00:00.000Z",
+        "assigned_to": "mock-user-3",
+        "assignee_name": "Priya M.",
+        "status": "cancelled",
+        "priority": "high",
+        "description": "<ul><li><p></p></li></ul><p></p>",
+        "checklist": [
+          {
+            "id": "17853058313680.01855232088874692",
+            "title": "",
+            "done": true
+          },
+          {
+            "id": "17853061756330.20493394545911592",
+            "title": "",
+            "done": true
+          }
+        ],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0,
+        "dueDate": "2026-05-10",
+        "assignee_id": "mock-user-3",
+        "assigneeId": "mock-user-3",
+        "assigneeName": "Priya M.",
+        "updateMode": "single",
+        "roomName": "fggf",
+        "room_name": "fggf",
+        "actualTime": "-1"
+      },
+      {
+        "id": "mock-task-1785951787662",
+        "lead_id": null,
+        "project_id": null,
+        "title": "test task",
+        "start_date": null,
+        "due_date": null,
+        "assigned_to": null,
+        "assignee_name": null,
+        "status": "deleted",
+        "priority": "high",
+        "description": "test test test test test",
+        "checklist": [],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0,
+        "deletedAt": "2026-08-10T09:22:14.686Z"
+      },
+      {
+        "id": "mock-task-1786354225578",
+        "lead_id": null,
+        "project_id": "mock-proj-1785998742831",
+        "title": "finish wiring",
+        "start_date": "2026-08-10T00:00:00.000Z",
+        "due_date": "2026-08-10T00:00:00.000Z",
+        "assigned_to": null,
+        "assignee_name": null,
+        "status": "todo",
+        "priority": "medium",
+        "description": "",
+        "checklist": [],
+        "is_recurring": false,
+        "recurrence_rule": null,
+        "series_id": null,
+        "series_index": 0
+      }
+    ],
+    "users": [
+      {
+        "id": "mock-user-1",
+        "name": "Rahul K.",
+        "role": "sales_rep",
+        "email": "rahul@gmail.com",
+        "password": "password",
+        "role_id": "sales_rep",
+        "role_name": "Sales Representative",
+        "status": "active",
+        "roleId": "role-1786531925226"
+      },
+      {
+        "id": "mock-user-2",
+        "name": "Amit S.",
+        "role": "role-1786531866698"
+      },
+      {
+        "id": "mock-user-3",
+        "name": "Priya M.",
+        "role": "role-1786531899930"
+      },
+      {
+        "id": "mock-user-4",
+        "name": "Sanjay D.",
+        "role": "lead_designer"
+      },
+      {
+        "id": "mock-user-5",
+        "name": "Neha V.",
+        "role": "junior_designer"
+      },
+      {
+        "id": "mock-user-6",
+        "name": "Vikram Singh",
+        "role": "site_engineer"
+      },
+      {
+        "id": "mock-user-7",
+        "name": "Arjun P.",
+        "role": "qc_engineer"
+      },
+      {
+        "id": "mock-user-8",
+        "name": "Ramesh K.",
+        "role": "site_supervisor"
+      },
+      {
+        "id": "mock-user-9",
+        "name": "Anita B.",
+        "role": "crm_executive"
+      },
+      {
+        "id": "mock-user-10",
+        "name": "Karan T.",
+        "role": "procurement_officer"
+      },
+      {
+        "id": "mock-user-11",
+        "name": "Manoj G.",
+        "role": "project_manager"
+      },
+      {
+        "id": "mock-user-12",
+        "name": "Suresh N.",
+        "role": "sales_rep"
+      },
+      {
+        "id": "mock-user-13",
+        "name": "Preeti R.",
+        "role": "designer"
+      },
+      {
+        "id": "mock-user-14",
+        "name": "Deepak C.",
+        "role": "lead_designer"
+      },
+      {
+        "id": "mock-user-15",
+        "name": "Swati M.",
+        "role": "junior_designer"
+      },
+      {
+        "id": "mock-user-16",
+        "name": "Rajesh L.",
+        "role": "site_engineer"
+      },
+      {
+        "id": "mock-user-17",
+        "name": "Rakesh S.",
+        "role": "qc_engineer"
+      },
+      {
+        "id": "mock-user-18",
+        "name": "Vivek K.",
+        "role": "site_supervisor"
+      },
+      {
+        "id": "mock-user-19",
+        "name": "Shruti J.",
+        "role": "crm_executive"
+      },
+      {
+        "id": "mock-user-20",
+        "name": "Naveen B.",
+        "role": "procurement_officer"
+      }
+    ],
+    "contacts": [
+      {
+        "id": "mock-contact-1",
+        "lead_id": "mock-lead-1",
+        "name": "Priya Sharma",
+        "phone": "+91 9876543211",
+        "email": "priya.s@example.com",
+        "role": "Spouse",
+        "decision_authority": "Primary",
+        "relationship_notes": "Highly interested in modular kitchen details."
+      }
+    ],
+    "followups": [
+      {
+        "id": "mock-followup-1",
+        "lead_id": "mock-lead-1",
+        "title": "Call back to discuss modular kitchen",
+        "due_at": "2026-07-05T06:55:19.432Z",
+        "notes": "Wants to see color samples.",
+        "is_done": false,
+        "done_at": null
+      },
+      {
+        "id": "mock-followup-2",
+        "lead_id": "mock-lead-1",
+        "title": "Send initial quotation draft",
+        "due_at": "2026-07-04T04:55:19.432Z",
+        "notes": "Based on 3BHK layout provided.",
+        "is_done": false,
+        "done_at": null
+      },
+      {
+        "id": "mock-followup-1785952280457",
+        "lead_id": "mock-1785948676789",
+        "title": "call",
+        "due_at": "2026-08-06T10:30",
+        "notes": "likely to close the deal",
+        "is_done": false,
+        "done_at": null
+      },
+      {
+        "id": "mock-followup-1785992805879",
+        "lead_id": "mock-1785948676789",
+        "title": "call",
+        "due_at": "2026-08-07T10:15",
+        "notes": "asap",
+        "is_done": false,
+        "done_at": null
+      },
+      {
+        "id": "mock-followup-1786442962160",
+        "lead_id": "mock-1785948676789",
+        "title": "call followup",
+        "due_at": "2026-08-14T15:45",
+        "notes": "project locking loading",
+        "is_done": false,
+        "done_at": null
+      }
+    ],
+    "files": [
+      {
+        "id": "mock-file-1",
+        "lead_id": "mock-lead-1",
+        "file_name": "Floor_Plan_draft.pdf",
+        "file_size": 245310,
+        "mime_type": "application/pdf",
+        "download_url": "#",
+        "storage_key": "#"
+      }
+    ],
+    "inspirations": [
+      {
+        "id": "mock-insp-1",
+        "lead_id": "mock-lead-1",
+        "image_url": "/inspirations/modern_kitchen.png",
+        "room_type": "Kitchen",
+        "notes": "Sleek luxury modern kitchen with clean lines and warm LED lighting."
+      },
+      {
+        "id": "mock-insp-2",
+        "lead_id": "mock-lead-1",
+        "image_url": "/inspirations/luxury_bedroom.png",
+        "room_type": "Master Bedroom",
+        "notes": "Japandi style master bedroom in warm earth tones and ambient lighting."
+      },
+      {
+        "id": "mock-insp-3",
+        "lead_id": "mock-lead-1",
+        "image_url": "/inspirations/japandi_living.png",
+        "room_type": "Living Room",
+        "notes": "Minimal oak wood furniture and light textured plaster walls."
+      }
+    ],
+    "activities": [
+      {
+        "id": "mock-act-proj-1",
+        "project_id": "mock-proj-1",
+        "type": "system",
+        "title": "Project Initiated",
+        "notes": "Project has been transitioned from lead to active project state.",
+        "created_at": "2026-06-29T06:55:19.432Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-proj-2",
+        "project_id": "mock-proj-1",
+        "type": "meeting",
+        "title": "Kickoff Meeting",
+        "notes": "Discussed timeline, budget, and design preferences with client.",
+        "created_at": "2026-07-01T06:55:19.432Z",
+        "user_name": "Priya Sharma"
+      },
+      {
+        "id": "mock-act-proj-3",
+        "project_id": "mock-proj-1",
+        "type": "site_visit",
+        "title": "Initial Site Inspection",
+        "notes": "Checked site readiness for electrical and plumbing work.",
+        "created_at": "2026-07-03T06:55:19.432Z",
+        "user_name": "Rahul V."
+      },
+      {
+        "id": "mock-act-1",
+        "lead_id": "mock-lead-1",
+        "type": "note",
+        "title": "Initial contact notes",
+        "notes": "Customer is looking for premium modular kitchen designs. Prefers warm lighting.",
+        "outcome": "Interested",
+        "created_at": "2026-06-30T06:55:19.432Z",
+        "user_name": "Amit S."
+      },
+      {
+        "id": "mock-act-2",
+        "lead_id": "mock-lead-1",
+        "type": "call",
+        "title": "Follow-up Call",
+        "notes": "Called to discuss scheduling a site visit.",
+        "outcome": "Site visit scheduled for next week",
+        "created_at": "2026-07-02T06:55:19.432Z",
+        "user_name": "Amit S."
+      },
+      {
+        "id": "mock-act-1783934496576",
+        "project_id": "mock-proj-1",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: client_phone, client_email, spouse_name, spouse_phone, spouse_email, number_of_family_members, lifestyle_preferences, preferred_communication_channel, agreement_signed_by, agreement_signed_at, agreement_signature_method",
+        "created_at": "2026-07-13T09:21:36.576Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1785826390110",
+        "project_id": "mock-proj-1784549386059",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: designer_ids, lead_designer_ids, junior_designer_ids, site_engineer_ids, qc_engineer_ids, site_supervisor_ids, crm_executive_ids, procurement_officer_ids",
+        "created_at": "2026-08-04T06:53:10.110Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1785953348204",
+        "lead_id": "mock-1785948676789",
+        "type": "meeting",
+        "title": "jjj",
+        "notes": "kk",
+        "outcome": null,
+        "created_at": "2026-08-05T18:09:08.204Z",
+        "user_name": "Amit S."
+      },
+      {
+        "id": "mock-act-1786000443845",
+        "project_id": "mock-proj-1785998742831",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: type, client_phone, client_email, site_address, designer_id, pm_hours_allocated, designer_hours_allocated, contract_value, start_date, template_id, flat_number, floor, building_name, street, city, pincode, landmark, latitude, longitude, builder_name, society_name, rera_id, noc_status, occupancy_certificate_status, property_handover_date, contacts, carpet_area, built_up_area, number_of_rooms, project_category, project_sub_category, property_type, property_age, renovation_scope, segment, allowed_design_revisions, current_design_revisions, stage_revision_limits, enforce_dependencies, measurements, vendors, consultants, site_team, spouse_name, spouse_phone, spouse_email, number_of_family_members, lifestyle_preferences, preferred_communication_channel, lift_availability, lift_dimensions, staircase_access, working_hour_window, society_contact, parking_permission, unloading_area, noc_requirements, key_holder_name, key_holder_phone, spare_key_location, gate_pass_number, access_card_holder, access_time_restrictions, lead_designer_id, junior_designer_id, site_engineer_id, qc_engineer_id, site_supervisor_id, crm_executive_id, procurement_officer_id",
+        "created_at": "2026-08-06T07:14:03.845Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1786001919961",
+        "project_id": "mock-proj-1785998742831",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: type, client_phone, pm_id, designer_id, designer_hours_allocated, contacts, stage_revision_limits, measurements, vendors, consultants, site_team",
+        "created_at": "2026-08-06T07:38:39.961Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1786002070035",
+        "project_id": "mock-proj-1785998742831",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: client_phone",
+        "created_at": "2026-08-06T07:41:10.035Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1786002362390",
+        "project_id": "mock-proj-1785998742831",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: type, client_phone, contacts, stage_revision_limits, measurements, vendors, consultants, site_team",
+        "created_at": "2026-08-06T07:46:02.390Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1786098254548",
+        "project_id": "mock-proj-1785998742831",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: type, contacts, stage_revision_limits, measurements, vendors, consultants, site_team, pm_name",
+        "created_at": "2026-08-07T10:24:14.548Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1786101647018",
+        "project_id": "mock-proj-1785998742831",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: contacts, stage_revision_limits, measurements, vendors, consultants, site_team",
+        "created_at": "2026-08-07T11:20:47.018Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1786101690904",
+        "project_id": "mock-proj-1785998742831",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: type, contacts, stage_revision_limits, measurements, vendors, consultants, site_team",
+        "created_at": "2026-08-07T11:21:30.904Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1786101699560",
+        "project_id": "mock-proj-1785998742831",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: contacts, stage_revision_limits, measurements, vendors, consultants, site_team",
+        "created_at": "2026-08-07T11:21:39.560Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1786101846072",
+        "project_id": "mock-proj-1785998742831",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: type, contacts, stage_revision_limits, measurements, vendors, consultants, site_team",
+        "created_at": "2026-08-07T11:24:06.072Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1786101864426",
+        "project_id": "mock-proj-1785998742831",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: type, contacts, stage_revision_limits, measurements, vendors, consultants, site_team",
+        "created_at": "2026-08-07T11:24:24.426Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1786101876567",
+        "project_id": "mock-proj-1785998742831",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: type, contacts, stage_revision_limits, measurements, vendors, consultants, site_team",
+        "created_at": "2026-08-07T11:24:36.567Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1786101958357",
+        "project_id": "mock-proj-1785998742831",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: type, contacts, stage_revision_limits, measurements, vendors, consultants, site_team",
+        "created_at": "2026-08-07T11:25:58.357Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1786102106961",
+        "project_id": "mock-proj-1785998742831",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: type, contacts, stage_revision_limits, measurements, vendors, consultants, site_team",
+        "created_at": "2026-08-07T11:28:26.961Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1786102112736",
+        "project_id": "mock-proj-1785998742831",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: type, contacts, stage_revision_limits, measurements, vendors, consultants, site_team",
+        "created_at": "2026-08-07T11:28:32.736Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1786102118990",
+        "project_id": "mock-proj-1785998742831",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: type, contacts, stage_revision_limits, measurements, vendors, consultants, site_team",
+        "created_at": "2026-08-07T11:28:38.990Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1786102236431",
+        "project_id": "mock-proj-1786102205835",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: type, client_phone, client_email, site_address, designer_id, pm_hours_allocated, designer_hours_allocated, contract_value, start_date, template_id, flat_number, floor, building_name, street, city, pincode, landmark, latitude, longitude, builder_name, society_name, rera_id, noc_status, occupancy_certificate_status, property_handover_date, contacts, carpet_area, built_up_area, number_of_rooms, project_category, project_sub_category, property_type, property_age, renovation_scope, segment, allowed_design_revisions, current_design_revisions, stage_revision_limits, enforce_dependencies, measurements, vendors, consultants, site_team, spouse_name, spouse_phone, spouse_email, number_of_family_members, lifestyle_preferences, preferred_communication_channel, lift_availability, lift_dimensions, staircase_access, working_hour_window, society_contact, parking_permission, unloading_area, noc_requirements, key_holder_name, key_holder_phone, spare_key_location, gate_pass_number, access_card_holder, access_time_restrictions, lead_designer_id, junior_designer_id, site_engineer_id, qc_engineer_id, site_supervisor_id, crm_executive_id, procurement_officer_id, pm_name",
+        "created_at": "2026-08-07T11:30:36.431Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1786102242215",
+        "project_id": "mock-proj-1786102205835",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: type, contacts, stage_revision_limits, measurements, vendors, consultants, site_team",
+        "created_at": "2026-08-07T11:30:42.215Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1786102868758",
+        "project_id": "mock-proj-1786102205835",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: contacts, stage_revision_limits, measurements, vendors, consultants, site_team",
+        "created_at": "2026-08-07T11:41:08.758Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1786102881710",
+        "project_id": "mock-proj-1786102205835",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: type, contacts, stage_revision_limits, measurements, vendors, consultants, site_team",
+        "created_at": "2026-08-07T11:41:21.710Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1786103067719",
+        "project_id": "mock-proj-1786102205835",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: type, contacts, stage_revision_limits, measurements, vendors, consultants, site_team",
+        "created_at": "2026-08-07T11:44:27.719Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1786103313006",
+        "project_id": "mock-proj-1786102205835",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: client_phone, contacts, stage_revision_limits, measurements, vendors, consultants, site_team",
+        "created_at": "2026-08-07T11:48:33.006Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1786103336239",
+        "project_id": "mock-proj-1786102205835",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: type, contacts, stage_revision_limits, measurements, vendors, consultants, site_team",
+        "created_at": "2026-08-07T11:48:56.239Z",
+        "user_name": "System"
+      },
+      {
+        "id": "mock-act-1786424858377",
+        "lead_id": "mock-1785948676789",
+        "type": "meeting",
+        "title": "hhs",
+        "notes": "kakakakakakakakakakakakakakakakakakfkasnjsnjfnaljnlna",
+        "outcome": "concluded",
+        "scheduled_at": "2026-08-14T04:45:00.000Z",
+        "metadata": {
+          "meeting_type": "Google Meet",
+          "meeting_link": "https://meet.google.com/xow-i08r-ldn",
+          "meeting_host": "Rajesh L.",
+          "duration": 30,
+          "reminders_enabled": true
+        },
+        "created_at": "2026-08-11T05:07:38.377Z",
+        "user_name": "Admin User",
+        "scheduledAt": "2026-08-14T04:45:00.000Z"
+      },
+      {
+        "id": "mock-act-1786425711492",
+        "lead_id": "mock-1785948676789",
+        "type": "note",
+        "title": "Lead Reassigned",
+        "notes": "Lead was reassigned to Sanjay D.",
+        "outcome": null,
+        "scheduled_at": null,
+        "metadata": {},
+        "created_at": "2026-08-11T05:21:51.492Z",
+        "user_name": "Admin User"
+      },
+      {
+        "id": "mock-act-1786426405550",
+        "lead_id": "mock-1785948676789",
+        "type": "note",
+        "title": "Lead Reassigned",
+        "notes": "Lead was reassigned to Preeti R.",
+        "outcome": null,
+        "scheduled_at": null,
+        "metadata": {},
+        "created_at": "2026-08-11T05:33:25.550Z",
+        "user_name": "Admin User"
+      },
+      {
+        "id": "mock-act-1786427052542",
+        "lead_id": "mock-1785948676789",
+        "type": "note",
+        "title": "Lead Reassigned",
+        "notes": "Lead was reassigned to Neha V.",
+        "outcome": null,
+        "scheduled_at": null,
+        "metadata": {},
+        "created_at": "2026-08-11T05:44:12.542Z",
+        "user_name": "Admin User"
+      },
+      {
+        "id": "mock-act-1786430022772",
+        "lead_id": "mock-1785948676789",
+        "type": "meeting",
+        "title": "fdf",
+        "notes": "meeting completed, project is going lock soon",
+        "outcome": "concluded",
+        "scheduled_at": "2026-08-18T05:45:00.000Z",
+        "metadata": {
+          "meeting_type": "Google Meet",
+          "meeting_link": "https://meet.google.com/5o1-pguv-mwt",
+          "meeting_host": "Rakesh S.",
+          "duration": 30,
+          "reminders_enabled": false
+        },
+        "created_at": "2026-08-11T06:33:42.772Z",
+        "user_name": "Admin User"
+      },
+      {
+        "id": "mock-act-1786431222926",
+        "lead_id": "mock-1785948676789",
+        "type": "note",
+        "title": "Lead Reassigned",
+        "notes": "Lead was reassigned to Vikram Singh",
+        "outcome": null,
+        "scheduled_at": null,
+        "metadata": {},
+        "created_at": "2026-08-11T06:53:42.926Z",
+        "user_name": "Admin User"
+      },
+      {
+        "id": "mock-act-1786431900761",
+        "lead_id": "mock-1785948676789",
+        "type": "note",
+        "title": "Lead Reassigned",
+        "notes": "Lead was reassigned to Karan T.",
+        "outcome": null,
+        "scheduled_at": null,
+        "metadata": {},
+        "created_at": "2026-08-11T07:05:00.761Z",
+        "user_name": "Admin User"
+      },
+      {
+        "id": "mock-act-1786432319864",
+        "lead_id": "mock-1785948676789",
+        "type": "note",
+        "title": "Lead Reassigned",
+        "notes": "Lead was reassigned to Sanjay D.",
+        "outcome": null,
+        "scheduled_at": null,
+        "metadata": {},
+        "created_at": "2026-08-11T07:11:59.864Z",
+        "user_name": "Admin User"
+      },
+      {
+        "id": "mock-act-1786432329383",
+        "lead_id": "mock-1785948676789",
+        "type": "note",
+        "title": "Lead Reassigned",
+        "notes": "Lead was reassigned to Deepak C.",
+        "outcome": null,
+        "scheduled_at": null,
+        "metadata": {},
+        "created_at": "2026-08-11T07:12:09.383Z",
+        "user_name": "Admin User"
+      },
+      {
+        "id": "mock-act-1786434044843",
+        "lead_id": "mock-1785948676789",
+        "type": "site_visit",
+        "title": null,
+        "notes": "visit asap",
+        "outcome": null,
+        "scheduled_at": null,
+        "metadata": {
+          "site_address": "vasanth nagar, nizamabad",
+          "client_feedback": "satisfied with the plan",
+          "measurements_taken": true
+        },
+        "created_at": "2026-08-11T07:40:44.843Z",
+        "user_name": "Admin User"
+      },
+      {
+        "id": "mock-act-3",
+        "lead_id": "mock-lead-1",
+        "type": "email",
+        "title": "Project Brochure Sent",
+        "notes": "Sent the standard premium modular kitchen catalog and pricing overview.",
+        "created_at": "2026-08-08T07:48:55.200Z",
+        "user_name": "Amit S."
+      },
+      {
+        "id": "mock-act-4",
+        "lead_id": "mock-lead-1",
+        "type": "site_visit",
+        "title": "Kitchen Site Measurement",
+        "notes": "Took full site dimensions for cabinet layouts. Noted plumbing points alignment.",
+        "created_at": "2026-08-09T19:48:55.200Z",
+        "user_name": "Amit S."
+      },
+      {
+        "id": "mock-act-5",
+        "lead_id": "mock-lead-1",
+        "type": "meeting",
+        "title": "Concept Alignment Meeting",
+        "notes": "Reviewed preliminary floor plans and Japandi color schemes. Client approved kitchen zoning.",
+        "created_at": "2026-08-10T07:48:55.200Z",
+        "user_name": "Amit S."
+      },
+      {
+        "id": "mock-act-6",
+        "lead_id": "mock-lead-1",
+        "type": "task",
+        "title": "Draft BOQ Estimation",
+        "notes": "Scheduled task: Draft detailed BOQ for kitchen cabinet components and marble countertops.",
+        "created_at": "2026-08-10T19:48:55.200Z",
+        "user_name": "Amit S."
+      },
+      {
+        "id": "mock-act-1786442962172",
+        "lead_id": "mock-1785948676789",
+        "type": "task",
+        "title": "Scheduled Follow-up",
+        "notes": "Scheduled follow-up: call followup due on 8/14/2026",
+        "created_at": "2026-08-11T10:09:22.172Z",
+        "user_name": "Admin User"
+      },
+      {
+        "id": "mock-act-1786442968848",
+        "lead_id": "mock-1785948676789",
+        "type": "task",
+        "title": "Updated Follow-up",
+        "notes": "Completed follow-up: call",
+        "created_at": "2026-08-11T10:09:28.848Z",
+        "user_name": "Admin User"
+      },
+      {
+        "id": "mock-act-1786442970940",
+        "lead_id": "mock-1785948676789",
+        "type": "task",
+        "title": "Updated Follow-up",
+        "notes": "Marked follow-up: call as pending",
+        "created_at": "2026-08-11T10:09:30.940Z",
+        "user_name": "Admin User"
+      },
+      {
+        "id": "mock-act-1786443057705",
+        "lead_id": "mock-1785948676789",
+        "type": "task",
+        "title": "Updated Follow-up",
+        "notes": "Completed follow-up: call followup",
+        "created_at": "2026-08-11T10:10:57.705Z",
+        "user_name": "Admin User"
+      },
+      {
+        "id": "mock-act-1786443058570",
+        "lead_id": "mock-1785948676789",
+        "type": "task",
+        "title": "Updated Follow-up",
+        "notes": "Marked follow-up: call followup as pending",
+        "created_at": "2026-08-11T10:10:58.570Z",
+        "user_name": "Admin User"
+      },
+      {
+        "id": "mock-act-1786443059621",
+        "lead_id": "mock-1785948676789",
+        "type": "task",
+        "title": "Updated Follow-up",
+        "notes": "Completed follow-up: call followup",
+        "created_at": "2026-08-11T10:10:59.621Z",
+        "user_name": "Admin User"
+      },
+      {
+        "id": "mock-act-1786443060162",
+        "lead_id": "mock-1785948676789",
+        "type": "task",
+        "title": "Updated Follow-up",
+        "notes": "Marked follow-up: call followup as pending",
+        "created_at": "2026-08-11T10:11:00.162Z",
+        "user_name": "Admin User"
+      },
+      {
+        "id": "mock-act-1786444879054",
+        "lead_id": "mock-1785948676789",
+        "type": "stage_changed",
+        "title": "Stage Changed",
+        "notes": "Stage changed from Unknown to Contacted",
+        "created_at": "2026-08-11T10:41:19.054Z",
+        "user_name": "Admin User"
+      },
+      {
+        "id": "mock-act-1786444879064",
+        "lead_id": "mock-1785948676789",
+        "type": "note",
+        "title": "Stage Changed",
+        "notes": "Lead moved to stage: Contacted",
+        "outcome": null,
+        "scheduled_at": null,
+        "metadata": {},
+        "created_at": "2026-08-11T10:41:19.064Z",
+        "user_name": "Admin User"
+      },
+      {
+        "id": "mock-act-1786444904355",
+        "lead_id": "mock-1785948676789",
+        "type": "stage_changed",
+        "title": "Stage Changed",
+        "notes": "Stage changed from Contacted to Won",
+        "created_at": "2026-08-11T10:41:44.355Z",
+        "user_name": "Admin User"
+      },
+      {
+        "id": "mock-act-1786444904367",
+        "lead_id": "mock-1785948676789",
+        "type": "note",
+        "title": "Stage Changed",
+        "notes": "Lead moved to stage: Won",
+        "outcome": null,
+        "scheduled_at": null,
+        "metadata": {},
+        "created_at": "2026-08-11T10:41:44.367Z",
+        "user_name": "Admin User"
+      },
+      {
+        "id": "mock-act-1786450388566",
+        "project_id": "mock-proj-1785998742831",
+        "type": "system",
+        "title": "Project Updated",
+        "notes": "Updated fields: type, contract_value, contacts, stage_revision_limits, measurements, vendors, consultants, site_team",
+        "created_at": "2026-08-11T12:13:08.566Z",
+        "user_name": "System"
+      }
+    ],
+    "dashboardStats": {
+      "totalRevenue": 16500000,
+      "activeProjects": 12,
+      "newLeads": 24,
+      "tasksCompleted": 89,
+      "revenueGrowth": 15.2,
+      "leadsGrowth": 5.4
+    },
+    "dashboardActivity": [
+      {
+        "id": 1,
+        "text": "Rahul completed task \"Electrical Wiring\"",
+        "time": "2 hours ago"
+      },
+      {
+        "id": 2,
+        "text": "New lead Anita Desai registered",
+        "time": "5 hours ago"
+      },
+      {
+        "id": 3,
+        "text": "Project \"Corporate Office\" put on hold",
+        "time": "1 day ago"
+      }
+    ],
+    "dashboardPipeline": [
+      {
+        "stage": "New",
+        "count": 12
+      },
+      {
+        "stage": "Qualified",
+        "count": 8
+      },
+      {
+        "stage": "Negotiation",
+        "count": 4
+      },
+      {
+        "stage": "Closed Won",
+        "count": 5
+      }
+    ],
+    "handovers": [
+      {
+        "id": "mock-handover-1",
+        "project_id": "mock-proj-1",
+        "role": "designer",
+        "replaced_user_id": "mock-user-2",
+        "replaced_user_name": "Amit S.",
+        "assigned_user_id": "mock-user-3",
+        "assigned_user_name": "Priya M.",
+        "handover_notes": "Concept design completed. Client signed off on moodboard. Handing over for detailed 2D drawings and BOQ estimation.",
+        "creator_name": "Rahul K.",
+        "created_at": "2026-06-24T06:55:19.432Z"
+      }
+    ],
+    "paymentMilestones": [
+      {
+        "id": "mock_m_booking_0",
+        "project_id": "mock-proj-1",
+        "name": "Booking",
+        "amount": 450000,
+        "status": "paid",
+        "due_date": "2026-05-25T06:55:19.432Z",
+        "payment_entries": [
+          {
+            "id": "mock_txn_1786536106025_0",
+            "amount": 450000,
+            "paidAt": "2026-05-25T06:55:19.432Z",
+            "mode": "Bank Transfer",
+            "collectedByName": "System Mock",
+            "collectedByRole": "Admin"
+          }
+        ]
+      },
+      {
+        "id": "mock_m_design_1",
+        "project_id": "mock-proj-1",
+        "name": "Design Advance",
+        "amount": 675000,
+        "status": "partially_paid",
+        "due_date": "2026-06-09T06:55:19.432Z",
+        "payment_entries": [
+          {
+            "id": "mock_txn_1786536106025_1",
+            "amount": 337500,
+            "paidAt": "2026-06-09T06:55:19.432Z",
+            "mode": "UPI",
+            "collectedByName": "System Mock",
+            "collectedByRole": "Admin"
+          }
+        ]
+      },
+      {
+        "id": "mock_m_production_2",
+        "project_id": "mock-proj-1",
+        "name": "Production",
+        "amount": 1800000,
+        "status": "scheduled",
+        "due_date": "2026-06-24T06:55:19.432Z",
+        "payment_entries": []
+      },
+      {
+        "id": "mock_m_dispatch_3",
+        "project_id": "mock-proj-1",
+        "name": "Dispatch",
+        "amount": 900000,
+        "status": "scheduled",
+        "due_date": "2026-07-09T06:55:19.432Z",
+        "payment_entries": []
+      },
+      {
+        "id": "mock_m_installation_4",
+        "project_id": "mock-proj-1",
+        "name": "Installation",
+        "amount": 450000,
+        "status": "scheduled",
+        "due_date": "2026-07-24T06:55:19.432Z",
+        "payment_entries": []
+      },
+      {
+        "id": "mock_m_handover_5",
+        "project_id": "mock-proj-1",
+        "name": "Final Handover",
+        "amount": 225000,
+        "status": "scheduled",
+        "due_date": "2026-08-08T06:55:19.432Z",
+        "payment_entries": []
+      },
+      {
+        "id": "mock-pmil-1786621628168-0",
+        "project_id": "mock-proj-1786621628167",
+        "name": "Booking Advance",
+        "amount": 150000,
+        "percentage": 10,
+        "status": "scheduled",
+        "due_date": "2026-08-13T11:47:08.168Z"
+      },
+      {
+        "id": "mock-pmil-1786621628168-1",
+        "project_id": "mock-proj-1786621628167",
+        "name": "Design Sign-off",
+        "amount": 600000,
+        "percentage": 40,
+        "status": "scheduled",
+        "due_date": "2026-09-12T11:47:08.168Z"
+      },
+      {
+        "id": "mock-pmil-1786621628168-2",
+        "project_id": "mock-proj-1786621628167",
+        "name": "Production Commencement",
+        "amount": 600000,
+        "percentage": 40,
+        "status": "scheduled",
+        "due_date": "2026-10-12T11:47:08.168Z"
+      },
+      {
+        "id": "mock-pmil-1786621628168-3",
+        "project_id": "mock-proj-1786621628167",
+        "name": "Handover",
+        "amount": 150000,
+        "percentage": 10,
+        "status": "scheduled",
+        "due_date": "2026-11-11T11:47:08.168Z"
+      },
+      {
+        "id": "mock-pmil-1786622261541-0",
+        "project_id": "mock-proj-1786622261541",
+        "name": "Booking Advance",
+        "amount": 150000,
+        "percentage": 10,
+        "status": "scheduled",
+        "due_date": "2026-08-13T11:57:41.541Z"
+      },
+      {
+        "id": "mock-pmil-1786622261541-1",
+        "project_id": "mock-proj-1786622261541",
+        "name": "Design Sign-off",
+        "amount": 600000,
+        "percentage": 40,
+        "status": "scheduled",
+        "due_date": "2026-09-12T11:57:41.541Z"
+      },
+      {
+        "id": "mock-pmil-1786622261541-2",
+        "project_id": "mock-proj-1786622261541",
+        "name": "Production Commencement",
+        "amount": 600000,
+        "percentage": 40,
+        "status": "scheduled",
+        "due_date": "2026-10-12T11:57:41.541Z"
+      },
+      {
+        "id": "mock-pmil-1786622261541-3",
+        "project_id": "mock-proj-1786622261541",
+        "name": "Handover",
+        "amount": 150000,
+        "percentage": 10,
+        "status": "scheduled",
+        "due_date": "2026-11-11T11:57:41.541Z"
+      },
+      {
+        "id": "mock-pmil-1786622564570-0",
+        "project_id": "mock-proj-1786622564570",
+        "name": "Booking Advance",
+        "amount": 150000,
+        "percentage": 10,
+        "status": "paid",
+        "due_date": "2026-08-13T12:02:44.570Z",
+        "paid_amount": 150000,
+        "payment_entries": [
+          {
+            "id": "1786623148497-0",
+            "amount": 150000,
+            "paidAt": "2026-08-13",
+            "mode": "Bank Transfer",
+            "reference": "",
+            "collectedByName": "Anita B.",
+            "collectedByRole": "crm_executive",
+            "tdsAmount": 0
+          }
+        ]
+      },
+      {
+        "id": "mock-pmil-1786622564570-1",
+        "project_id": "mock-proj-1786622564570",
+        "name": "Design Sign-off",
+        "amount": 600000,
+        "percentage": 40,
+        "status": "scheduled",
+        "due_date": "2026-09-12T12:02:44.570Z"
+      },
+      {
+        "id": "mock-pmil-1786622564570-2",
+        "project_id": "mock-proj-1786622564570",
+        "name": "Production Commencement",
+        "amount": 600000,
+        "percentage": 40,
+        "status": "scheduled",
+        "due_date": "2026-10-12T12:02:44.570Z"
+      },
+      {
+        "id": "mock-pmil-1786622564570-3",
+        "project_id": "mock-proj-1786622564570",
+        "name": "Handover",
+        "amount": 150000,
+        "percentage": 10,
+        "status": "scheduled",
+        "due_date": "2026-11-11T12:02:44.570Z"
+      }
+    ],
+    "financeApprovals": [
+      {
+        "id": "FIN-1786623148507",
+        "transaction_type": "payment",
+        "status": "approved",
+        "amount": 150000,
+        "project_name": "raghu's Project",
+        "customer_name": "raghu",
+        "target_number": "Booking Advance",
+        "requester_name": "Current User",
+        "threshold_limit": 0,
+        "created_at": "2026-08-13T12:12:28.507Z",
+        "updated_at": "2026-08-13T12:21:32.019Z",
+        "priority": "medium",
+        "current_stage": 1,
+        "total_stages": 1,
+        "approval_chain": [
+          {
+            "stage": 1,
+            "role": "admin",
+            "status": "pending"
+          }
+        ],
+        "target_resolution_date": "2026-08-14T12:12:28.507Z",
+        "reason": "Payment for Booking Advance",
+        "payload": {
+          "selectedPayment": {
+            "id": "mock-pmil-1786622564570-0",
+            "milestone": "Booking Advance",
+            "phase": "—",
+            "amountValue": 150000,
+            "collectedAmount": 0,
+            "remainingAmount": 150000,
+            "paymentEntries": [],
+            "dueDate": "2026-08-13",
+            "status": "scheduled",
+            "dependency": null,
+            "invoiceReference": null,
+            "tdsRate": 0,
+            "tdsAmount": 0,
+            "displayStatus": "scheduled",
+            "isOverdue": false,
+            "daysOverdue": 0,
+            "dependencyMet": true
+          },
+          "splitPayments": [
+            {
+              "id": 1786623142897,
+              "amount": 150000,
+              "mode": "Bank Transfer",
+              "date": "2026-08-13",
+              "reference": ""
+            }
+          ],
+          "tdsRate": 0,
+          "tdsAmount": 0,
+          "collectedBy": "Anita B.|crm_executive",
+          "newEntries": [
+            {
+              "id": "1786623148497-0",
+              "amount": 150000,
+              "paidAt": "2026-08-13",
+              "mode": "Bank Transfer",
+              "reference": "",
+              "collectedByName": "Anita B.",
+              "collectedByRole": "crm_executive",
+              "tdsAmount": 0
+            }
+          ],
+          "newStatus": "paid",
+          "newCollected": 150000,
+          "projectId": "mock-proj-1786622564570"
+        },
+        "auditTrail": [
+          {
+            "status": "PENDING",
+            "timestamp": "2026-08-13T12:12:28.507Z",
+            "note": "Request created"
+          },
+          {
+            "status": "APPROVED",
+            "timestamp": "2026-08-13T12:21:32.019Z",
+            "note": "Approved by Finance Admin"
+          }
+        ]
+      },
+      {
+        "id": "FIN-1786100447862",
+        "transaction_type": "Manual Payment",
+        "status": "approved",
+        "amount": 120000,
+        "project_name": "Test's Project",
+        "customer_name": "Customer",
+        "target_number": "Booking Advance",
+        "requester_name": "Current User",
+        "threshold_limit": 0,
+        "created_at": "2026-08-07T11:00:47.862Z",
+        "updated_at": "2026-08-07T11:01:01.522Z",
+        "priority": "medium",
+        "current_stage": 1,
+        "total_stages": 1,
+        "approval_chain": [
+          {
+            "stage": 1,
+            "role": "admin",
+            "status": "pending"
+          }
+        ],
+        "target_resolution_date": "2026-08-08T11:00:47.862Z",
+        "reason": "Payment for Booking Advance",
+        "payload": {
+          "selectedPayment": {
+            "id": "mock-pmil-1785998742831-0",
+            "milestone": "Booking Advance",
+            "phase": "—",
+            "amountValue": 120000,
+            "collectedAmount": 0,
+            "remainingAmount": 120000,
+            "paymentEntries": [],
+            "dueDate": "2026-08-06",
+            "status": "scheduled",
+            "dependency": null,
+            "invoiceReference": null,
+            "tdsRate": 0,
+            "tdsAmount": 0,
+            "displayStatus": "overdue",
+            "isOverdue": true,
+            "daysOverdue": 1,
+            "dependencyMet": true
+          },
+          "splitPayments": [
+            {
+              "id": 1786100439675,
+              "amount": 120000,
+              "mode": "Bank Transfer",
+              "date": "2026-08-07",
+              "reference": ""
+            }
+          ],
+          "tdsRate": 0,
+          "tdsAmount": 0,
+          "collectedBy": "System Admin|admin",
+          "newEntries": [
+            {
+              "id": "1786100447852-0",
+              "amount": 120000,
+              "paidAt": "2026-08-07",
+              "mode": "Bank Transfer",
+              "reference": "",
+              "collectedByName": "System Admin",
+              "collectedByRole": "admin",
+              "tdsAmount": 0
+            }
+          ],
+          "newStatus": "paid",
+          "newCollected": 120000,
+          "projectId": "mock-proj-1785998742831"
+        },
+        "auditTrail": [
+          {
+            "status": "PENDING",
+            "timestamp": "2026-08-07T11:00:47.862Z",
+            "note": "Request created"
+          },
+          {
+            "status": "APPROVED",
+            "timestamp": "2026-08-07T11:01:01.522Z",
+            "note": "Approved by Finance Admin"
+          }
+        ]
+      },
+      {
+        "id": "FIN-1786014358442",
+        "transaction_type": "Manual Payment",
+        "status": "approved",
+        "amount": 480000,
+        "project_name": "Test's Project",
+        "customer_name": "Customer",
+        "target_number": "Design Sign-off",
+        "requester_name": "Current User",
+        "threshold_limit": 0,
+        "created_at": "2026-08-06T11:05:58.442Z",
+        "updated_at": "2026-08-06T11:06:15.527Z",
+        "priority": "medium",
+        "current_stage": 1,
+        "total_stages": 1,
+        "approval_chain": [
+          {
+            "stage": 1,
+            "role": "admin",
+            "status": "pending"
+          }
+        ],
+        "target_resolution_date": "2026-08-07T11:05:58.442Z",
+        "reason": "Payment for Design Sign-off",
+        "payload": {
+          "selectedPayment": {
+            "id": "mock-pmil-1785998742831-1",
+            "milestone": "Design Sign-off",
+            "phase": "—",
+            "amountValue": 480000,
+            "collectedAmount": 0,
+            "remainingAmount": 480000,
+            "paymentEntries": [],
+            "dueDate": "2026-09-05",
+            "status": "scheduled",
+            "dependency": null,
+            "invoiceReference": null,
+            "tdsRate": 0,
+            "tdsAmount": 0,
+            "displayStatus": "scheduled",
+            "isOverdue": false,
+            "daysOverdue": 0,
+            "dependencyMet": true
+          },
+          "splitPayments": [
+            {
+              "id": 1786014354522,
+              "amount": 480000,
+              "mode": "Bank Transfer",
+              "date": "2026-08-06",
+              "reference": ""
+            }
+          ],
+          "tdsRate": 0,
+          "tdsAmount": 0,
+          "collectedBy": "System Admin|admin",
+          "newEntries": [
+            {
+              "id": "1786014358430-0",
+              "amount": 480000,
+              "paidAt": "2026-08-06",
+              "mode": "Bank Transfer",
+              "reference": "",
+              "collectedByName": "System Admin",
+              "collectedByRole": "admin",
+              "tdsAmount": 0
+            }
+          ],
+          "newStatus": "paid",
+          "newCollected": 480000,
+          "projectId": "mock-proj-1785998742831"
+        },
+        "auditTrail": [
+          {
+            "status": "PENDING",
+            "timestamp": "2026-08-06T11:05:58.442Z",
+            "note": "Request created"
+          },
+          {
+            "status": "APPROVED",
+            "timestamp": "2026-08-06T11:06:15.527Z",
+            "note": "Approved by Finance Admin"
+          }
+        ]
+      },
+      {
+        "id": "FIN-1786013836963",
+        "transaction_type": "Manual Payment",
+        "status": "approved",
+        "amount": 480000,
+        "project_name": "Test's Project",
+        "customer_name": "Customer",
+        "target_number": "Design Sign-off",
+        "requester_name": "Current User",
+        "threshold_limit": 0,
+        "created_at": "2026-08-06T10:57:16.963Z",
+        "updated_at": "2026-08-06T10:57:26.957Z",
+        "priority": "medium",
+        "current_stage": 1,
+        "total_stages": 1,
+        "approval_chain": [
+          {
+            "stage": 1,
+            "role": "admin",
+            "status": "pending"
+          }
+        ],
+        "target_resolution_date": "2026-08-07T10:57:16.963Z",
+        "reason": "Payment for Design Sign-off",
+        "payload": {
+          "selectedPayment": {
+            "id": "mock-pmil-1785998742831-1",
+            "milestone": "Design Sign-off",
+            "phase": "—",
+            "amountValue": 480000,
+            "collectedAmount": 0,
+            "remainingAmount": 480000,
+            "paymentEntries": [],
+            "dueDate": "2026-09-05",
+            "status": "scheduled",
+            "dependency": null,
+            "invoiceReference": null,
+            "tdsRate": 0,
+            "tdsAmount": 0,
+            "displayStatus": "scheduled",
+            "isOverdue": false,
+            "daysOverdue": 0,
+            "dependencyMet": true
+          },
+          "splitPayments": [
+            {
+              "id": 1786013833411,
+              "amount": 480000,
+              "mode": "Bank Transfer",
+              "date": "2026-08-06",
+              "reference": ""
+            }
+          ],
+          "tdsRate": 0,
+          "tdsAmount": 0,
+          "collectedBy": "System Admin|admin",
+          "newEntries": [
+            {
+              "id": "1786013836955-0",
+              "amount": 480000,
+              "paidAt": "2026-08-06",
+              "mode": "Bank Transfer",
+              "reference": "",
+              "collectedByName": "System Admin",
+              "collectedByRole": "admin",
+              "tdsAmount": 0
+            }
+          ],
+          "newStatus": "paid",
+          "newCollected": 480000,
+          "projectId": "mock-proj-1785998742831"
+        },
+        "auditTrail": [
+          {
+            "status": "PENDING",
+            "timestamp": "2026-08-06T10:57:16.963Z",
+            "note": "Request created"
+          },
+          {
+            "status": "APPROVED",
+            "timestamp": "2026-08-06T10:57:26.957Z",
+            "note": "Approved by Finance Admin"
+          }
+        ]
+      }
+    ],
+    "customFields": [
+      {
+        "id": "cf-1",
+        "entity": "lead",
+        "label": "Budget Range",
+        "name": "budget_range",
+        "field_type": "dropdown",
+        "is_required": true,
+        "options": [
+          "< 5L",
+          "5L - 10L",
+          "> 10L"
+        ],
+        "sort_order": 0,
+        "is_active": false
+      },
+      {
+        "id": "cf-2",
+        "entity": "lead",
+        "label": "Property Type",
+        "name": "property_type",
+        "field_type": "dropdown",
+        "is_required": true,
+        "options": [
+          "Apartment",
+          "Villa",
+          "Commercial"
+        ],
+        "sort_order": 1,
+        "is_active": false
+      },
+      {
+        "id": "cf-3",
+        "entity": "project",
+        "label": "Project Scope",
+        "name": "project_scope",
+        "field_type": "text",
+        "is_required": false,
+        "options": [],
+        "sort_order": 0,
+        "is_active": true
+      },
+      {
+        "id": "cf-4",
+        "entity": "task",
+        "label": "Task Priority",
+        "name": "task_priority",
+        "field_type": "dropdown",
+        "is_required": false,
+        "options": [
+          "Low",
+          "Medium",
+          "High"
+        ],
+        "sort_order": 0,
+        "is_active": true
+      },
+      {
+        "id": "cf-1785407580448",
+        "entity": "task",
+        "label": "Budget Range",
+        "name": "budget_range",
+        "field_type": "dropdown",
+        "is_required": true,
+        "options": [
+          "< 5L",
+          "5L - 10L",
+          "> 10L"
+        ],
+        "sort_order": 0,
+        "is_active": true
+      }
+    ],
+    "taskTemplates": [
+      {
+        "id": "tmpl-1",
+        "name": "Client Onboarding",
+        "category": "HR",
+        "is_favorite": true,
+        "is_shared": true,
+        "title": "Onboard [Client Name]",
+        "description": "<p>Standard onboarding process.</p>",
+        "priority": "high",
+        "checklist": [
+          {
+            "id": "1",
+            "text": "Send welcome email",
+            "done": false
+          }
+        ]
+      },
+      {
+        "id": "tmpl-2",
+        "name": "Weekly Report",
+        "category": "Management",
+        "is_favorite": false,
+        "is_shared": true,
+        "title": "Weekly Status Report",
+        "description": "Compile metrics.",
+        "priority": "medium",
+        "checklist": []
+      }
+    ],
+    "tags": [
+      {
+        "id": "tag-1",
+        "name": "Urgent",
+        "color": "#ef4444"
+      },
+      {
+        "id": "tag-2",
+        "name": "Frontend",
+        "color": "#3b82f6"
+      },
+      {
+        "id": "tag-3",
+        "name": "Backend",
+        "color": "#10b981"
+      },
+      {
+        "id": "tag-4",
+        "name": "Design",
+        "color": "#8b5cf6"
+      }
+    ],
+    "taskViews": [
+      {
+        "id": "view-1785297324923",
+        "name": "hhh",
+        "is_shared": false,
+        "is_default": false,
+        "payload": {
+          "activeTab": "all",
+          "statusFilter": "all",
+          "priorityFilter": "all",
+          "projectFilter": "all",
+          "tagFilter": "all",
+          "sortBy": "due_asc",
+          "viewMode": "list"
+        }
+      }
+    ],
+    "taskActivity": [
+      {
+        "id": "act-1784028670599-hfu2zdmx1",
+        "task_id": "mock-task-1784028670599",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-14T11:31:10.599Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1784092175470-5l8wurudl",
+        "task_id": "mock-task-1784028670599",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to in_progress",
+        "created_at": "2026-07-15T05:09:35.470Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1784092191210-tx5xd673i",
+        "task_id": "mock-task-1784028670599",
+        "action_type": "status_changed",
+        "description": "Changed status from in_progress to todo",
+        "created_at": "2026-07-15T05:09:51.210Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1784193919199-qkjc7qaii",
+        "task_id": "mock-task-1784193919199",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-16T09:25:19.199Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1784610805450-mrlihueb2",
+        "task_id": "mock-task-1784610805450",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-21T05:13:25.450Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785152548694-s95jhumox",
+        "task_id": "mock-task-1785152548694",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-27T11:42:28.694Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785223653106-yuu036u2j",
+        "task_id": "mock-task-1784028670599",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to in_progress",
+        "created_at": "2026-07-28T07:27:33.106Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785223657595-81nryzs6s",
+        "task_id": "mock-task-1784028670599",
+        "action_type": "status_changed",
+        "description": "Changed status from in_progress to todo",
+        "created_at": "2026-07-28T07:27:37.595Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785223923762-tknlq00sf",
+        "task_id": "mock-task-1785223923762",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-28T07:32:03.762Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785228768472-65fz88jqu",
+        "task_id": "mock-task-1785228768472",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-28T08:52:48.472Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785235212082-plbif75oj",
+        "task_id": "mock-task-1784028670599",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to soft_deleted",
+        "created_at": "2026-07-28T10:40:12.082Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785235219744-l84rxbz3l",
+        "task_id": "mock-task-1784610805450",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to done",
+        "created_at": "2026-07-28T10:40:19.744Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785236732651-l6mxmwau1",
+        "task_id": "mock-task-1785152548694",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to done",
+        "created_at": "2026-07-28T11:05:32.651Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785236733348-6f55wb0ln",
+        "task_id": "mock-task-1785223923762",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to done",
+        "created_at": "2026-07-28T11:05:33.348Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785236736497-z9mvc3jte",
+        "task_id": "mock-task-1785228768472",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to done",
+        "created_at": "2026-07-28T11:05:36.497Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785236737601-axqcorz15",
+        "task_id": "mock-task-2",
+        "action_type": "status_changed",
+        "description": "Changed status from completed to done",
+        "created_at": "2026-07-28T11:05:37.601Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785236738134-n49t5iizb",
+        "task_id": "mock-task-1",
+        "action_type": "status_changed",
+        "description": "Changed status from in_progress to done",
+        "created_at": "2026-07-28T11:05:38.134Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785236738622-w8rgu805c",
+        "task_id": "mock-task-1784193919199",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to done",
+        "created_at": "2026-07-28T11:05:38.622Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785236753943-jlu5pa4rr",
+        "task_id": "mock-task-1785236753943",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-28T11:05:53.943Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785236760173-m68c8epse",
+        "task_id": "mock-task-1785236760173",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-28T11:06:00.173Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785236771133-1mbaunhmd",
+        "task_id": "mock-task-1785236771132",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-28T11:06:11.133Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785236780620-ol3hqz0uq",
+        "task_id": "mock-task-1785236780620",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-28T11:06:20.620Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785236801234-9jvk8s0b9",
+        "task_id": "mock-task-1785236753943",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to done",
+        "created_at": "2026-07-28T11:06:41.234Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785236967600-z4hkltd5a",
+        "task_id": "mock-task-1785236760173",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to done",
+        "created_at": "2026-07-28T11:09:27.600Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785236972901-ezc36rbb2",
+        "task_id": "mock-task-1785236771132",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to done",
+        "created_at": "2026-07-28T11:09:32.901Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785237442301-hcmo3zeop",
+        "task_id": "mock-task-1785236780620",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to done",
+        "created_at": "2026-07-28T11:17:22.301Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785237859044-yk3uzehcv",
+        "task_id": "mock-task-1785237859044",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-28T11:24:19.044Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785237861453-ve9ljo57b",
+        "task_id": "mock-task-1785237859044",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to done",
+        "created_at": "2026-07-28T11:24:21.453Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785237869388-vf4get77g",
+        "task_id": "mock-task-1785237869388",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-28T11:24:29.388Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785237871500-l78qx6744",
+        "task_id": "mock-task-1785237869388",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to done",
+        "created_at": "2026-07-28T11:24:31.500Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785238869719-3175mzk8i",
+        "task_id": "mock-task-1785238869719",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-28T11:41:09.719Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785238872161-0lya0iq0a",
+        "task_id": "mock-task-1785238869719",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to done",
+        "created_at": "2026-07-28T11:41:12.161Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785238880540-aqry7y8la",
+        "task_id": "mock-task-1785238880540",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-28T11:41:20.540Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785238882541-ia0j8ao02",
+        "task_id": "mock-task-1785238880540",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to done",
+        "created_at": "2026-07-28T11:41:22.541Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785239086772-qcs15a1vj",
+        "task_id": "mock-task-1785239086772",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-28T11:44:46.772Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785239091236-thjjuf2tx",
+        "task_id": "mock-task-1785239091236",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-28T11:44:51.236Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785239095438-vv74s7ipf",
+        "task_id": "mock-task-1785239095438",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-28T11:44:55.438Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785239100724-wm9jf80t5",
+        "task_id": "mock-task-1785239100724",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-28T11:45:00.724Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785239106540-61td6efsl",
+        "task_id": "mock-task-1785239106540",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-28T11:45:06.540Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785239113172-1v4cblj5i",
+        "task_id": "mock-task-1785239113172",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-28T11:45:13.172Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785239250620-30p6hf5oc",
+        "task_id": "mock-task-1785239086772",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to done",
+        "created_at": "2026-07-28T11:47:30.620Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785239253553-lbokm5nxc",
+        "task_id": "mock-task-1785239091236",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to done",
+        "created_at": "2026-07-28T11:47:33.553Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785239257632-00q2hpbk0",
+        "task_id": "mock-task-1785239095438",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to done",
+        "created_at": "2026-07-28T11:47:37.632Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785239261855-mmhqwwbhx",
+        "task_id": "mock-task-1785239100724",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to done",
+        "created_at": "2026-07-28T11:47:41.855Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785239917229-jzd17xowa",
+        "task_id": "mock-task-1785239917229",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-28T11:58:37.229Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785240495867-3sa5sf93a",
+        "task_id": "mock-task-1785239106540",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to done",
+        "created_at": "2026-07-28T12:08:15.867Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785240997505-wr4smlyg7",
+        "task_id": "mock-task-1784610805450",
+        "action_type": "status_changed",
+        "description": "Changed status from done to todo",
+        "created_at": "2026-07-28T12:16:37.505Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785241008927-eqvlowgdk",
+        "task_id": "mock-task-1784610805450",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to done",
+        "created_at": "2026-07-28T12:16:48.927Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785299619302-4gq60cg32",
+        "task_id": "mock-task-1785239113172",
+        "action_type": "assignee_changed",
+        "description": "Changed assignee to Rahul K.",
+        "created_at": "2026-07-29T04:33:39.302Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785299961430-mu4v9n6na",
+        "task_id": "mock-task-1785239917229",
+        "action_type": "assignee_changed",
+        "description": "Changed assignee to Amit S.",
+        "created_at": "2026-07-29T04:39:21.430Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785300019421-w9hy5mw6v",
+        "task_id": "mock-task-1785239113172",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to in_progress",
+        "created_at": "2026-07-29T04:40:19.421Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785300032666-mek2cg8ft",
+        "task_id": "mock-task-1785239113172",
+        "action_type": "status_changed",
+        "description": "Changed status from in_progress to waiting",
+        "created_at": "2026-07-29T04:40:32.666Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785300040116-1ltq5h868",
+        "task_id": "mock-task-1785239113172",
+        "action_type": "status_changed",
+        "description": "Changed status from waiting to review",
+        "created_at": "2026-07-29T04:40:40.116Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785300050683-wavxtne8a",
+        "task_id": "mock-task-1785239113172",
+        "action_type": "status_changed",
+        "description": "Changed status from review to todo",
+        "created_at": "2026-07-29T04:40:50.683Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785300063849-44ioxj6v8",
+        "task_id": "mock-task-1785300063849",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-29T04:41:03.849Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785302804183-0nagsl4ld",
+        "task_id": "mock-task-1785300063849",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to done",
+        "created_at": "2026-07-29T05:26:44.183Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785303628389-dgwukb3hz",
+        "task_id": "mock-task-1785303628389",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-29T05:40:28.389Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785303972246-5bmvy56l2",
+        "task_id": "mock-task-1785303972246",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-29T05:46:12.246Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785305145438-49ioum5u5",
+        "task_id": "mock-task-1785303972246",
+        "action_type": "priority_changed",
+        "description": "Changed priority from urgent to low",
+        "created_at": "2026-07-29T06:05:45.438Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785305146555-s9txhfwok",
+        "task_id": "mock-task-1785303972246",
+        "action_type": "priority_changed",
+        "description": "Changed priority from low to medium",
+        "created_at": "2026-07-29T06:05:46.555Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785305147047-tfhyr8b5o",
+        "task_id": "mock-task-1785303972246",
+        "action_type": "priority_changed",
+        "description": "Changed priority from medium to high",
+        "created_at": "2026-07-29T06:05:47.047Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785305147740-baodyvlgy",
+        "task_id": "mock-task-1785303972246",
+        "action_type": "priority_changed",
+        "description": "Changed priority from high to urgent",
+        "created_at": "2026-07-29T06:05:47.740Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785305831886-kzdfq9kr1",
+        "task_id": "mock-task-1785303972246",
+        "action_type": "checklist_updated",
+        "description": "Updated checklist",
+        "created_at": "2026-07-29T06:17:11.886Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785305859831-g7a9ilc6u",
+        "task_id": "mock-task-1785303972246",
+        "action_type": "edited",
+        "description": "Updated task description",
+        "created_at": "2026-07-29T06:17:39.831Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785305866161-9gpmb1xg8",
+        "task_id": "mock-task-1785303972246",
+        "action_type": "edited",
+        "description": "Updated task description",
+        "created_at": "2026-07-29T06:17:46.161Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785306154200-ccns1ek6j",
+        "task_id": "mock-task-1785303972246",
+        "action_type": "assignee_changed",
+        "description": "Changed assignee to Priya M.",
+        "created_at": "2026-07-29T06:22:34.200Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785306165643-4yu2cdvw5",
+        "task_id": "mock-task-1785303972246",
+        "action_type": "checklist_updated",
+        "description": "Updated checklist",
+        "created_at": "2026-07-29T06:22:45.643Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785306167882-2jc1c4qmz",
+        "task_id": "mock-task-1785303972246",
+        "action_type": "checklist_updated",
+        "description": "Updated checklist",
+        "created_at": "2026-07-29T06:22:47.882Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785306168752-ipq5l9j97",
+        "task_id": "mock-task-1785303972246",
+        "action_type": "checklist_updated",
+        "description": "Updated checklist",
+        "created_at": "2026-07-29T06:22:48.752Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785306176140-m1kugvcxt",
+        "task_id": "mock-task-1785303972246",
+        "action_type": "checklist_updated",
+        "description": "Updated checklist",
+        "created_at": "2026-07-29T06:22:56.140Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785309000961-sz7u1yoq8",
+        "task_id": "mock-task-1785303972246",
+        "action_type": "priority_changed",
+        "description": "Changed priority from urgent to low",
+        "created_at": "2026-07-29T07:10:00.961Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785309002778-5t283362o",
+        "task_id": "mock-task-1785303972246",
+        "action_type": "priority_changed",
+        "description": "Changed priority from low to medium",
+        "created_at": "2026-07-29T07:10:02.778Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785309003254-d3hoalw2y",
+        "task_id": "mock-task-1785303972246",
+        "action_type": "priority_changed",
+        "description": "Changed priority from medium to high",
+        "created_at": "2026-07-29T07:10:03.254Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785309004016-w7qxju8tu",
+        "task_id": "mock-task-1785303972246",
+        "action_type": "priority_changed",
+        "description": "Changed priority from high to urgent",
+        "created_at": "2026-07-29T07:10:04.016Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785309114522-bzj0tvgf2",
+        "task_id": "mock-task-1785303972246",
+        "action_type": "priority_changed",
+        "description": "Changed priority from urgent to high",
+        "created_at": "2026-07-29T07:11:54.522Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785309336656-m5utvsjzo",
+        "task_id": "mock-task-1785303972246",
+        "action_type": "checklist_updated",
+        "description": "Updated checklist",
+        "created_at": "2026-07-29T07:15:36.656Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785309337574-dr2q9vbhg",
+        "task_id": "mock-task-1785303972246",
+        "action_type": "checklist_updated",
+        "description": "Updated checklist",
+        "created_at": "2026-07-29T07:15:37.574Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785314261860-bxup0pzf2",
+        "task_id": "mock-task-1785314261860",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-29T08:37:41.860Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785314749149-x6g5e7nym",
+        "task_id": "mock-task-1785314749149",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-29T08:45:49.149Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785314945157-uid8le6se",
+        "task_id": "mock-task-1785314945157",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-29T08:49:05.157Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785314951085-yf3myak9x",
+        "task_id": "mock-task-1785314951085",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-29T08:49:11.085Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785315272517-0knmn38c5",
+        "task_id": "mock-task-1785315272517",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-29T08:54:32.517Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785315436342-ca6s7k3r6",
+        "task_id": "mock-task-1785315436342",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-29T08:57:16.342Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785316318343-wlc3ico6n",
+        "task_id": "mock-task-1785316318343",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-29T09:11:58.343Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785316333007-ymdqcjjk5",
+        "task_id": "mock-task-1785316333007",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-29T09:12:13.007Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785316441255-5eb5b4mj0",
+        "task_id": "mock-task-1785316441255",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-29T09:14:01.255Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785316483351-botk0dcc4",
+        "task_id": "mock-task-1785316483351",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-07-29T09:14:43.351Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1785951787662-n2ux5q5ub",
+        "task_id": "mock-task-1785951787662",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-08-05T17:43:07.662Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1786353929042-ki6lxfowe",
+        "task_id": "mock-task-1785303972246",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to in_progress",
+        "created_at": "2026-08-10T09:25:29.043Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1786354225578-t7dmdptyx",
+        "task_id": "mock-task-1786354225578",
+        "action_type": "created",
+        "description": "Created task",
+        "created_at": "2026-08-10T09:30:25.578Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1786354239284-g9zstwz2v",
+        "task_id": "mock-task-1785303972246",
+        "action_type": "status_changed",
+        "description": "Changed status from in_progress to cancelled",
+        "created_at": "2026-08-10T09:30:39.284Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      },
+      {
+        "id": "act-1786354242812-wb6jol2ii",
+        "task_id": "mock-task-1785239917229",
+        "action_type": "status_changed",
+        "description": "Changed status from todo to cancelled",
+        "created_at": "2026-08-10T09:30:42.812Z",
+        "user_name": "Admin User",
+        "is_ai": false
+      }
+    ],
+    "apiKeys": [
+      {
+        "id": "key-1784712827105",
+        "name": "fdfd",
+        "description": "dfd",
+        "permissions": [
+          "Leads Read",
+          "Customers Read"
+        ],
+        "status": "active",
+        "created_at": "2026-07-22T09:33:47.105Z"
+      }
+    ],
+    "webhooks": [
+      {
+        "id": "webhook-1784705390533",
+        "name": "ghgh",
+        "url": "hghghgh",
+        "events": [
+          "project.created",
+          "project.updated",
+          "project.deleted",
+          "project.completed",
+          "project.cancelled"
+        ],
+        "custom_headers": {},
+        "retry_count": 3,
+        "is_active": true,
+        "is_debug_mode": true,
+        "created_at": "2026-07-22T07:29:50.533Z"
+      }
+    ],
+    "apiTokens": [
+      {
+        "id": "token-1",
+        "name": "Zapier Integration",
+        "description": "Used for lead sync",
+        "permissions": [
+          "Leads Read",
+          "Leads Write"
+        ],
+        "status": "active",
+        "last_used_at": "2026-07-22T10:22:43.325Z",
+        "created_at": "2026-07-21T10:22:43.325Z"
+      },
+      {
+        "id": "token-1784715763325",
+        "name": "fgf",
+        "description": "gfg",
+        "permissions": [
+          "Customers Write",
+          "Invoices Write",
+          "Projects Write"
+        ],
+        "status": "active",
+        "created_at": "2026-07-22T10:22:43.325Z"
+      }
+    ],
+    "offboarding": [],
+    "branches": [
+      {
+        "id": "b1",
+        "name": "New York HQ"
+      },
+      {
+        "id": "b2",
+        "name": "London Office"
+      },
+      {
+        "id": "b3",
+        "name": "Remote"
+      }
+    ],
+    "departments": [
+      {
+        "id": "d1",
+        "name": "Engineering"
+      },
+      {
+        "id": "d2",
+        "name": "Sales"
+      },
+      {
+        "id": "d3",
+        "name": "Operations"
+      }
+    ],
+    "roles": [
+      {
+        "id": "superadmin",
+        "name": "Super Admin",
+        "description": "Full system access",
+        "permissions": [
+          "*"
+        ],
+        "enabled_modules": [],
+        "data_scopes": {},
+        "page_permissions": {},
+        "field_permissions": {},
+        "security_policies": {}
+      },
+      {
+        "id": "role-1786531866698",
+        "name": "admin",
+        "description": "Administrator access to manage most operations and settings",
+        "permissions": [
+          "leads:view",
+          "leads:create",
+          "leads:edit",
+          "leads:delete",
+          "leads:assign",
+          "leads:transfer",
+          "leads:approve",
+          "leads:export",
+          "leads:import",
+          "leads:print",
+          "leads:duplicate",
+          "leads:bulk_update",
+          "leads:bulk_delete",
+          "projects:view",
+          "projects:create",
+          "projects:edit",
+          "projects:delete",
+          "projects:assign",
+          "projects:transfer",
+          "projects:approve",
+          "projects:export",
+          "projects:import",
+          "projects:print",
+          "projects:duplicate",
+          "projects:bulk_update",
+          "projects:bulk_delete",
+          "tasks:view",
+          "tasks:create",
+          "tasks:edit",
+          "tasks:delete",
+          "tasks:assign",
+          "tasks:transfer",
+          "tasks:approve",
+          "tasks:export",
+          "tasks:import",
+          "tasks:print",
+          "tasks:duplicate",
+          "tasks:bulk_update",
+          "tasks:bulk_delete",
+          "clients:view",
+          "clients:create",
+          "clients:edit",
+          "clients:delete",
+          "clients:assign",
+          "clients:export",
+          "clients:import",
+          "clients:print",
+          "clients:duplicate",
+          "payments:view",
+          "payments:create",
+          "payments:edit",
+          "payments:delete",
+          "payments:approve",
+          "payments:export",
+          "payments:print",
+          "quotations:view",
+          "quotations:create",
+          "quotations:edit",
+          "quotations:delete",
+          "quotations:approve",
+          "quotations:export",
+          "quotations:print",
+          "quotations:duplicate",
+          "boq:view",
+          "boq:create",
+          "boq:edit",
+          "boq:delete",
+          "boq:approve",
+          "boq:export",
+          "boq:print",
+          "boq:duplicate",
+          "vendors:view",
+          "vendors:create",
+          "vendors:edit",
+          "vendors:delete",
+          "vendors:approve",
+          "vendors:export",
+          "vendors:import",
+          "purchase_orders:view",
+          "purchase_orders:create",
+          "purchase_orders:edit",
+          "purchase_orders:delete",
+          "purchase_orders:approve",
+          "purchase_orders:export",
+          "inventory:view",
+          "inventory:create",
+          "inventory:edit",
+          "inventory:delete",
+          "inventory:export",
+          "inventory:import",
+          "warehouse:view",
+          "warehouse:create",
+          "warehouse:edit",
+          "warehouse:delete",
+          "factory:view",
+          "factory:create",
+          "factory:edit",
+          "factory:delete",
+          "factory:approve",
+          "analytics:view",
+          "analytics:export",
+          "reports:view",
+          "reports:create",
+          "reports:edit",
+          "reports:delete",
+          "reports:export",
+          "settings:view",
+          "settings:create",
+          "settings:edit"
+        ],
+        "data_scopes": {
+          "leads": "all",
+          "projects": "all",
+          "tasks": "all",
+          "clients": "all",
+          "payments": "all",
+          "quotations": "all",
+          "boq": "all",
+          "vendors": "all",
+          "purchase_orders": "all",
+          "inventory": "all",
+          "warehouse": "all",
+          "factory": "all",
+          "analytics": "all",
+          "reports": "all",
+          "settings": "all"
+        },
+        "field_permissions": {
+          "projects": {
+            "budget": "editable",
+            "profit": "editable",
+            "margin": "editable",
+            "discount": "editable",
+            "vendor_cost": "editable",
+            "gst": "editable",
+            "customer_contact": "editable",
+            "internal_notes": "editable"
+          },
+          "leads": {
+            "budget": "editable",
+            "expected_revenue": "editable",
+            "source": "editable",
+            "internal_notes": "editable"
+          },
+          "tasks": {
+            "budget": "editable",
+            "priority": "editable"
+          },
+          "clients": {
+            "financial_history": "editable"
+          },
+          "payments": {
+            "amount": "editable",
+            "tax": "editable"
+          },
+          "quotations": {
+            "discount": "editable",
+            "margin": "editable",
+            "profit": "editable"
+          },
+          "vendors": {
+            "bank_details": "editable",
+            "rating": "editable"
+          },
+          "purchase_orders": {
+            "total_amount": "editable",
+            "discount": "editable"
+          }
+        },
+        "enabled_modules": [
+          "leads",
+          "projects",
+          "tasks",
+          "clients",
+          "payments",
+          "quotations",
+          "boq",
+          "vendors",
+          "purchase_orders",
+          "inventory",
+          "warehouse",
+          "factory",
+          "analytics",
+          "reports",
+          "settings"
+        ],
+        "page_permissions": {},
+        "security_policies": {
+          "allowed_days": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "allowed_login_times": {
+            "start": "08:00",
+            "end": "20:00"
+          },
+          "allowed_ips": [],
+          "trusted_browsers": [],
+          "allowed_devices": []
+        },
+        "change_summary": "",
+        "created_at": "2026-08-12T10:51:06.698Z"
+      },
+      {
+        "id": "role-1786531899930",
+        "name": "Project Manager",
+        "description": "Manage projects, schedules, timelines, budgets, and project teams",
+        "permissions": [
+          "projects:view",
+          "projects:create",
+          "projects:edit",
+          "projects:assign",
+          "projects:approve",
+          "projects:export",
+          "projects:print",
+          "projects:duplicate",
+          "tasks:view",
+          "tasks:create",
+          "tasks:edit",
+          "tasks:delete",
+          "tasks:assign",
+          "tasks:approve",
+          "tasks:export",
+          "tasks:duplicate",
+          "tasks:bulk_update",
+          "clients:view",
+          "clients:create",
+          "clients:edit",
+          "clients:print",
+          "payments:view",
+          "payments:create",
+          "payments:edit",
+          "payments:print",
+          "quotations:view",
+          "quotations:create",
+          "quotations:edit",
+          "quotations:approve",
+          "quotations:export",
+          "quotations:print",
+          "quotations:duplicate",
+          "boq:view",
+          "boq:create",
+          "boq:edit",
+          "boq:approve",
+          "boq:export",
+          "boq:print",
+          "boq:duplicate",
+          "vendors:view",
+          "vendors:create",
+          "vendors:edit",
+          "purchase_orders:view",
+          "purchase_orders:create",
+          "purchase_orders:edit",
+          "purchase_orders:export",
+          "inventory:view",
+          "inventory:export",
+          "warehouse:view",
+          "factory:view",
+          "factory:create",
+          "factory:edit",
+          "analytics:view",
+          "analytics:export",
+          "reports:view",
+          "reports:create",
+          "reports:edit",
+          "reports:export"
+        ],
+        "data_scopes": {
+          "projects": "department",
+          "tasks": "department",
+          "clients": "department",
+          "payments": "department",
+          "quotations": "department",
+          "boq": "department",
+          "vendors": "all",
+          "purchase_orders": "department",
+          "inventory": "all",
+          "warehouse": "all",
+          "factory": "department",
+          "analytics": "department",
+          "reports": "department"
+        },
+        "field_permissions": {
+          "projects": {
+            "budget": "editable",
+            "profit": "editable",
+            "margin": "editable",
+            "discount": "editable",
+            "vendor_cost": "editable",
+            "gst": "editable",
+            "customer_contact": "editable",
+            "internal_notes": "editable"
+          },
+          "tasks": {
+            "budget": "editable",
+            "priority": "editable"
+          },
+          "clients": {
+            "financial_history": "editable"
+          },
+          "payments": {
+            "amount": "editable",
+            "tax": "editable"
+          },
+          "quotations": {
+            "discount": "editable",
+            "margin": "editable",
+            "profit": "editable"
+          },
+          "vendors": {
+            "bank_details": "read_only",
+            "rating": "editable"
+          },
+          "purchase_orders": {
+            "total_amount": "editable",
+            "discount": "editable"
+          }
+        },
+        "enabled_modules": [
+          "projects",
+          "tasks",
+          "clients",
+          "payments",
+          "quotations",
+          "boq",
+          "vendors",
+          "purchase_orders",
+          "inventory",
+          "warehouse",
+          "factory",
+          "analytics",
+          "reports"
+        ],
+        "page_permissions": {},
+        "security_policies": {
+          "allowed_days": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "allowed_login_times": {
+            "start": "08:00",
+            "end": "21:00"
+          },
+          "allowed_ips": [],
+          "trusted_browsers": [],
+          "allowed_devices": []
+        },
+        "change_summary": "",
+        "created_at": "2026-08-12T10:51:39.930Z"
+      },
+      {
+        "id": "role-1786531905042",
+        "name": "Designer",
+        "description": "Create and edit design briefs, palettes, reviews, drawing registers, and design assets",
+        "permissions": [
+          "projects:view",
+          "projects:edit",
+          "projects:print",
+          "tasks:view",
+          "tasks:create",
+          "tasks:edit",
+          "quotations:view",
+          "boq:view",
+          "boq:create",
+          "boq:edit",
+          "inventory:view"
+        ],
+        "data_scopes": {
+          "projects": "assigned",
+          "tasks": "assigned",
+          "quotations": "assigned",
+          "boq": "assigned",
+          "inventory": "all"
+        },
+        "field_permissions": {
+          "projects": {
+            "budget": "read_only",
+            "profit": "hidden",
+            "margin": "hidden",
+            "discount": "read_only",
+            "vendor_cost": "hidden",
+            "gst": "read_only",
+            "customer_contact": "editable",
+            "internal_notes": "editable"
+          },
+          "tasks": {
+            "budget": "read_only",
+            "priority": "editable"
+          },
+          "quotations": {
+            "discount": "read_only",
+            "margin": "hidden",
+            "profit": "hidden"
+          }
+        },
+        "enabled_modules": [
+          "projects",
+          "tasks",
+          "quotations",
+          "boq",
+          "inventory"
+        ],
+        "page_permissions": {
+          "projects": [
+            "Overview",
+            "Team & Roles",
+            "Site Details",
+            "Design Brief",
+            "Design Assets",
+            "Design Reviews",
+            "Material Palettes",
+            "Quotations & BOQ",
+            "Coordination",
+            "Room Progress",
+            "Tasks",
+            "Documents",
+            "Drawing Register"
+          ]
+        },
+        "security_policies": {
+          "allowed_days": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "allowed_login_times": {
+            "start": "08:30",
+            "end": "20:00"
+          }
+        },
+        "change_summary": "",
+        "created_at": "2026-08-12T10:51:45.042Z"
+      },
+      {
+        "id": "role-1786531910946",
+        "name": "Lead Designer",
+        "description": "Senior designer authority to approve design concepts, reviews, and drawings",
+        "permissions": [
+          "projects:view",
+          "projects:edit",
+          "projects:assign",
+          "projects:print",
+          "tasks:view",
+          "tasks:create",
+          "tasks:edit",
+          "tasks:assign",
+          "tasks:approve",
+          "clients:view",
+          "quotations:view",
+          "quotations:create",
+          "quotations:edit",
+          "boq:view",
+          "boq:create",
+          "boq:edit",
+          "boq:approve",
+          "inventory:view"
+        ],
+        "data_scopes": {
+          "projects": "department",
+          "tasks": "department",
+          "clients": "department",
+          "quotations": "department",
+          "boq": "department",
+          "inventory": "all"
+        },
+        "field_permissions": {
+          "projects": {
+            "budget": "read_only",
+            "profit": "read_only",
+            "margin": "read_only",
+            "discount": "editable",
+            "vendor_cost": "read_only",
+            "gst": "editable",
+            "customer_contact": "editable",
+            "internal_notes": "editable"
+          },
+          "tasks": {
+            "budget": "editable",
+            "priority": "editable"
+          },
+          "quotations": {
+            "discount": "editable",
+            "margin": "read_only",
+            "profit": "read_only"
+          }
+        },
+        "enabled_modules": [
+          "projects",
+          "tasks",
+          "clients",
+          "quotations",
+          "boq",
+          "inventory"
+        ],
+        "page_permissions": {
+          "projects": [
+            "Overview",
+            "Team & Roles",
+            "Client Profile",
+            "Site Details",
+            "Design Brief",
+            "Design Assets",
+            "Design Reviews",
+            "Material Palettes",
+            "Quotations & BOQ",
+            "Coordination",
+            "Room Progress",
+            "Tasks",
+            "Documents",
+            "Drawing Register",
+            "Activity Logs"
+          ]
+        },
+        "security_policies": {
+          "allowed_days": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "allowed_login_times": {
+            "start": "08:00",
+            "end": "21:00"
+          }
+        },
+        "change_summary": "",
+        "created_at": "2026-08-12T10:51:50.946Z"
+      },
+      {
+        "id": "role-1786531917522",
+        "name": "Junior Designer",
+        "description": "Assist in drafting, layout planning, and updating design checklists",
+        "permissions": [
+          "projects:view",
+          "tasks:view",
+          "tasks:edit",
+          "boq:view"
+        ],
+        "data_scopes": {
+          "projects": "assigned",
+          "tasks": "assigned",
+          "boq": "assigned"
+        },
+        "field_permissions": {
+          "projects": {
+            "budget": "hidden",
+            "profit": "hidden",
+            "margin": "hidden",
+            "discount": "hidden",
+            "vendor_cost": "hidden",
+            "gst": "hidden",
+            "customer_contact": "read_only",
+            "internal_notes": "editable"
+          },
+          "tasks": {
+            "budget": "hidden",
+            "priority": "read_only"
+          }
+        },
+        "enabled_modules": [
+          "projects",
+          "tasks",
+          "boq"
+        ],
+        "page_permissions": {
+          "projects": [
+            "Overview",
+            "Site Details",
+            "Design Brief",
+            "Design Assets",
+            "Material Palettes",
+            "Room Progress",
+            "Tasks",
+            "Documents",
+            "Drawing Register"
+          ]
+        },
+        "security_policies": {
+          "allowed_days": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "allowed_login_times": {
+            "start": "09:00",
+            "end": "18:30"
+          }
+        },
+        "change_summary": "",
+        "created_at": "2026-08-12T10:51:57.522Z"
+      },
+      {
+        "id": "role-1786531925226",
+        "name": "Sales",
+        "description": "Drive conversion, pipeline tracking, client onboarding, and initial estimations",
+        "permissions": [
+          "leads:view",
+          "leads:create",
+          "leads:edit",
+          "leads:assign",
+          "leads:transfer",
+          "leads:export",
+          "leads:print",
+          "leads:duplicate",
+          "clients:view",
+          "clients:create",
+          "clients:edit",
+          "clients:print",
+          "quotations:view",
+          "quotations:create",
+          "quotations:edit",
+          "quotations:export",
+          "quotations:print",
+          "quotations:duplicate",
+          "boq:view",
+          "boq:create",
+          "boq:edit",
+          "analytics:view",
+          "reports:view",
+          "reports:export"
+        ],
+        "data_scopes": {
+          "leads": "department",
+          "clients": "department",
+          "quotations": "department",
+          "boq": "department",
+          "analytics": "department",
+          "reports": "department"
+        },
+        "field_permissions": {
+          "leads": {
+            "budget": "editable",
+            "expected_revenue": "editable",
+            "source": "editable",
+            "internal_notes": "editable"
+          },
+          "clients": {
+            "financial_history": "read_only"
+          },
+          "quotations": {
+            "discount": "editable",
+            "margin": "read_only",
+            "profit": "read_only"
+          }
+        },
+        "enabled_modules": [
+          "leads",
+          "clients",
+          "quotations",
+          "boq",
+          "analytics",
+          "reports"
+        ],
+        "page_permissions": {},
+        "security_policies": {
+          "allowed_days": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "allowed_login_times": {
+            "start": "08:00",
+            "end": "20:00"
+          }
+        },
+        "change_summary": "",
+        "created_at": "2026-08-12T10:52:05.226Z"
+      },
+      {
+        "id": "role-1786531931146",
+        "name": "Sales Representative",
+        "description": "Field executive dedicated to individual lead follow-ups and quotations",
+        "permissions": [
+          "leads:view",
+          "leads:create",
+          "leads:edit",
+          "leads:print",
+          "clients:view",
+          "clients:create",
+          "clients:edit",
+          "quotations:view",
+          "quotations:create",
+          "quotations:edit",
+          "quotations:print",
+          "boq:view"
+        ],
+        "data_scopes": {
+          "leads": "own",
+          "clients": "assigned",
+          "quotations": "own",
+          "boq": "assigned"
+        },
+        "field_permissions": {
+          "leads": {
+            "budget": "editable",
+            "expected_revenue": "editable",
+            "source": "editable",
+            "internal_notes": "editable"
+          },
+          "clients": {
+            "financial_history": "hidden"
+          },
+          "quotations": {
+            "discount": "editable",
+            "margin": "hidden",
+            "profit": "hidden"
+          }
+        },
+        "enabled_modules": [
+          "leads",
+          "clients",
+          "quotations",
+          "boq"
+        ],
+        "page_permissions": {},
+        "security_policies": {
+          "allowed_days": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "allowed_login_times": {
+            "start": "08:00",
+            "end": "20:00"
+          }
+        },
+        "change_summary": "",
+        "created_at": "2026-08-12T10:52:11.146Z"
+      },
+      {
+        "id": "role-1786531936842",
+        "name": "Site Engineer",
+        "description": "Oversee site execution, coordination, progress tracking, and materials",
+        "permissions": [
+          "projects:view",
+          "projects:edit",
+          "tasks:view",
+          "tasks:create",
+          "tasks:edit",
+          "inventory:view",
+          "inventory:create",
+          "inventory:edit",
+          "warehouse:view",
+          "factory:view"
+        ],
+        "data_scopes": {
+          "projects": "assigned",
+          "tasks": "assigned",
+          "inventory": "all",
+          "warehouse": "all",
+          "factory": "assigned"
+        },
+        "field_permissions": {
+          "projects": {
+            "budget": "read_only",
+            "profit": "hidden",
+            "margin": "hidden",
+            "discount": "hidden",
+            "vendor_cost": "read_only",
+            "gst": "read_only",
+            "customer_contact": "editable",
+            "internal_notes": "editable"
+          },
+          "tasks": {
+            "budget": "read_only",
+            "priority": "editable"
+          }
+        },
+        "enabled_modules": [
+          "projects",
+          "tasks",
+          "inventory",
+          "warehouse",
+          "factory"
+        ],
+        "page_permissions": {
+          "projects": [
+            "Overview",
+            "Team & Roles",
+            "Site Details",
+            "Vendors & Consultants",
+            "Site Visits",
+            "Material Deliveries",
+            "Coordination",
+            "Phases",
+            "Gantt Chart",
+            "Work Activities",
+            "Room Progress",
+            "Tasks",
+            "Daily Site Reports",
+            "Documents",
+            "Drawing Register",
+            "MEP Checklist"
+          ]
+        },
+        "security_policies": {
+          "allowed_days": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "allowed_login_times": {
+            "start": "07:00",
+            "end": "21:00"
+          }
+        },
+        "change_summary": "",
+        "created_at": "2026-08-12T10:52:16.842Z"
+      },
+      {
+        "id": "role-1786531972442",
+        "name": "Site Supervisor",
+        "description": "Log daily site reports, monitor labor attendance, and identify snags",
+        "permissions": [
+          "projects:view",
+          "tasks:view",
+          "tasks:create",
+          "tasks:edit"
+        ],
+        "data_scopes": {
+          "projects": "assigned",
+          "tasks": "assigned"
+        },
+        "field_permissions": {
+          "projects": {
+            "budget": "hidden",
+            "profit": "hidden",
+            "margin": "hidden",
+            "discount": "hidden",
+            "vendor_cost": "hidden",
+            "gst": "hidden",
+            "customer_contact": "read_only",
+            "internal_notes": "editable"
+          },
+          "tasks": {
+            "budget": "hidden",
+            "priority": "read_only"
+          }
+        },
+        "enabled_modules": [
+          "projects",
+          "tasks"
+        ],
+        "page_permissions": {
+          "projects": [
+            "Overview",
+            "Site Details",
+            "Site Visits",
+            "Material Deliveries",
+            "Work Activities",
+            "Room Progress",
+            "Tasks",
+            "Daily Site Reports",
+            "Documents",
+            "MEP Checklist",
+            "Snags",
+            "Punch List"
+          ]
+        },
+        "security_policies": {
+          "allowed_days": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "allowed_login_times": {
+            "start": "07:00",
+            "end": "19:00"
+          }
+        },
+        "change_summary": "",
+        "created_at": "2026-08-12T10:52:52.442Z"
+      },
+      {
+        "id": "role-1786531980139",
+        "name": "Site Supervisor",
+        "description": "Log daily site reports, monitor labor attendance, and identify snags",
+        "permissions": [
+          "projects:view",
+          "tasks:view",
+          "tasks:create",
+          "tasks:edit"
+        ],
+        "data_scopes": {
+          "projects": "assigned",
+          "tasks": "assigned"
+        },
+        "field_permissions": {
+          "projects": {
+            "budget": "hidden",
+            "profit": "hidden",
+            "margin": "hidden",
+            "discount": "hidden",
+            "vendor_cost": "hidden",
+            "gst": "hidden",
+            "customer_contact": "read_only",
+            "internal_notes": "editable"
+          },
+          "tasks": {
+            "budget": "hidden",
+            "priority": "read_only"
+          }
+        },
+        "enabled_modules": [
+          "projects",
+          "tasks"
+        ],
+        "page_permissions": {
+          "projects": [
+            "Overview",
+            "Site Details",
+            "Site Visits",
+            "Material Deliveries",
+            "Work Activities",
+            "Room Progress",
+            "Tasks",
+            "Daily Site Reports",
+            "Documents",
+            "MEP Checklist",
+            "Snags",
+            "Punch List"
+          ]
+        },
+        "security_policies": {
+          "allowed_days": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "allowed_login_times": {
+            "start": "07:00",
+            "end": "19:00"
+          }
+        },
+        "change_summary": "",
+        "created_at": "2026-08-12T10:53:00.139Z"
+      },
+      {
+        "id": "role-1786531987034",
+        "name": "Procurement Officer",
+        "description": "Track materials, raise purchase orders, and coordinate with vendors",
+        "permissions": [
+          "vendors:view",
+          "vendors:create",
+          "vendors:edit",
+          "purchase_orders:view",
+          "purchase_orders:create",
+          "purchase_orders:edit",
+          "purchase_orders:export",
+          "inventory:view",
+          "inventory:create",
+          "inventory:edit",
+          "inventory:export",
+          "inventory:import",
+          "warehouse:view",
+          "warehouse:create",
+          "warehouse:edit"
+        ],
+        "data_scopes": {
+          "vendors": "all",
+          "purchase_orders": "all",
+          "inventory": "all",
+          "warehouse": "all"
+        },
+        "field_permissions": {
+          "vendors": {
+            "bank_details": "editable",
+            "rating": "read_only"
+          },
+          "purchase_orders": {
+            "total_amount": "editable",
+            "discount": "editable"
+          }
+        },
+        "enabled_modules": [
+          "vendors",
+          "purchase_orders",
+          "inventory",
+          "warehouse"
+        ],
+        "page_permissions": {},
+        "security_policies": {
+          "allowed_days": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "allowed_login_times": {
+            "start": "08:30",
+            "end": "19:30"
+          }
+        },
+        "change_summary": "",
+        "created_at": "2026-08-12T10:53:07.034Z"
+      },
+      {
+        "id": "role-1786531992458",
+        "name": "Procurement Manager",
+        "description": "Approve vendor rates, purchase orders, and audit materials stock",
+        "permissions": [
+          "vendors:view",
+          "vendors:create",
+          "vendors:edit",
+          "vendors:delete",
+          "vendors:approve",
+          "purchase_orders:view",
+          "purchase_orders:create",
+          "purchase_orders:edit",
+          "purchase_orders:delete",
+          "purchase_orders:approve",
+          "purchase_orders:export",
+          "inventory:view",
+          "inventory:create",
+          "inventory:edit",
+          "inventory:delete",
+          "inventory:export",
+          "inventory:import",
+          "warehouse:view",
+          "warehouse:create",
+          "warehouse:edit",
+          "warehouse:delete"
+        ],
+        "data_scopes": {
+          "vendors": "all",
+          "purchase_orders": "all",
+          "inventory": "all",
+          "warehouse": "all"
+        },
+        "field_permissions": {
+          "vendors": {
+            "bank_details": "editable",
+            "rating": "editable"
+          },
+          "purchase_orders": {
+            "total_amount": "editable",
+            "discount": "editable"
+          }
+        },
+        "enabled_modules": [
+          "vendors",
+          "purchase_orders",
+          "inventory",
+          "warehouse"
+        ],
+        "page_permissions": {},
+        "security_policies": {
+          "allowed_days": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "allowed_login_times": {
+            "start": "08:00",
+            "end": "20:30"
+          }
+        },
+        "change_summary": "",
+        "created_at": "2026-08-12T10:53:12.458Z"
+      },
+      {
+        "id": "role-1786531997122",
+        "name": "Finance Manager",
+        "description": "Oversee accounts payable, collection, invoicing, and budget compliance",
+        "permissions": [
+          "payments:view",
+          "payments:create",
+          "payments:edit",
+          "payments:approve",
+          "payments:export",
+          "payments:print",
+          "quotations:view",
+          "quotations:export",
+          "boq:view",
+          "boq:export",
+          "vendors:view",
+          "vendors:edit",
+          "purchase_orders:view",
+          "purchase_orders:approve",
+          "purchase_orders:export",
+          "analytics:view",
+          "analytics:export",
+          "reports:view",
+          "reports:create",
+          "reports:edit",
+          "reports:export"
+        ],
+        "data_scopes": {
+          "payments": "all",
+          "quotations": "all",
+          "boq": "all",
+          "vendors": "all",
+          "purchase_orders": "all",
+          "analytics": "all",
+          "reports": "all"
+        },
+        "field_permissions": {
+          "payments": {
+            "amount": "editable",
+            "tax": "editable"
+          },
+          "quotations": {
+            "discount": "read_only",
+            "margin": "read_only",
+            "profit": "read_only"
+          },
+          "vendors": {
+            "bank_details": "editable",
+            "rating": "read_only"
+          },
+          "purchase_orders": {
+            "total_amount": "read_only",
+            "discount": "read_only"
+          }
+        },
+        "enabled_modules": [
+          "payments",
+          "quotations",
+          "boq",
+          "vendors",
+          "purchase_orders",
+          "analytics",
+          "reports"
+        ],
+        "page_permissions": {},
+        "security_policies": {
+          "allowed_days": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "allowed_login_times": {
+            "start": "08:30",
+            "end": "19:00"
+          }
+        },
+        "change_summary": "",
+        "created_at": "2026-08-12T10:53:17.122Z"
+      },
+      {
+        "id": "role-1786532001402",
+        "name": "Finance Controller",
+        "description": "Audit cashflow, verify profitability, change billing thresholds and margins",
+        "permissions": [
+          "payments:view",
+          "payments:create",
+          "payments:edit",
+          "payments:delete",
+          "payments:approve",
+          "payments:export",
+          "payments:print",
+          "quotations:view",
+          "quotations:edit",
+          "quotations:approve",
+          "quotations:export",
+          "quotations:print",
+          "boq:view",
+          "boq:edit",
+          "boq:approve",
+          "boq:export",
+          "boq:print",
+          "vendors:view",
+          "vendors:create",
+          "vendors:edit",
+          "vendors:approve",
+          "purchase_orders:view",
+          "purchase_orders:create",
+          "purchase_orders:edit",
+          "purchase_orders:delete",
+          "purchase_orders:approve",
+          "purchase_orders:export",
+          "analytics:view",
+          "analytics:export",
+          "reports:view",
+          "reports:create",
+          "reports:edit",
+          "reports:delete",
+          "reports:export"
+        ],
+        "data_scopes": {
+          "payments": "all",
+          "quotations": "all",
+          "boq": "all",
+          "vendors": "all",
+          "purchase_orders": "all",
+          "analytics": "all",
+          "reports": "all"
+        },
+        "field_permissions": {
+          "payments": {
+            "amount": "editable",
+            "tax": "editable"
+          },
+          "quotations": {
+            "discount": "editable",
+            "margin": "editable",
+            "profit": "editable"
+          },
+          "vendors": {
+            "bank_details": "editable",
+            "rating": "editable"
+          },
+          "purchase_orders": {
+            "total_amount": "editable",
+            "discount": "editable"
+          }
+        },
+        "enabled_modules": [
+          "payments",
+          "quotations",
+          "boq",
+          "vendors",
+          "purchase_orders",
+          "analytics",
+          "reports"
+        ],
+        "page_permissions": {},
+        "security_policies": {
+          "allowed_days": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "allowed_login_times": {
+            "start": "08:00",
+            "end": "20:00"
+          }
+        },
+        "change_summary": "",
+        "created_at": "2026-08-12T10:53:21.402Z"
+      },
+      {
+        "id": "role-1786532024746",
+        "name": "QC Inspector",
+        "description": "Document defects, post snag photos and coordinate resolution",
+        "permissions": [
+          "projects:view",
+          "tasks:view",
+          "tasks:create",
+          "tasks:edit"
+        ],
+        "data_scopes": {
+          "projects": "assigned",
+          "tasks": "assigned"
+        },
+        "field_permissions": {
+          "projects": {
+            "budget": "hidden",
+            "profit": "hidden",
+            "margin": "hidden",
+            "discount": "hidden",
+            "vendor_cost": "hidden",
+            "gst": "hidden",
+            "customer_contact": "read_only",
+            "internal_notes": "editable"
+          },
+          "tasks": {
+            "budget": "hidden",
+            "priority": "read_only"
+          }
+        },
+        "enabled_modules": [
+          "projects",
+          "tasks"
+        ],
+        "page_permissions": {
+          "projects": [
+            "Overview",
+            "Site Details",
+            "Room Progress",
+            "Tasks",
+            "Daily Site Reports",
+            "Documents",
+            "MEP Checklist",
+            "Execution QC",
+            "Snags",
+            "Punch List"
+          ]
+        },
+        "security_policies": {
+          "allowed_days": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "allowed_login_times": {
+            "start": "08:00",
+            "end": "18:30"
+          }
+        },
+        "change_summary": "",
+        "created_at": "2026-08-12T10:53:44.746Z"
+      },
+      {
+        "id": "role-1786532034378",
+        "name": "Handover Specialist",
+        "description": "Ensure handover readiness checklist completion, compile warranties & manuals",
+        "permissions": [
+          "projects:view",
+          "projects:edit",
+          "tasks:view",
+          "tasks:create",
+          "tasks:edit"
+        ],
+        "data_scopes": {
+          "projects": "assigned",
+          "tasks": "assigned"
+        },
+        "field_permissions": {
+          "projects": {
+            "budget": "read_only",
+            "profit": "hidden",
+            "margin": "hidden",
+            "discount": "read_only",
+            "vendor_cost": "hidden",
+            "gst": "read_only",
+            "customer_contact": "editable",
+            "internal_notes": "editable"
+          },
+          "tasks": {
+            "budget": "read_only",
+            "priority": "editable"
+          }
+        },
+        "enabled_modules": [
+          "projects",
+          "tasks"
+        ],
+        "page_permissions": {
+          "projects": [
+            "Overview",
+            "Site Details",
+            "Handovers",
+            "Documents",
+            "Payments",
+            "Handover",
+            "Warranties",
+            "AMCs",
+            "Handover Readiness",
+            "Project Closure"
+          ]
+        },
+        "security_policies": {
+          "allowed_days": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "allowed_login_times": {
+            "start": "08:30",
+            "end": "19:30"
+          }
+        },
+        "change_summary": "",
+        "created_at": "2026-08-12T10:53:54.378Z"
+      },
+      {
+        "id": "role-1786532043226",
+        "name": "QC Engineer",
+        "description": "Enforce interior quality checklists, verify snags and clear punch lists",
+        "permissions": [
+          "projects:view",
+          "tasks:view",
+          "tasks:create",
+          "tasks:edit",
+          "tasks:approve"
+        ],
+        "data_scopes": {
+          "projects": "all",
+          "tasks": "all"
+        },
+        "field_permissions": {
+          "projects": {
+            "budget": "hidden",
+            "profit": "hidden",
+            "margin": "hidden",
+            "discount": "hidden",
+            "vendor_cost": "hidden",
+            "gst": "hidden",
+            "customer_contact": "read_only",
+            "internal_notes": "editable"
+          },
+          "tasks": {
+            "budget": "hidden",
+            "priority": "editable"
+          }
+        },
+        "enabled_modules": [
+          "projects",
+          "tasks"
+        ],
+        "page_permissions": {
+          "projects": [
+            "Overview",
+            "Site Details",
+            "Coordination",
+            "Room Progress",
+            "Tasks",
+            "Daily Site Reports",
+            "Documents",
+            "MEP Checklist",
+            "Execution QC",
+            "Snags",
+            "Punch List"
+          ]
+        },
+        "security_policies": {
+          "allowed_days": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "allowed_login_times": {
+            "start": "08:00",
+            "end": "19:00"
+          }
+        },
+        "change_summary": "",
+        "created_at": "2026-08-12T10:54:03.226Z"
+      },
+      {
+        "id": "role-1786532048834",
+        "name": "Warranty Manager",
+        "description": "Handle post-handover warranty claims, AMC schedules and service tickets",
+        "permissions": [
+          "projects:view",
+          "tasks:view",
+          "tasks:create",
+          "tasks:edit"
+        ],
+        "data_scopes": {
+          "projects": "all",
+          "tasks": "all"
+        },
+        "field_permissions": {
+          "projects": {
+            "budget": "hidden",
+            "profit": "hidden",
+            "margin": "hidden",
+            "discount": "hidden",
+            "vendor_cost": "hidden",
+            "gst": "hidden",
+            "customer_contact": "editable",
+            "internal_notes": "editable"
+          },
+          "tasks": {
+            "budget": "hidden",
+            "priority": "editable"
+          }
+        },
+        "enabled_modules": [
+          "projects",
+          "tasks"
+        ],
+        "page_permissions": {
+          "projects": [
+            "Overview",
+            "Site Details",
+            "Documents",
+            "Warranties",
+            "AMCs",
+            "Service Tickets",
+            "Customer Retention"
+          ]
+        },
+        "security_policies": {
+          "allowed_days": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "allowed_login_times": {
+            "start": "08:30",
+            "end": "18:30"
+          }
+        },
+        "change_summary": "",
+        "created_at": "2026-08-12T10:54:08.834Z"
+      },
+      {
+        "id": "role-1786532054474",
+        "name": "CRM Executive",
+        "description": "Manage client relationship channels, onboarding surveys, and CSAT feedbacks",
+        "permissions": [
+          "leads:view",
+          "leads:edit",
+          "clients:view",
+          "clients:create",
+          "clients:edit",
+          "analytics:view",
+          "reports:view"
+        ],
+        "data_scopes": {
+          "leads": "all",
+          "clients": "all",
+          "analytics": "all",
+          "reports": "all"
+        },
+        "field_permissions": {
+          "leads": {
+            "budget": "read_only",
+            "expected_revenue": "read_only",
+            "source": "editable",
+            "internal_notes": "editable"
+          },
+          "clients": {
+            "financial_history": "read_only"
+          }
+        },
+        "enabled_modules": [
+          "leads",
+          "clients",
+          "analytics",
+          "reports"
+        ],
+        "page_permissions": {},
+        "security_policies": {
+          "allowed_days": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "allowed_login_times": {
+            "start": "09:00",
+            "end": "18:00"
+          }
+        },
+        "change_summary": "",
+        "created_at": "2026-08-12T10:54:14.474Z"
+      },
+      {
+        "id": "role-1786532061698",
+        "name": "Customer Support Rep",
+        "description": "Log and track customer complaints, support requests and tickets",
+        "permissions": [
+          "clients:view",
+          "tasks:view",
+          "tasks:create",
+          "tasks:edit"
+        ],
+        "data_scopes": {
+          "clients": "assigned",
+          "tasks": "assigned"
+        },
+        "field_permissions": {
+          "clients": {
+            "financial_history": "hidden"
+          },
+          "tasks": {
+            "budget": "hidden",
+            "priority": "editable"
+          }
+        },
+        "enabled_modules": [
+          "clients",
+          "tasks"
+        ],
+        "page_permissions": {},
+        "security_policies": {
+          "allowed_days": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "allowed_login_times": {
+            "start": "08:00",
+            "end": "20:00"
+          }
+        },
+        "change_summary": "",
+        "created_at": "2026-08-12T10:54:21.698Z"
+      }
+    ],
+    "contacts_purged_v5": true,
+    "force_contacts_purged_final_2": true,
+    "receipts": [
+      {
+        "id": "REC-1786623692019-0",
+        "projectId": "mock-proj-1786622564570",
+        "receiptDate": "2026-08-13T12:21:32.019Z",
+        "milestoneName": "Booking Advance",
+        "customerName": "raghu",
+        "amount": 150000,
+        "paymentMode": "Bank Transfer",
+        "reference": "N/A",
+        "status": "ISSUED"
+      },
+      {
+        "id": "REC-1786100461523-0",
+        "projectId": "mock-proj-1785998742831",
+        "receiptDate": "2026-08-07T11:01:01.523Z",
+        "milestoneName": "Booking Advance",
+        "customerName": "Customer",
+        "amount": 120000,
+        "paymentMode": "Bank Transfer",
+        "reference": "N/A",
+        "status": "ISSUED"
+      },
+      {
+        "id": "REC-AUTO-1786015477451165",
+        "projectId": "mock-proj-1785998742831",
+        "receiptDate": "2026-08-06",
+        "milestoneName": "Design Sign-off",
+        "customerName": "Customer",
+        "amount": 480000,
+        "paymentMode": "Bank Transfer",
+        "reference": "N/A",
+        "status": "ISSUED"
+      },
+      {
+        "id": "REC-AUTO-1786089376784838",
+        "projectId": "mock-proj-1",
+        "receiptDate": "2026-08-07T07:56:16.779Z",
+        "milestoneName": "Booking",
+        "customerName": "Customer",
+        "amount": 450000,
+        "paymentMode": "Bank Transfer",
+        "reference": "N/A",
+        "status": "ISSUED"
+      },
+      {
+        "id": "REC-AUTO-1786089376784380",
+        "projectId": "mock-proj-1",
+        "receiptDate": "2026-08-22T07:56:16.779Z",
+        "milestoneName": "Design Advance",
+        "customerName": "Customer",
+        "amount": 337500,
+        "paymentMode": "UPI",
+        "reference": "N/A",
+        "status": "ISSUED"
+      }
+    ],
+    "invoices": [
+      {
+        "id": "INV-AUTO-1786623692026681",
+        "projectId": "mock-proj-1786622564570",
+        "invoiceDate": "2026-08-13T12:21:32.026Z",
+        "milestoneId": "mock-pmil-1786622564570-0",
+        "milestoneName": "Booking Advance",
+        "customerName": "raghu",
+        "amount": 150000,
+        "status": "GENERATED",
+        "type": "TAX_INVOICE",
+        "version": "1.0"
+      },
+      {
+        "id": "INV-AUTO-1786100461524670",
+        "projectId": "mock-proj-1785998742831",
+        "invoiceDate": "2026-08-07T11:01:01.524Z",
+        "milestoneId": "mock-pmil-1785998742831-0",
+        "milestoneName": "Booking Advance",
+        "customerName": "Customer",
+        "amount": 120000,
+        "status": "GENERATED",
+        "version": "1.0"
+      },
+      {
+        "id": "INV-AUTO-1786015913465256",
+        "projectId": "mock-proj-1785998742831",
+        "invoiceDate": "2026-08-06",
+        "milestoneId": "mock-pmil-1785998742831-1",
+        "milestoneName": "Design Sign-off",
+        "customerName": "Customer",
+        "amount": 480000,
+        "status": "GENERATED",
+        "version": "1.0"
+      },
+      {
+        "id": "INV-AUTO-1786089376782868",
+        "projectId": "mock-proj-1",
+        "invoiceDate": "2026-08-07T07:56:16.779Z",
+        "milestoneId": "mock_m_booking_0",
+        "milestoneName": "Booking",
+        "customerName": "Customer",
+        "amount": 450000,
+        "status": "GENERATED",
+        "version": "1.0"
+      },
+      {
+        "id": "INV-AUTO-1786089376783187",
+        "projectId": "mock-proj-1",
+        "invoiceDate": "2026-08-22T07:56:16.779Z",
+        "milestoneId": "mock_m_design_1",
+        "milestoneName": "Design Advance",
+        "customerName": "Customer",
+        "amount": 337500,
+        "status": "GENERATED",
+        "version": "1.0"
+      }
+    ],
+    "projectMembers": [],
+    "leadStages": [
+      {
+        "id": "1",
+        "name": "New",
+        "color": "#3B82F6",
+        "mandatory_fields": [],
+        "is_won": false,
+        "is_lost": false,
+        "wip_limit": null,
+        "lead_count": 5
+      },
+      {
+        "id": "2",
+        "name": "Contacted",
+        "color": "#F59E0B",
+        "mandatory_fields": [
+          "email"
+        ],
+        "is_won": false,
+        "is_lost": false,
+        "wip_limit": 10,
+        "lead_count": 2
+      },
+      {
+        "id": "3",
+        "name": "Qualified",
+        "color": "#8B5CF6",
+        "mandatory_fields": [
+          "phone",
+          "budget"
+        ],
+        "is_won": false,
+        "is_lost": false,
+        "wip_limit": 5,
+        "lead_count": 1
+      },
+      {
+        "id": "4",
+        "name": "Won",
+        "color": "#10B981",
+        "mandatory_fields": [],
+        "is_won": true,
+        "is_lost": false,
+        "wip_limit": null,
+        "lead_count": 12
+      },
+      {
+        "id": "5",
+        "name": "Lost",
+        "color": "#EF4444",
+        "mandatory_fields": [
+          "loss_reason"
+        ],
+        "is_won": false,
+        "is_lost": true,
+        "wip_limit": null,
+        "lead_count": 3
+      }
+    ],
+    "automationEvents": [
+      {
+        "id": "auto-ev-1786444861756",
+        "lead_id": "mock-1785948676789",
+        "workflow": "Lead Allocation Routing",
+        "trigger_type": "Lead Created",
+        "action_type": "Round Robin Assignment",
+        "status": "success",
+        "error_message": null,
+        "executed_at": "2026-08-11T10:41:01.756Z",
+        "duration_ms": 241
+      },
+      {
+        "id": "auto-ev-1",
+        "lead_id": "mock-lead-1",
+        "workflow": "Lead Allocation Routing",
+        "trigger_type": "Lead Created",
+        "action_type": "Round Robin Assignment",
+        "status": "success",
+        "error_message": null,
+        "executed_at": "2026-08-08T10:29:26.848Z",
+        "duration_ms": 145
+      },
+      {
+        "id": "auto-ev-2",
+        "lead_id": "mock-lead-1",
+        "workflow": "Auto Welcome Email Campaign",
+        "trigger_type": "Lead Stage Updated (New -> Contacted)",
+        "action_type": "Send Email Template (Welcome)",
+        "status": "success",
+        "error_message": null,
+        "executed_at": "2026-08-09T10:29:26.848Z",
+        "duration_ms": 322
+      },
+      {
+        "id": "auto-ev-3",
+        "lead_id": "mock-lead-1",
+        "workflow": "High Value Alert SMS Trigger",
+        "trigger_type": "Design Budget Set > $50k",
+        "action_type": "Send WhatsApp notification to Architect Manager",
+        "status": "success",
+        "error_message": null,
+        "executed_at": "2026-08-10T22:29:26.848Z",
+        "duration_ms": 88
+      },
+      {
+        "id": "auto-ev-4",
+        "lead_id": "mock-lead-1",
+        "workflow": "Sync Contact details with External ERP System",
+        "trigger_type": "Stakeholder Added",
+        "action_type": "REST Webhook dispatch",
+        "status": "failed",
+        "error_message": "External API Gateway returned 504 Gateway Timeout.",
+        "executed_at": "2026-08-11T08:29:26.848Z",
+        "duration_ms": 5000
+      },
+      {
+        "id": "auto-ev-dyn-mock-lead-2",
+        "lead_id": "mock-lead-2",
+        "workflow": "Lead Allocation Routing",
+        "trigger_type": "Lead Created",
+        "action_type": "Round Robin Assignment",
+        "status": "success",
+        "error_message": null,
+        "executed_at": "2026-08-10T10:29:26.848Z",
+        "duration_ms": 120
+      },
+      {
+        "id": "auto-ev-dyn-mock-lead-3",
+        "lead_id": "mock-lead-3",
+        "workflow": "Lead Allocation Routing",
+        "trigger_type": "Lead Created",
+        "action_type": "Round Robin Assignment",
+        "status": "success",
+        "error_message": null,
+        "executed_at": "2026-08-09T10:29:26.848Z",
+        "duration_ms": 120
+      },
+      {
+        "id": "auto-ev-dyn-mock-lead-4",
+        "lead_id": "mock-lead-4",
+        "workflow": "Lead Allocation Routing",
+        "trigger_type": "Lead Created",
+        "action_type": "Round Robin Assignment",
+        "status": "success",
+        "error_message": null,
+        "executed_at": "2026-08-08T10:29:26.848Z",
+        "duration_ms": 120
+      },
+      {
+        "id": "auto-ev-dyn-mock-lead-5",
+        "lead_id": "mock-lead-5",
+        "workflow": "Lead Allocation Routing",
+        "trigger_type": "Lead Created",
+        "action_type": "Round Robin Assignment",
+        "status": "success",
+        "error_message": null,
+        "executed_at": "2026-08-07T10:29:26.848Z",
+        "duration_ms": 120
+      },
+      {
+        "id": "auto-ev-dyn-mock-lead-6",
+        "lead_id": "mock-lead-6",
+        "workflow": "Lead Allocation Routing",
+        "trigger_type": "Lead Created",
+        "action_type": "Round Robin Assignment",
+        "status": "success",
+        "error_message": null,
+        "executed_at": "2026-08-06T10:29:26.848Z",
+        "duration_ms": 120
+      },
+      {
+        "id": "auto-ev-dyn-mock-lead-7",
+        "lead_id": "mock-lead-7",
+        "workflow": "Lead Allocation Routing",
+        "trigger_type": "Lead Created",
+        "action_type": "Round Robin Assignment",
+        "status": "success",
+        "error_message": null,
+        "executed_at": "2026-08-05T10:29:26.848Z",
+        "duration_ms": 120
+      },
+      {
+        "id": "auto-ev-dyn-mock-lead-8",
+        "lead_id": "mock-lead-8",
+        "workflow": "Lead Allocation Routing",
+        "trigger_type": "Lead Created",
+        "action_type": "Round Robin Assignment",
+        "status": "success",
+        "error_message": null,
+        "executed_at": "2026-08-04T10:29:26.848Z",
+        "duration_ms": 120
+      },
+      {
+        "id": "auto-ev-dyn-mock-lead-9",
+        "lead_id": "mock-lead-9",
+        "workflow": "Lead Allocation Routing",
+        "trigger_type": "Lead Created",
+        "action_type": "Round Robin Assignment",
+        "status": "success",
+        "error_message": null,
+        "executed_at": "2026-08-03T10:29:26.848Z",
+        "duration_ms": 120
+      },
+      {
+        "id": "auto-ev-dyn-mock-1784542061319",
+        "lead_id": "mock-1784542061319",
+        "workflow": "Lead Allocation Routing",
+        "trigger_type": "Lead Created",
+        "action_type": "Round Robin Assignment",
+        "status": "success",
+        "error_message": null,
+        "executed_at": "2026-08-02T10:29:26.848Z",
+        "duration_ms": 120
+      },
+      {
+        "id": "auto-ev-dyn-mock-1784543595362",
+        "lead_id": "mock-1784543595362",
+        "workflow": "Lead Allocation Routing",
+        "trigger_type": "Lead Created",
+        "action_type": "Round Robin Assignment",
+        "status": "success",
+        "error_message": null,
+        "executed_at": "2026-08-01T10:29:26.848Z",
+        "duration_ms": 120
+      },
+      {
+        "id": "auto-ev-dyn-mock-1784546591904",
+        "lead_id": "mock-1784546591904",
+        "workflow": "Lead Allocation Routing",
+        "trigger_type": "Lead Created",
+        "action_type": "Round Robin Assignment",
+        "status": "success",
+        "error_message": null,
+        "executed_at": "2026-07-31T10:29:26.848Z",
+        "duration_ms": 120
+      },
+      {
+        "id": "auto-ev-dyn-mock-1785412058900",
+        "lead_id": "mock-1785412058900",
+        "workflow": "Lead Allocation Routing",
+        "trigger_type": "Lead Created",
+        "action_type": "Round Robin Assignment",
+        "status": "success",
+        "error_message": null,
+        "executed_at": "2026-07-30T10:29:26.848Z",
+        "duration_ms": 120
+      },
+      {
+        "id": "auto-ev-dyn-mock-1785475119745",
+        "lead_id": "mock-1785475119745",
+        "workflow": "Lead Allocation Routing",
+        "trigger_type": "Lead Created",
+        "action_type": "Round Robin Assignment",
+        "status": "success",
+        "error_message": null,
+        "executed_at": "2026-07-29T10:29:26.848Z",
+        "duration_ms": 120
+      },
+      {
+        "id": "auto-ev-dyn-mock-1785948676789",
+        "lead_id": "mock-1785948676789",
+        "workflow": "Lead Allocation Routing",
+        "trigger_type": "Lead Created",
+        "action_type": "Round Robin Assignment",
+        "status": "success",
+        "error_message": null,
+        "executed_at": "2026-07-28T10:29:26.848Z",
+        "duration_ms": 120
+      },
+      {
+        "id": "auto-ev-dyn-mock-1786443706575",
+        "lead_id": "mock-1786443706575",
+        "workflow": "Lead Allocation Routing",
+        "trigger_type": "Lead Created",
+        "action_type": "Round Robin Assignment",
+        "status": "success",
+        "error_message": null,
+        "executed_at": "2026-07-27T10:29:26.848Z",
+        "duration_ms": 120
+      }
+    ],
+    "payment_milestones_aligned_v6": true,
+    "roles_aligned_v7": true
+  }
+}

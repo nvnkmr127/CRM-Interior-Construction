@@ -114,6 +114,14 @@ export default function ProjectsPage() {
 
   useEffect(() => { loadProjects(); }, [page, limit, statusFilter, search, pmFilter]);
 
+  useEffect(() => {
+    const handleDbChange = () => {
+      loadProjects();
+    };
+    window.addEventListener('app:mock-db-change', handleDbChange);
+    return () => window.removeEventListener('app:mock-db-change', handleDbChange);
+  }, [page, limit, statusFilter, search, pmFilter]);
+
   // Sync state changes to URL
   useEffect(() => {
     const params = new URLSearchParams(location.search);

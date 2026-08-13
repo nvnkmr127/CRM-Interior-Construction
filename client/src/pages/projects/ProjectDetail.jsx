@@ -947,6 +947,14 @@ export default function ProjectDetail() {
   }, [projectId]);
 
   useEffect(() => {
+    const handleDbChange = () => {
+      reloadProject();
+    };
+    window.addEventListener('app:mock-db-change', handleDbChange);
+    return () => window.removeEventListener('app:mock-db-change', handleDbChange);
+  }, [projectId]);
+
+  useEffect(() => {
     if (project && project.status === 'pending_booking' && activeTab !== 'Booking' && activeTab !== 'Overview') {
       setActiveTab('Booking');
     }

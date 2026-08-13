@@ -131,6 +131,14 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
     fetchApprovals();
   }, [projectId]);
 
+  useEffect(() => {
+    const handleDbChange = () => {
+      fetchApprovals();
+    };
+    window.addEventListener('app:mock-db-change', handleDbChange);
+    return () => window.removeEventListener('app:mock-db-change', handleDbChange);
+  }, [projectId]);
+
   const [eligibleUsers, setEligibleUsers] = useState([]);
 
   useEffect(() => {

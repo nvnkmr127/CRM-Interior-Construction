@@ -6,14 +6,24 @@ export function ConfirmProvider({ children }) {
   const [confirmState, setConfirmState] = useState({
     isOpen: false,
     message: '',
+    title: '',
+    confirmText: '',
+    cancelText: '',
     resolve: null
   });
 
   const confirm = useCallback((options = {}) => {
     return new Promise((resolve) => {
+      const isString = typeof options === 'string';
+      const message = isString ? options : options.message || 'Are you sure you want to delete this item?';
+      const isDangerAction = /delete|remove|void|revoke|cancel|reject/i.test(message);
+
       setConfirmState({
         isOpen: true,
-        message: typeof options === 'string' ? options : options.message || 'Are you sure you want to delete this item?',
+        message,
+        title: isString ? (isDangerAction ? 'Confirm Delete' : 'Confirm') : (options.title || (isDangerAction ? 'Confirm Delete' : 'Confirm')),
+        confirmText: isString ? (isDangerAction ? 'Delete' : 'Confirm') : (options.confirmText || (isDangerAction ? 'Delete' : 'Confirm')),
+        cancelText: isString ? 'Cancel' : (options.cancelText || 'Cancel'),
         resolve
       });
     });
@@ -23,15 +33,21 @@ export function ConfirmProvider({ children }) {
     if (confirmState.resolve) {
       confirmState.resolve(true);
     }
-    setConfirmState({ isOpen: false, message: '', resolve: null });
+    setConfirmState({ isOpen: false, message: '', title: '', confirmText: '', cancelText: '', resolve: null });
   };
 
   const handleCancel = () => {
     if (confirmState.resolve) {
       confirmState.resolve(false);
     }
-    setConfirmState({ isOpen: false, message: '', resolve: null });
+    setConfirmState({ isOpen: false, message: '', title: '', confirmText: '', cancelText: '', resolve: null });
   };
+
+  const isDanger = /delete|remove|void|revoke|cancel|reject/i.test(confirmState.confirmText || '') 
+    || /delete|remove|void|revoke|cancel|reject/i.test(confirmState.message || '');
+
+  const buttonColor = isDanger ? 'var(--color-danger, #ef4444)' : 'var(--color-primary, #3b82f6)';
+  const buttonBgHover = isDanger ? 'var(--color-danger-light, #fef2f2)' : 'var(--color-primary-light, #eff6ff)';
 
   return (
     <ConfirmContext.Provider value={{ confirm }}>
@@ -63,7 +79,7 @@ export function ConfirmProvider({ children }) {
                color: 'var(--color-text, #111827)',
                fontWeight: 600
             }}>
-               {confirmState.title || 'Confirm Delete'}
+               {confirmState.title}
             </h3>
             <p style={{
               margin: '0 0 32px 0',
@@ -95,26 +111,26 @@ export function ConfirmProvider({ children }) {
                 onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-surface-hover, #f9fafb)'}
                 onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--color-surface, #fff)'}
               >
-                {confirmState.cancelText || 'Cancel'}
+                {confirmState.cancelText}
               </button>
               <button
                 onClick={handleConfirm}
                 style={{
                   padding: '10px 20px',
                   backgroundColor: 'var(--color-surface, #fff)',
-                  border: '1px solid var(--color-danger, #ef4444)',
+                  border: `1px solid ${buttonColor}`,
                   borderRadius: '6px',
-                  color: 'var(--color-danger, #ef4444)',
+                  color: buttonColor,
                   fontSize: '14px',
                   fontWeight: 600,
                   cursor: 'pointer',
                   minWidth: '100px',
                   transition: 'background-color 0.2s'
                 }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-danger-light, #fef2f2)'}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = buttonBgHover}
                 onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--color-surface, #fff)'}
               >
-                {confirmState.confirmText || 'Delete'}
+                {confirmState.confirmText}
               </button>
             </div>
           </div>

@@ -179,6 +179,15 @@ export default function FinancialApprovalsPage() {
     fetchHistoryApprovals();
   }, [historyPage, searchQuery, filterType, advancedFilters, sortOption]);
 
+  useEffect(() => {
+    const handleDbChange = () => {
+      fetchPendingApprovals();
+      fetchHistoryApprovals();
+    };
+    window.addEventListener('app:mock-db-change', handleDbChange);
+    return () => window.removeEventListener('app:mock-db-change', handleDbChange);
+  }, [pendingPage, historyPage, searchQuery, filterType, advancedFilters, sortOption]);
+
   const buildQueryParams = (baseStatus, page) => {
     const params = new URLSearchParams();
     params.append('page', page);

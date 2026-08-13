@@ -1371,6 +1371,7 @@ export const setupMockInterceptor = (api) => {
             } else if (url.match(/\/leads\/[a-zA-Z0-9-]+\/convert-to-project$/)) {
               if (method === 'post') {
                 const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                const session = JSON.parse(localStorage.getItem('mockSession') || '{}');
                 
                 // Dynamic checklist validation in mock
                 const checklistConfig = (mockDatabase.tenantSettings || {}).pre_conversion_checklist || [
@@ -1422,6 +1423,9 @@ export const setupMockInterceptor = (api) => {
                   payment_terms: paymentTerms,
                   progress: 0,
                   created_at: new Date().toISOString(),
+                  created_by: session?.id || session?.user?.id || null,
+                  sales_rep_id: session?.id || session?.user?.id || null,
+                  sales_rep_name: session?.name || session?.user?.name || null,
                   value: payload.contractValue || 0,
                   target_date: payload.handoverDate || null,
                   pm_id: payload.pm || null,
@@ -2205,6 +2209,8 @@ export const setupMockInterceptor = (api) => {
                       const isSiteSup = proj.site_supervisor_id === currentUser.id;
                       const isCrmExec = proj.crm_executive_id === currentUser.id;
                       const isProcOff = proj.procurement_officer_id === currentUser.id;
+                      const isSalesRep = proj.sales_rep_id === currentUser.id;
+                      const isCreator = proj.created_by === currentUser.id;
 
                       const cName = currentUser.name?.toLowerCase();
                       const pmNameMatch = proj.pm_name?.toLowerCase() === cName;
@@ -2215,9 +2221,10 @@ export const setupMockInterceptor = (api) => {
                       const siteSupervisorNameMatch = proj.site_supervisor_name?.toLowerCase() === cName;
                       const crmExecutiveNameMatch = proj.crm_executive_name?.toLowerCase() === cName;
                       const procurementOfficerNameMatch = proj.procurement_officer_name?.toLowerCase() === cName;
+                      const salesRepNameMatch = proj.sales_rep_name?.toLowerCase() === cName;
 
-                      return isPm || isDesigner || isLeadDesigner || isJuniorDesigner || isSiteEng || isSiteSup || isCrmExec || isProcOff ||
-                             pmNameMatch || designerNameMatch || leadDesignerNameMatch || juniorDesignerNameMatch || siteEngineerNameMatch || siteSupervisorNameMatch || crmExecutiveNameMatch || procurementOfficerNameMatch;
+                      return isPm || isDesigner || isLeadDesigner || isJuniorDesigner || isSiteEng || isSiteSup || isCrmExec || isProcOff || isSalesRep || isCreator ||
+                             pmNameMatch || designerNameMatch || leadDesignerNameMatch || juniorDesignerNameMatch || siteEngineerNameMatch || siteSupervisorNameMatch || crmExecutiveNameMatch || procurementOfficerNameMatch || salesRepNameMatch;
                     });
                   }
                 }

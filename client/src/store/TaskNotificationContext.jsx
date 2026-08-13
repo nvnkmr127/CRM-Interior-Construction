@@ -78,6 +78,18 @@ export const useTaskNotificationStore = create((set) => ({
       console.warn('BroadcastChannel not supported', e);
     }
 
+    // Auto-broadcast local mock database on startup to sync server/other tabs
+    try {
+      const savedDb = localStorage.getItem('mockDatabase_v4');
+      if (savedDb) {
+        window.fetch('/api/mock-sync/broadcast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'SYNC_DATABASE', database: JSON.parse(savedDb) })
+        }).catch(() => {});
+      }
+    } catch (e) {}
+
     // Cross-browser SSE sync (via relay)
     try {
       function connectSSE() {

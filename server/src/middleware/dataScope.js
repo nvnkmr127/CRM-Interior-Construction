@@ -82,7 +82,8 @@ const dataScope = (moduleName, ownerField = 'owner_id', tableAlias = '') => {
         // By default, restrict to own/assigned records
         if (moduleName === 'projects') {
           const table = tableAlias ? tableAlias + '.id' : 'id';
-          req.scopeFilter = `(${column} = '${userId}' OR ${table} IN (SELECT project_id FROM project_members WHERE user_id = '${userId}'))`;
+          const createdByCol = tableAlias ? `${tableAlias}.created_by` : 'created_by';
+          req.scopeFilter = `(${column} = '${userId}' OR ${createdByCol} = '${userId}' OR ${table} IN (SELECT project_id FROM project_members WHERE user_id = '${userId}'))`;
         } else {
           req.scopeFilter = `${column} = '${userId}'`;
         }
