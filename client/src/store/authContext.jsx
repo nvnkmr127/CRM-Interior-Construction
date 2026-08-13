@@ -9,11 +9,20 @@ const AuthContext = createContext();
 
 export const DEFAULT_MOCK_TEAM = {
   id: 'mock-user-1',
-  name: 'Rahul K. (PM)',
+  name: 'Rahul K. (Sales)',
   email: 'team@mock.com',
   password: 'password',
   avatar_url: null,
-  role: { id: 'pm', name: 'Project Manager', permissions: ['projects:view', 'projects:edit', 'dashboard:view'], enabled_modules: ['projects', 'tasks', 'dashboards'] }
+  role: { 
+    id: 'sales_rep', 
+    name: 'Sales Representative', 
+    permissions: [
+      'leads:view', 'leads:create', 'leads:edit',
+      'projects:view',
+      'chat:view'
+    ],
+    enabled_modules: ['leads', 'projects', 'chat'] 
+  }
 };
 
 export const getMockTeamCredentials = () => {
@@ -61,6 +70,21 @@ export function AuthProvider({ children }) {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Force-sync active session permissions/modules if logged in as sales_rep
+    try {
+      const activeSession = localStorage.getItem('mockSession');
+      if (activeSession) {
+        const parsed = JSON.parse(activeSession);
+        if (parsed?.role?.id === 'sales_rep' || parsed?.role?.name?.toLowerCase() === 'sales representative') {
+          const defaults = ROLE_DEFAULTS['Sales Representative'];
+          parsed.role.permissions = defaults.permissions;
+          parsed.role.enabled_modules = defaults.enabled_modules;
+          parsed.role.name = 'Sales Representative';
+          localStorage.setItem('mockSession', JSON.stringify(parsed));
+        }
+      }
+    } catch (e) {}
+
     async function restoreSession() {
       // Dev-only mock session bypass — stripped in production builds
       if (import.meta.env.DEV) {
@@ -89,6 +113,12 @@ export function AuthProvider({ children }) {
                 permissions = r.permissions || [];
                 enabled_modules = r.enabled_modules || [];
               }
+              
+              // Force override for sales_rep to ensure strict permissions even if old cache exists
+              if (userRoleVal === 'sales_rep' || (currentUserObj.role_name || '').toLowerCase() === 'sales representative') {
+                 permissions = defaults?.permissions || [];
+                 enabled_modules = defaults?.enabled_modules || ['leads', 'projects', 'chat'];
+              }
 
               const updatedMockUser = {
                 ...parsedSession,
@@ -104,6 +134,7 @@ export function AuthProvider({ children }) {
               };
               setUser(updatedMockUser);
               localStorage.setItem('mockSession', JSON.stringify(updatedMockUser));
+              window.dispatchEvent(new Event('app:auth-change'));
               setLoading(false);
               return;
             }
@@ -179,9 +210,13 @@ export function AuthProvider({ children }) {
           avatar_url: null,
           role: {
             id: 'sales_rep',
-            name: 'sales_rep',
-            permissions: ['leads:view', 'leads:edit', 'leads:create', 'projects:view', 'finance:payments', 'finance:invoices', 'dashboard:view'],
-            enabled_modules: ['leads', 'projects', 'tasks', 'dashboards']
+            name: 'Sales Representative',
+            permissions: [
+              'leads:view', 'leads:create', 'leads:edit',
+              'projects:view',
+              'chat:view'
+            ],
+            enabled_modules: ['leads', 'projects', 'chat']
           }
         };
         setUser(mockUser);
@@ -211,6 +246,12 @@ export function AuthProvider({ children }) {
             permissions = r.permissions || [];
             enabled_modules = r.enabled_modules || [];
           }
+          
+          // Force override for sales_rep to ensure strict permissions even if old cache exists
+          if (matchedRole === 'sales_rep' || (foundUser.role_name || '').toLowerCase() === 'sales representative') {
+             permissions = defaults?.permissions || [];
+             enabled_modules = defaults?.enabled_modules || ['leads', 'projects', 'chat'];
+          }
 
           const roleObj = {
             id: matchedRole || 'pm',
@@ -228,6 +269,7 @@ export function AuthProvider({ children }) {
           };
           setUser(mockUser);
           localStorage.setItem('mockSession', JSON.stringify(mockUser));
+          window.dispatchEvent(new Event('app:auth-change'));
           return { success: true };
         }
 
@@ -272,6 +314,7 @@ export function AuthProvider({ children }) {
     if (import.meta.env.DEV && localStorage.getItem('mockSession')) {
       localStorage.removeItem('mockSession');
       setUser(null);
+      window.dispatchEvent(new Event('app:auth-change'));
       navigate('/login');
       return;
     }

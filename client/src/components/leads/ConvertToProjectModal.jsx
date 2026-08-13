@@ -4,6 +4,7 @@ import { Modal, Button, Input, Select } from '../ui';
 import { useToast } from '../../store/toastContext';
 import api from '../../api/axios';
 import { useS3Upload } from '../../hooks/useS3Upload';
+import { useTaskNotifications } from '../../store/TaskNotificationContext';
 
 const PROJECT_TYPES = [
   { id: 'full_interior', label: 'Full Interior' },
@@ -15,6 +16,7 @@ const PROJECT_TYPES = [
 export default function ConvertToProjectModal({ lead, isOpen, onClose, onConverted }) {
   const toast = useToast();
   const { uploadContract, uploading, progress } = useS3Upload();
+  const { addNotification } = useTaskNotifications();
   const [loading, setLoading] = useState(false);
   const [contractFile, setContractFile] = useState(null);
   const [newContact, setNewContact] = useState({
@@ -48,6 +50,12 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
       return updated;
     });
   };
+
+  const [notifyRules, setNotifyRules] = useState({
+    notify_pm: true,
+    notify_crm: true,
+    notify_finance: true
+  });
 
   const [formData, setFormData] = useState({
     projectType: '',
@@ -308,6 +316,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
       const payload = {
         ...formData,
         ...checklist,
+        notifyRules,
         contract_file_key: uploadedFile.storageKey,
         contract_file_name: uploadedFile.fileName,
         contract_file_size: uploadedFile.fileSize,
@@ -319,8 +328,22 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
       
       if (res.data.success) {
         toast.success('Project successfully created!');
+        
+        const projId = res.data.data.project_id;
+        const projName = formData.projectName || 'New Project';
+        
+        if (notifyRules.notify_pm) {
+          addNotification('mentioned', 'Sales Handover Alert', `You have been assigned as the Project Manager for "${projName}". Please review the BOQ and schedule the design kickoff.`, projId);
+        }
+        if (notifyRules.notify_crm) {
+          addNotification('mentioned', 'Sales Handover Alert', `A new project "${projName}" has been handed over. You are assigned as the CRM Executive for this account.`, projId);
+        }
+        if (notifyRules.notify_finance) {
+          addNotification('status_changed', 'Sales Handover Alert', `New project "${projName}" created by Sales. Advance payment of ₹${Number(formData.advanceAmount || 0).toLocaleString()} is pending auditing.`, projId);
+        }
+
         onClose();
-        if (onConverted) onConverted(res.data.data.project_id);
+        if (onConverted) onConverted(projId);
       }
     } catch (err) {
       toast.error(err?.response?.data?.error?.message || 'Failed to convert lead');
@@ -1234,6 +1257,41 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
                   </Button>
                 </div>
               </div>
+            </div>
+          </div>
+
+           {/* Handover Notification Rules */}
+          <div className="border-t border-gray-100 pt-4 mt-4 space-y-3">
+            <h5 className="font-semibold text-gray-800 text-sm">Handover Notification Rules</h5>
+            <p className="text-xs text-gray-500">Select which roles should receive automated tasks & system notifications upon successful conversion:</p>
+            <div className="flex gap-6">
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={notifyRules.notify_pm} 
+                  onChange={e => setNotifyRules(p => ({...p, notify_pm: e.target.checked}))}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-gray-300"
+                />
+                <span>Project Manager</span>
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={notifyRules.notify_crm} 
+                  onChange={e => setNotifyRules(p => ({...p, notify_crm: e.target.checked}))}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-gray-300"
+                />
+                <span>CRM Executive</span>
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={notifyRules.notify_finance} 
+                  onChange={e => setNotifyRules(p => ({...p, notify_finance: e.target.checked}))}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-gray-300"
+                />
+                <span>Finance Auditor</span>
+              </label>
             </div>
           </div>
 

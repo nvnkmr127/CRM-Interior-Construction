@@ -33,6 +33,15 @@ export const setupMockInterceptor = (api) => {
               mockDatabase.contacts = mockDatabase.contacts.filter(c => c.lead_id && c.lead_id !== 'undefined' && c.lead_id !== 'null');
             }
             saveMockDatabase(mockDatabase);
+            
+            // Broadcast the entire database via SSE to keep other browsers in sync
+            try {
+              window.fetch('/api/mock-sync/broadcast', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'SYNC_DATABASE', database: mockDatabase })
+              }).catch(() => {});
+            } catch(e) {}
           };
 
           if (!mockDatabase.tasks) {
@@ -767,8 +776,18 @@ export const setupMockInterceptor = (api) => {
           // DASHBOARD STATS
           else if (url.includes('/dashboard/stats')) {
             if (method === 'get') {
-              const activeLeadsCount = (mockDatabase.leads || []).filter(l => !l.deleted_at).length;
+              const session = JSON.parse(localStorage.getItem('mockSession') || '{}');
+              const currentUserId = session?.id || session?.user?.id;
+              const currentRole = session?.role || {};
               
+              let leadsScope = (mockDatabase.leads || []).filter(l => !l.deleted_at);
+              if (currentRole.id === 'sales_rep') {
+                leadsScope = leadsScope.filter(l => l.assignee_id === currentUserId);
+              }
+              
+              const activeLeadsCount = leadsScope.length;
+              
+
               // Won this month
               const startOfMonth = new Date(1786536584000);
               startOfMonth.setDate(1);
@@ -1471,6 +1490,8 @@ export const setupMockInterceptor = (api) => {
                 newLead.created_at = new Date().toISOString();
                 newLead.status = newLead.status || 'new';
                 newLead.probability = newLead.probability || 10;
+                if (newLead.assigneeId) newLead.assignee_id = newLead.assigneeId;
+                if (newLead.stageId) newLead.stage_id = newLead.stageId;
                 
                 // Add random coordinates near Bangalore for the map view
                 if (!newLead.latitude || !newLead.longitude) {
@@ -1480,6 +1501,45 @@ export const setupMockInterceptor = (api) => {
                 
                 mockDatabase.leads.push(newLead);
                 persistDb();
+
+                 // Generate notification for Sales Representative
+                 try {
+                   const saved = localStorage.getItem('myTaskNotifications') || '[]';
+                   const notifications = JSON.parse(saved);
+                   notifications.unshift({
+                     id: `task-notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                     type: 'assigned',
+                     title: 'New Lead Assigned',
+                     message: `A new lead "${newLead.name || 'Prospect'}" has been assigned to you. Contact: ${newLead.phone || 'N/A'}.`,
+                     taskId: null,
+                     isRead: false,
+                     createdAt: new Date().toISOString(),
+                     targetRole: 'sales_rep'
+                   });
+                   localStorage.setItem('myTaskNotifications', JSON.stringify(notifications));
+
+                   // Dispatch storage event to trigger reactive notification updates in components
+                   window.dispatchEvent(new Event('storage'));
+
+                   // Broadcast channel notification update (same browser only)
+                   try {
+                     const bc = new BroadcastChannel('crm_notifications');
+                     bc.postMessage({ type: 'SYNC_NOTIFICATIONS' });
+                     bc.close();
+                   } catch (err) {}
+                   
+                   // Broadcast to real backend relay (cross-browser support)
+                   try {
+                     window.fetch('/api/mock-sync/broadcast', {
+                       method: 'POST',
+                       headers: { 'Content-Type': 'application/json' },
+                       body: JSON.stringify({ type: 'SYNC_NOTIFICATIONS', notification: notifications[0] })
+                     }).catch(() => {});
+                   } catch(err) {}
+                 } catch (e) {
+                   console.error('Failed to dispatch new lead notification', e);
+                 }
+
                 responseData.data = newLead;
               } else if (method === 'get') {
                 if (leadId) {
@@ -1497,7 +1557,16 @@ export const setupMockInterceptor = (api) => {
                     return undefined;
                   };
 
-                  let filtered = [...mockDatabase.leads];
+                  let filtered = [...mockDatabase.leads].filter(l => !l.deleted_at);
+
+                  // 0. Data Scope Filter (Role-Based Access)
+                  const session = JSON.parse(localStorage.getItem('mockSession') || '{}');
+                  const currentUserId = session?.id || session?.user?.id;
+                  const currentRole = session?.role || {};
+                  
+                  if (currentRole.id === 'sales_rep') {
+                    filtered = filtered.filter(l => l.assignee_id === currentUserId);
+                  }
 
                   // 1. Search filter
                   const searchVal = getParam('search');

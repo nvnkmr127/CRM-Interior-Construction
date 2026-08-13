@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth, getMockTeamCredentials } from '../../store/authContext';
+import { useAuth } from '../../store/authContext';
 import { useToast } from '../../store/toastContext';
 import { useForm } from '../../hooks/useForm';
 import { validators, run } from '../../utils/validators';
@@ -234,7 +234,7 @@ export default function Login() {
                 {isSubmitting ? 'Signing in...' : 'Sign In'}
               </Button>
               {import.meta.env.DEV && (
-                <div style={{ display: 'flex', gap: '10px', flex: 1.5 }}>
+                <div style={{ display: 'flex', gap: '10px', flex: 0.5 }}>
                    <Button 
                     type="button" 
                     variant="secondary"
@@ -249,37 +249,6 @@ export default function Login() {
                     style={{ flex: 1, background: 'var(--color-bg-subtle)', color: 'var(--color-text)', padding: '0 10px' }}
                   >
                     Admin
-                  </Button>
-                  <Button 
-                    type="button" 
-                    variant="secondary"
-                    size="lg"
-                    className={styles.submitBtn} 
-                    disabled={isSubmitting}
-                    onClick={() => {
-                      handleChange('tenantSlug', 'mock');
-                      handleChange('email', 'sales@mock.com');
-                      handleChange('password', 'password');
-                    }}
-                    style={{ flex: 1, background: 'var(--color-bg-subtle)', color: 'var(--color-text)', padding: '0 10px' }}
-                  >
-                    Sales
-                  </Button>
-                  <Button 
-                    type="button" 
-                    variant="secondary"
-                    size="lg"
-                    className={styles.submitBtn} 
-                    disabled={isSubmitting}
-                    onClick={() => {
-                      const mockTeam = getMockTeamCredentials();
-                      handleChange('tenantSlug', 'mock');
-                      handleChange('email', mockTeam.email);
-                      handleChange('password', mockTeam.password);
-                    }}
-                    style={{ flex: 1, background: 'var(--color-bg-subtle)', color: 'var(--color-text)', padding: '0 10px' }}
-                  >
-                    Team
                   </Button>
                 </div>
               )}

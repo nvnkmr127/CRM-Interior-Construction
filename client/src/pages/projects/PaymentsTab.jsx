@@ -131,6 +131,78 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
     fetchApprovals();
   }, [projectId]);
 
+  const [eligibleUsers, setEligibleUsers] = useState([]);
+
+  useEffect(() => {
+    api.get('/users')
+      .then(res => {
+        const allUsers = res.data?.data || [];
+        const ELIGIBLE_ROLES = [
+          'superadmin', 'super admin', 'admin', 
+          'project_manager', 'pm', 'project manager',
+          'crm_executive', 'crm executive',
+          'sales', 'sales_rep', 'sales_manager', 'sales_executive', 'sales representative',
+          'finance_manager', 'finance_controller', 'finance_executive', 'finance_head', 'finance manager', 'finance controller'
+        ];
+        const filtered = allUsers.filter(u => {
+          const roleName = (u.role_name || u.role?.name || u.role_id || u.role || '').toLowerCase().trim();
+          return ELIGIBLE_ROLES.some(r => roleName.includes(r) || r.includes(roleName));
+        });
+        setEligibleUsers(filtered);
+      })
+      .catch(err => {
+        console.error('Failed to load eligible users', err);
+      });
+  }, []);
+
+  const getCollectedByOptions = () => {
+    const optionsMap = new Map();
+    
+    // Default option
+    optionsMap.set('', { value: '', label: 'Select Staff...' });
+
+    // 1. Add specific project-assigned roles (if they exist)
+    if (project?.pm_name) {
+      optionsMap.set(project.pm_name, { 
+        value: `${project.pm_name}|project_manager`, 
+        label: `${project.pm_name} (Project Manager)` 
+      });
+    }
+    if (project?.crm_executive_name) {
+      optionsMap.set(project.crm_executive_name, { 
+        value: `${project.crm_executive_name}|crm_executive`, 
+        label: `${project.crm_executive_name} (CRM Executive)` 
+      });
+    }
+    if (project?.sales_rep_name) {
+      optionsMap.set(project.sales_rep_name, { 
+        value: `${project.sales_rep_name}|sales_rep`, 
+        label: `${project.sales_rep_name} (Sales Representative)` 
+      });
+    }
+
+    // 2. Add dynamic eligible users fetched from database
+    eligibleUsers.forEach(u => {
+      if (!optionsMap.has(u.name)) {
+        const roleLabel = u.role_name || u.role?.name || u.role_id || u.role || 'Staff';
+        optionsMap.set(u.name, {
+          value: `${u.name}|${u.role_id || u.role || 'staff'}`,
+          label: `${u.name} (${roleLabel})`
+        });
+      }
+    });
+
+    // 3. Add fallback System Admin option
+    if (!optionsMap.has('System Admin')) {
+      optionsMap.set('System Admin', { 
+        value: 'System Admin|admin', 
+        label: 'System Admin (Admin)' 
+      });
+    }
+
+    return Array.from(optionsMap.values());
+  };
+
   // RBAC State
   const defaultPermissions = {
     Admin: ['View', 'Create', 'Edit', 'Delete', 'Approve', 'Refund', 'Export'],
@@ -3618,12 +3690,7 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
               label="Collected By (Role & Name)" 
               value={collectedBy} 
               onChange={setCollectedBy} 
-              options={[
-                { value: '', label: 'Select Staff...' },
-                ...(project?.pm_name ? [{ value: `${project.pm_name}|project_manager`, label: `${project.pm_name} (Project Manager)` }] : []),
-                ...(project?.crm_executive_name ? [{ value: `${project.crm_executive_name}|crm_executive`, label: `${project.crm_executive_name} (CRM Executive)` }] : []),
-                { value: 'System Admin|admin', label: 'System Admin (Admin)' }
-              ]}
+              options={getCollectedByOptions()}
             />
             
             <div style={{display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)', marginTop: 'var(--space-4)'}}>

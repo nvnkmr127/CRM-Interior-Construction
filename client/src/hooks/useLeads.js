@@ -107,6 +107,11 @@ export function useLeads(filters = {}) {
 
   useEffect(() => {
     fetchLeadsAndStages();
+    
+    // Listen for cross-browser mock DB changes to keep UI instantly synced
+    const handleDbChange = () => fetchLeadsAndStages();
+    window.addEventListener('app:mock-db-change', handleDbChange);
+    return () => window.removeEventListener('app:mock-db-change', handleDbChange);
   }, [fetchLeadsAndStages]);
 
   const optimisticStageChange = async (leadId, newStageId) => {

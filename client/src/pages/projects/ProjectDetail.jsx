@@ -437,6 +437,7 @@ function OverviewTab({ project, onRefresh, onEdit }) {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 0 }}>
           {[
             { role: 'Project Manager', name: project.pm_name, key: 'pm', id: project.pm_id },
+            { role: 'Sales Representative', name: project.sales_rep_name, key: 'sales_rep', id: project.sales_rep_id },
             { role: 'Designer', name: project.designer_name, key: 'designer', id: project.designer_id },
             { role: 'Lead Designer', name: project.lead_designer_name, id: project.lead_designer_id },
             { role: 'Junior Designer', name: project.junior_designer_name, id: project.junior_designer_id },

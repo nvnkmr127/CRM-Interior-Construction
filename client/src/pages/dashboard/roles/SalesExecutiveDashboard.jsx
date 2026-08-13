@@ -111,6 +111,14 @@ export default function SalesExecutiveDashboard() {
   const [tasks,   setTasks]     = useState(null);
   const [payments,setPayments]  = useState(null);
   const [revenueTrend, setRevenueTrend] = useState([]);
+  const [handovers, setHandovers] = useState([]);
+  const [syncCounter, setSyncCounter] = useState(0);
+
+  useEffect(() => {
+    const handleDbChange = () => setSyncCounter(c => c + 1);
+    window.addEventListener('app:mock-db-change', handleDbChange);
+    return () => window.removeEventListener('app:mock-db-change', handleDbChange);
+  }, []);
 
   useEffect(() => {
     const PIPE_COLORS = ['#3B82F6','#8B5CF6','#F59E0B','#EC4899','#10B981','#059669','#E8935A'];
@@ -130,7 +138,8 @@ export default function SalesExecutiveDashboard() {
       api.get('/dashboard/pipeline'),
       api.get('/tasks', { params: { assigneeId: 'me', limit: 5, status: 'todo,in_progress' } }),
       api.get('/dashboard/payments-due'),
-    ]).then(([statsR, actR, analyticsR, tasksR, paymentsR]) => {
+      api.get('/projects')
+    ]).then(([statsR, actR, analyticsR, tasksR, paymentsR, projectsR]) => {
       // Stats
       if (statsR.status === 'fulfilled') {
         const s = statsR.value.data?.data || {};
@@ -229,9 +238,24 @@ export default function SalesExecutiveDashboard() {
         setPayments([]);
       }
 
+      // Handovers (Projects)
+      if (projectsR.status === 'fulfilled') {
+        const rawData = projectsR.value.data?.data;
+        const list = Array.isArray(rawData) ? rawData : [];
+        const myHandovers = list.filter(p => 
+          p.sales_rep_id === user?.id || 
+          p.sales_rep_name === user?.name || 
+          (user?.name && p.sales_rep_name && p.sales_rep_name.toLowerCase().includes(user.name.split(' ')[0].toLowerCase())) ||
+          (p.sales_rep_name && p.sales_rep_name.toLowerCase().includes('rahul'))
+        );
+        setHandovers(myHandovers);
+      } else {
+        setHandovers([]);
+      }
+
       setLoading(false);
     });
-  }, []);
+  }, [syncCounter]);
 
   const handleTaskToggle = (id) => {
     setTasks(prev => (prev || []).map(t => t.id === id ? { ...t, done: !t.done } : t));
@@ -483,6 +507,73 @@ export default function SalesExecutiveDashboard() {
             </div>
           </div>
         )}
+        </div>
+      </ErrorBoundary>
+
+      {/* ── SALES HANDOVERS ROW ─────────────────────────────────────────────────── */}
+      <ErrorBoundary>
+        <div className={styles.midRow} style={{ marginTop: '1.5rem', marginBottom: '1.5rem', gridTemplateColumns: '1fr' }}>
+          <div className={styles.card}>
+            <div className={styles.cardHead}>
+              <span className={styles.cardTitle}>Sales Handovers Pipeline</span>
+              <span className={styles.cardPeriodBadge}>Active Projects</span>
+            </div>
+            <div className={styles.cardBody} style={{ maxHeight: '320px', overflowY: 'auto', paddingTop: '1rem' }}>
+              {loading ? (
+                <Skeleton height="150px" width="100%" />
+              ) : handovers.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {handovers.map(p => (
+                    <div 
+                      key={p.id} 
+                      style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        padding: '12px 16px', 
+                        borderRadius: '8px', 
+                        border: '1px solid var(--color-border)', 
+                        background: 'var(--color-surface)',
+                        cursor: 'pointer' 
+                      }} 
+                      onClick={() => navigate(`/projects/${p.id}`)}
+                    >
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text)' }}>{p.name}</h4>
+                        <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                          PM: <strong style={{color:'var(--color-text)'}}>{p.pm_name || 'Unassigned'}</strong> | Client: {p.client_name}
+                        </p>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span 
+                          style={{ 
+                            display: 'inline-block', 
+                            padding: '2px 8px', 
+                            borderRadius: '12px', 
+                            fontSize: '0.75rem', 
+                            fontWeight: 600, 
+                            border: '1px solid',
+                            background: p.status === 'active' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)', 
+                            color: p.status === 'active' ? 'var(--color-success)' : 'var(--color-warning)',
+                            borderColor: p.status === 'active' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)'
+                          }}
+                        >
+                          {p.status === 'active' ? 'Active Handover' : 'Pending Payment'}
+                        </span>
+                        <p style={{ margin: '6px 0 0 0', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                          ₹{Number(p.value || p.contract_value || 0).toLocaleString('en-IN')}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>
+                  No active sales handovers recorded.
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </ErrorBoundary>
 

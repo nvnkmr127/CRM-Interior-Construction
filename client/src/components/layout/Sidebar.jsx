@@ -7,11 +7,11 @@ const NAV_ITEMS = [
   { group: 'WORKSPACE', items: [
     { to: '/dashboard/sales', icon: '⊞', label: 'Dashboard', module: 'dashboards', permission: 'dashboards:view_sales_dashboard' },
     { label: 'Leads', icon: '◎', module: 'leads', subItems: [
-        { to: '/leads?view=dashboard', icon: '📊', label: 'Dashboard' },
+        { to: '/leads?view=dashboard', icon: '📊', label: 'Dashboard', permission: 'leads:view_dashboard' },
         { to: '/leads?view=list', icon: '≣', label: 'List' },
-        { to: '/leads?view=kanban', icon: '◫', label: 'Kanban' },
-        { to: '/leads?view=calendar', icon: '📅', label: 'Calendar' },
-        { to: '/leads?view=map', icon: '🗺️', label: 'Map' },
+        { to: '/leads?view=kanban', icon: '◫', label: 'Kanban', permission: 'leads:view_kanban' },
+        { to: '/leads?view=calendar', icon: '📅', label: 'Calendar', permission: 'leads:view_calendar' },
+        { to: '/leads?view=map', icon: '🗺️', label: 'Map', permission: 'leads:view_map' },
     ]},
     { to: '/projects', icon: '◈', label: 'Projects', module: 'projects' },
     { to: '/tasks',      icon: '◻', label: 'My Tasks', module: 'tasks' },

@@ -237,21 +237,18 @@ export const ROLE_DEFAULTS = {
     }
   },
   'Sales Representative': {
-    description: 'Field executive dedicated to individual lead follow-ups and quotations',
+    description: 'Field executive dedicated to individual lead follow-ups',
     permissions: [
-      'leads:view', 'leads:create', 'leads:edit', 'leads:print',
-      'clients:view', 'clients:create', 'clients:edit',
-      'quotations:view', 'quotations:create', 'quotations:edit', 'quotations:print',
-      'boq:view'
+      'leads:view', 'leads:create', 'leads:edit',
+      'projects:view',
+      'chat:view'
     ],
-    enabled_modules: ['leads', 'clients', 'quotations', 'boq'],
+    enabled_modules: ['leads', 'projects', 'chat'],
     data_scopes: {
-      leads: 'own', clients: 'assigned', quotations: 'own', boq: 'assigned'
+      leads: 'own', projects: 'assigned'
     },
     field_permissions: {
-      leads: { budget: 'editable', expected_revenue: 'editable', source: 'editable', internal_notes: 'editable' },
-      clients: { financial_history: 'hidden' },
-      quotations: { discount: 'editable', margin: 'hidden', profit: 'hidden' }
+      leads: { budget: 'editable', expected_revenue: 'editable', source: 'editable', internal_notes: 'editable' }
     },
     page_permissions: {},
     security_policies: {

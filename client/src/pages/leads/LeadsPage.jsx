@@ -164,6 +164,15 @@ export default function LeadsPage() {
   const [page, setPage] = useState(1);
   const limit = 20;
 
+  const [users, setUsers] = useState([]);
+  useEffect(() => {
+    import('../../api/axios').then(({ default: api }) => {
+      api.get('/users?limit=50')
+        .then(res => { if (res.data && res.data.success) setUsers(res.data.data); })
+        .catch(err => console.error('Failed to load users list:', err));
+    });
+  }, []);
+
   const filters = useMemo(() => {
     const f = { page, limit };
     if (debouncedSearch.trim()) f.search = debouncedSearch.trim();
@@ -184,19 +193,30 @@ export default function LeadsPage() {
 
   const { leads, stages, stats, total, loading, error, optimisticStageChange, bulkChangeStage, bulkDelete, refetch } = useLeads(filters);
 
-  // Unique assignees for dropdown
+  // Unique assignees for dropdown using fetched users
   const assignees = useMemo(() => {
     const map = {};
     const arr = Array.isArray(leads) ? leads : [];
     for (const l of arr) {
-      if (l.assignee_id && l.assignee_name) map[l.assignee_id] = l.assignee_name;
+      if (l.assignee_id) {
+        const user = users.find(u => u.id === l.assignee_id);
+        if (user || l.assignee_name) {
+           map[l.assignee_id] = l.assignee_name || (user ? user.name : 'Unassigned');
+        }
+      }
     }
     return Object.entries(map);
-  }, [leads]);
+  }, [leads, users]);
 
   // Calculate filteredLeads without useMemo to guarantee it runs on every render
   const filteredLeads = (() => {
-    const arr = [...leads];
+    const arr = leads.map(l => {
+      if (!l.assignee_name && l.assignee_id) {
+        const user = users.find(u => u.id === l.assignee_id);
+        if (user) return { ...l, assignee_name: user.name };
+      }
+      return l;
+    });
     const getTime = (l) => {
       // If missing or invalid, treat as Infinity (newest) so they go to the top
       if (!l.created_at && !l.createdAt) return Infinity;
@@ -352,18 +372,23 @@ export default function LeadsPage() {
             <LeadCalendar leads={filteredLeads} onLeadClick={setSelectedLeadId} />
           </ErrorBoundary>
         ) : (
-          <LeadTable
+          <LeadTable 
             filteredLeads={filteredLeads}
             loading={loading}
-            page={page} limit={limit} total={total} setPage={setPage}
+            page={page}
+            limit={limit}
+            total={total}
+            setPage={setPage}
             setSelectedLeadId={setSelectedLeadId}
-            stageMenuLeadId={stageMenuLeadId} setStageMenuLeadId={setStageMenuLeadId}
-            stages={stages} handleMoveStage={handleMoveStage}
+            stageMenuLeadId={stageMenuLeadId}
+            setStageMenuLeadId={setStageMenuLeadId}
+            stages={stages}
+            handleMoveStage={handleMoveStage}
             bulkChangeStage={bulkChangeStage}
             bulkDelete={bulkDelete}
             clearFilters={clearFilters}
             refetch={refetch}
-            search={search}
+            search={debouncedSearch}
           />
         )}
         </div>

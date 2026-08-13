@@ -130,11 +130,12 @@ app.use('/api/portal/auth', authLimiter);
 
 
 app.use(express.json({
+  limit: '50mb',
   verify: (req, res, buf) => {
     req.rawBody = buf;
   }
 }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
 const asyncLocalStorage = require('./utils/requestContext');
@@ -161,6 +162,9 @@ const handoverRoutes = require('./routes/handover');
 const milestonesRoutes = require('./routes/milestones');
 const globalTasksRoutes = require('./routes/globalTasks');
 const analyticsRoutes = require('./routes/analytics');
+const mockSyncRoutes = require('./routes/mockSync');
+
+app.use('/api/mock-sync', mockSyncRoutes);
 
 const orgRoutes = require('./routes/org');
 const webhooksRoutes = require('./routes/webhooks');
@@ -505,3 +509,5 @@ pool.query(`
 `).catch(error => logger.error(error, 'Auto-migration error'));
 
 module.exports = app;
+
+// Force restart 1

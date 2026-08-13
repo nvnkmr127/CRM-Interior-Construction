@@ -302,8 +302,10 @@ export const initialMockDatabase = {
       id: 'mock-proj-1',
       name: 'Luxury Villa Interior - Phase 6',
       client_name: 'Mr. Sharma',
-      pm_id: 'mock-user-1',
-      pm_name: 'Rahul K.',
+      pm_id: 'mock-user-11',
+      pm_name: 'Manoj G.',
+      sales_rep_id: 'mock-user-1',
+      sales_rep_name: 'Rahul K.',
       designer_id: 'mock-user-3',
       designer_name: 'Priya M.',
       lead_designer_id: 'mock-user-4',
@@ -406,7 +408,7 @@ export const initialMockDatabase = {
     }
   ],
   users: [
-    { id: 'mock-user-1', name: 'Rahul K.', role: 'project_manager', email: 'rahul@gmail.com', password: 'password', role_id: 'pm', role_name: 'Project Manager' },
+    { id: 'mock-user-1', name: 'Rahul K.', role: 'sales_rep', email: 'rahul@gmail.com', password: 'password', role_id: 'sales_rep', role_name: 'Sales Representative' },
     { id: 'mock-user-2', name: 'Amit S.', role: 'sales_rep' },
     { id: 'mock-user-3', name: 'Priya M.', role: 'designer' },
     { id: 'mock-user-4', name: 'Sanjay D.', role: 'lead_designer' },
@@ -685,6 +687,39 @@ export const loadMockDatabase = () => {
       if (!merged.payment_milestones_aligned_v6) {
         merged.paymentMilestones = [];
         merged.payment_milestones_aligned_v6 = true;
+        localStorage.setItem('mockDatabase_v4', JSON.stringify(merged));
+      }
+      
+      // ONE-TIME ALIGNMENT OF ROLES
+      if (!merged.roles_aligned_v7) {
+        if (merged.projects && Array.isArray(merged.projects)) {
+          merged.projects = merged.projects.map(p => {
+            if (p.id === 'mock-proj-1') {
+              return {
+                ...p,
+                pm_id: 'mock-user-11',
+                pm_name: 'Manoj G.',
+                sales_rep_id: 'mock-user-1',
+                sales_rep_name: 'Rahul K.'
+              };
+            }
+            return p;
+          });
+        }
+        if (merged.users && Array.isArray(merged.users)) {
+          merged.users = merged.users.map(u => {
+            if (u.id === 'mock-user-1') {
+              return {
+                ...u,
+                role: 'sales_rep',
+                role_id: 'sales_rep',
+                role_name: 'Sales Representative'
+              };
+            }
+            return u;
+          });
+        }
+        merged.roles_aligned_v7 = true;
         localStorage.setItem('mockDatabase_v4', JSON.stringify(merged));
       }
       
