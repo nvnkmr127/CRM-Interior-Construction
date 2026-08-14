@@ -205,6 +205,16 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
     }
   }, [isOpen, leadId]);
 
+  // Scroll active tab into view when activeTab changes
+  useEffect(() => {
+    if (tabsRef.current) {
+      const activeElement = tabsRef.current.querySelector('.bg-blue-50');
+      if (activeElement) {
+        activeElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  }, [activeTab]);
+
   // Load files when tab is activated
   useEffect(() => {
     if (activeTab === 'files' && leadId) {
@@ -248,8 +258,8 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
     }
   }, [activeTab, leadId]);
 
-  const fetchLead = async () => {
-    setLoading(true);
+  const fetchLead = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const res = await getLead(leadId);
       if (res.success) {
@@ -260,7 +270,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
       console.error(e);
       toast.error('Failed to load lead details');
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -679,6 +689,19 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
           {/* HEADER */}
           <div className="border-b border-gray-200 px-6 pt-4 pb-3 shrink-0 shadow-sm relative z-10" style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(16px)' }}>
+            <div className="flex items-center justify-between border-b border-gray-100 pb-2 mb-3">
+              <button 
+                onClick={onClose} 
+                className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors shrink-0 flex items-center justify-center"
+                title="Back to leads list"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700">
+                  <line x1="19" y1="12" x2="5" y2="12"></line>
+                  <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+              </button>
+            </div>
+
             <div className="flex items-center justify-between mb-2 gap-4">
               <div className="flex-1">
                 <input
@@ -691,16 +714,6 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   placeholder="Lead Name"
                 />
               </div>
-              <button 
-                onClick={onClose} 
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors shrink-0 flex items-center justify-center"
-                title="Close"
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </button>
             </div>
 
             <div className="flex flex-wrap items-center gap-3 mb-2">
@@ -803,14 +816,12 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
             <nav 
               ref={tabsRef}
               className="flex gap-4 overflow-x-auto custom-scrollbar p-2 bg-white border border-gray-200 rounded-xl shadow-sm"
-              style={{ scrollBehavior: 'smooth' }}
             >
               {['overview', 'activity', 'communications', 'tasks', 'followups', 'meeting-schedule', 'stakeholders', 'preferences', 'inspirations', 'estimates', 'negotiation', 'files', 'ai-copilot', 'knowledge-base', 'twin', 'automations'].map(tab => (
                 <button
                   key={tab}
                   onClick={(e) => {
                     setActiveTab(tab);
-                    e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
                   }}
                   className={`whitespace-nowrap py-2 px-4 rounded-lg font-medium text-base transition-all ${
                     activeTab === tab
@@ -1258,7 +1269,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
             )}
 
             {activeTab === 'ai-copilot' && (
-              <AICopilotTab leadId={leadId} />
+              <AICopilotTab leadId={leadId} onRefresh={fetchLead} />
             )}
 
             {activeTab === 'stakeholders' && (

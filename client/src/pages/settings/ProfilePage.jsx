@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import styles from './ProfilePage.module.css'
 import { useAuth } from '../../store/authContext'
@@ -16,16 +16,31 @@ export default function ProfilePage() {
   usePageTitle('My Profile')
   useBreadcrumbs([{label:'My Profile'}])
   
-  const { user, logout } = useAuth()
+  const { user, logout, updateUser } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
   const fileInputRef = useRef(null)
 
+  const isSuperAdmin = user?.role?.name?.toLowerCase() === 'superadmin' || 
+                       user?.role === 'superadmin' || 
+                       user?.role?.id === 'superadmin' || 
+                       user?.role?.id === 'role-mock';
+
   // Profile Form
-  const [name, setName] = useState(user?.name || 'Test User')
+  const [name, setName] = useState(user?.name || '')
+  const [email, setEmail] = useState(user?.email || '')
   const [phone, setPhone] = useState(user?.phone || '')
   const [designation, setDesignation] = useState(user?.designation || '')
   const [profileSaving, setProfileSaving] = useState(false)
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name || '')
+      setEmail(user.email || '')
+      setPhone(user.phone || '')
+      setDesignation(user.designation || '')
+    }
+  }, [user])
 
   // Password Form
   const [pwdForm, setPwdForm] = useState({ current: '', new: '', confirm: '' })
@@ -33,9 +48,36 @@ export default function ProfilePage() {
 
   const handleProfileSave = async (e) => {
     e.preventDefault()
+
+    const nameChanged = name !== (user?.name || '')
+    const emailChanged = email !== (user?.email || '')
+    const phoneChanged = phone !== (user?.phone || '')
+    const designationChanged = designation !== (user?.designation || '')
+
+    if (nameChanged || emailChanged || phoneChanged || designationChanged) {
+      let details = [];
+      if (nameChanged) details.push(`Name: "${user?.name || ''}" ➔ "${name}"`);
+      if (emailChanged && isSuperAdmin) details.push(`Email: "${user?.email || ''}" ➔ "${email}"`);
+      if (phoneChanged) details.push(`Phone: "${user?.phone || ''}" ➔ "${phone}"`);
+      if (designationChanged) details.push(`Job Title: "${user?.designation || ''}" ➔ "${designation}"`);
+
+      if (details.length > 0) {
+        const confirmMsg = `Are you sure you want to update your profile details?\n\n${details.join('\n')}`;
+        if (!(await confirm(confirmMsg))) {
+          return;
+        }
+      }
+    }
+
     setProfileSaving(true)
     try {
-      await api.patch('/auth/me', { name, phone, designation })
+      const payload = { name, phone, designation };
+      if (isSuperAdmin) {
+        payload.email = email;
+      }
+      const response = await api.patch('/auth/me', payload)
+      const updatedUser = response.data.data || response.data;
+      updateUser(updatedUser);
       toast.success('Profile updated successfully')
     } catch {
       toast.error('Failed to update profile')
@@ -62,6 +104,9 @@ export default function ProfilePage() {
     e.preventDefault()
     if (pwdForm.new !== pwdForm.confirm) {
       return toast.error('New passwords do not match')
+    }
+    if (!(await confirm("Are you sure you want to change your password? This will sign you out of all devices."))) {
+      return
     }
     setPwdSaving(true)
     try {
@@ -144,8 +189,15 @@ export default function ProfilePage() {
               <div className={styles.inputRow}>
                 <div className={styles.inputGroup}>
                   <label className={styles.label}>Email Address</label>
-                  <input type="email" className={`${styles.input} ${styles.inputReadOnly}`} value={user?.email || 'user@example.com'} readOnly />
-                  <div className={styles.helperText}>Contact admin to change email</div>
+                  <input 
+                    type="email" 
+                    className={`${styles.input} ${!isSuperAdmin ? styles.inputReadOnly : ''}`} 
+                    value={email} 
+                    onChange={e => setEmail(e.target.value)} 
+                    readOnly={!isSuperAdmin} 
+                    required 
+                  />
+                  {!isSuperAdmin && <div className={styles.helperText}>Contact admin to change email</div>}
                 </div>
                 <div className={styles.inputGroup}>
                   <label className={styles.label}>Job Title</label>

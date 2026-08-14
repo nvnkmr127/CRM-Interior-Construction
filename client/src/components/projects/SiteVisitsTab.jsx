@@ -7,7 +7,7 @@ import styles from './SiteVisitsTab.module.css';
 
 import { useConfirm } from '../../store/confirmContext';
 
-export default function SiteVisitsTab({ projectId }) {
+export default function SiteVisitsTab({ projectId, projectStatus }) {
   const { confirm } = useConfirm();
 
   const toast = useToast();
@@ -142,6 +142,10 @@ export default function SiteVisitsTab({ projectId }) {
 
   const handleSaveSchedule = async (e) => {
     e.preventDefault();
+    if (projectStatus === 'completed') {
+      toast.warning('Cannot schedule visits on a completed project.');
+      return;
+    }
     if (!scheduleForm.date || !scheduleForm.time) {
       toast.error('Date and time are required.');
       return;
@@ -181,6 +185,10 @@ export default function SiteVisitsTab({ projectId }) {
   };
 
   const handleDeleteVisit = async (visitId) => {
+    if (projectStatus === 'completed') {
+      toast.warning('Cannot delete visits on a completed project.');
+      return;
+    }
     if (!await confirm('Are you sure you want to cancel and delete this site visit?')) return;
 
     try {
@@ -196,6 +204,10 @@ export default function SiteVisitsTab({ projectId }) {
   };
 
   const toggleChecklistItem = async (visit, index) => {
+    if (projectStatus === 'completed') {
+      toast.warning('Cannot modify checklist items on a completed project.');
+      return;
+    }
     const updatedChecklist = (visit.checklist || []).map((item, idx) => {
       if (idx === index) {
         const text = typeof item === 'string' ? item : item.text;
@@ -230,6 +242,10 @@ export default function SiteVisitsTab({ projectId }) {
 
   const handleSaveOutcomes = async (e) => {
     e.preventDefault();
+    if (projectStatus === 'completed') {
+      toast.warning('Cannot save outcomes on a completed project.');
+      return;
+    }
     if (!selectedVisit) return;
 
     const payload = {
@@ -254,6 +270,10 @@ export default function SiteVisitsTab({ projectId }) {
   };
 
   const handlePhotoSelect = async (e, visitId) => {
+    if (projectStatus === 'completed') {
+      toast.warning('Cannot upload photos on a completed project.');
+      return;
+    }
     const file = e.target.files[0];
     if (!file) return;
 
@@ -280,6 +300,10 @@ export default function SiteVisitsTab({ projectId }) {
   };
 
   const handleDeletePhoto = async (visitId, photoId) => {
+    if (projectStatus === 'completed') {
+      toast.warning('Cannot delete photos on a completed project.');
+      return;
+    }
     if (!await confirm('Delete this photo from the visit log?')) return;
 
     try {
@@ -295,6 +319,7 @@ export default function SiteVisitsTab({ projectId }) {
   };
 
   const addChecklistItem = () => {
+    if (projectStatus === 'completed') return;
     if (!newChecklistItem.trim()) return;
     setScheduleForm(prev => ({
       ...prev,
@@ -304,6 +329,7 @@ export default function SiteVisitsTab({ projectId }) {
   };
 
   const removeChecklistItem = (index) => {
+    if (projectStatus === 'completed') return;
     setScheduleForm(prev => ({
       ...prev,
       checklist: prev.checklist.filter((_, i) => i !== index)
@@ -328,12 +354,14 @@ export default function SiteVisitsTab({ projectId }) {
     <div className={styles.container}>
       <div className={styles.header}>
         <h2 className={styles.title}>Project Site Visits</h2>
-        <button className={styles.addBtn} onClick={async () => handleOpenSchedule(null)}>
-          <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
-          </svg>
-          Schedule Site Visit
-        </button>
+        {projectStatus !== 'completed' && (
+          <button className={styles.addBtn} onClick={async () => handleOpenSchedule(null)}>
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
+            </svg>
+            Schedule Site Visit
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -346,9 +374,11 @@ export default function SiteVisitsTab({ projectId }) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
           </svg>
           <p>No site visits scheduled for this project yet.</p>
-          <button className={styles.addBtn} style={{ margin: '12px auto 0' }} onClick={async () => handleOpenSchedule(null)}>
-            Schedule First Visit
-          </button>
+          {projectStatus !== 'completed' && (
+            <button className={styles.addBtn} style={{ margin: '12px auto 0' }} onClick={async () => handleOpenSchedule(null)}>
+              Schedule First Visit
+            </button>
+          )}
         </div>
       ) : (
         <div className={styles.list}>
@@ -410,7 +440,7 @@ export default function SiteVisitsTab({ projectId }) {
                                   className={styles.agendaCheckbox}
                                   checked={completed}
                                   onChange={() => toggleChecklistItem(visit, idx)}
-                                  disabled={visit.status === 'cancelled'}
+                                  disabled={visit.status === 'cancelled' || projectStatus === 'completed'}
                                 />
                                 <span className={`${styles.agendaItemText} ${completed ? styles.completed : ''}`}>
                                   {text}
@@ -462,17 +492,19 @@ export default function SiteVisitsTab({ projectId }) {
                                 alt={p.caption || 'Site Photo'}
                                 onClick={async () => setLightboxPhoto(p)}
                               />
-                              <button
-                                className={styles.photoDeleteOverlay}
-                                title="Delete Photo"
-                                onClick={async () => handleDeletePhoto(visit.id, p.id)}
-                              >
-                                &times;
-                              </button>
+                              {projectStatus !== 'completed' && (
+                                <button
+                                  className={styles.photoDeleteOverlay}
+                                  title="Delete Photo"
+                                  onClick={async () => handleDeletePhoto(visit.id, p.id)}
+                                >
+                                  &times;
+                                </button>
+                              )}
                               {p.caption && <span className={styles.photoCaption}>{p.caption}</span>}
                             </div>
                           ))}
-                          {visit.status !== 'cancelled' && (
+                          {visit.status !== 'cancelled' && projectStatus !== 'completed' && (
                             <label className={styles.uploadTriggerBtn}>
                               <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
@@ -496,7 +528,7 @@ export default function SiteVisitsTab({ projectId }) {
                   <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
                     Last Updated: {new Date(visit.updated_at).toLocaleDateString('en-IN')}
                   </span>
-                  {visit.status !== 'cancelled' && (
+                  {visit.status !== 'cancelled' && projectStatus !== 'completed' && (
                     <div className={styles.footerActions}>
                       <button className={styles.editBtn} onClick={async () => handleOpenSchedule(visit)}>
                         Edit / Reschedule

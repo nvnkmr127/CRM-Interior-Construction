@@ -18,7 +18,7 @@ const PROJECT_TYPES = [
 
 export default function ProjectForm({ project, onSave, onClose, isOpen, editSection = 'all' }) {
   const showAll = editSection === 'all';
-  const showDetails = showAll || editSection === 'details';
+  const showProjectDetails = showAll || editSection === 'details';
   const showTeam = showAll || editSection === 'team';
   const showRevisions = showAll || editSection === 'revisions';
 
@@ -500,7 +500,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
         </>
       }
     >
-      {showDetails && (
+      {showProjectDetails && (
         <>
       <div className={styles.sectionTitle} style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '12px'}}>
         Project Type
@@ -534,115 +534,123 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
         </>
       )}
 
-      {(showDetails || showTeam) && (
+      {(showProjectDetails || showTeam) && (
         <>
-          {showDetails && <div className={styles.sectionTitle}>Details</div>}
+          {showProjectDetails && <div className={styles.sectionTitle}>Details</div>}
           <div className={styles.grid}>
             {/* Left Col */}
-            {showDetails && (
+            {showAll && (
               <div>
-          <Input 
-            label="Client Name *" 
-            value={formData.clientName} 
-            onChange={e => {
-              const val = e.target.value;
-              const newFormData = { ...formData, clientName: val };
-              if (clientDetailsMap[val]) {
-                const { phone, email } = clientDetailsMap[val];
-                if (phone && !newFormData.clientPhone) newFormData.clientPhone = phone;
-                if (email && !newFormData.clientEmail) newFormData.clientEmail = email;
-              }
-              setFormData(newFormData);
-            }} 
-            error={errors.clientName}
-            list="clientsList"
-          />
-          <datalist id="clientsList">
-            {clientNames.map(name => (
-              <option key={name} value={name} />
-            ))}
-          </datalist>
-          <div style={{ marginTop: 16 }}>
-            <Input 
-              label="Client Phone" 
-              placeholder="e.g. 98765 43210" 
-              value={formData.clientPhone} 
-              onChange={e => setFormData({...formData, clientPhone: e.target.value})}
-              error={errors.clientPhone}
-            />
-          </div>
-          <div style={{ marginTop: 16 }}>
-            <Input 
-              label="Client Email" 
-              type="email" 
-              value={formData.clientEmail} 
-              onChange={e => setFormData({...formData, clientEmail: e.target.value})}
-              error={errors.clientEmail}
-            />
-          </div>
-            </div>
-          )}
+                <Input 
+                  label="Client Name *" 
+                  value={formData.clientName} 
+                  onChange={e => {
+                    const val = e.target.value;
+                    const newFormData = { ...formData, clientName: val };
+                    if (clientDetailsMap[val]) {
+                      const { phone, email } = clientDetailsMap[val];
+                      if (phone && !newFormData.clientPhone) newFormData.clientPhone = phone;
+                      if (email && !newFormData.clientEmail) newFormData.clientEmail = email;
+                    }
+                    setFormData(newFormData);
+                  }} 
+                  error={errors.clientName}
+                  list="clientsList"
+                />
+                <datalist id="clientsList">
+                  {clientNames.map(name => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
+                <div style={{ marginTop: 16 }}>
+                  <Input 
+                    label="Client Phone" 
+                    placeholder="e.g. 98765 43210" 
+                    value={formData.clientPhone} 
+                    onChange={e => setFormData({...formData, clientPhone: e.target.value})}
+                    error={errors.clientPhone}
+                  />
+                </div>
+                <div style={{ marginTop: 16 }}>
+                  <Input 
+                    label="Client Email" 
+                    type="email" 
+                    value={formData.clientEmail} 
+                    onChange={e => setFormData({...formData, clientEmail: e.target.value})}
+                    error={errors.clientEmail}
+                  />
+                </div>
+              </div>
+            )}
 
-          {/* Right Col */}
-          <div>
-          <Input 
-            label="Project Name *" 
-            placeholder="e.g. Sharma 3BHK - Banjara Hills"
-            value={formData.projectName} 
-            onChange={e => setFormData({...formData, projectName: e.target.value})} 
-            error={errors.projectName}
-          />
-          <div style={{ marginTop: 16 }}>
-            <Select 
-              label="Project Manager" 
-              options={[
-                { value: '', label: 'Select PM' },
-                ...teamMembers
-                  .filter(u => u.role_name === 'Project Manager' || u.role === 'pm' || u.role === 'project_manager')
-                  .map(u => ({ value: u.id, label: u.name }))
-              ]}
-              value={formData.pm}
-              onChange={v => setFormData({...formData, pm: v})}
-            />
+            {/* Right Col */}
+            {(showProjectDetails || showTeam) && (
+              <div>
+                {showProjectDetails && (
+                  <Input 
+                    label="Project Name *" 
+                    placeholder="e.g. Sharma 3BHK - Banjara Hills"
+                    value={formData.projectName} 
+                    onChange={e => setFormData({...formData, projectName: e.target.value})} 
+                    error={errors.projectName}
+                  />
+                )}
+                {showTeam && (
+                  <>
+                    <div style={{ marginTop: showProjectDetails ? 16 : 0 }}>
+                      <Select 
+                        label="Project Manager" 
+                        options={[
+                          { value: '', label: 'Select PM' },
+                          ...teamMembers
+                            .filter(u => u.role_name === 'Project Manager' || u.role === 'pm' || u.role === 'project_manager')
+                            .map(u => ({ value: u.id, label: u.name }))
+                        ]}
+                        value={formData.pm}
+                        onChange={v => setFormData({...formData, pm: v})}
+                      />
+                    </div>
+                    {formData.pm && (
+                      <div style={{ marginTop: 8 }}>
+                        <Input 
+                          type="number"
+                          label="PM Weekly Commitment (Hours)" 
+                          placeholder="Default: 10"
+                          value={formData.pmHoursAllocated} 
+                          onChange={e => setFormData({...formData, pmHoursAllocated: e.target.value})}
+                        />
+                      </div>
+                    )}
+                    <div style={{ marginTop: 16 }}>
+                      <Select 
+                        label="Designer" 
+                        options={[
+                          { value: '', label: 'Select Designer' },
+                          ...teamMembers
+                            .filter(u => u.role_name === 'Designer' || u.role === 'designer')
+                            .map(u => ({ value: u.id, label: u.name }))
+                        ]}
+                        value={formData.designer}
+                        onChange={v => setFormData({...formData, designer: v})}
+                      />
+                    </div>
+                    {formData.designer && (
+                      <div style={{ marginTop: 8 }}>
+                        <Input 
+                          type="number"
+                          label="Designer Weekly Commitment (Hours)" 
+                          placeholder="Default: 20"
+                          value={formData.designerHoursAllocated} 
+                          onChange={e => setFormData({...formData, designerHoursAllocated: e.target.value})}
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </div>
-          {formData.pm && (
-            <div style={{ marginTop: 8 }}>
-              <Input 
-                type="number"
-                label="PM Weekly Commitment (Hours)" 
-                placeholder="Default: 10"
-                value={formData.pmHoursAllocated} 
-                onChange={e => setFormData({...formData, pmHoursAllocated: e.target.value})}
-              />
-            </div>
-          )}
-          <div style={{ marginTop: 16 }}>
-            <Select 
-              label="Designer" 
-              options={[
-                { value: '', label: 'Select Designer' },
-                ...teamMembers
-                  .filter(u => u.role_name === 'Designer' || u.role === 'designer')
-                  .map(u => ({ value: u.id, label: u.name }))
-              ]}
-              value={formData.designer}
-              onChange={v => setFormData({...formData, designer: v})}
-            />
-          </div>
-          {formData.designer && (
-            <div style={{ marginTop: 8 }}>
-              <Input 
-                type="number"
-                label="Designer Weekly Commitment (Hours)" 
-                placeholder="Default: 20"
-                value={formData.designerHoursAllocated} 
-                onChange={e => setFormData({...formData, designerHoursAllocated: e.target.value})}
-              />
-            </div>
-          )}
-          </div>
-        </div>
-      </>
+        </>
       )}
       {/* Project Team Roles Section */}
       {!!project && (
@@ -723,7 +731,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
           )}
 
         {/* Client Household Profile Section */}
-        {showDetails && (
+        {showAll && (
           <div className={styles.fullWidth} style={{ marginTop: 8 }}>
             <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Client Household Profile & Preferences</div>
           
@@ -785,7 +793,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
           )}
 
         {/* Structured address fields */}
-        {showDetails && (
+        {showAll && (
           <div className={styles.fullWidth}>
             <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Site Address Details</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '16px' }}>
@@ -884,7 +892,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
 
 
         {/* Project Classification & Nature */}
-        {showDetails && (
+        {showProjectDetails && (
           <div className={styles.fullWidth} style={{ marginTop: 8 }}>
             <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Project Classification & Nature</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
@@ -966,7 +974,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
           )}
 
         {/* Site Measurements & Room Dimensions */}
-        {showDetails && (
+        {showAll && (
           <div className={styles.fullWidth} style={{ marginTop: 8 }}>
             <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Site Measurements & Room Dimensions</div>
           
@@ -1657,7 +1665,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
             </div>
           )}
 
-        {showDetails && (
+        {showProjectDetails && (
           <div className={styles.fullWidth} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
             {!isHidden('budget') && (
             <div>
@@ -1746,7 +1754,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
           </div>
         )}
 
-        {showDetails && (
+        {showProjectDetails && (
           <>
             <div className={styles.fullWidth} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
               <div className={styles.datesGrid} style={{ gridColumn: 'span 2', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
@@ -1765,33 +1773,37 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
           </div>
         </div>
 
-        <div className={styles.fullWidth} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px' }}>
-          <Input 
-            label="Agreement Signed By" 
-            value={formData.agreementSignedBy} 
-            onChange={e => setFormData({...formData, agreementSignedBy: e.target.value})} 
-          />
-          <Input 
-            label="Agreement Signed Date" 
-            type="date"
-            value={formData.agreementSignedAt} 
-            onChange={e => setFormData({...formData, agreementSignedAt: e.target.value})} 
-          />
-          <Select 
-            label="Signature Method" 
-            options={[{value:'',label:'Select Method'}, {value:'digital',label:'Digital'}, {value:'physical',label:'Physical'}]}
-            value={formData.agreementSignatureMethod}
-            onChange={v => setFormData({...formData, agreementSignatureMethod: v})}
-          />
-        </div>
+        {showAll && (
+          <div className={styles.fullWidth} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px' }}>
+            <Input 
+              label="Agreement Signed By" 
+              value={formData.agreementSignedBy} 
+              onChange={e => setFormData({...formData, agreementSignedBy: e.target.value})} 
+            />
+            <Input 
+              label="Agreement Signed Date" 
+              type="date"
+              value={formData.agreementSignedAt} 
+              onChange={e => setFormData({...formData, agreementSignedAt: e.target.value})} 
+            />
+            <Select 
+              label="Signature Method" 
+              options={[{value:'',label:'Select Method'}, {value:'digital',label:'Digital'}, {value:'physical',label:'Physical'}]}
+              value={formData.agreementSignatureMethod}
+              onChange={v => setFormData({...formData, agreementSignatureMethod: v})}
+            />
+          </div>
+        )}
 
         <div className={`${styles.fullWidth} ${styles.datesGrid}`}>
-          <Select 
-            label="Template" 
-            options={[{value:'none',label:'None (blank project)'}, {value:'t1',label:'Standard 3BHK Interior'}, {value:'t2',label:'Commercial Office Fit-out'}]}
-            value={formData.template}
-            onChange={v => setFormData({...formData, template: v})}
-          />
+          {showAll && (
+            <Select 
+              label="Template" 
+              options={[{value:'none',label:'None (blank project)'}, {value:'t1',label:'Standard 3BHK Interior'}, {value:'t2',label:'Commercial Office Fit-out'}]}
+              value={formData.template}
+              onChange={v => setFormData({...formData, template: v})}
+            />
+          )}
           <Select 
             label="Payment Terms" 
             options={[
@@ -1824,7 +1836,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
         </>
         )}
 
-        {showDetails && !project && (
+        {showAll && !project && (
           <div className={styles.fullWidth} style={{ marginTop: 16 }}>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Signed Contract Document *</label>
             <div className="flex items-center gap-4">

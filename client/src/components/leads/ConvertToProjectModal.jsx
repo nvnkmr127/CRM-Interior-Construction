@@ -149,8 +149,8 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
         city: '',
         pincode: '',
         landmark: '',
-        latitude: '',
-        longitude: '',
+        latitude: lead.latitude || '',
+        longitude: lead.longitude || '',
         builder_name: '',
         society_name: '',
         rera_id: '',
@@ -301,6 +301,38 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
 
   const allChecked = checklistConfig.every(item => !item.required || checklist[item.key] === true);
 
+  const handlePaymentTermsChange = (terms) => {
+    let advance = '';
+    const contractVal = parseFloat(formData.contractValue) || 0;
+    if (terms && contractVal > 0) {
+      const parts = terms.split('_').map(Number);
+      if (parts.length > 0 && !isNaN(parts[0])) {
+        advance = Math.round(contractVal * (parts[0] / 100));
+      }
+    }
+    setFormData(prev => ({
+      ...prev,
+      paymentTerms: terms,
+      advanceAmount: advance
+    }));
+  };
+
+  const handleContractValueChange = (val) => {
+    let advance = formData.advanceAmount;
+    const contractVal = parseFloat(val) || 0;
+    if (formData.paymentTerms && contractVal > 0) {
+      const parts = formData.paymentTerms.split('_').map(Number);
+      if (parts.length > 0 && !isNaN(parts[0])) {
+        advance = Math.round(contractVal * (parts[0] / 100));
+      }
+    }
+    setFormData(prev => ({
+      ...prev,
+      contractValue: val,
+      advanceAmount: advance
+    }));
+  };
+
   const handleSubmit = async () => {
     if (!formData.projectType || !formData.projectName) {
       return toast.error("Please fill in the required project details.");
@@ -371,58 +403,61 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
     >
       <div className="space-y-6 pb-2">
         {/* Lead Summary Section */}
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
-          <div className="flex justify-between items-center mb-3">
-            <h4 className="font-semibold text-gray-800 text-sm flex items-center gap-2">
-              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl p-5 shadow-sm">
+          <div className="flex justify-between items-center mb-4 border-b border-[var(--color-border)] pb-3">
+            <h4 className="font-bold text-[var(--color-text)] text-base flex items-center gap-2">
+              <svg className="w-5 h-5 text-[var(--color-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
               Lead Summary
             </h4>
-            <Button variant="outline" size="sm" onClick={fillMockData} className="py-1 h-auto text-xs">Fill Mock Data</Button>
+            <Button variant="outline" size="sm" onClick={fillMockData} className="py-1 h-auto text-xs font-semibold">Fill Mock Data</Button>
           </div>
-          <div className="grid grid-cols-2 gap-y-3 gap-x-6 text-sm">
+          <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
             <div>
-              <span className="text-gray-500 block text-xs mb-0.5">Client</span>
-              <span className="font-medium text-gray-900">{lead.name || 'N/A'}</span>
+              <span className="text-[var(--color-text-secondary)] block text-xs font-medium uppercase tracking-wider mb-1">Client</span>
+              <span className="font-semibold text-[var(--color-text)]">{lead.name || 'N/A'}</span>
             </div>
             <div>
-              <span className="text-gray-500 block text-xs mb-0.5">Contact</span>
-              <span className="font-medium text-gray-900">{lead.phone || 'N/A'}</span>
+              <span className="text-[var(--color-text-secondary)] block text-xs font-medium uppercase tracking-wider mb-1">Contact</span>
+              <span className="font-semibold text-[var(--color-text)]">{lead.phone || 'N/A'}</span>
             </div>
             <div>
-              <span className="text-gray-500 block text-xs mb-0.5">Scope</span>
-              <span className="font-medium text-gray-900 capitalize">{(lead.scope || '').replace('_', ' ') || 'N/A'}</span>
+              <span className="text-[var(--color-text-secondary)] block text-xs font-medium uppercase tracking-wider mb-1">Scope</span>
+              <span className="font-semibold text-[var(--color-text)] capitalize">{(lead.scope || '').replace('_', ' ') || 'N/A'}</span>
             </div>
             <div>
-              <span className="text-gray-500 block text-xs mb-0.5">Max Budget</span>
-              <span className="font-medium text-gray-900">{lead.budget_max ? `₹${Number(lead.budget_max).toLocaleString()}` : 'TBD'}</span>
+              <span className="text-[var(--color-text-secondary)] block text-xs font-medium uppercase tracking-wider mb-1">Max Budget</span>
+              <span className="font-semibold text-[var(--color-text)]">{lead.budget_max ? `₹${Number(lead.budget_max).toLocaleString()}` : 'TBD'}</span>
             </div>
             {lead.locality && (
               <div className="col-span-2">
-                <span className="text-gray-500 block text-xs mb-0.5">Locality</span>
-                <span className="font-medium text-gray-900">{lead.locality}</span>
+                <span className="text-[var(--color-text-secondary)] block text-xs font-medium uppercase tracking-wider mb-1">Locality</span>
+                <span className="font-semibold text-[var(--color-text)]">{lead.locality}</span>
               </div>
             )}
           </div>
         </div>
 
         {/* Checklist Section */}
-        <div className="bg-blue-50 border border-blue-100 p-4 rounded-md">
-          <h4 className="font-semibold text-blue-900 mb-3 text-sm">Pre-Conversion Checklist</h4>
+        <div className="bg-[var(--color-info-bg)] border border-[var(--color-info)] border-opacity-20 p-5 rounded-xl shadow-sm">
+          <h4 className="font-bold text-[var(--color-info)] mb-3 text-xs tracking-wider uppercase flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[var(--color-info)] animate-pulse" />
+            Pre-Conversion Checklist
+          </h4>
           {loadingConfig ? (
-            <div className="text-sm text-blue-600">Loading checklist...</div>
+            <div className="text-sm text-[var(--color-text-secondary)]">Loading checklist...</div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {checklistConfig.map(item => (
-                <label key={item.key} className="flex items-center gap-2 text-sm text-blue-800 cursor-pointer">
+                <label key={item.key} className="flex items-center gap-2.5 text-sm text-[var(--color-text)] cursor-pointer hover:text-[var(--color-primary)] transition-colors">
                   <input 
                     type="checkbox" 
                     checked={!!checklist[item.key]} 
                     onChange={e => setChecklist(p => ({...p, [item.key]: e.target.checked}))}
-                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-blue-300"
+                    className="w-4 h-4 rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] border-[var(--color-border)]"
                   />
                   <span>
                     {item.label}
-                    {item.required && <span className="text-red-500 ml-1 font-bold" title="Mandatory requirement">*</span>}
+                    {item.required && <span className="text-[var(--color-danger)] ml-1 font-bold" title="Mandatory requirement">*</span>}
                   </span>
                 </label>
               ))}
@@ -431,7 +466,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
         </div>
 
         {/* Form Section */}
-        <div className="space-y-4">
+        <div className="space-y-5">
           <Input 
             label="Project Name *" 
             value={formData.projectName} 
@@ -462,7 +497,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
               label="Payment Terms" 
               options={[{value:'',label:'Select Terms'}, {value:'10_40_40_10',label:'10% - 40% - 40% - 10%'}, {value:'30_30_30_10',label:'30% - 30% - 30% - 10%'}, {value:'50_50',label:'50% - 50%'}]}
               value={formData.paymentTerms}
-              onChange={v => setFormData({...formData, paymentTerms: v})}
+              onChange={handlePaymentTermsChange}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -475,7 +510,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
               label="Estimated Value (₹)" 
               type="number"
               value={formData.contractValue} 
-              onChange={e => setFormData({...formData, contractValue: e.target.value})} 
+              onChange={e => handleContractValueChange(e.target.value)} 
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -521,8 +556,8 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
           </div>
           
           {/* Structured address fields */}
-          <div className="border-t border-gray-100 pt-4">
-            <h5 className="font-semibold text-gray-800 text-sm mb-3">Site Address Details</h5>
+          <div className="border-t border-[var(--color-border)] pt-5 mt-6">
+            <h5 className="font-bold text-[var(--color-text)] text-xs mb-4 tracking-wider uppercase text-opacity-80">Site Address Details</h5>
             <div className="grid grid-cols-3 gap-4 mb-4">
               <Input 
                 label="Flat / Unit No" 
@@ -608,7 +643,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
                     }
                   );
                 }} 
-                className="h-[38px] flex items-center justify-center gap-1 text-xs"
+                className="h-[38px] flex items-center justify-center gap-1.5 text-xs font-semibold"
               >
                 📍 Get Location
               </Button>
@@ -616,8 +651,8 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
           </div>
 
           {/* Site, Builder & Society Details */}
-          <div className="border-t border-gray-100 pt-4">
-            <h5 className="font-semibold text-gray-800 text-sm mb-3">Site, Builder & NOC Details</h5>
+          <div className="border-t border-[var(--color-border)] pt-5 mt-6">
+            <h5 className="font-bold text-[var(--color-text)] text-xs mb-4 tracking-wider uppercase text-opacity-80">Site, Builder & NOC Details</h5>
             <div className="grid grid-cols-3 gap-4 mb-4">
               <Input 
                 label="Builder Name" 
@@ -692,8 +727,8 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
           </div>
 
           {/* Project Classification & Nature */}
-          <div className="border-t border-gray-100 pt-4">
-            <h5 className="font-semibold text-gray-800 text-sm mb-3">Project Classification & Nature</h5>
+          <div className="border-t border-[var(--color-border)] pt-5 mt-6">
+            <h5 className="font-bold text-[var(--color-text)] text-xs mb-4 tracking-wider uppercase text-opacity-80">Project Classification & Nature</h5>
             <div className="grid grid-cols-3 gap-4 mb-4">
               <Select 
                 label="Project Category" 
@@ -772,19 +807,19 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
           </div>
 
           {/* Site Measurements & Room Dimensions */}
-          <div className="border-t border-gray-100 pt-4">
-            <h5 className="font-semibold text-gray-800 text-sm mb-3">Site Measurements & Room Dimensions</h5>
+          <div className="border-t border-[var(--color-border)] pt-5 mt-6">
+            <h5 className="font-bold text-[var(--color-text)] text-xs mb-4 tracking-wider uppercase text-opacity-80">Site Measurements & Room Dimensions</h5>
             
             {/* Render list of added room measurements */}
             {formData.measurements && formData.measurements.length > 0 ? (
-              <div className="space-y-2 mb-4">
+              <div className="space-y-3 mb-4">
                 {formData.measurements.map((room, idx) => (
-                  <div key={idx} className="flex justify-between items-center bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <div key={idx} className="flex justify-between items-center bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl p-4 shadow-sm">
                     <div>
-                      <span className="font-semibold text-gray-800 text-sm">{room.room_name}</span>
-                      <div className="text-xs text-gray-500 mt-1">
-                        Dimensions: <span className="font-medium text-gray-700">{room.length} x {room.width} x {room.height} {room.unit}</span>
-                        {room.area && <> | Area: <span className="font-medium text-gray-700">{room.area} sq {room.unit}</span></>}
+                      <span className="font-bold text-[var(--color-text)] text-sm">{room.room_name}</span>
+                      <div className="text-xs text-[var(--color-text-secondary)] mt-1.5">
+                        Dimensions: <span className="font-semibold text-[var(--color-text)]">{room.length} x {room.width} x {room.height} {room.unit}</span>
+                        {room.area && <> | Area: <span className="font-semibold text-[var(--color-text)]">{room.area} sq {room.unit}</span></>}
                         {room.notes && ` | Notes: ${room.notes}`}
                       </div>
                     </div>
@@ -795,7 +830,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
                         const updated = formData.measurements.filter((_, i) => i !== idx);
                         setFormData({ ...formData, measurements: updated });
                       }}
-                      className="text-red-500 hover:text-red-700 py-1 h-auto text-xs"
+                      className="text-[var(--color-danger)] hover:text-red-700 py-1 h-auto text-xs font-semibold"
                     >
                       Remove
                     </Button>
@@ -803,69 +838,58 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
                 ))}
               </div>
             ) : (
-              <div className="p-4 border border-dashed border-gray-300 rounded-lg text-center text-gray-500 text-sm mb-4">
+              <div className="p-5 border border-dashed border-[var(--color-border)] rounded-xl text-center text-[var(--color-text-secondary)] text-sm mb-4">
                 No room measurements recorded yet.
               </div>
             )}
 
             {/* Form to add a new room measurement */}
-            <div className="border rounded-xl p-4 space-y-3 shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
-              <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Add Room Measurement</div>
+            <div className="border border-[var(--color-border)] bg-[var(--color-surface)] rounded-xl p-5 space-y-4 shadow-sm">
+              <div className="text-xs font-bold text-[var(--color-text)] uppercase tracking-wider">Add Room Measurement</div>
               <div className="grid grid-cols-4 gap-4">
                 <Input 
                   label="Room Name" 
                   placeholder="e.g. Master Bedroom"
                   value={newRoomMeasurement.room_name}
-                  onChange={e => handleNewRoomChange('room_name', e.target.value)}
+                  onChange={e => setNewRoomMeasurement({...newRoomMeasurement, room_name: e.target.value})}
                 />
                 <Input 
                   label="Length" 
                   type="number"
-                  placeholder="e.g. 12"
+                  placeholder="Length"
                   value={newRoomMeasurement.length}
-                  onChange={e => handleNewRoomChange('length', e.target.value)}
+                  onChange={e => setNewRoomMeasurement({...newRoomMeasurement, length: e.target.value})}
                 />
                 <Input 
                   label="Width" 
                   type="number"
-                  placeholder="e.g. 10"
+                  placeholder="Width"
                   value={newRoomMeasurement.width}
-                  onChange={e => handleNewRoomChange('width', e.target.value)}
+                  onChange={e => setNewRoomMeasurement({...newRoomMeasurement, width: e.target.value})}
                 />
                 <Input 
                   label="Height" 
                   type="number"
-                  placeholder="e.g. 9.5"
+                  placeholder="Height"
                   value={newRoomMeasurement.height}
-                  onChange={e => handleNewRoomChange('height', e.target.value)}
+                  onChange={e => setNewRoomMeasurement({...newRoomMeasurement, height: e.target.value})}
                 />
               </div>
-              <div className="grid grid-cols-4 gap-4 items-end">
+              <div className="grid grid-cols-3 gap-4 items-end">
                 <Input 
-                  label="Area" 
+                  label="Area (sq ft)" 
                   type="number"
-                  placeholder="e.g. 120"
+                  placeholder="Calculated Area"
                   value={newRoomMeasurement.area}
-                  onChange={e => handleNewRoomChange('area', e.target.value)}
+                  onChange={e => setNewRoomMeasurement({...newRoomMeasurement, area: e.target.value})}
                 />
                 <Select 
-                  label="Unit" 
-                  options={[
-                    { value: 'feet', label: 'Feet' },
-                    { value: 'meters', label: 'Meters' }
-                  ]}
+                  label="Measurement Unit" 
+                  options={[{value:'feet',label:'Feet'}, {value:'meters',label:'Meters'}]}
                   value={newRoomMeasurement.unit}
-                  onChange={v => handleNewRoomChange('unit', v)}
+                  onChange={v => setNewRoomMeasurement({...newRoomMeasurement, unit: v})}
                 />
-                <div className="col-span-2 flex gap-4 items-end">
-                  <div className="flex-1">
-                    <Input 
-                      label="Notes" 
-                      placeholder="e.g. Extra point socket required on east wall"
-                      value={newRoomMeasurement.notes}
-                      onChange={e => handleNewRoomChange('notes', e.target.value)}
-                    />
-                  </div>
+                <div className="flex justify-end pt-2">
                   <Button 
                     type="button" 
                     variant="outline" 
@@ -877,13 +901,12 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
                       setFormData(prev => ({
                         ...prev,
                         measurements: [...(prev.measurements || []), { 
+                          ...newRoomMeasurement, 
                           room_name: newRoomMeasurement.room_name.trim(),
-                          length: newRoomMeasurement.length ? Number(newRoomMeasurement.length) : 0,
-                          width: newRoomMeasurement.width ? Number(newRoomMeasurement.width) : 0,
-                          height: newRoomMeasurement.height ? Number(newRoomMeasurement.height) : 0,
-                          area: newRoomMeasurement.area ? Number(newRoomMeasurement.area) : 0,
-                          unit: newRoomMeasurement.unit,
-                          notes: newRoomMeasurement.notes ? newRoomMeasurement.notes.trim() : ''
+                          length: parseFloat(newRoomMeasurement.length) || 0,
+                          width: parseFloat(newRoomMeasurement.width) || 0,
+                          height: parseFloat(newRoomMeasurement.height) || 0,
+                          area: parseFloat(newRoomMeasurement.area) || (parseFloat(newRoomMeasurement.length) * parseFloat(newRoomMeasurement.width)) || 0
                         }]
                       }));
                       setNewRoomMeasurement({
@@ -896,7 +919,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
                         notes: ''
                       });
                     }}
-                    className="h-[36px] py-1 text-xs"
+                    className="h-[36px] py-1 text-xs font-semibold"
                   >
                     Add Room
                   </Button>
@@ -905,151 +928,22 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
             </div>
           </div>
 
-          {/* Project Stakeholders */}
-          <div className="border-t border-gray-100 pt-4">
-            <h5 className="font-semibold text-gray-800 text-sm mb-3">Project Stakeholders & Contacts</h5>
-            
-            {/* Added stakeholders list */}
-            {formData.contacts && formData.contacts.length > 0 ? (
-              <div className="space-y-2 mb-4">
-                {formData.contacts.map((contact, idx) => (
-                  <div key={idx} className="flex justify-between items-center bg-gray-50 border border-gray-200 rounded-lg p-3">
-                    <div>
-                      <span className="font-semibold text-gray-800 text-sm">{contact.name}</span>
-                      <span className="ml-2 px-2 py-0.5 text-xs rounded bg-blue-100 text-blue-700 capitalize">
-                        {contact.role ? contact.role.replace(/_/g, ' ') : ''}
-                      </span>
-                      <span className="ml-2 px-2 py-0.5 text-xs rounded bg-green-100 text-green-700 font-medium">
-                        {contact.decision_authority}
-                      </span>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {contact.phone && `📞 ${contact.phone}`} {contact.email && ` | ✉️ ${contact.email}`} {contact.relationship_notes && ` | 📝 ${contact.relationship_notes}`}
-                      </div>
-                    </div>
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      onClick={() => {
-                        const updated = formData.contacts.filter((_, i) => i !== idx);
-                        setFormData({ ...formData, contacts: updated });
-                      }}
-                      className="text-red-500 hover:text-red-700 py-1 h-auto text-xs"
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-4 border border-dashed border-gray-300 rounded-lg text-center text-gray-500 text-sm mb-4">
-                No additional stakeholders added yet.
-              </div>
-            )}
-
-            {/* Add stakeholder fields */}
-            <div className="border rounded-xl p-4 space-y-3 shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
-              <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Add Stakeholder / Contact</div>
-              <div className="grid grid-cols-3 gap-4">
-                <Input 
-                  label="Full Name" 
-                  placeholder="e.g. John Doe"
-                  value={newContact.name}
-                  onChange={e => setNewContact({...newContact, name: e.target.value})}
-                />
-                <Input 
-                  label="Phone" 
-                  placeholder="e.g. 9876543210"
-                  value={newContact.phone}
-                  onChange={e => setNewContact({...newContact, phone: e.target.value})}
-                />
-                <Input 
-                  label="Email" 
-                  type="email"
-                  placeholder="e.g. john@example.com"
-                  value={newContact.email}
-                  onChange={e => setNewContact({...newContact, email: e.target.value})}
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-4 items-end">
-                <Select 
-                  label="Role" 
-                  options={[
-                    { value: 'co_owner', label: 'Co-owner' },
-                    { value: 'spouse', label: 'Spouse' },
-                    { value: 'architect', label: 'Architect' },
-                    { value: 'builder_representative', label: 'Builder Representative' },
-                    { value: 'legal', label: 'Legal Representative' },
-                    { value: 'other', label: 'Other' }
-                  ]}
-                  value={newContact.role}
-                  onChange={v => setNewContact({...newContact, role: v})}
-                />
-                <Select 
-                  label="Decision Power" 
-                  options={[
-                    { value: 'Primary', label: 'Primary Decision Maker' },
-                    { value: 'Influencer', label: 'Influencer' },
-                    { value: 'Consultant', label: 'Consultant' }
-                  ]}
-                  value={newContact.decision_authority}
-                  onChange={v => setNewContact({...newContact, decision_authority: v})}
-                />
-                <Input 
-                  label="Relationship Notes" 
-                  placeholder="e.g. Spouse co-approves design"
-                  value={newContact.relationship_notes}
-                  onChange={e => setNewContact({...newContact, relationship_notes: e.target.value})}
-                />
-              </div>
-              <div className="flex justify-end pt-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => {
-                    if (!newContact.name || newContact.name.trim() === '') {
-                      toast.error('Contact name is required');
-                      return;
-                    }
-                    setFormData(prev => ({
-                      ...prev,
-                      contacts: [...(prev.contacts || []), { ...newContact, name: newContact.name.trim() }]
-                    }));
-                    setNewContact({
-                      name: '',
-                      phone: '',
-                      email: '',
-                      role: 'co_owner',
-                      decision_authority: 'Influencer',
-                      relationship_notes: ''
-                    });
-                  }}
-                  className="h-[36px] py-1 text-xs"
-                >
-                  Add Stakeholder
-                </Button>
-              </div>
-            </div>
-          </div>
-
           {/* Project Vendors */}
-          <div className="border-t border-gray-100 pt-4">
-            <h5 className="font-semibold text-gray-800 text-sm mb-3">Project Vendors Engagement</h5>
+          <div className="border-t border-[var(--color-border)] pt-5 mt-6">
+            <h5 className="font-bold text-[var(--color-text)] text-xs mb-4 tracking-wider uppercase text-opacity-80">Pre-assigned Vendors & Work Allocations</h5>
             
             {/* Added vendors list */}
             {formData.vendors && formData.vendors.length > 0 ? (
-              <div className="space-y-2 mb-4">
+              <div className="space-y-3 mb-4">
                 {formData.vendors.map((vendor, idx) => (
-                  <div key={idx} className="flex justify-between items-center bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <div key={idx} className="flex justify-between items-center bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl p-4 shadow-sm">
                     <div>
-                      <span className="font-semibold text-gray-800 text-sm">{vendor.vendor_name}</span>
-                      <span className="ml-2 px-2 py-0.5 text-xs rounded bg-blue-100 text-blue-700 capitalize">
-                        Scope: {vendor.scope_of_work || 'Not specified'}
+                      <span className="font-bold text-[var(--color-text)] text-sm">{vendor.vendor_name}</span>
+                      <span className="ml-2 px-2.5 py-0.5 text-xs rounded-full bg-[var(--color-primary-bg)] text-[var(--color-primary)] font-semibold uppercase tracking-wide">
+                        {vendor.scope_of_work}
                       </span>
-                      <span className="ml-2 px-2 py-0.5 text-xs rounded bg-green-100 text-green-700 font-medium">
-                        ₹{vendor.agreed_rate || '0'}
-                      </span>
-                      <div className="text-xs text-gray-500 mt-1">
-                        Status: <span className="capitalize font-semibold text-gray-700">{vendor.status}</span> {vendor.payment_terms && ` | Terms: ${vendor.payment_terms}`}
+                      <div className="text-xs text-[var(--color-text-secondary)] mt-1.5">
+                        Agreed Rate: <span className="font-semibold text-[var(--color-text)]">₹{Number(vendor.agreed_rate).toLocaleString()}</span> | Terms: {vendor.payment_terms}
                       </div>
                     </div>
                     <Button 
@@ -1059,7 +953,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
                         const updated = formData.vendors.filter((_, i) => i !== idx);
                         setFormData({ ...formData, vendors: updated });
                       }}
-                      className="text-red-500 hover:text-red-700 py-1 h-auto text-xs"
+                      className="text-[var(--color-danger)] hover:text-red-700 py-1 h-auto text-xs font-semibold"
                     >
                       Remove
                     </Button>
@@ -1067,14 +961,14 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
                 ))}
               </div>
             ) : (
-              <div className="p-4 border border-dashed border-gray-300 rounded-lg text-center text-gray-500 text-sm mb-4">
-                No vendors assigned to this project yet.
+              <div className="p-5 border border-dashed border-[var(--color-border)] rounded-xl text-center text-[var(--color-text-secondary)] text-sm mb-4">
+                No vendors pre-allocated yet.
               </div>
             )}
 
             {/* Add vendor fields */}
-            <div className="border rounded-xl p-4 space-y-3 shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
-              <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Add Vendor Engagement</div>
+            <div className="border border-[var(--color-border)] bg-[var(--color-surface)] rounded-xl p-5 space-y-4 shadow-sm">
+              <div className="text-xs font-bold text-[var(--color-text)] uppercase tracking-wider">Assign Vendor</div>
               <div className="grid grid-cols-3 gap-4">
                 <Input 
                   label="Vendor Name" 
@@ -1084,12 +978,12 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
                 />
                 <Input 
                   label="Scope of Work" 
-                  placeholder="e.g. Marble laying and polishing"
+                  placeholder="e.g. Marble flooring"
                   value={newVendor.scope_of_work}
                   onChange={e => setNewVendor({...newVendor, scope_of_work: e.target.value})}
                 />
                 <Input 
-                  label="Agreed Rate / Value (₹)" 
+                  label="Agreed Contract Rate (₹)" 
                   type="number"
                   placeholder="e.g. 75000"
                   value={newVendor.agreed_rate}
@@ -1098,19 +992,14 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
               </div>
               <div className="grid grid-cols-3 gap-4 items-end">
                 <Input 
-                  label="Agreed Payment Terms" 
-                  placeholder="e.g. 30% advance, 40% mid-way, 30% signoff"
+                  label="Payment Terms" 
+                  placeholder="e.g. 50-50"
                   value={newVendor.payment_terms}
                   onChange={e => setNewVendor({...newVendor, payment_terms: e.target.value})}
                 />
                 <Select 
-                  label="Engagement Status" 
-                  options={[
-                    { value: 'pending', label: 'Pending / Negotiating' },
-                    { value: 'active', label: 'Active' },
-                    { value: 'completed', label: 'Completed' },
-                    { value: 'terminated', label: 'Terminated' }
-                  ]}
+                  label="Work Order Status" 
+                  options={[{value:'pending',label:'Pending Approval'}, {value:'active',label:'Active / Work Started'}]}
                   value={newVendor.status}
                   onChange={v => setNewVendor({...newVendor, status: v})}
                 />
@@ -1135,7 +1024,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
                         status: 'pending'
                       });
                     }}
-                    className="h-[36px] py-1 text-xs"
+                    className="h-[36px] py-1 text-xs font-semibold"
                   >
                     Add Vendor
                   </Button>
@@ -1145,25 +1034,25 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
           </div>
 
           {/* Project Consultants */}
-          <div className="border-t border-gray-100 pt-4">
-            <h5 className="font-semibold text-gray-800 text-sm mb-3">External Consultants Assigned</h5>
+          <div className="border-t border-[var(--color-border)] pt-5 mt-6">
+            <h5 className="font-bold text-[var(--color-text)] text-xs mb-4 tracking-wider uppercase text-opacity-80">External Consultants Assigned</h5>
             
             {/* Added consultants list */}
             {formData.consultants && formData.consultants.length > 0 ? (
-              <div className="space-y-2 mb-4">
+              <div className="space-y-3 mb-4">
                 {formData.consultants.map((consultant, idx) => (
-                  <div key={idx} className="flex justify-between items-center bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <div key={idx} className="flex justify-between items-center bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl p-4 shadow-sm">
                     <div>
-                      <span className="font-semibold text-gray-800 text-sm">{consultant.name}</span>
-                      <span className="ml-2 px-2 py-0.5 text-xs rounded bg-blue-100 text-blue-700 capitalize">
+                      <span className="font-bold text-[var(--color-text)] text-sm">{consultant.name}</span>
+                      <span className="ml-2 px-2.5 py-0.5 text-xs rounded-full bg-[var(--color-primary-bg)] text-[var(--color-primary)] font-semibold uppercase tracking-wide">
                         {consultant.role ? consultant.role.replace(/_/g, ' ') : ''}
                       </span>
                       {consultant.firm && (
-                        <span className="ml-2 text-xs text-gray-500">
+                        <span className="ml-2 text-xs text-[var(--color-text-secondary)] font-medium">
                           Firm: {consultant.firm}
                         </span>
                       )}
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-xs text-[var(--color-text-secondary)] mt-1.5">
                         {consultant.phone && `📞 ${consultant.phone}`} {consultant.email && ` | ✉️ ${consultant.email}`}
                       </div>
                     </div>
@@ -1174,7 +1063,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
                         const updated = formData.consultants.filter((_, i) => i !== idx);
                         setFormData({ ...formData, consultants: updated });
                       }}
-                      className="text-red-500 hover:text-red-700 py-1 h-auto text-xs"
+                      className="text-[var(--color-danger)] hover:text-red-700 py-1 h-auto text-xs font-semibold"
                     >
                       Remove
                     </Button>
@@ -1182,14 +1071,14 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
                 ))}
               </div>
             ) : (
-              <div className="p-4 border border-dashed border-gray-300 rounded-lg text-center text-gray-500 text-sm mb-4">
+              <div className="p-5 border border-dashed border-[var(--color-border)] rounded-xl text-center text-[var(--color-text-secondary)] text-sm mb-4">
                 No external consultants assigned to this project yet.
               </div>
             )}
 
             {/* Add consultant fields */}
-            <div className="border rounded-xl p-4 space-y-3 shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
-              <div className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Assign Consultant</div>
+            <div className="border border-[var(--color-border)] bg-[var(--color-surface)] rounded-xl p-5 space-y-4 shadow-sm">
+              <div className="text-xs font-bold text-[var(--color-text)] uppercase tracking-wider">Assign Consultant</div>
               <div className="grid grid-cols-3 gap-4">
                 <Input 
                   label="Consultant Name" 
@@ -1251,7 +1140,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
                         phone: ''
                       });
                     }}
-                    className="h-[36px] py-1 text-xs"
+                    className="h-[36px] py-1 text-xs font-semibold"
                   >
                     Add Consultant
                   </Button>
@@ -1261,34 +1150,34 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
           </div>
 
            {/* Handover Notification Rules */}
-          <div className="border-t border-gray-100 pt-4 mt-4 space-y-3">
-            <h5 className="font-semibold text-gray-800 text-sm">Handover Notification Rules</h5>
-            <p className="text-xs text-gray-500">Select which roles should receive automated tasks & system notifications upon successful conversion:</p>
-            <div className="flex gap-6">
-              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+          <div className="border-t border-[var(--color-border)] pt-5 mt-6 space-y-3.5">
+            <h5 className="font-bold text-[var(--color-text)] text-xs mb-1 tracking-wider uppercase text-opacity-80">Handover Notification Rules</h5>
+            <p className="text-xs text-[var(--color-text-secondary)] font-medium">Select which roles should receive automated tasks & system notifications upon successful conversion:</p>
+            <div className="flex gap-8">
+              <label className="flex items-center gap-2.5 text-sm text-[var(--color-text)] cursor-pointer hover:text-[var(--color-primary)] transition-colors">
                 <input 
                   type="checkbox" 
                   checked={notifyRules.notify_pm} 
                   onChange={e => setNotifyRules(p => ({...p, notify_pm: e.target.checked}))}
-                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-gray-300"
+                  className="w-4 h-4 rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] border-[var(--color-border)]"
                 />
                 <span>Project Manager</span>
               </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <label className="flex items-center gap-2.5 text-sm text-[var(--color-text)] cursor-pointer hover:text-[var(--color-primary)] transition-colors">
                 <input 
                   type="checkbox" 
                   checked={notifyRules.notify_crm} 
                   onChange={e => setNotifyRules(p => ({...p, notify_crm: e.target.checked}))}
-                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-gray-300"
+                  className="w-4 h-4 rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] border-[var(--color-border)]"
                 />
                 <span>CRM Executive</span>
               </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <label className="flex items-center gap-2.5 text-sm text-[var(--color-text)] cursor-pointer hover:text-[var(--color-primary)] transition-colors">
                 <input 
                   type="checkbox" 
                   checked={notifyRules.notify_finance} 
                   onChange={e => setNotifyRules(p => ({...p, notify_finance: e.target.checked}))}
-                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-gray-300"
+                  className="w-4 h-4 rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] border-[var(--color-border)]"
                 />
                 <span>Finance Auditor</span>
               </label>
@@ -1296,21 +1185,21 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
           </div>
 
           {/* Contract File Section */}
-          <div className="space-y-2 mt-4 border-t border-gray-100 pt-4">
-            <label className="block text-sm font-semibold text-gray-700">Signed Contract Document *</label>
+          <div className="space-y-3 mt-6 border-t border-[var(--color-border)] pt-5">
+            <label className="block text-sm font-bold text-[var(--color-text)]">Signed Contract Document *</label>
             <div className="flex items-center gap-4">
               <input 
                 type="file" 
                 accept=".pdf,.png,.jpg,.jpeg" 
                 onChange={e => setContractFile(e.target.files[0] || null)}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                className="block w-full text-sm text-[var(--color-text-secondary)] file:mr-4 file:py-2.5 file:px-5 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-[var(--color-primary-bg)] file:text-[var(--color-primary)] hover:file:bg-opacity-80 cursor-pointer transition-colors"
               />
               {uploading && (
-                <span className="text-xs text-blue-600 font-medium whitespace-nowrap">Uploading ({progress}%)...</span>
+                <span className="text-xs text-[var(--color-primary)] font-semibold whitespace-nowrap animate-pulse">Uploading ({progress}%)...</span>
               )}
             </div>
             {contractFile && (
-              <p className="text-xs text-gray-500 mt-1">Selected file: <span className="font-semibold text-gray-700">{contractFile.name}</span> ({(contractFile.size / 1024).toFixed(1)} KB)</p>
+              <p className="text-xs text-[var(--color-text-secondary)] mt-1.5 font-medium">Selected file: <span className="font-semibold text-[var(--color-text)]">{contractFile.name}</span> ({(contractFile.size / 1024).toFixed(1)} KB)</p>
             )}
           </div>
         </div>

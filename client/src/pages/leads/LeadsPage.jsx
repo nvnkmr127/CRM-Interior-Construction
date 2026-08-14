@@ -277,7 +277,7 @@ export default function LeadsPage() {
         return;
       }
       const params = new URLSearchParams(filters);
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000/api'}/leads/export?${params}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:4000/api'}/leads/export?${params}`, {
         credentials: 'include'
       });
       if (!response.ok) throw new Error('Export failed');

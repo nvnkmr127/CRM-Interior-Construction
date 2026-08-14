@@ -6,7 +6,7 @@ import { useToast } from '../../store/toastContext'
 
 import { useConfirm } from '../../store/confirmContext';
 
-export default function MeetingNotesTab({ projectId }) {
+export default function MeetingNotesTab({ projectId, projectStatus }) {
   const { confirm } = useConfirm();
 
   const [meetingNotes, setMeetingNotes] = useState([])
@@ -121,6 +121,10 @@ export default function MeetingNotesTab({ projectId }) {
   }
 
   const handleToggleActionItemStatus = async (noteId, itemId, currentStatus) => {
+    if (projectStatus === 'completed') {
+      toast.warning('Cannot update action items on a completed project.')
+      return;
+    }
     const newStatus = currentStatus === 'completed' ? 'pending' : 'completed'
     try {
       const res = await api.post(`/projects/${projectId}/meeting-notes/${noteId}/action-items/${itemId}/toggle`, {
@@ -135,7 +139,7 @@ export default function MeetingNotesTab({ projectId }) {
               action_items: n.action_items.map(ai => {
                 if (ai.id === itemId) return { ...ai, status: newStatus }
                 return ai
-              })
+               })
             }
           }
           return n
@@ -150,6 +154,10 @@ export default function MeetingNotesTab({ projectId }) {
 
   const handleSave = async (e) => {
     e.preventDefault()
+    if (projectStatus === 'completed') {
+      toast.warning('Cannot save notes on a completed project.')
+      return;
+    }
     if (!title.trim() || !meetingDate) {
       toast.error('Please enter a title and date.')
       return
@@ -185,6 +193,10 @@ export default function MeetingNotesTab({ projectId }) {
   }
 
   const handleDelete = async (noteId) => {
+    if (projectStatus === 'completed') {
+      toast.warning('Cannot delete notes on a completed project.')
+      return;
+    }
     if (await confirm('Are you sure you want to delete these meeting notes? This will also delete all linked action items.')) {
       try {
         const res = await api.delete(`/projects/${projectId}/meeting-notes/${noteId}`)
@@ -230,9 +242,11 @@ export default function MeetingNotesTab({ projectId }) {
     <div className={styles.container}>
       <div className={styles.header}>
         <h2 className={styles.title}>Project Meeting Notes</h2>
-        <button className={styles.addBtn} onClick={openCreateModal}>
-          ➕ Add Meeting Notes
-        </button>
+        {projectStatus !== 'completed' && (
+          <button className={styles.addBtn} onClick={openCreateModal}>
+            ➕ Add Meeting Notes
+          </button>
+        )}
       </div>
 
       {meetingNotes.length === 0 ? (
@@ -308,6 +322,7 @@ export default function MeetingNotesTab({ projectId }) {
                               className={styles.checkbox}
                               checked={ai.status === 'completed'}
                               onChange={() => handleToggleActionItemStatus(note.id, ai.id, ai.status)}
+                              disabled={projectStatus === 'completed'}
                             />
                             <div className={styles.actionItemContent}>
                               <span className={styles.actionItemDesc}>{ai.description}</span>
@@ -327,10 +342,12 @@ export default function MeetingNotesTab({ projectId }) {
                   </div>
                 )}
 
-                <div className={styles.cardFooter}>
-                  <button className={styles.editBtn} onClick={async () => openEditModal(note)}>Edit</button>
-                  <button className={styles.deleteBtn} onClick={async () => handleDelete(note.id)}>Delete</button>
-                </div>
+                {projectStatus !== 'completed' && (
+                  <div className={styles.cardFooter}>
+                    <button className={styles.editBtn} onClick={async () => openEditModal(note)}>Edit</button>
+                    <button className={styles.deleteBtn} onClick={async () => handleDelete(note.id)}>Delete</button>
+                  </div>
+                )}
               </div>
             )
           })}

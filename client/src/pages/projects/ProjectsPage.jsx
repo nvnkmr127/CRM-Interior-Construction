@@ -11,7 +11,6 @@ const SORT_OPTIONS = [
   { value: 'deadline_asc', label: 'Deadline ↑' },
   { value: 'value_asc', label: 'Value ↑' },
   { value: 'progress_asc', label: 'Progress ↑' },
-  { value: 'phase', label: 'Phase' },
 ];
 
 function formatValue(val) {
@@ -79,7 +78,7 @@ export default function ProjectsPage() {
   const [statusFilter, setStatusFilter] = useState(queryParams.get('status') || 'active');
   const [search, setSearch] = useState(queryParams.get('search') || '');
   const [pmFilter, setPmFilter] = useState(queryParams.get('pm') || 'all');
-  const [sortBy, setSortBy] = useState(queryParams.get('sort') || 'deadline_asc');
+  const [extraFilter, setExtraFilter] = useState(queryParams.get('filter') || 'all');
   
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -139,13 +138,13 @@ export default function ProjectsPage() {
     if (pmFilter !== 'all') { params.set('pm', pmFilter); changed = true; }
     else if (params.has('pm')) { params.delete('pm'); changed = true; }
 
-    if (sortBy !== 'deadline_asc') { params.set('sort', sortBy); changed = true; }
-    else if (params.has('sort')) { params.delete('sort'); changed = true; }
+    if (extraFilter !== 'all') { params.set('filter', extraFilter); changed = true; }
+    else if (params.has('filter')) { params.delete('filter'); changed = true; }
 
     if (changed) {
       navigate({ search: params.toString() }, { replace: true });
     }
-  }, [view, statusFilter, search, pmFilter, sortBy, navigate, location.search]);
+  }, [view, statusFilter, search, pmFilter, navigate, location.search, extraFilter]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -205,32 +204,47 @@ export default function ProjectsPage() {
       }
       return p.status?.toLowerCase() === statusFilter && !(p.deleted_at || p.deletedAt);
     })
+    .filter(p => {
+      if (extraFilter === 'all') return true;
+      
+      const createdDate = new Date(p.created_at || p.createdAt || Date.now());
+      const ageInDays = (new Date() - createdDate) / (1000 * 60 * 60 * 24);
+      
+      if (extraFilter === 'new') return ageInDays < 30;
+      if (extraFilter === 'old') return ageInDays >= 30;
+      if (extraFilter === 'overdue') return p.overdue || (p.target_date && new Date(p.target_date) < new Date());
+      if (extraFilter === 'pending_payment') return p.status?.toLowerCase() === 'pending_payment';
+      if (extraFilter === 'scope_unlocked') return !p.is_scope_locked && !p.isScopeLocked;
+      if (extraFilter === 'scope_locked') return p.is_scope_locked || p.isScopeLocked;
+      
+      const val = parseFloat(String(p.contract_value || p.value || '0').replace(/[^\d.]/g, '')) || 0;
+      if (extraFilter === 'high_value') return val >= 500000;
+      if (extraFilter === 'low_value') return val < 500000;
+      
+      if (extraFilter === 'no_pm') return !p.pm_id && !p.pmId;
+      if (extraFilter === 'no_designer') return !p.designer_id && !p.designerId;
+      
+      if (extraFilter === 'phase_concept') return p.phase?.toLowerCase().includes('concept');
+      if (extraFilter === 'phase_detailed') return p.phase?.toLowerCase().includes('detailed') || p.phase?.toLowerCase().includes('design');
+      if (extraFilter === 'phase_execution') return p.phase?.toLowerCase().includes('execution');
+      if (extraFilter === 'phase_handover') return p.phase?.toLowerCase().includes('handover');
+      
+      if (extraFilter === 'sort_deadline' || extraFilter === 'sort_value' || extraFilter === 'sort_progress') return true;
+      
+      return true;
+    })
     .sort((a, b) => {
-      if (sortBy === 'deadline_asc') {
-        return new Date(a.target_date || a.targetDate || 0) - new Date(b.target_date || b.targetDate || 0);
-      }
-      if (sortBy === 'value_asc') {
+      if (extraFilter === 'sort_value') {
         const av = parseFloat(String(a.contract_value || a.value || '0').replace(/[^\d.]/g, '')) || 0;
         const bv = parseFloat(String(b.contract_value || b.value || '0').replace(/[^\d.]/g, '')) || 0;
         return av - bv;
       }
-      if (sortBy === 'progress_asc') {
+      if (extraFilter === 'sort_progress') {
         return (a.progress || 0) - (b.progress || 0);
       }
-      if (sortBy === 'phase') {
-        return (a.phase || '').localeCompare(b.phase || '');
-      }
-      return 0;
+      // Default: sort by target date ascending
+      return new Date(a.target_date || a.targetDate || 0) - new Date(b.target_date || b.targetDate || 0);
     });
-
-  const statChips = [
-    { key: 'all', label: 'All', count: counts.all, color: 'var(--color-primary)', bg: 'var(--color-primary-bg)' },
-    { key: 'active', label: 'Active', count: counts.active, color: 'var(--color-info)', bg: 'var(--color-info-bg)' },
-    { key: 'on_hold', label: 'On Hold', count: counts.on_hold, color: 'var(--color-warning)', bg: 'var(--color-warning-bg)' },
-    { key: 'completed', label: 'Completed', count: counts.completed, color: 'var(--color-success)', bg: 'var(--color-success-bg)' },
-    { key: 'overdue', label: 'Overdue', count: counts.overdue, color: 'var(--color-danger)', bg: 'var(--color-danger-bg)' },
-    { key: 'deleted', label: 'Deleted', count: counts.deleted, color: 'var(--color-text-secondary)', bg: 'var(--color-surface-2)' },
-  ];
 
   return (
     <div className={styles.page}>
@@ -240,30 +254,6 @@ export default function ProjectsPage() {
         <PermissionButton module="projects" action="create">
           <Button variant="primary" onClick={() => setIsFormOpen(true)}>+ New Project</Button>
         </PermissionButton>
-      </div>
-
-      {/* Stats Ribbon */}
-      <div className={styles.statsRibbon}>
-        {statChips.map(chip => {
-          const isActive = statusFilter === chip.key;
-          return (
-            <button
-              key={chip.key}
-              className={`${styles.statChip} ${isActive ? styles.statChipActive : ''}`}
-              style={{
-                '--chip-color': chip.color,
-                '--chip-bg': chip.bg,
-                background: isActive ? chip.bg : 'var(--color-surface)',
-                borderColor: isActive ? chip.color : 'var(--color-border)',
-              }}
-              onClick={() => setStatusFilter(chip.key)}
-            >
-              <span className={styles.statDot} style={{ background: chip.color }} />
-              <span style={{ color: chip.color, fontVariantNumeric: 'tabular-nums' }}>{chip.count}</span>
-              <span style={{ color: isActive ? chip.color : 'var(--color-text-secondary)' }}>{chip.label}</span>
-            </button>
-          );
-        })}
       </div>
 
       {/* Filter Bar */}
@@ -294,12 +284,42 @@ export default function ProjectsPage() {
 
         <select
           className={styles.filterSelect}
-          value={sortBy}
-          onChange={e => setSortBy(e.target.value)}
+          value={extraFilter}
+          onChange={e => setExtraFilter(e.target.value)}
+          style={{ marginLeft: '8px' }}
         >
-          {SORT_OPTIONS.map(o => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
+          <option value="all">All Projects</option>
+          <option value="sort_deadline">Deadline ↑</option>
+          <option value="sort_value">Value ↑</option>
+          <option value="sort_progress">Progress ↑</option>
+          <option value="new">New Projects (&lt; 30 Days)</option>
+          <option value="old">Old Projects (&ge; 30 Days)</option>
+          <option value="overdue">Overdue Projects</option>
+          <option value="pending_payment">Pending Payment</option>
+          <option value="scope_unlocked">Scope Unlocked</option>
+          <option value="scope_locked">Scope Locked</option>
+          <option value="high_value">High Value (&ge; ₹5L)</option>
+          <option value="low_value">Low Value (&lt; ₹5L)</option>
+          <option value="no_pm">Unassigned PM</option>
+          <option value="no_designer">Unassigned Designer</option>
+          <option value="phase_concept">Concept Design Phase</option>
+          <option value="phase_detailed">Detailed Design Phase</option>
+          <option value="phase_execution">Execution Phase</option>
+          <option value="phase_handover">Handover Phase</option>
+        </select>
+
+        <select
+          className={styles.filterSelect}
+          value={statusFilter}
+          onChange={e => setStatusFilter(e.target.value)}
+          style={{ marginLeft: '8px' }}
+        >
+          <option value="all">All Status ({counts.all})</option>
+          <option value="active">Active ({counts.active})</option>
+          <option value="on_hold">On Hold ({counts.on_hold})</option>
+          <option value="completed">Completed ({counts.completed})</option>
+          <option value="overdue">Overdue ({counts.overdue})</option>
+          <option value="deleted">Deleted ({counts.deleted})</option>
         </select>
 
         <div className={styles.viewToggle}>

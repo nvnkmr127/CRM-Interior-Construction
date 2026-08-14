@@ -14,6 +14,8 @@ export const getHandoverReadiness = (projectId) => api.get(`/projects/${projectI
 export const pmSignOffHandoverReadiness = (projectId) => api.post(`/projects/${projectId}/handover/readiness/pm-sign-off`).then(r => r.data.data || r.data);
 export const getHandoverAppointments = (projectId) => api.get(`/projects/${projectId}/handover/appointments`).then(r => r.data.data || r.data);
 export const scheduleHandoverAppointment = (projectId, data) => api.post(`/projects/${projectId}/handover/appointments`, data).then(r => r.data.data || r.data);
+export const updateHandoverAppointment = (projectId, appointmentId, data) => api.put(`/projects/${projectId}/handover/appointments/${appointmentId}`, data).then(r => r.data.data || r.data);
+export const deleteHandoverAppointment = (projectId, appointmentId) => api.delete(`/projects/${projectId}/handover/appointments/${appointmentId}`).then(r => r.data.data || r.data);
 export const getHandoverReadinessDashboard = () => api.get(`/projects/handover/readiness-dashboard`).then(r => r.data.data || r.data);
 
 // Customer Retention Schedules

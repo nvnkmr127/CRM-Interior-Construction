@@ -103,6 +103,7 @@ export const requestRevision = (projectId, did, note) => api.post(`/projects/${p
 export const addVersion = (projectId, did, storageKey) => api.post(`/projects/${projectId}/documents/${did}/version`, { storageKey });
 
 export const updateDocumentVisibility = (projectId, did, isVisibleToClient) => api.patch(`/projects/${projectId}/documents/${did}/visibility`, { isVisibleToClient });
+export const deleteDocument = (projectId, did) => api.delete(`/projects/${projectId}/documents/${did}`);
 
 export const getDocumentComments = (projectId, did) => api.get(`/projects/${projectId}/documents/${did}/comments`);
 

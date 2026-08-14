@@ -330,13 +330,43 @@ export function AuthProvider({ children }) {
     }
   }, [navigate]);
 
+  const updateUser = useCallback((updatedFields) => {
+    setUser(prev => {
+      if (!prev) return null;
+      const newUser = { ...prev, ...updatedFields };
+      if (import.meta.env.DEV) {
+        localStorage.setItem('mockSession', JSON.stringify(newUser));
+        try {
+          const mockDatabase = JSON.parse(localStorage.getItem('mockDatabase_v4') || '{}');
+          if (mockDatabase.users) {
+            const idx = mockDatabase.users.findIndex(u => u.id === prev.id || u.email === prev.email);
+            if (idx !== -1) {
+              mockDatabase.users[idx] = {
+                ...mockDatabase.users[idx],
+                ...updatedFields,
+                phone: updatedFields.phone !== undefined ? updatedFields.phone : mockDatabase.users[idx].phone,
+                designation: updatedFields.designation !== undefined ? updatedFields.designation : mockDatabase.users[idx].designation
+              };
+              if (updatedFields.designation) {
+                mockDatabase.users[idx].role_name = updatedFields.designation;
+              }
+              localStorage.setItem('mockDatabase_v4', JSON.stringify(mockDatabase));
+            }
+          }
+        } catch (e) {}
+      }
+      return newUser;
+    });
+  }, []);
+
   const value = useMemo(() => ({
     user,
     loading,
     isAuthenticated: !!user,
     login,
-    logout
-  }), [user, loading, login, logout]);
+    logout,
+    updateUser
+  }), [user, loading, login, logout, updateUser]);
 
   return (
     <AuthContext.Provider value={value}>

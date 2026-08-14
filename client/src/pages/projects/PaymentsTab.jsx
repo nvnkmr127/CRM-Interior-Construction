@@ -120,7 +120,11 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
     try {
       const res = await api.get('/financial-approvals');
       // Filter for this project only
-      const projectApprovals = (res.data?.data || []).filter(a => a.project_name === project?.name || a.payload?.projectId === projectId);
+      const rawData = res.data?.data;
+      const approvalsList = Array.isArray(rawData) 
+        ? rawData 
+        : (rawData && Array.isArray(rawData.data) ? rawData.data : []);
+      const projectApprovals = approvalsList.filter(a => a.project_name === project?.name || a.payload?.projectId === projectId);
       setFinanceApprovals(projectApprovals);
     } catch (err) {
       console.error(err);

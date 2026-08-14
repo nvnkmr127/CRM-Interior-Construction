@@ -110,6 +110,10 @@ export default function ProjectClosureTab({ projectId, projectStatus, onProjectU
 
     try {
       setSubmittingClosure(true);
+      // Auto-save the closure checklist state first
+      await updateClosureChecklist(projectId, formState);
+      
+      // Update project status to completed
       await updateProject(projectId, { status: 'completed' });
       toast.success('Project closure completed successfully! Project is now marked as Completed.');
       if (onProjectUpdated) {
@@ -450,7 +454,7 @@ export default function ProjectClosureTab({ projectId, projectStatus, onProjectU
             <Button
               variant="primary"
               onClick={handleCompleteClosure}
-              disabled={submittingClosure || !allGatesCompleted || checklist?.status !== 'completed'}
+              disabled={submittingClosure || !allGatesCompleted}
             >
               {submittingClosure ? 'Closing Project...' : 'Complete Project Closure'}
             </Button>

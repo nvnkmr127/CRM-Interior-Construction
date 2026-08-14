@@ -2,23 +2,25 @@
 import React from 'react';
 
 export default function LeadQualificationScore({ lead }) {
-  const win_probability = lead?.win_probability ?? 85;
-  const revenue_potential = lead?.budget_max ?? lead?.revenue_potential ?? 2500000;
+  const win_probability = lead?.win_probability;
+  const revenue_potential = lead?.budget_max ?? lead?.revenue_potential;
   
   const ai_score_breakdown = lead?.ai_score_breakdown || {};
-  const buyingIntent = ai_score_breakdown["Buying Intent"] ?? 88;
-  const budgetConfidence = ai_score_breakdown["Budget Confidence"] ?? 72;
+  const buyingIntent = ai_score_breakdown["Buying Intent"] ?? lead?.score;
+  const budgetConfidence = ai_score_breakdown["Budget Confidence"];
 
-  const decisionComplexity = lead?.decision_complexity ?? 'Medium';
-  const urgency = lead?.urgency ?? 'High';
+  const decisionComplexity = lead?.decision_complexity;
+  const urgency = lead?.urgency;
 
   const getColorByScore = (score) => {
+    if (score == null) return 'text-gray-500 bg-gray-50 border-gray-200';
     if (score >= 80) return 'text-green-600 bg-green-50 border-green-200';
     if (score >= 50) return 'text-yellow-600 bg-yellow-50 border-yellow-200';
     return 'text-red-600 bg-red-50 border-red-200';
   };
 
   const getProgressColor = (score) => {
+    if (score == null) return 'bg-gray-300';
     if (score >= 80) return 'bg-green-500';
     if (score >= 50) return 'bg-yellow-500';
     return 'bg-red-500';
@@ -35,34 +37,34 @@ export default function LeadQualificationScore({ lead }) {
         {/* Win Probability */}
         <div className={`p-3 rounded-lg border flex flex-col items-center justify-center text-center shadow-sm ${getColorByScore(win_probability)}`}>
           <span className="text-xs uppercase font-semibold opacity-75 mb-1 tracking-wide">Win Probability</span>
-          <span className="text-2xl font-bold">{win_probability}%</span>
+          <span className="text-2xl font-bold">{win_probability != null ? `${win_probability}%` : '—'}</span>
         </div>
 
         {/* Buying Intent */}
         <div className={`p-3 rounded-lg border flex flex-col items-center justify-center text-center shadow-sm ${getColorByScore(buyingIntent)}`}>
           <span className="text-xs uppercase font-semibold opacity-75 mb-1 tracking-wide">Buying Intent</span>
-          <span className="text-2xl font-bold">{buyingIntent}%</span>
+          <span className="text-2xl font-bold">{buyingIntent != null ? `${buyingIntent}%` : '—'}</span>
         </div>
 
         {/* Budget Confidence */}
         <div className={`p-3 rounded-lg border flex flex-col items-center justify-center text-center shadow-sm ${getColorByScore(budgetConfidence)}`}>
           <span className="text-xs uppercase font-semibold opacity-75 mb-1 tracking-wide">Budget Confidence</span>
-          <span className="text-2xl font-bold">{budgetConfidence}%</span>
+          <span className="text-2xl font-bold">{budgetConfidence != null ? `${budgetConfidence}%` : '—'}</span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="flex flex-col">
           <span className="text-xs font-medium text-gray-500 uppercase">Revenue Potential</span>
-          <span className="text-lg font-semibold text-gray-800">{revenue_potential ? `₹${Number(revenue_potential).toLocaleString()}` : 'TBD'}</span>
+          <span className="text-lg font-semibold text-gray-800">{revenue_potential ? `₹${Number(revenue_potential).toLocaleString()}` : '—'}</span>
         </div>
         <div className="flex flex-col">
           <span className="text-xs font-medium text-gray-500 uppercase">Urgency</span>
-          <span className="text-lg font-semibold text-gray-800">{urgency}</span>
+          <span className="text-lg font-semibold text-gray-800">{urgency || '—'}</span>
         </div>
         <div className="flex flex-col">
           <span className="text-xs font-medium text-gray-500 uppercase">Decision Complexity</span>
-          <span className="text-lg font-semibold text-gray-800">{decisionComplexity}</span>
+          <span className="text-lg font-semibold text-gray-800">{decisionComplexity || '—'}</span>
         </div>
       </div>
       
@@ -71,20 +73,20 @@ export default function LeadQualificationScore({ lead }) {
         <div>
           <div className="flex justify-between text-xs mb-1">
             <span className="font-medium text-gray-600">Buying Intent Profile</span>
-            <span className="text-gray-500">{buyingIntent}/100</span>
+            <span className="text-gray-500">{buyingIntent != null ? `${buyingIntent}/100` : '—'}</span>
           </div>
           <div className="w-full bg-gray-100 rounded-full h-1.5">
-            <div className={`h-1.5 rounded-full ${getProgressColor(buyingIntent)}`} style={{ width: `${buyingIntent}%` }}></div>
+            <div className={`h-1.5 rounded-full ${getProgressColor(buyingIntent)}`} style={{ width: `${buyingIntent || 0}%` }}></div>
           </div>
         </div>
         
         <div>
           <div className="flex justify-between text-xs mb-1">
             <span className="font-medium text-gray-600">Budget Confidence</span>
-            <span className="text-gray-500">{budgetConfidence}/100</span>
+            <span className="text-gray-500">{budgetConfidence != null ? `${budgetConfidence}/100` : '—'}</span>
           </div>
           <div className="w-full bg-gray-100 rounded-full h-1.5">
-            <div className={`h-1.5 rounded-full ${getProgressColor(budgetConfidence)}`} style={{ width: `${budgetConfidence}%` }}></div>
+            <div className={`h-1.5 rounded-full ${getProgressColor(budgetConfidence)}`} style={{ width: `${budgetConfidence || 0}%` }}></div>
           </div>
         </div>
       </div>

@@ -847,6 +847,7 @@ export default function ProjectDetail() {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const { confirm } = useConfirm();
 
   const handleArchive = async () => {
@@ -979,8 +980,8 @@ export default function ProjectDetail() {
       );
       case 'Financial Overview': return <FinancialOverviewPanel project={project} projectId={projectId} />;
       case 'Booking': return <BookingTab projectId={projectId} projectStatus={project?.status} onProjectUpdated={reloadProject} />;
-      case 'Meeting Notes': return <MeetingNotesTab projectId={projectId} />;
-      case 'Site Visits': return <SiteVisitsTab projectId={projectId} />;
+      case 'Meeting Notes': return <MeetingNotesTab projectId={projectId} projectStatus={project?.status} />;
+      case 'Site Visits': return <SiteVisitsTab projectId={projectId} projectStatus={project?.status} />;
       case 'Vendors': return <VendorsTab projectId={projectId} />;
       case 'Baseline Assessment': return <BaselineAssessmentTab projectId={projectId} />;
       case 'Delay Notifications': return <DelayNotificationsTab projectId={projectId} />;
@@ -1008,14 +1009,14 @@ export default function ProjectDetail() {
       case 'Tasks': return <ProjectTasksTab projectId={projectId} project={project} />;
       case 'Daily Site Reports': return <DailySiteReportsTab projectId={projectId} />;
       case 'Weekly Reports': return <WeeklyReportsTab projectId={projectId} />;
-      case 'Documents': return <DocumentPanel projectId={projectId} />;
+      case 'Documents': return <DocumentPanel projectId={projectId} projectStatus={project?.status} />;
       case 'Drawing Register': return <DrawingRegisterTab projectId={projectId} />;
       case 'MEP Checklist': return <MepChecklistTab projectId={projectId} />;
       case 'Payments': return <PaymentsTab projectId={projectId} project={project} onProjectUpdated={reloadProject} />;
       case 'Execution QC': return <ExecutionQCTab projectId={projectId} project={project} />;
-      case 'Snags': return <SnagsDashboard projectId={projectId} />;
+      case 'Snags': return <SnagsDashboard projectId={projectId} projectStatus={project?.status} />;
       case 'Handover': return <HandoverChecklist projectId={projectId} />;
-      case 'Punch List': return <PunchListTab projectId={projectId} />;
+      case 'Punch List': return <PunchListTab projectId={projectId} projectStatus={project?.status} />;
       case 'Warranties': return <WarrantiesTab projectId={projectId} />;
       case 'AMCs': return <AmcsTab projectId={projectId} />;
       case 'Handover Readiness': return <HandoverReadinessTab projectId={projectId} />;
@@ -1310,6 +1311,7 @@ export default function ProjectDetail() {
         </div>
 
         {/* Quick Nav Tabs from Form Sections */}
+        {/* Quick Nav Tabs from Form Sections */}
         <div className={styles.headerNav} ref={navRef}>
           {[
             { id: 'Overview', icon: '📝', label: 'Overview' },
@@ -1319,6 +1321,12 @@ export default function ProjectDetail() {
             { id: 'Payments', icon: '💸', label: 'Payments' },
             { id: 'Team & Roles', icon: '👥', label: 'Team & Roles' },
             { id: 'Tasks', icon: '✅', label: 'Tasks' },
+            { id: 'Documents', icon: '📁', label: 'Documents' },
+            { id: 'Handover Readiness', icon: '🚦', label: 'Handover Readiness' },
+            { id: 'Execution QC', icon: '🔍', label: 'Execution QC' },
+            { id: 'Snags', icon: '⚠️', label: 'Snags' },
+            { id: 'Punch List', icon: '📋', label: 'Punch List' },
+            { id: 'Project Closure', icon: '🔑', label: 'Project Closure' },
             { id: 'Activity Logs', icon: '📋', label: 'Activity Logs' },
             { id: 'Settings', icon: '⚙️', label: 'Settings' }
           ].filter(tab => canAccessPage(tab.id)).map(tab => {

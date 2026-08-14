@@ -28,19 +28,70 @@ export const setupMockInterceptor = (api) => {
           let responseData = { success: true, data: [], meta: {} };
           const mockDatabase = loadMockDatabase();
 
+          if (isMutation) {
+            let projectId = null;
+            const projMatch = url.match(/\/projects\/([a-zA-Z0-9-]+)/);
+            if (projMatch) {
+              projectId = projMatch[1];
+            } else {
+              if (url.includes('/tasks')) {
+                const taskParts = url.split('?')[0].match(/\/tasks\/([a-zA-Z0-9-]+)/);
+                if (taskParts) {
+                  const taskId = taskParts[1];
+                  const taskObj = (mockDatabase.tasks || []).find(t => t.id === taskId);
+                  if (taskObj) {
+                    projectId = taskObj.project_id || taskObj.projectId;
+                  }
+                }
+              }
+              if (url.includes('/snags')) {
+                const snagParts = url.split('?')[0].match(/\/snags\/([a-zA-Z0-9-]+)/);
+                if (snagParts) {
+                  const snagId = snagParts[1];
+                  const snagObj = (mockDatabase.snags || []).find(s => s.id === snagId);
+                  if (snagObj) {
+                    projectId = snagObj.project_id || snagObj.projectId;
+                  }
+                }
+              }
+            }
+
+            if (projectId) {
+              const project = (mockDatabase.projects || []).find(p => p.id === projectId);
+              const isProjectUpdateRoute = url.match(/\/projects\/([a-zA-Z0-9-]+)$/) && ['put', 'patch'].includes(method);
+              if (project && (project.status === 'completed' || project.status === 'archived' || project.status === 'cancelled') && !isProjectUpdateRoute) {
+                return Promise.resolve({
+                  status: 400,
+                  data: { success: false, error: 'Project is closed and in read-only mode.' },
+                  headers: {},
+                  config,
+                  request: {}
+                });
+              }
+            }
+          }
+
           const persistDb = () => {
             if (mockDatabase.contacts) {
               mockDatabase.contacts = mockDatabase.contacts.filter(c => c.lead_id && c.lead_id !== 'undefined' && c.lead_id !== 'null');
             }
             saveMockDatabase(mockDatabase);
+            if (isMutation) {
+              window.dispatchEvent(new Event('app:mock-db-change'));
+            }
             
             // Broadcast the entire database via SSE to keep other browsers in sync
             try {
-              window.fetch('/api/mock-sync/broadcast', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type: 'SYNC_DATABASE', database: mockDatabase })
-              }).catch(() => {});
+              if (localStorage.getItem('enableMockSync') === 'true' && !window.__backendOffline) {
+                window.fetch('/api/mock-sync/broadcast', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ type: 'SYNC_DATABASE', database: mockDatabase })
+                }).catch(() => {
+                  window.__backendOffline = true;
+                  setTimeout(() => { window.__backendOffline = false; }, 60000);
+                });
+              }
             } catch(e) {}
           };
 
@@ -1314,14 +1365,67 @@ export const setupMockInterceptor = (api) => {
                 material_suggestions: ['Matte Black Fixtures', 'White Oak Flooring', 'Quartz Countertops']
               };
             } else if (url.includes('/ai-insights')) {
+              const match = url.match(/\/leads\/([a-zA-Z0-9-]+)\/ai-insights/);
+              const leadId = match ? match[1] : null;
+              let computedScore = 82;
+              let computedWinProb = 85;
+              let computedBuyingIntent = 88;
+              let computedBudgetConfidence = 72;
+              let computedBudgetMax = 2500000;
+              let computedComplexity = 'Medium';
+              let computedUrgency = 'High';
+              let seed = 7;
+
+              if (leadId) {
+                const idx = mockDatabase.leads.findIndex(l => l.id === leadId);
+                if (idx !== -1) {
+                  const lead = mockDatabase.leads[idx];
+                  const nameStr = lead.name || '';
+                  seed = nameStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) || (idx + 1) * 7;
+                  
+                  computedScore = 60 + (seed % 31); // 60 - 90
+                  computedWinProb = 50 + (seed % 41); // 50 - 90
+                  computedBuyingIntent = 60 + (seed % 36); // 60 - 95
+                  computedBudgetConfidence = 50 + (seed % 46); // 50 - 95
+                  
+                  const complexities = ['Low', 'Medium', 'High'];
+                  const urgencies = ['Low', 'Medium', 'High'];
+                  computedComplexity = complexities[seed % complexities.length];
+                  computedUrgency = urgencies[seed % urgencies.length];
+                  
+                  const baseBudget = lead.budget || (1500000 + (seed % 15) * 100000);
+                  computedBudgetMax = lead.budget_max || Math.round(baseBudget * 1.2 / 50000) * 50000;
+
+                  lead.score = computedScore;
+                  lead.win_probability = computedWinProb;
+                  lead.buying_intent = computedBuyingIntent > 80 ? 'Hot' : 'Warm';
+                  lead.budget = baseBudget;
+                  lead.budget_max = computedBudgetMax;
+                  lead.decision_complexity = computedComplexity;
+                  lead.urgency = computedUrgency;
+                  lead.ai_score_breakdown = {
+                    "Buying Intent": computedBuyingIntent,
+                    "Budget Confidence": computedBudgetConfidence
+                  };
+                  persistDb();
+                }
+              }
               responseData.data = {
-                sentiment: 'Positive',
-                signals: ['Expressed interest in premium materials'],
-                objections: [],
-                nextAction: 'Schedule a site visit',
-                buyIntent: 'high',
-                winProbability: 80,
-                aiScoreBreakdown: { "Base Score": "+50", "High Budget": "+20", "Engaged": "+10" },
+                sentiment: seed % 2 === 0 ? 'Positive' : 'Neutral',
+                signals: seed % 2 === 0 
+                  ? ['Expressed interest in premium materials', 'Responded to communications within 5 minutes']
+                  : ['Inquired about completion timeline', 'Has budget limits but willing to compromise'],
+                objections: seed % 3 === 0 ? ['Expressed minor concern about timeline'] : [],
+                nextAction: seed % 2 === 0 
+                  ? 'Schedule a site visit to take measurements and confirm modular cabinet layouts.'
+                  : 'Follow up via WhatsApp to share material catalogue options.',
+                buyIntent: computedBuyingIntent > 80 ? 'high' : 'medium',
+                winProbability: computedWinProb,
+                aiScoreBreakdown: { 
+                  "Base Score": `+${50 + (seed % 10)}`, 
+                  "Budget Align": `+${10 + (seed % 15)}`, 
+                  "Engagement": `+${5 + (seed % 10)}` 
+                },
                 suggestedFollowupDate: new Date(Date.now() + 86400000).toISOString()
               };
             } else if (url.includes('/negotiation')) {
@@ -1418,6 +1522,8 @@ export const setupMockInterceptor = (api) => {
                   id: `mock-proj-${Date.now()}`,
                   name: payload.projectName || 'Converted Project',
                   client_name: payload.clientName || 'Client',
+                  client_phone: payload.clientPhone || null,
+                  client_email: payload.clientEmail || null,
                   status,
                   booking_amount: advanceAmount,
                   payment_terms: paymentTerms,
@@ -1431,8 +1537,39 @@ export const setupMockInterceptor = (api) => {
                   pm_id: payload.pm || null,
                   agreement_signed_by: payload.agreement_signed_by || null,
                   agreement_signed_at: payload.agreement_signed_at || null,
-                  agreement_signature_method: payload.agreement_signature_method || null
+                  agreement_signature_method: payload.agreement_signature_method || null,
+                  
+                  flat_number: payload.flat_number || 'Flat 405',
+                  floor: payload.floor || '4',
+                  building_name: payload.building_name || 'Silver Oak Apartments',
+                  street: payload.street || '12th Main Road, Sector 6',
+                  city: payload.city || 'Bengaluru',
+                  pincode: payload.pincode || '560102',
+                  landmark: payload.landmark || 'Near HDFC Bank',
+                  latitude: payload.latitude ? Number(payload.latitude) : 12.934533,
+                  longitude: payload.longitude ? Number(payload.longitude) : 77.624102,
+                  builder_name: payload.builder_name || 'Prestige Group',
+                  society_name: payload.society_name || 'Prestige Lakeside Habitat',
+                  renovation_scope: payload.projectType || 'full_interior',
+                  site_address: payload.siteAddress || `${payload.flat_number || 'Flat 405'}, ${payload.building_name || 'Silver Oak Apartments'}, ${payload.street || '12th Main Road, Sector 6'}, ${payload.city || 'Bengaluru'} - ${payload.pincode || '560102'}`
                 };
+
+                newProj.contract_value = payload.contractValue || 0;
+
+                if (payload.contract_file_key) {
+                  if (!mockDatabase.documents) mockDatabase.documents = [];
+                  mockDatabase.documents.push({
+                    id: `mock-doc-contract-${Date.now()}`,
+                    project_id: newProj.id,
+                    doc_type: 'contract',
+                    status: 'approved',
+                    name: payload.contract_file_name || 'Signed Client Contract',
+                    storage_key: payload.contract_file_key,
+                    file_size: payload.contract_file_size || 0,
+                    file_mime: payload.contract_file_mime || 'application/pdf',
+                    created_at: new Date().toISOString()
+                  });
+                }
 
                 const contractVal = Number(payload.contractValue || 0);
                 const templates = {
@@ -1466,32 +1603,112 @@ export const setupMockInterceptor = (api) => {
                   }
                 }
 
+                let firstMilestoneId = null;
+                let firstMilestoneAmount = 0;
+                let secondMilestoneId = null;
+                let secondMilestoneName = '';
+                let secondMilestoneAmount = 0;
+
                 if (milestoneDefinitions && contractVal > 0) {
                   if (!mockDatabase.paymentMilestones) mockDatabase.paymentMilestones = [];
                   milestoneDefinitions.forEach((def, index) => {
-                    const amount = (contractVal * (def.pct / 100)).toFixed(2);
+                    const amount = Number((contractVal * (def.pct / 100)).toFixed(2));
+                    const pmilId = `mock-pmil-${Date.now()}-${index}`;
+                    
+                    if (index === 0) {
+                      firstMilestoneId = pmilId;
+                      firstMilestoneAmount = amount;
+                    } else if (index === 1) {
+                      secondMilestoneId = pmilId;
+                      secondMilestoneName = def.name;
+                      secondMilestoneAmount = amount;
+                    }
+
                     mockDatabase.paymentMilestones.push({
-                      id: `mock-pmil-${Date.now()}-${index}`,
+                      id: pmilId,
                       project_id: newProj.id,
                       name: def.name,
-                      amount: Number(amount),
+                      amount: amount,
                       percentage: def.pct,
-                      status: 'scheduled',
+                      status: (index === 0 && advanceAmount > 0) ? 'pending_approval' : 'scheduled',
                       due_date: index === 0 ? new Date().toISOString() : new Date(Date.now() + (index * 30 * 24 * 60 * 60 * 1000)).toISOString()
                     });
                   });
-                  newProj.booking_amount = Number((contractVal * (milestoneDefinitions[0].pct / 100)).toFixed(2));
+                  newProj.booking_amount = firstMilestoneAmount;
                 } else if (newProj.booking_amount && newProj.booking_amount > 0) {
                   if (!mockDatabase.paymentMilestones) mockDatabase.paymentMilestones = [];
+                  const pmilId = `mock-pmil-${Date.now()}`;
+                  firstMilestoneId = pmilId;
+                  firstMilestoneAmount = newProj.booking_amount;
+                  
                   mockDatabase.paymentMilestones.push({
-                    id: `mock-pmil-${Date.now()}`,
+                    id: pmilId,
                     project_id: newProj.id,
                     name: 'Booking Advance',
                     amount: newProj.booking_amount,
                     percentage: contractVal > 0 ? Number(((newProj.booking_amount / contractVal) * 100).toFixed(2)) : 100,
-                    status: 'scheduled',
+                    status: 'pending_approval',
                     due_date: new Date().toISOString()
                   });
+                }
+
+                // If we received an advance, create financial approval request
+                if (advanceAmount > 0 && firstMilestoneId) {
+                  const splits = [];
+                  if (advanceAmount <= firstMilestoneAmount) {
+                    splits.push({
+                      milestoneId: firstMilestoneId,
+                      milestoneName: 'Booking Advance',
+                      amount: advanceAmount,
+                      status: 'paid'
+                    });
+                  } else {
+                    splits.push({
+                      milestoneId: firstMilestoneId,
+                      milestoneName: 'Booking Advance',
+                      amount: firstMilestoneAmount,
+                      status: 'paid'
+                    });
+                    const remainder = advanceAmount - firstMilestoneAmount;
+                    if (secondMilestoneId) {
+                      splits.push({
+                        milestoneId: secondMilestoneId,
+                        milestoneName: secondMilestoneName,
+                        amount: remainder,
+                        status: remainder >= secondMilestoneAmount ? 'paid' : 'partially_paid'
+                      });
+                    }
+                  }
+
+                  const newApproval = {
+                    id: `FIN-CONV-${Date.now()}`,
+                    transaction_type: 'payment_update',
+                    status: 'pending',
+                    amount: advanceAmount,
+                    project_name: newProj.name,
+                    customer_name: newProj.client_name,
+                    target_number: 'Booking Advance',
+                    requester_name: session?.name || session?.user?.name || 'Sales Representative',
+                    threshold_limit: 100000,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    priority: 'high',
+                    current_stage: 1,
+                    total_stages: 1,
+                    approval_chain: [{stage: 1, role: 'admin', status: 'pending'}],
+                    target_resolution_date: new Date(Date.now() + 86400000).toISOString(),
+                    reason: 'Advance Payment received during Lead Conversion',
+                    payload: {
+                      projectId: newProj.id,
+                      splits: splits,
+                      advanceAmount: advanceAmount,
+                      isSplit: true
+                    },
+                    auditTrail: [{ status: 'PENDING', timestamp: new Date().toISOString(), note: 'Request created via Lead Conversion' }]
+                  };
+
+                  if (!mockDatabase.financeApprovals) mockDatabase.financeApprovals = [];
+                  mockDatabase.financeApprovals.unshift(newApproval);
                 }
 
                 mockDatabase.projects.push(newProj);
@@ -1557,11 +1774,16 @@ export const setupMockInterceptor = (api) => {
                    
                    // Broadcast to real backend relay (cross-browser support)
                    try {
-                     window.fetch('/api/mock-sync/broadcast', {
-                       method: 'POST',
-                       headers: { 'Content-Type': 'application/json' },
-                       body: JSON.stringify({ type: 'SYNC_NOTIFICATIONS', notification: notifications[0] })
-                     }).catch(() => {});
+                     if (localStorage.getItem('enableMockSync') === 'true' && !window.__backendOffline) {
+                       window.fetch('/api/mock-sync/broadcast', {
+                         method: 'POST',
+                         headers: { 'Content-Type': 'application/json' },
+                         body: JSON.stringify({ type: 'SYNC_NOTIFICATIONS', notification: notifications[0] })
+                       }).catch(() => {
+                         window.__backendOffline = true;
+                         setTimeout(() => { window.__backendOffline = false; }, 60000);
+                       });
+                     }
                    } catch(err) {}
                  } catch (e) {
                    console.error('Failed to dispatch new lead notification', e);
@@ -1868,6 +2090,11 @@ export const setupMockInterceptor = (api) => {
                   responseData.data = mockDatabase.documents[idx];
                 }
               }
+            } else if (method === 'delete') {
+              const docId = parts[parts.indexOf('documents') + 1];
+              mockDatabase.documents = mockDatabase.documents?.filter(d => d.id !== docId) || [];
+              persistDb();
+              responseData.data = { success: true };
             }
           }
           // PROJECTS CONTRACT UPLOAD
@@ -2043,7 +2270,7 @@ export const setupMockInterceptor = (api) => {
             }
           }
           // PROJECTS
-          else if (url.includes('/projects') && !url.includes('/tasks') && !url.includes('/comments') && !url.includes('/attachments') && !url.includes('/activity') && !url.includes('/members')) {
+          else if (url.includes('/projects') && !url.includes('/tasks') && !url.includes('/comments') && !url.includes('/attachments') && !url.includes('/activity') && !url.includes('/members') && !url.includes('/handover') && !url.includes('/qc') && !url.includes('/punch-lists') && !url.includes('/documents')) {
             const match = url.match(/\/projects\/([a-zA-Z0-9-]+)$/);
             const projId = match ? match[1] : null;
 
@@ -2142,6 +2369,51 @@ export const setupMockInterceptor = (api) => {
               if (projId) {
                 const proj = mockDatabase.projects.find(p => p.id === projId);
                 if (proj) {
+                  // Resolve client phone and email from lead if missing
+                  if (!proj.client_phone || !proj.client_email) {
+                    const matchingLead = mockDatabase.leads?.find(
+                      l => l.name?.toLowerCase() === proj.client_name?.toLowerCase() ||
+                           l.name?.toLowerCase() === proj.name?.replace("'s Project", "")?.replace("'s project", "")?.toLowerCase()
+                    );
+                    if (matchingLead) {
+                      if (!proj.client_phone && matchingLead.phone) proj.client_phone = matchingLead.phone;
+                      if (!proj.client_email && matchingLead.email) proj.client_email = matchingLead.email;
+                    }
+                  }
+
+                  // Resolve latitude and longitude from lead or city defaults if missing
+                  if (!proj.latitude || !proj.longitude) {
+                    const matchingLead = mockDatabase.leads?.find(
+                      l => l.name?.toLowerCase() === proj.client_name?.toLowerCase() ||
+                           l.name?.toLowerCase() === proj.name?.replace("'s Project", "")?.replace("'s project", "")?.toLowerCase()
+                    );
+                    if (matchingLead && matchingLead.latitude && matchingLead.longitude) {
+                      proj.latitude = matchingLead.latitude;
+                      proj.longitude = matchingLead.longitude;
+                    } else if (proj.site_address?.toLowerCase().includes('kompally') || proj.street?.toLowerCase().includes('kompally')) {
+                      proj.latitude = 17.5249;
+                      proj.longitude = 78.4891;
+                    } else {
+                      proj.latitude = 12.934533;
+                      proj.longitude = 77.624102;
+                    }
+                  }
+
+                  // Resolve site details if missing
+                  if (!proj.flat_number) {
+                    proj.flat_number = 'Flat 405';
+                    proj.floor = '4';
+                    proj.building_name = 'Silver Oak Apartments';
+                    proj.street = proj.street || '12th Main Road, Sector 6';
+                    proj.city = proj.city || 'Bengaluru';
+                    proj.pincode = proj.pincode || '560102';
+                    proj.landmark = 'Near HDFC Bank';
+                    proj.builder_name = 'Prestige Group';
+                    proj.society_name = 'Prestige Lakeside Habitat';
+                    proj.renovation_scope = proj.type || 'full_interior';
+                    proj.site_address = proj.site_address || `${proj.flat_number}, ${proj.building_name}, ${proj.street}, ${proj.city} - ${proj.pincode}`;
+                  }
+
                   const milestones = mockDatabase.paymentMilestones?.filter(m => m.project_id === projId) || [];
                   const baseContract = Number(proj.contract_value || 0);
                   
@@ -2155,6 +2427,11 @@ export const setupMockInterceptor = (api) => {
                      collected = (baseContract * 0.10) + (baseContract * 0.15 * 0.5);
                   }
 
+                  const projTasks = (mockDatabase.tasks || []).filter(t => t.project_id === projId || t.projectId === projId);
+                  const totalTasks = projTasks.length;
+                  const completedTasks = projTasks.filter(t => t.status === 'done').length;
+                  const taskCompletionPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
                   const computedNetContract = proj.stats?.netContractValue || baseContract || total || (Number(proj.booking_amount || 0) > 0 ? Number(proj.booking_amount) * 10 : 0);
                   const stats = {
                     ...(proj.stats || {}),
@@ -2163,11 +2440,19 @@ export const setupMockInterceptor = (api) => {
                     overduePayments: overdue,
                     pendingInvoices: pending,
                     outstandingBalance: Math.max(total - collected, 0),
-                    netContractValue: computedNetContract
+                    netContractValue: computedNetContract,
+                    totalTasks,
+                    completedTasks,
+                    taskCompletionPct
                   };
                   responseData.data = {
                     ...proj,
                     contract_value: proj.contract_value || computedNetContract,
+                    progress: taskCompletionPct,
+                    completed_tasks: completedTasks,
+                    completedTasks: completedTasks,
+                    total_tasks: totalTasks,
+                    totalTasks: totalTasks,
                     stats
                   };
                 } else {
@@ -2182,7 +2467,7 @@ export const setupMockInterceptor = (api) => {
                   } catch (e) {}
                 }
 
-                let filteredProjects = [...mockDatabase.projects];
+                let filteredProjects = [...mockDatabase.projects].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
                 
                 const isAdmin = 
                   currentUser?.role === 'superadmin' || 
@@ -2242,14 +2527,27 @@ export const setupMockInterceptor = (api) => {
 
                   const computedNetContract = proj.stats?.netContractValue || baseContract || total || (Number(proj.booking_amount || 0) > 0 ? Number(proj.booking_amount) * 10 : 0);
 
+                  const projTasks = (mockDatabase.tasks || []).filter(t => t.project_id === proj.id || t.projectId === proj.id);
+                  const totalTasks = projTasks.length;
+                  const completedTasks = projTasks.filter(t => t.status === 'done').length;
+                  const taskCompletionPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
                   return {
                     ...proj,
                     contract_value: proj.contract_value || computedNetContract,
+                    progress: taskCompletionPct,
+                    completed_tasks: completedTasks,
+                    completedTasks: completedTasks,
+                    total_tasks: totalTasks,
+                    totalTasks: totalTasks,
                     stats: {
                       ...(proj.stats || {}),
                       collectedPayment: proj.stats?.collectedPayment !== undefined && proj.stats.collectedPayment > 0 ? proj.stats.collectedPayment : collected,
                       totalPayment: proj.stats?.totalPayment !== undefined && proj.stats.totalPayment > 0 ? proj.stats.totalPayment : total,
-                      netContractValue: computedNetContract
+                      netContractValue: computedNetContract,
+                      totalTasks,
+                      completedTasks,
+                      taskCompletionPct
                     }
                   };
                 });
@@ -2319,9 +2617,279 @@ export const setupMockInterceptor = (api) => {
               }
             } else if (method === 'delete') {
               if (projId) {
-                mockDatabase.projects = mockDatabase.projects.filter(p => p.id !== projId);
+                const idx = mockDatabase.projects.findIndex(p => p.id === projId);
+                if (idx !== -1) {
+                  mockDatabase.projects[idx].deleted_at = new Date().toISOString();
+                  persistDb();
+                }
+                responseData.data = { success: true };
+              }
+            }
+          }
+          // PROJECTS HANDOVER READINESS
+          else if (url.includes('/handover/readiness') && !url.includes('/readiness-dashboard') && !url.includes('/pm-sign-off')) {
+            const parts = url.split('/');
+            const projectId = parts[parts.indexOf('projects') + 1];
+            console.log('[Mock DB] Handover Readiness requested for ID:', projectId);
+            if (method === 'get') {
+              const project = mockDatabase.projects?.find(p => p.id === projectId);
+              console.log('[Mock DB] Found project:', project ? project.name : 'NONE', 'Available IDs:', mockDatabase.projects?.map(p => p.id));
+              if (project) {
+                const projTasks = (mockDatabase.tasks || []).filter(t => t.project_id === projectId || t.projectId === projectId);
+                const totalTasks = projTasks.length;
+                const completedTasks = projTasks.filter(t => t.status === 'done').length;
+                const tasksPassed = totalTasks > 0 && completedTasks === totalTasks;
+
+                const snags = (mockDatabase.snags || []).filter(s => s.project_id === projectId);
+                const unresolvedSnags = snags.filter(s => s.status !== 'resolved' && s.status !== 'closed');
+                const projectPunchLists = (mockDatabase.punchLists || []).filter(pl => pl.project_id === projectId || pl.projectId === projectId);
+                const unresolvedPunchLists = projectPunchLists.filter(pl => pl.status !== 'client_verified');
+                const snagsPassed = projectPunchLists.length > 0 && unresolvedSnags.length === 0 && unresolvedPunchLists.length === 0;
+
+                const milestones = (mockDatabase.paymentMilestones || []).filter(m => m.project_id === projectId);
+                const unpaidMilestones = milestones.filter(m => m.status !== 'paid');
+                const paymentsPassed = milestones.length > 0 && unpaidMilestones.length === 0;
+
+                const documents = (mockDatabase.documents || []).filter(d => d.project_id === projectId);
+                const hasDocs = documents.length > 0;
+                const documentsPassed = hasDocs;
+
+                const pmSignedOffVal = project.pm_signed_off || false;
+                const overallReady = tasksPassed && snagsPassed && paymentsPassed && documentsPassed && pmSignedOffVal;
+
+                responseData.data = {
+                  overallReady,
+                  gates: {
+                    tasksCompleted: {
+                      passed: tasksPassed,
+                      message: totalTasks === 0
+                        ? 'No execution tasks have been created yet.'
+                        : (tasksPassed 
+                          ? 'All assigned execution tasks are completed.' 
+                          : `Pending tasks: ${totalTasks - completedTasks} of ${totalTasks} incomplete.`)
+                    },
+                    snagsResolved: {
+                      passed: snagsPassed,
+                      message: projectPunchLists.length === 0
+                        ? 'Missing mandatory pre-handover walkthrough punch list.'
+                        : (snagsPassed 
+                          ? 'All site quality snags and punch list items are closed.' 
+                          : `Pending: ${unresolvedSnags.length} open snags and ${unresolvedPunchLists.length} unverified punch lists.`)
+                    },
+                    paymentsCleared: {
+                      passed: paymentsPassed,
+                      message: milestones.length === 0
+                        ? 'No payment milestones have been set up for this project.'
+                        : (paymentsPassed 
+                          ? 'All payment milestones have been fully cleared.' 
+                          : `Pending collection: ${unpaidMilestones.length} outstanding invoices.`)
+                    },
+                    documentsUploaded: {
+                      passed: documentsPassed,
+                      message: documentsPassed 
+                        ? 'All contract documents and drawings are uploaded and approved.' 
+                        : 'Missing required contract upload or handover drawings.'
+                    },
+                    pmSignedOff: {
+                      passed: pmSignedOffVal,
+                      message: pmSignedOffVal 
+                        ? 'Project Manager sign-off completed.' 
+                        : 'Awaiting formal PM review and digital sign-off.'
+                    }
+                  }
+                };
+              } else {
+                responseData.data = null;
+              }
+            }
+          }
+          else if (url.includes('/handover/readiness/pm-sign-off')) {
+            const parts = url.split('/');
+            const projectId = parts[parts.indexOf('projects') + 1];
+            if (method === 'post') {
+              const idx = mockDatabase.projects?.findIndex(p => p.id === projectId);
+              if (idx !== -1) {
+                mockDatabase.projects[idx].pm_signed_off = true;
                 persistDb();
                 responseData.data = { success: true };
+              }
+            }
+          }
+          // HANDOVER APPOINTMENTS
+          else if (url.includes('/handover/appointments')) {
+            const parts = url.split('/');
+            const projectId = parts[parts.indexOf('projects') + 1];
+            if (!mockDatabase.handoverAppointments) mockDatabase.handoverAppointments = [];
+            
+            if (method === 'get') {
+              responseData.data = mockDatabase.handoverAppointments.filter(a => a.project_id === projectId);
+            } else if (method === 'post') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const newAppt = {
+                id: `mock-appt-${Date.now()}`,
+                project_id: projectId,
+                appointment_date: payload.appointmentDate,
+                notes: payload.notes || '',
+                status: 'scheduled',
+                created_at: new Date().toISOString()
+              };
+              mockDatabase.handoverAppointments.push(newAppt);
+              persistDb();
+              responseData.data = newAppt;
+            } else if (method === 'put') {
+              const appointmentId = parts[parts.indexOf('appointments') + 1];
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const idx = mockDatabase.handoverAppointments.findIndex(a => a.id === appointmentId);
+              if (idx !== -1) {
+                mockDatabase.handoverAppointments[idx].appointment_date = payload.appointmentDate;
+                mockDatabase.handoverAppointments[idx].notes = payload.notes || '';
+                persistDb();
+                responseData.data = mockDatabase.handoverAppointments[idx];
+              }
+            } else if (method === 'delete') {
+              const appointmentId = parts[parts.indexOf('appointments') + 1];
+              mockDatabase.handoverAppointments = mockDatabase.handoverAppointments.filter(a => a.id !== appointmentId);
+              persistDb();
+              responseData.data = { success: true };
+            }
+          }
+          // QC TEMPLATES
+          else if (url.includes('/qc/templates')) {
+            if (!mockDatabase.qcTemplates) {
+              mockDatabase.qcTemplates = [
+                { id: 'qct-1', stage_name: 'Masonry & Plastering QC' },
+                { id: 'qct-2', stage_name: 'Electrical Conduit & Wiring Inspection' },
+                { id: 'qct-3', stage_name: 'Plumbing Pressure & Leakage Check' },
+                { id: 'qct-4', stage_name: 'False Ceiling Framing & Gypsum Check' },
+                { id: 'qct-5', stage_name: 'Woodwork & Cabinetry Finish Check' }
+              ];
+            }
+            if (!mockDatabase.qcTemplateItems) {
+              mockDatabase.qcTemplateItems = {
+                'qct-1': [
+                  { item_text: 'Brickwork alignment and plumb check', is_photo_mandatory: false },
+                  { item_text: 'Curing duration and plaster surface consistency', is_photo_mandatory: true }
+                ],
+                'qct-2': [
+                  { item_text: 'Conduit pipe fixing and junction boxes check', is_photo_mandatory: false },
+                  { item_text: 'Wire insulation resistance and continuity check', is_photo_mandatory: true }
+                ],
+                'qct-3': [
+                  { item_text: 'Pressure test holding at 10 bar for 1 hour', is_photo_mandatory: true },
+                  { item_text: 'Check joints and fittings for any dampness/seepage', is_photo_mandatory: false }
+                ],
+                'qct-4': [
+                  { item_text: 'Level check for framing grid', is_photo_mandatory: false },
+                  { item_text: 'Joint taping and painting finish alignment', is_photo_mandatory: true }
+                ],
+                'qct-5': [
+                  { item_text: 'Wardrobe shutter alignment and hinges functionality', is_photo_mandatory: false },
+                  { item_text: 'Laminate pasting and edge-banding polish finish', is_photo_mandatory: true }
+                ]
+              };
+            }
+            responseData.data = mockDatabase.qcTemplates;
+          }
+          // PROJECTS QC STAGES
+          else if (url.includes('/qc') && url.includes('/projects/')) {
+            const parts = url.split('/');
+            const projectId = parts[parts.indexOf('projects') + 1];
+            if (!mockDatabase.qcStages) mockDatabase.qcStages = [];
+            if (!mockDatabase.qcTemplates) {
+              mockDatabase.qcTemplates = [
+                { id: 'qct-1', stage_name: 'Masonry & Plastering QC' },
+                { id: 'qct-2', stage_name: 'Electrical Conduit & Wiring Inspection' },
+                { id: 'qct-3', stage_name: 'Plumbing Pressure & Leakage Check' },
+                { id: 'qct-4', stage_name: 'False Ceiling Framing & Gypsum Check' },
+                { id: 'qct-5', stage_name: 'Woodwork & Cabinetry Finish Check' }
+              ];
+            }
+            if (!mockDatabase.qcTemplateItems) {
+              mockDatabase.qcTemplateItems = {
+                'qct-1': [
+                  { item_text: 'Brickwork alignment and plumb check', is_photo_mandatory: false },
+                  { item_text: 'Curing duration and plaster surface consistency', is_photo_mandatory: true }
+                ],
+                'qct-2': [
+                  { item_text: 'Conduit pipe fixing and junction boxes check', is_photo_mandatory: false },
+                  { item_text: 'Wire insulation resistance and continuity check', is_photo_mandatory: true }
+                ],
+                'qct-3': [
+                  { item_text: 'Pressure test holding at 10 bar for 1 hour', is_photo_mandatory: true },
+                  { item_text: 'Check joints and fittings for any dampness/seepage', is_photo_mandatory: false }
+                ],
+                'qct-4': [
+                  { item_text: 'Level check for framing grid', is_photo_mandatory: false },
+                  { item_text: 'Joint taping and painting finish alignment', is_photo_mandatory: true }
+                ],
+                'qct-5': [
+                  { item_text: 'Wardrobe shutter alignment and hinges functionality', is_photo_mandatory: false },
+                  { item_text: 'Laminate pasting and edge-banding polish finish', is_photo_mandatory: true }
+                ]
+              };
+            }
+
+            if (url.includes('/sign-off')) {
+              const stageId = parts[parts.indexOf('qc') + 1];
+              const idx = mockDatabase.qcStages.findIndex(s => s.id === stageId);
+              if (idx !== -1) {
+                mockDatabase.qcStages[idx].status = 'completed';
+                persistDb();
+                responseData.data = mockDatabase.qcStages[idx];
+              }
+            }
+            else if (url.includes('/items/')) {
+              const stageId = parts[parts.indexOf('qc') + 1];
+              const itemId = parts[parts.indexOf('items') + 1];
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              
+              const stageIdx = mockDatabase.qcStages.findIndex(s => s.id === stageId);
+              if (stageIdx !== -1) {
+                const itemIdx = mockDatabase.qcStages[stageIdx].items.findIndex(i => i.id === itemId);
+                if (itemIdx !== -1) {
+                  mockDatabase.qcStages[stageIdx].items[itemIdx] = {
+                    ...mockDatabase.qcStages[stageIdx].items[itemIdx],
+                    ...payload,
+                    is_passed: payload.is_passed === 'pass' ? true : payload.is_passed === 'fail' ? false : null
+                  };
+                  
+                  const items = mockDatabase.qcStages[stageIdx].items;
+                  if (items.every(i => i.is_passed === true)) {
+                    mockDatabase.qcStages[stageIdx].status = 'in_progress';
+                  }
+                  persistDb();
+                  responseData.data = mockDatabase.qcStages[stageIdx].items[itemIdx];
+                }
+              }
+            }
+            else {
+              if (method === 'get') {
+                responseData.data = mockDatabase.qcStages.filter(s => s.project_id === projectId);
+              }
+              else if (method === 'post') {
+                const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                const template = mockDatabase.qcTemplates.find(t => t.id === payload.templateId);
+                const tplItems = mockDatabase.qcTemplateItems[payload.templateId] || [];
+                
+                const newStage = {
+                  id: `mock-qcs-${Date.now()}`,
+                  project_id: projectId,
+                  phase_id: payload.phaseId,
+                  stage_name: template ? template.stage_name : 'QC Checklist',
+                  status: 'draft',
+                  created_at: new Date().toISOString(),
+                  items: tplItems.map((item, index) => ({
+                    id: `mock-qcsi-${Date.now()}-${index}`,
+                    item_text: item.item_text,
+                    is_photo_mandatory: item.is_photo_mandatory,
+                    is_passed: null,
+                    photo_evidence: null,
+                    notes: ''
+                  }))
+                };
+                mockDatabase.qcStages.push(newStage);
+                persistDb();
+                responseData.data = newStage;
               }
             }
           }
@@ -3227,6 +3795,13 @@ export const setupMockInterceptor = (api) => {
               } else {
                 let leadIdParam = config.params?.lead_id;
                 let assigneeIdParam = config.params?.assigneeId || config.params?.assignee_id;
+                let projectIdParam = null;
+                
+                const parts = urlParts[0].split('/');
+                if (urlParts[0].includes('/projects/')) {
+                  projectIdParam = parts[parts.indexOf('projects') + 1];
+                }
+                
                 if (urlParts.length > 1) {
                   const searchParams = new URLSearchParams(urlParts[1]);
                   if (!leadIdParam) leadIdParam = searchParams.get('lead_id');
@@ -3251,6 +3826,11 @@ export const setupMockInterceptor = (api) => {
                   mockDatabase.tasks = tasks;
                   persistDb();
                 }
+                
+                if (projectIdParam) {
+                  tasks = tasks.filter(t => t.project_id === projectIdParam || t.projectId === projectIdParam);
+                }
+                
                 if (leadIdParam) {
                   tasks = tasks.filter(t => t.lead_id === leadIdParam);
                 }
@@ -3278,10 +3858,17 @@ export const setupMockInterceptor = (api) => {
             } else if (method === 'post') {
               const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
               const assignee = mockDatabase.users?.find(u => u.id === payload.assigned_to);
+              
+              let projectIdFromUrl = null;
+              const parts = urlParts[0].split('/');
+              if (urlParts[0].includes('/projects/')) {
+                projectIdFromUrl = parts[parts.indexOf('projects') + 1];
+              }
+
               const newTask = {
                 id: `mock-task-${Date.now()}`,
                 lead_id: payload.lead_id || null,
-                project_id: payload.project_id || null,
+                project_id: payload.project_id || projectIdFromUrl || null,
                 title: payload.title,
                 start_date: payload.start_date || payload.due_date || null,
                 due_date: payload.due_date || null,
@@ -3902,8 +4489,8 @@ export const setupMockInterceptor = (api) => {
             const matchPortalSingle = pathPart.match(/\/portal\/punch-lists\/([a-zA-Z0-9-]+)$/);
             const matchPortalList = pathPart.endsWith('/portal/punch-lists');
             
-            const matchItemAction = pathPart.match(/\/projects\/[a-zA-Z0-9-]+\/punch-lists\/([a-zA-Z0-9-]+)\/items(?:\/([a-zA-Z0-9-]+))?$/);
-            const matchPlAction = pathPart.match(/\/projects\/[a-zA-Z0-9-]+\/punch-lists(?:\/([a-zA-Z0-9-]+))?$/);
+            const matchItemAction = pathPart.match(/\/projects\/([a-zA-Z0-9-]+)\/punch-lists\/([a-zA-Z0-9-]+)\/items(?:\/([a-zA-Z0-9-]+))?$/);
+            const matchPlAction = pathPart.match(/\/projects\/([a-zA-Z0-9-]+)\/punch-lists(?:\/([a-zA-Z0-9-]+))?$/);
 
             if (matchItemVerify) {
               const itemId = matchItemVerify[1];
@@ -3955,8 +4542,9 @@ export const setupMockInterceptor = (api) => {
               responseData.data = mockDatabase.punchLists;
             }
             else if (matchItemAction) {
-              const plId = matchItemAction[1];
-              const itemId = matchItemAction[2];
+              const projectId = matchItemAction[1];
+              const plId = matchItemAction[2];
+              const itemId = matchItemAction[3];
 
               if (method === 'post') {
                 const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
@@ -4053,7 +4641,8 @@ export const setupMockInterceptor = (api) => {
               }
             }
             else if (matchPlAction) {
-              const plId = matchPlAction[1];
+              const projectId = matchPlAction[1];
+              const plId = matchPlAction[2];
               if (method === 'get') {
                 if (plId) {
                   const pl = mockDatabase.punchLists.find(p => p.id === plId);
@@ -4062,14 +4651,14 @@ export const setupMockInterceptor = (api) => {
                     responseData.data = { ...pl, items };
                   }
                 } else {
-                  responseData.data = mockDatabase.punchLists;
+                  responseData.data = mockDatabase.punchLists.filter(p => p.project_id === projectId || p.projectId === projectId);
                 }
               }
               else if (method === 'post') {
                 const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
                 const newPl = {
                   id: `mock-pl-${Date.now()}`,
-                  project_id: 'mock-project-123',
+                  project_id: projectId,
                   title: payload.title,
                   walkthrough_date: payload.walkthrough_date || null,
                   status: 'draft',
@@ -4925,7 +5514,25 @@ export const setupMockInterceptor = (api) => {
                      availability: weeklyCapacity - totalHoursAllocated
                    };
                  });
-               } else if (url.includes('/analytics/leads/funnel') || 
+                } else if (url.includes('/analytics/snags')) {
+                  const queryParams = new URLSearchParams(url.split('?')[1] || '');
+                  const projectId = queryParams.get('projectId');
+                  const snags = (mockDatabase.snags || []).filter(s => s.project_id === projectId || s.projectId === projectId);
+                  const byRootCauseMap = {};
+                  const byVendorMap = {};
+                  snags.forEach(s => {
+                    const cause = s.root_cause || s.rootCause || 'unassigned';
+                    byRootCauseMap[cause] = (byRootCauseMap[cause] || 0) + 1;
+                    const vendor = s.vendor_name || s.vendorName || 'General / In-house';
+                    byVendorMap[vendor] = (byVendorMap[vendor] || 0) + 1;
+                  });
+                  responseData.data = {
+                    byRootCause: Object.entries(byRootCauseMap).map(([label, count]) => ({ label, count })),
+                    byVendor: Object.entries(byVendorMap).map(([label, count]) => ({ label, count })),
+                    totalSnags: snags.length,
+                    openSnags: snags.filter(s => s.status !== 'resolved' && s.status !== 'closed' && s.status !== 'client_verified').length
+                  };
+                } else if (url.includes('/analytics/leads/funnel') || 
                    url.includes('/analytics/leads/by_source') || 
                    url.includes('/analytics/leads/rep_performance') || 
                    url.includes('/analytics/leads/lost_reasons') ||
@@ -5115,71 +5722,125 @@ export const setupMockInterceptor = (api) => {
                 approval.updated_at = new Date().toISOString();
                 approval.auditTrail.push({ status: 'APPROVED', timestamp: new Date().toISOString(), note: 'Approved by Finance Admin' });
                 
-                // Crucial Logic: Update project payment if this is a Manual Payment
-                if (approval.transaction_type === 'Manual Payment' || approval.transaction_type === 'payment') {
+                // Crucial Logic: Update project payment if this is a Manual Payment or Payment Update
+                if (approval.transaction_type === 'Manual Payment' || approval.transaction_type === 'payment' || approval.transaction_type === 'payment_update') {
                   const projectId = approval.payload?.projectId;
-                  const selectedPayment = approval.payload?.selectedPayment;
-                  const newStatus = approval.payload?.newStatus;
-                  const newCollected = approval.payload?.newCollected;
-                  const newEntries = approval.payload?.newEntries || [];
+                  
+                  if (projectId) {
+                    if (!mockDatabase.paymentMilestones) mockDatabase.paymentMilestones = [];
+                    
+                    if (approval.payload.isSplit && Array.isArray(approval.payload.splits)) {
+                      approval.payload.splits.forEach(split => {
+                        const milestoneIndex = mockDatabase.paymentMilestones.findIndex(m => m.id === split.milestoneId);
+                        if (milestoneIndex !== -1) {
+                          const m = mockDatabase.paymentMilestones[milestoneIndex];
+                          m.status = split.status;
+                          m.paid_amount = (m.paid_amount || 0) + split.amount;
+                          if (!m.payment_entries) m.payment_entries = [];
+                          m.payment_entries.push({
+                            amount: split.amount,
+                            mode: 'bank_transfer',
+                            reference: 'Conversion Advance Split Allocation',
+                            date: new Date().toISOString()
+                          });
+                        }
+                      });
 
-                  if (projectId && selectedPayment) {
-                     if (!mockDatabase.paymentMilestones) mockDatabase.paymentMilestones = [];
-                     
-                     const paymentIndex = mockDatabase.paymentMilestones.findIndex(m => m.id === selectedPayment.id);
-                     if (paymentIndex !== -1) {
-                        const payObj = mockDatabase.paymentMilestones[paymentIndex];
-                        payObj.status = newStatus || 'paid';
-                        payObj.paid_amount = newCollected;
-                        if (!payObj.payment_entries) payObj.payment_entries = [];
-                        payObj.payment_entries.push(...newEntries);
-                        
-                        // If it's a booking advance, update project status
-                        if (payObj.status === 'paid' && payObj.name === 'Booking Advance') {
-                            const pIdx = mockDatabase.projects.findIndex(p => p.id === projectId);
-                            if (pIdx !== -1) {
-                                mockDatabase.projects[pIdx].status = 'active';
-                            }
+                      // Auto-activate project
+                      const pIdx = mockDatabase.projects.findIndex(p => p.id === projectId);
+                      if (pIdx !== -1) {
+                        mockDatabase.projects[pIdx].status = 'active';
+                      }
+
+                      // Generate automated invoice and receipt for the full amount
+                      if (!mockDatabase.receipts) mockDatabase.receipts = [];
+                      mockDatabase.receipts.unshift({
+                        id: 'REC-' + Date.now(),
+                        projectId,
+                        receiptDate: new Date().toISOString(),
+                        milestoneName: 'Booking Advance Split',
+                        customerName: approval.customer_name || 'Customer',
+                        amount: approval.amount,
+                        paymentMode: 'bank_transfer',
+                        reference: 'Conversion Advance',
+                        status: 'ISSUED'
+                      });
+
+                      if (!mockDatabase.invoices) mockDatabase.invoices = [];
+                      mockDatabase.invoices.unshift({
+                        id: 'INV-AUTO-' + Date.now(),
+                        projectId,
+                        invoiceDate: new Date().toISOString(),
+                        milestoneName: 'Booking Advance Split',
+                        customerName: approval.customer_name || 'Customer',
+                        amount: approval.amount,
+                        status: 'GENERATED',
+                        type: 'TAX_INVOICE',
+                        version: '1.0'
+                      });
+                    } else {
+                      const selectedPayment = approval.payload?.selectedPayment;
+                      const newStatus = approval.payload?.newStatus;
+                      const newCollected = approval.payload?.newCollected;
+                      const newEntries = approval.payload?.newEntries || [];
+
+                      if (selectedPayment) {
+                        const paymentIndex = mockDatabase.paymentMilestones.findIndex(m => m.id === selectedPayment.id);
+                        if (paymentIndex !== -1) {
+                           const payObj = mockDatabase.paymentMilestones[paymentIndex];
+                           payObj.status = newStatus || 'paid';
+                           payObj.paid_amount = newCollected;
+                           if (!payObj.payment_entries) payObj.payment_entries = [];
+                           payObj.payment_entries.push(...newEntries);
+                           
+                           // If it's a booking advance, update project status
+                           if (payObj.status === 'paid' && payObj.name === 'Booking Advance') {
+                               const pIdx = mockDatabase.projects.findIndex(p => p.id === projectId);
+                               if (pIdx !== -1) {
+                                   mockDatabase.projects[pIdx].status = 'active';
+                               }
+                           }
+                           
+                           // Auto-generate receipts globally
+                           if (approval.payload?.splitPayments) {
+                               if (!mockDatabase.receipts) mockDatabase.receipts = [];
+                               const newReceipts = approval.payload.splitPayments.map((sp, i) => ({
+                                   id: 'REC-' + Date.now() + '-' + i,
+                                   projectId,
+                                   receiptDate: new Date().toISOString(),
+                                   milestoneName: selectedPayment.milestone || selectedPayment.title || 'Manual Payment',
+                                   customerName: approval.customer_name || 'Customer',
+                                   amount: sp.amount,
+                                   paymentMode: sp.mode,
+                                   reference: sp.reference || 'N/A',
+                                   status: 'ISSUED'
+                               }));
+                               mockDatabase.receipts.unshift(...newReceipts);
+                               persistDb();
+                           }
+                           
+                           // Auto-generate invoice globally
+                           if (approval.payload?.splitPayments) {
+                               if (!mockDatabase.invoices) mockDatabase.invoices = [];
+                               const totalAmount = approval.payload.splitPayments.reduce((sum, sp) => sum + sp.amount, 0);
+                               const newInvoice = {
+                                   id: 'INV-AUTO-' + Date.now() + Math.floor(Math.random()*1000),
+                                   projectId,
+                                   invoiceDate: new Date().toISOString(),
+                                   milestoneId: selectedPayment.id,
+                                   milestoneName: selectedPayment.milestone || selectedPayment.title || 'Manual Payment',
+                                   customerName: approval.customer_name || 'Customer',
+                                   amount: totalAmount,
+                                   status: 'GENERATED',
+                                   type: 'TAX_INVOICE',
+                                   version: '1.0'
+                               };
+                               mockDatabase.invoices.unshift(newInvoice);
+                               persistDb();
+                           }
                         }
-                        
-                        // Auto-generate receipts globally
-                        if (approval.payload?.splitPayments) {
-                            if (!mockDatabase.receipts) mockDatabase.receipts = [];
-                            const newReceipts = approval.payload.splitPayments.map((sp, i) => ({
-                                id: 'REC-' + Date.now() + '-' + i,
-                                projectId,
-                                receiptDate: new Date().toISOString(),
-                                milestoneName: selectedPayment.milestone || selectedPayment.title || 'Manual Payment',
-                                customerName: approval.customer_name || 'Customer',
-                                amount: sp.amount,
-                                paymentMode: sp.mode,
-                                reference: sp.reference || 'N/A',
-                                status: 'ISSUED'
-                            }));
-                            mockDatabase.receipts.unshift(...newReceipts);
-                            persistDb();
-                        }
-                        
-                        // Auto-generate invoice globally
-                        if (approval.payload?.splitPayments) {
-                            if (!mockDatabase.invoices) mockDatabase.invoices = [];
-                            const totalAmount = approval.payload.splitPayments.reduce((sum, sp) => sum + sp.amount, 0);
-                            const newInvoice = {
-                                id: 'INV-AUTO-' + Date.now() + Math.floor(Math.random()*1000),
-                                projectId,
-                                invoiceDate: new Date().toISOString(),
-                                milestoneId: selectedPayment.id,
-                                milestoneName: selectedPayment.milestone || selectedPayment.title || 'Manual Payment',
-                                customerName: approval.customer_name || 'Customer',
-                                amount: totalAmount,
-                                status: 'GENERATED',
-                                type: 'TAX_INVOICE',
-                                version: '1.0'
-                            };
-                            mockDatabase.invoices.unshift(newInvoice);
-                            persistDb();
-                        }
-                     }
+                      }
+                    }
                   }
                 }
                 
@@ -5240,6 +5901,43 @@ export const setupMockInterceptor = (api) => {
                 { id: 'log3', webhook_id: webhookId, event_type: 'lead.updated', response_status: 200, latency_ms: 145, attempt_count: 2, created_at: new Date(Date.now() - 1000*60*58).toISOString(), request_payload: { id: 'lead1', status: 'qualified' } }
               ];
               responseData.data = mockLogs;
+            }
+          }
+          else if (url.includes('/auth/me') || url.includes('/api/auth/me')) {
+            if (method === 'patch' || method === 'put') {
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const session = JSON.parse(localStorage.getItem('mockSession') || '{}');
+              
+              const isSuperAdmin = session?.role?.name?.toLowerCase() === 'superadmin' || 
+                                   session?.role === 'superadmin' || 
+                                   session?.role?.id === 'superadmin' || 
+                                   session?.role?.id === 'role-mock';
+
+              const updatedUser = {
+                ...session,
+                name: payload.name || session.name,
+                email: (payload.email && isSuperAdmin) ? payload.email : session.email,
+                phone: payload.phone !== undefined ? payload.phone : session.phone,
+                designation: payload.designation !== undefined ? payload.designation : session.designation,
+                avatar_url: payload.avatar_url !== undefined ? payload.avatar_url : session.avatar_url
+              };
+              
+              localStorage.setItem('mockSession', JSON.stringify(updatedUser));
+              
+              if (!mockDatabase.users) mockDatabase.users = [];
+              const idx = mockDatabase.users.findIndex(u => u.id === session.id || u.email === session.email);
+              if (idx !== -1) {
+                mockDatabase.users[idx] = {
+                  ...mockDatabase.users[idx],
+                  name: payload.name || mockDatabase.users[idx].name,
+                  email: (payload.email && isSuperAdmin) ? payload.email : mockDatabase.users[idx].email,
+                  phone: payload.phone !== undefined ? payload.phone : mockDatabase.users[idx].phone,
+                  designation: payload.designation !== undefined ? payload.designation : mockDatabase.users[idx].designation,
+                  avatar_url: payload.avatar_url !== undefined ? payload.avatar_url : mockDatabase.users[idx].avatar_url
+                };
+                persistDb();
+              }
+              responseData.data = updatedUser;
             }
           }
           else if (url.includes('/users/') || url.match(/\/users\/[^/]+$/)) {

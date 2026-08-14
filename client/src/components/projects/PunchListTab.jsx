@@ -19,7 +19,7 @@ const TRADES = [
   { value: 'soft_furnishing', label: 'Soft Furnishing' }
 ];
 
-export default function PunchListTab({ projectId }) {
+export default function PunchListTab({ projectId, projectStatus }) {
   const { confirm } = useConfirm();
 
   const [punchLists, setPunchLists] = useState([]);
@@ -94,6 +94,10 @@ export default function PunchListTab({ projectId }) {
 
   const handleCreateList = async (e) => {
     e.preventDefault();
+    if (projectStatus === 'completed') {
+      toast.warning('Cannot create walkthroughs on a completed project.');
+      return;
+    }
     if (!newTitle.trim()) return toast.error('Walkthrough title is required');
     try {
       const res = await api.post(`/projects/${projectId}/punch-lists`, {
@@ -112,6 +116,10 @@ export default function PunchListTab({ projectId }) {
 
   const handleAddItem = async (e) => {
     e.preventDefault();
+    if (projectStatus === 'completed') {
+      toast.warning('Cannot add items on a completed project.');
+      return;
+    }
     if (!itemRoom.trim()) return toast.error('Room/Area is required');
     if (!itemDesc.trim()) return toast.error('Defect description is required');
     
@@ -141,6 +149,10 @@ export default function PunchListTab({ projectId }) {
 
   const handleResolveItem = async (e) => {
     e.preventDefault();
+    if (projectStatus === 'completed') {
+      toast.warning('Cannot resolve items on a completed project.');
+      return;
+    }
     if (!qcNotes.trim()) return toast.error('QC Notes are required to resolve/sign-off');
 
     try {
@@ -167,6 +179,10 @@ export default function PunchListTab({ projectId }) {
   };
 
   const handleVerifyItem = async (itemId) => {
+    if (projectStatus === 'completed') {
+      toast.warning('Cannot verify items on a completed project.');
+      return;
+    }
     try {
       await api.patch(`/projects/${projectId}/punch-lists/${selectedList.id}/items/${itemId}`, {
         status: 'verified'
@@ -184,6 +200,10 @@ export default function PunchListTab({ projectId }) {
   };
 
   const handleUpdateItemAssignee = async (itemId, assigneeId) => {
+    if (projectStatus === 'completed') {
+      toast.warning('Cannot update assignees on a completed project.');
+      return;
+    }
     try {
       await api.patch(`/projects/${projectId}/punch-lists/${selectedList.id}/items/${itemId}`, {
         assignee_id: assigneeId || null
@@ -196,6 +216,10 @@ export default function PunchListTab({ projectId }) {
   };
 
   const handleDeleteItem = async (itemId) => {
+    if (projectStatus === 'completed') {
+      toast.warning('Cannot delete items on a completed project.');
+      return;
+    }
     if (!await confirm('Are you sure you want to delete this walkthrough item?')) return;
     try {
       await api.delete(`/projects/${projectId}/punch-lists/${selectedList.id}/items/${itemId}`);
@@ -207,6 +231,10 @@ export default function PunchListTab({ projectId }) {
   };
 
   const handleDeleteList = async (listId) => {
+    if (projectStatus === 'completed') {
+      toast.warning('Cannot delete walkthrough lists on a completed project.');
+      return;
+    }
     if (!await confirm('Delete this walkthrough list and all its items permanently?')) return;
     try {
       await api.delete(`/projects/${projectId}/punch-lists/${listId}`);
@@ -237,7 +265,9 @@ export default function PunchListTab({ projectId }) {
       <div className={styles.sidebar}>
         <div className={styles.sidebarHeader}>
           <h3>Walkthrough Events</h3>
-          <Button size="sm" onClick={async () => setShowCreateModal(true)}>+ New Walkthrough</Button>
+          {projectStatus !== 'completed' && (
+            <Button size="sm" onClick={async () => setShowCreateModal(true)}>+ New Walkthrough</Button>
+          )}
         </div>
         
         {punchLists.length === 0 ? (
@@ -265,16 +295,18 @@ export default function PunchListTab({ projectId }) {
                   <span>Resolved: {l.resolved_items}</span>
                   <span>Verified: {l.verified_items}</span>
                 </div>
-                <button 
-                  className={styles.deleteListBtn} 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteList(l.id);
-                  }}
-                  title="Delete walkthrough"
-                >
-                  ✕
-                </button>
+                {projectStatus !== 'completed' && (
+                  <button 
+                    className={styles.deleteListBtn} 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteList(l.id);
+                    }}
+                    title="Delete walkthrough"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -289,7 +321,9 @@ export default function PunchListTab({ projectId }) {
           <div className={styles.emptyState}>
             <h2>Pre-Handover Punch Lists</h2>
             <p>Select a walkthrough event from the sidebar or record a new pre-handover walkthrough to track defects and item sign-offs.</p>
-            <Button onClick={async () => setShowCreateModal(true)}>Record First Walkthrough</Button>
+            {projectStatus !== 'completed' && (
+              <Button onClick={async () => setShowCreateModal(true)}>Record First Walkthrough</Button>
+            )}
           </div>
         ) : (
           <div className={styles.detailsCard}>
@@ -302,15 +336,19 @@ export default function PunchListTab({ projectId }) {
                   <span><strong>Status:</strong> {getStatusBadge(selectedList.status)}</span>
                 </div>
               </div>
-              <div className={styles.headerActions}>
-                <Button variant="outline" onClick={async () => setShowItemModal(true)}>+ Add Walkthrough Item</Button>
-              </div>
+              {projectStatus !== 'completed' && (
+                <div className={styles.headerActions}>
+                  <Button variant="outline" onClick={async () => setShowItemModal(true)}>+ Add Walkthrough Item</Button>
+                </div>
+              )}
             </div>
 
-            {selectedList.items?.length === 0 ? (
+            {(!selectedList.items || selectedList.items.length === 0) ? (
               <div className={styles.emptyItems}>
                 <p>No punch list items added to this walkthrough yet.</p>
-                <Button size="sm" onClick={async () => setShowItemModal(true)}>Add Walkthrough Item</Button>
+                {projectStatus !== 'completed' && (
+                  <Button size="sm" onClick={async () => setShowItemModal(true)}>Add Walkthrough Item</Button>
+                )}
               </div>
             ) : (
               <div className={styles.tableResponsive}>
@@ -327,7 +365,7 @@ export default function PunchListTab({ projectId }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {selectedList.items.map(item => (
+                    {(selectedList.items || []).map(item => (
                       <tr key={item.id} className={item.status === 'verified' ? styles.rowVerified : ''}>
                         <td className={styles.tdRoom}><strong>{item.room_name}</strong></td>
                         <td className={styles.tdTrade}>
@@ -339,7 +377,7 @@ export default function PunchListTab({ projectId }) {
                         <td className={styles.tdAssignee}>
                           <select 
                             value={item.assignee_id || ''}
-                            disabled={item.status === 'verified'}
+                            disabled={item.status === 'verified' || projectStatus === 'completed'}
                             className={styles.selectAssignee}
                             onChange={(e) => handleUpdateItemAssignee(item.id, e.target.value)}
                           >
@@ -351,19 +389,24 @@ export default function PunchListTab({ projectId }) {
                         </td>
                         <td className={styles.tdStatus}>{getStatusBadge(item.status)}</td>
                         <td className={styles.tdQc}>
-                          {item.status === 'open' && (
+                          {projectStatus !== 'completed' && item.status === 'open' && (
                             <Button size="xs" variant="primary" onClick={async () => openResolveModal(item.id)}>
                               Close as QC Passed
                             </Button>
+                          )}
+                          {projectStatus === 'completed' && item.status === 'open' && (
+                            <span style={{fontSize:11, color:'var(--color-text-muted)'}}>Locked</span>
                           )}
                           
                           {item.status === 'resolved' && (
                             <div className={styles.qcPassedBlock}>
                               <div className={styles.qcReviewer}>✔ QC Review Done</div>
                               <div className={styles.qcNotes}>Note: "{item.qc_notes}"</div>
-                              <Button size="xs" variant="success" style={{ marginTop: 6 }} onClick={async () => handleVerifyItem(item.id)}>
-                                Mark Verified (Client Sign-Off)
-                              </Button>
+                              {projectStatus !== 'completed' && (
+                                <Button size="xs" variant="success" style={{ marginTop: 6 }} onClick={async () => handleVerifyItem(item.id)}>
+                                  Mark Verified (Client Sign-Off)
+                                </Button>
+                              )}
                             </div>
                           )}
 
@@ -377,13 +420,15 @@ export default function PunchListTab({ projectId }) {
                           )}
                         </td>
                         <td>
-                          <button 
-                            className={styles.deleteItemBtn}
-                            onClick={async () => handleDeleteItem(item.id)}
-                            title="Delete Item"
-                          >
-                            🗑
-                          </button>
+                          {projectStatus !== 'completed' && (
+                            <button 
+                              className={styles.deleteItemBtn}
+                              onClick={async () => handleDeleteItem(item.id)}
+                              title="Delete Item"
+                            >
+                              🗑
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}

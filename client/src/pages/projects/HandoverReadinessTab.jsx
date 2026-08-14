@@ -5,7 +5,9 @@ import {
   getHandoverReadiness,
   pmSignOffHandoverReadiness,
   getHandoverAppointments,
-  scheduleHandoverAppointment
+  scheduleHandoverAppointment,
+  updateHandoverAppointment,
+  deleteHandoverAppointment
 } from '../../api/handover';
 import { Button } from '../../components/ui';
 import { useToast } from '../../store/toastContext';
@@ -20,8 +22,10 @@ export default function HandoverReadinessTab({ projectId }) {
   const [submittingAppt, setSubmittingAppt] = useState(false);
 
   // Appointment Form state
-  const [apptDate, setApptDate] = useState('');
+  const [apptDateOnly, setApptDateOnly] = useState('');
+  const [apptTimeOnly, setApptTimeOnly] = useState('');
   const [apptNotes, setApptNotes] = useState('');
+  const [editingApptId, setEditingApptId] = useState(null);
 
   const loadData = async () => {
     try {
@@ -30,6 +34,7 @@ export default function HandoverReadinessTab({ projectId }) {
         getHandoverReadiness(projectId),
         getHandoverAppointments(projectId)
       ]);
+      console.log('[HandoverReadinessTab] Loaded readinessRes:', readinessRes, 'apptsRes:', apptsRes);
       setReadiness(readinessRes);
       setAppointments(apptsRes);
     } catch (err) {
@@ -63,27 +68,78 @@ export default function HandoverReadinessTab({ projectId }) {
 
   const handleScheduleAppointment = async (e) => {
     e.preventDefault();
-    if (!apptDate) {
-      toast.warning('Please select a scheduled date and time.');
+    if (!apptDateOnly || !apptTimeOnly) {
+      toast.warning('Please select both date and time.');
       return;
     }
 
     try {
       setSubmittingAppt(true);
-      await scheduleHandoverAppointment(projectId, {
-        appointmentDate: new Date(apptDate).toISOString(),
-        notes: apptNotes || null
-      });
-      toast.success('Handover appointment scheduled successfully.');
-      setApptDate('');
+      const combinedDateTime = new Date(`${apptDateOnly}T${apptTimeOnly}`).toISOString();
+      if (editingApptId) {
+        await updateHandoverAppointment(projectId, editingApptId, {
+          appointmentDate: combinedDateTime,
+          notes: apptNotes || null
+        });
+        toast.success('Handover appointment rescheduled successfully.');
+        setEditingApptId(null);
+      } else {
+        await scheduleHandoverAppointment(projectId, {
+          appointmentDate: combinedDateTime,
+          notes: apptNotes || null
+        });
+        toast.success('Handover appointment scheduled successfully.');
+      }
+      setApptDateOnly('');
+      setApptTimeOnly('');
       setApptNotes('');
       await loadData();
     } catch (err) {
-      console.error('[HandoverReadinessTab] Schedule error:', err);
+      console.error('[HandoverReadinessTab] Schedule/Reschedule error:', err);
       const errorMsg = err.response?.data?.message || err.message || 'Failed to schedule appointment.';
       toast.error(errorMsg);
     } finally {
       setSubmittingAppt(false);
+    }
+  };
+
+  const handleEditClick = (appt) => {
+    if (appt.appointment_date) {
+      const localDate = new Date(appt.appointment_date);
+      const yyyy = localDate.getFullYear();
+      const mm = String(localDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(localDate.getDate()).padStart(2, '0');
+      setApptDateOnly(`${yyyy}-${mm}-${dd}`);
+      
+      const hh = String(localDate.getHours()).padStart(2, '0');
+      const min = String(localDate.getMinutes()).padStart(2, '0');
+      setApptTimeOnly(`${hh}:${min}`);
+    } else {
+      setApptDateOnly('');
+      setApptTimeOnly('');
+    }
+    setApptNotes(appt.notes || '');
+    setEditingApptId(appt.id);
+  };
+
+  const handleDeleteClick = async (apptId) => {
+    if (window.confirm('Are you sure you want to delete this scheduled handover appointment?')) {
+      try {
+        setLoading(true);
+        await deleteHandoverAppointment(projectId, apptId);
+        toast.success('Handover appointment deleted successfully.');
+        if (editingApptId === apptId) {
+          setEditingApptId(null);
+          setApptDateOnly('');
+          setApptTimeOnly('');
+          setApptNotes('');
+        }
+        await loadData();
+      } catch (err) {
+        console.error('[HandoverReadinessTab] Delete error:', err);
+        toast.error('Failed to delete appointment.');
+        setLoading(false);
+      }
     }
   };
 
@@ -95,8 +151,14 @@ export default function HandoverReadinessTab({ projectId }) {
     return <div className={styles.loading}>No checklist/readiness record found. Please ensure project is active.</div>;
   }
 
-  const { overallReady, gates } = readiness;
-  const { tasksCompleted, snagsResolved, paymentsCleared, documentsUploaded, pmSignedOff } = gates;
+  const { overallReady = false, gates = {} } = readiness || {};
+  const {
+    tasksCompleted = { passed: false, message: 'Loading execution task status...' },
+    snagsResolved = { passed: false, message: 'Loading quality snag status...' },
+    paymentsCleared = { passed: false, message: 'Loading billing clearance...' },
+    documentsUploaded = { passed: false, message: 'Loading document approval status...' },
+    pmSignedOff = { passed: false, message: 'Awaiting PM review...' }
+  } = gates;
 
   // Verification helpers
   const canPMSignOff = tasksCompleted.passed && snagsResolved.passed && paymentsCleared.passed && documentsUploaded.passed;
@@ -227,21 +289,34 @@ export default function HandoverReadinessTab({ projectId }) {
 
         {/* Appointment Scheduler Card */}
         <div className={styles.apptCard}>
-          <h3 className={styles.cardHeader}>Schedule Client Handover</h3>
+          <h3 className={styles.cardHeader}>{editingApptId ? 'Reschedule Handover Meeting' : 'Schedule Client Handover'}</h3>
           <form onSubmit={handleScheduleAppointment} className={styles.cardBody}>
             <p className={styles.cardDesc}>
-              Book the client appointment for site handover and key delivery (disabled until all gates are green).
+              {editingApptId ? 'Modify the date, time, and instructions for this handover meeting.' : 'Book the client appointment for site handover and key delivery (disabled until all gates are green).'}
             </p>
 
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Appointment Date & Time</label>
-              <input
-                type="datetime-local"
-                className={styles.input}
-                value={apptDate}
-                onChange={(e) => setApptDate(e.target.value)}
-                disabled={!overallReady || submittingAppt}
-              />
+            <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+              <div className={styles.formGroup} style={{ flex: 1 }}>
+                <label className={styles.label}>Appointment Date 📅</label>
+                <input
+                  type="date"
+                  className={styles.input}
+                  value={apptDateOnly}
+                  onChange={(e) => setApptDateOnly(e.target.value)}
+                  disabled={!overallReady || submittingAppt}
+                />
+              </div>
+
+              <div className={styles.formGroup} style={{ flex: 1 }}>
+                <label className={styles.label}>Appointment Time 🕒</label>
+                <input
+                  type="time"
+                  className={styles.input}
+                  value={apptTimeOnly}
+                  onChange={(e) => setApptTimeOnly(e.target.value)}
+                  disabled={!overallReady || submittingAppt}
+                />
+              </div>
             </div>
 
             <div className={styles.formGroup}>
@@ -255,13 +330,30 @@ export default function HandoverReadinessTab({ projectId }) {
               />
             </div>
 
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={!overallReady || submittingAppt}
-            >
-              {submittingAppt ? 'Scheduling...' : 'Schedule Handover Meeting'}
-            </Button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={!overallReady || submittingAppt}
+                style={{ flex: 1 }}
+              >
+                {submittingAppt ? (editingApptId ? 'Updating...' : 'Scheduling...') : (editingApptId ? 'Update & Reschedule' : 'Schedule Handover Meeting')}
+              </Button>
+              {editingApptId && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setEditingApptId(null);
+                    setApptDateOnly('');
+                    setApptTimeOnly('');
+                    setApptNotes('');
+                  }}
+                >
+                  Cancel Edit
+                </Button>
+              )}
+            </div>
           </form>
         </div>
       </div>
@@ -284,9 +376,29 @@ export default function HandoverReadinessTab({ projectId }) {
                   {appt.notes && <span className={styles.apptNotes}>{appt.notes}</span>}
                   <span className={styles.apptMeta}>Scheduled by {appt.creator_name || 'Project Manager'}</span>
                 </div>
-                <span className={`${styles.badge} ${styles['badge_' + appt.status] || styles.badgeScheduled}`}>
-                  {appt.status}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span className={`${styles.badge} ${styles['badge_' + appt.status] || styles.badgeScheduled}`}>
+                    {appt.status}
+                  </span>
+                  {overallReady && (
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <Button
+                        variant="outline"
+                        onClick={() => handleEditClick(appt)}
+                        style={{ padding: '4px 8px', fontSize: '11px', height: 'auto', minWidth: 'auto' }}
+                      >
+                        ✏️ Edit
+                      </Button>
+                      <Button
+                        variant="danger"
+                        onClick={() => handleDeleteClick(appt.id)}
+                        style={{ padding: '4px 8px', fontSize: '11px', height: 'auto', minWidth: 'auto', background: 'var(--color-danger, #ef4444)', color: '#fff' }}
+                      >
+                        🗑️ Delete
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>

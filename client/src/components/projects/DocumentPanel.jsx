@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Badge, Button, Modal, Spinner } from '../ui';
 import styles from './DocumentPanel.module.css';
-import { getDocuments, updateDocumentVisibility, getDocumentComments, addDocumentComment } from '../../api/projects';
+import { getDocuments, updateDocumentVisibility, getDocumentComments, addDocumentComment, deleteDocument } from '../../api/projects';
 import { useToast } from '../../store/toastContext';
 import { useS3Upload } from '../../hooks/useS3Upload';
 
@@ -75,7 +75,7 @@ function getStatusVariant(st) {
   return 'warning';
 }
 
-export default function DocumentPanel({ projectId }) {
+export default function DocumentPanel({ projectId, projectStatus }) {
   const toast = useToast();
   const { upload } = useS3Upload();
   
@@ -124,6 +124,10 @@ export default function DocumentPanel({ projectId }) {
   };
 
   const handleToggleVisibility = async (docId, currentVisibility) => {
+    if (projectStatus === 'completed') {
+      toast.warning('Cannot toggle visibility on a completed project.');
+      return;
+    }
     try {
       await updateDocumentVisibility(projectId, docId, !currentVisibility);
       toast.success('Document visibility updated successfully.');
@@ -131,6 +135,23 @@ export default function DocumentPanel({ projectId }) {
     } catch (err) {
       console.error(err);
       toast.error('Failed to update visibility.');
+    }
+  };
+
+  const handleDeleteDocument = async (docId) => {
+    if (projectStatus === 'completed') {
+      toast.warning('Cannot delete documents of a completed project.');
+      return;
+    }
+    if (window.confirm('Are you sure you want to delete this document?')) {
+      try {
+        await deleteDocument(projectId, docId);
+        toast.success('Document deleted successfully.');
+        fetchDocs();
+      } catch (err) {
+        console.error(err);
+        toast.error('Failed to delete document.');
+      }
     }
   };
 
@@ -149,6 +170,10 @@ export default function DocumentPanel({ projectId }) {
   const handlePostComment = async (e) => {
     e.preventDefault();
     if (!newCommentText.trim()) return;
+    if (projectStatus === 'completed') {
+      toast.warning('Cannot add comments on a completed project.');
+      return;
+    }
     try {
       const res = await addDocumentComment(projectId, selectedDocComments.id, newCommentText);
       const newComment = res.data?.data || res.data;
@@ -287,6 +312,7 @@ export default function DocumentPanel({ projectId }) {
                   className={`${styles.visibilityBtn} ${doc.isVisibleToClient ? styles.visible : styles.private}`}
                   onClick={() => handleToggleVisibility(doc.id, doc.isVisibleToClient)}
                   title="Toggle Client Visibility"
+                  disabled={projectStatus === 'completed'}
                 >
                   {doc.isVisibleToClient ? '👁 Shared' : '🔒 Private'}
                 </button>
@@ -298,17 +324,44 @@ export default function DocumentPanel({ projectId }) {
                 >
                   💬 Comments
                 </button>
+                {projectStatus !== 'completed' && (
+                  <button 
+                    type="button"
+                    onClick={() => handleDeleteDocument(doc.id)}
+                    title="Delete Document"
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--color-danger, #ef4444)',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      padding: '6px 10px',
+                      borderRadius: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.target.style.background = '#fef2f2'}
+                    onMouseLeave={(e) => e.target.style.background = 'none'}
+                  >
+                    🗑️ Delete
+                  </button>
+                )}
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      <div className={styles.uploadBtn}>
-        <Button variant="primary" onClick={openUploadModal}>
-          + Upload Document
-        </Button>
-      </div>
+      {projectStatus !== 'completed' && (
+        <div className={styles.uploadBtn}>
+          <Button variant="primary" onClick={openUploadModal}>
+            + Upload Document
+          </Button>
+        </div>
+      )}
 
       <Modal
         isOpen={isUploadModalOpen}
@@ -386,18 +439,20 @@ export default function DocumentPanel({ projectId }) {
               ))
             )}
           </div>
-          <form onSubmit={handlePostComment} className={styles.commentForm}>
-            <textarea
-              className={styles.commentArea}
-              placeholder="Type your response/feedback here..."
-              value={newCommentText}
-              onChange={(e) => setNewCommentText(e.target.value)}
-              required
-            />
-            <Button variant="primary" type="submit" size="sm">
-              Send Comment
-            </Button>
-          </form>
+          {projectStatus !== 'completed' && (
+            <form onSubmit={handlePostComment} className={styles.commentForm}>
+              <textarea
+                className={styles.commentArea}
+                placeholder="Type your response/feedback here..."
+                value={newCommentText}
+                onChange={(e) => setNewCommentText(e.target.value)}
+                required
+              />
+              <Button variant="primary" type="submit" size="sm">
+                Send Comment
+              </Button>
+            </form>
+          )}
         </div>
       </Modal>
     </div>

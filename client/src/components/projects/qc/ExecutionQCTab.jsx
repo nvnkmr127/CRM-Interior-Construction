@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from 'react';
-import api from '../../../api';
+import api from '../../../api/axios';
 import { Button, Badge, Card } from '../../ui';
 
 export default function ExecutionQCTab({ projectId, project }) {
@@ -20,8 +20,8 @@ export default function ExecutionQCTab({ projectId, project }) {
         api.get('/qc/templates'),
         api.get(`/projects/${projectId}/qc`)
       ]);
-      setTemplates(tplRes.data || []);
-      setStages(stgRes.data || []);
+      setTemplates(Array.isArray(tplRes.data?.data) ? tplRes.data.data : (Array.isArray(tplRes.data) ? tplRes.data : []));
+      setStages(Array.isArray(stgRes.data?.data) ? stgRes.data.data : (Array.isArray(stgRes.data) ? stgRes.data : []));
       if (executionPhases.length > 0) {
         setSelectedPhase(executionPhases[0].id);
       } else if (project?.phases?.length > 0) {
@@ -39,6 +39,10 @@ export default function ExecutionQCTab({ projectId, project }) {
   }, [projectId]);
 
   const handleInitializeStage = async () => {
+    if (project?.status === 'completed') {
+      alert('Cannot initialize QC checklists on a completed project.');
+      return;
+    }
     if (!selectedPhase || !selectedTemplate) {
       alert('Please select both a phase and a template to initialize.');
       return;
@@ -57,6 +61,10 @@ export default function ExecutionQCTab({ projectId, project }) {
   };
 
   const handleUpdateItem = async (stageId, itemId, payload) => {
+    if (project?.status === 'completed') {
+      alert('Cannot update QC items on a completed project.');
+      return;
+    }
     try {
       await api.put(`/projects/${projectId}/qc/${stageId}/items/${itemId}`, payload);
       loadData();
@@ -67,6 +75,10 @@ export default function ExecutionQCTab({ projectId, project }) {
   };
 
   const handleSignOff = async (stageId) => {
+    if (project?.status === 'completed') {
+      alert('Cannot sign off stages on a completed project.');
+      return;
+    }
     try {
       await api.post(`/projects/${projectId}/qc/${stageId}/sign-off`);
       loadData();
@@ -85,36 +97,38 @@ export default function ExecutionQCTab({ projectId, project }) {
       </div>
 
       {/* Add new Stage Form */}
-      <Card style={{ padding: '20px' }}>
-        <h3 style={{ margin: '0 0 16px 0', fontSize: 'var(--text-md)' }}>Add QC Stage to Phase</h3>
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-          <select 
-            value={selectedPhase} 
-            onChange={e => setSelectedPhase(e.target.value)}
-            style={{ padding: '8px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
-          >
-            <option value="">Select Phase</option>
-            {project?.phases?.map(p => (
-              <option key={p.id} value={p.id}>{p.name} ({p.status})</option>
-            ))}
-          </select>
+      {project?.status !== 'completed' && (
+        <Card style={{ padding: '20px' }}>
+          <h3 style={{ margin: '0 0 16px 0', fontSize: 'var(--text-md)' }}>Add QC Stage to Phase</h3>
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+            <select 
+              value={selectedPhase} 
+              onChange={e => setSelectedPhase(e.target.value)}
+              style={{ padding: '8px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
+            >
+              <option value="">Select Phase</option>
+              {project?.phases?.map(p => (
+                <option key={p.id} value={p.id}>{p.name} ({p.status})</option>
+              ))}
+            </select>
 
-          <select 
-            value={selectedTemplate} 
-            onChange={e => setSelectedTemplate(e.target.value)}
-            style={{ padding: '8px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
-          >
-            <option value="">Select QC Template</option>
-            {templates.map(t => (
-              <option key={t.id} value={t.id}>{t.stage_name}</option>
-            ))}
-          </select>
+            <select 
+              value={selectedTemplate} 
+              onChange={e => setSelectedTemplate(e.target.value)}
+              style={{ padding: '8px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
+            >
+              <option value="">Select QC Template</option>
+              {templates.map(t => (
+                <option key={t.id} value={t.id}>{t.stage_name}</option>
+              ))}
+            </select>
 
-          <Button variant="primary" onClick={handleInitializeStage}>
-            Add Checklist
-          </Button>
-        </div>
-      </Card>
+            <Button variant="primary" onClick={handleInitializeStage}>
+              Add Checklist
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* List Stages */}
       {stages.length === 0 ? (
@@ -143,7 +157,7 @@ export default function ExecutionQCTab({ projectId, project }) {
                     </div>
                   </div>
                   
-                  {stage.status !== 'completed' && (
+                  {stage.status !== 'completed' && project?.status !== 'completed' && (
                     <Button 
                       variant="primary" 
                       onClick={() => handleSignOff(stage.id)}
@@ -176,7 +190,7 @@ export default function ExecutionQCTab({ projectId, project }) {
                         </td>
                         <td style={{ padding: '12px 8px', textAlign: 'center' }}>
                           <select 
-                            disabled={stage.status === 'completed'}
+                            disabled={stage.status === 'completed' || project?.status === 'completed'}
                             value={item.is_passed === true ? 'pass' : item.is_passed === false ? 'fail' : ''}
                             onChange={(e) => {
                               const val = e.target.value === 'pass' ? true : e.target.value === 'fail' ? false : null;
@@ -195,12 +209,12 @@ export default function ExecutionQCTab({ projectId, project }) {
                           {item.photo_url ? (
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                               <a href={item.photo_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 'var(--text-xs)' }}>View Photo</a>
-                              {stage.status !== 'completed' && (
+                              {stage.status !== 'completed' && project?.status !== 'completed' && (
                                 <button onClick={() => handleUpdateItem(stage.id, item.id, { photo_url: null })} style={{background:'none', border:'none', color:'red', cursor:'pointer', fontSize:'10px'}}>Remove</button>
                               )}
                             </div>
                           ) : (
-                            stage.status !== 'completed' && (
+                            stage.status !== 'completed' && project?.status !== 'completed' && (
                               <button onClick={() => {
                                 const url = prompt('Enter photo URL (Mock upload):');
                                 if (url) handleUpdateItem(stage.id, item.id, { photo_url: url });
@@ -213,7 +227,7 @@ export default function ExecutionQCTab({ projectId, project }) {
                         <td style={{ padding: '12px 8px' }}>
                           <input 
                             type="text" 
-                            disabled={stage.status === 'completed'}
+                            disabled={stage.status === 'completed' || project?.status === 'completed'}
                             value={item.notes || ''}
                             onChange={(e) => handleUpdateItem(stage.id, item.id, { notes: e.target.value })}
                             placeholder="Add notes..."

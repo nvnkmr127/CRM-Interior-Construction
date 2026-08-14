@@ -175,6 +175,182 @@ router.post('/refresh', async (req, res, next) => {
     // for unknown ones, but the user requested: 401 { error: 'Session expired. Please login again.' }
     // Let's explicitly format it here to fulfill that specific prompt requirement.
     return fail(res, 'UNAUTHORIZED', 'Session expired. Please login again.', 401);
+const express = require('express');
+const { z } = require('zod');
+const pool = require('../db/pool');
+const { registerUser } = require('../services/auth/register');
+const { loginUser } = require('../services/auth/login');
+const { refreshTokens } = require('../services/auth/refresh');
+const { logoutUser } = require('../services/auth/logout');
+const authenticate = require('../middleware/authenticate');
+const { queueEmail } = require('../services/emailService');
+const { success, fail } = require('../utils/response');
+
+const router = express.Router();
+
+const registerSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  email: z.string().email('Invalid email format'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  tenantSlug: z.string().min(1, 'Tenant slug is required')
+});
+
+router.post('/register', async (req, res, next) => {
+  try {
+    // 1. Validate body with zod
+    const parsed = registerSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const error = new Error('Validation failed');
+      error.isValidation = true;
+      error.details = parsed.error.issues;
+      return next(error);
+    }
+
+    const { name, email, password, tenantSlug } = parsed.data;
+
+    // 2. Lookup tenant by slug
+    const tenantResult = await pool.query(
+      'SELECT id FROM tenants WHERE slug = $1 LIMIT 1',
+      [tenantSlug]
+    );
+
+    if (tenantResult.rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Tenant not found', 404);
+    }
+
+    const tenantId = tenantResult.rows[0].id;
+
+    // Default role ID can be null for now, or you can implement logic to fetch a basic role
+    const defaultRoleId = null;
+
+    // 3. Call registerUser
+    const user = await registerUser({ tenantId, email, name, password, roleId: defaultRoleId });
+
+    // 4. Return 201
+    return success(res, { user }, {}, 201);
+  } catch (error) {
+    next(error);
+  }
+});
+
+const loginSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  password: z.string().min(1, 'Password is required'),
+  tenantSlug: z.string().min(1, 'Tenant slug is required')
+});
+
+router.post('/login', async (req, res, next) => {
+  try {
+    // 1. Validate with zod
+    const parsed = loginSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const error = new Error('Validation failed');
+      error.isValidation = true;
+      error.details = parsed.error.issues;
+      return next(error);
+    }
+
+    const { email, password, tenantSlug } = parsed.data;
+
+    // 2. Lookup tenant by slug -> tenantId
+    const tenantResult = await pool.query(
+      'SELECT id FROM tenants WHERE slug = $1 LIMIT 1',
+      [tenantSlug]
+    );
+
+    if (tenantResult.rows.length === 0) {
+      // Return 401 instead of 404 to avoid exposing whether a tenant exists for arbitrary slugs
+      return fail(res, 'INVALID_CREDENTIALS', 'Invalid email or password', 401);
+    }
+
+    const tenantId = tenantResult.rows[0].id;
+
+    // 3. Call loginUser
+    const ip = req.ip || req.connection?.remoteAddress || 'Unknown';
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+    const loginResult = await loginUser({
+      email,
+      password,
+      tenantId,
+      ip,
+      userAgent
+    });
+
+    if (loginResult.mfaRequired) {
+      return success(res, {
+        mfaRequired: true,
+        tempToken: loginResult.tempToken,
+        user: loginResult.user
+      });
+    }
+
+    const { accessToken, refreshToken, user } = loginResult;
+
+    // Set refreshToken and accessToken as httpOnly cookies
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    const cookieOptions = {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+    };
+
+    res.cookie('refreshToken', refreshToken, {
+      ...cookieOptions,
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
+    res.cookie('accessToken', accessToken, {
+      ...cookieOptions,
+      maxAge: 15 * 60 * 1000 // 15 minutes (or however long your token is valid)
+    });
+
+    // 4. Return 200 and expose tokens in JS payload for mobile apps
+    return success(res, { user, accessToken, refreshToken });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/refresh', async (req, res, next) => {
+  try {
+    // 1. Extract refreshToken (body first, then cookie)
+    const rawRefreshToken = req.body.refreshToken || (req.cookies && req.cookies.refreshToken);
+
+    // 2. If missing -> 401
+    if (!rawRefreshToken) {
+      return fail(res, 'UNAUTHORIZED', 'No refresh token', 401);
+    }
+
+    // 3. Call refreshTokens
+    const { accessToken, refreshToken } = await refreshTokens(rawRefreshToken);
+
+    // 5. Set new refreshToken and accessToken cookies
+    const isProduction = process.env.NODE_ENV === 'production';
+    const cookieOptions = {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+    };
+
+    res.cookie('refreshToken', refreshToken, {
+      ...cookieOptions,
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
+    res.cookie('accessToken', accessToken, {
+      ...cookieOptions,
+      maxAge: 15 * 60 * 1000 // 15 minutes
+    });
+
+    // 4. Return 200
+    return success(res, {});
+  } catch (error) {
+    // If the refresh service throws an error (error.g., TOKEN_INVALID), we can treat it as UNAUTHORIZED
+    // Alternatively, let the global handler catch named errors. The global handler will throw 500
+    // for unknown ones, but the user requested: 401 { error: 'Session expired. Please login again.' }
+    // Let's explicitly format it here to fulfill that specific prompt requirement.
+    return fail(res, 'UNAUTHORIZED', 'Session expired. Please login again.', 401);
   }
 });
 
@@ -203,7 +379,7 @@ router.get('/me', authenticate, async (req, res, next) => {
 
     const query = `
       SELECT 
-        u.id, u.name, u.email, u.status, u.avatar_url, u.created_at,
+        u.id, u.name, u.email, u.status, u.avatar_url, u.created_at, u.profile_data,
         r.id as role_id, r.name as role_name, r.permissions as role_permissions
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.id
@@ -214,7 +390,6 @@ router.get('/me', authenticate, async (req, res, next) => {
     const result = await pool.query(query, [userId]);
 
     if (result.rows.length === 0) {
-
       return fail(res, 'NOT_FOUND', 'User not found', 404);
     }
 
@@ -228,6 +403,8 @@ router.get('/me', authenticate, async (req, res, next) => {
       enabledModules = Array.isArray(p) ? [] : (p.modules || []);
     }
 
+    const profile = row.profile_data || {};
+
     const user = {
       id: row.id,
       name: row.name,
@@ -235,6 +412,8 @@ router.get('/me', authenticate, async (req, res, next) => {
       status: row.status,
       avatar_url: row.avatar_url,
       created_at: row.created_at,
+      phone: profile.phone || '',
+      designation: profile.designation || '',
       role: row.role_id ? {
         id: row.role_id,
         name: row.role_name,
@@ -243,7 +422,6 @@ router.get('/me', authenticate, async (req, res, next) => {
       } : null
     };
 
-    // Attach permissions to req.user for downstream use if needed
     req.user.permissions = actions;
     req.user.enabled_modules = enabledModules;
 
@@ -253,11 +431,28 @@ router.get('/me', authenticate, async (req, res, next) => {
     next(error);
   }
 });
+
 router.patch('/me', authenticate, async (req, res, next) => {
   try {
     const userId = req.user.id || req.user.userId;
     const tenantId = req.tenantId;
-    const { name, avatar_url } = req.body;
+
+    const userQuery = await pool.query(`
+      SELECT u.profile_data, r.name as role_name 
+      FROM users u
+      LEFT JOIN roles r ON u.role_id = r.id
+      WHERE u.id = $1 AND u.tenant_id = $2
+    `, [userId, tenantId]);
+
+    if (userQuery.rows.length === 0) {
+      return res.status(404).json(fail('User not found'));
+    }
+
+    const roleName = userQuery.rows[0].role_name || '';
+    const isSuperAdmin = roleName.toLowerCase() === 'superadmin';
+    const currentProfileData = userQuery.rows[0].profile_data || {};
+
+    const { name, avatar_url, email, phone, designation } = req.body;
 
     const updates = [];
     const params = [userId, tenantId];
@@ -269,6 +464,25 @@ router.patch('/me', authenticate, async (req, res, next) => {
     if (avatar_url !== undefined) {
       params.push(avatar_url);
       updates.push(`avatar_url = $${params.length}`);
+    }
+    if (email && isSuperAdmin) {
+      params.push(email);
+      updates.push(`email = $${params.length}`);
+    }
+
+    let profileUpdated = false;
+    if (phone !== undefined) {
+      currentProfileData.phone = phone;
+      profileUpdated = true;
+    }
+    if (designation !== undefined) {
+      currentProfileData.designation = designation;
+      profileUpdated = true;
+    }
+
+    if (profileUpdated) {
+      params.push(JSON.stringify(currentProfileData));
+      updates.push(`profile_data = $${params.length}`);
     }
 
     if (updates.length === 0) {
@@ -287,7 +501,43 @@ router.patch('/me', authenticate, async (req, res, next) => {
       return res.status(404).json(fail('User not found'));
     }
 
-    const { password_hash: _password_hash, ...safeUser } = result.rows[0];
+    const fullQuery = await pool.query(`
+      SELECT 
+        u.id, u.name, u.email, u.status, u.avatar_url, u.created_at, u.profile_data,
+        r.id as role_id, r.name as role_name, r.permissions as role_permissions
+      FROM users u
+      LEFT JOIN roles r ON u.role_id = r.id
+      WHERE u.id = $1
+      LIMIT 1
+    `, [userId]);
+
+    const updatedRow = fullQuery.rows[0];
+    let actions = [];
+    let enabledModules = [];
+    if (updatedRow.role_permissions) {
+      const p = typeof updatedRow.role_permissions === 'string' ? JSON.parse(updatedRow.role_permissions) : updatedRow.role_permissions;
+      actions = Array.isArray(p) ? p : (p.actions || []);
+      enabledModules = Array.isArray(p) ? [] : (p.modules || []);
+    }
+
+    const finalProfile = updatedRow.profile_data || {};
+    const safeUser = {
+      id: updatedRow.id,
+      name: updatedRow.name,
+      email: updatedRow.email,
+      status: updatedRow.status,
+      avatar_url: updatedRow.avatar_url,
+      created_at: updatedRow.created_at,
+      phone: finalProfile.phone || '',
+      designation: finalProfile.designation || '',
+      role: updatedRow.role_id ? {
+        id: updatedRow.role_id,
+        name: updatedRow.role_name,
+        permissions: actions,
+        enabled_modules: enabledModules
+      } : null
+    };
+
     return success(res, safeUser);
   } catch (error) {
     next(error);
@@ -372,7 +622,7 @@ router.post('/reset-password-request', async (req, res) => {
 });
 
 // Mock Password Change Trigger
-router.post('/change-password', authenticate, async (req, res) => {
+router.post('/change-password-mock', authenticate, async (req, res) => {
   const { newPassword } = req.body;
   if (!newPassword) return fail(res, 'VALIDATION_ERROR', 'newPassword required', 400);
   try {

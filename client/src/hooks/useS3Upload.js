@@ -16,18 +16,19 @@ export function useS3Upload() {
     setUploading(true); setProgress(0); setError(null)
     try {
       // 1. Get presigned upload URL from our server
-      const { uploadUrl, storageKey } = await getUploadUrl(projectId, {
+      const res = await getUploadUrl(projectId, {
         name: file.name,
         mimeType: file.type,
         docType,
         phaseId,
       })
+      const { uploadUrl, storageKey } = res.data?.data || res.data || {}
 
       // 2. Upload directly to S3 (bypass our axios interceptor — no auth header to S3)
-      if (uploadUrl.includes('mock-s3.local')) {
+      if (uploadUrl && uploadUrl.includes('mock-s3.local')) {
         await new Promise(resolve => setTimeout(resolve, 500));
         setProgress(100);
-      } else {
+      } else if (uploadUrl) {
         await axios.put(uploadUrl, file, {
           headers: { 'Content-Type': file.type },
           onUploadProgress: (e) => {
@@ -61,12 +62,13 @@ export function useS3Upload() {
   const uploadRaw = async ({ file, projectId, purpose = 'photo' }) => {
     setUploading(true); setProgress(0); setError(null)
     try {
-      const { uploadUrl, storageKey } = await getUploadUrl(projectId, {
+      const res = await getUploadUrl(projectId, {
         name: `${purpose}-${Date.now()}-${file.name}`,
         mimeType: file.type,
         docType: purpose,
       })
-      if (uploadUrl.includes('mock-s3.local')) {
+      const { uploadUrl, storageKey } = res.data?.data || res.data || {}
+      if (uploadUrl && uploadUrl.includes('mock-s3.local')) {
         await new Promise(resolve => setTimeout(resolve, 500));
         setProgress(100);
       } else {

@@ -47,8 +47,8 @@ const sql = readMig('006_financial_approval_attachments.sql') + ';' +
             readMig('028_resource_allocations.sql');
 pool.query(sql).then(() => console.log('Migrations OK')).catch(error => console.log(error));
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT} (IPv4)`);
   startQueuePolling();
   startPdfWorker();
   startSlaTracking();

@@ -12,13 +12,12 @@ import { useTaskGovernanceStore } from '../../store/useTaskGovernanceStore'
 import { getTask, getGlobalTask, updateTask, addTaskComment, deleteTask, createTask, createGlobalTask, deleteGlobalTask } from '../../api/tasks'
 import { usersApi } from '../../api/users'
 import { getProject, getProjects } from '../../api/projects'
-
 import { useConfirm } from '../../store/confirmContext';
 
 const PRIORITIES = ['low', 'medium', 'high', 'urgent']
 const PRIORITY_COLORS = { low: 'info', medium: 'warning', high: 'danger', urgent: 'danger' }
 
-export default function TaskDetail({ isOpen, onClose, taskId, projectId, initialTask, inline = false }) {
+export default function TaskDetail({ isOpen, onClose, taskId, projectId, initialTask, inline = false, projectStatus }) {
   const { confirm } = useConfirm();
 
   const [task, setTask] = useState(null)
@@ -35,7 +34,6 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
   const [isEditingRoom, setIsEditingRoom] = useState(false)
   const [tempRoomName, setTempRoomName] = useState('')
 
-  
   const [draggedChecklistItemId, setDraggedChecklistItemId] = useState(null)
   const [dragOverChecklistItemId, setDragOverChecklistItemId] = useState(null)
   const [dragHandleActiveId, setDragHandleActiveId] = useState(null)
@@ -49,44 +47,11 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
   const { runAutomations } = useTaskAutomationStore()
   const governance = useTaskGovernanceStore()
   const logAuditActivity = governance?.logAuditActivity || (() => {})
-  const permissions = { ...governance?.permissions, canEdit: true }
-
-  useEffect(() => {
-    if (task && task.project?.id && (!task.project.name || task.project.name === 'General Tasks' || task.project.name === '—') && !task.project.id.includes('-tasks')) {
-      getProject(task.project.id).then(pres => {
-        const p = pres.data?.data || pres.data;
-        if (p && p.name) {
-          setTask(curr => curr ? { ...curr, project: { ...curr.project, name: p.name } } : curr);
-        }
-      }).catch(() => {});
-    }
-  }, [task?.project?.id, task?.project?.name]);
+  const permissions = { ...governance?.permissions, canEdit: projectStatus !== 'completed' }
 
   const loadTask = () => {
     if (!isOpen || !taskId) return;
     setLoading(true)
-
-    // Bypass fetch for mock tasks
-    if (String(taskId).startsWith('mock-') && initialTask) {
-      setTask({
-        ...initialTask,
-        assignee: (initialTask.assignee_id || initialTask.assigned_to || initialTask.assigneeId) 
-          ? { 
-              id: initialTask.assignee_id || initialTask.assigned_to || initialTask.assigneeId, 
-              name: initialTask.assignee_name || initialTask.assigneeName || 'Unknown' 
-            } 
-          : null
-      });
-      setTitle(initialTask.title || '');
-      setDesc(initialTask.description || '');
-      setLoading(false);
-      return;
-    }
-
-    if (!projectId) {
-      setLoading(false)
-      return;
-    }
 
     const fetchTask = (projectId === 'general-tasks' || projectId === 'lead-tasks') 
       ? getGlobalTask(taskId) 

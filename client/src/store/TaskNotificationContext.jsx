@@ -81,7 +81,7 @@ export const useTaskNotificationStore = create((set) => ({
     // Auto-broadcast local mock database on startup to sync server/other tabs
     try {
       const savedDb = localStorage.getItem('mockDatabase_v4');
-      if (savedDb) {
+      if (savedDb && localStorage.getItem('enableMockSync') === 'true') {
         window.fetch('/api/mock-sync/broadcast', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -92,7 +92,20 @@ export const useTaskNotificationStore = create((set) => ({
 
     // Cross-browser SSE sync (via relay)
     try {
+      let reconnectDelay = 3000;
+      let connectionOpen = false;
+
       function connectSSE() {
+        if (localStorage.getItem('enableMockSync') !== 'true') return;
+        
+        if (window.__backendOffline) {
+          // If backend is known offline, delay the reconnect retry check
+          const nextDelay = reconnectDelay;
+          reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+          setTimeout(connectSSE, nextDelay);
+          return;
+        }
+
         if (window._mockSseConnection) {
           window._mockSseConnection.close();
         }
@@ -100,12 +113,31 @@ export const useTaskNotificationStore = create((set) => ({
         const eventSource = new EventSource('/api/mock-sync/stream');
         window._mockSseConnection = eventSource;
         
-        eventSource.onopen = () => console.log('🟢 [SSE] Connected to mock-sync stream!');
+        eventSource.onopen = () => {
+          console.log('🟢 [SSE] Connected to mock-sync stream!');
+          connectionOpen = true;
+          reconnectDelay = 3000; // Reset delay on success
+          window.__backendOffline = false;
+        };
         
         eventSource.onerror = (err) => {
-          console.error('🔴 [SSE] Connection lost. Reconnecting in 3s...', err);
+          if (connectionOpen) {
+            console.warn('🔴 [SSE] Connection lost. Reconnecting...', err);
+            connectionOpen = false;
+          }
           eventSource.close();
-          setTimeout(connectSSE, 3000);
+          window.__backendOffline = true;
+          
+          const nextDelay = reconnectDelay;
+          // Double the delay up to a max of 30 seconds
+          reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+          
+          // Clear backend offline status after delay to allow retry
+          setTimeout(() => {
+            window.__backendOffline = false;
+          }, nextDelay);
+          
+          setTimeout(connectSSE, nextDelay);
         };
         
         eventSource.onmessage = (event) => {

@@ -154,6 +154,10 @@ export default function ProjectTasksTab({ projectId, project }) {
   }, [projectId]);
 
   const handleStatusChange = async (task, newStatus) => {
+    if (project?.status === 'completed') {
+      toast.warning('Cannot modify tasks of a completed project.');
+      return;
+    }
     setUpdatingTaskId(task.id);
     const prevStatus = task.status;
     setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
@@ -176,6 +180,10 @@ export default function ProjectTasksTab({ projectId, project }) {
   };
 
   const handleKanbanDrop = (taskId, newStatus) => {
+    if (project?.status === 'completed') {
+      toast.warning('Cannot modify tasks of a completed project.');
+      return;
+    }
     const task = tasks.find(t => t.id === taskId);
     if (task) handleStatusChange(task, newStatus);
   };
@@ -411,20 +419,22 @@ export default function ProjectTasksTab({ projectId, project }) {
                  {isExpanded ? '▼' : '▶'}
                </button>
             ) : <div className={h.expandPlaceholder} />}
-            <span 
-              style={{ cursor: 'grab', color: 'var(--color-text-muted)', padding: '0 4px' }}
-              onMouseEnter={() => setDragHandleTaskId(task.id)}
-              onMouseLeave={() => setDragHandleTaskId(null)}
-              title="Drag to move"
-            >
-              ⋮⋮
-            </span>
+            {project?.status !== 'completed' && (
+              <span 
+                style={{ cursor: 'grab', color: 'var(--color-text-muted)', padding: '0 4px' }}
+                onMouseEnter={() => setDragHandleTaskId(task.id)}
+                onMouseLeave={() => setDragHandleTaskId(null)}
+                title="Drag to move"
+              >
+                ⋮⋮
+              </span>
+            )}
             <select 
               value={task.status || 'todo'} 
               onChange={(e) => handleStatusChange(task, e.target.value)}
               className={h.statusSelect}
               style={{ color: `var(--color-${STATUSES[task.status]?.color || 'neutral'})` }}
-              disabled={updatingTaskId === task.id}
+              disabled={updatingTaskId === task.id || project?.status === 'completed'}
             >
               {Object.entries(STATUSES).map(([val, {label}]) => (
                 <option key={val} value={val}>{label}</option>
@@ -497,6 +507,7 @@ export default function ProjectTasksTab({ projectId, project }) {
           projectId={projectId}
           initialTask={typeof selectedTask === 'object' ? selectedTask : tasks.find(t => t.id === selectedTask)}
           inline={true}
+          projectStatus={project?.status}
         />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1 }}>
@@ -528,8 +539,14 @@ export default function ProjectTasksTab({ projectId, project }) {
                   &#128197; Calendar
                 </button>
               </div>
-              <Button variant="outline" onClick={() => setIsAiTaskCreationOpen(true)}>✨ AI Task</Button>
-              <Button variant="primary" onClick={() => setIsGlobalTaskModalOpen(true)}>+ New Task</Button>
+              {project?.status === 'completed' ? (
+                <Badge variant="success" style={{ padding: '6px 12px', fontSize: '12px' }}>✓ Closed (Completed)</Badge>
+              ) : (
+                <>
+                  <Button variant="outline" onClick={() => setIsAiTaskCreationOpen(true)}>✨ AI Task</Button>
+                  <Button variant="primary" onClick={() => setIsGlobalTaskModalOpen(true)}>+ New Task</Button>
+                </>
+              )}
             </div>
           </div>
 
