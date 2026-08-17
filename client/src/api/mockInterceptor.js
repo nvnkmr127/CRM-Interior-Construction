@@ -58,7 +58,7 @@ export const setupMockInterceptor = (api) => {
 
             if (projectId) {
               const project = (mockDatabase.projects || []).find(p => p.id === projectId);
-              const isProjectUpdateRoute = url.match(/\/projects\/([a-zA-Z0-9-]+)$/) && ['put', 'patch'].includes(method);
+              const isProjectUpdateRoute = url.split('?')[0].match(/\/projects\/([a-zA-Z0-9-]+)$/) && ['put', 'patch'].includes(method);
               if (project && (project.status === 'completed' || project.status === 'archived' || project.status === 'cancelled') && !isProjectUpdateRoute) {
                 return Promise.resolve({
                   status: 400,
@@ -275,7 +275,14 @@ export const setupMockInterceptor = (api) => {
             const activityId = matchProj ? matchProj[2] : null;
 
             if (method === 'get') {
-              responseData.data = mockDatabase.activities?.filter(a => a[entityType] === entityId) || [];
+              let list = mockDatabase.activities?.filter(a => a[entityType] === entityId) || [];
+              const typeParam = (config.params && config.params.type !== undefined) 
+                ? config.params.type 
+                : new URLSearchParams(urlParts[1] || '').get('type');
+              if (typeParam && typeParam !== 'all') {
+                list = list.filter(a => a.type === typeParam);
+              }
+              responseData.data = list;
             } else if (method === 'post') {
               const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
               const newActivity = {
@@ -311,7 +318,11 @@ export const setupMockInterceptor = (api) => {
             } else if (method === 'delete') {
               if (activityId) {
                 if (!mockDatabase.activities) mockDatabase.activities = [];
-                mockDatabase.activities = mockDatabase.activities.filter(a => a.id !== activityId);
+                const actIdx = mockDatabase.activities.findIndex(a => a.id === activityId);
+                if (actIdx !== -1) {
+                  mockDatabase.activities[actIdx].outcome = 'cancelled';
+                  mockDatabase.activities[actIdx].notes = (mockDatabase.activities[actIdx].notes ? mockDatabase.activities[actIdx].notes + '\n\n' : '') + '[System]: Activity was deleted by user.';
+                }
                 persistDb();
                 responseData.data = { success: true };
               }
@@ -831,31 +842,78 @@ export const setupMockInterceptor = (api) => {
               const currentUserId = session?.id || session?.user?.id;
               const currentRole = session?.role || {};
               
+              const period = config.params?.period || new URLSearchParams(url.split('?')[1] || '').get('period') || 'All';
+              let periodStart, periodEnd;
+              if (period === 'All') {
+                periodStart = new Date(0);
+                periodEnd = new Date(1786536584000 + 365 * 24 * 60 * 60 * 1000);
+              } else if (period === 'Custom') {
+                const startParam = config.params?.startDate || new URLSearchParams(url.split('?')[1] || '').get('startDate');
+                const endParam = config.params?.endDate || new URLSearchParams(url.split('?')[1] || '').get('endDate');
+                periodStart = startParam ? new Date(startParam) : new Date(1786536584000 - 30 * 24 * 60 * 60 * 1000);
+                periodEnd = endParam ? new Date(endParam + 'T23:59:59.999Z') : new Date(1786536584000);
+              } else {
+                const days = period === '7D' ? 7 : period === '90D' ? 90 : 30;
+                periodStart = new Date(1786536584000 - days * 24 * 60 * 60 * 1000);
+                periodEnd = new Date(1786536584000);
+              }
+
               let leadsScope = (mockDatabase.leads || []).filter(l => !l.deleted_at);
               if (currentRole.id === 'sales_rep') {
                 leadsScope = leadsScope.filter(l => l.assignee_id === currentUserId);
               }
-              
+              // Filter leads by period start and end dates
+              leadsScope = leadsScope.filter(l => !l.created_at || (new Date(l.created_at) >= periodStart && new Date(l.created_at) <= periodEnd));
               const activeLeadsCount = leadsScope.length;
               
 
-              // Won this month
-              const startOfMonth = new Date(1786536584000);
-              startOfMonth.setDate(1);
-              startOfMonth.setHours(0, 0, 0, 0);
-              const wonLeads = (mockDatabase.leads || []).filter(l => {
-                const isWon = l.status === 'converted' || l.status === 'won';
-                const updatedAt = l.updated_at ? new Date(l.updated_at) : new Date(1786536584000);
-                return isWon && updatedAt >= startOfMonth;
-              });
-              const wonValue = wonLeads.reduce((sum, l) => sum + Number(l.budget_max || l.budget || 0), 0);
-              
-              // Active projects
-              const activeProjects = (mockDatabase.projects || []).filter(p => {
-                const s = p.status?.toLowerCase();
-                return !s || !['on_hold', 'completed', 'overdue', 'cancelled', 'deleted'].includes(s);
-              });
-              const overdueProjectsCount = activeProjects.filter(p => p.target_date && new Date(p.target_date) < new Date(1786536584000)).length;
+               // Projects scoping based on user role
+               const currentUser = session?.user || session;
+               const isAdmin = 
+                 currentUser?.role === 'superadmin' || 
+                 currentUser?.role?.name?.toLowerCase() === 'superadmin' || 
+                 currentUser?.role?.name?.toLowerCase() === 'super admin' || 
+                 (currentUser?.role?.permissions && currentUser.role.permissions.includes('*'));
+
+               let projectsScope = [...(mockDatabase.projects || [])];
+               if (currentUser && !isAdmin) {
+                 const roleKey = Object.keys(ROLE_DEFAULTS).find(
+                   key => key.toLowerCase() === (currentUser.role?.name || '').toLowerCase() || 
+                          key.toLowerCase() === (currentUser.role?.id || '').toLowerCase()
+                 );
+                 const defaults = roleKey ? ROLE_DEFAULTS[roleKey] : null;
+                 const scopes = currentUser.role?.data_scopes || defaults?.data_scopes || {};
+                 const projectScopeSetting = scopes.projects || 'assigned';
+
+                 if (projectScopeSetting === 'assigned' || projectScopeSetting === 'own' || projectScopeSetting === 'department') {
+                   projectsScope = projectsScope.filter(proj => {
+                     const isPm = proj.pm_id === currentUser.id;
+                     const isDesigner = proj.designer_id === currentUser.id;
+                     const isLeadDesigner = proj.lead_designer_id === currentUser.id;
+                     const isJuniorDesigner = proj.junior_designer_id === currentUser.id;
+                     const isSiteEng = proj.site_engineer_id === currentUser.id;
+                     const isQc = proj.qc_engineer_id === currentUser.id;
+                     const isSupervisor = proj.site_supervisor_id === currentUser.id;
+                     const isCrm = proj.crm_executive_id === currentUser.id;
+                     const isSalesRep = proj.sales_rep_id === currentUser.id;
+                     return isPm || isDesigner || isLeadDesigner || isJuniorDesigner || isSiteEng || isQc || isSupervisor || isCrm || isSalesRep;
+                   });
+                 }
+               }
+
+               // Calculate won value and count from scoped active projects within the period
+               const activeProjs = projectsScope.filter(p => !p.deleted_at && p.status !== 'cancelled' && p.status !== 'deleted' && (!p.created_at || (new Date(p.created_at) >= periodStart && new Date(p.created_at) <= periodEnd)));
+               const wonValue = activeProjs.reduce((sum, p) => sum + Number(p.contract_value || p.value || 0), 0);
+               const wonCount = activeProjs.length;
+               
+               // Active projects within the period
+               const activeProjects = projectsScope.filter(p => {
+                 if (p.deleted_at) return false;
+                 if (p.created_at && (new Date(p.created_at) < periodStart || new Date(p.created_at) > periodEnd)) return false;
+                 const s = p.status?.toLowerCase();
+                 return !s || !['on_hold', 'completed', 'overdue', 'cancelled', 'deleted'].includes(s);
+               });
+               const overdueProjectsCount = activeProjects.filter(p => p.target_date && new Date(p.target_date) < new Date(1786536584000)).length;
 
               // Tasks due
               const todayStr = new Date(1786536584000).toISOString().split('T')[0];
@@ -863,11 +921,19 @@ export const setupMockInterceptor = (api) => {
               const dueTodayTasks = activeTasks.filter(t => t.due_date === todayStr).length;
               const overdueTasks = activeTasks.filter(t => t.due_date && t.due_date < todayStr).length;
 
+              // Compute site visits due today
+              const siteVisitsCount = (mockDatabase.tasks || []).filter(t => 
+                t.status !== 'done' && 
+                t.due_date === todayStr && 
+                (t.title?.toLowerCase().includes('visit') || t.description?.toLowerCase().includes('visit'))
+              ).length;
+
               responseData.data = {
-                activeLeads: { count: activeLeadsCount, trend: 0 },
-                wonThisMonth: { count: wonLeads.length, value: wonValue },
+                activeLeads: { count: activeLeadsCount, trend: 12 },
+                wonThisMonth: { count: wonCount, value: wonValue, trend: 18.5 },
                 activeProjects: { count: activeProjects.length, overdueCount: overdueProjectsCount },
                 tasksDueToday: { count: dueTodayTasks, overdueCount: overdueTasks },
+                siteVisits: { count: siteVisitsCount },
                 salesTargets: { targetRevenue: 1000000, targetLeads: 20 },
                 revenueTrend: [
                   { week: 'W1',  amt: 8.2 },  { week: 'W2',  amt: 9.1 },
@@ -880,15 +946,59 @@ export const setupMockInterceptor = (api) => {
               };
             }
           }
-          // DASHBOARD ACTIVITY
           else if (url.includes('/dashboard/activity')) {
             if (method === 'get') {
-              responseData.data = mockDatabase.activities || [];
+              const activities = [...(mockDatabase.activities || [])];
+              
+              // Dynamically inject conversion activities for existing projects if not already present
+              (mockDatabase.projects || []).forEach(proj => {
+                const hasConv = activities.some(a => a.project_id === proj.id && (a.type === 'lead.converted' || a.action === 'lead.converted'));
+                if (!hasConv) {
+                  activities.push({
+                    id: `mock-act-conv-${proj.id}`,
+                    project_id: proj.id,
+                    type: 'lead.converted',
+                    title: 'Lead Converted',
+                    notes: `Converted lead "${proj.client_name || 'Client'}" to project "${proj.name}"`,
+                    created_at: proj.created_at || new Date().toISOString(),
+                    user_name: 'Admin User'
+                  });
+                }
+              });
+
+              const enhanced = activities.map(act => {
+                let name = null;
+                if (act.lead_id) {
+                  const lead = (mockDatabase.leads || []).find(l => String(l.id) === String(act.lead_id));
+                  if (lead) name = lead.name;
+                } else if (act.project_id) {
+                  const proj = (mockDatabase.projects || []).find(p => String(p.id) === String(act.project_id));
+                  if (proj) name = proj.name;
+                }
+                return { ...act, lead_name: name || act.lead_name, project_name: name || act.project_name };
+              });
+              responseData.data = enhanced;
             }
           }
           // DASHBOARD PIPELINE
           else if (url.includes('/dashboard/pipeline')) {
             if (method === 'get') {
+              const period = config.params?.period || new URLSearchParams(url.split('?')[1] || '').get('period') || 'All';
+              let periodStart, periodEnd;
+              if (period === 'All') {
+                periodStart = new Date(0);
+                periodEnd = new Date(1786536584000 + 365 * 24 * 60 * 60 * 1000);
+              } else if (period === 'Custom') {
+                const startParam = config.params?.startDate || new URLSearchParams(url.split('?')[1] || '').get('startDate');
+                const endParam = config.params?.endDate || new URLSearchParams(url.split('?')[1] || '').get('endDate');
+                periodStart = startParam ? new Date(startParam) : new Date(1786536584000 - 30 * 24 * 60 * 60 * 1000);
+                periodEnd = endParam ? new Date(endParam + 'T23:59:59.999Z') : new Date(1786536584000);
+              } else {
+                const days = period === '7D' ? 7 : period === '90D' ? 90 : 30;
+                periodStart = new Date(1786536584000 - days * 24 * 60 * 60 * 1000);
+                periodEnd = new Date(1786536584000);
+              }
+
               const stages = [
                 { id: 'new', name: 'New Leads', count: 0 },
                 { id: 'contacted', name: 'Contacted', count: 0 },
@@ -898,9 +1008,31 @@ export const setupMockInterceptor = (api) => {
                 { id: 'won', name: 'Won', count: 0 },
                 { id: 'lost', name: 'Lost', count: 0 }
               ];
-              (mockDatabase.leads || []).forEach(lead => {
-                const stageId = lead.stage_id || 'new';
-                const stage = stages.find(s => s.id === stageId);
+              (mockDatabase.leads || [])
+                .filter(lead => !lead.created_at || (new Date(lead.created_at) >= periodStart && new Date(lead.created_at) <= periodEnd))
+                .forEach(lead => {
+                let cat = 'new';
+                const status = (lead.status || '').toLowerCase();
+                const stageName = (lead.stage_name || '').toLowerCase();
+                const stageId = String(lead.stage_id || '').toLowerCase();
+
+                if (status === 'converted' || status === 'won' || stageId.includes('won') || stageId === 'stage-14') {
+                  cat = 'won';
+                } else if (status === 'lost' || stageId.includes('lost')) {
+                  cat = 'lost';
+                } else if (stageName.includes('negotiation') || stageId === 'stage-13' || stageId === 'stage-12' || stageId === 'stage-11') {
+                  cat = 'negotiation';
+                } else if (stageName.includes('proposal') || stageName.includes('quote') || stageId === 'stage-7' || stageId === 'stage-8' || stageId === 'stage-9' || stageId === 'stage-10') {
+                  cat = 'proposal';
+                } else if (stageName.includes('qualified') || stageName.includes('discovery') || stageId === 'stage-5' || stageId === 'stage-6') {
+                  cat = 'qualified';
+                } else if (stageName.includes('contact') || stageId === 'stage-3' || stageId === 'stage-4') {
+                  cat = 'contacted';
+                } else {
+                  cat = 'new';
+                }
+
+                const stage = stages.find(s => s.id === cat);
                 if (stage) stage.count++;
               });
               responseData.data = stages;
@@ -965,9 +1097,10 @@ export const setupMockInterceptor = (api) => {
             if (method === 'get') {
               if (leadId) {
                 let list = mockDatabase.activities.filter(a => a.lead_id === leadId);
-                const queryParams = new URLSearchParams(urlParts[1] || '');
-                const typeParam = queryParams.get('type');
-                if (typeParam) {
+                const typeParam = (config.params && config.params.type !== undefined) 
+                  ? config.params.type 
+                  : new URLSearchParams(urlParts[1] || '').get('type');
+                if (typeParam && typeParam !== 'all') {
                   list = list.filter(a => a.type === typeParam);
                 }
                 list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -1029,13 +1162,14 @@ export const setupMockInterceptor = (api) => {
                       
                       if (updatedActivity.outcome === 'concluded' || updatedActivity.outcome === 'completed' || updatedActivity.outcome === 'cancelled') {
                         const remainingMeetings = mockDatabase.activities.filter(a => 
-                          a.lead_id === leadId && 
+                          String(a.lead_id) === String(leadId) && 
                           a.type === 'meeting' && 
                           a.scheduled_at &&
-                          a.id !== activityId &&
+                          String(a.id) !== String(activityId) &&
                           a.outcome !== 'concluded' && 
                           a.outcome !== 'completed' &&
-                          a.outcome !== 'cancelled'
+                          a.outcome !== 'cancelled' &&
+                          a.outcome !== 'deleted'
                         );
                         remainingMeetings.sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at));
                         const nextMtg = remainingMeetings[0];
@@ -1083,20 +1217,54 @@ export const setupMockInterceptor = (api) => {
 
                   persistDb();
                   responseData.data = updatedActivity;
+                } else {
+                  // Activity not found in activities list, could be orphaned. If so, clean up the lead.
+                  const leadIdx = mockDatabase.leads.findIndex(l => l.id === leadId);
+                  if (leadIdx !== -1 && mockDatabase.leads[leadIdx].next_meeting_id === activityId) {
+                    const currentLead = mockDatabase.leads[leadIdx];
+                    mockDatabase.leads[leadIdx] = {
+                      ...currentLead,
+                      next_meeting_id: null,
+                      next_meeting_schedule: null,
+                      next_meeting_title: null,
+                      next_meeting_type: null,
+                      next_meeting_link: null,
+                      next_meeting_host: null,
+                      next_meeting_duration: null,
+                      next_meeting_notes: null
+                    };
+                    persistDb();
+                  }
+                  responseData.data = { success: true, warning: 'Activity not found but lead updated' };
                 }
               }
             } else if (method === 'delete' && activityId) {
               if (mockDatabase.activities) {
+                const actIdx = mockDatabase.activities.findIndex(a => a.id === activityId);
+                if (actIdx !== -1) {
+                  let reason = 'Meeting was deleted by user.';
+                  if (config.data) {
+                    try {
+                      const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                      if (payload.reason) reason = payload.reason;
+                    } catch(e) {}
+                  }
+                  mockDatabase.activities[actIdx].outcome = 'deleted';
+                  if (!mockDatabase.activities[actIdx].metadata) mockDatabase.activities[actIdx].metadata = {};
+                  mockDatabase.activities[actIdx].metadata.delete_reason = reason;
+                  mockDatabase.activities[actIdx].notes = (mockDatabase.activities[actIdx].notes ? mockDatabase.activities[actIdx].notes + '\n\n' : '') + `[System]: ${reason}`;
+                }
+
                 const leadIdx = mockDatabase.leads.findIndex(l => l.id === leadId);
-                if (leadIdx !== -1 && mockDatabase.leads[leadIdx].next_meeting_id === activityId) {
+                if (leadIdx !== -1 && actIdx !== -1 && mockDatabase.activities[actIdx].type === 'meeting') {
                   const remainingMeetings = mockDatabase.activities.filter(a => 
-                    a.lead_id === leadId && 
+                    String(a.lead_id) === String(leadId) && 
                     a.type === 'meeting' && 
                     a.scheduled_at &&
-                    a.id !== activityId &&
                     a.outcome !== 'concluded' && 
                     a.outcome !== 'completed' &&
-                    a.outcome !== 'cancelled'
+                    a.outcome !== 'cancelled' &&
+                    a.outcome !== 'deleted'
                   );
                   remainingMeetings.sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at));
                   const nextMtg = remainingMeetings[0];
@@ -1128,7 +1296,6 @@ export const setupMockInterceptor = (api) => {
                     };
                   }
                 }
-                mockDatabase.activities = mockDatabase.activities.filter(a => a.id !== activityId);
                 persistDb();
                 responseData.data = { success: true };
               }
@@ -1136,7 +1303,36 @@ export const setupMockInterceptor = (api) => {
           }
           // LEADS
           else if (url.includes('/leads')) {
-            if (url.includes('/stats')) {
+            if (url.includes('/leads/export')) {
+              const fields = [
+                'name', 'phone', 'email', 'source', 'stage_name', 'assignee_name', 'score', 'notes', 'created_at',
+                'win_probability', 'budget', 'address', 'lost_reason', 'follow_up_date'
+              ];
+              const header = fields.join(',');
+              const leadsArr = mockDatabase.leads || [];
+              const rows = leadsArr.map(lead => {
+                return fields.map(f => {
+                  let val = lead[f];
+                  if (val === undefined || val === null) {
+                    if (f === 'budget') val = lead.budget_max || lead.budget || '';
+                    else if (f === 'address') val = lead.locality || '';
+                    else val = '';
+                  }
+                  val = val ?? '';
+                  const str = String(val).replace(/"/g, '""');
+                  return str.includes(',') || str.includes('"') || str.includes('\n') ? `"${str}"` : str;
+                }).join(',');
+              });
+              const csv = [header, ...rows].join('\n');
+              return Promise.resolve({
+                data: csv,
+                status: 200,
+                statusText: 'OK',
+                headers: { 'content-type': 'text/csv' },
+                config,
+                request: {}
+              });
+            } else if (url.includes('/stats')) {
               const session = JSON.parse(localStorage.getItem('mockSession') || '{}');
               const currentUserId = session?.id || session?.user?.id;
               const currentRole = session?.role || {};
@@ -1159,6 +1355,85 @@ export const setupMockInterceptor = (api) => {
                 convPct
               };
               responseData.success = true;
+            } else if (url.includes('/leads/bulk/delete')) {
+              if (method === 'post') {
+                const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                const { leadIds } = payload || {};
+                if (Array.isArray(leadIds)) {
+                  mockDatabase.leads = mockDatabase.leads.map(l => {
+                    if (leadIds.includes(l.id)) {
+                      return { ...l, deleted_at: new Date().toISOString() };
+                    }
+                    return l;
+                  });
+                  persistDb();
+                }
+                responseData.data = { success: true };
+              }
+            } else if (url.includes('/leads/bulk/stage')) {
+              if (method === 'post') {
+                const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                const { leadIds, stageId } = payload || {};
+                if (Array.isArray(leadIds) && stageId) {
+                  const stage = mockDatabase.stages?.find(s => s.id === stageId) || mockDatabase.leadStages?.find(s => s.id === stageId);
+                  const stageName = stage ? stage.name : 'Unknown Stage';
+                  mockDatabase.leads = mockDatabase.leads.map(l => {
+                    if (leadIds.includes(l.id)) {
+                      return { ...l, stage_id: stageId, stage_name: stageName, updated_at: new Date().toISOString() };
+                    }
+                    return l;
+                  });
+                  persistDb();
+                }
+                responseData.data = { success: true };
+              }
+            } else if (url.includes('/leads/bulk/update')) {
+              if (method === 'post') {
+                const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+                const { leadIds, updates } = payload || {};
+                if (Array.isArray(leadIds) && updates) {
+                  if (updates.massDelete === true) {
+                    mockDatabase.leads = mockDatabase.leads.filter(l => !leadIds.includes(l.id));
+                  } else {
+                    mockDatabase.leads = mockDatabase.leads.map(l => {
+                      if (leadIds.includes(l.id)) {
+                        const updatedLead = { ...l };
+                        if (updates.markAsLost === true) {
+                          updatedLead.status = 'lost';
+                        } else if (updates.status) {
+                          updatedLead.status = updates.status;
+                        }
+                         if (updates.stageId) {
+                          const stage = mockDatabase.stages?.find(s => s.id === updates.stageId) || mockDatabase.leadStages?.find(s => s.id === updates.stageId);
+                          updatedLead.stage_id = updates.stageId;
+                          updatedLead.stage_name = stage ? stage.name : 'Updated Stage';
+                        }
+                        if (updates.source) {
+                          updatedLead.source = updates.source;
+                        }
+                        if (updates.lastContact) {
+                          updatedLead.last_activity_at = updates.lastContact;
+                          updatedLead.updated_at = updates.lastContact;
+                        }
+                        if (updates.assigneeId) {
+                          if (updates.assigneeId === 'unassigned') {
+                            updatedLead.assignee_id = null;
+                            updatedLead.assignee_name = null;
+                          } else {
+                            const user = mockDatabase.users?.find(u => u.id === updates.assigneeId);
+                            updatedLead.assignee_id = updates.assigneeId;
+                            updatedLead.assignee_name = user ? user.name : 'Assigned User';
+                          }
+                        }
+                        return updatedLead;
+                      }
+                      return l;
+                    });
+                  }
+                  persistDb();
+                }
+                responseData.data = { success: true };
+              }
             } else if (url.includes('/timeline')) {
               const urlParts = url.split('?');
               const match = urlParts[0].match(/\/leads\/([a-zA-Z0-9-]+)\/timeline/);
@@ -1717,18 +1992,33 @@ export const setupMockInterceptor = (api) => {
                 const match = url.match(/\/leads\/([a-zA-Z0-9-]+)\/convert-to-project$/);
                 if (match) {
                   const leadId = match[1];
-                  const leadToUpdate = mockDatabase.leads.find(l => l.id === leadId);
-                  if (leadToUpdate) leadToUpdate.status = 'converted';
+                  const leadToUpdate = mockDatabase.leads.find(l => String(l.id) === String(leadId));
+                  if (leadToUpdate) {
+                    leadToUpdate.status = 'converted';
+                    leadToUpdate.updated_at = new Date().toISOString();
+                  }
+                  
+                  if (!mockDatabase.activities) mockDatabase.activities = [];
+                  mockDatabase.activities.push({
+                    id: `mock-act-${Date.now()}`,
+                    lead_id: leadId,
+                    project_id: newProj.id,
+                    type: 'lead.converted',
+                    title: 'Lead Converted',
+                    notes: `Converted lead "${leadToUpdate ? leadToUpdate.name : (payload.clientName || 'Lead')}" to project "${newProj.name}"`,
+                    created_at: new Date().toISOString(),
+                    user_name: 'Admin User'
+                  });
                 }
                 
                 persistDb();
                 responseData.data = { project_id: newProj.id };
               }
             } else {
-              const match = url.match(/\/leads\/([a-zA-Z0-9-]+)$/);
+              const match = url.match(/\/leads\/([a-zA-Z0-9-]+)(?:\/(?:restore|permanent))?$/);
               const leadId = match ? match[1] : null;
 
-              if (method === 'post') {
+              if (method === 'post' && !url.includes('/restore')) {
                 const newLead = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
                 newLead.id = `mock-${Date.now()}`;
                 newLead.created_at = new Date().toISOString();
@@ -1806,7 +2096,18 @@ export const setupMockInterceptor = (api) => {
                     return undefined;
                   };
 
-                  let filtered = [...mockDatabase.leads].filter(l => !l.deleted_at);
+                  const deletedOnly = getParam('deletedOnly');
+                  const isDeletedOnly = deletedOnly === 'true' || deletedOnly === true;
+                  const statusParam = getParam('status');
+                  let filtered = [...mockDatabase.leads].filter(l => {
+                    const isDeleted = !!l.deleted_at;
+                    if (isDeletedOnly) return isDeleted;
+                    if (isDeleted) return false;
+                    
+                    if (statusParam === 'parked') return l.status === 'parked';
+                    if (statusParam === 'active') return l.status !== 'parked';
+                    return true;
+                  });
 
                   // 0. Data Scope Filter (Role-Based Access)
                   const session = JSON.parse(localStorage.getItem('mockSession') || '{}');
@@ -1929,7 +2230,7 @@ export const setupMockInterceptor = (api) => {
                   const idx = mockDatabase.leads.findIndex(l => l.id === leadId);
                   if (idx !== -1) {
                     const prevLead = mockDatabase.leads[idx];
-                    mockDatabase.leads[idx] = { ...mockDatabase.leads[idx], ...updates };
+                    mockDatabase.leads[idx] = { ...mockDatabase.leads[idx], ...updates, updated_at: new Date().toISOString() };
                     
                     const changedFields = [];
                     for (const key of Object.keys(updates)) {
@@ -1955,9 +2256,25 @@ export const setupMockInterceptor = (api) => {
                   }
                 }
               } else if (method === 'delete') {
-                if (leadId) {
+                if (url.includes('/permanent')) {
                   mockDatabase.leads = mockDatabase.leads.filter(l => l.id !== leadId);
                   persistDb();
+                  responseData.data = { success: true };
+                } else if (leadId) {
+                  const idx = mockDatabase.leads.findIndex(l => l.id === leadId);
+                  if (idx !== -1) {
+                    mockDatabase.leads[idx].deleted_at = new Date().toISOString();
+                    persistDb();
+                  }
+                  responseData.data = { success: true };
+                }
+              } else if (method === 'post') {
+                if (url.includes('/restore')) {
+                  const idx = mockDatabase.leads.findIndex(l => l.id === leadId);
+                  if (idx !== -1) {
+                    mockDatabase.leads[idx].deleted_at = null;
+                    persistDb();
+                  }
                   responseData.data = { success: true };
                 }
               }
@@ -2095,6 +2412,10 @@ export const setupMockInterceptor = (api) => {
               mockDatabase.documents = mockDatabase.documents?.filter(d => d.id !== docId) || [];
               persistDb();
               responseData.data = { success: true };
+            } else if (method === 'get' && url.match(/\/documents\/[a-zA-Z0-9-]+\/url$/)) {
+              const docId = parts[parts.indexOf('documents') + 1];
+              const doc = mockDatabase.documents?.find(d => d.id === docId);
+              responseData.data = { url: doc?.storage_key || '#' };
             }
           }
           // PROJECTS CONTRACT UPLOAD
@@ -2270,11 +2591,11 @@ export const setupMockInterceptor = (api) => {
             }
           }
           // PROJECTS
-          else if (url.includes('/projects') && !url.includes('/tasks') && !url.includes('/comments') && !url.includes('/attachments') && !url.includes('/activity') && !url.includes('/members') && !url.includes('/handover') && !url.includes('/qc') && !url.includes('/punch-lists') && !url.includes('/documents')) {
-            const match = url.match(/\/projects\/([a-zA-Z0-9-]+)$/);
+          else if (url.includes('/projects') && !url.includes('/tasks') && !url.includes('/comments') && !url.includes('/attachments') && !url.includes('/activity') && !url.includes('/members') && !url.includes('/handover') && !url.includes('/qc') && !url.includes('/punch-lists') && !url.includes('/documents') && !url.includes('/cancel') && !url.includes('/archive') && !url.includes('/reopen') && !url.includes('/pause') && !url.includes('/resume')) {
+            const match = url.split('?')[0].match(/\/projects\/([a-zA-Z0-9-]+)$/);
             const projId = match ? match[1] : null;
 
-            if (method === 'post') {
+            if (method === 'post' && (url.split('?')[0].endsWith('/projects') || url.split('?')[0].endsWith('/projects/'))) {
               const newProj = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
               if (!newProj.contract_file_key) {
                 return Promise.reject({
@@ -2619,7 +2940,21 @@ export const setupMockInterceptor = (api) => {
               if (projId) {
                 const idx = mockDatabase.projects.findIndex(p => p.id === projId);
                 if (idx !== -1) {
+                  // Extract reason from query string if available
+                  const urlParts = url.split('?');
+                  const queryParams = new URLSearchParams(urlParts[1] || '');
+                  const queryReason = queryParams.get('reason');
+                  
+                  const payload = config.data ? (typeof config.data === 'string' ? JSON.parse(config.data) : config.data) : {};
                   mockDatabase.projects[idx].deleted_at = new Date().toISOString();
+                  mockDatabase.projects[idx].delete_reason = queryReason || payload.reason || 'No reason provided';
+                  const mockSession = localStorage.getItem('mockSession');
+                  if (mockSession) {
+                    try {
+                      const currentUser = JSON.parse(mockSession);
+                      mockDatabase.projects[idx].deleted_by = currentUser.id;
+                    } catch (e) {}
+                  }
                   persistDb();
                 }
                 responseData.data = { success: true };
@@ -3103,6 +3438,18 @@ export const setupMockInterceptor = (api) => {
               };
               if (!mockDatabase.users) mockDatabase.users = [];
               mockDatabase.users.unshift(newUser);
+
+              if (!mockDatabase.activities) mockDatabase.activities = [];
+              mockDatabase.activities.push({
+                id: `mock-act-${Date.now()}`,
+                type: 'user.created',
+                title: 'User Added',
+                notes: `Added team member: "${newUser.name}"`,
+                new_value: { name: newUser.name, email: newUser.email, message: `Added team member: "${newUser.name}"` },
+                created_at: new Date().toISOString(),
+                user_name: 'Admin User'
+              });
+
               persistDb();
               responseData.data = newUser;
             } else if (method === 'patch') {
@@ -3113,9 +3460,27 @@ export const setupMockInterceptor = (api) => {
               if (mockDatabase.users) {
                 const idx = mockDatabase.users.findIndex(u => u.id === id);
                 if (idx !== -1) {
+                  const prevUser = mockDatabase.users[idx];
                   mockDatabase.users[idx] = { ...mockDatabase.users[idx], ...updates };
                   
-                  // Clear offboarding record if user is reactivated
+                  if (updates.role_id && updates.role_id !== prevUser.role_id) {
+                    if (!mockDatabase.activities) mockDatabase.activities = [];
+                    mockDatabase.activities.push({
+                      id: `mock-act-${Date.now()}`,
+                      type: 'user.role_updated',
+                      title: 'Role Changed',
+                      notes: `Changed role of "${prevUser.name}" from "${prevUser.role_id || 'designer'}" to "${updates.role_id}"`,
+                      new_value: { 
+                        userName: prevUser.name, 
+                        oldRole: prevUser.role_id || 'designer', 
+                        newRole: updates.role_id,
+                        message: `Changed role of "${prevUser.name}" from "${prevUser.role_id || 'designer'}" to "${updates.role_id}"`
+                      },
+                      created_at: new Date().toISOString(),
+                      user_name: 'Admin User'
+                    });
+                  }
+
                   if (updates.status === 'active' && mockDatabase.offboarding) {
                     mockDatabase.offboarding = mockDatabase.offboarding.filter(o => o.user_id !== id);
                   }
@@ -4865,24 +5230,24 @@ export const setupMockInterceptor = (api) => {
             if (method === 'get') {
               responseData.data = mockDatabase.tenantSettings || {
                 pre_conversion_checklist: [
-                  { key: 'contract_signed', label: 'Contract signed', required: true, active: true },
-                  { key: 'booking_received', label: 'Booking amount received', required: true, active: true },
-                  { key: 'scope_finalized', label: 'Scope frozen', required: true, active: true },
+                  { key: 'site_address_confirmed', label: 'Site address confirmed', required: false, active: true },
                   { key: 'site_visit_completed', label: 'Site visit completed', required: true, active: true },
                   { key: 'floor_plan', label: 'Floor plan attached', required: false, active: true },
-                  { key: 'site_address_confirmed', label: 'Site address confirmed', required: false, active: true }
+                  { key: 'scope_finalized', label: 'Scope frozen', required: true, active: true },
+                  { key: 'booking_received', label: 'Booking amount received', required: true, active: true },
+                  { key: 'contract_signed', label: 'Contract signed', required: true, active: true }
                 ]
               };
             } else if (method === 'patch') {
               const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
               const currentSettings = mockDatabase.tenantSettings || {
                 pre_conversion_checklist: [
-                  { key: 'contract_signed', label: 'Contract signed', required: true, active: true },
-                  { key: 'booking_received', label: 'Booking amount received', required: true, active: true },
-                  { key: 'scope_finalized', label: 'Scope frozen', required: true, active: true },
+                  { key: 'site_address_confirmed', label: 'Site address confirmed', required: false, active: true },
                   { key: 'site_visit_completed', label: 'Site visit completed', required: true, active: true },
                   { key: 'floor_plan', label: 'Floor plan attached', required: false, active: true },
-                  { key: 'site_address_confirmed', label: 'Site address confirmed', required: false, active: true }
+                  { key: 'scope_finalized', label: 'Scope frozen', required: true, active: true },
+                  { key: 'booking_received', label: 'Booking amount received', required: true, active: true },
+                  { key: 'contract_signed', label: 'Contract signed', required: true, active: true }
                 ]
               };
               mockDatabase.tenantSettings = {
@@ -5081,7 +5446,17 @@ export const setupMockInterceptor = (api) => {
               const projectId = match[1];
               const idx = mockDatabase.projects?.findIndex(p => p.id === projectId);
               if (idx !== -1 && mockDatabase.projects) {
+                const payload = config.data ? (typeof config.data === 'string' ? JSON.parse(config.data) : config.data) : {};
                 mockDatabase.projects[idx].status = 'archived';
+                mockDatabase.projects[idx].archive_reason = payload.reason || 'No reason provided';
+                mockDatabase.projects[idx].archived_at = new Date().toISOString();
+                const mockSession = localStorage.getItem('mockSession');
+                if (mockSession) {
+                  try {
+                    const currentUser = JSON.parse(mockSession);
+                    mockDatabase.projects[idx].archived_by = currentUser.id;
+                  } catch (e) {}
+                }
                 persistDb();
                 responseData.data = mockDatabase.projects[idx];
               }
@@ -5104,6 +5479,55 @@ export const setupMockInterceptor = (api) => {
                 if (newTargetDate) {
                   mockDatabase.projects[idx].target_date = newTargetDate;
                 }
+                persistDb();
+                responseData.data = mockDatabase.projects[idx];
+              }
+            }
+          }
+          // PAUSE
+          else if (url.includes('/pause')) {
+            const urlParts = url.split('?');
+            const pathPart = urlParts[0];
+            const match = pathPart.match(/\/projects\/([a-zA-Z0-9-]+)\/pause$/);
+            if (match && method === 'post') {
+              const projectId = match[1];
+              const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+              const { reason, expectedResumeDate, resourceReleaseInstructions, siteSecurityPlan } = payload;
+              
+              const idx = mockDatabase.projects?.findIndex(p => p.id === projectId);
+              if (idx !== -1 && mockDatabase.projects) {
+                mockDatabase.projects[idx].status = 'on_hold';
+                mockDatabase.projects[idx].on_hold_reason = reason;
+                mockDatabase.projects[idx].expected_resume_date = expectedResumeDate;
+                mockDatabase.projects[idx].resource_release_instructions = resourceReleaseInstructions;
+                mockDatabase.projects[idx].site_security_plan = siteSecurityPlan;
+                mockDatabase.projects[idx].paused_at = new Date().toISOString();
+                const mockSession = localStorage.getItem('mockSession');
+                if (mockSession) {
+                  try {
+                    const currentUser = JSON.parse(mockSession);
+                    mockDatabase.projects[idx].paused_by = currentUser.id;
+                  } catch (e) {}
+                }
+                persistDb();
+                responseData.data = mockDatabase.projects[idx];
+              }
+            }
+          }
+          // RESUME
+          else if (url.includes('/resume')) {
+            const urlParts = url.split('?');
+            const pathPart = urlParts[0];
+            const match = pathPart.match(/\/projects\/([a-zA-Z0-9-]+)\/resume$/);
+            if (match && method === 'post') {
+              const projectId = match[1];
+              const idx = mockDatabase.projects?.findIndex(p => p.id === projectId);
+              if (idx !== -1 && mockDatabase.projects) {
+                mockDatabase.projects[idx].status = 'active';
+                mockDatabase.projects[idx].on_hold_reason = null;
+                mockDatabase.projects[idx].expected_resume_date = null;
+                mockDatabase.projects[idx].resource_release_instructions = null;
+                mockDatabase.projects[idx].site_security_plan = null;
                 persistDb();
                 responseData.data = mockDatabase.projects[idx];
               }
@@ -5292,33 +5716,171 @@ export const setupMockInterceptor = (api) => {
           }
           else if (url.includes('/dashboard/')) {
             if (url.includes('/dashboard/stats')) {
+              const session = JSON.parse(localStorage.getItem('mockSession') || '{}');
+              const currentUserId = session?.id || session?.user?.id;
+              const currentRole = session?.role || {};
+
+              const period = config.params?.period || new URLSearchParams(url.split('?')[1] || '').get('period') || 'All';
+              let periodStart, periodEnd;
+              if (period === 'All') {
+                periodStart = new Date(0);
+                periodEnd = new Date(1786536584000 + 365 * 24 * 60 * 60 * 1000);
+              } else if (period === 'Custom') {
+                const startParam = config.params?.startDate || new URLSearchParams(url.split('?')[1] || '').get('startDate');
+                const endParam = config.params?.endDate || new URLSearchParams(url.split('?')[1] || '').get('endDate');
+                periodStart = startParam ? new Date(startParam) : new Date(1786536584000 - 30 * 24 * 60 * 60 * 1000);
+                periodEnd = endParam ? new Date(endParam + 'T23:59:59.999Z') : new Date(1786536584000);
+              } else {
+                const days = period === '7D' ? 7 : period === '90D' ? 90 : 30;
+                periodStart = new Date(1786536584000 - days * 24 * 60 * 60 * 1000);
+                periodEnd = new Date(1786536584000);
+              }
+
+              let leadsScope = (mockDatabase.leads || []).filter(l => !l.deleted_at);
+              if (currentRole.id === 'sales_rep') {
+                leadsScope = leadsScope.filter(l => l.assignee_id === currentUserId);
+              }
+              // Filter leads by period start and end dates
+              leadsScope = leadsScope.filter(l => !l.created_at || (new Date(l.created_at) >= periodStart && new Date(l.created_at) <= periodEnd));
+              const activeLeadsCount = leadsScope.length;
+
+              // Projects scoping based on user role
+              const currentUser = session?.user || session;
+              const isAdmin = 
+                currentUser?.role === 'superadmin' || 
+                currentUser?.role?.name?.toLowerCase() === 'superadmin' || 
+                currentUser?.role?.name?.toLowerCase() === 'super admin' || 
+                (currentUser?.role?.permissions && currentUser.role.permissions.includes('*'));
+
+              let projectsScope = [...(mockDatabase.projects || [])];
+              if (currentUser && !isAdmin) {
+                const roleKey = Object.keys(ROLE_DEFAULTS).find(
+                  key => key.toLowerCase() === (currentUser.role?.name || '').toLowerCase() || 
+                         key.toLowerCase() === (currentUser.role?.id || '').toLowerCase()
+                );
+                const defaults = roleKey ? ROLE_DEFAULTS[roleKey] : null;
+                const scopes = currentUser.role?.data_scopes || defaults?.data_scopes || {};
+                const projectScopeSetting = scopes.projects || 'assigned';
+
+                if (projectScopeSetting === 'assigned' || projectScopeSetting === 'own' || projectScopeSetting === 'department') {
+                  projectsScope = projectsScope.filter(proj => {
+                    const isPm = proj.pm_id === currentUser.id;
+                    const isDesigner = proj.designer_id === currentUser.id;
+                    const isLeadDesigner = proj.lead_designer_id === currentUser.id;
+                    const isJuniorDesigner = proj.junior_designer_id === currentUser.id;
+                    const isSiteEng = proj.site_engineer_id === currentUser.id;
+                    const isQc = proj.qc_engineer_id === currentUser.id;
+                    const isSupervisor = proj.site_supervisor_id === currentUser.id;
+                    const isCrm = proj.crm_executive_id === currentUser.id;
+                    const isSalesRep = proj.sales_rep_id === currentUser.id;
+                    return isPm || isDesigner || isLeadDesigner || isJuniorDesigner || isSiteEng || isQc || isSupervisor || isCrm || isSalesRep;
+                  });
+                }
+              }
+
+              // Calculate won value and count from scoped active projects within the period
+              const activeProjs = projectsScope.filter(p => !p.deleted_at && p.status !== 'cancelled' && p.status !== 'deleted' && (!p.created_at || (new Date(p.created_at) >= periodStart && new Date(p.created_at) <= periodEnd)));
+              const wonValue = activeProjs.reduce((sum, p) => sum + Number(p.contract_value || p.value || 0), 0);
+              const wonCount = activeProjs.length;
+
+              // Active projects within the period
+              const activeProjects = projectsScope.filter(p => {
+                if (p.deleted_at) return false;
+                if (p.created_at && (new Date(p.created_at) < periodStart || new Date(p.created_at) > periodEnd)) return false;
+                const s = p.status?.toLowerCase();
+                return !s || !['on_hold', 'completed', 'overdue', 'cancelled', 'deleted'].includes(s);
+              });
+              const overdueProjectsCount = activeProjects.filter(p => p.target_date && new Date(p.target_date) < new Date(1786536584000)).length;
+
+              // Tasks due
+              const todayStr = new Date(1786536584000).toISOString().split('T')[0];
+              const activeTasks = (mockDatabase.tasks || []).filter(t => t.status !== 'done');
+              const dueTodayTasks = activeTasks.filter(t => t.due_date === todayStr).length;
+              const overdueTasks = activeTasks.filter(t => t.due_date && t.due_date < todayStr).length;
+
+              console.log('[Stats Interceptor] Scoped projects:', projectsScope.map(p => ({ name: p.name, id: p.id, status: p.status })), 'activeCount:', activeProjects.length, 'wonCount:', wonCount);
+
               responseData.data = {
-                activeLeads: { count: 22, prevWeekCount: 18, trend: 22 },
-                wonThisMonth: { value: 1500000, count: 5 },
-                activeProjects: { count: 8, overdueCount: 2 },
-                tasksDueToday: { count: 5, overdueCount: 1 },
-                targets: { targetRevenue: 5000000, targetLeads: 50 }
+                activeLeads: { count: activeLeadsCount, trend: 12 },
+                wonThisMonth: { count: wonCount, value: wonValue, trend: 18.5 },
+                activeProjects: { count: activeProjects.length, overdueCount: overdueProjectsCount },
+                tasksDueToday: { count: dueTodayTasks, overdueCount: overdueTasks },
+                salesTargets: { targetRevenue: 1000000, targetLeads: 20 },
+                revenueTrend: [
+                  { week: 'W1',  amt: 8.2 },  { week: 'W2',  amt: 9.1 },
+                  { week: 'W3',  amt: 7.8 },  { week: 'W4',  amt: 10.4 },
+                  { week: 'W5',  amt: 11.2 }, { week: 'W6',  amt: 10.0 },
+                  { week: 'W7',  amt: 12.1 }, { week: 'W8',  amt: 11.5 },
+                  { week: 'W9',  amt: 13.2 }, { week: 'W10', amt: 12.8 },
+                  { week: 'W11', amt: 13.9 }, { week: 'W12', amt: 14.2 }
+                ]
               };
             }
             else if (url.includes('/dashboard/activity')) {
               responseData.data = [
-                { id: 1, type: 'status_change', title: 'Lead converted', description: 'John Smith converted to Project', time: new Date().toISOString() },
-                { id: 2, type: 'note', title: 'Note added', description: 'Follow up required with Client X', time: new Date(Date.now() - 3600000).toISOString() }
+                { id: 1, user_name: 'Amit S.', action: 'converted', entity: 'Lead', entity_id: 'lead-101', created_at: new Date().toISOString() },
+                { id: 2, user_name: 'Bob Sales', action: 'added note', entity: 'Project', entity_id: 'proj-202', created_at: new Date(Date.now() - 3600000).toISOString() }
               ];
             }
-            else if (url.includes('/dashboard/pipeline')) {
-              responseData.data = [
-                { stage: 'New', count: 10, value: 500000 },
-                { stage: 'Contacted', count: 8, value: 800000 },
-                { stage: 'Qualified', count: 4, value: 600000 },
-                { stage: 'Proposal', count: 2, value: 1000000 },
-                { stage: 'Won', count: 1, value: 300000 }
-              ];
-            }
+             else if (url.includes('/dashboard/pipeline')) {
+               const period = config.params?.period || new URLSearchParams(url.split('?')[1] || '').get('period') || 'All';
+               let periodStart, periodEnd;
+               if (period === 'All') {
+                 periodStart = new Date(0);
+                 periodEnd = new Date(1786536584000 + 365 * 24 * 60 * 60 * 1000);
+               } else if (period === 'Custom') {
+                 const startParam = config.params?.startDate || new URLSearchParams(url.split('?')[1] || '').get('startDate');
+                 const endParam = config.params?.endDate || new URLSearchParams(url.split('?')[1] || '').get('endDate');
+                 periodStart = startParam ? new Date(startParam) : new Date(1786536584000 - 30 * 24 * 60 * 60 * 1000);
+                 periodEnd = endParam ? new Date(endParam + 'T23:59:59.999Z') : new Date(1786536584000);
+               } else {
+                 const days = period === '7D' ? 7 : period === '90D' ? 90 : 30;
+                 periodStart = new Date(1786536584000 - days * 24 * 60 * 60 * 1000);
+                 periodEnd = new Date(1786536584000);
+               }
+
+               const stages = [
+                 { id: 'new', name: 'New Leads', count: 0 },
+                 { id: 'contacted', name: 'Contacted', count: 0 },
+                 { id: 'qualified', name: 'Qualified', count: 0 },
+                 { id: 'proposal', name: 'Proposal Sent', count: 0 },
+                 { id: 'negotiation', name: 'Negotiation', count: 0 },
+                 { id: 'won', name: 'Won', count: 0 },
+                 { id: 'lost', name: 'Lost', count: 0 }
+               ];
+               (mockDatabase.leads || [])
+                 .filter(lead => !lead.created_at || (new Date(lead.created_at) >= periodStart && new Date(lead.created_at) <= periodEnd))
+                 .forEach(lead => {
+                 let cat = 'new';
+                 const status = (lead.status || '').toLowerCase();
+                 const stageName = (lead.stage_name || '').toLowerCase();
+                 const stageId = String(lead.stage_id || '').toLowerCase();
+
+                 if (status === 'converted' || status === 'won' || stageId.includes('won') || stageId === 'stage-14') {
+                   cat = 'won';
+                 } else if (status === 'lost' || stageId.includes('lost')) {
+                   cat = 'lost';
+                 } else if (stageName.includes('negotiation') || stageId === 'stage-13' || stageId === 'stage-12' || stageId === 'stage-11') {
+                   cat = 'negotiation';
+                 } else if (stageName.includes('proposal') || stageName.includes('quote') || stageId === 'stage-7' || stageId === 'stage-8' || stageId === 'stage-9' || stageId === 'stage-10') {
+                   cat = 'proposal';
+                 } else if (stageName.includes('qualified') || stageName.includes('discovery') || stageId === 'stage-5' || stageId === 'stage-6') {
+                   cat = 'qualified';
+                 } else if (stageName.includes('contact') || stageId === 'stage-3' || stageId === 'stage-4') {
+                   cat = 'contacted';
+                 } else {
+                   cat = 'new';
+                 }
+
+                 const stage = stages.find(s => s.id === cat);
+                 if (stage) stage.count++;
+               });
+               responseData.data = stages;
+             }
             else if (url.includes('/dashboard/payments-due')) {
               responseData.data = [
-                { id: 1, name: 'Project A - Milestone 1', amount: 50000, dueDate: new Date().toISOString() },
-                { id: 2, name: 'Project B - Advance', amount: 20000, dueDate: new Date(Date.now() - 86400000).toISOString() }
+                { id: 1, project_name: 'Project A', title: 'Milestone 1', amount: 50000, due_date: new Date().toISOString() },
+                { id: 2, project_name: 'Project B', title: 'Advance', amount: 20000, due_date: new Date(Date.now() - 86400000).toISOString() }
               ];
             }
           }

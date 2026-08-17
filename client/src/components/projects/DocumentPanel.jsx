@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Badge, Button, Modal, Spinner } from '../ui';
 import styles from './DocumentPanel.module.css';
-import { getDocuments, updateDocumentVisibility, getDocumentComments, addDocumentComment, deleteDocument } from '../../api/projects';
+import { getDocuments, updateDocumentVisibility, getDocumentComments, addDocumentComment, deleteDocument, getDocumentUrl } from '../../api/projects';
 import { useToast } from '../../store/toastContext';
 import { useS3Upload } from '../../hooks/useS3Upload';
 
@@ -135,6 +135,35 @@ export default function DocumentPanel({ projectId, projectStatus }) {
     } catch (err) {
       console.error(err);
       toast.error('Failed to update visibility.');
+    }
+  };
+
+  const handleOpenDocument = async (doc) => {
+    if (doc.url && doc.url !== '#') {
+      window.open(doc.url, '_blank');
+      return;
+    }
+    try {
+      const res = await getDocumentUrl(projectId, doc.id);
+      const fetchedUrl = res.data?.data?.url || res.data?.url || res.data;
+      
+      // Check if it's a valid string URL (not the mock interceptor fallback object)
+      if (fetchedUrl && typeof fetchedUrl === 'string' && fetchedUrl !== '#' && !fetchedUrl.includes('Mock session')) {
+        window.open(fetchedUrl, '_blank');
+      } else {
+        // Fallback for mock data: open a dummy placeholder
+        toast.info('Opening placeholder document (Mock Mode).');
+        
+        const isImage = /\\.(jpg|jpeg|png|gif|webp)$/i.test(doc.name);
+        const dummyUrl = isImage 
+          ? 'https://via.placeholder.com/800x600.png?text=Mock+Document+Preview'
+          : 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
+          
+        window.open(dummyUrl, '_blank');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to open document URL.');
     }
   };
 
@@ -281,8 +310,8 @@ export default function DocumentPanel({ projectId, projectStatus }) {
             <div
               className={styles.name}
               title={doc.name}
-              style={{ cursor: doc.url ? 'pointer' : 'default' }}
-              onClick={() => doc.url && window.open(doc.url, '_blank')}
+              style={{ cursor: 'pointer' }}
+              onClick={() => handleOpenDocument(doc)}
             >
               {doc.name}
             </div>

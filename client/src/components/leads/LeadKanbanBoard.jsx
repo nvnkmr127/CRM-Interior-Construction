@@ -10,7 +10,7 @@ import { Badge } from '../ui'; // Standard UI badge
 // Stages are now passed as props from the database
 
 // Droppable Column Component
-const KanbanColumn = React.memo(function KanbanColumn({ stage, leads, activeId, onLeadClick }) {
+const KanbanColumn = React.memo(function KanbanColumn({ stage, leads, activeId, onLeadClick, onMarkLost, onPark }) {
   const { setNodeRef } = useDroppable({ id: stage.id });
   const [visibleCount, setVisibleCount] = useState(50);
   
@@ -48,6 +48,8 @@ const KanbanColumn = React.memo(function KanbanColumn({ stage, leads, activeId, 
               lead={lead} 
               onAction={(action) => {
                 if (action === 'view' && onLeadClick) onLeadClick(lead.id);
+                if (action === 'lost' && onMarkLost) onMarkLost(lead.id);
+                if (action === 'park' && onPark) onPark(lead.id);
               }} 
             />
           ))}
@@ -75,7 +77,7 @@ const KanbanColumn = React.memo(function KanbanColumn({ stage, leads, activeId, 
   );
 });
 
-export default function LeadKanbanBoard({ initialLeads = [], stages = [], reps = [], onStageChange, onLeadClick }) {
+export default function LeadKanbanBoard({ initialLeads = [], stages = [], reps = [], onStageChange, onLeadClick, onMarkLost, onPark }) {
   const [leads, setLeads] = useState(initialLeads);
   const [activeId, setActiveId] = useState(null);
   
@@ -242,6 +244,8 @@ export default function LeadKanbanBoard({ initialLeads = [], stages = [], reps =
                 leads={leadsByStage[stage.id] || []} 
                 activeId={activeId} 
                 onLeadClick={onLeadClick}
+                onMarkLost={onMarkLost}
+                onPark={onPark}
               />
             ))}
 

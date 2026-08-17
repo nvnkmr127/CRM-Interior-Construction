@@ -38,10 +38,13 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 router.get('/:id', authenticate, authorize('leads:read'), leadController.getLeadByIdHandler);
 router.patch('/:id', authenticate, authorize('leads:update'), leadController.updateLeadHandler);
 router.delete('/:id', authenticate, authorize('leads:delete'), leadController.deleteLeadHandler);
+router.post('/:id/restore', authenticate, authorize('leads:delete'), leadController.restoreLeadHandler);
+router.delete('/:id/permanent', authenticate, authorize('leads:delete'), leadController.permanentlyDeleteLeadHandler);
 router.post('/bulk/delete', authenticate, authorize('leads:delete'), leadController.bulkDeleteLeadsHandler);
 router.post('/bulk/assign', authenticate, authorize('leads:update'), leadController.bulkAssignLeadsHandler);
 router.post('/bulk/stage', authenticate, authorize('leads:update'), leadController.bulkChangeStageHandler);
 router.post('/bulk/tag', authenticate, authorize('leads:update'), leadController.bulkTagHandler);
+router.post('/bulk/update', authenticate, authorize('leads:update'), leadController.bulkUpdateLeadsHandler);
 router.post('/merge', authenticate, authorize('leads:update'), leadController.mergeLeadsHandler);
 router.post('/:id/stage', authenticate, authorize('leads:update'), leadController.changeStageHandler);
 router.post('/:id/convert-to-project', authenticate, authorize('leads:update'), authorize('projects:create'), leadController.convertToProjectHandler);

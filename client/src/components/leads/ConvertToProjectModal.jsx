@@ -123,6 +123,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
   const [checklistConfig, setChecklistConfig] = useState([]);
   const [checklist, setChecklist] = useState({});
   const [loadingConfig, setLoadingConfig] = useState(true);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (isOpen && lead) {
@@ -134,7 +135,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
         projectName: lead.name ? `${lead.name}'s Project` : '',
         pm: '',
         designer: '',
-        contractValue: lead.budget_max || '',
+        contractValue: '',
         advanceAmount: '',
         startDate: '',
         handoverDate: '',
@@ -149,8 +150,8 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
         city: '',
         pincode: '',
         landmark: '',
-        latitude: lead.latitude || '',
-        longitude: lead.longitude || '',
+        latitude: '',
+        longitude: '',
         builder_name: '',
         society_name: '',
         rera_id: '',
@@ -173,33 +174,19 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
       });
       setContractFile(null);
 
-      const loadLeadMeasurements = async () => {
-        try {
-          const res = await api.get(`/leads/${lead.id}/measurements`);
-          if (res.data && res.data.success && Array.isArray(res.data.data)) {
-            setFormData(prev => ({
-              ...prev,
-              measurements: res.data.data
-            }));
-          }
-        } catch (err) {
-          console.error('Failed to load lead measurements', err);
-        }
-      };
 
-      loadLeadMeasurements();
 
       const loadChecklistConfig = async () => {
         try {
           setLoadingConfig(true);
           const res = await api.get('/config/tenant-settings');
           const defaultChecklist = [
-            { key: 'contract_signed', label: 'Contract signed', required: true, active: true },
-            { key: 'booking_received', label: 'Booking amount received', required: true, active: true },
-            { key: 'scope_finalized', label: 'Scope frozen', required: true, active: true },
+            { key: 'site_address_confirmed', label: 'Site address confirmed', required: false, active: true },
             { key: 'site_visit_completed', label: 'Site visit completed', required: true, active: true },
             { key: 'floor_plan', label: 'Floor plan attached', required: false, active: true },
-            { key: 'site_address_confirmed', label: 'Site address confirmed', required: false, active: true }
+            { key: 'scope_finalized', label: 'Scope frozen', required: true, active: true },
+            { key: 'booking_received', label: 'Booking amount received', required: true, active: true },
+            { key: 'contract_signed', label: 'Contract signed', required: true, active: true }
           ];
           const config = res.data?.data?.pre_conversion_checklist || defaultChecklist;
           const activeItems = config.filter(item => item.active);
@@ -213,12 +200,12 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
         } catch (err) {
           console.error('Failed to load checklist config', err);
           const fallback = [
-            { key: 'contract_signed', label: 'Contract signed', required: true, active: true },
-            { key: 'booking_received', label: 'Booking amount received', required: true, active: true },
-            { key: 'scope_finalized', label: 'Scope frozen', required: true, active: true },
+            { key: 'site_address_confirmed', label: 'Site address confirmed', required: false, active: true },
             { key: 'site_visit_completed', label: 'Site visit completed', required: true, active: true },
             { key: 'floor_plan', label: 'Floor plan attached', required: false, active: true },
-            { key: 'site_address_confirmed', label: 'Site address confirmed', required: false, active: true }
+            { key: 'scope_finalized', label: 'Scope frozen', required: true, active: true },
+            { key: 'booking_received', label: 'Booking amount received', required: true, active: true },
+            { key: 'contract_signed', label: 'Contract signed', required: true, active: true }
           ];
           setChecklistConfig(fallback);
           const initialChecklist = {};
@@ -426,7 +413,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
             </div>
             <div>
               <span className="text-[var(--color-text-secondary)] block text-xs font-medium uppercase tracking-wider mb-1">Max Budget</span>
-              <span className="font-semibold text-[var(--color-text)]">{lead.budget_max ? `₹${Number(lead.budget_max).toLocaleString()}` : 'TBD'}</span>
+              <span className="font-semibold text-[var(--color-text)]">TBD</span>
             </div>
             {lead.locality && (
               <div className="col-span-2">
@@ -1189,6 +1176,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
             <label className="block text-sm font-bold text-[var(--color-text)]">Signed Contract Document *</label>
             <div className="flex items-center gap-4">
               <input 
+                id="contract_file_input"
                 type="file" 
                 accept=".pdf,.png,.jpg,.jpeg" 
                 onChange={e => setContractFile(e.target.files[0] || null)}
@@ -1199,7 +1187,45 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
               )}
             </div>
             {contractFile && (
-              <p className="text-xs text-[var(--color-text-secondary)] mt-1.5 font-medium">Selected file: <span className="font-semibold text-[var(--color-text)]">{contractFile.name}</span> ({(contractFile.size / 1024).toFixed(1)} KB)</p>
+              <div className="flex items-center gap-3 mt-1.5">
+                <p className="text-xs text-[var(--color-text-secondary)] font-medium">Selected file: <span className="font-semibold text-[var(--color-text)]">{contractFile.name}</span> ({(contractFile.size / 1024).toFixed(1)} KB)</p>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="text-red-500 hover:text-red-700 text-xs font-semibold px-2 py-0.5 rounded bg-red-50 hover:bg-red-100 transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            )}
+            {showDeleteConfirm && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 z-[100] flex items-center justify-center p-4">
+                <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
+                  <h3 className="text-lg font-bold text-[var(--color-text)] mb-2">Delete File</h3>
+                  <p className="text-sm text-[var(--color-text-secondary)] mb-6">Are you sure you want to remove the selected contract document?</p>
+                  <div className="flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="px-4 py-2 text-sm font-semibold text-[var(--color-text-secondary)] hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setContractFile(null);
+                        const fileInput = document.getElementById('contract_file_input');
+                        if (fileInput) fileInput.value = '';
+                        setShowDeleteConfirm(false);
+                      }}
+                      className="px-4 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-lg shadow-sm transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>

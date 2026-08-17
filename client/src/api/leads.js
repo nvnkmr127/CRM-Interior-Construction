@@ -252,7 +252,22 @@ export const updateActivity = async (leadId, activityId, data) => {
   return response.data;
 };
 
-export const deleteActivity = async (leadId, activityId) => {
-  const response = await api.delete(`/leads/${leadId}/activities/${activityId}`);
+export const deleteActivity = async (leadId, activityId, data = {}) => {
+  const response = await api.delete(`/leads/${leadId}/activities/${activityId}`, { data });
+  return response.data;
+};
+
+export const bulkUpdateLeads = async (leadIds, updates) => {
+  const response = await api.post(`/leads/bulk/update`, { leadIds, updates });
+  return response.data;
+};
+
+export const restoreLead = async (id) => {
+  const response = await api.post(`/leads/${id}/restore`);
+  return response.data;
+};
+
+export const permanentlyDeleteLead = async (id) => {
+  const response = await api.delete(`/leads/${id}/permanent`);
   return response.data;
 };

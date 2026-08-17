@@ -79,7 +79,9 @@ async function createLead(tenantId, data, txClient = null) {
   }
 }
 
-async function findLeadById(tenantId, leadId) {
+async function findLeadById(tenantId, leadId, txClient = null, includeDeleted = false) {
+  const deletedCondition = includeDeleted ? '' : 'AND l.deleted_at IS NULL';
+  const client = txClient || pool;
   const query = `
     SELECT l.*,
            u.name AS assignee_name, u.avatar_url AS assignee_avatar,
@@ -136,14 +138,16 @@ async function findLeadById(tenantId, leadId) {
       ORDER BY (CASE WHEN a.scheduled_at ~ '^\\d{4}-\\d{2}-\\d{2}' THEN CAST(a.scheduled_at AS timestamptz) >= CURRENT_TIMESTAMP ELSE false END) DESC, a.scheduled_at ASC
       LIMIT 1
     ) AS next_mtg ON true
-    WHERE l.tenant_id = $1 AND l.id = $2 AND l.deleted_at IS NULL
+    WHERE l.tenant_id = $1 AND l.id = $2 ${deletedCondition}
   `;
   
-  const result = await pool.query(query, [tenantId, leadId]);
+  const result = await client.query(query, [tenantId, leadId]);
   return result.rows[0] || null;
 }
 
-async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy, sortDesc, page = 1, limit = 20, createdFrom, createdTo, scoreMin, scoreMax, intent, cursor, scopeFilter = '1=1' }) {
+async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy, sortDesc, page = 1, limit = 20, createdFrom, createdTo, scoreMin, scoreMax, intent, cursor, scopeFilter = '1=1', deletedOnly = false }) {
+  const isDeletedOnly = deletedOnly === 'true' || deletedOnly === true;
+  const deletedCondition = isDeletedOnly ? 'l.deleted_at IS NOT NULL' : 'l.deleted_at IS NULL';
   let query = `
     SELECT l.*,
            u.name AS assignee_name, u.avatar_url AS assignee_avatar,
@@ -203,7 +207,7 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
       ORDER BY (CASE WHEN a.scheduled_at ~ '^\\d{4}-\\d{2}-\\d{2}' THEN CAST(a.scheduled_at AS timestamptz) >= CURRENT_TIMESTAMP ELSE false END) DESC, a.scheduled_at ASC
       LIMIT 1
     ) AS next_mtg ON true
-    WHERE l.tenant_id = $1 AND l.deleted_at IS NULL AND (${scopeFilter})
+    WHERE l.tenant_id = $1 AND ${deletedCondition} AND (${scopeFilter})
   `;
   
   const values = [tenantId];
@@ -418,6 +422,23 @@ async function softDeleteLead(tenantId, leadId) {
     UPDATE leads
     SET deleted_at = NOW()
     WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
+  `;
+  await pool.query(query, [tenantId, leadId]);
+}
+
+async function restoreLead(tenantId, leadId) {
+  const query = `
+    UPDATE leads
+    SET deleted_at = NULL
+    WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NOT NULL
+  `;
+  await pool.query(query, [tenantId, leadId]);
+}
+
+async function permanentlyDeleteLead(tenantId, leadId) {
+  const query = `
+    DELETE FROM leads
+    WHERE tenant_id = $1 AND id = $2
   `;
   await pool.query(query, [tenantId, leadId]);
 }
@@ -728,6 +749,8 @@ module.exports = {
   findLeads,
   updateLead,
   softDeleteLead,
+  restoreLead,
+  permanentlyDeleteLead,
   convertLeadToProject,
   completeLeadConversion,
   getLeadStats,

@@ -4,7 +4,7 @@ const { logAction } = require('../auditLog');
 /**
  * Formally archive a project.
  */
-async function archiveProject({ projectId, tenantId, userId }) {
+async function archiveProject({ projectId, tenantId, userId, reason }) {
   // Fetch current project
   const currentRes = await pool.query(
     'SELECT id, name, status FROM projects WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
@@ -24,10 +24,14 @@ async function archiveProject({ projectId, tenantId, userId }) {
   // Update status to archived
   const updateRes = await pool.query(
     `UPDATE projects 
-     SET status = 'archived', updated_at = NOW() 
-     WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL
+     SET status = 'archived', 
+         archive_reason = $1, 
+         archived_at = NOW(), 
+         archived_by = $2, 
+         updated_at = NOW() 
+     WHERE id = $3 AND tenant_id = $4 AND deleted_at IS NULL
      RETURNING *`,
-    [projectId, tenantId]
+    [reason || null, userId, projectId, tenantId]
   );
   const updatedProject = updateRes.rows[0];
 
@@ -39,7 +43,7 @@ async function archiveProject({ projectId, tenantId, userId }) {
     entity: 'project',
     entityId: projectId,
     oldValue: { status: project.status },
-    newValue: { status: 'archived' }
+    newValue: { status: 'archived', reason }
   });
 
   return updatedProject;

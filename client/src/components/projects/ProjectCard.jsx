@@ -9,6 +9,7 @@ const STATUS_MAP = {
   overdue:   { label: 'Overdue',   color: 'var(--color-danger)',  bg: 'var(--color-danger-bg)' },
   cancelled: { label: 'Cancelled', color: 'var(--color-text-secondary)', bg: 'var(--color-surface-2)' },
   deleted:   { label: 'Deleted',   color: 'var(--color-text-secondary)', bg: 'var(--color-surface-2)' },
+  archived:  { label: 'Archived',  color: '#2563eb',             bg: '#eff6ff' },
 };
 
 function getProgressColor(val) {
@@ -91,6 +92,80 @@ export default function ProjectCard({ project, onClick }) {
       <div className={styles.titleBlock}>
         <span className={styles.projName}>{displayProject.name}</span>
         {clientName && <span className={styles.clientName}>{clientName}</span>}
+        
+        {/* Status Reasons on Card */}
+        {statusKey === 'on_hold' && (displayProject.on_hold_reason || displayProject.onHoldReason) && (
+          <div style={{
+            marginTop: '8px',
+            padding: '6px 10px',
+            background: 'var(--color-warning-bg, #fffbeb)',
+            border: '1px solid var(--color-warning-border, #fef3c7)',
+            borderRadius: '6px',
+            fontSize: '11px',
+            color: '#92400e',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1px'
+          }}>
+            <strong>Pause Reason:</strong>
+            <span style={{
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              display: 'block'
+            }} title={displayProject.on_hold_reason || displayProject.onHoldReason}>
+              {displayProject.on_hold_reason || displayProject.onHoldReason}
+            </span>
+          </div>
+        )}
+        {statusKey === 'deleted' && (displayProject.delete_reason || displayProject.deleteReason) && (
+          <div style={{
+            marginTop: '8px',
+            padding: '6px 10px',
+            background: '#fef2f2',
+            border: '1px solid #fee2e2',
+            borderRadius: '6px',
+            fontSize: '11px',
+            color: '#991b1b',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1px'
+          }}>
+            <strong>Delete Reason:</strong>
+            <span style={{
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              display: 'block'
+            }} title={displayProject.delete_reason || displayProject.deleteReason}>
+              {displayProject.delete_reason || displayProject.deleteReason}
+            </span>
+          </div>
+        )}
+        {statusKey === 'archived' && (displayProject.archive_reason || displayProject.archiveReason) && (
+          <div style={{
+            marginTop: '8px',
+            padding: '6px 10px',
+            background: '#eff6ff',
+            border: '1px solid #dbeafe',
+            borderRadius: '6px',
+            fontSize: '11px',
+            color: '#1e40af',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1px'
+          }}>
+            <strong>Archive Reason:</strong>
+            <span style={{
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              display: 'block'
+            }} title={displayProject.archive_reason || displayProject.archiveReason}>
+              {displayProject.archive_reason || displayProject.archiveReason}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* PM row */}

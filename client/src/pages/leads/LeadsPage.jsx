@@ -15,6 +15,7 @@ import LeadMap from '../../components/leads/LeadMap';
 import LeadDashboard from '../../components/leads/LeadDashboard';
 import LeadCalendar from '../../components/leads/LeadCalendar';
 import LeadImportModal from '../../components/leads/LeadImportModal';
+import MarkLostModal from '../../components/leads/MarkLostModal';
 import { useLeads } from '../../hooks/useLeads';
 import { useAuth } from '../../store/authContext';
 import styles from './LeadsPage.module.css';
@@ -161,8 +162,38 @@ export default function LeadsPage() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
+  const [statusFilter, setStatusFilter] = useState('active');
   const [page, setPage] = useState(1);
   const limit = 20;
+
+  const [markLostLeadId, setMarkLostLeadId] = useState(null);
+  const [markLostSubmitting, setMarkLostSubmitting] = useState(false);
+
+  const handleMarkLostConfirm = async (reason) => {
+    setMarkLostSubmitting(true);
+    try {
+      await api.patch(`/leads/${markLostLeadId}`, { lost_reason: reason });
+      await bulkDelete([markLostLeadId]);
+      toast.success('Lead marked as lost successfully');
+      setMarkLostLeadId(null);
+      refetch();
+    } catch (e) {
+      toast.error('Failed to mark lead as lost.');
+    } finally {
+      setMarkLostSubmitting(false);
+    }
+  };
+
+  const handleParkLead = async (leadId) => {
+    try {
+      await api.patch(`/leads/${leadId}`, { status: 'parked' });
+      toast.success('Lead parked successfully');
+      // Re-fetch since leads custom hook exposes refetch
+      refetch();
+    } catch (e) {
+      toast.error('Failed to park lead.');
+    }
+  };
 
   const [users, setUsers] = useState([]);
   useEffect(() => {
@@ -183,13 +214,20 @@ export default function LeadsPage() {
     if (createdFrom) f.createdFrom = createdFrom;
     if (createdTo) f.createdTo = createdTo;
     if (stageIdFilter) f.stageId = stageIdFilter;
+    if (statusFilter === 'deleted') {
+      f.deletedOnly = true;
+    } else if (statusFilter === 'parked') {
+      f.status = 'parked';
+    } else if (statusFilter === 'active') {
+      f.status = 'active';
+    }
     if (sortBy) {
       if (sortBy === 'latest') { f.sortBy = 'created_at'; f.sortDesc = true; }
       else if (sortBy === 'score') { f.sortBy = 'score'; f.sortDesc = true; }
       else if (sortBy === 'name') { f.sortBy = 'name'; f.sortDesc = false; }
     }
     return f;
-  }, [debouncedSearch, sourceFilter, assigneeFilter, scoreRange, intentFilter, sortBy, createdFrom, createdTo, stageIdFilter, page, limit]);
+  }, [debouncedSearch, sourceFilter, assigneeFilter, scoreRange, intentFilter, sortBy, createdFrom, createdTo, stageIdFilter, statusFilter, page, limit]);
 
   const { leads, stages, stats, total, loading, error, optimisticStageChange, bulkChangeStage, bulkDelete, refetch } = useLeads(filters);
 
@@ -267,28 +305,27 @@ export default function LeadsPage() {
     setCreatedFrom('');
     setCreatedTo('');
     setStageIdFilter('');
+    setStatusFilter('active');
     setPage(1);
   };
 
   const handleExport = async () => {
     try {
-      if (import.meta.env.DEV && localStorage.getItem('mockSession')) {
-        toast.success('Export simulated in mock session');
-        return;
-      }
-      const params = new URLSearchParams(filters);
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:4000/api'}/leads/export?${params}`, {
-        credentials: 'include'
+      const res = await api.get('/leads/export', {
+        params: filters,
+        responseType: 'blob'
       });
-      if (!response.ok) throw new Error('Export failed');
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
+      const url = window.URL.createObjectURL(new Blob([res.data]));
       const a = document.createElement('a');
       a.href = url;
       a.download = `leads-${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
       a.click();
+      a.remove();
       URL.revokeObjectURL(url);
-    } catch {
+      toast.success('Leads exported successfully!');
+    } catch (err) {
+      console.error('Export failed:', err);
       toast.error('Export failed');
     }
   };
@@ -312,9 +349,63 @@ export default function LeadsPage() {
                 onClick={handleExport}
                 title="Export Leads to CSV"
               >&#8593; Export</PermissionButton>
-              <PermissionButton module="leads" action="import" variant="outline" onClick={() => setIsImportModalOpen(true)}>&#8595; Import</PermissionButton>
-              <PermissionButton module="leads" action="create" variant="primary" onClick={() => setIsFormOpen(true)}>+ New Lead</PermissionButton>
+              {statusFilter !== 'deleted' && (
+                <>
+                  <PermissionButton module="leads" action="import" variant="outline" onClick={() => setIsImportModalOpen(true)}>&#8595; Import</PermissionButton>
+                  <PermissionButton module="leads" action="create" variant="primary" onClick={() => setIsFormOpen(true)}>+ New Lead</PermissionButton>
+                </>
+              )}
             </div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--color-border)', marginBottom: '16px' }}>
+            <button
+              onClick={() => { setStatusFilter('active'); setPage(1); }}
+              style={{
+                padding: '8px 16px',
+                border: 'none',
+                borderBottom: statusFilter === 'active' ? '2px solid var(--color-primary)' : '2px solid transparent',
+                background: 'transparent',
+                color: statusFilter === 'active' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontSize: '14px',
+                transition: 'all 0.2s'
+              }}
+            >
+              Active Leads
+            </button>
+            <button
+              onClick={() => { setStatusFilter('parked'); setPage(1); }}
+              style={{
+                padding: '8px 16px',
+                border: 'none',
+                borderBottom: statusFilter === 'parked' ? '2px solid var(--color-warning)' : '2px solid transparent',
+                background: 'transparent',
+                color: statusFilter === 'parked' ? 'var(--color-warning)' : 'var(--color-text-secondary)',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontSize: '14px',
+                transition: 'all 0.2s'
+              }}
+            >
+              Parked Leads
+            </button>
+            <button
+              onClick={() => { setStatusFilter('deleted'); setPage(1); }}
+              style={{
+                padding: '8px 16px',
+                border: 'none',
+                borderBottom: statusFilter === 'deleted' ? '2px solid var(--color-danger)' : '2px solid transparent',
+                background: 'transparent',
+                color: statusFilter === 'deleted' ? 'var(--color-danger)' : 'var(--color-text-secondary)',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontSize: '14px',
+                transition: 'all 0.2s'
+              }}
+            >
+              Deleted Leads
+            </button>
           </div>
         </>
       )}
@@ -352,6 +443,7 @@ export default function LeadsPage() {
               leads={filteredLeads} 
               loading={loading} 
               onLeadClick={setSelectedLeadId} 
+              onViewChange={handleViewChange}
             />
           </ErrorBoundary>
         ) : view === 'kanban' && !loading ? (
@@ -361,6 +453,8 @@ export default function LeadsPage() {
               stages={stages}
               onStageChange={handleMoveStage}
               onLeadClick={setSelectedLeadId}
+              onMarkLost={(id) => setMarkLostLeadId(id)}
+              onPark={handleParkLead}
             />
           </ErrorBoundary>
         ) : view === 'map' && !loading ? (
@@ -389,6 +483,7 @@ export default function LeadsPage() {
             clearFilters={clearFilters}
             refetch={refetch}
             search={debouncedSearch}
+            users={users}
           />
         )}
         </div>
@@ -424,6 +519,15 @@ export default function LeadsPage() {
           isOpen={isImportModalOpen}
           onClose={() => setIsImportModalOpen(false)}
           onImportSuccess={refetch}
+        />
+      )}
+
+      {markLostLeadId && (
+        <MarkLostModal
+          isOpen={!!markLostLeadId}
+          onClose={() => setMarkLostLeadId(null)}
+          onConfirm={handleMarkLostConfirm}
+          isSubmitting={markLostSubmitting}
         />
       )}
     </div>

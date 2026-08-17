@@ -4,6 +4,8 @@ import { Pagination, EmptyState, ContentLoader, Button } from '../../components/
 import { syncCommunications } from '../../api/leads';
 import { useConfirm } from '../../store/confirmContext';
 import styles from '../../pages/leads/LeadsPage.module.css';
+import LeadsBulkActionsModal from './LeadsBulkActionsModal';
+import SingleLeadActionModal from './SingleLeadActionModal';
 
 function scoreClass(score) {
   if (score >= 61) return styles.scoreHigh;
@@ -57,10 +59,12 @@ export default function LeadTable({
   filteredLeads, loading, page, limit, total, setPage,
   setSelectedLeadId, stageMenuLeadId, setStageMenuLeadId,
   stages, handleMoveStage, bulkChangeStage, bulkDelete, clearFilters,
-  refetch, search
+  refetch, search, users = []
 }) {
   const [selectedIds, setSelectedIds] = React.useState(new Set());
   const [showBulkStageMenu, setShowBulkStageMenu] = React.useState(false);
+  const [showBulkActionsModal, setShowBulkActionsModal] = React.useState(false);
+  const [showSingleActionModal, setShowSingleActionModal] = React.useState(false);
   const [syncingLeadIds, setSyncingLeadIds] = React.useState(new Set());
   const { confirm } = useConfirm();
 
@@ -170,18 +174,42 @@ export default function LeadTable({
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      setSelectedIds(new Set(filteredLeads.map(l => l.id)));
+      const selected = new Set(filteredLeads.map(l => l.id));
+      setSelectedIds(selected);
+      if (selected.size === 1) {
+        setShowSingleActionModal(true);
+        setShowBulkActionsModal(false);
+      } else if (selected.size > 1) {
+        setShowBulkActionsModal(true);
+        setShowSingleActionModal(false);
+      }
     } else {
       setSelectedIds(new Set());
+      setShowSingleActionModal(false);
+      setShowBulkActionsModal(false);
     }
   };
 
   const handleSelectRow = (e, id) => {
     e.stopPropagation();
     const newSet = new Set(selectedIds);
-    if (newSet.has(id)) newSet.delete(id);
-    else newSet.add(id);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
     setSelectedIds(newSet);
+
+    if (newSet.size === 1) {
+      setShowSingleActionModal(true);
+      setShowBulkActionsModal(false);
+    } else if (newSet.size > 1) {
+      setShowBulkActionsModal(true);
+      setShowSingleActionModal(false);
+    } else {
+      setShowSingleActionModal(false);
+      setShowBulkActionsModal(false);
+    }
   };
 
   const clearSelection = () => {
@@ -465,99 +493,40 @@ export default function LeadTable({
         />
       </div>
 
-      {selectedIds.size > 0 && (
-        <div style={{
-          position: 'fixed', top: '80px', left: '50%', transform: 'translateX(-50%)',
-          background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(12px)',
-          padding: '20px 40px', borderRadius: '16px', minWidth: '600px',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0,0,0,0.05)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px', zIndex: 100,
-          transition: 'all 0.3s ease-in-out'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ 
-              background: 'var(--color-primary, #3b82f6)', color: 'white', 
-              width: '24px', height: '24px', borderRadius: '50%', 
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 'bold', fontSize: '12px'
-            }}>
-              {selectedIds.size}
-            </div>
-            <span style={{ fontWeight: 600, color: 'var(--color-text, #1f2937)' }}>Leads Selected</span>
-          </div>
+      {showBulkActionsModal && (
+        <LeadsBulkActionsModal
+          isOpen={showBulkActionsModal}
+          onClose={() => {
+            setShowBulkActionsModal(false);
+            clearSelection();
+          }}
+          selectedLeadIds={Array.from(selectedIds)}
+          filteredLeads={filteredLeads}
+          users={users}
+          stages={stages}
+          onUpdateSuccess={() => {
+            clearSelection();
+            if (refetch) refetch();
+          }}
+        />
+      )}
 
-          <div style={{ width: '1px', height: '24px', background: 'var(--color-border, #e5e7eb)' }}></div>
-          
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', position: 'relative' }}>
-            <Button 
-              variant="secondary" 
-              onClick={() => {
-                const selectedLeads = filteredLeads.filter(l => selectedIds.has(l.id) && l.email);
-                const emails = selectedLeads.map(l => l.email).join(', ');
-                if (emails) {
-                  navigator.clipboard.writeText(emails);
-                  alert(`Copied ${selectedLeads.length} emails to clipboard!`);
-                } else {
-                  alert('No emails found for selected leads.');
-                }
-              }}
-              title="Copy Emails"
-              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-              Copy Emails
-            </Button>
-            
-            <Button 
-              variant="outline" 
-              style={{color: 'var(--color-danger, #ef4444)', borderColor: 'var(--color-danger, #ef4444)', display: 'flex', alignItems: 'center', gap: '6px'}} 
-              onClick={handleBulkDelete}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-              Delete
-            </Button>
-            
-            <div className={styles.stageMenuWrap} style={{position: 'relative'}}>
-              <Button 
-                variant="primary" 
-                onClick={() => setShowBulkStageMenu(!showBulkStageMenu)}
-                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12h20"/><path d="m15 5 7 7-7 7"/></svg>
-                Move Stage
-              </Button>
-              {showBulkStageMenu && (
-                <div className={styles.stageDropdown} style={{top: '100%', bottom: 'auto', marginTop: '12px', right: 0, left: 'auto', minWidth: '160px', boxShadow: 'var(--shadow-lg, 0 10px 25px rgba(0,0,0,0.1))'}}>
-                  {stages.map(s => (
-                    <button
-                      key={s.id}
-                      className={styles.stageDropdownItem}
-                      onClick={() => handleBulkMove(s.id)}
-                    >
-                      {s.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <button 
-              onClick={clearSelection}
-              style={{ 
-                background: 'transparent', border: 'none', cursor: 'pointer', 
-                color: 'var(--color-text-secondary, #6b7280)', 
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                padding: '6px', borderRadius: '50%', marginLeft: '4px',
-                transition: 'background 0.2s'
-              }}
-              title="Clear Selection"
-              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-surface-hover, rgba(0,0,0,0.05))'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-            </button>
-          </div>
-        </div>
+      {showSingleActionModal && selectedIds.size === 1 && (
+        <SingleLeadActionModal
+          isOpen={showSingleActionModal}
+          onClose={() => {
+            setShowSingleActionModal(false);
+            clearSelection();
+          }}
+          leadId={Array.from(selectedIds)[0]}
+          filteredLeads={filteredLeads}
+          users={users}
+          stages={stages}
+          onUpdateSuccess={() => {
+            clearSelection();
+            if (refetch) refetch();
+          }}
+        />
       )}
 
     </div>

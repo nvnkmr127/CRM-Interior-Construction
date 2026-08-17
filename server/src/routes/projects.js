@@ -656,7 +656,9 @@ router.patch('/:id', authorize('projects:update'), validate(updateProjectSchema)
 // DELETE /api/projects/:id
 router.delete('/:id', authorize('projects:delete'), async (req, res, next) => {
   try {
-    await projectRepository.softDeleteProject(req.tenantId, req.params.id);
+    logger.info('[DELETE PROJECT] route hit. id:', req.params.id, 'body:', req.body, 'query:', req.query);
+    const reason = req.body?.reason || req.query?.reason;
+    await projectRepository.softDeleteProject(req.tenantId, req.params.id, reason, req.user.userId);
     return res.status(204).send();
   } catch (error) {
     if (error.message === 'NOT_FOUND' || error.status === 404) {
@@ -769,11 +771,13 @@ router.patch('/:id/retention/:scheduleId', authorize('projects:manage'), validat
 // POST /api/projects/:id/archive
 router.post('/:id/archive', authorize('projects:update'), async (req, res, next) => {
   try {
+    const { reason } = req.body;
     const { archiveProject } = require('../services/projects/archiveProject');
     const project = await archiveProject({
       projectId: req.params.id,
       tenantId: req.tenantId,
-      userId: req.user.userId
+      userId: req.user.userId,
+      reason
     });
     return success(res, project, { message: 'Project archived successfully.' });
   } catch (error) {

@@ -25,9 +25,11 @@ export function useS3Upload() {
       const { uploadUrl, storageKey } = res.data?.data || res.data || {}
 
       // 2. Upload directly to S3 (bypass our axios interceptor — no auth header to S3)
+      let finalStorageKey = storageKey;
       if (uploadUrl && uploadUrl.includes('mock-s3.local')) {
         await new Promise(resolve => setTimeout(resolve, 500));
         setProgress(100);
+        finalStorageKey = URL.createObjectURL(file);
       } else if (uploadUrl) {
         await axios.put(uploadUrl, file, {
           headers: { 'Content-Type': file.type },
@@ -39,7 +41,7 @@ export function useS3Upload() {
 
       // 3. Register the document in our DB
       const doc = await registerDocument(projectId, {
-        storageKey,
+        storageKey: finalStorageKey,
         name: file.name,
         docType,
         phaseId,
@@ -68,16 +70,18 @@ export function useS3Upload() {
         docType: purpose,
       })
       const { uploadUrl, storageKey } = res.data?.data || res.data || {}
+      let finalStorageKey = storageKey;
       if (uploadUrl && uploadUrl.includes('mock-s3.local')) {
         await new Promise(resolve => setTimeout(resolve, 500));
         setProgress(100);
+        finalStorageKey = URL.createObjectURL(file);
       } else {
         await axios.put(uploadUrl, file, {
           headers: { 'Content-Type': file.type },
           onUploadProgress: (e) => setProgress(Math.round(e.loaded*100/e.total)),
         })
       }
-      return storageKey
+      return finalStorageKey
     } catch(e) {
       setError('Upload failed'); throw e
     } finally {
@@ -94,9 +98,11 @@ export function useS3Upload() {
       });
       const { uploadUrl, storageKey } = res.data.data;
 
-      if (uploadUrl.includes('mock-s3.local')) {
+      let finalStorageKey = storageKey;
+      if (uploadUrl && uploadUrl.includes('mock-s3.local')) {
         await new Promise(resolve => setTimeout(resolve, 500));
         setProgress(100);
+        finalStorageKey = URL.createObjectURL(file);
       } else {
         await axios.put(uploadUrl, file, {
           headers: { 'Content-Type': file.type },
@@ -105,7 +111,7 @@ export function useS3Upload() {
       }
 
       return {
-        storageKey,
+        storageKey: finalStorageKey,
         fileName: file.name,
         fileSize: file.size,
         mimeType: file.type

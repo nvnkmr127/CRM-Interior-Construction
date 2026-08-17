@@ -27,10 +27,12 @@ async function convertToProject({ tenantId, userId, leadId, bodyData }) {
   );
   const tenantConfig = tenantRes.rows[0]?.config || {};
   const checklistConfig = tenantConfig.pre_conversion_checklist || [
-    { key: 'contract_signed', label: 'Contract signed', required: true, active: true },
-    { key: 'booking_received', label: 'Booking amount received', required: true, active: true },
+    { key: 'site_address_confirmed', label: 'Site address confirmed', required: false, active: true },
+    { key: 'site_visit_completed', label: 'Site visit completed', required: true, active: true },
+    { key: 'floor_plan', label: 'Floor plan attached', required: false, active: true },
     { key: 'scope_finalized', label: 'Scope frozen', required: true, active: true },
-    { key: 'site_visit_completed', label: 'Site visit completed', required: true, active: true }
+    { key: 'booking_received', label: 'Booking amount received', required: true, active: true },
+    { key: 'contract_signed', label: 'Contract signed', required: true, active: true }
   ];
 
   const missingFields = [];

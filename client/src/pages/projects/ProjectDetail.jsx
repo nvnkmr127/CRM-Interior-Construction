@@ -10,6 +10,8 @@ import ReopenProjectModal from '../../components/projects/ReopenProjectModal';
 import CancelProjectModal from '../../components/projects/CancelProjectModal';
 import PauseProjectModal from '../../components/projects/PauseProjectModal';
 import ResumeProjectModal from '../../components/projects/ResumeProjectModal';
+import ArchiveProjectModal from '../../components/projects/ArchiveProjectModal';
+import DeleteProjectModal from '../../components/projects/DeleteProjectModal';
 import { useConfirm } from '../../store/confirmContext';
 
 // Lazy load tabs
@@ -845,48 +847,19 @@ export default function ProjectDetail() {
   const [isPauseModalOpen, setIsPauseModalOpen] = useState(false);
   const [isResumeModalOpen, setIsResumeModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const { confirm } = useConfirm();
 
-  const handleArchive = async () => {
-    const isConfirmed = await confirm({
-      title: 'Archive Project',
-      message: 'Are you sure you want to formally archive this project? The data will remain accessible for reference.',
-      confirmText: 'Archive',
-      cancelText: 'Cancel'
-    });
-    if (isConfirmed) {
-      try {
-        setArchiving(true);
-        await archiveProject(projectId);
-        reloadProject();
-      } catch (e) {
-        console.error('Failed to archive project', e);
-        alert('Failed to archive project.');
-      } finally {
-        setArchiving(false);
-      }
-    }
+  const handleArchive = () => {
+    setIsArchiveModalOpen(true);
   };
 
-  const handleDelete = async () => {
-    const isConfirmed = await confirm({
-      title: 'Delete Project',
-      message: 'Are you sure you want to delete this project? This action cannot be undone.',
-      confirmText: 'Delete',
-      cancelText: 'Cancel',
-      isDanger: true
-    });
-    if (isConfirmed) {
-      try {
-        await deleteProject(projectId);
-        navigate('/projects');
-      } catch (e) {
-        console.error('Failed to delete project', e);
-      }
-    }
+  const handleDelete = () => {
+    setIsDeleteModalOpen(true);
   };
 
   const handleLockScope = async () => {
@@ -1092,6 +1065,77 @@ export default function ProjectDetail() {
       <div className={styles.breadcrumb}>
         <a href="/projects">Projects</a> &gt; <span>{project.name}</span>
       </div>
+
+      {/* Status Banners */}
+      {project.status === 'on_hold' && (
+        <div style={{
+          padding: '16px 20px',
+          background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+          border: '1px solid #fde68a',
+          borderRadius: '12px',
+          marginBottom: '20px',
+          color: '#92400e',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '15px', marginBottom: '8px' }}>
+            <span>⏸️</span> Project is Paused (On Hold)
+          </div>
+          <div style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div><strong>Reason:</strong> {project.on_hold_reason || 'No reason provided.'}</div>
+            {project.expected_resume_date && (
+              <div><strong>Expected Resume Date:</strong> {new Date(project.expected_resume_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+            )}
+            {project.resource_release_instructions && (
+              <div><strong>Resource Instructions:</strong> {project.resource_release_instructions}</div>
+            )}
+            {project.site_security_plan && (
+              <div><strong>Site Security Plan:</strong> {project.site_security_plan}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {project.status === 'archived' && (
+        <div style={{
+          padding: '16px 20px',
+          background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+          border: '1px solid #bfdbfe',
+          borderRadius: '12px',
+          marginBottom: '20px',
+          color: '#1e40af',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '15px', marginBottom: '8px' }}>
+            <span>📦</span> Project is Archived
+          </div>
+          <div style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div><strong>Reason:</strong> {project.archive_reason || 'No reason provided.'}</div>
+            {project.archived_at && (
+              <div><strong>Archived At:</strong> {new Date(project.archived_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {project.deleted_at && (
+        <div style={{
+          padding: '16px 20px',
+          background: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)',
+          border: '1px solid #fca5a5',
+          borderRadius: '12px',
+          marginBottom: '20px',
+          color: '#991b1b',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '15px', marginBottom: '8px' }}>
+            <span>🗑️</span> Project is Deleted
+          </div>
+          <div style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div><strong>Reason:</strong> {project.delete_reason || 'No reason provided.'}</div>
+            <div><strong>Deleted At:</strong> {new Date(project.deleted_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+          </div>
+        </div>
+      )}
 
       <div className={styles.headerCard}>
         <div className={styles.headerTop}>
@@ -1406,6 +1450,24 @@ export default function ProjectDetail() {
           isOpen={isCancelModalOpen}
           onClose={() => setIsCancelModalOpen(false)}
           onSuccess={reloadProject}
+        />
+      )}
+
+      {isArchiveModalOpen && (
+        <ArchiveProjectModal
+          projectId={project.id}
+          isOpen={isArchiveModalOpen}
+          onClose={() => setIsArchiveModalOpen(false)}
+          onSuccess={reloadProject}
+        />
+      )}
+
+      {isDeleteModalOpen && (
+        <DeleteProjectModal
+          projectId={project.id}
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onSuccess={() => navigate('/projects')}
         />
       )}
     </div>

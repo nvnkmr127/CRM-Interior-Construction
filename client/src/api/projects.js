@@ -37,7 +37,7 @@ export const logActivity = async (projectId, data) => {
   return response.data;
 };
 
-export const deleteProject = (id) => api.delete(`/projects/${id}`);
+export const deleteProject = (id, data) => api.delete(`/projects/${id}?reason=${encodeURIComponent(data?.reason || '')}`, { data });
 
 export const previewCancellation = (id) => api.post(`/projects/${id}/cancel/preview`);
 export const cancelProject = (id, data) => api.post(`/projects/${id}/cancel`, data);
@@ -266,7 +266,7 @@ export const getRetrospective = (projectId) => api.get(`/projects/${projectId}/r
 export const saveRetrospective = (projectId, data) => api.post(`/projects/${projectId}/retrospective`, data);
 
 // Project Archive & Reopen & Pause/Resume
-export const archiveProject = (projectId) => api.post(`/projects/${projectId}/archive`);
+export const archiveProject = (projectId, data) => api.post(`/projects/${projectId}/archive`, data);
 export const reopenProject = (projectId, data) => api.post(`/projects/${projectId}/reopen`, data);
 export const pauseProject = (projectId, data) => api.post(`/projects/${projectId}/pause`, data);
 export const resumeProject = (projectId, data) => api.post(`/projects/${projectId}/resume`, data);

@@ -24,7 +24,8 @@ import NegotiationDesk from './NegotiationDesk';
 import DesignPresentationModal from './DesignPresentationModal';
 import EstimatorBuilder from './EstimatorBuilder';
 import AssignDesignerModal from './AssignDesignerModal';
-import { getLead, changeLeadStage, deleteLead, updateActivity, logActivity, getActivities, deleteActivity } from '../../api/leads';
+import MarkLostModal from './MarkLostModal';
+import { getLead, changeLeadStage, deleteLead, updateActivity, logActivity, getActivities, deleteActivity, restoreLead, permanentlyDeleteLead } from '../../api/leads';
 import api from '../../api/axios';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -98,7 +99,12 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   const [isPresentModalOpen, setIsPresentModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [meetingToDelete, setMeetingToDelete] = useState(null);
+  const [deleteReason, setDeleteReason] = useState('');
   const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
+  const [isRestoreConfirmOpen, setIsRestoreConfirmOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isMarkLostModalOpen, setIsMarkLostModalOpen] = useState(false);
+  const [actionSubmitting, setActionSubmitting] = useState(false);
 
   // Auto-saving state
   const [saveStatus, setSaveStatus] = useState(''); // 'saving', 'saved', 'error', ''
@@ -258,6 +264,46 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
     }
   }, [activeTab, leadId]);
 
+  const handleRestore = () => {
+    setIsRestoreConfirmOpen(true);
+  };
+
+  const executeRestore = async () => {
+    setActionSubmitting(true);
+    try {
+      await restoreLead(leadId);
+      toast.success('Lead restored successfully');
+      setIsRestoreConfirmOpen(false);
+      fetchLead();
+      if (onLeadUpdated) onLeadUpdated();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to restore lead');
+    } finally {
+      setActionSubmitting(false);
+    }
+  };
+
+  const handlePermanentDelete = () => {
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const executePermanentDelete = async () => {
+    setActionSubmitting(true);
+    try {
+      await permanentlyDeleteLead(leadId);
+      toast.success('Lead permanently deleted');
+      setIsDeleteConfirmOpen(false);
+      onClose();
+      if (onLeadUpdated) onLeadUpdated();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to permanently delete lead');
+    } finally {
+      setActionSubmitting(false);
+    }
+  };
+
   const fetchLead = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
@@ -328,25 +374,6 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
     }
   };
 
-  const handleCancelMeeting = async (meetingId) => {
-    if (!window.confirm('Are you sure you want to cancel this meeting?')) return;
-    setMeetingSubmitting(true);
-    try {
-      await updateActivity(leadId, meetingId, {
-        outcome: 'cancelled',
-        notes: 'Meeting was cancelled by client/coordinator'
-      });
-      toast.success('Meeting marked as cancelled');
-      const freshLead = await fetchLead();
-      fetchMeetingsList();
-      if (onLeadUpdated) onLeadUpdated(freshLead || lead);
-    } catch (err) {
-      console.error(err);
-      toast.error('Failed to cancel meeting');
-    } finally {
-      setMeetingSubmitting(false);
-    }
-  };
 
   const handleDeleteMeeting = (meetingId) => {
     setMeetingToDelete(meetingId);
@@ -354,11 +381,16 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
   const handleDeleteMeetingConfirm = async () => {
     if (!meetingToDelete) return;
+    if (!deleteReason.trim()) {
+      toast.error('Please provide a reason for deleting this meeting');
+      return;
+    }
     setMeetingSubmitting(true);
     try {
-      await deleteActivity(leadId, meetingToDelete);
+      await deleteActivity(leadId, meetingToDelete, { reason: deleteReason.trim() });
       toast.success('Meeting deleted successfully');
       setMeetingToDelete(null);
+      setDeleteReason('');
       const freshLead = await fetchLead();
       fetchMeetingsList();
       if (onLeadUpdated) onLeadUpdated(freshLead || lead);
@@ -465,10 +497,12 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   };
 
   const handleFieldChange = (field, value) => {
+    if (lead?.deleted_at) return;
     setLead(prev => ({ ...prev, [field]: value }));
   };
 
   const handleFieldBlur = async (field, value) => {
+    if (lead?.deleted_at) return;
     setSaveStatus('saving');
     try {
       const res = await api.patch(`/leads/${leadId}`, { [field]: value, updated_at: lead.updated_at });
@@ -505,6 +539,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   };
 
   const handleStageSelect = (e) => {
+    if (lead?.deleted_at) return;
     const newStageId = e.target.value;
     const stageInfo = stages.find(s => s.id === newStageId);
     if (!stageInfo) return;
@@ -559,6 +594,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   };
 
   const handleArchiveToggle = async () => {
+    if (lead?.deleted_at) return;
     const newStatus = lead.status === 'archived' ? 'active' : 'archived';
     try {
       const res = await api.patch(`/leads/${leadId}`, { status: newStatus, updated_at: lead.updated_at });
@@ -587,17 +623,24 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
     }
   };
 
-  const handleDelete = async () => {
-    if (await confirm('Are you sure you want to PERMANENTLY delete this lead?')) {
-      try {
-        await deleteLead(leadId);
-        toast.success('Lead deleted successfully');
-        onClose();
-        if (onLeadUpdated) onLeadUpdated(null);
-        else window.location.reload();
-      } catch (e) {
-        toast.error('Failed to delete lead.');
-      }
+  const handleDelete = () => {
+    setIsMarkLostModalOpen(true);
+  };
+
+  const executeMarkLost = async (reason) => {
+    setActionSubmitting(true);
+    try {
+      await api.patch(`/leads/${leadId}`, { lost_reason: reason, updated_at: lead.updated_at });
+      await deleteLead(leadId);
+      toast.success('Lead marked as lost successfully');
+      setIsMarkLostModalOpen(false);
+      onClose();
+      if (onLeadUpdated) onLeadUpdated(null);
+      else window.location.reload();
+    } catch (e) {
+      toast.error('Failed to mark lead as lost.');
+    } finally {
+      setActionSubmitting(false);
     }
   };
 
@@ -678,14 +721,181 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
     }
   };
 
+  const renderDeletedLeadView = () => {
+    const assigneeName = lead.assignee_name || (lead.assignee_id ? users.find(u => u.id === lead.assignee_id)?.name : null);
+    const displayName = assigneeName || 'Unassigned';
+
+    return (
+      <div className="flex flex-col h-full bg-transparent overflow-hidden w-full">
+        {/* BANNER */}
+        <div className="bg-red-50 border-b border-red-200 px-6 py-4 flex items-start justify-between text-sm shrink-0 shadow-sm z-20">
+          <div className="flex items-start gap-4 text-red-700 font-semibold">
+            <div className="mt-0.5 bg-red-100 p-2 rounded-full text-red-600 shrink-0">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            </div>
+            <div>
+              <p className="text-base font-bold text-red-800">This lead has been deleted</p>
+              {lead.lost_reason && (
+                <div className="mt-3 bg-white border border-red-200 text-red-800 text-sm px-4 py-3 rounded-xl font-medium shadow-sm max-w-xl relative overflow-hidden">
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500"></div>
+                  <span className="font-bold text-red-500 uppercase text-[10px] tracking-widest block mb-1">Reason for loss</span>
+                  <p className="leading-relaxed">{lead.lost_reason}</p>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-3 mt-1 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRestore}
+              className="border-gray-300 text-gray-700 hover:bg-gray-50 bg-white"
+            >
+              Restore Lead
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={handlePermanentDelete}
+            >
+              Permanently Delete
+            </Button>
+          </div>
+        </div>
+
+        {/* HEADER */}
+        <div className="border-b border-gray-200 px-6 pt-4 pb-3 shrink-0 shadow-sm relative z-10" style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(16px)' }}>
+          <div className="flex items-center justify-between border-b border-gray-100 pb-2 mb-3">
+            <button 
+              onClick={onClose} 
+              className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors shrink-0 flex items-center justify-center"
+              title="Back to leads list"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+              </svg>
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between mb-2 gap-4">
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-gray-800 pb-0.5">{lead.name}</h2>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Badge variant="outline" className="text-gray-600 font-mono text-xs">{lead.lead_number || `LD-${String(lead.id).substring(0,4).toUpperCase()}`}</Badge>
+            <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-red-100 text-red-800 border border-red-200 uppercase tracking-wide">DELETED</span>
+            <ScoreBadge score={lead.score} />
+            {lead.win_probability != null && (
+              <Badge variant="outline" className={`font-semibold ${lead.win_probability > 70 ? 'text-green-700 bg-green-100 border-green-200' : lead.win_probability > 30 ? 'text-yellow-700 bg-yellow-100 border-yellow-200' : 'text-gray-700 bg-gray-100 border-gray-200'}`}>
+                {lead.win_probability}% Win Probability
+              </Badge>
+            )}
+            <div className="flex items-center gap-1.5 bg-gray-100 rounded-full px-2.5 py-1 text-xs font-medium text-gray-700 opacity-65">
+              {lead.assignee_avatar ? (
+                <img src={lead.assignee_avatar} alt="" className="w-4 h-4 rounded-full" />
+              ) : (
+                <div className="w-4 h-4 rounded-full bg-gray-300 text-gray-700 flex items-center justify-center font-bold" style={{fontSize: '8px'}}>
+                  {displayName[0].toUpperCase()}
+                </div>
+              )}
+              {displayName}
+            </div>
+          </div>
+        </div>
+
+        {/* CONTENT */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* Contact Details */}
+            <div className="p-6 rounded-2xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
+              <h3 className="text-sm font-bold text-gray-650 uppercase tracking-wider mb-4 border-b border-gray-200/60 pb-2">Contact Info</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-base text-gray-500 w-28">Phone</span>
+                  <span className="flex-1 text-base font-semibold text-gray-800 px-3">{lead.phone || '—'}</span>
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-base text-gray-500 w-28">Email</span>
+                  <span className="flex-1 text-base font-semibold text-gray-850 px-3">{lead.email || '—'}</span>
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-base text-gray-500 w-28">Source</span>
+                  <span className="flex-1 text-base font-semibold text-gray-800 px-3">{lead.source || '—'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Property Details */}
+            <div className="p-6 rounded-2xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
+              <h3 className="text-sm font-bold text-gray-650 uppercase tracking-wider mb-4 border-b border-gray-200/60 pb-2">Property Details</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-base text-gray-500 w-32">Property Type</span>
+                  <span className="flex-1 text-base font-semibold text-gray-800 px-3">{lead.property_type || '—'}</span>
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-base text-gray-500 w-32">Address</span>
+                  <span className="flex-1 text-base font-semibold text-gray-800 px-3">{lead.locality || '—'}</span>
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-base text-gray-500 w-32">Budget Max</span>
+                  <span className="flex-1 text-base font-semibold text-gray-800 px-3">{lead.budget_max ? `₹${Number(lead.budget_max).toLocaleString()}` : '—'}</span>
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-base text-gray-500 w-32">Carpet Area</span>
+                  <span className="flex-1 text-base font-semibold text-gray-800 px-3">{lead.carpet_area_sqft ? `${lead.carpet_area_sqft} sq.ft` : '—'}</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Notes & Extra Info */}
+          <div className="p-6 rounded-2xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
+            <h3 className="text-sm font-bold text-gray-650 uppercase tracking-wider mb-3 border-b border-gray-200/60 pb-2">Notes</h3>
+            <p className="text-base text-gray-700 whitespace-pre-wrap leading-relaxed px-1">{lead.notes || 'No notes available for this lead.'}</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="w-full h-full flex flex-col bg-white overflow-hidden relative">
       {loading || !lead ? (
         <div className="p-6 flex items-center justify-center text-gray-500 h-full">Loading lead details...</div>
+      ) : lead.deleted_at ? (
+        renderDeletedLeadView()
       ) : (
         <div className="flex flex-col h-full transition-all bg-white">
+          {lead?.deleted_at && (
+            <div className="bg-red-50 border-b border-red-200 px-6 py-3 flex items-center justify-between text-sm shrink-0">
+              <div className="flex items-center gap-2 text-red-700 font-medium">
+                <span style={{ fontSize: '18px' }}>⚠️</span>
+                <span>This lead has been deleted.</span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleRestore}
+                  className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white font-semibold rounded text-xs transition-colors cursor-pointer"
+                >
+                  Restore Lead
+                </button>
+                <button
+                  onClick={handlePermanentDelete}
+                  className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-semibold rounded text-xs transition-colors cursor-pointer"
+                >
+                  Permanently Delete
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* HEADER */}
           <div className="border-b border-gray-200 px-6 pt-4 pb-3 shrink-0 shadow-sm relative z-10" style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(16px)' }}>
@@ -709,6 +919,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   value={lead.name}
                   onChange={(e) => handleFieldChange('name', e.target.value)}
                   onBlur={(e) => handleFieldBlur('name', e.target.value)}
+                  disabled={!!lead.deleted_at}
                   className="text-2xl font-bold bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none w-full pb-0.5 transition-colors"
                   style={{ color: 'var(--color-text, inherit)' }}
                   placeholder="Lead Name"
@@ -768,6 +979,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   <select
                     value={lead.stage_id}
                     onChange={handleStageSelect}
+                    disabled={!!lead.deleted_at}
                     className="block w-full pl-3 pr-10 py-1.5 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 cursor-pointer"
                   >
                     {stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -779,9 +991,9 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                     
                     return (
                       <div 
-                        className="flex items-center gap-1.5 bg-gray-100 rounded-full px-2.5 py-1 text-xs font-medium text-gray-700 cursor-pointer hover:bg-gray-200" 
-                        title="Reassign"
-                        onClick={() => setIsAssignModalOpen(true)}
+                        className={`flex items-center gap-1.5 bg-gray-100 rounded-full px-2.5 py-1 text-xs font-medium text-gray-700 ${!lead.deleted_at ? 'cursor-pointer hover:bg-gray-200' : 'opacity-65'}`} 
+                        title={!lead.deleted_at ? "Reassign" : ""}
+                        onClick={() => { if (!lead.deleted_at) setIsAssignModalOpen(true); }}
                       >
                         {lead.assignee_avatar ? (
                           <img src={lead.assignee_avatar} alt="" className="w-4 h-4 rounded-full" />
@@ -842,55 +1054,76 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                 {/* COLUMN 1: Data Entry & Details */}
                 <div className="space-y-8 flex flex-col">
                   {/* Contact Info */}
-                  <div className="p-6 rounded-2xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
-                    <div className="flex justify-between items-center mb-4">
-                      <h4 className="text-sm font-bold text-gray-600 uppercase tracking-wider">Contact Info</h4>
-                      <button onClick={async () => setIsLeadFormOpen(true)} className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                  <div className="relative overflow-hidden p-6 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 border border-[var(--color-border)] bg-[var(--color-surface)] group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                    <div className="relative z-10 flex justify-between items-center mb-5">
+                      <h4 className="text-sm font-bold text-[var(--color-text-secondary)] uppercase tracking-wider flex items-center gap-2">
+                        <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"></path></svg>
+                        Contact Info
+                      </h4>
+                      <button onClick={async () => setIsLeadFormOpen(true)} className="text-sm text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                         Edit
                       </button>
                     </div>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between group">
-                        <span className="text-base text-gray-600 w-28">Phone</span>
-                        <input
-                          type="text" value={lead.phone || ''}
-                          onChange={e => handleFieldChange('phone', e.target.value)}
-                          onBlur={e => handleFieldBlur('phone', e.target.value)}
-                          className="flex-1 text-base font-medium border-transparent focus:border-gray-300 focus:ring-0 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
-                          placeholder="Add phone..."
-                        />
+                    <div className="space-y-4 relative z-10">
+                      <div className="flex items-center group/field">
+                        <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 mr-4">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
+                        </div>
+                        <div className="flex-1 border border-transparent group-hover/field:border-[var(--color-border)] rounded-xl bg-gray-50/50 group-hover/field:bg-[var(--color-surface)] transition-all">
+                          <input
+                            type="text" value={lead.phone || ''}
+                            onChange={e => handleFieldChange('phone', e.target.value)}
+                            onBlur={e => handleFieldBlur('phone', e.target.value)}
+                            className="w-full text-base font-semibold text-[var(--color-text)] bg-transparent border-none focus:ring-2 focus:ring-blue-500/20 rounded-xl px-4 py-2.5 placeholder-gray-400 outline-none"
+                            placeholder="Add phone number"
+                          />
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between group">
-                        <span className="text-base text-gray-600 w-28">Email</span>
-                        <input
-                          type="email" value={lead.email || ''}
-                          onChange={e => handleFieldChange('email', e.target.value)}
-                          onBlur={e => handleFieldBlur('email', e.target.value)}
-                          className="flex-1 text-base font-medium border-transparent focus:border-gray-300 focus:ring-0 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
-                          placeholder="Add email..."
-                        />
+                      <div className="flex items-center group/field">
+                        <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0 mr-4">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                        </div>
+                        <div className="flex-1 border border-transparent group-hover/field:border-[var(--color-border)] rounded-xl bg-gray-50/50 group-hover/field:bg-[var(--color-surface)] transition-all">
+                          <input
+                            type="email" value={lead.email || ''}
+                            onChange={e => handleFieldChange('email', e.target.value)}
+                            onBlur={e => handleFieldBlur('email', e.target.value)}
+                            className="w-full text-base font-semibold text-[var(--color-text)] bg-transparent border-none focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-4 py-2.5 placeholder-gray-400 outline-none"
+                            placeholder="Add email address"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
                   
-                  {/* Property & Scope */}
-                  <div className="p-6 rounded-2xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
-                    <div className="flex justify-between items-center mb-4">
-                      <h4 className="text-sm font-bold text-gray-600 uppercase tracking-wider">Property Details</h4>
-                      <button onClick={async () => setIsLeadFormOpen(true)} className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                  {/* Property Details */}
+                  <div className="relative overflow-hidden p-6 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 border border-[var(--color-border)] bg-[var(--color-surface)] group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                    <div className="relative z-10 flex justify-between items-center mb-5">
+                      <h4 className="text-sm font-bold text-[var(--color-text-secondary)] uppercase tracking-wider flex items-center gap-2">
+                        <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                        Property Details
+                      </h4>
+                      <button onClick={async () => setIsLeadFormOpen(true)} className="text-sm text-emerald-600 hover:text-emerald-800 font-semibold flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                         Edit
                       </button>
                     </div>
-                    <div className="grid grid-cols-2 gap-5">
-                      <div>
-                        <label className="block text-sm text-gray-600 mb-1.5">Type of property</label>
+                    
+                    <div className="grid grid-cols-2 gap-x-5 gap-y-6 relative z-10">
+                      {/* Property Type */}
+                      <div className="group/input">
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
+                          <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                          Type of property
+                        </label>
                         <select
                           value={lead.property_type || ''}
                           onChange={e => handleFieldChange('property_type', e.target.value)}
                           onBlur={e => handleFieldBlur('property_type', e.target.value)}
-                          className="w-full text-base border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full text-sm font-semibold border border-[var(--color-border)] rounded-xl p-2.5 bg-gray-50/50 group-hover/input:bg-[var(--color-surface)] focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
                         >
                           <option value="">Select...</option>
                           <option value="1bhk">1 BHK</option>
@@ -900,72 +1133,18 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                           <option value="5bhk">5 BHK</option>
                         </select>
                       </div>
-                      <div>
-                        <label className="block text-sm text-gray-600 mb-1.5">Product</label>
-                        <Select
-                          multi
-                          options={[
-                            { value: 'kitchen', label: 'Kitchen' },
-                            { value: 'bedroom', label: 'Bedroom' },
-                            { value: 'wardrobe', label: 'Wardrobe' },
-                            { value: 'fullhouse', label: 'Full House' },
-                            { value: 'living_room', label: 'Living Room' },
-                            { value: 'bathroom', label: 'Bathroom' },
-                            { value: 'office', label: 'Office / Study' },
-                            { value: 'false_ceiling', label: 'False Ceiling' },
-                            { value: 'flooring', label: 'Flooring' },
-                            { value: 'painting', label: 'Painting' },
-                            { value: 'custom_furniture', label: 'Custom Furniture' }
-                          ]}
-                          value={typeof lead.scope === 'string' && lead.scope ? lead.scope.split(',') : (Array.isArray(lead.scope) ? lead.scope : [])}
-                          onChange={selectedArray => {
-                            const newValue = selectedArray.join(',');
-                            handleFieldChange('scope', newValue);
-                            handleFieldBlur('scope', newValue);
-                          }}
-                          placeholder="Select products..."
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <label className="block text-sm text-gray-600 mb-1.5">Address</label>
-                        <input
-                          type="text" value={lead.locality || ''}
-                          onChange={e => handleFieldChange('locality', e.target.value)}
-                          onBlur={e => handleFieldBlur('locality', e.target.value)}
-                          className="w-full text-base border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="e.g. Indiranagar, Bangalore"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm text-gray-600 mb-1.5">Budget Max (&#8377;)</label>
-                        <input
-                          type="number" value={lead.budget_max || ''}
-                          onChange={e => handleFieldChange('budget_max', e.target.value)}
-                          onBlur={e => handleFieldBlur('budget_max', e.target.value)}
-                          className="w-full text-base border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="e.g. 1500000"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm text-gray-600 mb-1.5">Carpet Area</label>
-                        <div className="relative">
-                          <input
-                            type="number" value={lead.carpet_area_sqft || ''}
-                            onChange={e => handleFieldChange('carpet_area_sqft', e.target.value)}
-                            onBlur={e => handleFieldBlur('carpet_area_sqft', e.target.value)}
-                            className="w-full text-base border border-gray-300 rounded-lg p-2 pr-12 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="0"
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">sq.ft</span>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm text-gray-600 mb-1.5">Segment</label>
+
+                      {/* Segment */}
+                      <div className="group/input">
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
+                          <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                          Segment
+                        </label>
                         <select
                           value={lead.segment || ''}
                           onChange={e => handleFieldChange('segment', e.target.value)}
                           onBlur={e => handleFieldBlur('segment', e.target.value)}
-                          className="w-full text-base border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full text-sm font-semibold border border-[var(--color-border)] rounded-xl p-2.5 bg-gray-50/50 group-hover/input:bg-[var(--color-surface)] focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
                         >
                           <option value="">Select...</option>
                           <option value="residential">Residential</option>
@@ -974,23 +1153,117 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                           <option value="retail">Retail</option>
                         </select>
                       </div>
-                      <div>
-                        <label className="block text-sm text-gray-600 mb-1.5">Property Name</label>
+
+                      {/* Scope */}
+                      <div className="col-span-2 group/input">
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
+                          <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                          Product Scope
+                        </label>
+                        <div className="text-sm font-semibold shadow-sm">
+                          <Select
+                            multi
+                            options={[
+                              { value: 'kitchen', label: 'Kitchen' },
+                              { value: 'bedroom', label: 'Bedroom' },
+                              { value: 'wardrobe', label: 'Wardrobe' },
+                              { value: 'fullhouse', label: 'Full House' },
+                              { value: 'living_room', label: 'Living Room' },
+                              { value: 'bathroom', label: 'Bathroom' },
+                              { value: 'office', label: 'Office / Study' },
+                              { value: 'false_ceiling', label: 'False Ceiling' },
+                              { value: 'flooring', label: 'Flooring' },
+                              { value: 'painting', label: 'Painting' },
+                              { value: 'custom_furniture', label: 'Custom Furniture' }
+                            ]}
+                            value={typeof lead.scope === 'string' && lead.scope ? lead.scope.split(',') : (Array.isArray(lead.scope) ? lead.scope : [])}
+                            onChange={selectedArray => {
+                              const newValue = selectedArray.join(',');
+                              handleFieldChange('scope', newValue);
+                              handleFieldBlur('scope', newValue);
+                            }}
+                            placeholder="Select products..."
+                          />
+                        </div>
+                      </div>
+
+                      {/* Property Name */}
+                      <div className="col-span-2 group/input">
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
+                          <svg className="w-4 h-4 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                          Property Name / Complex
+                        </label>
                         <input
                           type="text" value={lead.property_name || ''}
                           onChange={e => handleFieldChange('property_name', e.target.value)}
                           onBlur={e => handleFieldBlur('property_name', e.target.value)}
-                          className="w-full text-base border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full text-sm font-semibold border border-[var(--color-border)] rounded-xl p-2.5 bg-gray-50/50 group-hover/input:bg-[var(--color-surface)] focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 outline-none transition-all"
                           placeholder="e.g. Prestige Shantiniketan"
                         />
                       </div>
-                      <div className="col-span-2">
+
+                      {/* Address */}
+                      <div className="col-span-2 group/input">
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
+                          <svg className="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"></path></svg>
+                          Locality / Address
+                        </label>
+                        <input
+                          type="text" value={lead.locality || ''}
+                          onChange={e => handleFieldChange('locality', e.target.value)}
+                          onBlur={e => handleFieldBlur('locality', e.target.value)}
+                          className="w-full text-sm font-semibold border border-[var(--color-border)] rounded-xl p-2.5 bg-gray-50/50 group-hover/input:bg-[var(--color-surface)] focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all"
+                          placeholder="e.g. Indiranagar, Bangalore"
+                        />
+                      </div>
+
+                      {/* Carpet Area */}
+                      <div className="group/input">
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
+                          <svg className="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                          Carpet Area
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number" value={lead.carpet_area_sqft || ''}
+                            onChange={e => handleFieldChange('carpet_area_sqft', e.target.value)}
+                            onBlur={e => handleFieldBlur('carpet_area_sqft', e.target.value)}
+                            className="w-full text-sm font-semibold border border-[var(--color-border)] rounded-xl p-2.5 pr-12 bg-gray-50/50 group-hover/input:bg-[var(--color-surface)] focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
+                            placeholder="0"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold pointer-events-none uppercase">sq.ft</span>
+                        </div>
+                      </div>
+
+                      {/* Budget */}
+                      <div className="group/input">
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
+                          <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                          Budget Max
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold pointer-events-none">&#8377;</span>
+                          <input
+                            type="number" value={lead.budget_max || ''}
+                            onChange={e => handleFieldChange('budget_max', e.target.value)}
+                            onBlur={e => handleFieldBlur('budget_max', e.target.value)}
+                            className="w-full text-sm font-semibold border border-[var(--color-border)] rounded-xl p-2.5 pl-7 bg-gray-50/50 group-hover/input:bg-[var(--color-surface)] focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition-all"
+                            placeholder="1500000"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Possession Date */}
+                      <div className="col-span-2 group/input">
                         <div className="flex justify-between items-center mb-1.5">
-                          <label className="block text-sm text-gray-600">Possession Date</label>
+                          <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">
+                            <svg className="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            Possession Date
+                          </label>
                           <button 
                             type="button" 
                             onClick={async () => setIsPossessionManual(!isPossessionManual)} 
-                            className="text-xs text-blue-500 hover:text-blue-700 font-medium"
+                            className="text-[10px] bg-gray-100 text-gray-600 hover:bg-gray-200 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider transition-colors"
                           >
                             {isPossessionManual ? 'Use Calendar' : 'Manual Entry'}
                           </button>
@@ -1000,82 +1273,117 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                             type="text" value={lead.possession_month || ''}
                             onChange={e => handleFieldChange('possession_month', e.target.value)}
                             onBlur={e => handleFieldBlur('possession_month', e.target.value)}
-                            className="w-full text-base border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full text-sm font-semibold border border-[var(--color-border)] rounded-xl p-2.5 bg-gray-50/50 group-hover/input:bg-[var(--color-surface)] focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none transition-all"
                             placeholder="e.g. Q4 2026, Next year"
                           />
                         ) : (
-                        <div className="relative">
-                          <DatePicker
-                            selected={lead.possession_month ? new Date(lead.possession_month) : null}
-                            onChange={(date) => {
-                              if (date) {
-                                const tzoffset = date.getTimezoneOffset() * 60000;
-                                const localISOTime = (new Date(date - tzoffset)).toISOString().slice(0, 10);
-                                handleFieldChange('possession_month', localISOTime);
-                                handleFieldBlur('possession_month', localISOTime);
-                              } else {
-                                handleFieldChange('possession_month', '');
-                                handleFieldBlur('possession_month', '');
-                              }
-                            }}
-                            dateFormat="MMMM d, yyyy"
-                            placeholderText="Select Date"
-                            className="w-full text-base border border-gray-300 rounded-lg p-2 pr-10 focus:ring-blue-500 focus:border-blue-500 cursor-pointer hover:border-blue-400 shadow-sm transition-colors"
-                            wrapperClassName="w-full"
-                            popperPlacement="bottom-start"
-                            calendarClassName="shadow-xl rounded-xl border-gray-200 font-sans text-base"
-                            popperProps={{ strategy: "fixed" }}
-                          />
-                          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-blue-500">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                          <div className="relative">
+                            <DatePicker
+                              selected={lead.possession_month ? new Date(lead.possession_month) : null}
+                              onChange={(date) => {
+                                if (date) {
+                                  const tzoffset = date.getTimezoneOffset() * 60000;
+                                  const localISOTime = (new Date(date - tzoffset)).toISOString().slice(0, 10);
+                                  handleFieldChange('possession_month', localISOTime);
+                                  handleFieldBlur('possession_month', localISOTime);
+                                } else {
+                                  handleFieldChange('possession_month', '');
+                                  handleFieldBlur('possession_month', '');
+                                }
+                              }}
+                              dateFormat="MMMM d, yyyy"
+                              placeholderText="Select Date"
+                              className="w-full text-sm font-semibold border border-[var(--color-border)] rounded-xl p-2.5 pr-10 bg-gray-50/50 group-hover/input:bg-[var(--color-surface)] focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none transition-all cursor-pointer shadow-sm"
+                              wrapperClassName="w-full"
+                              popperPlacement="bottom-start"
+                              calendarClassName="shadow-2xl rounded-2xl border-none font-sans text-sm p-2"
+                              popperProps={{ strategy: "fixed" }}
+                            />
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-rose-400">
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            </div>
                           </div>
-                        </div>
                         )}
                       </div>
                     </div>
                   </div>
                   
                   {/* Preferences & Tracking */}
-                  <div className="p-6 rounded-2xl shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
-                    <div className="flex justify-between items-center mb-4">
-                      <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Preferences</h4>
-                      <button onClick={async () => setIsLeadFormOpen(true)} className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                  <div className="relative overflow-hidden p-6 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 border border-[var(--color-border)] bg-[var(--color-surface)] group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                    <div className="relative z-10 flex justify-between items-center mb-5">
+                      <h4 className="text-sm font-bold text-[var(--color-text-secondary)] uppercase tracking-wider flex items-center gap-2">
+                        <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                        Preferences
+                      </h4>
+                      <button onClick={async () => setIsLeadFormOpen(true)} className="text-sm text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                         Edit
                       </button>
                     </div>
-                    <div className="space-y-5">
-                      <label className="flex items-center justify-between">
-                        <span className="text-base font-medium text-gray-700">Do Not Contact (DNC)</span>
-                        <input
-                          type="checkbox"
-                          checked={lead.dnc_flag || false}
-                          onChange={e => {
-                            handleFieldChange('dnc_flag', e.target.checked);
-                            handleFieldBlur('dnc_flag', e.target.checked);
-                          }}
-                          className="w-5 h-5 text-red-600 rounded border-gray-300 focus:ring-red-500"
-                        />
+                    
+                    <div className="space-y-4 relative z-10">
+                      {/* DNC Toggle */}
+                      <label className="flex items-center justify-between p-3 rounded-xl hover:bg-red-50/50 transition-colors border border-transparent hover:border-red-100 cursor-pointer group/toggle">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${lead.dnc_flag ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-400 group-hover/toggle:text-gray-600'}`}>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+                          </div>
+                          <div>
+                            <span className="text-sm font-bold text-[var(--color-text)] block">Do Not Contact (DNC)</span>
+                            <span className="text-xs text-[var(--color-text-secondary)]">Opt-out of all communications</span>
+                          </div>
+                        </div>
+                        <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${lead.dnc_flag ? 'bg-red-500' : 'bg-gray-200'}`}>
+                          <input
+                            type="checkbox"
+                            checked={lead.dnc_flag || false}
+                            onChange={e => {
+                              handleFieldChange('dnc_flag', e.target.checked);
+                              handleFieldBlur('dnc_flag', e.target.checked);
+                            }}
+                            className="sr-only peer"
+                          />
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${lead.dnc_flag ? 'translate-x-6' : 'translate-x-1'}`} />
+                        </div>
                       </label>
-                      <label className="flex items-center justify-between">
-                        <span className="text-base font-medium text-gray-700">Consent given</span>
-                        <input
-                          type="checkbox"
-                          checked={lead.consent_whatsapp || false}
-                          onChange={e => {
-                            handleFieldChange('consent_whatsapp', e.target.checked);
-                            handleFieldBlur('consent_whatsapp', e.target.checked);
-                          }}
-                          className="w-5 h-5 text-green-600 rounded border-gray-300 focus:ring-green-500"
-                        />
+
+                      {/* Consent Toggle */}
+                      <label className="flex items-center justify-between p-3 rounded-xl hover:bg-green-50/50 transition-colors border border-transparent hover:border-green-100 cursor-pointer group/toggle">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${lead.consent_whatsapp ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400 group-hover/toggle:text-gray-600'}`}>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                          </div>
+                          <div>
+                            <span className="text-sm font-bold text-[var(--color-text)] block">WhatsApp Consent</span>
+                            <span className="text-xs text-[var(--color-text-secondary)]">Opt-in for WhatsApp messages</span>
+                          </div>
+                        </div>
+                        <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${lead.consent_whatsapp ? 'bg-green-500' : 'bg-gray-200'}`}>
+                          <input
+                            type="checkbox"
+                            checked={lead.consent_whatsapp || false}
+                            onChange={e => {
+                              handleFieldChange('consent_whatsapp', e.target.checked);
+                              handleFieldBlur('consent_whatsapp', e.target.checked);
+                            }}
+                            className="sr-only peer"
+                          />
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${lead.consent_whatsapp ? 'translate-x-6' : 'translate-x-1'}`} />
+                        </div>
                       </label>
-                      <div>
-                        <label className="block text-sm text-gray-500 mb-1.5">Competitor Mentioned</label>
+
+                      {/* Competitor */}
+                      <div className="mt-4 pt-4 border-t border-[var(--color-border)] group/input">
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
+                          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                          Competitor Mentioned
+                        </label>
                         <input
                           type="text" value={lead.competitor_mentioned || ''}
                           onChange={e => handleFieldChange('competitor_mentioned', e.target.value)}
                           onBlur={e => handleFieldBlur('competitor_mentioned', e.target.value)}
-                          className="w-full text-base border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full text-sm font-semibold border border-[var(--color-border)] rounded-xl p-2.5 bg-gray-50/50 group-hover/input:bg-[var(--color-surface)] focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                           placeholder="e.g. Livspace, HomeLane"
                         />
                       </div>
@@ -1249,17 +1557,6 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                 {/* COLUMN 3: Timeline & Checklist */}
                 <div className="space-y-6 lg:col-span-2 xl:col-span-1 xl:border-l xl:border-gray-100 xl:pl-8">
                   <DiscoveryCallChecklist lead={lead} onUpdate={fetchLead} />
-                  
-                  <h4 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Activity Timeline</h4>
-                  <ActivityTimeline 
-                    leadId={leadId} 
-                    refreshTrigger={activityRefresh} 
-                    onActivityLogged={async () => {
-                      const freshLead = await fetchLead();
-                      fetchMeetingsList();
-                      if (onLeadUpdated) onLeadUpdated(freshLead || lead);
-                    }}
-                  />
                 </div>
               </div>
             )}
@@ -1855,26 +2152,23 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       </div>
 
                       {/* ACTIONS TOOLBAR */}
-                      <div className="flex flex-wrap items-center justify-between border-t border-orange-100 pt-4 mt-6 gap-3">
+                      <div className="flex flex-wrap items-center justify-end border-t border-orange-100 pt-4 mt-6 gap-3">
                         <div className="flex gap-2">
                           <button
                             type="button"
-                            onClick={async () => handleCancelMeeting(lead.next_meeting_id)}
-                            className="px-3.5 py-2 hover:bg-red-50 text-red-600 hover:text-red-700 text-xs font-bold rounded-lg border border-red-200 transition-all flex items-center gap-1.5 cursor-pointer"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            Cancel Meeting
-                          </button>
-                          <button
-                            type="button"
-                            onClick={async () => handleDeleteMeeting(lead.next_meeting_id)}
+                            onClick={async () => {
+                              const activeMeetingId = lead.next_meeting_id || meetings.find(a => a.type === 'meeting' && !['concluded', 'completed', 'cancelled', 'deleted'].includes(a.outcome))?.id;
+                              if (activeMeetingId) {
+                                handleDeleteMeeting(activeMeetingId);
+                              } else {
+                                toast.error('No active meeting found to delete.');
+                              }
+                            }}
                             className="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg border border-red-600 transition-all flex items-center gap-1.5 cursor-pointer"
                           >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                             Delete Meeting
                           </button>
-                        </div>
-                        <div className="flex gap-2">
                           <button
                             type="button"
                             onClick={async () => setIsEditingMeeting(true)}
@@ -1958,10 +2252,16 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                                     <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider ${
                                       isConcluded ? 'bg-green-100 text-green-700 border border-green-200' :
                                       isCancelled ? 'bg-red-100 text-red-700 border border-red-200' :
+                                      act.outcome === 'deleted' ? 'bg-gray-100 text-gray-700 border border-gray-300' :
                                       'bg-gray-100 text-gray-650 border border-gray-200'
                                     }`}>
                                       {act.outcome || (new Date(act.scheduled_at) < new Date() ? 'completed' : 'scheduled')}
                                     </span>
+                                    {act.outcome === 'deleted' && meta.delete_reason && (
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-gray-50 text-gray-600 border border-gray-200" title={`Reason: ${meta.delete_reason}`}>
+                                        Reason: {meta.delete_reason.length > 25 ? meta.delete_reason.substring(0, 25) + '...' : meta.delete_reason}
+                                      </span>
+                                    )}
                                     {sentiment && (
                                       <span className="text-xs" title={`Customer Sentiment: ${sentiment}`}>
                                         {sentiment === 'Positive' ? '🟢 Positive' : sentiment === 'Negative' ? '🔴 Negative' : '🟡 Neutral'}
@@ -2204,7 +2504,18 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
           <div className="border-t border-gray-200 p-5 shrink-0 flex items-center justify-between relative z-10" style={{ background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(16px)' }}>
             <div className="flex gap-3">
               <Button variant="outline" size="md" onClick={async () => setIsAssignModalOpen(true)}>Reassign</Button>
-              <Button variant="outline" size="md" onClick={async () => {}}>Park</Button>
+              <Button variant="outline" size="md" onClick={async () => {
+                try {
+                  const newStatus = lead.status === 'parked' ? 'new' : 'parked';
+                  await api.patch(`/leads/${lead.id}`, { status: newStatus });
+                  toast.success(`Lead ${newStatus === 'parked' ? 'parked' : 'unparked'} successfully`);
+                  if (onClose) onClose(true);
+                } catch (e) {
+                  toast.error('Failed to update lead status');
+                }
+              }}>
+                {lead.status === 'parked' ? 'Unpark Lead' : 'Park Lead'}
+              </Button>
               <Button variant="outline" size="md" onClick={async () => setIsPresentModalOpen(true)}>Log Presentation</Button>
             </div>
             <div className="flex gap-3">
@@ -2287,40 +2598,157 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               isOpen={!!meetingToDelete}
               onClose={() => setMeetingToDelete(null)}
               size="sm"
+              hideHeader={true}
             >
-              <div className="p-6 text-center space-y-4">
-                <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto text-3xl">
-                  ⚠️
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">Delete Scheduled Meeting?</h3>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Are you sure you want to permanently delete this meeting? This action is irreversible and will remove all meeting data.
-                  </p>
-                </div>
-                <div className="flex gap-3 justify-center pt-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setMeetingToDelete(null)}
-                    disabled={meetingSubmitting}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="primary"
-                    className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-750"
-                    onClick={async () => {
-                      await handleDeleteMeetingConfirm();
-                    }}
-                    disabled={meetingSubmitting}
-                  >
-                    {meetingSubmitting ? 'Deleting...' : 'Yes, Delete'}
-                  </Button>
+              <div className="relative p-7 overflow-hidden text-center bg-white rounded-xl">
+                {/* Decorative background glow */}
+                <div className="absolute -top-12 -right-12 w-32 h-32 bg-red-500 opacity-10 rounded-full blur-3xl"></div>
+                
+                {/* Close Button overlay */}
+                <button 
+                  onClick={() => {
+                    setMeetingToDelete(null);
+                    setDeleteReason('');
+                  }}
+                  className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors z-20 cursor-pointer"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+
+                <div className="relative z-10 space-y-5">
+                  <div className="w-20 h-20 bg-red-50 border-8 border-red-50/50 text-red-600 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-xl font-extrabold text-gray-900 tracking-tight">Delete Meeting?</h3>
+                    <p className="text-sm text-gray-500 mt-2 leading-relaxed px-2">
+                      You are about to permanently delete this scheduled meeting. This action cannot be undone.
+                    </p>
+                  </div>
+
+                  <div className="text-left mt-6">
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Reason for Deletion <span className="text-red-500">*</span></label>
+                    <textarea
+                      value={deleteReason}
+                      onChange={(e) => setDeleteReason(e.target.value)}
+                      placeholder="e.g., Client requested cancellation..."
+                      className="w-full px-4 py-3 bg-gray-50/50 border border-gray-200 rounded-xl text-sm focus:ring-4 focus:ring-red-500/10 focus:border-red-500 focus:bg-white transition-all resize-none shadow-inner"
+                      rows="3"
+                    />
+                  </div>
+                  
+                  <div className="flex gap-3 justify-center pt-3 w-full">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setMeetingToDelete(null);
+                        setDeleteReason('');
+                      }}
+                      disabled={meetingSubmitting}
+                      className="flex-1 py-2.5 font-bold text-gray-600 hover:bg-gray-50 border-gray-200"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="primary"
+                      className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold border-red-600 hover:border-red-700 shadow-md shadow-red-500/20"
+                      onClick={async () => {
+                        await handleDeleteMeetingConfirm();
+                      }}
+                      disabled={meetingSubmitting}
+                    >
+                      {meetingSubmitting ? 'Deleting...' : 'Yes, Delete'}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </Modal>
           )}
+
+
         </div>
+      )}
+
+      {isRestoreConfirmOpen && (
+        <Modal
+          isOpen={isRestoreConfirmOpen}
+          onClose={() => setIsRestoreConfirmOpen(false)}
+          size="sm"
+        >
+          <div className="p-6 text-center space-y-4">
+            <div className="w-16 h-16 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto text-3xl">
+              🔄
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-900">Restore Lead?</h3>
+              <p className="text-sm text-gray-500 mt-2">
+                Are you sure you want to restore this lead? This will move it back to active leads list.
+              </p>
+            </div>
+            <div className="flex gap-3 justify-center pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsRestoreConfirmOpen(false)}
+                disabled={actionSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="success"
+                onClick={executeRestore}
+                disabled={actionSubmitting}
+              >
+                {actionSubmitting ? 'Restoring...' : 'Yes, Restore'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {isMarkLostModalOpen && (
+        <MarkLostModal
+          isOpen={isMarkLostModalOpen}
+          onClose={() => setIsMarkLostModalOpen(false)}
+          onConfirm={executeMarkLost}
+          isSubmitting={actionSubmitting}
+        />
+      )}
+
+      {isDeleteConfirmOpen && (
+        <Modal
+          isOpen={isDeleteConfirmOpen}
+          onClose={() => setIsDeleteConfirmOpen(false)}
+          size="sm"
+        >
+          <div className="p-6 text-center space-y-4">
+            <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto text-3xl">
+              ⚠️
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-900">Permanently Delete Lead?</h3>
+              <p className="text-sm text-gray-500 mt-2">
+                Are you sure you want to permanently delete this lead? This action is irreversible and cannot be undone.
+              </p>
+            </div>
+            <div className="flex gap-3 justify-center pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsDeleteConfirmOpen(false)}
+                disabled={actionSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={executePermanentDelete}
+                disabled={actionSubmitting}
+              >
+                {actionSubmitting ? 'Deleting...' : 'Yes, Delete'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

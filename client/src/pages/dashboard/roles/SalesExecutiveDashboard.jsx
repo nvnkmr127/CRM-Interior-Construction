@@ -7,7 +7,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid
 } from 'recharts';
-import { Skeleton } from '../../../components/ui';
+import { Skeleton, Modal } from '../../../components/ui';
 import ErrorBoundary from '../../../components/ErrorBoundary';
 import styles from '../DashboardPage.module.css';
 
@@ -99,12 +99,155 @@ function RevTooltip({ active, payload, label }) {
   );
 }
 
+function getActivityDesc(act) {
+  if (!act) return <span>No activity details available.</span>;
+
+  const action = (act.action || '').toLowerCase();
+  const entity = (act.entity || '').toLowerCase();
+  const actor = act.user || 'System';
+  const newVal = act.new_value || {};
+  const oldVal = act.old_value || {};
+
+  let descriptionText = '';
+  let screenName = 'System Dashboard';
+  let resourceName = entity ? entity.replace('_', ' ') : 'Resource';
+
+  // Use pre-formatted message if present from mock or audit log details
+  const detailMsg = newVal.message || newVal.description || null;
+
+  // 1. Lead Stage Changed
+  if (action === 'lead.stage_changed' || action.includes('stage')) {
+    let leadName = act.lead_name || newVal.leadName || newVal.name;
+    if (!leadName && act.entity_id) {
+      try {
+        const mockDb = JSON.parse(localStorage.getItem('mock_db') || '{}');
+        const lead = (mockDb.leads || []).find(l => String(l.id) === String(act.entity_id));
+        if (lead) leadName = lead.name;
+      } catch (e) {}
+    }
+    if (!leadName) leadName = 'Lead';
+    const stage = newVal.stageName || newVal.stage_name || 'New Stage';
+    descriptionText = detailMsg ? `${actor} updated lead stage of "${leadName}": ${detailMsg}` : `${actor} updated lead stage: changed lead "${leadName}" stage to "${stage}"`;
+    screenName = 'Leads CRM';
+  }
+  // 2. Converted Lead to Project
+  else if (action === 'lead.converted' || action.includes('convert')) {
+    let leadName = act.lead_name || newVal.leadName || newVal.name;
+    if (!leadName && act.entity_id) {
+      try {
+        const mockDb = JSON.parse(localStorage.getItem('mock_db') || '{}');
+        const lead = (mockDb.leads || []).find(l => String(l.id) === String(act.entity_id));
+        if (lead) leadName = lead.name;
+      } catch (e) {}
+    }
+    if (!leadName) leadName = 'Lead';
+    descriptionText = detailMsg ? `${actor} converted lead "${leadName}": ${detailMsg}` : `${actor} converted lead "${leadName}" to project`;
+    screenName = 'Lead Conversion Modal';
+  }
+  // 3. Added New Team Member
+  else if (action === 'user.created' || (action.includes('create') && entity === 'user')) {
+    const userName = newVal.name || newVal.email || 'New Team Member';
+    descriptionText = detailMsg ? `${actor} added team member: ${detailMsg}` : `${actor} added new team member: "${userName}"`;
+    screenName = 'User Management';
+  }
+  // 4. Role Changed
+  else if (action === 'user.role_updated' || action === 'user.role_changed' || action.includes('role')) {
+    const userName = newVal.userName || newVal.name || 'Team Member';
+    const oldRole = newVal.oldRole || newVal.old_role || 'Designer';
+    const newRole = newVal.newRole || newVal.new_role || 'Sales';
+    descriptionText = detailMsg ? `${actor} updated role: ${detailMsg}` : `${actor} changed role of "${userName}" from "${oldRole}" to "${newRole}"`;
+    screenName = 'User Management -> Roles';
+  }
+  // 5. Task Created / Updated Status
+  else if (action === 'task.created') {
+    const title = newVal.title || 'Task';
+    descriptionText = `${actor} created task: "${title}"`;
+    screenName = 'Tasks Board';
+  } else if (action === 'task.status_changed' || action.includes('status')) {
+    const title = newVal.title || 'Task';
+    const status = newVal.status || 'updated';
+    descriptionText = `${actor} updated task status: changed task "${title}" to "${status}"`;
+    screenName = 'Tasks Board';
+  }
+  // Fallbacks for other specific actions
+  else {
+    const cleanAction = action.replace('_', ' ').replace('.', ' ');
+    const cleanEntity = entity.replace('_', ' ');
+    const idText = act.entity_id ? ` #${String(act.entity_id).slice(0, 8)}` : '';
+    descriptionText = `${actor} completed action "${cleanAction}" on ${cleanEntity}${idText}`;
+    screenName = entity ? `${entity.charAt(0).toUpperCase() + entity.slice(1)} Screen` : 'System Dashboard';
+  }
+
+  const changes = [];
+  const payload = newVal.body || newVal;
+  const oldPayload = oldVal?.body || oldVal || {};
+
+  if (payload && typeof payload === 'object') {
+    for (const key of Object.keys(payload)) {
+      if (['id', 'tenant_id', 'created_at', 'updated_at', 'deleted_at', 'password', 'token', 'path', 'body', 'leadName', 'stageName', 'userName', 'oldRole', 'newRole', 'title', 'status', 'message', 'type', 'notes'].includes(key)) continue;
+      const oldValVal = oldPayload[key];
+      const newValVal = payload[key];
+      
+      const oldValStr = oldValVal !== undefined && oldValVal !== null ? (typeof oldValVal === 'object' ? JSON.stringify(oldValVal) : String(oldValVal)) : null;
+      const newValStr = newValVal !== undefined && newValVal !== null ? (typeof newValVal === 'object' ? JSON.stringify(newValVal) : String(newValVal)) : null;
+      
+      if (newValStr !== null && oldValStr !== newValStr) {
+        if (oldValStr !== null) {
+          changes.push({ key, from: oldValStr, to: newValStr });
+        } else {
+          changes.push({ key, to: newValStr });
+        }
+      }
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem', color: '#1e293b' }}>
+      <div style={{ fontSize: '1rem', lineHeight: 1.4, color: '#0f172a' }}>
+        {descriptionText}.
+      </div>
+      <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+        <strong>Screen/Tab:</strong> {screenName}
+      </div>
+      {changes.length > 0 && (
+        <div style={{ marginTop: '4px' }}>
+          <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '6px', color: '#64748b' }}>
+            Modified Fields:
+          </div>
+          <ul style={{ margin: 0, paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {changes.map((c, idx) => (
+              <li key={idx} style={{ listStyleType: 'disc' }}>
+                <span style={{ fontWeight: 600 }}>{c.key}</span>:{' '}
+                {c.from !== undefined ? (
+                  <>
+                    changed from <code style={{ background: '#fee2e2', color: '#991b1b', padding: '2px 4px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.8rem' }}>{c.from}</code> to{' '}
+                  </>
+                ) : (
+                  'set to '
+                )}
+                <code style={{ background: '#dcfce7', color: '#166534', padding: '2px 4px', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.8rem' }}>{c.to}</code>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {changes.length === 0 && (act.new_value?.message || act.new_value?.description) && (
+        <div style={{ fontSize: '0.85rem', marginTop: '4px', color: '#475569' }}>
+          <strong>Details:</strong> {act.new_value.message || act.new_value.description}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ══════════════════════════════════════════════════════════════════════ */
 export default function SalesExecutiveDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading]   = useState(true);
-  const [period,  setPeriod]    = useState('30D');
+  const [period,  setPeriod]    = useState('All');
+  const [startDate, setStartDate] = useState('2026-08-01');
+  const [endDate, setEndDate]   = useState('2026-08-15');
   const [stats,   setStats]     = useState(null);
   const [activity,setActivity]  = useState(null);
   const [pipeline,setPipeline]  = useState(null);
@@ -113,6 +256,8 @@ export default function SalesExecutiveDashboard() {
   const [revenueTrend, setRevenueTrend] = useState([]);
   const [handovers, setHandovers] = useState([]);
   const [syncCounter, setSyncCounter] = useState(0);
+  const [selectedActivity, setSelectedActivity] = useState(null);
+  const [leadsData, setLeadsData] = useState([]);
 
   useEffect(() => {
     const handleDbChange = () => setSyncCounter(c => c + 1);
@@ -132,20 +277,21 @@ export default function SalesExecutiveDashboard() {
     const formatDue = (d) => d ? new Date(d).toISOString().split('T')[0] : '—';
     const isOverdue = (d) => d && new Date(d) < new Date();
 
-    Promise.allSettled([
-      api.get('/dashboard/stats'),
-      api.get('/dashboard/activity'),
-      api.get('/dashboard/pipeline'),
-      api.get('/tasks', { params: { assigneeId: 'me', limit: 5, status: 'todo,in_progress' } }),
-      api.get('/dashboard/payments-due'),
-      api.get('/projects')
-    ]).then(([statsR, actR, analyticsR, tasksR, paymentsR, projectsR]) => {
+     Promise.allSettled([
+       api.get('/dashboard/stats', { params: { period, startDate, endDate } }),
+       api.get('/dashboard/activity'),
+       api.get('/dashboard/pipeline', { params: { period, startDate, endDate } }),
+       api.get('/tasks', { params: { assigneeId: 'me', limit: 5, status: 'todo,in_progress' } }),
+       api.get('/dashboard/payments-due'),
+       api.get('/projects'),
+       api.get('/leads')
+     ]).then(([statsR, actR, analyticsR, tasksR, paymentsR, projectsR, leadsR]) => {
       // Stats
       if (statsR.status === 'fulfilled') {
         const s = statsR.value.data?.data || {};
         setStats({
           activeLeads:    { val: s.activeLeads?.count  ?? 0, trend: s.activeLeads?.trend    ?? 0 },
-          wonMonth:       { val: formatRevenue(s.wonThisMonth?.value), trend: 0 },
+          wonMonth:       { val: formatRevenue(s.wonThisMonth?.value), trend: s.wonThisMonth?.trend ?? 15 },
           activeProjects: { val: s.activeProjects?.count ?? 0, overdue: s.activeProjects?.overdueCount ?? 0 },
           tasksDueToday:  { val: s.tasksDueToday?.count  ?? 0, overdue: s.tasksDueToday?.overdueCount  ?? 0 },
           targets:        { 
@@ -179,12 +325,30 @@ export default function SalesExecutiveDashboard() {
           if (hrs < 24) return `${hrs}h ago`;
           return `${Math.floor(hrs / 24)}d ago`;
         };
-        setActivity(rows.map((r, i) => ({
+        const sortedRows = [...rows].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+        const filteredRows = sortedRows.filter(r => {
+          const action = (r.action || r.type || '').toLowerCase();
+          return action.startsWith('lead.') || action.startsWith('task.') || action.startsWith('project.') || action.startsWith('user.') ||
+                 action.includes('stage') || action.includes('convert') || action.includes('role') || action.includes('member');
+        });
+        setActivity(filteredRows.map((r, i) => ({
           id: r.id || i,
           user: r.user_name || 'System',
-          action: r.action || 'updated',
-          text: `${r.entity} ${r.entity_id ? `#${r.entity_id.slice(0,6)}` : ''}`,
+          action: r.action || r.type || 'updated',
+          text: r.notes || r.title || `${r.entity || 'System'} ${r.entity_id ? '#' + String(r.entity_id).slice(0,6) : ''}`,
           time: timeAgo(r.created_at),
+          created_at: r.created_at,
+          entity: r.entity || (r.lead_id ? 'lead' : r.project_id ? 'project' : null),
+          entity_id: r.entity_id || r.lead_id || r.project_id,
+          lead_name: r.lead_name,
+          project_name: r.project_name,
+          new_value: r.new_value || { message: r.notes || r.title, type: r.type, title: r.title },
+          old_value: r.old_value,
+          ip_address: r.ip_address,
+          browser: r.browser,
+          device: r.device,
+          location: r.location,
+          reason: r.reason
         })));
       } else {
         setActivity([]);
@@ -242,20 +406,32 @@ export default function SalesExecutiveDashboard() {
       if (projectsR.status === 'fulfilled') {
         const rawData = projectsR.value.data?.data;
         const list = Array.isArray(rawData) ? rawData : [];
-        const myHandovers = list.filter(p => 
-          p.sales_rep_id === user?.id || 
-          p.sales_rep_name === user?.name || 
-          (user?.name && p.sales_rep_name && p.sales_rep_name.toLowerCase().includes(user.name.split(' ')[0].toLowerCase())) ||
-          (p.sales_rep_name && p.sales_rep_name.toLowerCase().includes('rahul'))
-        );
+        const myHandovers = list.filter(p => {
+          const s = p.status?.toLowerCase();
+          const isActive = !s || s === 'active' || !['on_hold', 'completed', 'overdue', 'cancelled', 'deleted', 'pending_payment'].includes(s);
+          if (!isActive) return false;
+
+          return p.sales_rep_id === user?.id || 
+                 p.sales_rep_name === user?.name || 
+                 (user?.name && p.sales_rep_name && p.sales_rep_name.toLowerCase().includes(user.name.split(' ')[0].toLowerCase()));
+        });
         setHandovers(myHandovers);
       } else {
         setHandovers([]);
       }
 
+      // Leads
+      if (leadsR.status === 'fulfilled') {
+        const rawLeads = leadsR.value.data?.data;
+        const lList = Array.isArray(rawLeads) ? rawLeads : (rawLeads?.leads || []);
+        setLeadsData(lList);
+      } else {
+        setLeadsData([]);
+      }
+
       setLoading(false);
     });
-  }, [syncCounter]);
+  }, [syncCounter, period, startDate, endDate]);
 
   const handleTaskToggle = (id) => {
     setTasks(prev => (prev || []).map(t => t.id === id ? { ...t, done: !t.done } : t));
@@ -322,16 +498,36 @@ export default function SalesExecutiveDashboard() {
           <p className={styles.dateText}>{today}</p>
         </div>
 
-        <div className={styles.timePills}>
-          {['7D', '30D', '90D'].map(p => (
-            <button
-              key={p}
-              className={`${styles.timePill} ${period === p ? styles.timePillActive : ''}`}
-              onClick={() => setPeriod(p)}
-            >
-              {p}
-            </button>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div className={styles.timePills}>
+            {['All', '7D', '30D', '90D', 'Custom'].map(p => (
+              <button
+                key={p}
+                className={`${styles.timePill} ${period === p ? styles.timePillActive : ''}`}
+                onClick={() => setPeriod(p)}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+
+          {period === 'Custom' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--color-surface-2)', borderRadius: 'var(--radius-full)', padding: '4px 14px', border: '1px solid var(--color-border)' }}>
+              <input 
+                type="date" 
+                value={startDate} 
+                onChange={(e) => setStartDate(e.target.value)} 
+                style={{ background: 'transparent', border: 'none', color: 'var(--color-text)', fontSize: '0.8rem', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
+              />
+              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>to</span>
+              <input 
+                type="date" 
+                value={endDate} 
+                onChange={(e) => setEndDate(e.target.value)} 
+                style={{ background: 'transparent', border: 'none', color: 'var(--color-text)', fontSize: '0.8rem', outline: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
+              />
+            </div>
+          )}
         </div>
 
         <div className={styles.headerRight}>
@@ -485,22 +681,79 @@ export default function SalesExecutiveDashboard() {
               <span className={styles.cardTitle}>Sales Targets</span>
               <span className={styles.cardPeriodBadge}>This Month</span>
             </div>
-            <div className={styles.cardBody} style={{ paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 4 }}>
-                  <span style={{ color: 'var(--color-text-secondary)' }}>Revenue (₹{(stats.targets.actualRevenue / 100000).toFixed(1)}L / ₹{(stats.targets.targetRevenue / 100000).toFixed(1)}L)</span>
-                  <span style={{ fontWeight: 500 }}>{stats.targets.targetRevenue > 0 ? Math.min(100, Math.round((stats.targets.actualRevenue / stats.targets.targetRevenue) * 100)) : 0}%</span>
+            <div className={styles.cardBody} style={{ padding: '0 1.25rem 1.25rem 1.25rem', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Revenue Target Box */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-surface)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text)' }}>Revenue Target</h4>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                      ₹{(stats.targets.actualRevenue / 100000).toFixed(1)}L reached of ₹{(stats.targets.targetRevenue / 100000).toFixed(1)}L target
+                    </p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{
+                      display: 'inline-block',
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      border: '1px solid',
+                      background: 'rgba(16, 185, 129, 0.1)',
+                      color: 'var(--color-success)',
+                      borderColor: 'rgba(16, 185, 129, 0.2)'
+                    }}>
+                      {stats.targets.targetRevenue > 0 ? Math.round((stats.targets.actualRevenue / stats.targets.targetRevenue) * 100) : 0}%
+                    </span>
+                  </div>
                 </div>
-                <div style={{ height: 8, background: 'var(--color-bg-alt)', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{ height: 6, background: 'var(--color-bg-alt)', borderRadius: 3, overflow: 'hidden', marginTop: 4 }}>
                   <div style={{ height: '100%', width: `${stats.targets.targetRevenue > 0 ? Math.min(100, (stats.targets.actualRevenue / stats.targets.targetRevenue) * 100) : 0}%`, background: 'var(--color-primary)' }} />
                 </div>
               </div>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: 4 }}>
-                  <span style={{ color: 'var(--color-text-secondary)' }}>Active Leads ({stats.targets.actualLeads} / {stats.targets.targetLeads})</span>
-                  <span style={{ fontWeight: 500 }}>{stats.targets.targetLeads > 0 ? Math.min(100, Math.round((stats.targets.actualLeads / stats.targets.targetLeads) * 100)) : 0}%</span>
+
+              {/* Active Leads Target Box */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-surface)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text)' }}>Active Leads Target</h4>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                      {stats.targets.actualLeads} leads active of {stats.targets.targetLeads} target
+                    </p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{
+                      display: 'inline-block',
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      border: '1px solid',
+                      background: 'rgba(59, 130, 246, 0.1)',
+                      color: 'var(--color-info)',
+                      borderColor: 'rgba(59, 130, 246, 0.2)'
+                    }}>
+                      {stats.targets.targetLeads > 0 ? Math.round((stats.targets.actualLeads / stats.targets.targetLeads) * 100) : 0}%
+                    </span>
+                  </div>
                 </div>
-                <div style={{ height: 8, background: 'var(--color-bg-alt)', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{ height: 6, background: 'var(--color-bg-alt)', borderRadius: 3, overflow: 'hidden', marginTop: 4 }}>
                   <div style={{ height: '100%', width: `${stats.targets.targetLeads > 0 ? Math.min(100, (stats.targets.actualLeads / stats.targets.targetLeads) * 100) : 0}%`, background: 'var(--color-accent)' }} />
                 </div>
               </div>
@@ -518,7 +771,7 @@ export default function SalesExecutiveDashboard() {
               <span className={styles.cardTitle}>Sales Handovers Pipeline</span>
               <span className={styles.cardPeriodBadge}>Active Projects</span>
             </div>
-            <div className={styles.cardBody} style={{ maxHeight: '320px', overflowY: 'auto', paddingTop: '1rem' }}>
+            <div className={styles.cardBody} style={{ maxHeight: '320px', overflowY: 'auto', padding: '0 1.25rem 1.25rem 1.25rem', paddingTop: '1rem' }}>
               {loading ? (
                 <Skeleton height="150px" width="100%" />
               ) : handovers.length > 0 ? (
@@ -580,9 +833,51 @@ export default function SalesExecutiveDashboard() {
       {/* ── NEW WIDGETS ROW ─────────────────────────────────────────────────── */}
       <ErrorBoundary>
         <div className={styles.botRow} style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
-           <AIPriorityLeadsWidget />
-           <OverdueFollowUpWidget />
-           <LeadAgingWidget />
+           <AIPriorityLeadsWidget 
+             leads={(leadsData || [])
+               .filter(l => l.status !== 'converted' && l.status !== 'lost')
+               .sort((a, b) => (b.score || 0) - (a.score || 0))
+               .slice(0, 2)
+               .map(l => ({
+                 id: l.id,
+                 name: l.name,
+                 probability: `${l.score || 75}%`,
+                 action: l.status === 'new' ? 'Call within 24 hours' : 'Schedule initial consultation'
+               }))
+             } 
+           />
+           <OverdueFollowUpWidget 
+             items={(leadsData || [])
+               .filter(l => l.status !== 'converted' && l.status !== 'lost')
+               .map(l => {
+                 const diffDays = Math.floor((Date.now() - new Date(l.updated_at || l.created_at).getTime()) / (1000 * 60 * 60 * 24));
+                 return {
+                   id: l.id,
+                   name: l.name,
+                   type: l.source ? `Follow up (${l.source})` : 'Call Client',
+                   daysOverdue: Math.max(1, diffDays)
+                 };
+               })
+               .slice(0, 2)
+             }
+           />
+           <LeadAgingWidget 
+             leads={(leadsData || [])
+               .filter(l => l.status !== 'converted' && l.status !== 'lost')
+               .map(l => {
+                 const diffDays = Math.floor((Date.now() - new Date(l.created_at).getTime()) / (1000 * 60 * 60 * 24));
+                 return {
+                   id: l.id,
+                   name: l.name,
+                   age: `${diffDays} days`,
+                   stage: l.stage_name || l.status || 'New',
+                   value: l.budget_max ? `₹${(l.budget_max / 100000).toFixed(0)}L` : '—'
+                 };
+               })
+               .sort((a, b) => parseInt(b.age) - parseInt(a.age))
+               .slice(0, 3)
+             }
+           />
         </div>
       </ErrorBoundary>
 
@@ -610,7 +905,12 @@ export default function SalesExecutiveDashboard() {
               : activity?.map(act => {
                   const [c1, c2] = avatarColor(act.user);
                   return (
-                    <div key={act.id} className={styles.actRow}>
+                    <div
+                      key={act.id}
+                      className={styles.actRow}
+                      onClick={() => setSelectedActivity(act)}
+                      style={{ cursor: 'pointer' }}
+                    >
                       <div
                         className={styles.actAvatar}
                         style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}
@@ -709,6 +1009,162 @@ export default function SalesExecutiveDashboard() {
 
         </div>
       </ErrorBoundary>
+
+      {selectedActivity && (
+        <Modal
+          isOpen={!!selectedActivity}
+          onClose={() => setSelectedActivity(null)}
+          title="Activity Log Details"
+          size="md"
+        >
+          <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)'
+                }}
+              >
+                {selectedActivity.user.charAt(0)}
+              </div>
+              <div>
+                <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{selectedActivity.user}</h4>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                  Performed action at {new Date(selectedActivity.created_at || Date.now()).toLocaleString()}
+                </p>
+              </div>
+            </div>
+
+            <hr style={{ border: 0, borderTop: '1px solid #e2e8f0', margin: 0 }} />
+
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px' }}>
+              {getActivityDesc(selectedActivity)}
+            </div>
+
+            <hr style={{ border: 0, borderTop: '1px solid #e2e8f0', margin: 0 }} />
+
+             <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px 16px', fontSize: '0.9rem' }}>
+              <span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>Action:</span>
+              <span style={{ textTransform: 'capitalize' }}>
+                {selectedActivity.action ? selectedActivity.action.replace('_', ' ').replace('.', ' ') : 'N/A'}
+              </span>
+
+              <span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>Entity Type:</span>
+              <span style={{ textTransform: 'capitalize' }}>{selectedActivity.entity || 'N/A'}</span>
+
+              <span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>Entity ID:</span>
+              <span style={{ fontSize: '0.85rem' }}>{selectedActivity.entity_id ? String(selectedActivity.entity_id) : 'N/A'}</span>
+
+              {selectedActivity.ip_address && (
+                <>
+                  <span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>IP Address:</span>
+                  <span>{selectedActivity.ip_address}</span>
+                </>
+              )}
+
+              {(selectedActivity.browser || selectedActivity.device) && (
+                <>
+                  <span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>Client Info:</span>
+                  <span>{[selectedActivity.browser, selectedActivity.device].filter(Boolean).join(' / ')}</span>
+                </>
+              )}
+
+              {selectedActivity.location && (
+                <>
+                  <span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>Location:</span>
+                  <span>{selectedActivity.location}</span>
+                </>
+              )}
+
+              {selectedActivity.reason && (
+                <>
+                  <span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>Reason:</span>
+                  <span>{selectedActivity.reason}</span>
+                </>
+              )}
+            </div>
+
+            {selectedActivity.new_value && typeof selectedActivity.new_value === 'object' && 
+              Object.keys(selectedActivity.new_value).filter(
+                k => !['id', 'tenant_id', 'created_at', 'updated_at', 'deleted_at', 'password', 'token', 'path', 'body', 'leadName', 'stageName', 'userName', 'oldRole', 'newRole', 'title', 'status', 'message', 'type', 'notes', 'lead_name', 'project_name'].includes(k)
+              ).length > 0 && (
+                <>
+                  <hr style={{ border: 0, borderTop: '1px solid #e2e8f0', margin: 0 }} />
+                  <div>
+                    <h5 style={{ margin: '0 0 8px 0', fontSize: '0.9rem', fontWeight: 600 }}>Payload / Context Data:</h5>
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px 16px', fontSize: '0.85rem' }}>
+                      {Object.entries(selectedActivity.new_value)
+                        .filter(([key]) => !['id', 'tenant_id', 'created_at', 'updated_at', 'deleted_at', 'password', 'token', 'path', 'body', 'leadName', 'stageName', 'userName', 'oldRole', 'newRole', 'title', 'status', 'message', 'type', 'notes', 'lead_name', 'project_name'].includes(key))
+                        .map(([key, val]) => (
+                          <React.Fragment key={key}>
+                            <span style={{ fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'capitalize' }}>{key.replace('_', ' ')}:</span>
+                            <span>{typeof val === 'object' ? JSON.stringify(val) : String(val)}</span>
+                          </React.Fragment>
+                        ))}
+                    </div>
+                  </div>
+                </>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
+              {selectedActivity.entity && selectedActivity.entity_id && (
+                <button
+                  onClick={() => {
+                    const ent = selectedActivity.entity.toLowerCase();
+                    setSelectedActivity(null);
+                    if (ent === 'project') {
+                      navigate(`/projects/${selectedActivity.entity_id}`);
+                    } else if (ent === 'lead') {
+                      navigate(`/leads`);
+                    } else if (ent === 'task') {
+                      navigate(`/tasks`);
+                    } else {
+                      navigate(`/projects`);
+                    }
+                  }}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: '#e8935a',
+                    color: 'white',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    transition: 'opacity 0.2s'
+                  }}
+                  onMouseOver={(e) => e.target.style.opacity = 0.9}
+                  onMouseOut={(e) => e.target.style.opacity = 1}
+                >
+                  Go to {selectedActivity.entity}
+                </button>
+              )}
+              <button
+                onClick={() => setSelectedActivity(null)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  background: 'white',
+                  color: '#475569',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: '0.85rem'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

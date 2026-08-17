@@ -91,8 +91,14 @@ class TaskRepository {
       values.push(assigneeId);
     }
     if (status) {
-      whereClause += ` AND t.status = $${idx++}`;
-      values.push(status);
+      if (status.includes(',')) {
+        const statuses = status.split(',').map(s => s.trim());
+        whereClause += ` AND t.status = ANY($${idx++})`;
+        values.push(statuses);
+      } else {
+        whereClause += ` AND t.status = $${idx++}`;
+        values.push(status);
+      }
     }
     if (priority) {
       whereClause += ` AND t.priority = $${idx++}`;

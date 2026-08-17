@@ -35,7 +35,12 @@ router.get('/activity', async (req, res) => {
       SELECT al.*, u.name as user_name, u.avatar_url
       FROM audit_logs al
       LEFT JOIN users u ON u.id = al.user_id
-      WHERE al.tenant_id=$1
+      WHERE al.tenant_id=$1 AND (
+        al.action ILIKE 'lead.%' OR 
+        al.action ILIKE 'task.%' OR 
+        al.action ILIKE 'project.%' OR 
+        al.action ILIKE 'user.%'
+      )
       ORDER BY al.created_at DESC LIMIT $2
     `, [tenantId, limit]);
 
@@ -47,7 +52,13 @@ router.get('/activity', async (req, res) => {
       user_name: row.user_name,
       avatar_url: row.avatar_url,
       created_at: row.created_at,
-      new_value: row.new_value
+      new_value: row.new_value,
+      old_value: row.old_value,
+      ip_address: row.ip_address,
+      browser: row.browser,
+      device: row.device,
+      location: row.location,
+      reason: row.reason
     })));
   } catch (error) {
     logger.error('Activity fetch error:', error);

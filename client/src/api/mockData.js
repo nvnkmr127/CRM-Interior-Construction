@@ -675,6 +675,21 @@ export const loadMockDatabase = () => {
       const parsed = JSON.parse(saved);
       const merged = { ...initialMockDatabase, ...parsed };
       
+      // ONE-TIME REORDER OF PRE-CONVERSION CHECKLIST
+      if (!merged.checklist_reordered_v8) {
+        merged.tenantSettings = merged.tenantSettings || {};
+        merged.tenantSettings.pre_conversion_checklist = [
+          { key: 'site_address_confirmed', label: 'Site address confirmed', required: false, active: true },
+          { key: 'site_visit_completed', label: 'Site visit completed', required: true, active: true },
+          { key: 'floor_plan', label: 'Floor plan attached', required: false, active: true },
+          { key: 'scope_finalized', label: 'Scope frozen', required: true, active: true },
+          { key: 'booking_received', label: 'Booking amount received', required: true, active: true },
+          { key: 'contract_signed', label: 'Contract signed', required: true, active: true }
+        ];
+        merged.checklist_reordered_v8 = true;
+        localStorage.setItem('mockDatabase_v4', JSON.stringify(merged));
+      }
+      
       // ONE-TIME PURGE OF CONTACTS TO FIX GHOST BUG
       if (!merged.contacts_purged_v5) {
         merged.contacts = [...initialMockDatabase.contacts];

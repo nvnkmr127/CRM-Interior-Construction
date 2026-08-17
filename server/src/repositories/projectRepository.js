@@ -381,14 +381,16 @@ class ProjectRepository {
     return rows[0];
   }
 
-  async softDeleteProject(tenantId, projectId) {
+  async softDeleteProject(tenantId, projectId, reason, userId) {
     const query = `
       UPDATE projects
-      SET deleted_at = NOW()
+      SET deleted_at = NOW(),
+          delete_reason = $3,
+          deleted_by = $4
       WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
       RETURNING id
     `;
-    const { rows } = await pool.query(query, [tenantId, projectId]);
+    const { rows } = await pool.query(query, [tenantId, projectId, reason || null, userId || null]);
     if (rows.length === 0) throw new Error('NOT_FOUND');
     return true;
   }

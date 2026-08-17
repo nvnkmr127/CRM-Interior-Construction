@@ -2021,10 +2021,10 @@ exports.bulkDeleteLeadsHandler = async (req, res, next) => {
       return res.status(400).json({ success: false, error: { message: 'leadIds array is required' } });
     }
     
-    let query = `UPDATE leads SET deleted_at = NOW() WHERE tenant_id = $1 AND id = ANY($2)`;
+    let query = `UPDATE leads SET deleted_at = NOW() WHERE tenant_id = $1 AND id = ANY($2::uuid[])`;
     const values = [tenantId, leadIds];
 
-    if (role !== 'superadmin' && role !== 'admin') {
+    if (role !== 'superadmin' && role !== 'admin' && role !== 'manager' && role !== 'gm') {
       query += ` AND assignee_id = $3`;
       values.push(userId);
     }
@@ -2050,10 +2050,10 @@ exports.bulkAssignLeadsHandler = async (req, res, next) => {
       return res.status(400).json({ success: false, error: { message: 'assigneeId is required' } });
     }
     
-    let query = `UPDATE leads SET assignee_id = $1, updated_at = NOW() WHERE tenant_id = $2 AND id = ANY($3)`;
+    let query = `UPDATE leads SET assignee_id = $1, updated_at = NOW() WHERE tenant_id = $2 AND id = ANY($3::uuid[])`;
     const values = [assigneeId, tenantId, leadIds];
 
-    if (role !== 'superadmin' && role !== 'admin') {
+    if (role !== 'superadmin' && role !== 'admin' && role !== 'manager' && role !== 'gm') {
       query += ` AND assignee_id = $4`;
       values.push(userId);
     }
@@ -2088,13 +2088,107 @@ exports.bulkChangeStageHandler = async (req, res, next) => {
     if (stageRes.rows.length === 0) return res.status(400).json({ success: false, error: { message: 'Invalid stageId' } });
     const stageName = stageRes.rows[0].name;
 
-    const query = `UPDATE leads SET stage_id = $1, updated_at = NOW() WHERE tenant_id = $2 AND id = ANY($3) RETURNING id`;
+    const query = `UPDATE leads SET stage_id = $1, updated_at = NOW() WHERE tenant_id = $2 AND id = ANY($3::uuid[]) RETURNING id`;
     const result = await pool.query(query, [stageId, tenantId, leadIds]);
     
     for (const leadId of leadIds) {
        await pool.query(`INSERT INTO lead_timeline (tenant_id, lead_id, event_type, summary) VALUES ($1, $2, 'stage.changed', $3)`, [tenantId, leadId, `Stage changed to ${stageName} (Bulk)`]);
     }
 
+    res.json({ success: true, data: { updatedCount: result.rowCount, leadIds: result.rows.map(r => r.id) } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.bulkUpdateLeadsHandler = async (req, res, next) => {
+  try {
+    const { tenantId, userId } = getTenantAndUser(req);
+    const role = req.user && req.user.role ? req.user.role : '';
+    const { leadIds, updates } = req.body;
+    
+    if (!leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
+      return res.status(400).json({ success: false, error: { message: 'leadIds array is required' } });
+    }
+    if (!updates || typeof updates !== 'object') {
+      return res.status(400).json({ success: false, error: { message: 'updates object is required' } });
+    }
+    
+    const setFields = [];
+    const values = [];
+    let paramIdx = 1;
+    
+    if (updates.massDelete === true) {
+      setFields.push(`deleted_at = NOW()`);
+    } else {
+      if (updates.markAsLost === true) {
+        setFields.push(`status = $${paramIdx++}`);
+        values.push('lost');
+      } else if (updates.status) {
+        setFields.push(`status = $${paramIdx++}`);
+        values.push(updates.status);
+      }
+      
+      if (updates.stageId) {
+        setFields.push(`stage_id = $${paramIdx++}`);
+        values.push(updates.stageId);
+      }
+
+      if (updates.source) {
+        setFields.push(`source = $${paramIdx++}`);
+        values.push(updates.source);
+      }
+      
+      if (updates.lastContact) {
+        setFields.push(`last_activity_at = $${paramIdx++}`);
+        values.push(updates.lastContact);
+      }
+      
+      if (updates.assigneeId) {
+        setFields.push(`assignee_id = $${paramIdx++}`);
+        values.push(updates.assigneeId === 'unassigned' ? null : updates.assigneeId);
+      }
+    }
+    
+    if (setFields.length === 0) {
+      return res.status(400).json({ success: false, error: { message: 'No valid updates provided' } });
+    }
+    
+    setFields.push(`updated_at = NOW()`);
+    
+    const leadIdsParamIdx = paramIdx++;
+    const tenantIdParamIdx = paramIdx++;
+    values.push(leadIds);
+    values.push(tenantId);
+    
+    let query = `UPDATE leads SET ${setFields.join(', ')} WHERE tenant_id = $${tenantIdParamIdx} AND id = ANY($${leadIdsParamIdx}::uuid[])`;
+    
+    if (role !== 'superadmin' && role !== 'admin' && role !== 'manager' && role !== 'gm') {
+      const userParamIdx = paramIdx++;
+      query += ` AND assignee_id = $${userParamIdx}`;
+      values.push(userId);
+    }
+    
+    query += ` RETURNING id`;
+    
+    const result = await pool.query(query, values);
+    
+    for (const row of result.rows) {
+      const summaryText = [];
+      if (updates.massDelete) summaryText.push('Deleted in bulk');
+      if (updates.markAsLost) summaryText.push('Marked as lost in bulk');
+      else if (updates.status) summaryText.push(`Status changed to ${updates.status} in bulk`);
+      if (updates.stageId) summaryText.push(`Stage changed in bulk`);
+      if (updates.source) summaryText.push(`Source changed to ${updates.source} in bulk`);
+      if (updates.lastContact) summaryText.push(`Last contact updated to ${updates.lastContact} in bulk`);
+      if (updates.assigneeId) summaryText.push(`Assignee changed to ${updates.assigneeId} in bulk`);
+      
+      await pool.query(
+        `INSERT INTO lead_timeline (tenant_id, lead_id, event_type, summary) VALUES ($1, $2, 'lead.updated', $3)`,
+        [tenantId, row.id, summaryText.join(', ')]
+      );
+    }
+    
     res.json({ success: true, data: { updatedCount: result.rowCount, leadIds: result.rows.map(r => r.id) } });
   } catch (error) {
     next(error);
@@ -2156,7 +2250,7 @@ exports.bulkTagHandler = async (req, res, next) => {
     const query = `
       UPDATE leads 
       SET tags = array_cat(tags, $1), updated_at = NOW() 
-      WHERE tenant_id = $2 AND id = ANY($3) 
+      WHERE tenant_id = $2 AND id = ANY($3::uuid[]) 
       RETURNING id
     `;
     const result = await pool.query(query, [tags, tenantId, leadIds]);
@@ -2183,19 +2277,19 @@ exports.mergeLeadsHandler = async (req, res, next) => {
       
       // Update activities
       await client.query(
-        'UPDATE activities SET lead_id = $1 WHERE tenant_id = $2 AND lead_id = ANY($3)',
+        'UPDATE activities SET lead_id = $1 WHERE tenant_id = $2 AND lead_id = ANY($3::uuid[])',
         [primaryLeadId, tenantId, secondaryLeadIds]
       );
       
       // Update communications
       await client.query(
-        'UPDATE communications SET lead_id = $1 WHERE tenant_id = $2 AND lead_id = ANY($3)',
+        'UPDATE communications SET lead_id = $1 WHERE tenant_id = $2 AND lead_id = ANY($3::uuid[])',
         [primaryLeadId, tenantId, secondaryLeadIds]
       );
       
       // Update followups
       await client.query(
-        'UPDATE lead_followups SET lead_id = $1 WHERE tenant_id = $2 AND lead_id = ANY($3)',
+        'UPDATE lead_followups SET lead_id = $1 WHERE tenant_id = $2 AND lead_id = ANY($3::uuid[])',
         [primaryLeadId, tenantId, secondaryLeadIds]
       );
       
@@ -2207,7 +2301,7 @@ exports.mergeLeadsHandler = async (req, res, next) => {
       
       // Soft delete secondary leads
       await client.query(
-        'UPDATE leads SET deleted_at = NOW() WHERE tenant_id = $1 AND id = ANY($2)',
+        'UPDATE leads SET deleted_at = NOW() WHERE tenant_id = $1 AND id = ANY($2::uuid[])',
         [tenantId, secondaryLeadIds]
       );
 
@@ -2279,10 +2373,6 @@ exports.updateBudgetHandler = async (req, res, next) => {
   }
 };
 
-exports.bulkTagHandler = async (req, res, next) => { res.json({success: true}) };
-exports.mergeLeadsHandler = async (req, res, next) => { res.json({success: true}) };
-exports.bulkChangeStageHandler = async (req, res, next) => { res.json({success: true}) };
-exports.checkDuplicateHandler = async (req, res, next) => { res.json({success: true}) };
 
 exports.getAutomationEventsHandler = async (req, res, next) => {
   try {
@@ -2376,7 +2466,7 @@ exports.getLeadByIdHandler = async (req, res, next) => {
     const { findLeadById } = require('../repositories/leadRepository');
     const { maskSensitiveFields } = require('../utils/fieldMasker');
     
-    const lead = await findLeadById(tenantId, id);
+    const lead = await findLeadById(tenantId, id, null, true);
     if (!lead) {
       return res.status(404).json({ success: false, error: 'Lead not found' });
     }
@@ -2431,6 +2521,28 @@ exports.deleteLeadHandler = async (req, res, next) => {
     const leadId = req.params.id;
     const { softDeleteLead } = require('../repositories/leadRepository');
     await softDeleteLead(tenantId, leadId);
+    return res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+};
+exports.restoreLeadHandler = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const leadId = req.params.id;
+    const { restoreLead } = require('../repositories/leadRepository');
+    await restoreLead(tenantId, leadId);
+    return res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+};
+exports.permanentlyDeleteLeadHandler = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const leadId = req.params.id;
+    const { permanentlyDeleteLead } = require('../repositories/leadRepository');
+    await permanentlyDeleteLead(tenantId, leadId);
     return res.status(204).end();
   } catch (error) {
     next(error);
