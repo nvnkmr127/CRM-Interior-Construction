@@ -7,6 +7,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import AIMeetingModal from './AIMeetingModal';
 import { useConfirm } from '../../store/confirmContext';
+import { Modal, Button } from '../ui';
 
 const Icons = {
   note: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>,
@@ -47,6 +48,9 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger, 
   const [activeForm, setActiveForm] = useState(null); // 'note', 'email', 'task', 'site_visit'
   const [filter, setFilter] = useState('all'); // 'all', 'note', 'email', 'site_visit', 'task', 'system'
 
+  const [activityToDelete, setActivityToDelete] = useState(null);
+  const [isDeletingActivity, setIsDeletingActivity] = useState(false);
+
   // Activity Edit State
   const [editingActivityId, setEditingActivityId] = useState(null);
   const [editNotes, setEditNotes] = useState('');
@@ -81,17 +85,24 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger, 
     }
   };
   
-  const handleDeleteClick = async (activityId) => {
-    if (await confirm('Are you sure you want to permanently remove this activity log from the lead\'s history?')) {
-      try {
-        const res = await deleteActivity(leadId, activityId);
-        if (res?.success || res?.data?.success) {
-          setActivities(prev => prev.filter(a => a.id !== activityId));
-          if (onActivityLogged) onActivityLogged();
-        }
-      } catch (err) {
-        alert(err.response?.data?.error?.message || 'Failed to delete activity.');
+  const handleDeleteClick = (activityId) => {
+    setActivityToDelete(activityId);
+  };
+
+  const handleConfirmDeleteActivity = async () => {
+    if (!activityToDelete) return;
+    setIsDeletingActivity(true);
+    try {
+      const res = await deleteActivity(leadId, activityToDelete);
+      if (res?.success || res?.data?.success) {
+        setActivities(prev => prev.filter(a => a.id !== activityToDelete));
+        setActivityToDelete(null);
+        if (onActivityLogged) onActivityLogged();
       }
+    } catch (err) {
+      alert(err.response?.data?.error?.message || 'Failed to delete activity.');
+    } finally {
+      setIsDeletingActivity(false);
     }
   };
 
@@ -768,6 +779,59 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger, 
             if (onActivityLogged) onActivityLogged();
           }} 
         />
+      )}
+
+      {/* Activity Delete Modal */}
+      {activityToDelete && (
+        <Modal
+          isOpen={!!activityToDelete}
+          onClose={() => setActivityToDelete(null)}
+          size="sm"
+          hideHeader={true}
+        >
+          <div className="relative p-6 overflow-hidden text-center bg-white rounded-xl">
+            <div className="absolute -top-12 -right-12 w-32 h-32 bg-gray-500 opacity-10 rounded-full blur-3xl"></div>
+            
+            <button 
+              onClick={() => setActivityToDelete(null)}
+              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors z-20 cursor-pointer"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+
+            <div className="relative z-10 space-y-4">
+              <div className="w-16 h-16 bg-gray-50 border-4 border-gray-50 text-gray-600 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 tracking-tight">Delete Log Entry?</h3>
+                <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+                  Are you sure you want to permanently remove this activity log from the lead's history?
+                </p>
+              </div>
+              
+              <div className="flex gap-3 justify-center pt-4 w-full">
+                <Button
+                  variant="outline"
+                  onClick={() => setActivityToDelete(null)}
+                  disabled={isDeletingActivity}
+                  className="flex-1 py-2 font-bold text-gray-600 hover:bg-gray-50 border-gray-200"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  className="flex-1 py-2 bg-gray-800 hover:bg-gray-900 text-white font-bold border-gray-800 hover:border-gray-900 shadow-sm"
+                  onClick={handleConfirmDeleteActivity}
+                  disabled={isDeletingActivity}
+                >
+                  {isDeletingActivity ? 'Deleting...' : 'Delete Log'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Modal>
       )}
 
     </div>

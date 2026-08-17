@@ -99,6 +99,8 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   const [isPresentModalOpen, setIsPresentModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [meetingToDelete, setMeetingToDelete] = useState(null);
+  const [historicalMeetingToDelete, setHistoricalMeetingToDelete] = useState(null);
+  const [isDeletingHistorical, setIsDeletingHistorical] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
   const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
   const [isRestoreConfirmOpen, setIsRestoreConfirmOpen] = useState(false);
@@ -393,12 +395,30 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
       setDeleteReason('');
       const freshLead = await fetchLead();
       fetchMeetingsList();
-      if (onLeadUpdated) onLeadUpdated(freshLead || lead);
+      if (onLeadUpdated) onLeadUpdated(freshLead);
     } catch (err) {
-      console.error(err);
-      toast.error('Failed to delete meeting');
+      console.error('Delete meeting error:', err);
+      toast.error(err.response?.data?.error?.message || 'Failed to delete meeting');
     } finally {
       setMeetingSubmitting(false);
+    }
+  };
+
+  const handleDeleteHistoricalMeetingConfirm = async () => {
+    if (!historicalMeetingToDelete) return;
+    setIsDeletingHistorical(true);
+    try {
+      await deleteActivity(leadId, historicalMeetingToDelete);
+      toast.success('Historical meeting log deleted successfully');
+      setHistoricalMeetingToDelete(null);
+      const freshLead = await fetchLead();
+      fetchMeetingsList();
+      if (onLeadUpdated) onLeadUpdated(freshLead);
+    } catch (err) {
+      console.error('Delete historical meeting error:', err);
+      toast.error(err.response?.data?.error?.message || 'Failed to delete log');
+    } finally {
+      setIsDeletingHistorical(false);
     }
   };
 
@@ -2285,12 +2305,12 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                                     </button>
                                   )}
                                   <button
-                                    onClick={async (e) => {
+                                    onClick={(e) => {
                                       e.stopPropagation();
-                                      await handleDeleteMeeting(act.id);
+                                      setHistoricalMeetingToDelete(act.id);
                                     }}
-                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg border border-transparent hover:border-red-200 transition-colors cursor-pointer"
-                                    title="Delete Meeting"
+                                    className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg border border-transparent hover:border-gray-200 transition-colors cursor-pointer"
+                                    title="Delete Log/History"
                                   >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                   </button>
@@ -2591,6 +2611,59 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                 fetchLead();
               }}
             />
+          )}
+
+          {/* Historical Meeting Delete Modal */}
+          {historicalMeetingToDelete && (
+            <Modal
+              isOpen={!!historicalMeetingToDelete}
+              onClose={() => setHistoricalMeetingToDelete(null)}
+              size="sm"
+              hideHeader={true}
+            >
+              <div className="relative p-6 overflow-hidden text-center bg-white rounded-xl">
+                <div className="absolute -top-12 -right-12 w-32 h-32 bg-gray-500 opacity-10 rounded-full blur-3xl"></div>
+                
+                <button 
+                  onClick={() => setHistoricalMeetingToDelete(null)}
+                  className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors z-20 cursor-pointer"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+
+                <div className="relative z-10 space-y-4">
+                  <div className="w-16 h-16 bg-gray-50 border-4 border-gray-50 text-gray-600 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 tracking-tight">Delete Log Entry?</h3>
+                    <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+                      Are you sure you want to permanently remove this historical log?
+                    </p>
+                  </div>
+                  
+                  <div className="flex gap-3 justify-center pt-4 w-full">
+                    <Button
+                      variant="outline"
+                      onClick={() => setHistoricalMeetingToDelete(null)}
+                      disabled={isDeletingHistorical}
+                      className="flex-1 py-2 font-bold text-gray-600 hover:bg-gray-50 border-gray-200"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="primary"
+                      className="flex-1 py-2 bg-gray-800 hover:bg-gray-900 text-white font-bold border-gray-800 hover:border-gray-900 shadow-sm"
+                      onClick={handleDeleteHistoricalMeetingConfirm}
+                      disabled={isDeletingHistorical}
+                    >
+                      {isDeletingHistorical ? 'Deleting...' : 'Delete Log'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Modal>
           )}
 
           {meetingToDelete && (
