@@ -70,8 +70,28 @@ router.get('/debug-db', async (req, res, next) => {
 router.use(authenticate);
 
 // Enforce project access for all routes containing a project ID parameter
-router.param('id', enforceProjectAccess);
-router.param('projectId', enforceProjectAccess);
+// Note: router.param runs BEFORE router.use(authenticate). If req.user is missing, we must authenticate first.
+router.param('id', (req, res, next, id) => {
+  if (!req.user) {
+    authenticate(req, res, (err) => {
+      if (err) return next(err);
+      enforceProjectAccess(req, res, next, id);
+    });
+  } else {
+    enforceProjectAccess(req, res, next, id);
+  }
+});
+
+router.param('projectId', (req, res, next, id) => {
+  if (!req.user) {
+    authenticate(req, res, (err) => {
+      if (err) return next(err);
+      enforceProjectAccess(req, res, next, id);
+    });
+  } else {
+    enforceProjectAccess(req, res, next, id);
+  }
+});
 
 // Get Project Activities
 router.get('/:id/activities', authorize('projects:read'), async (req, res, next) => {

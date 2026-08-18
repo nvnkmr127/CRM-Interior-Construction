@@ -50,9 +50,7 @@ try {
 }
 
 createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <PreferencesProvider>
-      <App />
-    </PreferencesProvider>
-  </StrictMode>,
+  <PreferencesProvider>
+    <App />
+  </PreferencesProvider>,
 )

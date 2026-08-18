@@ -7,7 +7,8 @@ function authorize(requiredPermission) {
   return (req, res, next) => {
     // Ensure req.user is set (this should be handled by the authenticate middleware)
     if (!req.user) {
-      return res.status(401).json({ success: false, error: 'UNAUTHORIZED' });
+      console.error('[authorize] returning 401 because req.user is undefined! Path:', req.path);
+      return res.status(401).json({ success: false, error: 'UNAUTHORIZED', message: 'authorize: req.user is undefined' });
     }
 
     // 2. If user is a superadmin, bypass permission checks

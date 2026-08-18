@@ -80,4 +80,7 @@
     at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
     at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
     at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
-    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15\n\n
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15\n\n2026-08-18T13:13:39.415Z\nError: Approval not found
+    at getProjectBudgetValidation (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\budgetValidator.js:7:35)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:303:24\n\n

@@ -8,7 +8,8 @@ const dataScope = require('./dataScope');
 async function enforceProjectAccess(req, res, next, id) {
   try {
     if (!req.user) {
-      return res.status(401).json({ success: false, error: 'UNAUTHORIZED' });
+      console.error('[enforceProjectAccess] returning 401 because req.user is undefined! Path:', req.path);
+      return res.status(401).json({ success: false, error: 'UNAUTHORIZED', message: 'enforceProjectAccess: req.user is undefined' });
     }
     
     // Superadmin override

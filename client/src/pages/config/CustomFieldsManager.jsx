@@ -106,7 +106,9 @@ export default function CustomFieldsManager() {
       const sorted = (res || []).sort((a,b) => a.sort_order - b.sort_order);
       setFields(sorted);
     } catch (e) {
-      console.error(e);
+      if (e?.response?.status !== 401) {
+        console.error(e);
+      }
     } finally {
       setLoading(false);
     }
