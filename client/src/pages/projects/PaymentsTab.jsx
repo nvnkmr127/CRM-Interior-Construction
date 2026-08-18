@@ -69,7 +69,7 @@ class PaymentGatewayService {
   }
 }
 // ---------------------------------
-export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
+const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProjectUpdated }) {
   const { confirm } = useConfirm();
   const toast = useToast();
   const [payments, setPayments] = useState([]);
@@ -4114,4 +4114,6 @@ export default function PaymentsTab({ projectId, project, onProjectUpdated }) {
       </Modal>
     </div>
   );
-}
+});
+
+export default PaymentsTab;

@@ -7,6 +7,10 @@ const config = require('../config/env');
 function errorHandler(error, req, res, next) {
   // Always log the full error server-side
   logger.error(error, 'Global Error Handler caught an error');
+  
+  try {
+    require('fs').appendFileSync('d:/Digicloudify softwares/CRM-Interior-Construction/server/error_log.txt', new Date().toISOString() + '\\n' + (error.stack || error.message) + '\\n\\n');
+  } catch(e) {}
 
   const isProduction = config.nodeEnv === 'production';
   const response = {

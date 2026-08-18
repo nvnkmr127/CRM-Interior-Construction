@@ -397,10 +397,46 @@ function generatePdfBuffer(invoice, milestone, project) {
     doc.end();
   });
 }
+async function getInvoicesByProject(tenantId, projectId) {
+  const query = `
+    SELECT i.*, m.name as milestone_name, p.name as project_name 
+    FROM invoices i
+    LEFT JOIN payment_milestones pm ON pm.id = i.payment_milestone_id
+    LEFT JOIN milestones m ON m.id = pm.milestone_id
+    LEFT JOIN projects p ON p.id = pm.project_id
+    WHERE i.tenant_id = $1 AND pm.project_id = $2
+    ORDER BY i.created_at DESC
+  `;
+  const { rows } = await pool.query(query, [tenantId, projectId]);
+  return rows;
+}
+
+async function getAllInvoices(tenantId) {
+  const query = `
+    SELECT i.*, m.name as milestone_name, p.name as project_name 
+    FROM invoices i
+    LEFT JOIN payment_milestones pm ON pm.id = i.payment_milestone_id
+    LEFT JOIN milestones m ON m.id = pm.milestone_id
+    LEFT JOIN projects p ON p.id = pm.project_id
+    WHERE i.tenant_id = $1
+    ORDER BY i.created_at DESC
+  `;
+  const { rows } = await pool.query(query, [tenantId]);
+  return rows;
+}
+
+async function deleteInvoice(tenantId, invoiceId) {
+  const query = `DELETE FROM invoices WHERE tenant_id = $1 AND id = $2 RETURNING *`;
+  const { rows } = await pool.query(query, [tenantId, invoiceId]);
+  return rows[0];
+}
 
 module.exports = {
   getInvoiceByMilestone,
   getInvoiceById,
   getInvoiceDraftDetails,
-  createInvoice
+  createInvoice,
+  getInvoicesByProject,
+  getAllInvoices,
+  deleteInvoice
 };

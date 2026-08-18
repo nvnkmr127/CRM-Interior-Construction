@@ -1,9 +1,61 @@
-import { useState, Fragment, useRef, useCallback, useEffect } from 'react'
+import React, { useState, Fragment, useRef, useCallback, useMemo } from 'react'
 import styles from './DataTable.module.css'
 import EmptyState from './EmptyState'
 import Skeleton from './Skeleton'
 
-export default function DataTable({
+const DataTableRow = React.memo(({
+  row, rowId, activeColumns, selectable, expandable, 
+  isSelected, isExpanded, onRowClick, onContextMenu, 
+  onToggleExpand, onSelectRow, renderExpandedRow
+}) => {
+  return (
+    <Fragment>
+      <tr 
+        className={`
+          ${styles.tr} 
+          ${onRowClick ? styles.clickable : ''} 
+          ${isSelected ? styles.selected : ''}
+        `}
+        onClick={() => onRowClick && onRowClick(row)}
+        onContextMenu={(e) => {
+          if (onContextMenu) {
+            e.preventDefault()
+            onContextMenu(e, row)
+          }
+        }}
+      >
+        {expandable && (
+          <td className={styles.td} style={{width:40}} onClick={(e) => onToggleExpand(e, rowId)}>
+            <button className={styles.expandBtn}>{isExpanded ? '-' : '+ '}</button>
+          </td>
+        )}
+        {selectable && (
+          <td className={`${styles.td} ${styles.checkbox}`} onClick={e => e.stopPropagation()}>
+            <input 
+              type="checkbox" 
+              checked={isSelected}
+              onChange={(e) => onSelectRow(e, rowId)}
+            />
+          </td>
+        )}
+        {activeColumns.map(col => (
+          <td key={col.key} className={styles.td} style={{ textAlign: col.align || 'left' }}>
+            {col.render ? col.render(row) : row[col.key]}
+          </td>
+        ))}
+      </tr>
+      {isExpanded && renderExpandedRow && (
+        <tr className={styles.expandedRow}>
+          <td colSpan={activeColumns.length + (selectable ? 1 : 0) + (expandable ? 1 : 0)} style={{padding:0}}>
+            {renderExpandedRow(row)}
+          </td>
+        </tr>
+      )}
+    </Fragment>
+  )
+});
+
+const DataTable = React.memo(function DataTable({
   columns = [],
   data = [],
   loading = false,
@@ -24,38 +76,39 @@ export default function DataTable({
   const [expandedKeys, setExpandedKeys] = useState(new Set())
   const [colWidths, setColWidths] = useState({})
   
-  // Track resizing state
   const resizingRef = useRef(null)
 
-  const activeColumns = visibleColumns 
-    ? columns.filter(c => visibleColumns.includes(c.key) || visibleColumns.includes(c.label))
-    : columns
+  const activeColumns = useMemo(() => {
+    return visibleColumns 
+      ? columns.filter(c => visibleColumns.includes(c.key) || visibleColumns.includes(c.label))
+      : columns
+  }, [columns, visibleColumns])
 
-  const handleSelectAll = (e) => {
+  const handleSelectAll = useCallback((e) => {
     if (e.target.checked) {
       onSelectChange(new Set(data.map(row => row.id || row._id || row.user_id)))
     } else {
       onSelectChange(new Set())
     }
-  }
+  }, [data, onSelectChange])
 
-  const handleSelectRow = (e, id) => {
+  const handleSelectRow = useCallback((e, id) => {
     e.stopPropagation()
     const newSet = new Set(selectedIds)
     if (newSet.has(id)) newSet.delete(id)
     else newSet.add(id)
     onSelectChange(newSet)
-  }
+  }, [selectedIds, onSelectChange])
 
-  const toggleExpand = (e, id) => {
+  const toggleExpand = useCallback((e, id) => {
     e.stopPropagation()
     const next = new Set(expandedKeys)
     if (next.has(id)) next.delete(id)
     else next.add(id)
     setExpandedKeys(next)
-  }
+  }, [expandedKeys])
 
-  const handleResizeStart = (e, colKey) => {
+  const handleResizeStart = useCallback((e, colKey) => {
     e.stopPropagation()
     e.preventDefault()
     const th = e.target.closest('th')
@@ -66,7 +119,7 @@ export default function DataTable({
     }
     document.addEventListener('mousemove', handleResizeMove)
     document.addEventListener('mouseup', handleResizeEnd)
-  }
+  }, [])
 
   const handleResizeMove = useCallback((e) => {
     if (!resizingRef.current) return
@@ -150,51 +203,22 @@ export default function DataTable({
             ) : (
               data.map((row, index) => {
                 const rowId = row.id || row._id || row.user_id || `row-${index}`
-                const isExpanded = expandedKeys.has(rowId)
                 return (
-                  <Fragment key={rowId}>
-                    <tr 
-                      className={`
-                        ${styles.tr} 
-                        ${onRowClick ? styles.clickable : ''} 
-                        ${selectedIds.has(rowId) ? styles.selected : ''}
-                      `}
-                      onClick={() => onRowClick && onRowClick(row)}
-                      onContextMenu={(e) => {
-                        if (onContextMenu) {
-                          e.preventDefault()
-                          onContextMenu(e, row)
-                        }
-                      }}
-                    >
-                      {expandable && (
-                        <td className={styles.td} style={{width:40}} onClick={(e) => toggleExpand(e, rowId)}>
-                          <button className={styles.expandBtn}>{isExpanded ? '-' : '- '}</button>
-                        </td>
-                      )}
-                      {selectable && (
-                        <td className={`${styles.td} ${styles.checkbox}`} onClick={e => e.stopPropagation()}>
-                          <input 
-                            type="checkbox" 
-                            checked={selectedIds.has(rowId)}
-                            onChange={(e) => handleSelectRow(e, rowId)}
-                          />
-                        </td>
-                      )}
-                      {activeColumns.map(col => (
-                        <td key={col.key} className={styles.td} style={{ textAlign: col.align || 'left' }}>
-                          {col.render ? col.render(row) : row[col.key]}
-                        </td>
-                      ))}
-                    </tr>
-                    {isExpanded && renderExpandedRow && (
-                      <tr className={styles.expandedRow}>
-                        <td colSpan={activeColumns.length + (selectable ? 1 : 0) + (expandable ? 1 : 0)} style={{padding:0}}>
-                          {renderExpandedRow(row)}
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
+                  <DataTableRow 
+                    key={rowId}
+                    row={row}
+                    rowId={rowId}
+                    activeColumns={activeColumns}
+                    selectable={selectable}
+                    expandable={expandable}
+                    isSelected={selectedIds.has(rowId)}
+                    isExpanded={expandedKeys.has(rowId)}
+                    onRowClick={onRowClick}
+                    onContextMenu={onContextMenu}
+                    onToggleExpand={toggleExpand}
+                    onSelectRow={handleSelectRow}
+                    renderExpandedRow={renderExpandedRow}
+                  />
                 )
               })
             )}
@@ -229,4 +253,6 @@ export default function DataTable({
       )}
     </div>
   )
-}
+});
+
+export default DataTable;

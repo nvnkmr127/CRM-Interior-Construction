@@ -218,6 +218,29 @@ export const createEstimate = async (leadId, payload) => {
 };
 
 /**
+ * Update an estimate.
+ * @param {string} leadId - The UUID of the lead.
+ * @param {string} estimateId - The UUID of the estimate.
+ * @param {Object} payload - The updated estimate data.
+ * @returns {Promise<{ success: boolean, data: Object }>} The updated estimate.
+ */
+export const updateEstimate = async (leadId, estimateId, payload) => {
+  const response = await api.patch(`/leads/${leadId}/estimates/${estimateId}`, payload);
+  return response.data;
+};
+
+/**
+ * Delete an estimate.
+ * @param {string} leadId - The UUID of the lead.
+ * @param {string} estimateId - The UUID of the estimate.
+ * @returns {Promise<{ success: boolean }>} Deletion result.
+ */
+export const deleteEstimate = async (leadId, estimateId) => {
+  const response = await api.delete(`/leads/${leadId}/estimates/${estimateId}`);
+  return response.data;
+};
+
+/**
  * Get estimates for a lead.
  * @param {string} leadId - The UUID of the lead.
  * @returns {Promise<{ success: boolean, data: Array }>} List of estimates.

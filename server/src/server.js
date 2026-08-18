@@ -1,23 +1,5 @@
 const config = require('./config/env');
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 const app = require('./app');
 const { startQueuePolling } = require('./queues/automationQueue');
 const { startPdfWorker } = require('./queues/pdfWorker');
@@ -26,7 +8,6 @@ require('./queues/workers/aiWorker');
 require('./queues/workers/cronWorker');
 const { startWorker: startEmailQueue } = require('./services/emailService');
 const { startCronJobs } = require('./services/cronService');
-
 
 const { validateEnvironmentSecrets } = require('./utils/secretValidator');
 const PORT = config.port;
@@ -54,24 +35,6 @@ app.listen(PORT, '0.0.0.0', () => {
   startSlaTracking();
   startEmailQueue();
   startCronJobs();
-
-  // Temporary DB debug dump
-  const fs = require('fs');
-  pool.query('SELECT id, name, email, phone FROM leads')
-    .then(leadsRes => {
-      return pool.query('SELECT * FROM lead_contacts').then(contactsRes => {
-        fs.writeFileSync(
-          path.join(__dirname, '../scratch/db_dump.json'),
-          JSON.stringify({ leads: leadsRes.rows, contacts: contactsRes.rows }, null, 2)
-        );
-        console.log('--- DB DUMP WRITTEN SUCCESS ---');
-      });
-    })
-    .catch(err => {
-      fs.writeFileSync(
-        path.join(__dirname, '../scratch/db_dump.json'),
-        JSON.stringify({ error: err.message }, null, 2)
-      );
-      console.error('DB DUMP ERROR:', err);
-    });
 });
+
+// touch for nodemon restart

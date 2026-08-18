@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../store/authContext';
 import api from '../../../api/axios';
@@ -99,6 +99,21 @@ function RevTooltip({ active, payload, label }) {
   );
 }
 
+// Cache mock_db parse to avoid blocking the main thread during render loops
+let cachedMockDb = null;
+let lastMockDbParse = 0;
+function getCachedMockDb() {
+  if (Date.now() - lastMockDbParse > 2000) {
+    try {
+      cachedMockDb = JSON.parse(localStorage.getItem('mock_db') || '{}');
+    } catch (e) {
+      cachedMockDb = {};
+    }
+    lastMockDbParse = Date.now();
+  }
+  return cachedMockDb || {};
+}
+
 function getActivityDesc(act) {
   if (!act) return <span>No activity details available.</span>;
 
@@ -120,7 +135,7 @@ function getActivityDesc(act) {
     let leadName = act.lead_name || newVal.leadName || newVal.name;
     if (!leadName && act.entity_id) {
       try {
-        const mockDb = JSON.parse(localStorage.getItem('mock_db') || '{}');
+        const mockDb = getCachedMockDb();
         const lead = (mockDb.leads || []).find(l => String(l.id) === String(act.entity_id));
         if (lead) leadName = lead.name;
       } catch (e) {}
@@ -135,7 +150,7 @@ function getActivityDesc(act) {
     let leadName = act.lead_name || newVal.leadName || newVal.name;
     if (!leadName && act.entity_id) {
       try {
-        const mockDb = JSON.parse(localStorage.getItem('mock_db') || '{}');
+        const mockDb = getCachedMockDb();
         const lead = (mockDb.leads || []).find(l => String(l.id) === String(act.entity_id));
         if (lead) leadName = lead.name;
       } catch (e) {}
@@ -834,7 +849,7 @@ export default function SalesExecutiveDashboard() {
       <ErrorBoundary>
         <div className={styles.botRow} style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
            <AIPriorityLeadsWidget 
-             leads={(leadsData || [])
+             leads={useMemo(() => (leadsData || [])
                .filter(l => l.status !== 'converted' && l.status !== 'lost')
                .sort((a, b) => (b.score || 0) - (a.score || 0))
                .slice(0, 2)
@@ -843,11 +858,10 @@ export default function SalesExecutiveDashboard() {
                  name: l.name,
                  probability: `${l.score || 75}%`,
                  action: l.status === 'new' ? 'Call within 24 hours' : 'Schedule initial consultation'
-               }))
-             } 
+               })), [leadsData])} 
            />
            <OverdueFollowUpWidget 
-             items={(leadsData || [])
+             items={useMemo(() => (leadsData || [])
                .filter(l => l.status !== 'converted' && l.status !== 'lost')
                .map(l => {
                  const diffDays = Math.floor((Date.now() - new Date(l.updated_at || l.created_at).getTime()) / (1000 * 60 * 60 * 24));
@@ -858,25 +872,25 @@ export default function SalesExecutiveDashboard() {
                    daysOverdue: Math.max(1, diffDays)
                  };
                })
-               .slice(0, 2)
-             }
+               .slice(0, 2), [leadsData])}
            />
            <LeadAgingWidget 
-             leads={(leadsData || [])
+             leads={useMemo(() => (leadsData || [])
                .filter(l => l.status !== 'converted' && l.status !== 'lost')
                .map(l => {
                  const diffDays = Math.floor((Date.now() - new Date(l.created_at).getTime()) / (1000 * 60 * 60 * 24));
                  return {
                    id: l.id,
                    name: l.name,
-                   age: `${diffDays} days`,
+                   age: diffDays,
+                   ageStr: `${diffDays} days`,
                    stage: l.stage_name || l.status || 'New',
                    value: l.budget_max ? `₹${(l.budget_max / 100000).toFixed(0)}L` : '—'
                  };
                })
-               .sort((a, b) => parseInt(b.age) - parseInt(a.age))
-               .slice(0, 3)
-             }
+               .sort((a, b) => b.age - a.age)
+               .map(l => ({ ...l, age: l.ageStr }))
+               .slice(0, 3), [leadsData])}
            />
         </div>
       </ErrorBoundary>

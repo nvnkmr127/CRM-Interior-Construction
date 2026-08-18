@@ -1,11 +1,12 @@
+import { lazy, Suspense } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { useAuth } from '../../store/authContext';
-import SalesExecutiveDashboard from './roles/SalesExecutiveDashboard';
-import CEODashboard from './roles/CEODashboard';
-import OperationsDashboard from './roles/OperationsDashboard';
-import AdminDashboard from './roles/AdminDashboard';
 import { UniversalAIPanel } from '../../components/dashboard/widgets/UniversalAIPanel';
 
+const SalesExecutiveDashboard = lazy(() => import('./roles/SalesExecutiveDashboard'));
+const CEODashboard = lazy(() => import('./roles/CEODashboard'));
+const OperationsDashboard = lazy(() => import('./roles/OperationsDashboard'));
+const AdminDashboard = lazy(() => import('./roles/AdminDashboard'));
 export default function DashboardPage() {
   const { user } = useAuth();
   const { tab } = useParams();
@@ -49,9 +50,9 @@ export default function DashboardPage() {
   };
 
   return (
-    <>
+    <Suspense fallback={<div className="p-8 text-center">Loading dashboard...</div>}>
       {renderDashboard()}
       <UniversalAIPanel />
-    </>
+    </Suspense>
   );
 }

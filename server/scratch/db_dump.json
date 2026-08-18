@@ -1,76 +1,64 @@
 {
   "leads": [
     {
-      "id": "ce40299a-c2b5-4b60-ae17-ec480575e158",
+      "id": "e81fc6e0-d7a8-4251-97d9-bf5019f3cf13",
       "name": "Rajesh Sharma",
       "email": null,
       "phone": "9876543210"
     },
     {
-      "id": "db597ae0-d23a-48a5-84f6-ce705f92e33f",
+      "id": "838857bb-6c00-487e-af7a-385bf678e5c0",
       "name": "Meena Gupta",
       "email": null,
       "phone": "9876543211"
     },
     {
-      "id": "03c487b2-963f-4606-950e-45105e2fe589",
+      "id": "b6c4dfb6-34a0-4b6b-add9-433a2c342b9d",
       "name": "Arun Kapoor",
       "email": null,
       "phone": "9876543212"
     },
     {
-      "id": "e354542b-124f-4250-b146-086d73b2cb1f",
+      "id": "d75726d0-82bc-4fad-a160-65b80cda59e5",
       "name": "Sunita Verma",
       "email": null,
       "phone": "9876543213"
     },
     {
-      "id": "2abf5ddb-d388-4c3d-bd4b-8e73d85911c2",
+      "id": "d603e8f4-52c0-4c9f-9604-bbabdb595f3e",
       "name": "Vikram Nair",
       "email": null,
       "phone": "9876543214"
     },
     {
-      "id": "fd1e7ac9-e129-4953-9201-774dfcda5429",
+      "id": "b9824cf5-9545-4de8-b336-f432e688a47f",
       "name": "Deepa Iyer",
       "email": null,
       "phone": "9876543215"
     },
     {
-      "id": "89605f54-48b3-4b1a-812e-761bfbce476b",
+      "id": "a1ec5881-1f83-4765-ac00-686ece0f89d8",
       "name": "Kiran Reddy",
       "email": null,
       "phone": "9876543216"
     },
     {
-      "id": "6e1ea161-12d3-4f7f-9a95-290552fa5a7f",
+      "id": "e17f7721-9479-43d6-86d3-a64e549ae928",
       "name": "Ramesh Patel",
       "email": null,
       "phone": "9876543217"
     },
     {
-      "id": "83fffe45-34f9-4d63-8246-810f38a92706",
+      "id": "fe3ca717-01a7-46de-bffa-5151a8373bc2",
       "name": "Anita Joshi",
       "email": null,
       "phone": "9876543218"
     },
     {
-      "id": "292b7d2b-02b4-47d3-b33e-f256f4457966",
+      "id": "302bc056-da06-4a59-9968-f2e5c9496603",
       "name": "Suresh Kumar",
       "email": null,
       "phone": "9876543219"
-    },
-    {
-      "id": "519162fe-2937-40ff-85a5-3eecc01d778a",
-      "name": "gfgf",
-      "email": "fgfgfgfgfg@gmail.com",
-      "phone": "6868686868"
-    },
-    {
-      "id": "1c74cc07-c5d3-4dbf-bdfc-cf34b950a462",
-      "name": "bunty bhai",
-      "email": "pavankalyangone12@gmail.com",
-      "phone": "9876506789"
     }
   ],
   "contacts": []

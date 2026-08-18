@@ -658,14 +658,14 @@ async function getLeadStats(tenantId, options = {}) {
 
 async function getLeadTimeline(tenantId, leadId, { type, page = 1, limit = 20 } = {}) {
   let timelineQuery = `
-    SELECT lt.id::text, lt.event_type, lt.summary, lt.created_at, u.name AS user_name, u.avatar_url AS user_avatar
+    SELECT lt.id::text, lt.entity_id::text, lt.event_type, lt.summary, lt.created_at, u.name AS user_name, u.avatar_url AS user_avatar, lt.entity
     FROM lead_timeline lt
     LEFT JOIN users u ON lt.user_id = u.id
     WHERE lt.tenant_id = $1 AND lt.lead_id = $2
   `;
   
   let automationQuery = `
-    SELECT ae.id::text, 'automation.' || ae.workflow AS event_type, 'Executed action: ' || ae.action_type || ' (' || ae.status || ')' AS summary, ae.created_at, 'System Automation' AS user_name, NULL AS user_avatar
+    SELECT ae.id::text, ae.id::text AS entity_id, 'automation.' || ae.workflow AS event_type, 'Executed action: ' || ae.action_type || ' (' || ae.status || ')' AS summary, ae.created_at, 'System Automation' AS user_name, NULL AS user_avatar, 'automation' AS entity
     FROM automation_events ae
     WHERE ae.tenant_id = $1 AND ae.lead_id = $2
   `;
@@ -707,11 +707,14 @@ async function getLeadTimeline(tenantId, leadId, { type, page = 1, limit = 20 } 
     // Parse 'activity.site_visit' to 'site_visit'
     if (activityType.startsWith('activity.')) {
       activityType = activityType.split('.')[1];
-      isSystem = false;
+      if (row.entity === 'activity') {
+        isSystem = false;
+      }
     }
     
     return {
-      id: row.id,
+      id: row.entity_id || row.id,
+      timeline_id: row.id,
       type: activityType,
       title: row.event_type,
       notes: row.summary,

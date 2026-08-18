@@ -2,6 +2,7 @@ const logger = require('../utils/logger');
 const { verifyAccessToken, TokenExpiredError } = require('../services/auth/tokens');
 const authenticateApiKey = require('./authenticateApiKey');
 const { getTenantPool } = require('../db/tenantResolver');
+
 /**
  * Express middleware to authenticate API requests via JWT or API Key.
  */
@@ -83,11 +84,27 @@ async function authenticate(req, res, next) {
       }
 
       const timeoutMinutes = securitySettings.session_timeout_minutes || 120;
-      const lastActive = session.last_active_at ? new Date(session.last_active_at) : new Date();
-      const diffMinutes = (Date.now() - lastActive.getTime()) / 60000;
+      
+      let lastActive;
+      if (session.last_active_at) {
+        if (typeof session.last_active_at === 'string' && !session.last_active_at.endsWith('Z')) {
+          lastActive = new Date(session.last_active_at + 'Z');
+        } else {
+          lastActive = new Date(session.last_active_at);
+        }
+      } else {
+        lastActive = new Date();
+      }
+      
+      let diffMinutes = (Date.now() - lastActive.getTime()) / 60000;
+      
+      // If diff is falsely inflated due to missing timezone offset, adjust it
+      if (diffMinutes > timeoutMinutes && diffMinutes < (timeoutMinutes + Math.abs(new Date().getTimezoneOffset()) + 60)) {
+         const offsetMinutes = new Date().getTimezoneOffset();
+         diffMinutes = diffMinutes + offsetMinutes; 
+      }
 
-      if (diffMinutes > timeoutMinutes) {
-        // Session expired due to inactivity
+      if (diffMinutes > timeoutMinutes && diffMinutes > 0) {
         await pool.query('DELETE FROM sessions WHERE id = $1', [decoded.sessionId]);
         const { clearCache } = require('../utils/cache');
         await clearCache(cacheKey).catch(() => {});

@@ -11,7 +11,7 @@ const router = express.Router();
 router.use(authenticate);
 
 // Cache stats for 5 minutes
-router.get('/stats', async (req, res) => {
+router.get('/stats', cacheResponse(300), async (req, res) => {
   const tenantId = req.tenantId || (req.user && req.user.tenantId);
   const userId = req.user.id;
   const userRole = req.user.role;
@@ -26,7 +26,7 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-router.get('/activity', async (req, res) => {
+router.get('/activity', cacheResponse(60), async (req, res) => {
   const tenantId = req.tenantId;
   const limit = parseInt(req.query.limit, 10) || 10;
 
@@ -67,7 +67,7 @@ router.get('/activity', async (req, res) => {
 });
 
 // Cache pipeline for 10 minutes
-router.get('/pipeline', async (req, res) => {
+router.get('/pipeline', cacheResponse(600), async (req, res) => {
   const tenantId = req.tenantId;
 
   try {

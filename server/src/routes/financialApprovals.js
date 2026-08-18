@@ -104,8 +104,9 @@ router.get('/', async (req, res, next) => {
     
     if (req.query.priority) {
       const pList = req.query.priority.split(',').map(s => s.trim());
-      conditions.push(`fa.priority = ANY(${values.length + 1})`);
-      params.push(pList);
+      conditions.push(`fa.priority = ANY($${paramIndex})`);
+      values.push(pList);
+      paramIndex++;
     }
     if (status) {
       const statuses = status.split(',');
@@ -191,34 +192,29 @@ router.get('/', async (req, res, next) => {
 
     const whereClause = conditions.join(' AND ');
 
-    let orderByClause = `ORDER BY c.created_at ASC; // '${sort_by || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort_by || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort_by === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC`; // default
+    let orderByClause = `ORDER BY fa.updated_at DESC, fa.id DESC`;
     if (sort_by) {
       switch (sort_by) {
         case 'newest':
-        case 'requested_date':
-        case 'priority': // Mocked mapping
-          orderByClause = `ORDER BY c.created_at ASC; // '${sort_by || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort_by || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort_by === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC`;
+          orderByClause = `ORDER BY fa.created_at DESC, fa.id DESC`;
           break;
         case 'oldest':
-          orderByClause = `ORDER BY c.created_at ASC; // '${sort_by || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort_by || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort_by === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id ASC`;
+          orderByClause = `ORDER BY fa.created_at ASC, fa.id ASC`;
           break;
         case 'amount_desc':
-          orderByClause = `ORDER BY c.created_at ASC; // '${sort_by || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort_by || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort_by === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC`;
+          orderByClause = `ORDER BY fa.amount DESC, fa.id DESC`;
           break;
         case 'amount_asc':
-          orderByClause = `ORDER BY c.created_at ASC; // '${sort_by || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort_by || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort_by === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id ASC`;
+          orderByClause = `ORDER BY fa.amount ASC, fa.id ASC`;
           break;
-        case 'project_name':
-          orderByClause = `ORDER BY c.created_at ASC; // '${sort_by || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort_by || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort_by === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC`;
+        case 'priority_desc':
+          orderByClause = `ORDER BY (CASE fa.priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) DESC, fa.updated_at DESC`;
           break;
-        case 'customer_name':
-          orderByClause = `ORDER BY c.created_at ASC; // '${sort_by || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort_by || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort_by === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC`;
-          break;
-        case 'approval_date':
-          orderByClause = `ORDER BY c.created_at ASC; // '${sort_by || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort_by || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort_by === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC`;
+        case 'priority_asc':
+          orderByClause = `ORDER BY (CASE fa.priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) ASC, fa.updated_at ASC`;
           break;
         default:
-          orderByClause = `ORDER BY c.created_at ASC; // '${sort_by || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort_by || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort_by === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC, fa.id DESC`;
+          orderByClause = `ORDER BY fa.updated_at DESC, fa.id DESC`;
       }
     }
 

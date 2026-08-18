@@ -2,7 +2,7 @@ const qcService = require('../services/projects/qcService');
 
 async function getTemplates(req, res, next) {
   try {
-    const templates = await qcService.getTemplates(req.user.tenant_id);
+    const templates = await qcService.getTemplates(req.tenantId);
     res.json(templates);
   } catch (error) {
     next(error);
@@ -11,7 +11,7 @@ async function getTemplates(req, res, next) {
 
 async function getProjectQcStages(req, res, next) {
   try {
-    const stages = await qcService.getProjectQcStages(req.user.tenant_id, req.params.projectId);
+    const stages = await qcService.getProjectQcStages(req.tenantId, req.params.projectId);
     res.json(stages);
   } catch (error) {
     next(error);
@@ -22,7 +22,7 @@ async function initializeQcStage(req, res, next) {
   try {
     const { phaseId, templateId } = req.body;
     const stages = await qcService.initializeQcStage(
-      req.user.tenant_id, 
+      req.tenantId, 
       req.params.projectId, 
       phaseId, 
       templateId
@@ -45,7 +45,7 @@ async function updateChecklistItem(req, res, next) {
       notes: req.body.notes,
       userId: req.user.id
     };
-    const updatedItem = await qcService.updateChecklistItem(req.user.tenant_id, stageId, itemId, payload);
+    const updatedItem = await qcService.updateChecklistItem(req.tenantId, stageId, itemId, payload);
     res.json(updatedItem);
   } catch (error) {
     if (error.message === 'Item not found') {
@@ -59,7 +59,7 @@ async function signOffStage(req, res, next) {
   try {
     const { projectId, stageId } = req.params;
     const signedOffStage = await qcService.signOffStage(
-      req.user.tenant_id, 
+      req.tenantId, 
       projectId, 
       stageId, 
       req.user.id

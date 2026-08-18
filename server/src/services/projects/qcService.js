@@ -1,51 +1,65 @@
 const pool = require('../../config/db');
 
 async function getTemplates(tenantId) {
-  const templatesRes = await pool.query(
-    'SELECT * FROM qc_stage_templates WHERE tenant_id = $1 AND is_active = true ORDER BY sort_order',
-    [tenantId]
-  );
-  
-  if (templatesRes.rows.length === 0) return [];
-  
-  const templateIds = templatesRes.rows.map(r => r.id);
-  const itemsRes = await pool.query(
-    'SELECT * FROM qc_checklist_template_items WHERE template_id = ANY($1::uuid[]) ORDER BY sort_order',
-    [templateIds]
-  );
-  
-  const templates = templatesRes.rows.map(template => {
-    return {
-      ...template,
-      items: itemsRes.rows.filter(item => item.template_id === template.id)
-    };
-  });
-  
-  return templates;
+  try {
+    const templatesRes = await pool.query(
+      'SELECT * FROM qc_stage_templates WHERE tenant_id = $1 AND is_active = true ORDER BY sort_order',
+      [tenantId]
+    );
+    
+    if (templatesRes.rows.length === 0) return [];
+    
+    const templateIds = templatesRes.rows.map(r => r.id);
+    const itemsRes = await pool.query(
+      'SELECT * FROM qc_checklist_template_items WHERE template_id = ANY($1::uuid[]) ORDER BY sort_order',
+      [templateIds]
+    );
+    
+    const templates = templatesRes.rows.map(template => {
+      return {
+        ...template,
+        items: itemsRes.rows.filter(item => item.template_id === template.id)
+      };
+    });
+    
+    return templates;
+  } catch (error) {
+    if (error.code === '42P01') {
+      return [];
+    }
+    throw error;
+  }
 }
 
 async function getProjectQcStages(tenantId, projectId) {
-  const stagesRes = await pool.query(
-    'SELECT * FROM project_qc_stages WHERE tenant_id = $1 AND project_id = $2 ORDER BY created_at',
-    [tenantId, projectId]
-  );
-  
-  if (stagesRes.rows.length === 0) return [];
-  
-  const stageIds = stagesRes.rows.map(s => s.id);
-  const itemsRes = await pool.query(
-    'SELECT * FROM project_qc_checklist_items WHERE stage_id = ANY($1::uuid[]) ORDER BY id',
-    [stageIds]
-  );
-  
-  const stages = stagesRes.rows.map(stage => {
-    return {
-      ...stage,
-      items: itemsRes.rows.filter(item => item.stage_id === stage.id)
-    };
-  });
-  
-  return stages;
+  try {
+    const stagesRes = await pool.query(
+      'SELECT * FROM project_qc_stages WHERE tenant_id = $1 AND project_id = $2 ORDER BY created_at',
+      [tenantId, projectId]
+    );
+    
+    if (stagesRes.rows.length === 0) return [];
+    
+    const stageIds = stagesRes.rows.map(s => s.id);
+    const itemsRes = await pool.query(
+      'SELECT * FROM project_qc_checklist_items WHERE stage_id = ANY($1::uuid[]) ORDER BY id',
+      [stageIds]
+    );
+    
+    const stages = stagesRes.rows.map(stage => {
+      return {
+        ...stage,
+        items: itemsRes.rows.filter(item => item.stage_id === stage.id)
+      };
+    });
+    
+    return stages;
+  } catch (error) {
+    if (error.code === '42P01') {
+      return [];
+    }
+    throw error;
+  }
 }
 
 async function initializeQcStage(tenantId, projectId, phaseId, templateId) {

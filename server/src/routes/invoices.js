@@ -8,7 +8,10 @@ const {
   getInvoiceByMilestone,
   getInvoiceById,
   getInvoiceDraftDetails,
-  createInvoice
+  createInvoice,
+  getInvoicesByProject,
+  getAllInvoices,
+  deleteInvoice
 } = require('../services/projects/invoiceService');
 
 const router = express.Router();
@@ -155,6 +158,35 @@ router.get('/:id/download', authorize('invoices:print'), async (req, res, next) 
       const downloadUrl = await storage.getDownloadUrl(invoice.pdf_storage_key);
       return res.redirect(downloadUrl);
     }
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/invoices
+router.get('/', authorize('invoices:read'), async (req, res, next) => {
+  try {
+    const { projectId } = req.query;
+    let invoices;
+    if (projectId) {
+      invoices = await getInvoicesByProject(req.tenantId, projectId);
+    } else {
+      invoices = await getAllInvoices(req.tenantId);
+    }
+    return success(res, invoices || []);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/invoices/:id
+router.delete('/:id', authorize('invoices:delete'), async (req, res, next) => {
+  try {
+    const result = await deleteInvoice(req.tenantId, req.params.id);
+    if (!result) {
+      return fail(res, 'NOT_FOUND', 'Invoice not found', 404);
+    }
+    return success(res, { message: 'Invoice deleted successfully' });
   } catch (error) {
     next(error);
   }

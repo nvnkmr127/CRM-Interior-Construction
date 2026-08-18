@@ -266,14 +266,14 @@ const updateProjectSchema = createProjectSchema.partial().extend({
 // Route to generate S3 pre-signed upload URL for contract document
 router.post('/contract/upload-url', authorize('projects:create'), validate(uploadUrlSchema), async (req, res, next) => {
   try {
-    const { name, mimeType } = req.body;
+    const { filename, contentType } = req.body;
 
     const { getUploadUrl } = require('../services/documents/documentService');
     const result = await getUploadUrl({
       tenantId: req.tenantId,
       projectId: 'temp',
-      name,
-      mimeType
+      name: filename,
+      mimeType: contentType
     });
     return success(res, result);
   } catch (error) {

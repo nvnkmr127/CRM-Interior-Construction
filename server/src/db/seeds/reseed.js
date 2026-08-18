@@ -33,7 +33,13 @@ async function reseed() {
     const userIds = {};
     for (const u of users) {
       const { rows:[existing] } = await pool.query("SELECT id FROM users WHERE email=$1 AND tenant_id=$2", [u.email,tenantId]);
-      if (existing) { userIds[u.email] = existing.id; continue; }
+      if (existing) { 
+        // Update password and reset lockout
+        await pool.query('UPDATE users SET password_hash=$1 WHERE id=$2', [pwHash, existing.id]);
+        await pool.query('UPDATE user_security SET failed_login_attempts=0, lockout_until=NULL WHERE user_id=$1', [existing.id]).catch(()=>null);
+        userIds[u.email] = existing.id; 
+        continue; 
+      }
       const { rows:[created] } = await pool.query(
         'INSERT INTO users (tenant_id,name,email,password_hash,role_id,status) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
         [tenantId, u.name, u.email, pwHash, roleMap[u.role]||roleMap['superadmin'], 'active']

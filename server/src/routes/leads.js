@@ -68,6 +68,8 @@ router.delete('/:id/followups/:fid', authenticate, authorize('leads:update'), le
 // Native Estimator Integration
 router.post('/:id/estimates', authenticate, authorize('leads:update'), leadController.createNativeEstimateHandler);
 router.get('/:id/estimates', authenticate, authorize('leads:read'), leadController.getEstimatesHandler);
+router.patch('/:id/estimates/:estimateId', authenticate, authorize('leads:update'), leadController.updateNativeEstimateHandler);
+router.delete('/:id/estimates/:estimateId', authenticate, authorize('leads:update'), leadController.deleteNativeEstimateHandler);
 router.post('/:id/estimates/sync', authenticate, authorize('leads:update'), leadController.syncEstimatesHandler);
 router.post('/:id/estimates/webhook', leadController.estimatorWebhookHandler);
 

@@ -100,7 +100,7 @@ export default function Login() {
           setApiError(errorMsg);
         } else {
           setErrorType('shake');
-          setApiError('Email or password is incorrect. Try again.');
+          setApiError(result.message || 'Email or password is incorrect. Try again.');
           setShakeKey(k => k + 1);
         }
       }
@@ -111,7 +111,7 @@ export default function Login() {
         setApiError('Could not connect to server. Check your internet connection.');
       } else {
         setErrorType('shake');
-        setApiError('Email or password is incorrect. Try again.');
+        setApiError(err.message || 'Email or password is incorrect. Try again.');
         setShakeKey(k => k + 1);
       }
     }
@@ -234,22 +234,35 @@ export default function Login() {
                 {isSubmitting ? 'Signing in...' : 'Sign In'}
               </Button>
               {import.meta.env.DEV && (
-                <div style={{ display: 'flex', gap: '10px', flex: 0.5 }}>
-                   <Button 
-                    type="button" 
-                    variant="secondary"
-                    size="lg"
-                    className={styles.submitBtn} 
-                    disabled={isSubmitting}
-                    onClick={() => {
-                      handleChange('tenantSlug', 'mock');
-                      handleChange('email', 'admin@mock.com');
-                      handleChange('password', 'password');
-                    }}
-                    style={{ flex: 1, background: 'var(--color-bg-subtle)', color: 'var(--color-text)', padding: '0 10px' }}
-                  >
-                    Admin
-                  </Button>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '16px', width: '100%' }}>
+                  <div style={{ gridColumn: '1 / -1', fontSize: '11px', fontWeight: 'bold', color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '1px', textAlign: 'center', marginBottom: '4px' }}>
+                    Auto Login (Dev Mode)
+                  </div>
+                  {[
+                    { label: 'Admin', email: 'admin@demo.com' },
+                    { label: 'Project Mgr', email: 'priya@demo.com' },
+                    { label: 'Designer', email: 'rahul@demo.com' },
+                    { label: 'Sales', email: 'ananya@demo.com' },
+                    { label: 'QC Engineer', email: 'arjun@demo.com' },
+                    { label: 'Site Eng.', email: 'vikram@demo.com' }
+                  ].map((u) => (
+                    <Button 
+                      key={u.label}
+                      type="button" 
+                      variant="secondary"
+                      size="sm"
+                      disabled={isSubmitting}
+                      onClick={() => {
+                        handleChange('tenantSlug', 'demo');
+                        handleChange('email', u.email);
+                        handleChange('password', 'Demo@123');
+                        setTimeout(() => document.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })), 100);
+                      }}
+                      style={{ background: 'var(--color-bg-subtle)', color: 'var(--color-text)', fontSize: '12px', padding: '6px' }}
+                    >
+                      {u.label}
+                    </Button>
+                  ))}
                 </div>
               )}
             </div>

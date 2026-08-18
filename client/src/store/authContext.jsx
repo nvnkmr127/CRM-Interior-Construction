@@ -86,8 +86,8 @@ export function AuthProvider({ children }) {
     } catch (e) {}
 
     async function restoreSession() {
-      // Dev-only mock session bypass — stripped in production builds
-      if (import.meta.env.DEV) {
+      // Dev-only mock session bypass — disabled to enforce real-time session
+      if (false) {
         const mockSession = localStorage.getItem('mockSession');
         if (mockSession) {
           try {
@@ -147,17 +147,26 @@ export function AuthProvider({ children }) {
         }
       }
 
+      // Attempt to restore session
+      // We rely on the /auth/me endpoint which checks the httpOnly cookie
+      if (!localStorage.getItem('isAuthenticated')) {
+        setLoading(false);
+        return;
+      }
+
       try {
         const response = await api.get('/auth/me');
         if (response.data.success) {
           setUser(response.data.data.user);
         } else {
+          localStorage.removeItem('isAuthenticated');
           setUser(null);
         }
       } catch (error) {
         // Axios interceptor handles 401 and token refreshes.
         // Don't wipe session on network errors or 5xx server errors
         if (error.response && error.response.status >= 400 && error.response.status < 500) {
+          localStorage.removeItem('isAuthenticated');
           setUser(null);
         }
       } finally {
@@ -180,13 +189,25 @@ export function AuthProvider({ children }) {
         }
       }
     };
+    
+    const handleAppLogout = () => {
+      localStorage.removeItem('isAuthenticated');
+      setUser(null);
+      navigate('/login');
+    };
+
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+    window.addEventListener('app:logout', handleAppLogout);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('app:logout', handleAppLogout);
+    };
+  }, [navigate]);
 
   const login = useCallback(async (email, password, tenantSlug) => {
-    // Dev-only mock login bypass — stripped in production builds
-    if (import.meta.env.DEV) {
+    // Dev-only mock login bypass — disabled to enforce real-time session
+    if (false) {
       if (email === 'admin@mock.com' && password === 'password') {
         const mockUser = {
           id: 'mock-123',
@@ -297,6 +318,7 @@ export function AuthProvider({ children }) {
         if (payload.mfaRequired || payload.passwordExpired) {
           return { success: true, payload };
         }
+        localStorage.setItem('isAuthenticated', 'true');
         setUser(payload.user);
         return { success: true, payload };
       }
@@ -310,8 +332,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(async () => {
-    // Dev-only mock logout bypass — stripped in production builds
-    if (import.meta.env.DEV && localStorage.getItem('mockSession')) {
+    // Dev-only mock logout bypass — disabled to enforce real-time session
+    if (false) {
       localStorage.removeItem('mockSession');
       setUser(null);
       window.dispatchEvent(new Event('app:auth-change'));
@@ -325,6 +347,7 @@ export function AuthProvider({ children }) {
       console.error('Server-side logout failed:', error);
     } finally {
       // Regardless of server response, terminate local session
+      localStorage.removeItem('isAuthenticated');
       setUser(null);
       navigate('/login');
     }
@@ -334,7 +357,7 @@ export function AuthProvider({ children }) {
     setUser(prev => {
       if (!prev) return null;
       const newUser = { ...prev, ...updatedFields };
-      if (import.meta.env.DEV) {
+      if (false) {
         localStorage.setItem('mockSession', JSON.stringify(newUser));
         try {
           const mockDatabase = JSON.parse(localStorage.getItem('mockDatabase_v4') || '{}');
@@ -378,20 +401,6 @@ export function AuthProvider({ children }) {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    if (import.meta.env.DEV) {
-      try {
-        const mockSession = localStorage.getItem('mockSession');
-        if (mockSession) {
-          return {
-            user: JSON.parse(mockSession),
-            loading: false,
-            isAuthenticated: true,
-            login: async () => ({ success: true }),
-            logout: async () => {}
-          };
-        }
-      } catch (e) {}
-    }
     return { user: null, loading: false, isAuthenticated: false };
   }
   return context;

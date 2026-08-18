@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Badge, Input, Select } from '../../components/ui';
 import styles from './FinanceDashboardPage.module.css';
+import { useDebounce } from '../../hooks';
 import { getProjects } from '../../api/projects';
 import { getAllInvoices } from '../../api/invoices';
 import { getAllReceipts } from '../../api/financials';
@@ -107,32 +108,42 @@ export default function FinanceDashboardPage() {
 
   const avgRate = globalStats.totalArea > 0 ? Math.round(globalStats.activePipeline / globalStats.totalArea) : 0;
 
-  // Filter Data
-  const filteredInvoices = invoices.filter(inv => {
-    const projName = projects.find(p => p.id === inv.projectId)?.name || '';
-    const matchSearch = inv.id.toLowerCase().includes(searchQuery.toLowerCase()) || projName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchStatus = statusFilter === 'ALL' || inv.status === statusFilter;
-    return matchSearch && matchStatus;
-  });
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-  const filteredReceipts = receipts.filter(rec => {
-    const projName = projects.find(p => p.id === rec.projectId)?.name || '';
-    const matchSearch = rec.id.toLowerCase().includes(searchQuery.toLowerCase()) || projName.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchSearch;
-  });
+  // Filter Data
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter(inv => {
+      const projName = projects.find(p => p.id === inv.projectId)?.name || '';
+      const matchSearch = inv.id.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) || projName.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
+      const matchStatus = statusFilter === 'ALL' || inv.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+  }, [invoices, projects, debouncedSearchQuery, statusFilter]);
+
+  const filteredReceipts = useMemo(() => {
+    return receipts.filter(rec => {
+      const projName = projects.find(p => p.id === rec.projectId)?.name || '';
+      const matchSearch = rec.id.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) || projName.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
+      return matchSearch;
+    });
+  }, [receipts, projects, debouncedSearchQuery]);
 
   // Calculate Ledger
-  const ledger = [
-    ...invoices.map(i => ({ type: 'Invoice', date: i.invoiceDate || i.date, ref: i.id, amount: i.amount, projectId: i.projectId, milestone: i.milestoneName, status: i.status })),
-    ...receipts.map(r => ({ type: 'Receipt', date: r.receiptDate || r.date, ref: r.id, amount: r.amount, projectId: r.projectId, milestone: r.milestoneName, status: r.status }))
-  ].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const ledger = useMemo(() => {
+    return [
+      ...invoices.map(i => ({ type: 'Invoice', date: i.invoiceDate || i.date, ref: i.id, amount: i.amount, projectId: i.projectId, milestone: i.milestoneName, status: i.status })),
+      ...receipts.map(r => ({ type: 'Receipt', date: r.receiptDate || r.date, ref: r.id, amount: r.amount, projectId: r.projectId, milestone: r.milestoneName, status: r.status }))
+    ].sort((a, b) => new Date(b.date) - new Date(a.date));
+  }, [invoices, receipts]);
 
-  const filteredLedger = ledger.filter(entry => {
-    const projName = projects.find(p => p.id === entry.projectId)?.name || '';
-    const matchSearch = entry.ref.toLowerCase().includes(searchQuery.toLowerCase()) || projName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchStatus = statusFilter === 'ALL' || entry.type === statusFilter; // Can filter by Invoice/Receipt
-    return matchSearch && matchStatus;
-  });
+  const filteredLedger = useMemo(() => {
+    return ledger.filter(entry => {
+      const projName = projects.find(p => p.id === entry.projectId)?.name || '';
+      const matchSearch = entry.ref.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) || projName.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
+      const matchStatus = statusFilter === 'ALL' || entry.type === statusFilter; // Can filter by Invoice/Receipt
+      return matchSearch && matchStatus;
+    });
+  }, [ledger, projects, debouncedSearchQuery, statusFilter]);
 
   const exportLedgerToCSV = () => {
     const headers = ['Date', 'Project', 'Type', 'Reference', 'Milestone', 'Debit (INR)', 'Credit (INR)'];

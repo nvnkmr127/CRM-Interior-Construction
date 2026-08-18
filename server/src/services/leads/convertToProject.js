@@ -67,8 +67,8 @@ async function convertToProject({ tenantId, userId, leadId, bodyData }) {
     contract_value: bodyData.contractValue ? Number(bodyData.contractValue) : 0,
     booking_amount: advanceAmount,
     payment_terms: paymentTerms,
-    pm_id: bodyData.pm || null,
-    designer_id: bodyData.designer || null,
+    pm_id: (typeof bodyData.pm === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bodyData.pm)) ? bodyData.pm : null,
+    designer_id: (typeof bodyData.designer === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bodyData.designer)) ? bodyData.designer : null,
     start_date: bodyData.startDate || null,
     target_date: bodyData.handoverDate || null,
     agreement_signed_by: bodyData.agreement_signed_by || null,
@@ -113,9 +113,12 @@ async function convertToProject({ tenantId, userId, leadId, bodyData }) {
     consultants: bodyData.consultants || []
   };
 
+  const isValidUUID = (id) => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  const sanitizedUserId = isValidUUID(userId) ? userId : null;
+
   const project = await createProject({
     tenantId,
-    userId,
+    userId: sanitizedUserId,
     data: newProjectData
   });
 

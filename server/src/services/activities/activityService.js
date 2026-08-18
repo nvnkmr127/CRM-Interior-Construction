@@ -62,5 +62,9 @@ exports.deleteActivity = async (tenantId, activityId) => {
     'DELETE FROM activities WHERE id = $1 AND tenant_id = $2',
     [activityId, tenantId]
   );
+  await pool.query(
+    'DELETE FROM lead_timeline WHERE entity_id = $1 AND tenant_id = $2 AND entity = $3',
+    [activityId, tenantId, 'activity']
+  );
   return true;
 };

@@ -28,7 +28,7 @@ export default function Input({
         <input
           id={id}
           type={type}
-          value={value}
+          value={value ?? ''}
           onChange={onChange}
           placeholder={placeholder}
           disabled={disabled}

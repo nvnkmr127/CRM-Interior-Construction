@@ -18,9 +18,13 @@ async function addExtraUsers() {
     const requiredRoles = ['QC Engineer', 'Lead Designer', 'Junior Designer', 'Site Engineer', 'Procurement Officer', 'Site Supervisor', 'CRM Executive'];
     for (const role of requiredRoles) {
       if (!roleMap[role.toLowerCase()]) {
-        const { rows:[newRole] } = await p.query('INSERT INTO roles (tenant_id, name, permissions) VALUES ($1, $2, $3) RETURNING id', [tenantId, role, '[]']);
+        const defaultPerms = JSON.stringify(['projects:view', 'tasks:view', 'tasks:edit']);
+        const { rows:[newRole] } = await p.query('INSERT INTO roles (tenant_id, name, permissions) VALUES ($1, $2, $3) RETURNING id', [tenantId, role, defaultPerms]);
         roleMap[role.toLowerCase()] = newRole.id;
         console.log(`Created role: ${role}`);
+      } else {
+        const defaultPerms = JSON.stringify(['projects:view', 'tasks:view', 'tasks:edit']);
+        await p.query('UPDATE roles SET permissions = $1 WHERE id = $2', [defaultPerms, roleMap[role.toLowerCase()]]);
       }
     }
 

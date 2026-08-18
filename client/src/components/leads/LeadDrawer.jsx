@@ -22,7 +22,7 @@ import LeadForm from './LeadForm';
 
 import NegotiationDesk from './NegotiationDesk';
 import DesignPresentationModal from './DesignPresentationModal';
-import EstimatorBuilder from './EstimatorBuilder';
+import EstimatesTab from './EstimatesTab';
 import AssignDesignerModal from './AssignDesignerModal';
 import MarkLostModal from './MarkLostModal';
 import { getLead, changeLeadStage, deleteLead, updateActivity, logActivity, getActivities, deleteActivity, restoreLead, permanentlyDeleteLead } from '../../api/leads';
@@ -184,11 +184,6 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   // Files state
   const [files, setFiles] = useState([]);
   
-  // Estimates state
-  const [estimates, setEstimates] = useState([]);
-  const [syncError, setSyncError] = useState(null);
-  const [isBuildingEstimate, setIsBuildingEstimate] = useState(false);
-  
   // Buying intent state
   const [buyingIntent, setBuyingIntent] = useState(null);
   const [intentLoading, setIntentLoading] = useState(false);
@@ -228,15 +223,6 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
     if (activeTab === 'files' && leadId) {
       api.get(`/leads/${leadId}/files`)
         .then(res => { if (res.data.success) setFiles(res.data.data); })
-        .catch(() => {});
-    }
-  }, [activeTab, leadId]);
-
-  // Load estimates when tab is activated
-  useEffect(() => {
-    if (activeTab === 'estimates' && leadId) {
-      api.get(`/leads/${leadId}/estimates`)
-        .then(res => { if (res.data.success) setEstimates(res.data.data); })
         .catch(() => {});
     }
   }, [activeTab, leadId]);
@@ -690,31 +676,6 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
     }
   };
 
-  const fetchEstimates = async () => {
-    const estRes = await api.get(`/leads/${leadId}/estimates`);
-    if (estRes.data.success) setEstimates(estRes.data.data);
-  };
-
-  const syncEstimates = async () => {
-    toast.info('Syncing estimates with external system...');
-    setSyncError(null);
-    try {
-      const estRes = await api.post(`/leads/${leadId}/estimates/sync`);
-      if (estRes.data.success) {
-        setEstimates(estRes.data.data);
-        toast.success('Estimates synced');
-      }
-    } catch (err) {
-      const errorMsg = err.response?.data?.error?.message || err.message || 'Failed to sync estimates';
-      setSyncError(errorMsg);
-      toast.error(errorMsg);
-    }
-  };
-
-  const handleCreateEstimate = () => {
-    setIsBuildingEstimate(true);
-  };
-
   const handleParseFile = async (fileId) => {
     toast.info('Extracting data from file...');
     try {
@@ -887,14 +848,15 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   if (!isOpen) return null;
 
   return (
-    <div className="w-full h-full flex flex-col bg-white overflow-hidden relative">
+    <div id="lead-drawer-root" className="w-full h-full flex flex-col bg-white overflow-hidden relative">
       {loading || !lead ? (
         <div className="p-6 flex items-center justify-center text-gray-500 h-full">Loading lead details...</div>
       ) : lead.deleted_at ? (
         renderDeletedLeadView()
       ) : (
-        <div className="flex flex-col h-full transition-all bg-white">
-          {lead?.deleted_at && (
+        <div className="flex flex-col h-full transition-all bg-white overflow-hidden">
+          <div className="flex-1 overflow-y-auto custom-scrollbar">
+            {lead?.deleted_at && (
             <div className="bg-red-50 border-b border-red-200 px-6 py-3 flex items-center justify-between text-sm shrink-0">
               <div className="flex items-center gap-2 text-red-700 font-medium">
                 <span style={{ fontSize: '18px' }}>⚠️</span>
@@ -1067,8 +1029,8 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
             </nav>
           </div>
 
-          {/* TAB CONTENT (SCROLLABLE) */}
-          <div className="flex-1 overflow-y-auto p-6">
+          {/* TAB CONTENT */}
+          <div className="p-6">
             {activeTab === 'overview' && (
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                 {/* COLUMN 1: Data Entry & Details */}
@@ -2457,54 +2419,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               </div>
             )}
             {activeTab === 'estimates' && (
-              <div className="p-8">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-gray-900">Quotes & Estimates</h3>
-                  <div className="flex gap-3">
-                    <Button variant="outline" size="md" onClick={syncEstimates} title="Refresh estimates">
-                      &#8635; Sync
-                    </Button>
-                    <Button variant="outline" size="md" onClick={handleCreateEstimate}>
-                      Generate Estimate
-                    </Button>
-                  </div>
-                </div>
-                {syncError && (
-                  <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-base">
-                    <strong>Sync Failed:</strong> {syncError}
-                  </div>
-                )}
-                {estimates.length === 0 ? (
-                  <div className="text-center py-12 text-gray-500 rounded-xl border border-dashed border-gray-300 transition-all" style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(5px)' }}>
-                    <p className="text-base font-semibold">No estimates generated yet.</p>
-                    <p className="text-sm mt-2">Click "Generate Estimate" to create a new BOQ.</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-4">
-                    {estimates.map(est => (
-                      <div key={est.id} className="border border-gray-200 rounded-xl p-5 bg-white shadow-sm flex items-center justify-between">
-                        <div>
-                          <p className="text-base font-bold text-gray-900">Estimate {est.estimator_reference_id}</p>
-                          <div className="flex items-center gap-3 mt-2">
-                            <Badge variant={est.status === 'accepted' ? 'success' : est.status === 'sent' ? 'primary' : 'secondary'}>
-                              {est.status}
-                            </Badge>
-                            <span className="text-sm text-gray-500">Created: {new Date(est.created_at).toLocaleDateString()}</span>
-                            <span className="text-sm text-gray-400">&bull;</span>
-                            <span className="text-sm text-blue-600 font-medium">Last Synced: {new Date(est.updated_at || est.created_at).toLocaleString()}</span>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-lg font-bold text-gray-900">₹{est.total_amount ? Number(est.total_amount).toLocaleString() : '0'}</p>
-                          {est.pdf_url && (
-                            <a href={est.pdf_url} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline mt-1.5 block">View PDF</a>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <EstimatesTab leadId={leadId} />
             )}
 
             {activeTab === 'inspirations' && (
@@ -2518,6 +2433,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
             {activeTab === 'automations' && (
               <AutomationHistoryTab leadId={leadId} />
             )}
+          </div>
           </div>
 
           {/* STICKY FOOTER */}
@@ -2572,17 +2488,6 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               isOpen={isPresentModalOpen}
               onClose={() => setIsPresentModalOpen(false)}
               onLogged={fetchLead}
-            />
-          )}
-
-          {isBuildingEstimate && (
-            <EstimatorBuilder
-              leadId={leadId}
-              onCancel={() => setIsBuildingEstimate(false)}
-              onSaved={() => {
-                setIsBuildingEstimate(false);
-                fetchEstimates();
-              }}
             />
           )}
 

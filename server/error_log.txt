@@ -1,0 +1,83 @@
+2026-08-18T11:36:47.726Z\nerror: invalid input syntax for type uuid: "u1"
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async ProjectRepository.createProject (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\projectRepository.js:148:22)
+    at async createProject (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\createProject.js:34:21)
+    at async convertToProject (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\leads\convertToProject.js:116:19)
+    at async exports.convertToProjectHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:49:26)\n\n2026-08-18T12:24:30.988Z\nerror: syntax error at or near "//"
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Promise.all (index 1)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:281:37\n\n2026-08-18T12:24:31.757Z\nerror: syntax error at or near "//"
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Promise.all (index 1)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:281:37\n\n2026-08-18T12:24:56.106Z\nerror: syntax error at or near "//"
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Promise.all (index 1)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:281:37\n\n2026-08-18T12:24:58.602Z\nerror: syntax error at or near "//"
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Promise.all (index 1)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:281:37\n\n2026-08-18T12:37:14.407Z\nTypeError: Cannot read properties of undefined (reading 'tenant_id')
+    at getTemplates (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\qcController.js:5:61)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at auditMiddleware (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\auditLogger.js:83:3)\n\n2026-08-18T12:37:14.417Z\nTypeError: Cannot read properties of undefined (reading 'tenant_id')
+    at getTemplates (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\qcController.js:5:61)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at auditMiddleware (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\auditLogger.js:83:3)\n\n2026-08-18T12:44:00.946Z\nTypeError: getOrCreateClosureChecklist is not a function
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\projectClosures.js:29:26
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\authorize.js:15:14
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15\n\n2026-08-18T12:44:01.457Z\nTypeError: getOrCreateClosureChecklist is not a function
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\projectClosures.js:29:26
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\authorize.js:15:14
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15\n\n2026-08-18T12:44:09.916Z\nTypeError: getOrCreateClosureChecklist is not a function
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\projectClosures.js:29:26
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\authorize.js:15:14
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15\n\n2026-08-18T12:44:10.405Z\nTypeError: getOrCreateClosureChecklist is not a function
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\projectClosures.js:29:26
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\authorize.js:15:14
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15\n\n

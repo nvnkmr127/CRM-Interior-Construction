@@ -109,15 +109,14 @@ class LocalStorageProvider extends StorageProvider {
   }
 
   async getUploadUrl(key, _mimeType) {
-    if (process.env.NODE_ENV === 'production' && !process.env.AWS_ACCESS_KEY_ID) {
-       // If in production without S3, fallback to mock URL so the frontend can simulate it without crashing.
+    if (!process.env.AWS_ACCESS_KEY_ID) {
+       // Fallback to mock URL so the frontend can simulate it without crashing.
        return { 
          uploadUrl: `https://mock-s3.local/${key}?upload=true`, 
          storageKey: key 
        };
     }
     
-    // In development with local storage, return the real local upload endpoint
     return { 
       uploadUrl: `${env.clientUrl}/api/local-upload?key=${encodeURIComponent(key)}`, 
       storageKey: key 

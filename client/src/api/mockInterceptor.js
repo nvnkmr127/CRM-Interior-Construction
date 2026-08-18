@@ -3,6 +3,8 @@ import { loadMockDatabase, saveMockDatabase } from './mockData';
 import { ROLE_DEFAULTS } from '../constants/roleDefaults';
 
 export const setupMockInterceptor = (api) => {
+  return api; // Disabled mock interceptor to enforce real backend session
+  
   api.interceptors.request.use(
     (config) => {
       // Prevent 502 Bad Gateway console spam on initial load when backend is down

@@ -2322,14 +2322,27 @@ exports.createNativeEstimateHandler = async (req, res, next) => {
   try {
     const { tenantId, userId } = getTenantAndUser(req);
     const { id } = req.params;
-    const { estimator_reference_id, status, total_amount, pdf_url, payload } = req.body;
+    
+    const rooms = req.body.rooms || (req.body.payload && req.body.payload.rooms) || [];
+    let total_amount = req.body.total_amount || 0;
+    if (!req.body.total_amount && rooms.length > 0) {
+      rooms.forEach(r => {
+        if (r.items) {
+          r.items.forEach(i => {
+            total_amount += (Number(i.qty) || 0) * (Number(i.rate) || 0);
+          });
+        }
+      });
+    }
+
+    const payload = req.body.payload || { rooms };
 
     const query = `
       INSERT INTO lead_estimates (tenant_id, lead_id, estimator_reference_id, status, total_amount, pdf_url, payload)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
     `;
-    const values = [tenantId, id, estimator_reference_id, status || 'draft', total_amount, pdf_url, payload || {}];
+    const values = [tenantId, id, req.body.estimator_reference_id, req.body.status || 'draft', total_amount, req.body.pdf_url, payload];
     const result = await pool.query(query, values);
     
     // Emit event for decoupled tracking
@@ -2342,6 +2355,67 @@ exports.createNativeEstimateHandler = async (req, res, next) => {
     });
 
     res.status(201).json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateNativeEstimateHandler = async (req, res, next) => {
+  try {
+    const { tenantId, userId } = getTenantAndUser(req);
+    const { id, estimateId } = req.params;
+    
+    const rooms = req.body.rooms || (req.body.payload && req.body.payload.rooms) || [];
+    let total_amount = req.body.total_amount || 0;
+    if (!req.body.total_amount && rooms.length > 0) {
+      rooms.forEach(r => {
+        if (r.items) {
+          r.items.forEach(i => {
+            total_amount += (Number(i.qty) || 0) * (Number(i.rate) || 0);
+          });
+        }
+      });
+    }
+
+    const payload = req.body.payload || { rooms };
+
+    const query = `
+      UPDATE lead_estimates
+      SET total_amount = $1, payload = $2, status = COALESCE($3, status), pdf_url = COALESCE($4, pdf_url), updated_at = NOW()
+      WHERE id = $5 AND lead_id = $6 AND tenant_id = $7
+      RETURNING *
+    `;
+    const values = [total_amount, payload, req.body.status, req.body.pdf_url, estimateId, id, tenantId];
+    const result = await pool.query(query, values);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: { message: 'Estimate not found' } });
+    }
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.deleteNativeEstimateHandler = async (req, res, next) => {
+  try {
+    const { tenantId, userId } = getTenantAndUser(req);
+    const { id, estimateId } = req.params;
+
+    const query = `
+      DELETE FROM lead_estimates
+      WHERE id = $1 AND lead_id = $2 AND tenant_id = $3
+      RETURNING id
+    `;
+    const values = [estimateId, id, tenantId];
+    const result = await pool.query(query, values);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: { message: 'Estimate not found' } });
+    }
+
+    res.json({ success: true, data: { deleted: estimateId } });
   } catch (error) {
     next(error);
   }

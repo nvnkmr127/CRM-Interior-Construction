@@ -38,13 +38,13 @@ exports.getGlobalStats = async (tenantId, userId, userRole) => {
   
   const revenueTrendRes = await readPool.query(`
     SELECT 
-      TO_CHAR(date_trunc('week', pm.paid_at), 'IYYY-"W"IW') as week,
+      TO_CHAR(date_trunc('week', pm.paid_at::timestamp), 'IYYY-"W"IW') as week,
       COALESCE(SUM(pm.paid_amount), 0)::float as amt
     FROM payment_milestones pm
     JOIN projects p ON pm.project_id = p.id
-    WHERE p.tenant_id = $1 AND pm.status = 'paid' AND pm.paid_at >= NOW() - INTERVAL '12 weeks'
-    GROUP BY date_trunc('week', pm.paid_at)
-    ORDER BY date_trunc('week', pm.paid_at) ASC
+    WHERE p.tenant_id = $1 AND pm.status = 'paid' AND pm.paid_at IS NOT NULL AND pm.paid_at != '' AND pm.paid_at::timestamp >= NOW() - INTERVAL '12 weeks'
+    GROUP BY date_trunc('week', pm.paid_at::timestamp)
+    ORDER BY date_trunc('week', pm.paid_at::timestamp) ASC
   `, [tenantId]);
 
   const activeCount = parseInt(activeLeadsRes.rows[0].count, 10);

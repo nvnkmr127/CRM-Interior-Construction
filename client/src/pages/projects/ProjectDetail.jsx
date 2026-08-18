@@ -66,7 +66,7 @@ import DesignStageHeader from '../../components/projects/DesignStageHeader';
 import ActivityLogsTab from '../../components/projects/ActivityLogsTab';
 
 // FinancialOverviewPanel syncs with PaymentsTab's dynamic payment processing
-function FinancialOverviewPanel({ project, projectId }) {
+const FinancialOverviewPanel = React.memo(function FinancialOverviewPanel({ project, projectId }) {
   const [stats, setStats] = useState({
     contractValue: 0,
     billed: 0,
@@ -242,7 +242,7 @@ function FinancialOverviewPanel({ project, projectId }) {
       </div>
     </div>
   );
-}
+});
 
 // New Editable Tabs
 const TeamAndRolesTab = React.lazy(() => import('../../components/projects/TeamAndRolesTab'));
@@ -272,7 +272,7 @@ function daysRemaining(targetDate) {
   return diff;
 }
 
-function OverviewTab({ project, onRefresh, onEdit }) {
+const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit }) {
   const baseTargetDate = project.target_date ? new Date(project.target_date) : null;
   const timelineImpact = project.stats?.approvedTimelineImpactDays || 0;
   const revisedTargetDate = baseTargetDate && timelineImpact > 0 ? new Date(baseTargetDate.getTime() + timelineImpact * 24 * 60 * 60 * 1000) : null;
@@ -287,7 +287,7 @@ function OverviewTab({ project, onRefresh, onEdit }) {
   // custom_fields may hold advance_amount, payment_terms, etc from conversion form
   const cf = project.custom_fields || {};
 
-  const fields = [
+  const fields = React.useMemo(() => [
     { label: 'Project Type',    value: (project.type || project.project_type) ? (project.type || project.project_type).replace(/_/g, ' ') : '—' },
     { label: 'City',            value: project.city || '—' },
     { label: 'Builder Name',    value: project.builder_name || '—' },
@@ -303,7 +303,7 @@ function OverviewTab({ project, onRefresh, onEdit }) {
     { label: 'Booking Amount',  value: project.booking_amount ? formatValue(project.booking_amount) : (cf.advance_amount ? formatValue(cf.advance_amount) : '—') },
     { label: 'Payment Terms',   value: project.payment_terms ? project.payment_terms.replace(/_/g, ' – ') : (cf.payment_terms ? cf.payment_terms.replace(/_/g, ' – ') : '—') },
     { label: 'Status',          value: project.status ? project.status.replace(/_/g, ' ') : '—' },
-  ];
+  ], [project, timelineImpact, revisedTargetDate, cf]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -813,8 +813,7 @@ function OverviewTab({ project, onRefresh, onEdit }) {
       )}
     </div>
   );
-}
-
+});
 
 export default function ProjectDetail() {
   const { id: projectId } = useParams();

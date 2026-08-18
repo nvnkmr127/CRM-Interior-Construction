@@ -163,6 +163,10 @@ const milestonesRoutes = require('./routes/milestones');
 const globalTasksRoutes = require('./routes/globalTasks');
 const analyticsRoutes = require('./routes/analytics');
 const mockSyncRoutes = require('./routes/mockSync');
+const punchListsRoutes = require('./routes/punchLists');
+const projectClosuresRoutes = require('./routes/projectClosures');
+const paymentEscalationsRoutes = require('./routes/paymentEscalations');
+const receiptsRoutes = require('./routes/receipts');
 
 app.use('/api/mock-sync', mockSyncRoutes);
 
@@ -255,6 +259,10 @@ app.use('/api/approvals', require('./routes/approvals'));
 app.use('/api/handover', handoverRoutes);
 app.use('/api/audit-logs', require('./routes/auditLogs'));
 app.use('/api/login-history', require('./routes/loginHistory'));
+app.use('/api/projects/:projectId/punch-lists', punchListsRoutes);
+app.use('/api/projects/:projectId/closure-checklist', projectClosuresRoutes);
+app.use('/api/projects/:projectId/payment-escalations', paymentEscalationsRoutes);
+app.use('/api/receipts', receiptsRoutes);
 
 // Safe fallback for local file downloads
 app.get('/api/local-download', (req, res) => {
@@ -398,6 +406,10 @@ pool.query(`
   
   -- Fix session_id type if it was created as UUID
   ALTER TABLE login_history ALTER COLUMN session_id TYPE VARCHAR(255) USING session_id::VARCHAR;
+  
+  ALTER TABLE login_history ALTER COLUMN login_time TYPE TIMESTAMPTZ USING login_time AT TIME ZONE 'UTC';
+  ALTER TABLE login_history ALTER COLUMN logout_time TYPE TIMESTAMPTZ USING logout_time AT TIME ZONE 'UTC';
+
 
   CREATE TABLE IF NOT EXISTS tenant_security_settings (
       tenant_id UUID PRIMARY KEY REFERENCES tenants(id) ON DELETE CASCADE,
@@ -420,20 +432,26 @@ pool.query(`
       mfa_enabled BOOLEAN DEFAULT false,
       mfa_secret VARCHAR(255),
       mfa_method VARCHAR(50) DEFAULT 'email',
-      last_password_change TIMESTAMP DEFAULT NOW(),
+      last_password_change TIMESTAMPTZ DEFAULT NOW(),
       failed_login_attempts INT DEFAULT 0,
-      lockout_until TIMESTAMP
+      lockout_until TIMESTAMPTZ
   );
+  ALTER TABLE user_security ALTER COLUMN last_password_change TYPE TIMESTAMPTZ USING last_password_change AT TIME ZONE 'UTC';
+  ALTER TABLE user_security ALTER COLUMN lockout_until TYPE TIMESTAMPTZ USING lockout_until AT TIME ZONE 'UTC';
+
   
   CREATE TABLE IF NOT EXISTS user_trusted_devices (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID REFERENCES users(id) ON DELETE CASCADE,
       device_fingerprint VARCHAR(255) NOT NULL,
       device_name VARCHAR(255),
-      expires_at TIMESTAMP,
-      last_used_at TIMESTAMP DEFAULT NOW(),
-      created_at TIMESTAMP DEFAULT NOW()
+      expires_at TIMESTAMPTZ,
+      last_used_at TIMESTAMPTZ DEFAULT NOW(),
+      created_at TIMESTAMPTZ DEFAULT NOW()
   );
+  ALTER TABLE user_trusted_devices ALTER COLUMN expires_at TYPE TIMESTAMPTZ USING expires_at AT TIME ZONE 'UTC';
+  ALTER TABLE user_trusted_devices ALTER COLUMN last_used_at TYPE TIMESTAMPTZ USING last_used_at AT TIME ZONE 'UTC';
+  
   CREATE INDEX IF NOT EXISTS idx_user_trusted_devices_user ON user_trusted_devices(user_id);
   CREATE INDEX IF NOT EXISTS idx_user_trusted_devices_fingerprint ON user_trusted_devices(device_fingerprint);
   
@@ -450,9 +468,11 @@ pool.query(`
       user_id UUID REFERENCES users(id) ON DELETE CASCADE,
       code_hash VARCHAR(255) NOT NULL,
       purpose VARCHAR(50) DEFAULT 'login',
-      expires_at TIMESTAMP NOT NULL,
-      created_at TIMESTAMP DEFAULT NOW()
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
   );
+  ALTER TABLE otp_codes ALTER COLUMN expires_at TYPE TIMESTAMPTZ USING expires_at AT TIME ZONE 'UTC';
+  
   CREATE INDEX IF NOT EXISTS idx_otp_codes_user ON otp_codes(user_id);
 
   CREATE TABLE IF NOT EXISTS user_preferences (
@@ -496,7 +516,10 @@ pool.query(`
   CREATE INDEX IF NOT EXISTS idx_api_logs_tenant_id ON api_logs(tenant_id);
   CREATE INDEX IF NOT EXISTS idx_api_logs_api_key_id ON api_logs(api_key_id);
   
-  ALTER TABLE sessions ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMP DEFAULT NOW();
+  ALTER TABLE sessions ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ DEFAULT NOW();
+  ALTER TABLE sessions ALTER COLUMN last_active_at TYPE TIMESTAMPTZ USING last_active_at AT TIME ZONE 'UTC';
+  ALTER TABLE sessions ALTER COLUMN expires_at TYPE TIMESTAMPTZ USING expires_at AT TIME ZONE 'UTC';
+
   
   INSERT INTO user_security (user_id)
   SELECT id FROM users

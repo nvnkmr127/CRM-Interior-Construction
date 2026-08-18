@@ -15,23 +15,29 @@ const triggerToast = (type, message, duration = 4000) => {
 };
 
 let isRefreshing = false;
+let hasRefreshFailed = false;
 let refreshSubscribers = [];
 
 const subscribeTokenRefresh = (cb, errCb) => {
   refreshSubscribers.push({ cb, errCb });
 };
 
-const onRefreshed = (error = null) => {
+const onRefreshed = (error = null, token = null) => {
   refreshSubscribers.forEach(({ cb, errCb }) => {
     if (error) errCb(error);
-    else cb();
+    else cb(token);
   });
   refreshSubscribers = [];
 };
 
 // RESPONSE interceptor
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (response.config.url.includes('/auth/login') || response.config.url.includes('/auth/refresh')) {
+      hasRefreshFailed = false;
+    }
+    return response;
+  },
   async (error) => {
     // On network error or cancellation
     if (!error.response) {
@@ -61,6 +67,12 @@ api.interceptors.response.use(
 
     // Handle 401 Unauthorized
     if (error.response.status === 401 && !originalRequest._retry) {
+      if (hasRefreshFailed) {
+        localStorage.removeItem('mockSession');
+        window.dispatchEvent(new CustomEvent('app:logout'));
+        return Promise.reject(error);
+      }
+
       originalRequest._retry = true;
 
       if (!isRefreshing) {
@@ -76,25 +88,45 @@ api.interceptors.response.use(
 
           if (refreshResponse.status === 200) {
             isRefreshing = false;
-            onRefreshed(null);
+            
+            // Extract new access token from response (handle wrapped `success(res, data)`)
+            const newAccessToken = refreshResponse.data?.data?.accessToken || refreshResponse.data?.accessToken;
+            
+            if (newAccessToken) {
+              // Update global defaults for future requests
+              api.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
+              // Update the original failed request
+              originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
+            } else {
+              // Fallback: Remove the old expired token so it doesn't take precedence over the new cookie
+              delete api.defaults.headers.common['Authorization'];
+              delete originalRequest.headers['Authorization'];
+            }
+
+            onRefreshed(null, newAccessToken);
             return api(originalRequest);
           }
         } catch (refreshError) {
           isRefreshing = false;
+          hasRefreshFailed = true;
           onRefreshed(refreshError);
           // Refresh token failed/expired
-          if (!(import.meta.env.DEV && localStorage.getItem('mockSession'))) {
-            if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-              window.location.href = '/login';
-            }
-          }
+          localStorage.removeItem('mockSession');
+          window.dispatchEvent(new CustomEvent('app:logout'));
           return Promise.reject(refreshError);
         }
       } else {
         // Queue this request while refresh is happening
         return new Promise((resolve, reject) => {
           subscribeTokenRefresh(
-            () => resolve(api(originalRequest)),
+            (token) => {
+              if (token) {
+                originalRequest.headers['Authorization'] = `Bearer ${token}`;
+              } else {
+                delete originalRequest.headers['Authorization'];
+              }
+              resolve(api(originalRequest));
+            },
             (err) => reject(err)
           );
         });
@@ -103,11 +135,8 @@ api.interceptors.response.use(
 
     // If _retry is true and we still got 401 -> redirect to login (prevent infinite loop)
     if (error.response?.status === 401 && originalRequest._retry) {
-      if (!(import.meta.env.DEV && localStorage.getItem('mockSession'))) {
-        if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
-          window.location.href = '/login';
-        }
-      }
+      localStorage.removeItem('mockSession');
+      window.dispatchEvent(new CustomEvent('app:logout'));
     }
 
     return Promise.reject(error);

@@ -93,8 +93,8 @@ export function useS3Upload() {
     setUploading(true); setProgress(0); setError(null);
     try {
       const res = await getContractUploadUrl({
-        name: file.name,
-        mimeType: file.type
+        filename: file.name,
+        contentType: file.type
       });
       const { uploadUrl, storageKey } = res.data.data;
 
