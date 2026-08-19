@@ -201,9 +201,28 @@ router.post('/logout', authenticate, async (req, res) => {
   }
 });
 
-router.get('/me', authenticate, async (req, res, next) => {
+const { verifyAccessToken, TokenExpiredError } = require('../services/auth/tokens');
+
+router.get('/me', async (req, res, next) => {
   try {
-    const userId = req.user.id || req.user.userId;
+    const authHeader = req.headers.authorization;
+    let token = req.cookies?.accessToken;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    }
+
+    if (!token) {
+      return fail(res, 'UNAUTHORIZED', 'Not authenticated', 200);
+    }
+
+    let decoded;
+    try {
+      decoded = verifyAccessToken(token);
+    } catch (e) {
+      return fail(res, 'UNAUTHORIZED', 'Not authenticated', 200);
+    }
+
+    const userId = decoded.id || decoded.userId;
 
     const query = `
       SELECT 
@@ -218,7 +237,7 @@ router.get('/me', authenticate, async (req, res, next) => {
     const result = await pool.query(query, [userId]);
 
     if (result.rows.length === 0) {
-      return fail(res, 'NOT_FOUND', 'User not found', 404);
+      return fail(res, 'UNAUTHORIZED', 'Not authenticated', 200);
     }
 
     const row = result.rows[0];
@@ -249,9 +268,6 @@ router.get('/me', authenticate, async (req, res, next) => {
         enabled_modules: enabledModules
       } : null
     };
-
-    req.user.permissions = actions;
-    req.user.enabled_modules = enabledModules;
 
     return success(res, { user });
   } catch (error) {

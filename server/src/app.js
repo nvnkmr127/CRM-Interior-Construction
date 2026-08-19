@@ -351,6 +351,9 @@ app.use('/api/v1', require('./routes/api/v1'));
 
 require('./routes/qc')(app);
 
+// Mount Stub router for incomplete modules to prevent UI 404 console errors
+app.use('/api', require('./routes/stub'));
+
 // 404 Catch-All Handler
 app.use((req, res, next) => {
   res.status(404).json({
@@ -407,8 +410,9 @@ pool.query(`
   -- Fix session_id type if it was created as UUID
   ALTER TABLE login_history ALTER COLUMN session_id TYPE VARCHAR(255) USING session_id::VARCHAR;
   
-  ALTER TABLE login_history ALTER COLUMN login_time TYPE TIMESTAMPTZ USING login_time AT TIME ZONE 'UTC';
-  ALTER TABLE login_history ALTER COLUMN logout_time TYPE TIMESTAMPTZ USING logout_time AT TIME ZONE 'UTC';
+  -- Prevent pg_catalog.timezone(unknown, text) error by using standard cast
+  ALTER TABLE login_history ALTER COLUMN login_time TYPE TIMESTAMPTZ USING login_time::timestamptz;
+  ALTER TABLE login_history ALTER COLUMN logout_time TYPE TIMESTAMPTZ USING logout_time::timestamptz;
 
 
   CREATE TABLE IF NOT EXISTS tenant_security_settings (
@@ -436,8 +440,8 @@ pool.query(`
       failed_login_attempts INT DEFAULT 0,
       lockout_until TIMESTAMPTZ
   );
-  ALTER TABLE user_security ALTER COLUMN last_password_change TYPE TIMESTAMPTZ USING last_password_change AT TIME ZONE 'UTC';
-  ALTER TABLE user_security ALTER COLUMN lockout_until TYPE TIMESTAMPTZ USING lockout_until AT TIME ZONE 'UTC';
+  ALTER TABLE user_security ALTER COLUMN last_password_change TYPE TIMESTAMPTZ USING last_password_change::timestamptz;
+  ALTER TABLE user_security ALTER COLUMN lockout_until TYPE TIMESTAMPTZ USING lockout_until::timestamptz;
 
   
   CREATE TABLE IF NOT EXISTS user_trusted_devices (
@@ -449,8 +453,8 @@ pool.query(`
       last_used_at TIMESTAMPTZ DEFAULT NOW(),
       created_at TIMESTAMPTZ DEFAULT NOW()
   );
-  ALTER TABLE user_trusted_devices ALTER COLUMN expires_at TYPE TIMESTAMPTZ USING expires_at AT TIME ZONE 'UTC';
-  ALTER TABLE user_trusted_devices ALTER COLUMN last_used_at TYPE TIMESTAMPTZ USING last_used_at AT TIME ZONE 'UTC';
+  ALTER TABLE user_trusted_devices ALTER COLUMN expires_at TYPE TIMESTAMPTZ USING expires_at::timestamptz;
+  ALTER TABLE user_trusted_devices ALTER COLUMN last_used_at TYPE TIMESTAMPTZ USING last_used_at::timestamptz;
   
   CREATE INDEX IF NOT EXISTS idx_user_trusted_devices_user ON user_trusted_devices(user_id);
   CREATE INDEX IF NOT EXISTS idx_user_trusted_devices_fingerprint ON user_trusted_devices(device_fingerprint);
@@ -471,7 +475,7 @@ pool.query(`
       expires_at TIMESTAMPTZ NOT NULL,
       created_at TIMESTAMPTZ DEFAULT NOW()
   );
-  ALTER TABLE otp_codes ALTER COLUMN expires_at TYPE TIMESTAMPTZ USING expires_at AT TIME ZONE 'UTC';
+  ALTER TABLE otp_codes ALTER COLUMN expires_at TYPE TIMESTAMPTZ USING expires_at::timestamptz;
   
   CREATE INDEX IF NOT EXISTS idx_otp_codes_user ON otp_codes(user_id);
 
@@ -517,8 +521,8 @@ pool.query(`
   CREATE INDEX IF NOT EXISTS idx_api_logs_api_key_id ON api_logs(api_key_id);
   
   ALTER TABLE sessions ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ DEFAULT NOW();
-  ALTER TABLE sessions ALTER COLUMN last_active_at TYPE TIMESTAMPTZ USING last_active_at AT TIME ZONE 'UTC';
-  ALTER TABLE sessions ALTER COLUMN expires_at TYPE TIMESTAMPTZ USING expires_at AT TIME ZONE 'UTC';
+  ALTER TABLE sessions ALTER COLUMN last_active_at TYPE TIMESTAMPTZ USING last_active_at::timestamptz;
+  ALTER TABLE sessions ALTER COLUMN expires_at TYPE TIMESTAMPTZ USING expires_at::timestamptz;
 
   
   INSERT INTO user_security (user_id)

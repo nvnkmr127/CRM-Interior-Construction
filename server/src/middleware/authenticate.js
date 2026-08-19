@@ -154,6 +154,9 @@ async function authenticate(req, res, next) {
 
     // 6. Set request context
     req.user = decoded;
+    if (req.user && typeof req.user.role === 'string') {
+      req.user.role = req.user.role.toLowerCase();
+    }
     
     // Normalize user permissions for the new schema (actions, scopes, fields)
     if (req.user.permissions && !Array.isArray(req.user.permissions) && req.user.permissions.actions) {

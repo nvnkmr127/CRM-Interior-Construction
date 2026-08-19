@@ -4,6 +4,7 @@ const express = require('express');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const cacheMiddleware = require('../middleware/cacheMiddleware');
+const dataScope = require('../middleware/dataScope');
 const { success, fail } = require('../utils/response');
 const pool = require('../config/db');
 
@@ -44,28 +45,30 @@ router.get('/leads', async (req, res, next) => {
     const { from, to } = getDates(req);
     const tenantId = req.tenantId;
 
+    const leadsFilter = dataScope.buildScopeFilter(req.user, 'leads', 'assignee_id', 'l');
+    
     // Fetch individual parts
     const [summaryRes, funnelRes, sourceRes, repRes] = await Promise.all([
       pool.query(`
         SELECT COUNT(l.id) as total_leads, COUNT(l.id) FILTER (WHERE ls.is_won = true) as won_count, COALESCE(SUM(l.budget_max), 0) as pipeline_value
         FROM leads l LEFT JOIN lead_stages ls ON l.stage_id = ls.id
-        WHERE l.tenant_id = $1 AND l.created_at BETWEEN $2 AND $3
+        WHERE l.tenant_id = $1 AND l.created_at BETWEEN $2 AND $3 AND (${leadsFilter})
       `, [tenantId, from.toISOString(), to.toISOString()]),
       pool.query(`
         SELECT ls.name as stage, COUNT(l.id) as count 
         FROM leads l LEFT JOIN lead_stages ls ON l.stage_id = ls.id
-        WHERE l.tenant_id = $1 AND l.created_at BETWEEN $2 AND $3 AND ls.name IS NOT NULL
+        WHERE l.tenant_id = $1 AND l.created_at BETWEEN $2 AND $3 AND ls.name IS NOT NULL AND (${leadsFilter})
         GROUP BY ls.name, ls.sort_order ORDER BY ls.sort_order ASC
       `, [tenantId, from.toISOString(), to.toISOString()]),
       pool.query(`
         SELECT l.source, COUNT(l.id) as count FROM leads l
-        WHERE l.tenant_id = $1 AND l.created_at BETWEEN $2 AND $3 AND l.source IS NOT NULL
+        WHERE l.tenant_id = $1 AND l.created_at BETWEEN $2 AND $3 AND l.source IS NOT NULL AND (${leadsFilter})
         GROUP BY l.source ORDER BY count DESC
       `, [tenantId, from.toISOString(), to.toISOString()]),
       pool.query(`
         SELECT u.id as rep_id, u.name as rep_name, COUNT(l.id) as leads_assigned, COUNT(l.id) FILTER (WHERE ls.is_won = true) as won, AVG(l.score) as avg_score
         FROM users u LEFT JOIN roles r ON u.role_id = r.id
-        LEFT JOIN leads l ON l.assignee_id = u.id AND l.tenant_id = $1 AND l.created_at BETWEEN $2 AND $3
+        LEFT JOIN leads l ON l.assignee_id = u.id AND l.tenant_id = $1 AND l.created_at BETWEEN $2 AND $3 AND (${leadsFilter})
         LEFT JOIN lead_stages ls ON l.stage_id = ls.id
         WHERE u.tenant_id = $1 AND (r.name = 'sales_executive' OR r.name = 'sales_rep')
         GROUP BY u.id ORDER BY won DESC
@@ -122,10 +125,8 @@ router.get('/leads/summary', async (req, res, next) => {
     const tenantId = req.tenantId;
     const userRole = req.user?.role;
 
-    const isGlobal = userRole === 'superadmin' || userRole === 'admin' || (typeof userRole === 'object' && (userRole?.name?.toLowerCase() === 'superadmin' || userRole?.name?.toLowerCase() === 'super admin' || userRole?.name?.toLowerCase() === 'admin'));
-    const assigneeFilter = isGlobal ? '' : `AND (l.assignee_id=$4 OR l.assignee_id IS NULL)`;
+    const leadsFilter = dataScope.buildScopeFilter(req.user, 'leads', 'assignee_id', 'l');
     const params = [tenantId, from.toISOString(), to.toISOString()];
-    if (!isGlobal) params.push(req.user.id);
 
     const query = `
       SELECT 
@@ -140,7 +141,7 @@ router.get('/leads/summary', async (req, res, next) => {
         AVG(EXTRACT(EPOCH FROM (l.updated_at - l.created_at))/86400) FILTER (WHERE ls.is_won = true) as avg_time_to_close_days
       FROM leads l
       LEFT JOIN lead_stages ls ON l.stage_id = ls.id
-      WHERE l.tenant_id = $1 AND l.deleted_at IS NULL AND l.created_at BETWEEN $2 AND $3 ${assigneeFilter}
+      WHERE l.tenant_id = $1 AND l.deleted_at IS NULL AND l.created_at BETWEEN $2 AND $3 AND (${leadsFilter})
     `;
     const result = await pool.query(query, params);
     const row = result.rows[0];

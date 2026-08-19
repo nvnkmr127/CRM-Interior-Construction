@@ -18,17 +18,27 @@ const Icons = {
   system: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> // Bolt icon for system
 };
 
+const cleanQuotes = (str) => {
+  if (!str) return '';
+  let cleaned = str.trim();
+  if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+    cleaned = cleaned.slice(1, -1).trim();
+  }
+  return cleaned;
+};
+
 const ExpandableText = ({ text }) => {
   const [expanded, setExpanded] = useState(false);
   const maxLength = 150;
   
   if (!text) return null;
-  if (text.length <= maxLength) return <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{text}</p>;
+  const cleanText = cleanQuotes(text);
+  if (cleanText.length <= maxLength) return <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{cleanText}</p>;
 
   return (
     <div>
       <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-        {expanded ? text : `${text.substring(0, maxLength)}...`}
+        {expanded ? cleanText : `${cleanText.substring(0, maxLength)}...`}
       </p>
       <button 
         className="text-xs text-blue-600 font-medium mt-1 hover:underline focus:outline-none"
@@ -40,13 +50,13 @@ const ExpandableText = ({ text }) => {
   );
 };
 
-export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger, onActivityLogged }) {
+export default function ActivityTimeline({ leadId, lead, onTaskAdded, refreshTrigger, onActivityLogged, defaultFilter = 'all', onlyNoteMode = false, excludeNotes = false }) {
   const { confirm } = useConfirm();
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 20 });
-  const [activeForm, setActiveForm] = useState(null); // 'note', 'email', 'task', 'site_visit'
-  const [filter, setFilter] = useState('all'); // 'all', 'note', 'email', 'site_visit', 'task', 'system'
+  const [activeForm, setActiveForm] = useState(onlyNoteMode ? 'note' : null); // 'note', 'email', 'task', 'site_visit'
+  const [filter, setFilter] = useState(onlyNoteMode ? 'note' : defaultFilter); // 'all', 'note', 'email', 'site_visit', 'task', 'system'
 
   const [activityToDelete, setActivityToDelete] = useState(null);
   const [isDeletingActivity, setIsDeletingActivity] = useState(false);
@@ -59,7 +69,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger, 
 
   const handleEditClick = (activity) => {
     setEditingActivityId(activity.id);
-    setEditNotes(activity.notes || '');
+    setEditNotes(cleanQuotes(activity.notes));
     setEditTitle(activity.title || activity.type || '');
   };
 
@@ -169,7 +179,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger, 
   // You might want to fetch reps for task assignment
   const [reps, setReps] = useState([]);
   useEffect(() => {
-    api.get('/users?role=sales_rep').then(res => setReps(res.data?.data || [])).catch(() => {});
+    api.get('/users?limit=100').then(res => setReps(res.data?.data || [])).catch(() => {});
   }, []);
 
   const fetchActivities = async (page = 1, append = false) => {
@@ -197,12 +207,23 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger, 
   }, [leadId, filter, refreshTrigger]);
 
   useEffect(() => {
+    if (onlyNoteMode) {
+      setFilter('note');
+      setActiveForm('note');
+      return;
+    }
     if (activeForm) {
       setFilter(activeForm);
     } else {
       setFilter('all');
     }
-  }, [activeForm]);
+  }, [activeForm, onlyNoteMode]);
+
+  useEffect(() => {
+    if (activeForm === 'site_visit' && lead?.locality && !formData.site_address) {
+      setFormData(prev => ({ ...prev, site_address: lead.locality }));
+    }
+  }, [activeForm, lead, formData.site_address]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -258,7 +279,7 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger, 
         meeting_title: '', meeting_type: 'Google Meet', meeting_date: '', meeting_time: '',
         meeting_duration: '30', meeting_link: '', meeting_host: '', meeting_reminders: false
       });
-      setActiveForm(null);
+      setActiveForm(onlyNoteMode ? 'note' : null);
       if (onActivityLogged) onActivityLogged();
     } catch (err) {
       alert('Failed to save.');
@@ -284,73 +305,81 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger, 
 
   const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
 
+  const displayActivities = activities;
+
   return (
     <div className="space-y-6">
       <div className="rounded-xl transition-all shadow-sm" style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.3)' }}>
-        <div className="flex flex-wrap gap-2 p-4 border-b rounded-t-xl justify-between items-center" style={{ background: 'rgba(255, 255, 255, 0.5)', borderColor: 'rgba(0, 0, 0, 0.05)' }}>
-          <div className="flex flex-wrap gap-2">
-            <button 
-              onClick={() => setActiveForm(activeForm === 'email' ? null : 'email')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all shadow-sm ${activeForm === 'email' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'border text-gray-700 hover:bg-gray-100'}`}
-              style={activeForm !== 'email' ? { background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' } : {}}
-            >
-              <Icons.email /> Log Email
-            </button>
-            <button 
-              onClick={() => setActiveForm(activeForm === 'note' ? null : 'note')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all shadow-sm ${activeForm === 'note' ? 'bg-gray-200 text-gray-800 border-gray-400' : 'border text-gray-700 hover:bg-gray-100'}`}
-              style={activeForm !== 'note' ? { background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' } : {}}
-            >
-              <Icons.note /> Add Note
-            </button>
-            <button 
-              onClick={() => setActiveForm(activeForm === 'task' ? null : 'task')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all shadow-sm ${activeForm === 'task' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'border text-gray-700 hover:bg-gray-100'}`}
-              style={activeForm !== 'task' ? { background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' } : {}}
-            >
-              <Icons.task /> Schedule Task
-            </button>
-            <button 
-              onClick={() => setActiveForm(activeForm === 'site_visit' ? null : 'site_visit')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all shadow-sm ${activeForm === 'site_visit' ? 'bg-green-100 text-green-700 border-green-300' : 'border text-gray-700 hover:bg-gray-100'}`}
-              style={activeForm !== 'site_visit' ? { background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' } : {}}
-            >
-              <Icons.site_visit /> Site Visit
-            </button>
-            <button 
-              onClick={() => setActiveForm(activeForm === 'meeting' ? null : 'meeting')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all shadow-sm ${activeForm === 'meeting' ? 'bg-orange-100 text-orange-700 border-orange-300' : 'border text-gray-700 hover:bg-gray-100'}`}
-              style={activeForm !== 'meeting' ? { background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' } : {}}
-            >
-              <Icons.meeting /> Schedule Meeting
-            </button>
+        {!onlyNoteMode && (
+          <div className="flex flex-wrap gap-2 p-4 border-b rounded-t-xl justify-between items-center" style={{ background: 'rgba(255, 255, 255, 0.5)', borderColor: 'rgba(0, 0, 0, 0.05)' }}>
+            <div className="flex flex-wrap gap-2">
+              <button 
+                onClick={() => setActiveForm(activeForm === 'email' ? null : 'email')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all shadow-sm ${activeForm === 'email' ? 'bg-purple-100 text-purple-700 border-purple-300' : 'border text-gray-700 hover:bg-gray-100'}`}
+                style={activeForm !== 'email' ? { background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' } : {}}
+              >
+                <Icons.email /> Log Email
+              </button>
+              {!excludeNotes && (
+                <button 
+                  onClick={() => setActiveForm(activeForm === 'note' ? null : 'note')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all shadow-sm ${activeForm === 'note' ? 'bg-gray-200 text-gray-800 border-gray-400' : 'border text-gray-700 hover:bg-gray-100'}`}
+                  style={activeForm !== 'note' ? { background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' } : {}}
+                >
+                  <Icons.note /> Add Note
+                </button>
+              )}
+              <button 
+                onClick={() => setActiveForm(activeForm === 'task' ? null : 'task')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all shadow-sm ${activeForm === 'task' ? 'bg-blue-100 text-blue-700 border-blue-300' : 'border text-gray-700 hover:bg-gray-100'}`}
+                style={activeForm !== 'task' ? { background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' } : {}}
+              >
+                <Icons.task /> Schedule Task
+              </button>
+              <button 
+                onClick={() => setActiveForm(activeForm === 'site_visit' ? null : 'site_visit')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all shadow-sm ${activeForm === 'site_visit' ? 'bg-green-100 text-green-700 border-green-300' : 'border text-gray-700 hover:bg-gray-100'}`}
+                style={activeForm !== 'site_visit' ? { background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' } : {}}
+              >
+                <Icons.site_visit /> Site Visit
+              </button>
+              <button 
+                onClick={() => setActiveForm(activeForm === 'meeting' ? null : 'meeting')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-all shadow-sm ${activeForm === 'meeting' ? 'bg-orange-100 text-orange-700 border-orange-300' : 'border text-gray-700 hover:bg-gray-100'}`}
+                style={activeForm !== 'meeting' ? { background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' } : {}}
+              >
+                <Icons.meeting /> Schedule Meeting
+              </button>
+            </div>
+            <div>
+              <button
+                onClick={() => setIsMeetingModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm bg-indigo-100 text-indigo-750 border border-indigo-300 hover:bg-indigo-200"
+              >
+                <span className="text-lg leading-none">🎙️</span> AI Summarize
+              </button>
+            </div>
           </div>
-          <div>
-            <button
-              onClick={() => setIsMeetingModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm bg-indigo-100 text-indigo-750 border border-indigo-300 hover:bg-indigo-200"
-            >
-              <span className="text-lg leading-none">🎙️</span> AI Summarize
-            </button>
-          </div>
-        </div>
+        )}
         
-        <div className="flex gap-2 p-3 px-4 border-b overflow-x-auto custom-scrollbar" style={{ background: 'rgba(255, 255, 255, 0.3)', borderColor: 'rgba(0,0,0,0.05)' }}>
-          {['all', 'note', 'email', 'site_visit', 'task', 'system'].map(f => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all shadow-sm"
-              style={
-                filter === f 
-                  ? { background: 'var(--accent)', color: '#fff' } 
-                  : { background: 'rgba(255,255,255,0.7)', color: 'var(--color-text-secondary)', border: '1px solid rgba(255,255,255,0.4)' }
-              }
-            >
-              {f === 'site_visit' ? 'Site Visits' : f.charAt(0).toUpperCase() + f.slice(1)}
-            </button>
-          ))}
-        </div>
+        {!onlyNoteMode && (
+          <div className="flex gap-2 p-3 px-4 border-b overflow-x-auto custom-scrollbar" style={{ background: 'rgba(255, 255, 255, 0.3)', borderColor: 'rgba(0,0,0,0.05)' }}>
+            {['all', 'note', 'email', 'site_visit', 'task', 'system'].filter(f => !excludeNotes || f !== 'note').map(f => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all shadow-sm"
+                style={
+                  filter === f 
+                    ? { background: 'var(--accent)', color: '#fff' } 
+                    : { background: 'rgba(255,255,255,0.7)', color: 'var(--color-text-secondary)', border: '1px solid rgba(255,255,255,0.4)' }
+                }
+              >
+                {f === 'site_visit' ? 'Site Visits' : f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
+        )}
 
         {activeForm && (
           <form onSubmit={handleSubmit} className="p-4 space-y-4">
@@ -556,16 +585,22 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger, 
               <div className="relative">
                 <textarea
                   required
-                  rows="3"
-                  placeholder={activeForm === 'email' ? "Enter email details..." : "Write a note... (Click mic to dictate)"}
+                  rows="4"
+                  placeholder={activeForm === 'email' ? "Enter email details..." : "Write a new note here... Use dictation mic below to speak."}
                   value={formData.notes}
                   onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  className="w-full rounded-md border border-gray-300 p-3 pr-10 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none shadow-inner"
+                  className={onlyNoteMode 
+                    ? "w-full rounded-2xl border border-gray-250 p-4 pr-12 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white bg-gray-50/50 outline-none transition-all shadow-inner resize-none font-medium text-gray-700"
+                    : "w-full rounded-md border border-gray-300 p-3 pr-10 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none shadow-inner"
+                  }
                 ></textarea>
                 <button
                   type="button"
                   onClick={toggleListening}
-                  className={`absolute right-3 bottom-4 p-1.5 rounded-full transition-colors ${isListening ? 'bg-red-100 text-red-650 animate-pulse' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-650'}`}
+                  className={onlyNoteMode
+                    ? `absolute right-4 bottom-4 p-2 rounded-full transition-colors ${isListening ? 'bg-red-100 text-red-650 animate-pulse' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-650'}`
+                    : `absolute right-3 bottom-4 p-1.5 rounded-full transition-colors ${isListening ? 'bg-red-100 text-red-650 animate-pulse' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-650'}`
+                  }
                   title={isListening ? "Stop listening" : "Start Voice Dictation"}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
@@ -574,37 +609,42 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger, 
             )}
 
             <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-              <button
-                type="button"
-                onClick={() => setActiveForm(null)}
-                className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-800 border border-gray-300 rounded shadow-sm hover:bg-gray-50 transition-all"
-                style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' }}
-              >
-                Cancel
-              </button>
+              {!onlyNoteMode && (
+                <button
+                  type="button"
+                  onClick={() => setActiveForm(null)}
+                  className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-800 border border-gray-300 rounded shadow-sm hover:bg-gray-50 transition-all"
+                  style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(5px)' }}
+                >
+                  Cancel
+                </button>
+              )}
               <button
                 type="submit"
                 disabled={isSubmitting || (activeForm === 'task' ? !formData.title : !formData.notes.trim())}
-                className="px-4 py-2 text-xs font-semibold bg-blue-600 text-white rounded shadow hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className={onlyNoteMode
+                  ? "px-5 py-2.5 text-xs font-bold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl shadow-md hover:shadow-lg disabled:opacity-50 transition-all cursor-pointer"
+                  : "px-4 py-2 text-xs font-semibold bg-blue-600 text-white rounded shadow hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                }
               >
-                {isSubmitting ? 'Saving...' : 'Save'}
+                {isSubmitting ? 'Saving...' : (onlyNoteMode ? 'Post Note' : 'Save')}
               </button>
             </div>
           </form>
         )}
       </div>
 
-      <div className="relative pl-4 sm:pl-6 space-y-6 pb-4" style={{ borderLeft: '2px solid rgba(170, 59, 255, 0.2)' }}>
-        {loading && activities.length === 0 ? (
+      <div className={onlyNoteMode ? "space-y-4 pb-4" : "relative pl-4 sm:pl-6 space-y-6 pb-4"} style={onlyNoteMode ? {} : { borderLeft: '2px solid rgba(170, 59, 255, 0.2)' }}>
+        {loading && displayActivities.length === 0 ? (
           <div className="animate-pulse space-y-4 pt-2">
             <div className="h-24 bg-gray-100 rounded-lg w-full"></div>
             <div className="h-24 bg-gray-100 rounded-lg w-full"></div>
           </div>
-        ) : activities.length === 0 ? (
-          <div className="text-sm text-gray-400 py-4 italic">No activities recorded yet.</div>
+        ) : displayActivities.length === 0 ? (
+          <div className="text-sm text-gray-400 py-4 italic">{onlyNoteMode ? 'No notes recorded yet.' : 'No activities recorded yet.'}</div>
         ) : (
           <>
-            {activities.map((activity) => {
+            {displayActivities.map((activity) => {
               const isSystem = !activity.user_name || systemActivityKeywords.some(kw => activity.type?.includes(kw) || activity.title?.toLowerCase().includes(kw));
               const Icon = isSystem ? Icons.system : (Icons[activity.type] || Icons.note);
               const typeLabel = activity.title || activity.type?.replace('_', ' ') || 'Activity';
@@ -617,21 +657,32 @@ export default function ActivityTimeline({ leadId, onTaskAdded, refreshTrigger, 
               } catch(e) {}
 
               return (
-                <div key={activity.id} className="relative group">
-                  <div className={`absolute -left-[27px] sm:-left-[35px] top-1.5 flex h-7 w-7 items-center justify-center rounded-full border shadow-sm transition-transform group-hover:scale-110 ${getTypeStyle(activity.type, isSystem)}`}>
-                    <Icon />
-                  </div>
+                <div key={activity.id} className="relative group animate-fadeIn">
+                  {!onlyNoteMode && (
+                    <div className={`absolute -left-[27px] sm:-left-[35px] top-1.5 flex h-7 w-7 items-center justify-center rounded-full border shadow-sm transition-transform group-hover:scale-110 ${getTypeStyle(activity.type, isSystem)}`}>
+                      <Icon />
+                    </div>
+                  )}
                   
-                  <div className="rounded-xl p-4 shadow-sm hover:shadow-md transition-all group-hover:-translate-y-0.5" style={{ background: isSystem ? 'rgba(0,0,0,0.02)' : 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="text-sm">
-                        <span className="font-bold capitalize text-gray-800">{typeLabel}</span>
-                        {isSystem ? (
-                          <span className="ml-2 bg-gray-800 text-yellow-400 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">System Log</span>
-                        ) : (
-                          <span className="text-gray-500"> by {activity.user_name}</span>
+                  <div className={onlyNoteMode ? "rounded-2xl p-5 shadow-sm hover:shadow-md transition-all bg-white border border-gray-150" : "rounded-xl p-4 shadow-sm hover:shadow-md transition-all group-hover:-translate-y-0.5"} style={onlyNoteMode ? {} : { background: isSystem ? 'rgba(0,0,0,0.02)' : 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center gap-3">
+                        {onlyNoteMode && (
+                          <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-700 border border-blue-100 flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+                            {activity.user_name ? activity.user_name[0].toUpperCase() : 'U'}
+                          </div>
                         )}
-                        <span className="text-gray-400 text-xs ml-1 font-medium cursor-help" title={exactDate}>· {timeAgo}</span>
+                        <div className="text-sm">
+                          <span className="font-bold text-gray-800">{onlyNoteMode ? (activity.user_name || 'System User') : typeLabel}</span>
+                          {!onlyNoteMode && (
+                            isSystem ? (
+                              <span className="ml-2 bg-gray-800 text-yellow-400 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">System Log</span>
+                            ) : (
+                              <span className="text-gray-500"> by {activity.user_name}</span>
+                            )
+                          )}
+                          <span className="text-gray-400 text-xs ml-1.5 font-medium cursor-help" title={exactDate}>· {timeAgo}</span>
+                        </div>
                       </div>
                       {!isSystem && editingActivityId !== activity.id && (
                         <div className="flex items-center gap-1 shrink-0 ml-2">

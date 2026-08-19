@@ -108,8 +108,8 @@ async function findLeadById(tenantId, leadId, txClient = null, includeDeleted = 
     FROM leads l
     LEFT JOIN users u ON l.assignee_id = u.id
     LEFT JOIN lead_stages s ON l.stage_id = s.id
-    LEFT JOIN lead_properties lp ON l.id = lp.lead_id
-    LEFT JOIN lead_preferences lpref ON l.id = lpref.lead_id
+    LEFT JOIN LATERAL (SELECT * FROM lead_properties WHERE lead_id = l.id LIMIT 1) lp ON true
+    LEFT JOIN LATERAL (SELECT * FROM lead_preferences WHERE lead_id = l.id LIMIT 1) lpref ON true
     LEFT JOIN LATERAL (
       SELECT a.metadata->>'status' AS status,
              a.notes AS message,
@@ -134,7 +134,7 @@ async function findLeadById(tenantId, leadId, txClient = null, includeDeleted = 
       WHERE a.lead_id = l.id 
         AND a.type = 'meeting' 
         AND a.scheduled_at IS NOT NULL 
-        AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
+        AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed', 'cancelled', 'deleted'))
       ORDER BY (CASE WHEN a.scheduled_at ~ '^\\d{4}-\\d{2}-\\d{2}' THEN CAST(a.scheduled_at AS timestamptz) >= CURRENT_TIMESTAMP ELSE false END) DESC, a.scheduled_at ASC
       LIMIT 1
     ) AS next_mtg ON true
@@ -176,9 +176,9 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
     FROM leads l
     LEFT JOIN users u ON l.assignee_id = u.id
     LEFT JOIN lead_stages s ON l.stage_id = s.id
-    LEFT JOIN lead_properties lp ON l.id = lp.lead_id
-    LEFT JOIN lead_preferences lpref ON l.id = lpref.lead_id
-    LEFT JOIN lead_ai_insights ai ON l.id = ai.lead_id
+    LEFT JOIN LATERAL (SELECT * FROM lead_properties WHERE lead_id = l.id LIMIT 1) lp ON true
+    LEFT JOIN LATERAL (SELECT * FROM lead_preferences WHERE lead_id = l.id LIMIT 1) lpref ON true
+    LEFT JOIN LATERAL (SELECT * FROM lead_ai_insights WHERE lead_id = l.id LIMIT 1) ai ON true
     LEFT JOIN LATERAL (
       SELECT a.metadata->>'status' AS status,
              a.notes AS message,
@@ -203,7 +203,7 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
       WHERE a.lead_id = l.id 
         AND a.type = 'meeting' 
         AND a.scheduled_at IS NOT NULL 
-        AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed'))
+        AND (a.outcome IS NULL OR a.outcome NOT IN ('concluded', 'completed', 'cancelled', 'deleted'))
       ORDER BY (CASE WHEN a.scheduled_at ~ '^\\d{4}-\\d{2}-\\d{2}' THEN CAST(a.scheduled_at AS timestamptz) >= CURRENT_TIMESTAMP ELSE false END) DESC, a.scheduled_at ASC
       LIMIT 1
     ) AS next_mtg ON true
@@ -255,7 +255,7 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
     values.push(intent);
   }
 
-  const countQuery = `SELECT COUNT(*) FROM (${query}) AS count_q`;
+  const countQuery = `SELECT COUNT(DISTINCT id) FROM (${query}) AS count_q`;
   const countResult = await pool.query(countQuery, values);
   const total = parseInt(countResult.rows[0].count, 10);
   

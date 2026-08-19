@@ -83,4 +83,38 @@
     at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15\n\n2026-08-18T13:13:39.415Z\nError: Approval not found
     at getProjectBudgetValidation (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\budgetValidator.js:7:35)
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:303:24\n\n
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:303:24\n\n2026-08-18T16:50:03.002Z\nError: Approval not found
+    at getProjectBudgetValidation (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\budgetValidator.js:7:35)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:303:24\n\n2026-08-18T17:06:12.418Z\nerror: column "key_prefix" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\config\apiKeys.js:26:20\n\n2026-08-19T05:14:43.464Z\nError: INVALID_CREDENTIALS
+    at loginUser (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\login.js:161:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:95:25\n\n2026-08-19T07:48:12.924Z\nAggregateError: 
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:80:26\n\n2026-08-19T09:25:54.252Z\nerror: column "updated_at" of relation "activities" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exports.updateActivity (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\activities\activityService.js:46:20)
+    at async exports.updateActivityHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:215:21)\n\n2026-08-19T09:51:45.660Z\nerror: column "updated_at" of relation "activities" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exports.updateActivity (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\activities\activityService.js:46:20)
+    at async exports.updateActivityHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:215:21)\n\n2026-08-19T09:52:03.903Z\nerror: column "updated_at" of relation "activities" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exports.updateActivity (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\activities\activityService.js:46:20)
+    at async exports.updateActivityHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:215:21)\n\n2026-08-19T10:52:46.530Z\nerror: column "property_name" of relation "leads" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Object.updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:362:9)
+    at async updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\leads\updateLead.js:16:23)
+    at async exports.updateLeadHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2628:25)\n\n2026-08-19T10:52:57.214Z\nerror: column "property_name" of relation "leads" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Object.updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:362:9)
+    at async updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\leads\updateLead.js:16:23)
+    at async exports.updateLeadHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2628:25)\n\n

@@ -265,7 +265,26 @@ exports.deleteActivityHandler = async (req, res, next) => {
       return fail(res, 'FORBIDDEN', 'System generated logs cannot be deleted.', 403);
     }
 
-    await deleteActivity(tenantId, activityId);
+    if (currentActivity.type === 'meeting') {
+      const reason = req.body.reason || 'Deleted by user';
+      const updatedMeta = { ...currentActivity.metadata, delete_reason: reason };
+      await pool.query(
+        `UPDATE activities 
+         SET outcome = 'deleted', 
+             metadata = $1
+         WHERE id = $2 AND tenant_id = $3`,
+        [updatedMeta, activityId, tenantId]
+      );
+      
+      await pool.query(
+        `UPDATE lead_timeline
+         SET summary = $1
+         WHERE entity_id = $2 AND tenant_id = $3 AND entity = 'activity'`,
+        [`Meeting Cancelled/Deleted (Reason: ${reason})`, activityId, tenantId]
+      );
+    } else {
+      await deleteActivity(tenantId, activityId);
+    }
 
     // Log to system audit logs
     try {
@@ -1634,7 +1653,19 @@ exports.updateNegotiationHandler = async (req, res, next) => {
     const leadRes = await pool.query('SELECT custom_fields FROM leads WHERE id = $1 AND tenant_id = $2', [leadId, tenantId]);
     if (leadRes.rows.length === 0) return res.status(404).json({ success: false, error: { message: 'Lead not found' } });
 
-    const cf = leadRes.rows[0].custom_fields || {};
+    let cf = leadRes.rows[0].custom_fields || {};
+    while (typeof cf === 'string') {
+      try {
+        cf = JSON.parse(cf);
+      } catch (e) {
+        cf = {};
+        break;
+      }
+    }
+    if (!cf || typeof cf !== 'object') {
+      cf = {};
+    }
+
     cf.negotiation = {
       target_price,
       quoted_price,
@@ -2015,25 +2046,30 @@ exports.getSiteVisitChecklists = async (req, res, next) => {
 exports.bulkDeleteLeadsHandler = async (req, res, next) => {
   try {
     const { tenantId, userId } = getTenantAndUser(req);
-    const role = req.user && req.user.role ? req.user.role : '';
     const { leadIds } = req.body;
+    
+    console.log('[DEBUG] bulkDeleteLeadsHandler called', { tenantId, userId, leadIds });
+    
     if (!leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
       return res.status(400).json({ success: false, error: { message: 'leadIds array is required' } });
     }
     
-    let query = `UPDATE leads SET deleted_at = NOW() WHERE tenant_id = $1 AND id = ANY($2::uuid[])`;
+    // Perform a hard delete on the provided leads. 
+    // We rely on the `authorize('leads:delete')` middleware for authorization.
+    let query = `DELETE FROM leads WHERE tenant_id = $1 AND id = ANY($2::uuid[]) RETURNING id`;
     const values = [tenantId, leadIds];
-
-    if (role !== 'superadmin' && role !== 'admin' && role !== 'manager' && role !== 'gm') {
-      query += ` AND assignee_id = $3`;
-      values.push(userId);
+    
+    console.log('[DEBUG] Executing bulk delete query:', query, values);
+    const result = await pool.query(query, values);
+    console.log('[DEBUG] Query result rowCount:', result.rowCount);
+    
+    if (result.rowCount === 0) {
+      return res.status(400).json({ success: false, error: { message: 'No leads were deleted. They may have already been deleted or are invalid.' } });
     }
     
-    query += ` RETURNING id`;
-    
-    const result = await pool.query(query, values);
     res.json({ success: true, data: { deletedCount: result.rowCount, leadIds: result.rows.map(r => r.id) } });
   } catch (error) {
+    console.error('[DEBUG] bulkDeleteLeadsHandler ERROR:', error);
     next(error);
   }
 };
@@ -2119,7 +2155,22 @@ exports.bulkUpdateLeadsHandler = async (req, res, next) => {
     let paramIdx = 1;
     
     if (updates.massDelete === true) {
-      setFields.push(`deleted_at = NOW()`);
+      let delQuery = `DELETE FROM leads WHERE tenant_id = $1 AND id = ANY($2::uuid[])`;
+      const delValues = [tenantId, leadIds];
+      
+      if (role !== 'superadmin' && role !== 'admin' && role !== 'manager' && role !== 'gm') {
+        delQuery += ` AND assignee_id = $3`;
+        delValues.push(userId);
+      }
+      
+      delQuery += ` RETURNING id`;
+      const delResult = await pool.query(delQuery, delValues);
+      
+      if (delResult.rowCount === 0) {
+        return res.status(400).json({ success: false, error: { message: 'No leads were deleted. They may have already been deleted or you lack permission.' } });
+      }
+      
+      return res.json({ success: true, data: { updatedCount: delResult.rowCount, leadIds: delResult.rows.map(r => r.id) } });
     } else {
       if (updates.markAsLost === true) {
         setFields.push(`status = $${paramIdx++}`);
@@ -2459,7 +2510,11 @@ exports.getAutomationEventsHandler = async (req, res, next) => {
     if (!lead) return res.status(404).json({ success: false, error: 'Lead not found' });
     
     if (role !== 'superadmin' && role !== 'admin' && role !== 'manager' && role !== 'gm') {
-      if (lead.assignee_id !== userId) {
+      const dataScope = require('../middleware/dataScope');
+      const scopeFilter = dataScope.buildScopeFilter(req.user, 'leads', 'assignee_id', 'l');
+      const checkQuery = `SELECT 1 FROM leads l WHERE l.tenant_id = $1 AND l.id = $2 AND ${scopeFilter}`;
+      const checkResult = await pool.query(checkQuery, [tenantId, id]);
+      if (checkResult.rowCount === 0) {
         return res.status(403).json({ success: false, error: 'Access denied to this lead.' });
       }
     }
@@ -2546,7 +2601,11 @@ exports.getLeadByIdHandler = async (req, res, next) => {
     }
 
     if (role !== 'superadmin' && role !== 'admin' && role !== 'manager' && role !== 'gm') {
-      if (lead.assignee_id !== userId) {
+      const dataScope = require('../middleware/dataScope');
+      const scopeFilter = dataScope.buildScopeFilter(req.user, 'leads', 'assignee_id', 'l');
+      const checkQuery = `SELECT 1 FROM leads l WHERE l.tenant_id = $1 AND l.id = $2 AND ${scopeFilter}`;
+      const checkResult = await pool.query(checkQuery, [tenantId, id]);
+      if (checkResult.rowCount === 0) {
         return res.status(403).json({ success: false, error: 'Access denied to this lead.' });
       }
     }

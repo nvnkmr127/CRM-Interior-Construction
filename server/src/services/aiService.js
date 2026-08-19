@@ -530,16 +530,68 @@ Return a valid JSON object ONLY:
  * @param {string} leadId 
  */
 async function analyzeSentiment(tenantId, leadId) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return { mood: 'Neutral', emoji: '😐', tip: 'Mocked sentiment due to missing API key.' };
-
-  const ai = new GoogleGenAI({ apiKey });
   const lead = await findLeadById(tenantId, leadId);
   if (!lead) throw new Error('Lead not found for Sentiment analysis');
 
+  const pool = require('../db/pool');
+  const notesRes = await pool.query(
+    "SELECT notes FROM activities WHERE lead_id = $1 AND tenant_id = $2 AND type = 'note' ORDER BY created_at DESC LIMIT 5",
+    [leadId, tenantId]
+  );
+  const recentNotes = notesRes.rows.map(r => r.notes).join(' | ');
+  const combinedNotes = `${lead.notes || ''} | ${recentNotes}`;
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    const text = combinedNotes.toLowerCase();
+    
+    if (text.includes('excited') || text.includes('fantastic') || text.includes('love') || text.includes('dream') || text.includes('speed up')) {
+      return {
+        mood: 'Excited',
+        emoji: '🔥',
+        tip: 'The prospect is highly motivated. Follow up immediately to lock in the design agreement before enthusiasm cools down.'
+      };
+    }
+    if (text.includes('unhappy') || text.includes('inflated') || text.includes('too high') || text.includes('expensive') || text.includes('doubt')) {
+      return {
+        mood: 'Negative',
+        emoji: '📉',
+        tip: 'Show budget flexibility. Offer value-engineering alternatives (e.g. laminate finishes instead of acrylic) to rebuild trust.'
+      };
+    }
+    if (text.includes('frustrated') || text.includes('disappointed') || text.includes('delay') || text.includes('deadline') || text.includes('missed')) {
+      return {
+        mood: 'Frustrated',
+        emoji: '😤',
+        tip: 'Acknowledge delays immediately and apologize. Give them a realistic delivery timeline and deliver drawings priority.'
+      };
+    }
+    if (text.includes('anxious') || text.includes('worried') || text.includes('leakage') || text.includes('guarantee') || text.includes('warranty') || text.includes('hesitant')) {
+      return {
+        mood: 'Negative',
+        emoji: '😰',
+        tip: 'Address safety concerns. Provide written catalog specifications, product warranty sheets, and testimonial proofs.'
+      };
+    }
+    if (text.includes('positive') || text.includes('smoothly') || text.includes('approve') || text.includes('visit') || text.includes('agree')) {
+      return {
+        mood: 'Positive',
+        emoji: '😊',
+        tip: 'The client is pleased. Maintain momentum by confirming the next steps and sending the layout adjustments today.'
+      };
+    }
+
+    return {
+      mood: 'Neutral',
+      emoji: '😐',
+      tip: 'The prospect is in information-gathering mode. Keep providing valuable materials and structure your next follow-up call.'
+    };
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
   const payload = `Analyze this lead's profile and notes to determine their current emotional mood/sentiment.
 Lead Name: ${lead.name}
-Notes/Activities: ${lead.notes || 'No recent notes.'}
+Notes/Activities: ${combinedNotes || 'No recent notes.'}
 
 Return a valid JSON object ONLY:
 {

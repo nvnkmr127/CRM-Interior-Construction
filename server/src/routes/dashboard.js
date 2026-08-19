@@ -17,7 +17,7 @@ router.get('/stats', cacheResponse(300), async (req, res) => {
   const userRole = req.user.role;
 
   try {
-    const data = await analyticsService.getGlobalStats(tenantId, userId, userRole);
+    const data = await analyticsService.getGlobalStats(tenantId, userId, req.user);
 
     return success(res, data);
   } catch (error) {
@@ -32,9 +32,13 @@ router.get('/activity', cacheResponse(60), async (req, res) => {
 
   try {
     const { rows } = await readPool.query(`
-      SELECT al.*, u.name as user_name, u.avatar_url
+      SELECT al.*, u.name as user_name, u.avatar_url,
+             l.name as lead_name,
+             p.name as project_name
       FROM audit_logs al
       LEFT JOIN users u ON u.id = al.user_id
+      LEFT JOIN leads l ON (al.entity = 'lead' AND al.entity_id = l.id)
+      LEFT JOIN projects p ON (al.entity = 'project' AND al.entity_id = p.id)
       WHERE al.tenant_id=$1 AND (
         al.action ILIKE 'lead.%' OR 
         al.action ILIKE 'task.%' OR 
@@ -44,22 +48,34 @@ router.get('/activity', cacheResponse(60), async (req, res) => {
       ORDER BY al.created_at DESC LIMIT $2
     `, [tenantId, limit]);
 
-    return success(res, rows.map(row => ({
-      id: row.id,
-      action: row.action,
-      entity: row.entity,
-      entity_id: row.entity_id,
-      user_name: row.user_name,
-      avatar_url: row.avatar_url,
-      created_at: row.created_at,
-      new_value: row.new_value,
-      old_value: row.old_value,
-      ip_address: row.ip_address,
-      browser: row.browser,
-      device: row.device,
-      location: row.location,
-      reason: row.reason
-    })));
+    return success(res, rows.map(row => {
+      let parsedNew = row.new_value;
+      let parsedOld = row.old_value;
+      if (typeof parsedNew === 'string') {
+        try { parsedNew = JSON.parse(parsedNew); } catch(e) {}
+      }
+      if (typeof parsedOld === 'string') {
+        try { parsedOld = JSON.parse(parsedOld); } catch(e) {}
+      }
+      return {
+        id: row.id,
+        action: row.action,
+        entity: row.entity,
+        entity_id: row.entity_id,
+        user_name: row.user_name,
+        avatar_url: row.avatar_url,
+        created_at: row.created_at,
+        new_value: parsedNew,
+        old_value: parsedOld,
+        ip_address: row.ip_address,
+        browser: row.browser,
+        device: row.device,
+        location: row.location,
+        reason: row.reason,
+        lead_name: row.lead_name,
+        project_name: row.project_name
+      };
+    }));
   } catch (error) {
     logger.error('Activity fetch error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Activity fetch failed', 500);
@@ -136,7 +152,7 @@ router.get('/sales', async (req, res, next) => {
     const userId = req.user && (req.user.id || req.user.userId);
     
     // Aggregate everything for a sales rep in one request
-    const data = await analyticsService.getSalesDashboard(tenantId, userId);
+    const data = await analyticsService.getSalesDashboard(tenantId, userId, req.user);
     
     // Using responseFormatter via throwing to res.json directly
     res.json(data);
@@ -150,7 +166,7 @@ router.get('/manager', cacheResponse(300), async (req, res, next) => {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
     
     // Aggregate everything for a manager in one request
-    const data = await analyticsService.getManagerDashboard(tenantId);
+    const data = await analyticsService.getManagerDashboard(tenantId, req.user);
     
     res.json(data);
   } catch (error) {

@@ -1362,12 +1362,7 @@ export const setupMockInterceptor = (api) => {
                 const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
                 const { leadIds } = payload || {};
                 if (Array.isArray(leadIds)) {
-                  mockDatabase.leads = mockDatabase.leads.map(l => {
-                    if (leadIds.includes(l.id)) {
-                      return { ...l, deleted_at: new Date().toISOString() };
-                    }
-                    return l;
-                  });
+                  mockDatabase.leads = mockDatabase.leads.filter(l => !leadIds.includes(l.id));
                   persistDb();
                 }
                 responseData.data = { success: true };

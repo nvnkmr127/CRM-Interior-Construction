@@ -1,51 +1,65 @@
 const db = require('../../config/db');
 const readPool = db.readPool || db;
+const dataScope = require('../../middleware/dataScope');
 
-exports.getGlobalStats = async (tenantId, userId, userRole) => {
-  const isGlobal = userRole === 'superadmin' || userRole === 'admin' || (typeof userRole === 'object' && (userRole?.name?.toLowerCase() === 'superadmin' || userRole?.name?.toLowerCase() === 'super admin' || userRole?.name?.toLowerCase() === 'admin'));
+exports.getGlobalStats = async (tenantId, userId, user) => {
+  const isGlobal = user.role === 'superadmin' || user.role === 'admin' || (typeof user.role === 'object' && (user.role?.name?.toLowerCase() === 'superadmin' || user.role?.name?.toLowerCase() === 'super admin' || user.role?.name?.toLowerCase() === 'admin'));
   
-  const assigneeFilter = isGlobal ? '' : `AND (assignee_id=$2 OR assignee_id IS NULL)`;
-  const params = isGlobal ? [tenantId] : [tenantId, userId];
+  let leadsFilter = isGlobal ? '1=1' : dataScope.buildScopeFilter(user, 'leads', 'assignee_id');
+  let leadsFilterL = isGlobal ? '1=1' : dataScope.buildScopeFilter(user, 'leads', 'assignee_id', 'l');
+  let projectsFilter = isGlobal ? '1=1' : dataScope.buildScopeFilter(user, 'projects', 'pm_id');
+  let tasksFilter = isGlobal ? '1=1' : dataScope.buildScopeFilter(user, 'tasks', 'assignee_id');
   
-  const activeLeadsRes = await readPool.query(`SELECT COUNT(*) FROM leads WHERE tenant_id=$1 ${assigneeFilter} AND deleted_at IS NULL`, params);
-  const wonThisMonthRes = await readPool.query(`
-    SELECT COUNT(*) as count, COALESCE(SUM(l.budget_max), 0) as won_value
-    FROM leads l
-    LEFT JOIN lead_stages ls ON ls.id = l.stage_id
-    WHERE l.tenant_id=$1 AND (ls.is_won=true OR l.status='converted' OR l.status='won')
-    AND l.updated_at >= date_trunc('month', NOW())
-  `, [tenantId]);
-  const projectsRes = await readPool.query(`
-    SELECT
-      COUNT(*) FILTER (WHERE status IS NULL OR LOWER(status) NOT IN ('completed', 'cancelled', 'on_hold', 'deleted')) as active,
-      COUNT(*) FILTER (WHERE (status IS NULL OR LOWER(status) NOT IN ('completed', 'cancelled', 'on_hold', 'deleted')) AND target_date < NOW()) as overdue
-    FROM projects WHERE tenant_id=$1 AND deleted_at IS NULL
-  `, [tenantId]);
-  const tasksRes = await readPool.query(`
-    SELECT
-      COUNT(*) FILTER (WHERE due_date::date = CURRENT_DATE) as due_today,
-      COUNT(*) FILTER (WHERE due_date::date < CURRENT_DATE AND status!='done') as overdue
-    FROM tasks
-    WHERE tenant_id=$1 ${assigneeFilter} AND deleted_at IS NULL AND status!='done'
-  `, params);
-  const prevWeekLeadsRes = await readPool.query(`
-    SELECT COUNT(*) FROM leads
-    WHERE tenant_id=$1 ${assigneeFilter} AND deleted_at IS NULL
-    AND created_at >= NOW() - INTERVAL '14 days'
-    AND created_at < NOW() - INTERVAL '7 days'
-  `, params);
-  const targetsRes = await readPool.query(`SELECT 0 as target_revenue, 0 as target_leads`);
+  const params = [tenantId];
   
-  const revenueTrendRes = await readPool.query(`
-    SELECT 
-      TO_CHAR(date_trunc('week', pm.paid_at::timestamp), 'IYYY-"W"IW') as week,
-      COALESCE(SUM(pm.paid_amount), 0)::float as amt
-    FROM payment_milestones pm
-    JOIN projects p ON pm.project_id = p.id
-    WHERE p.tenant_id = $1 AND pm.status = 'paid' AND pm.paid_at IS NOT NULL AND pm.paid_at != '' AND pm.paid_at::timestamp >= NOW() - INTERVAL '12 weeks'
-    GROUP BY date_trunc('week', pm.paid_at::timestamp)
-    ORDER BY date_trunc('week', pm.paid_at::timestamp) ASC
-  `, [tenantId]);
+  const [
+    activeLeadsRes,
+    wonThisMonthRes,
+    projectsRes,
+    tasksRes,
+    prevWeekLeadsRes,
+    targetsRes,
+    revenueTrendRes
+  ] = await Promise.all([
+    readPool.query(`SELECT COUNT(*) FROM leads WHERE tenant_id=$1 AND (${leadsFilter}) AND deleted_at IS NULL`, params),
+    readPool.query(`
+      SELECT COUNT(*) as count, COALESCE(SUM(l.budget_max), 0) as won_value
+      FROM leads l
+      LEFT JOIN lead_stages ls ON ls.id = l.stage_id
+      WHERE l.tenant_id=$1 AND (${leadsFilterL}) AND (ls.is_won=true OR l.status='converted' OR l.status='won')
+      AND l.updated_at >= date_trunc('month', NOW())
+    `, params),
+    readPool.query(`
+      SELECT
+        COUNT(*) FILTER (WHERE status IS NULL OR LOWER(status) NOT IN ('completed', 'cancelled', 'on_hold', 'deleted')) as active,
+        COUNT(*) FILTER (WHERE (status IS NULL OR LOWER(status) NOT IN ('completed', 'cancelled', 'on_hold', 'deleted')) AND target_date < NOW()) as overdue
+      FROM projects WHERE tenant_id=$1 AND (${projectsFilter}) AND deleted_at IS NULL
+    `, params),
+    readPool.query(`
+      SELECT
+        COUNT(*) FILTER (WHERE due_date::date = CURRENT_DATE) as due_today,
+        COUNT(*) FILTER (WHERE due_date::date < CURRENT_DATE AND status!='done') as overdue
+      FROM tasks
+      WHERE tenant_id=$1 AND (${tasksFilter}) AND deleted_at IS NULL AND status!='done'
+    `, params),
+    readPool.query(`
+      SELECT COUNT(*) FROM leads
+      WHERE tenant_id=$1 AND (${leadsFilter}) AND deleted_at IS NULL
+      AND created_at >= NOW() - INTERVAL '14 days'
+      AND created_at < NOW() - INTERVAL '7 days'
+    `, params),
+    readPool.query(`SELECT 0 as target_revenue, 0 as target_leads`),
+    readPool.query(`
+      SELECT 
+        TO_CHAR(date_trunc('week', pm.paid_at::timestamp), 'IYYY-"W"IW') as week,
+        COALESCE(SUM(pm.paid_amount), 0)::float as amt
+      FROM payment_milestones pm
+      JOIN projects p ON pm.project_id = p.id
+      WHERE p.tenant_id = $1 AND pm.status = 'paid' AND pm.paid_at IS NOT NULL AND pm.paid_at != '' AND pm.paid_at::timestamp >= NOW() - INTERVAL '12 weeks'
+      GROUP BY date_trunc('week', pm.paid_at::timestamp)
+      ORDER BY date_trunc('week', pm.paid_at::timestamp) ASC
+    `, [tenantId])
+  ]);
 
   const activeCount = parseInt(activeLeadsRes.rows[0].count, 10);
   const prevWeekCount = parseInt(prevWeekLeadsRes.rows[0].count, 10);
@@ -96,25 +110,30 @@ exports.getGlobalStats = async (tenantId, userId, userRole) => {
   };
 };
 
-exports.getSalesDashboard = async (tenantId, userId) => {
-  const pipelineRes = await readPool.query(`
+exports.getSalesDashboard = async (tenantId, userId, user) => {
+  const leadsFilter = dataScope.buildScopeFilter(user, 'leads', 'assignee_id', 'l');
+  const tasksFilter = dataScope.buildScopeFilter(user, 'tasks', 'assignee_id');
+  
+  const [pipelineRes, tasksRes, performanceRes] = await Promise.all([
+    readPool.query(`
       SELECT ls.name, COUNT(l.id) as count
       FROM lead_stages ls
-      LEFT JOIN leads l ON l.stage_id=ls.id AND l.assignee_id=$2 AND l.deleted_at IS NULL AND l.tenant_id=$1
+      LEFT JOIN leads l ON l.stage_id=ls.id AND (${leadsFilter}) AND l.deleted_at IS NULL AND l.tenant_id=$1
       WHERE ls.tenant_id=$1 GROUP BY ls.id ORDER BY ls.sort_order
-    `, [tenantId, userId]);
-  const tasksRes = await readPool.query(`
+    `, [tenantId]),
+    readPool.query(`
       SELECT id, title, status, priority, due_date
-      FROM tasks WHERE tenant_id=$1 AND assignee_id=$2 AND status != 'done' AND deleted_at IS NULL
+      FROM tasks WHERE tenant_id=$1 AND (${tasksFilter}) AND status != 'done' AND deleted_at IS NULL
       ORDER BY due_date ASC LIMIT 10
-    `, [tenantId, userId]);
-  const performanceRes = await readPool.query(`
+    `, [tenantId]),
+    readPool.query(`
       SELECT COUNT(*) as won_count, COALESCE(SUM(l.budget_max), 0) as revenue
       FROM leads l
       LEFT JOIN lead_stages ls ON ls.id = l.stage_id
-      WHERE l.tenant_id=$1 AND l.assignee_id=$2 AND (ls.is_won=true OR l.status='converted')
+      WHERE l.tenant_id=$1 AND (${leadsFilter}) AND (ls.is_won=true OR l.status='converted')
       AND l.updated_at >= date_trunc('month', NOW())
-    `, [tenantId, userId]);
+    `, [tenantId])
+  ]);
   
   return {
     pipeline: pipelineRes.rows,
@@ -123,27 +142,31 @@ exports.getSalesDashboard = async (tenantId, userId) => {
   };
 };
 
-exports.getManagerDashboard = async (tenantId) => {
-  const teamPerformanceRes = await readPool.query(`
+exports.getManagerDashboard = async (tenantId, user) => {
+  const leadsFilter = dataScope.buildScopeFilter(user, 'leads', 'assignee_id', 'l');
+  
+  const [teamPerformanceRes, activePipelineRes, slaBreachesRes] = await Promise.all([
+    readPool.query(`
       SELECT u.name as rep_name, COUNT(l.id) as active_leads, COALESCE(SUM(l.budget_max), 0) as potential_revenue
       FROM users u
-      LEFT JOIN leads l ON l.assignee_id = u.id AND l.status = 'active' AND l.tenant_id=$1
+      LEFT JOIN leads l ON l.assignee_id = u.id AND l.status = 'active' AND l.tenant_id=$1 AND (${leadsFilter})
       WHERE u.tenant_id=$1 AND u.role = 'sales_executive'
       GROUP BY u.name
-    `, [tenantId]);
-  const activePipelineRes = await readPool.query(`
+    `, [tenantId]),
+    readPool.query(`
       SELECT ls.name as stage, COUNT(l.id) as count, 0 as total_value
       FROM lead_stages ls
-      LEFT JOIN leads l ON l.stage_id = ls.id AND l.deleted_at IS NULL AND l.tenant_id=$1
+      LEFT JOIN leads l ON l.stage_id = ls.id AND l.deleted_at IS NULL AND l.tenant_id=$1 AND (${leadsFilter})
       WHERE ls.tenant_id=$1 GROUP BY ls.id ORDER BY ls.sort_order
-    `, [tenantId]);
-  const slaBreachesRes = await readPool.query(`
+    `, [tenantId]),
+    readPool.query(`
       SELECT l.id, l.name, l.created_at, u.name as rep_name
       FROM leads l
       JOIN users u ON u.id = l.assignee_id
-      WHERE l.tenant_id=$1 AND l.status = 'active' AND l.created_at < NOW() - INTERVAL '48 hours' AND l.stage_id = (SELECT id FROM lead_stages WHERE tenant_id=$1 ORDER BY sort_order ASC LIMIT 1)
+      WHERE l.tenant_id=$1 AND l.status = 'active' AND l.created_at < NOW() - INTERVAL '48 hours' AND l.stage_id = (SELECT id FROM lead_stages WHERE tenant_id=$1 ORDER BY sort_order ASC LIMIT 1) AND (${leadsFilter})
       LIMIT 10
-    `, [tenantId]);
+    `, [tenantId])
+  ]);
   
   return {
     teamPerformance: teamPerformanceRes.rows,
@@ -153,48 +176,54 @@ exports.getManagerDashboard = async (tenantId) => {
 };
 
 exports.getCeoDashboard = async (tenantId) => {
-  const revenueRes = await readPool.query(`SELECT 0 as total_pipeline, COUNT(id) as total_leads FROM leads WHERE tenant_id=$1 AND status NOT IN ('won', 'lost', 'archived')`, [tenantId]);
-  const pipelineRes = await readPool.query(`SELECT status, COUNT(*) as count FROM leads WHERE tenant_id=$1 GROUP BY status`, [tenantId]);
+  const [revenueRes, pipelineRes] = await Promise.all([
+    readPool.query(`SELECT 0 as total_pipeline, COUNT(id) as total_leads FROM leads WHERE tenant_id=$1 AND status NOT IN ('won', 'lost', 'archived')`, [tenantId]),
+    readPool.query(`SELECT status, COUNT(*) as count FROM leads WHERE tenant_id=$1 GROUP BY status`, [tenantId])
+  ]);
   return { revenue: revenueRes.rows[0], pipelineDistribution: pipelineRes.rows };
 };
 
 exports.getDesignerDashboard = async (tenantId, userId) => {
-  const projectsByStageRes = await readPool.query(`
-    SELECT COALESCE(design_stage, 'Unassigned') as stage, COUNT(*) as count 
-    FROM projects 
-    WHERE tenant_id=$1 AND designer_id=$2 AND status='active' AND deleted_at IS NULL
-    GROUP BY design_stage
-  `, [tenantId, userId]);
-
-  const pendingDocsRes = await readPool.query(`
-    SELECT COUNT(*) as count
-    FROM documents d
-    JOIN projects p ON d.project_id = p.id
-    WHERE d.tenant_id=$1 AND p.designer_id=$2 AND d.client_approval_status='pending' AND p.status='active' AND p.deleted_at IS NULL
-  `, [tenantId, userId]);
-
-  const pendingDesignAssetsRes = await readPool.query(`
-    SELECT COUNT(*) as count
-    FROM design_assets da
-    JOIN projects p ON da.project_id = p.id
-    WHERE da.tenant_id=$1 AND p.designer_id=$2 AND da.status='pending_approval' AND p.status='active' AND p.deleted_at IS NULL
-  `, [tenantId, userId]);
-
-  const overdueTasksRes = await readPool.query(`
-    SELECT id, title, due_date, priority
-    FROM tasks
-    WHERE tenant_id=$1 AND assignee_id=$2 AND status != 'done' AND due_date < CURRENT_DATE AND deleted_at IS NULL
-    ORDER BY due_date ASC
-    LIMIT 10
-  `, [tenantId, userId]);
-
-  const upcomingDeadlinesRes = await readPool.query(`
-    SELECT id, title, due_date, priority
-    FROM tasks
-    WHERE tenant_id=$1 AND assignee_id=$2 AND status != 'done' AND due_date >= CURRENT_DATE AND due_date <= CURRENT_DATE + INTERVAL '7 days' AND deleted_at IS NULL
-    ORDER BY due_date ASC
-    LIMIT 10
-  `, [tenantId, userId]);
+  const [
+    projectsByStageRes,
+    pendingDocsRes,
+    pendingDesignAssetsRes,
+    overdueTasksRes,
+    upcomingDeadlinesRes
+  ] = await Promise.all([
+    readPool.query(`
+      SELECT COALESCE(design_stage, 'Unassigned') as stage, COUNT(*) as count 
+      FROM projects 
+      WHERE tenant_id=$1 AND designer_id=$2 AND status='active' AND deleted_at IS NULL
+      GROUP BY design_stage
+    `, [tenantId, userId]),
+    readPool.query(`
+      SELECT COUNT(*) as count
+      FROM documents d
+      JOIN projects p ON d.project_id = p.id
+      WHERE d.tenant_id=$1 AND p.designer_id=$2 AND d.client_approval_status='pending' AND p.status='active' AND p.deleted_at IS NULL
+    `, [tenantId, userId]),
+    readPool.query(`
+      SELECT COUNT(*) as count
+      FROM design_assets da
+      JOIN projects p ON da.project_id = p.id
+      WHERE da.tenant_id=$1 AND p.designer_id=$2 AND da.status='pending_approval' AND p.status='active' AND p.deleted_at IS NULL
+    `, [tenantId, userId]),
+    readPool.query(`
+      SELECT id, title, due_date, priority
+      FROM tasks
+      WHERE tenant_id=$1 AND assignee_id=$2 AND status != 'done' AND due_date < CURRENT_DATE AND deleted_at IS NULL
+      ORDER BY due_date ASC
+      LIMIT 10
+    `, [tenantId, userId]),
+    readPool.query(`
+      SELECT id, title, due_date, priority
+      FROM tasks
+      WHERE tenant_id=$1 AND assignee_id=$2 AND status != 'done' AND due_date >= CURRENT_DATE AND due_date <= CURRENT_DATE + INTERVAL '7 days' AND deleted_at IS NULL
+      ORDER BY due_date ASC
+      LIMIT 10
+    `, [tenantId, userId])
+  ]);
 
   return {
     projectsByStage: projectsByStageRes.rows,
@@ -214,58 +243,62 @@ exports.getMarketingDashboard = async (tenantId) => {
 };
 
 exports.getOperationsDashboard = async (tenantId) => {
-  const activeProjectsByCityRes = await readPool.query(`
-    SELECT COALESCE(city, 'Unknown') as city, COUNT(*) as count 
-    FROM projects 
-    WHERE tenant_id=$1 AND status = 'active' AND deleted_at IS NULL
-    GROUP BY city
-    ORDER BY count DESC
-  `, [tenantId]);
-
-  const ragStatusRes = await readPool.query(`
-    SELECT 
-      COUNT(*) FILTER (WHERE target_date < CURRENT_DATE) as critical_count,
-      COUNT(*) FILTER (WHERE target_date >= CURRENT_DATE AND target_date <= CURRENT_DATE + INTERVAL '7 days') as at_risk_count,
-      COUNT(*) FILTER (WHERE target_date > CURRENT_DATE + INTERVAL '7 days' OR target_date IS NULL) as on_track_count
-    FROM projects
-    WHERE tenant_id=$1 AND status = 'active' AND deleted_at IS NULL
-  `, [tenantId]);
+  const [
+    activeProjectsByCityRes,
+    ragStatusRes,
+    revenueRes,
+    openSnagsRes,
+    serviceTicketsRes,
+    weeklyTrendsRes
+  ] = await Promise.all([
+    readPool.query(`
+      SELECT COALESCE(city, 'Unknown') as city, COUNT(*) as count 
+      FROM projects 
+      WHERE tenant_id=$1 AND status = 'active' AND deleted_at IS NULL
+      GROUP BY city
+      ORDER BY count DESC
+    `, [tenantId]),
+    readPool.query(`
+      SELECT 
+        COUNT(*) FILTER (WHERE target_date < CURRENT_DATE) as critical_count,
+        COUNT(*) FILTER (WHERE target_date >= CURRENT_DATE AND target_date <= CURRENT_DATE + INTERVAL '7 days') as at_risk_count,
+        COUNT(*) FILTER (WHERE target_date > CURRENT_DATE + INTERVAL '7 days' OR target_date IS NULL) as on_track_count
+      FROM projects
+      WHERE tenant_id=$1 AND status = 'active' AND deleted_at IS NULL
+    `, [tenantId]),
+    readPool.query(`
+      SELECT 
+        SUM(pm.paid_amount) as collected,
+        SUM(pm.amount - COALESCE(pm.paid_amount, 0)) as outstanding
+      FROM payment_milestones pm
+      JOIN projects p ON pm.project_id = p.id
+      WHERE pm.tenant_id=$1 AND p.status = 'active' AND p.deleted_at IS NULL
+    `, [tenantId]),
+    readPool.query(`
+      SELECT COUNT(*) as count
+      FROM snags s
+      JOIN projects p ON s.project_id = p.id
+      WHERE s.tenant_id=$1 AND s.status NOT IN ('resolved', 'client_verified') AND p.status = 'active' AND p.deleted_at IS NULL
+    `, [tenantId]),
+    readPool.query(`
+      SELECT priority, COUNT(*) as count
+      FROM service_tickets
+      WHERE tenant_id=$1 AND status NOT IN ('resolved', 'closed')
+      GROUP BY priority
+    `, [tenantId]),
+    readPool.query(`
+      SELECT 
+        TO_CHAR(DATE_TRUNC('week', created_at), 'YYYY-MM-DD') as week,
+        COUNT(*) as new_projects
+      FROM projects
+      WHERE tenant_id=$1 AND created_at >= CURRENT_DATE - INTERVAL '6 weeks' AND deleted_at IS NULL
+      GROUP BY DATE_TRUNC('week', created_at)
+      ORDER BY DATE_TRUNC('week', created_at) ASC
+    `, [tenantId])
+  ]);
 
   const ragStats = ragStatusRes.rows[0];
   const overdueProjectsCount = parseInt(ragStats.critical_count, 10) || 0;
-
-  const revenueRes = await readPool.query(`
-    SELECT 
-      SUM(pm.paid_amount) as collected,
-      SUM(pm.amount - COALESCE(pm.paid_amount, 0)) as outstanding
-    FROM payment_milestones pm
-    JOIN projects p ON pm.project_id = p.id
-    WHERE pm.tenant_id=$1 AND p.status = 'active' AND p.deleted_at IS NULL
-  `, [tenantId]);
-
-  const openSnagsRes = await readPool.query(`
-    SELECT COUNT(*) as count
-    FROM snags s
-    JOIN projects p ON s.project_id = p.id
-    WHERE s.tenant_id=$1 AND s.status NOT IN ('resolved', 'client_verified') AND p.status = 'active' AND p.deleted_at IS NULL
-  `, [tenantId]);
-
-  const serviceTicketsRes = await readPool.query(`
-    SELECT priority, COUNT(*) as count
-    FROM service_tickets
-    WHERE tenant_id=$1 AND status NOT IN ('resolved', 'closed')
-    GROUP BY priority
-  `, [tenantId]);
-
-  const weeklyTrendsRes = await readPool.query(`
-    SELECT 
-      TO_CHAR(DATE_TRUNC('week', created_at), 'YYYY-MM-DD') as week,
-      COUNT(*) as new_projects
-    FROM projects
-    WHERE tenant_id=$1 AND created_at >= CURRENT_DATE - INTERVAL '6 weeks' AND deleted_at IS NULL
-    GROUP BY DATE_TRUNC('week', created_at)
-    ORDER BY DATE_TRUNC('week', created_at) ASC
-  `, [tenantId]);
 
   return { 
     activeProjectsByCity: activeProjectsByCityRes.rows,
@@ -286,56 +319,60 @@ exports.getOperationsDashboard = async (tenantId) => {
 };
 
 exports.getFinanceDashboard = async (tenantId) => {
-  const contractValueRes = await readPool.query(`
-    SELECT 
-      SUM(contract_value) as total_value,
-      SUM(contract_value) FILTER (WHERE created_at >= date_trunc('month', CURRENT_DATE)) as this_month_value
-    FROM projects
-    WHERE tenant_id=$1 AND status != 'cancelled' AND deleted_at IS NULL
-  `, [tenantId]);
-
-  const receivablesRes = await readPool.query(`
-    SELECT 
-      SUM(paid_amount) as total_collected,
-      SUM(amount - COALESCE(paid_amount, 0)) as total_outstanding
-    FROM payment_milestones
-    WHERE tenant_id=$1
-  `, [tenantId]);
-
-  const agingBucketsRes = await readPool.query(`
-    SELECT 
-      SUM(amount - COALESCE(paid_amount, 0)) FILTER (WHERE CURRENT_DATE - due_date BETWEEN 1 AND 30) as days_1_30,
-      SUM(amount - COALESCE(paid_amount, 0)) FILTER (WHERE CURRENT_DATE - due_date BETWEEN 31 AND 60) as days_31_60,
-      SUM(amount - COALESCE(paid_amount, 0)) FILTER (WHERE CURRENT_DATE - due_date BETWEEN 61 AND 90) as days_61_90,
-      SUM(amount - COALESCE(paid_amount, 0)) FILTER (WHERE CURRENT_DATE - due_date > 90) as days_90_plus
-    FROM payment_milestones
-    WHERE tenant_id=$1 AND due_date < CURRENT_DATE AND status != 'paid'
-  `, [tenantId]);
-
-  const upcomingMilestonesRes = await readPool.query(`
-    SELECT pm.id, pm.name, pm.amount, pm.due_date, p.name as project_name
-    FROM payment_milestones pm
-    JOIN projects p ON pm.project_id = p.id
-    WHERE pm.tenant_id=$1 AND pm.status != 'paid' AND pm.due_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '30 days'
-    ORDER BY pm.due_date ASC
-    LIMIT 10
-  `, [tenantId]);
-
-  const vendorPayablesRes = await readPool.query(`
-    SELECT SUM(amount - COALESCE(paid_amount, 0)) as outstanding
-    FROM vendor_payment_milestones
-    WHERE tenant_id=$1 AND status != 'paid'
-  `, [tenantId]);
-
-  const revenueTrendRes = await readPool.query(`
-    SELECT 
-      TO_CHAR(DATE_TRUNC('month', TO_DATE(paid_at, 'YYYY-MM-DD')), 'YYYY-MM') as month,
-      SUM(paid_amount) as revenue
-    FROM payment_milestones
-    WHERE tenant_id=$1 AND paid_at IS NOT NULL AND TO_DATE(paid_at, 'YYYY-MM-DD') >= date_trunc('month', CURRENT_DATE - INTERVAL '5 months')
-    GROUP BY DATE_TRUNC('month', TO_DATE(paid_at, 'YYYY-MM-DD'))
-    ORDER BY month ASC
-  `, [tenantId]);
+  const [
+    contractValueRes,
+    receivablesRes,
+    agingBucketsRes,
+    upcomingMilestonesRes,
+    vendorPayablesRes,
+    revenueTrendRes
+  ] = await Promise.all([
+    readPool.query(`
+      SELECT 
+        SUM(contract_value) as total_value,
+        SUM(contract_value) FILTER (WHERE created_at >= date_trunc('month', CURRENT_DATE)) as this_month_value
+      FROM projects
+      WHERE tenant_id=$1 AND status != 'cancelled' AND deleted_at IS NULL
+    `, [tenantId]),
+    readPool.query(`
+      SELECT 
+        SUM(paid_amount) as total_collected,
+        SUM(amount - COALESCE(paid_amount, 0)) as total_outstanding
+      FROM payment_milestones
+      WHERE tenant_id=$1
+    `, [tenantId]),
+    readPool.query(`
+      SELECT 
+        SUM(amount - COALESCE(paid_amount, 0)) FILTER (WHERE CURRENT_DATE - due_date BETWEEN 1 AND 30) as days_1_30,
+        SUM(amount - COALESCE(paid_amount, 0)) FILTER (WHERE CURRENT_DATE - due_date BETWEEN 31 AND 60) as days_31_60,
+        SUM(amount - COALESCE(paid_amount, 0)) FILTER (WHERE CURRENT_DATE - due_date BETWEEN 61 AND 90) as days_61_90,
+        SUM(amount - COALESCE(paid_amount, 0)) FILTER (WHERE CURRENT_DATE - due_date > 90) as days_90_plus
+      FROM payment_milestones
+      WHERE tenant_id=$1 AND due_date < CURRENT_DATE AND status != 'paid'
+    `, [tenantId]),
+    readPool.query(`
+      SELECT pm.id, pm.name, pm.amount, pm.due_date, p.name as project_name
+      FROM payment_milestones pm
+      JOIN projects p ON pm.project_id = p.id
+      WHERE pm.tenant_id=$1 AND pm.status != 'paid' AND pm.due_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '30 days'
+      ORDER BY pm.due_date ASC
+      LIMIT 10
+    `, [tenantId]),
+    readPool.query(`
+      SELECT SUM(amount - COALESCE(paid_amount, 0)) as outstanding
+      FROM vendor_payment_milestones
+      WHERE tenant_id=$1 AND status != 'paid'
+    `, [tenantId]),
+    readPool.query(`
+      SELECT 
+        TO_CHAR(DATE_TRUNC('month', TO_DATE(paid_at, 'YYYY-MM-DD')), 'YYYY-MM') as month,
+        SUM(paid_amount) as revenue
+      FROM payment_milestones
+      WHERE tenant_id=$1 AND paid_at IS NOT NULL AND TO_DATE(paid_at, 'YYYY-MM-DD') >= date_trunc('month', CURRENT_DATE - INTERVAL '5 months')
+      GROUP BY DATE_TRUNC('month', TO_DATE(paid_at, 'YYYY-MM-DD'))
+      ORDER BY month ASC
+    `, [tenantId])
+  ]);
 
   return {
     contractValue: {
@@ -359,46 +396,50 @@ exports.getFinanceDashboard = async (tenantId) => {
 };
 
 exports.getFieldOperationsDashboard = async (tenantId, userId) => {
-  const activeSitesRes = await readPool.query(`
-    SELECT id, name, site_address, target_date
-    FROM projects
-    WHERE tenant_id=$1 AND status = 'active' AND (site_engineer_id = $2 OR qc_engineer_id = $2) AND deleted_at IS NULL
-  `, [tenantId, userId]);
-
-  const todaysVisitsRes = await readPool.query(`
-    SELECT sv.id, sv.scheduled_at, sv.status, p.name as project_name
-    FROM site_visits sv
-    JOIN projects p ON sv.project_id = p.id
-    WHERE sv.tenant_id=$1 AND sv.assignee_id=$2 AND DATE(sv.scheduled_at) = CURRENT_DATE
-    ORDER BY sv.scheduled_at ASC
-  `, [tenantId, userId]);
-
-  const pendingQCRes = await readPool.query(`
-    SELECT qs.id, qs.stage_name, p.name as project_name
-    FROM project_qc_stages qs
-    JOIN projects p ON qs.project_id = p.id
-    WHERE qs.tenant_id=$1 AND qs.qc_engineer_id=$2 AND qs.status = 'pending'
-  `, [tenantId, userId]);
-
-  const openSnagsRes = await readPool.query(`
-    SELECT p.name as project_name, COUNT(s.id) as count
-    FROM snags s
-    JOIN projects p ON s.project_id = p.id
-    WHERE s.tenant_id=$1 AND (p.site_engineer_id = $2 OR p.qc_engineer_id = $2) 
-      AND s.status NOT IN ('resolved', 'client_verified') AND p.status = 'active' AND p.deleted_at IS NULL
-    GROUP BY p.name
-    ORDER BY count DESC
-  `, [tenantId, userId]);
-
-  const overdueSnagsRes = await readPool.query(`
-    SELECT s.id, s.title, s.created_at, p.name as project_name
-    FROM snags s
-    JOIN projects p ON s.project_id = p.id
-    WHERE s.tenant_id=$1 AND (p.site_engineer_id = $2 OR p.qc_engineer_id = $2)
-      AND s.status NOT IN ('resolved', 'client_verified') 
-      AND s.created_at + (s.sla_hours * interval '1 hour') < NOW()
-      AND p.status = 'active' AND p.deleted_at IS NULL
-  `, [tenantId, userId]);
+  const [
+    activeSitesRes,
+    todaysVisitsRes,
+    pendingQCRes,
+    openSnagsRes,
+    overdueSnagsRes
+  ] = await Promise.all([
+    readPool.query(`
+      SELECT id, name, site_address, target_date
+      FROM projects
+      WHERE tenant_id=$1 AND status = 'active' AND (site_engineer_id = $2 OR qc_engineer_id = $2) AND deleted_at IS NULL
+    `, [tenantId, userId]),
+    readPool.query(`
+      SELECT sv.id, sv.scheduled_at, sv.status, p.name as project_name
+      FROM site_visits sv
+      JOIN projects p ON sv.project_id = p.id
+      WHERE sv.tenant_id=$1 AND sv.assignee_id=$2 AND DATE(sv.scheduled_at) = CURRENT_DATE
+      ORDER BY sv.scheduled_at ASC
+    `, [tenantId, userId]),
+    readPool.query(`
+      SELECT qs.id, qs.stage_name, p.name as project_name
+      FROM project_qc_stages qs
+      JOIN projects p ON qs.project_id = p.id
+      WHERE qs.tenant_id=$1 AND qs.qc_engineer_id=$2 AND qs.status = 'pending'
+    `, [tenantId, userId]),
+    readPool.query(`
+      SELECT p.name as project_name, COUNT(s.id) as count
+      FROM snags s
+      JOIN projects p ON s.project_id = p.id
+      WHERE s.tenant_id=$1 AND (p.site_engineer_id = $2 OR p.qc_engineer_id = $2) 
+        AND s.status NOT IN ('resolved', 'client_verified') AND p.status = 'active' AND p.deleted_at IS NULL
+      GROUP BY p.name
+      ORDER BY count DESC
+    `, [tenantId, userId]),
+    readPool.query(`
+      SELECT s.id, s.title, s.created_at, p.name as project_name
+      FROM snags s
+      JOIN projects p ON s.project_id = p.id
+      WHERE s.tenant_id=$1 AND (p.site_engineer_id = $2 OR p.qc_engineer_id = $2)
+        AND s.status NOT IN ('resolved', 'client_verified') 
+        AND s.created_at + (s.sla_hours * interval '1 hour') < NOW()
+        AND p.status = 'active' AND p.deleted_at IS NULL
+    `, [tenantId, userId])
+  ]);
 
   return {
     activeSites: activeSitesRes.rows,
@@ -410,50 +451,54 @@ exports.getFieldOperationsDashboard = async (tenantId, userId) => {
 };
 
 exports.getProcurementDashboard = async (tenantId) => {
-  const pendingPRsRes = await readPool.query(`
-    SELECT pr.id, pr.pr_number, pr.required_by_date, p.name as project_name
-    FROM purchase_requests pr
-    JOIN projects p ON pr.project_id = p.id
-    WHERE pr.tenant_id=$1 AND pr.status = 'pending_approval'
-    ORDER BY pr.required_by_date ASC
-  `, [tenantId]);
-
-  const activePOsRes = await readPool.query(`
-    SELECT status, COUNT(*) as count, SUM(total_amount) as total_value
-    FROM purchase_orders
-    WHERE tenant_id=$1 AND status IN ('sent', 'confirmed', 'partially received')
-    GROUP BY status
-  `, [tenantId]);
-
-  const materialsInTransitRes = await readPool.query(`
-    SELECT md.id, md.delivery_number, md.expected_delivery_date, po.po_number, p.name as project_name
-    FROM material_deliveries md
-    JOIN purchase_orders po ON md.purchase_order_id = po.id
-    JOIN projects p ON md.project_id = p.id
-    WHERE md.tenant_id=$1 AND md.status = 'pending'
-    ORDER BY md.expected_delivery_date ASC
-  `, [tenantId]);
-
-  const criticalShortagesRes = await readPool.query(`
-    SELECT pr.id, pr.pr_number, pr.required_by_date, p.name as project_name
-    FROM purchase_requests pr
-    JOIN projects p ON pr.project_id = p.id
-    WHERE pr.tenant_id=$1 AND pr.status = 'approved' AND pr.required_by_date <= CURRENT_DATE + INTERVAL '7 days'
-    ORDER BY pr.required_by_date ASC
-  `, [tenantId]);
-
-  const vendorPerformanceRes = await readPool.query(`
-    SELECT 
-      v.name as vendor_name,
-      COUNT(md.id) as total_deliveries,
-      COUNT(md.id) FILTER (WHERE md.actual_receipt_date <= md.expected_delivery_date) as on_time_deliveries
-    FROM material_deliveries md
-    JOIN purchase_orders po ON md.purchase_order_id = po.id
-    JOIN project_vendors v ON po.vendor_id = v.id
-    WHERE md.tenant_id=$1 AND md.status IN ('delivered', 'inspected', 'partially received')
-    GROUP BY v.name
-    ORDER BY total_deliveries DESC
-  `, [tenantId]);
+  const [
+    pendingPRsRes,
+    activePOsRes,
+    materialsInTransitRes,
+    criticalShortagesRes,
+    vendorPerformanceRes
+  ] = await Promise.all([
+    readPool.query(`
+      SELECT pr.id, pr.pr_number, pr.required_by_date, p.name as project_name
+      FROM purchase_requests pr
+      JOIN projects p ON pr.project_id = p.id
+      WHERE pr.tenant_id=$1 AND pr.status = 'pending_approval'
+      ORDER BY pr.required_by_date ASC
+    `, [tenantId]),
+    readPool.query(`
+      SELECT status, COUNT(*) as count, SUM(total_amount) as total_value
+      FROM purchase_orders
+      WHERE tenant_id=$1 AND status IN ('sent', 'confirmed', 'partially received')
+      GROUP BY status
+    `, [tenantId]),
+    readPool.query(`
+      SELECT md.id, md.delivery_number, md.expected_delivery_date, po.po_number, p.name as project_name
+      FROM material_deliveries md
+      JOIN purchase_orders po ON md.purchase_order_id = po.id
+      JOIN projects p ON md.project_id = p.id
+      WHERE md.tenant_id=$1 AND md.status = 'pending'
+      ORDER BY md.expected_delivery_date ASC
+    `, [tenantId]),
+    readPool.query(`
+      SELECT pr.id, pr.pr_number, pr.required_by_date, p.name as project_name
+      FROM purchase_requests pr
+      JOIN projects p ON pr.project_id = p.id
+      WHERE pr.tenant_id=$1 AND pr.status = 'approved' AND pr.required_by_date <= CURRENT_DATE + INTERVAL '7 days'
+      ORDER BY pr.required_by_date ASC
+    `, [tenantId]),
+    readPool.query(`
+      SELECT 
+        v.name as vendor_name,
+        COUNT(md.id) as total_deliveries,
+        COUNT(md.id) FILTER (WHERE md.actual_receipt_date <= md.expected_delivery_date) as on_time_deliveries
+      FROM material_deliveries md
+      JOIN purchase_orders po ON md.purchase_order_id = po.id
+      JOIN project_vendors v ON po.vendor_id = v.id
+      WHERE md.tenant_id=$1 AND md.status IN ('delivered', 'inspected', 'partially received')
+      GROUP BY v.name
+      ORDER BY total_deliveries DESC
+    `, [tenantId])
+  ]);
 
   return {
     pendingPRs: pendingPRsRes.rows,

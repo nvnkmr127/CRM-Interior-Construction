@@ -1544,7 +1544,15 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
             )}
             
             {activeTab === 'negotiation' && (
-              <NegotiationDesk leadId={leadId} lead={lead} onUpdate={fetchLead} />
+              <NegotiationDesk leadId={leadId} lead={lead} onUpdate={async (updatedLead) => {
+                let freshLead = updatedLead;
+                if (!freshLead) {
+                  freshLead = await fetchLead(false);
+                } else {
+                  setLead(freshLead);
+                }
+                if (onLeadUpdated && freshLead) onLeadUpdated(freshLead);
+              }} />
             )}
 
             {activeTab === 'ai-copilot' && (
@@ -1607,6 +1615,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
                 <ActivityTimeline 
                   leadId={leadId} 
+                  lead={lead}
                   refreshTrigger={activityRefresh} 
                   onActivityLogged={async () => {
                     const freshLead = await fetchLead();

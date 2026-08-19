@@ -11,11 +11,11 @@ router.use(authenticate)
 router.get('/', authorize('users:manage'), async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT error.id, error.user_id, error.recipient_email, error.subject, error.template_name, error.status, error.error_message, error.retry_count, error.created_at, error.sent_at, u.name as user_name
+      `SELECT e.id, e.user_id, e.recipient_email, e.subject, e.template_name, e.status, e.error_message, e.retry_count, e.created_at, e.sent_at, u.name as user_name
        FROM email_queue e
-       LEFT JOIN users u ON u.id = error.user_id
-       WHERE error.tenant_id = $1
-       ORDER BY error.created_at DESC
+       LEFT JOIN users u ON u.id = e.user_id
+       WHERE e.tenant_id = $1
+       ORDER BY e.created_at DESC
        LIMIT 100`,
       [req.tenantId]
     )

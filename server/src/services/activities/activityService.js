@@ -49,11 +49,21 @@ exports.updateActivity = async (tenantId, activityId, data) => {
          notes = COALESCE($2, notes), 
          scheduled_at = COALESCE($3, scheduled_at),
          outcome = COALESCE($4, outcome),
-         metadata = COALESCE($5, metadata),
-         updated_at = NOW()
+         metadata = COALESCE($5, metadata)
      WHERE id = $6 AND tenant_id = $7 RETURNING *`,
     [title, notes, scheduledAt || null, outcome, metadata || {}, activityId, tenantId]
   );
+  
+  if (rows[0]) {
+    const updated = rows[0];
+    await pool.query(
+      `UPDATE lead_timeline
+       SET summary = $1
+       WHERE entity_id = $2 AND tenant_id = $3 AND entity = 'activity'`,
+      [updated.notes || updated.title || '', activityId, tenantId]
+    );
+  }
+  
   return rows[0];
 };
 

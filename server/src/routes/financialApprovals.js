@@ -298,15 +298,15 @@ router.get('/', async (req, res, next) => {
 router.post('/:id/approve', async (req, res, next) => {
   const client = await pool.connect();
   try {
+    const { id } = req.params;
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
     // Budget Validation Hard-Block
-    const validation = await getProjectBudgetValidation(req.query.id, tenantId);
+    const validation = await getProjectBudgetValidation(id, tenantId);
     if (validation.status === 'exceeded' && req.body.force !== true) {
       return fail(res, 'BAD_REQUEST', 'Budget exceeded. Approval blocked.', 400);
     }
 
     const userId = req.user.id || req.user.userId;
-    const { id } = req.params;
 
     await client.query('BEGIN');
 
