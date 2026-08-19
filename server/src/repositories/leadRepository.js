@@ -145,7 +145,7 @@ async function findLeadById(tenantId, leadId, txClient = null, includeDeleted = 
   return result.rows[0] || null;
 }
 
-async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy, sortDesc, page = 1, limit = 20, createdFrom, createdTo, scoreMin, scoreMax, intent, cursor, scopeFilter = '1=1', deletedOnly = false }) {
+async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy, sortDesc, page = 1, limit = 20, createdFrom, createdTo, scoreMin, scoreMax, intent, cursor, scopeFilter = '1=1', deletedOnly = false, status }) {
   const isDeletedOnly = deletedOnly === 'true' || deletedOnly === true;
   const deletedCondition = isDeletedOnly ? 'l.deleted_at IS NOT NULL' : 'l.deleted_at IS NULL';
   let query = `
@@ -216,6 +216,15 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
   if (stageId) {
     query += ` AND l.stage_id = $${paramIndex++}`;
     values.push(stageId);
+  }
+
+  if (status === 'active') {
+    query += ` AND (l.status IS NULL OR l.status != 'parked')`;
+  } else if (status === 'parked') {
+    query += ` AND l.status = 'parked'`;
+  } else if (status) {
+    query += ` AND l.status = $${paramIndex++}`;
+    values.push(status);
   }
   
   if (assigneeId) {
