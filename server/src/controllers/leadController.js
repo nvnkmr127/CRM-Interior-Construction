@@ -463,6 +463,7 @@ exports.importLeadsHandler = async function importLeadsHandler(req, res, next) {
   try {
     const { tenantId, userId } = getTenantAndUser(req);
     const csvText = req.body.csv || '';
+    const mapping = req.body.mapping || {};
     if (!csvText) return res.status(400).json({ success: false, error: { message: 'No CSV data provided' } });
 
     const parseCSV = (text) => {
@@ -505,7 +506,7 @@ exports.importLeadsHandler = async function importLeadsHandler(req, res, next) {
     const rows = parseCSV(csvText.trim());
     if (rows.length < 2) return res.status(400).json({ success: false, error: { message: 'Invalid or empty CSV' } });
 
-    const headers = rows[0].map(h => h.toLowerCase().replace(/\s+/g, '_'));
+    const rawHeaders = rows[0];
 
     const results = { created: 0, skipped: 0, errors: [] };
     const { createLead: createLeadService } = require('../services/leads/createLead');
@@ -519,7 +520,32 @@ exports.importLeadsHandler = async function importLeadsHandler(req, res, next) {
         const cols = rows[i];
         if (!cols || cols.length === 0 || (cols.length === 1 && !cols[0])) continue;
         const row = {};
-        headers.forEach((h, idx) => { row[h] = cols[idx] || ''; });
+
+        if (mapping && Object.keys(mapping).length > 0) {
+          Object.keys(mapping).forEach(stdKey => {
+            const csvHeaderName = mapping[stdKey];
+            if (csvHeaderName) {
+              const idx = rawHeaders.indexOf(csvHeaderName);
+              if (idx !== -1) {
+                const val = cols[idx];
+                if (val !== undefined && val !== null && val.trim() !== '') {
+                  row[stdKey] = val.trim();
+                }
+              }
+            }
+          });
+        } else {
+          const headers = rawHeaders.map(h => h.toLowerCase().replace(/\s+/g, '_'));
+          headers.forEach((h, idx) => {
+            let key = h;
+            if (h === 'stage_id' || h === 'stageid') key = 'stageId';
+            if (h === 'assignee_id' || h === 'assigneeid') key = 'assigneeId';
+            const val = cols[idx];
+            if (val !== undefined && val !== null && val.trim() !== '') {
+              row[key] = val.trim();
+            }
+          });
+        }
 
         if (!row.name || !row.phone) {
           results.errors.push({ row: i + 1, error: 'Missing name or phone' });
@@ -527,21 +553,19 @@ exports.importLeadsHandler = async function importLeadsHandler(req, res, next) {
           continue;
         }
 
+        await txClient.query(`SAVEPOINT row_${i}`);
         try {
           await createLeadService({ tenantId, userId, data: row, txClient, skipSideEffects: true });
+          await txClient.query(`RELEASE SAVEPOINT row_${i}`);
           results.created++;
         } catch (error) {
+          await txClient.query(`ROLLBACK TO SAVEPOINT row_${i}`);
           results.errors.push({ row: i + 1, error: error.message });
           results.skipped++;
         }
       }
 
-      if (results.errors.length > 0) {
-        await txClient.query('ROLLBACK');
-        results.created = 0; // Everything rolled back
-      } else {
-        await txClient.query('COMMIT');
-      }
+      await txClient.query('COMMIT');
 
       res.json({ success: true, data: results });
     } catch (error) {

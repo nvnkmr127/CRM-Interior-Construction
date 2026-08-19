@@ -1,6 +1,11 @@
 const { Pool } = require('pg');
 const path = require('path');
 const logger = require('../utils/logger');
+const dns = require('dns');
+
+if (typeof dns.setDefaultResultOrder === 'function') {
+  dns.setDefaultResultOrder('ipv4first');
+}
 
 if (process.env.NODE_ENV === 'test') {
   require('dotenv').config({ path: path.resolve(__dirname, '../../.env.test'), override: true });

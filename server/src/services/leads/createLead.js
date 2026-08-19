@@ -86,7 +86,7 @@ async function createLead({ tenantId, userId, data, txClient = null, skipSideEff
     // Try sequence first, then fallback.
     try {
       const defaultStageCheck = await queryFn(
-        'SELECT id FROM lead_stages WHERE tenant_id = $1 ORDER BY sequence ASC, created_at ASC LIMIT 1',
+        'SELECT id FROM lead_stages WHERE tenant_id = $1 ORDER BY sort_order ASC, created_at ASC LIMIT 1',
         [tenantId]
       );
       if (defaultStageCheck.rows.length > 0) {
@@ -94,14 +94,18 @@ async function createLead({ tenantId, userId, data, txClient = null, skipSideEff
         logger.info('[createLead] Default stage assigned:', finalStageId);
       }
     } catch (error) {
-      // If 'sequence' doesn't exist, fallback to created_at
-      const defaultStageCheckFallback = await queryFn(
-        'SELECT id FROM lead_stages WHERE tenant_id = $1 ORDER BY created_at ASC LIMIT 1',
-        [tenantId]
-      );
-      if (defaultStageCheckFallback.rows.length > 0) {
-        finalStageId = defaultStageCheckFallback.rows[0].id;
-        logger.info('[createLead] Default stage assigned (fallback):', finalStageId);
+      // If 'sort_order' fails, fallback to created_at
+      try {
+        const defaultStageCheckFallback = await queryFn(
+          'SELECT id FROM lead_stages WHERE tenant_id = $1 ORDER BY created_at ASC LIMIT 1',
+          [tenantId]
+        );
+        if (defaultStageCheckFallback.rows.length > 0) {
+          finalStageId = defaultStageCheckFallback.rows[0].id;
+          logger.info('[createLead] Default stage assigned (fallback):', finalStageId);
+        }
+      } catch (innerErr) {
+        logger.error('[createLead] Failed fallback default stage assign:', innerErr);
       }
     }
   }

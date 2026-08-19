@@ -8,7 +8,7 @@
  */
 const buildScopeFilter = (user, moduleName, ownerField = 'owner_id', tableAlias = '') => {
   if (!user) return '1=0';
-  if (user.role === 'superadmin') return '1=1';
+  if (user.role === 'superadmin' || user.role === 'admin') return '1=1';
 
   const scopes = user.data_scopes || {};
   const rawScope = scopes[moduleName] || 'assigned'; // Default to assigned if no scope is defined

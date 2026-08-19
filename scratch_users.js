@@ -1,12 +1,12 @@
-const pool = require('./server/src/db/pool'); 
-async function checkUsers() {
+const pool = require('./server/src/db/pool');
+async function checkSessions() {
   try {
-    const users = await pool.query('SELECT u.email, u.name, t.slug as tenant_slug FROM users u JOIN tenants t ON u.tenant_id = t.id');
-    console.log('Registered Users in DB:', users.rows);
+    const sessions = await pool.query('SELECT s.*, u.email, u.name FROM sessions s JOIN users u ON s.user_id = u.id ORDER BY s.expires_at DESC LIMIT 5');
+    console.log('Sessions:', sessions.rows);
     process.exit(0);
   } catch (err) {
-    console.error('Error querying DB users:', err);
+    console.error('Error:', err);
     process.exit(1);
   }
 }
-checkUsers();
+checkSessions();
