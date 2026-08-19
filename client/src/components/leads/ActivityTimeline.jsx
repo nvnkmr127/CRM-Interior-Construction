@@ -657,7 +657,7 @@ export default function ActivityTimeline({ leadId, lead, onTaskAdded, refreshTri
               } catch(e) {}
 
               return (
-                <div key={activity.id} className="relative group animate-fadeIn">
+                <div key={activity.timeline_id || activity.id} className="relative group animate-fadeIn">
                   {!onlyNoteMode && (
                     <div className={`absolute -left-[27px] sm:-left-[35px] top-1.5 flex h-7 w-7 items-center justify-center rounded-full border shadow-sm transition-transform group-hover:scale-110 ${getTypeStyle(activity.type, isSystem)}`}>
                       <Icon />

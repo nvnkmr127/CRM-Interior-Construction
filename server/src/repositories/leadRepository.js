@@ -327,6 +327,32 @@ async function updateLead(tenantId, leadId, updates) {
     const propUpdates = {};
     const prefUpdates = {};
     
+    // List of actual columns in the database 'leads' table
+    const leadsTableColumns = new Set([
+      'name', 'email', 'phone', 'source', 'stage_id', 'assignee_id', 'score', 'custom_fields', 'notes', 'status',
+      'converted_to_project_id', 'risk_level', 'scope', 'locality', 'budget_max', 'budget_min', 
+      'dnc_flag', 'consent_whatsapp', 'competitor_mentioned', 'lead_number', 'preferred_communication',
+      'preferred_language', 'referral_source', 'lifestyle_preferences', 'additional_contacts', 
+      'win_probability', 'last_contacted_at', 'ai_score_breakdown', 'stage_updated_at',
+      'last_quote_opened_at', 'quote_view_count', 'referred_by_lead_id', 'latitude', 'longitude',
+      'suggested_followup_at', 'tags', 'builder_name', 'possession_date', 'house_status', 'loan_approved',
+      'interior_style', 'material_preference'
+    ]);
+
+    let customFieldsUpdated = false;
+    let customFieldsObj = {};
+
+    const existingRes = await client.query('SELECT custom_fields FROM leads WHERE tenant_id = $1 AND id = $2', [tenantId, leadId]);
+    if (existingRes.rowCount > 0 && existingRes.rows[0].custom_fields) {
+      try {
+        customFieldsObj = typeof existingRes.rows[0].custom_fields === 'string'
+          ? JSON.parse(existingRes.rows[0].custom_fields)
+          : existingRes.rows[0].custom_fields;
+      } catch (e) {
+        customFieldsObj = {};
+      }
+    }
+
     for (const [key, value] of Object.entries(updates)) {
       if (propertyFields.includes(key)) {
         if (key === 'builder_name') propUpdates['builder'] = value;
@@ -336,9 +362,20 @@ async function updateLead(tenantId, leadId, updates) {
         if (key === 'material_preference') prefUpdates['material'] = value;
         else if (key === 'budget_category_allocation' && typeof value === 'object' && value !== null) prefUpdates[key] = JSON.stringify(value);
         else prefUpdates[key] = value;
-      } else {
+      } else if (leadsTableColumns.has(key)) {
         leadUpdates[key] = value;
+      } else {
+        customFieldsObj[key] = value;
+        customFieldsUpdated = true;
       }
+    }
+
+    if (customFieldsUpdated || updates.custom_fields !== undefined) {
+      if (updates.custom_fields !== undefined) {
+        const passedCustom = typeof updates.custom_fields === 'string' ? JSON.parse(updates.custom_fields) : updates.custom_fields;
+        customFieldsObj = { ...customFieldsObj, ...passedCustom };
+      }
+      leadUpdates['custom_fields'] = JSON.stringify(customFieldsObj);
     }
     
     // 1. Update Core Lead Table

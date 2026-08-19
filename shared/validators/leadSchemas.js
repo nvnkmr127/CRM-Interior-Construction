@@ -12,7 +12,7 @@ const createLeadSchema = z.object({
 });
 
 const logActivitySchema = z.object({
-  type: z.enum(['call', 'note', 'email', 'whatsapp', 'site_visit', 'meeting']),
+  type: z.enum(['call', 'note', 'email', 'whatsapp', 'site_visit', 'meeting', 'task']),
   title: z.string().optional(),
   notes: z.string(),
   outcome: z.string().optional(),

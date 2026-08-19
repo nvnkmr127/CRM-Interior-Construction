@@ -117,4 +117,11 @@
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
     at async Object.updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:362:9)
     at async updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\leads\updateLead.js:16:23)
-    at async exports.updateLeadHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2628:25)\n\n
+    at async exports.updateLeadHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2628:25)\n\n2026-08-19T16:43:44.276Z\nerror: column "lost_reason" of relation "leads" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Object.updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:371:9)
+    at async updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\leads\updateLead.js:16:23)
+    at async exports.updateLeadHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2664:25)\n\n2026-08-19T17:23:28.063Z\nError: System error or unhandled exception
+    at getFilesHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:672:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\n
