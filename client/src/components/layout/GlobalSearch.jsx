@@ -4,71 +4,74 @@ import { useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import api from '../../api/axios'
 import { useAuth } from '../../store/authContext'
+import { usePermissions } from '../../hooks/usePermissions'
 import styles from './GlobalSearch.module.css'
 
 export default function GlobalSearch({ isOpen, onClose }) {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState({ leads:[], projects:[], tasks:[] })
+  const [results, setResults] = useState({ leads:[], projects:[], tasks:[], contacts:[] })
   const [loading, setLoading] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
   
   const inputRef = useRef(null)
   const navigate = useNavigate()
   
-  const { user } = useAuth()
-  const isAdmin = user?.role?.name === 'superadmin'
-  const enabledModules = user?.role?.enabled_modules || []
-  
-  const canSearch = (moduleName) => isAdmin || enabledModules.includes(moduleName)
+  const { isModuleEnabled } = usePermissions()
 
   useEffect(() => {
     if (isOpen) {
       setQuery('')
-      setResults({ leads:[], projects:[], tasks:[] })
+      setResults({ leads:[], projects:[], tasks:[], contacts:[] })
       setTimeout(() => inputRef.current?.focus(), 10)
     }
   }, [isOpen])
 
   useEffect(() => {
     if (!query || query.length < 2) {
-      setResults({ leads:[], projects:[], tasks:[] })
+      setResults({ leads:[], projects:[], tasks:[], contacts:[] })
       return
     }
 
     const searchTypes = []
-    if (canSearch('leads')) searchTypes.push('leads')
-    if (canSearch('projects')) searchTypes.push('projects')
-    if (canSearch('tasks')) searchTypes.push('tasks')
+    if (isModuleEnabled('leads')) searchTypes.push('leads')
+    if (isModuleEnabled('projects')) searchTypes.push('projects')
+    if (isModuleEnabled('tasks')) searchTypes.push('tasks')
+    if (isModuleEnabled('leads')) searchTypes.push('contacts')
     
     if (searchTypes.length === 0) {
-      setResults({ leads:[], projects:[], tasks:[] })
+      setResults({ leads:[], projects:[], tasks:[], contacts:[] })
       return
     }
 
     const timer = setTimeout(() => {
       setLoading(true)
+      console.log('Sending search request for:', query, 'with types:', searchTypes)
       api.get(`/search?q=${encodeURIComponent(query)}&types=${searchTypes.join(',')}`)
         .then(r => {
-          const data = r.data || {}
+          console.log('Search response payload:', r.data)
+          const data = r.data?.data || r.data || {}
           setResults({
             leads: data.leads || [],
             projects: data.projects || [],
-            tasks: data.tasks || []
+            tasks: data.tasks || [],
+            contacts: data.contacts || []
           })
           setSelectedIndex(0)
         })
-        .catch(console.error)
+        .catch(err => {
+          console.error('Search request failed:', err)
+        })
         .finally(() => setLoading(false))
     }, 300)
     return () => clearTimeout(timer)
   }, [query])
 
   const flatResults = [
-    ...results.leads.map(r => ({ ...r, _type: 'lead', _icon: '◎', _sub: r.stageName, _url: `/leads/${r.id}` })),
-    ...(results.contacts || []).map(r => ({ ...r, _type: 'contact', _icon: '👤', _sub: r.role, _url: `/leads/${r.lead_id}` })),
-    ...(results.activities || []).map(r => ({ ...r, _type: 'activity', _icon: '📝', _sub: r.lead_name, _url: `/leads/${r.lead_id}` })),
-    ...results.projects.map(r => ({ ...r, _type: 'project', _icon: '◈', _sub: r.clientName, _url: `/projects/${r.id}` })),
-    ...results.tasks.map(r => ({ ...r, _type: 'task', _icon: '◻', _sub: r.projectName, _url: `/tasks/${r.id}` }))
+    ...results.leads.map(r => ({ ...r, _type: 'lead', _icon: '◎', _sub: r.stageName || r.stage_name, _url: `/leads?id=${r.id}` })),
+    ...(results.contacts || []).map(r => ({ ...r, _type: 'contact', _icon: '👤', _sub: r.role, _url: `/leads?id=${r.lead_id}` })),
+    ...(results.activities || []).map(r => ({ ...r, _type: 'activity', _icon: '📝', _sub: r.lead_name, _url: `/leads?id=${r.lead_id}` })),
+    ...results.projects.map(r => ({ ...r, _type: 'project', _icon: '◈', _sub: r.clientName || r.client_name, _url: `/projects/${r.id}` })),
+    ...results.tasks.map(r => ({ ...r, _type: 'task', _icon: '◻', _sub: r.projectName || r.project_name, _url: `/tasks` }))
   ]
 
   useEffect(() => {
@@ -132,6 +135,12 @@ export default function GlobalSearch({ isOpen, onClose }) {
                 <div className={styles.section}>
                   <div className={styles.sectionLabel}>TASKS</div>
                   {results.tasks.map(r => renderResult(flatResults.find(f => f.id === r.id && f._type === 'task')))}
+                </div>
+              )}
+              {results.contacts && results.contacts.length > 0 && (
+                <div className={styles.section}>
+                  <div className={styles.sectionLabel}>CONTACTS</div>
+                  {results.contacts.map(r => renderResult(flatResults.find(f => f.id === r.id && f._type === 'contact')))}
                 </div>
               )}
             </>

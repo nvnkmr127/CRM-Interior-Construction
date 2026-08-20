@@ -93,6 +93,7 @@ router.post('/:id/communications/sync', authenticate, authorize('leads:update'),
 router.get('/:id/inspirations', authenticate, authorize('leads:read'), leadController.getInspirationsHandler);
 router.post('/:id/inspirations', authenticate, authorize('leads:update'), leadController.createInspirationHandler);
 router.delete('/:id/inspirations/:iid', authenticate, authorize('leads:update'), leadController.deleteInspirationHandler);
+router.patch('/:id/inspirations/:iid', authenticate, authorize('leads:update'), leadController.updateInspirationHandler);
 
 // AI Copilot & Planning
 router.get('/:id/ai-insights', authenticate, authorize('leads:read'), leadController.getAiInsightsHandler);

@@ -25,7 +25,6 @@ export default function AIDesignProposalModal({ isOpen, onClose, leadId }) {
       }
     } catch (e) {
       toast.error('Failed to generate AI Design Proposal');
-      onClose();
     } finally {
       setLoading(false);
     }
@@ -35,7 +34,7 @@ export default function AIDesignProposalModal({ isOpen, onClose, leadId }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900 bg-opacity-50">
-      <div className="rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] border transition-all" style={{ background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(20px)', borderColor: 'rgba(255, 255, 255, 0.4)' }}>
+      <div className="rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] border transition-all bg-white/95 backdrop-blur-md border-white/20">
         
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 bg-gray-50">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
@@ -98,7 +97,10 @@ export default function AIDesignProposalModal({ isOpen, onClose, leadId }) {
 
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">Failed to load proposal.</div>
+            <div className="text-center py-8 text-gray-500">
+              <p className="mb-4">Failed to generate design proposal.</p>
+              <Button variant="outline" onClick={generateProposal}>Try Again</Button>
+            </div>
           )}
         </div>
 

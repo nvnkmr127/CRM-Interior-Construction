@@ -135,8 +135,12 @@ export default function NegotiationDesk({ leadId, lead, onUpdate }) {
     const recs = [];
     const lowerScopes = productScopes;
 
+    const hasScope = (keyphrase) => {
+      return lowerScopes.some(s => s.includes(keyphrase));
+    };
+
     // 1. Kitchen specific tips
-    if (lowerScopes.includes('kitchen') || lowerScopes.includes('modular_kitchen') || lowerScopes.includes('modular kitchen')) {
+    if (hasScope('kitchen') || hasScope('cook') || hasScope('pantry') || hasScope('dining')) {
       recs.push({
         type: 'add-ons',
         title: '🍳 Complimentary Kitchen Accessories',
@@ -155,7 +159,7 @@ export default function NegotiationDesk({ leadId, lead, onUpdate }) {
     }
 
     // 2. Bedroom/Wardrobe specific tips
-    if (lowerScopes.includes('bedroom') || lowerScopes.includes('wardrobe') || lowerScopes.includes('bedrooms')) {
+    if (hasScope('bedroom') || hasScope('wardrobe') || hasScope('storage') || hasScope('cabinet') || hasScope('loft')) {
       recs.push({
         type: 'add-ons',
         title: '👚 Wardrobe Accessories Add-On',
@@ -169,7 +173,7 @@ export default function NegotiationDesk({ leadId, lead, onUpdate }) {
     }
 
     // 3. Living room specific tips
-    if (lowerScopes.includes('living') || lowerScopes.includes('living_room') || lowerScopes.includes('living room')) {
+    if (hasScope('living') || hasScope('tv') || hasScope('foyer') || hasScope('crockery')) {
       recs.push({
         type: 'add-ons',
         title: '📺 Living TV Console Additions',
@@ -179,6 +183,81 @@ export default function NegotiationDesk({ leadId, lead, onUpdate }) {
         type: 'scope',
         title: '🪵 Wall Paneling Optimization',
         text: 'Recommend replacing veneer wall paneling designs behind the TV unit with premium paint finishes, charcoal louvers, or texture wallpapers to save up to ₹35k.'
+      });
+    }
+
+    // 4. Office/Study specific tips
+    if (hasScope('office') || hasScope('study')) {
+      recs.push({
+        type: 'add-ons',
+        title: '🔌 Intelligent Cable Management',
+        text: 'Offer a complimentary built-in desktop cable manager or premium wire organization kit (worth ₹5k) to retain the contract value.'
+      });
+      recs.push({
+        type: 'scope',
+        title: '📁 Open Bookshelves Switch',
+        text: 'Suggest changing closed glass-door cabinets to floating open wooden shelves for book storage, lowering material and glass fabrication costs by ₹15k.'
+      });
+    }
+
+    // 5. Ceiling/Lighting specific tips
+    if (hasScope('ceiling') || hasScope('lighting') || hasScope('light')) {
+      recs.push({
+        type: 'add-ons',
+        title: '💡 Complimentary indirect COB LED strips',
+        text: 'Offer to include high-grade, long-lasting ambient COB LED strip lights inside the ceiling coves at zero extra cost to sweeten the deal.'
+      });
+      recs.push({
+        type: 'scope',
+        title: '📐 Border Ceiling Simplification',
+        text: 'Suggest replacing double-step coffered ceiling designs with clean perimeter/border false ceilings, reducing boards, channel framing, and labor costs by 20%.'
+      });
+    }
+
+    // 6. Flooring/Painting specific tips
+    if (hasScope('flooring') || hasScope('paint') || hasScope('painting')) {
+      recs.push({
+        type: 'add-ons',
+        title: '🛡️ Waterproof Primer Shield Upgrade',
+        text: 'Provide a complimentary upgrade to premium anti-dampness base primer coat for all walls to secure the primary contract.'
+      });
+      recs.push({
+        type: 'scope',
+        title: '🎨 Single Accent Wall Strategy',
+        text: 'Instead of textured paint or wallpapers on multiple walls, recommend focus textures on a single highlight wall per room and solid emulsions elsewhere.'
+      });
+    }
+
+    // 7. Pooja Room specific tips
+    if (hasScope('pooja') || hasScope('prayer') || hasScope('mandir') || hasScope('temple')) {
+      recs.push({
+        type: 'add-ons',
+        title: '🪔 CNC Backlit Jali Upgrade',
+        text: 'Offer a free backlit CNC woodwork Jali panel for the temple backdrop to secure the pooja room package without lowering prices.'
+      });
+      recs.push({
+        type: 'scope',
+        title: '🪵 Carving to Laminate Trim Switch',
+        text: 'Suggest transitioning pooja unit drawer bases from custom carved solid teakwood to premium laminate drawer bases with wooden border trims.'
+      });
+    }
+
+    // 8. Full House specific tips
+    if (hasScope('fullhouse') || hasScope('full house') || hasScope('full_house') || hasScope('villa') || hasScope('apartment')) {
+      recs.push({
+        type: 'add-ons',
+        title: '💡 Smart Home Automation Integration',
+        text: 'Offer a complimentary smart-lighting panel or automated sensor controls for the living room and entryway to close the whole-house deal.'
+      });
+      recs.push({
+        type: 'scope',
+        title: '🚪 Phased Work Sequencing Plan',
+        text: 'Propose focusing Phase 1 of execution on critical functional spaces (Kitchen, Master Bedroom) while deferring guest rooms or study rooms to a Phase 2 contract.'
+      });
+      recs.push({
+        type: 'warranty',
+        title: '🛡️ Whole-Home Extended Warranty',
+        text: 'Offer a 5-year comprehensive warranty on all woodwork across the entire house, giving high reassurance at zero upfront material cost.'
       });
     }
 

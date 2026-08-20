@@ -2428,7 +2428,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               </div>
             )}
             {activeTab === 'estimates' && (
-              <EstimatesTab leadId={leadId} />
+              <EstimatesTab leadId={leadId} lead={lead} />
             )}
 
             {activeTab === 'inspirations' && (

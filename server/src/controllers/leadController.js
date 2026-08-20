@@ -605,9 +605,9 @@ exports.uploadFileHandler = async function uploadFileHandler(req, res, next) {
     }
 
     // Validate MIME type and Magic Number
-    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml', 'application/pdf'];
     if (!allowedMimeTypes.includes(req.file.mimetype)) {
-      return res.status(400).json({ success: false, error: { message: 'Invalid file type. Only JPEG, PNG, and PDF are allowed.' } });
+      return res.status(400).json({ success: false, error: { message: 'Invalid file type. Only JPEG, PNG, WEBP, GIF, SVG, and PDF are allowed.' } });
     }
 
     const hex = req.file.buffer.subarray(0, 4).toString('hex').toUpperCase();
@@ -615,6 +615,9 @@ exports.uploadFileHandler = async function uploadFileHandler(req, res, next) {
     if (req.file.mimetype === 'application/pdf' && hex.startsWith('25504446')) magicValid = true;
     else if ((req.file.mimetype === 'image/jpeg' || req.file.mimetype === 'image/jpg') && hex.startsWith('FFD8FF')) magicValid = true;
     else if (req.file.mimetype === 'image/png' && hex.startsWith('89504E47')) magicValid = true;
+    else if (req.file.mimetype === 'image/webp' && hex.startsWith('52494646')) magicValid = true;
+    else if (req.file.mimetype === 'image/gif' && hex.startsWith('47494638')) magicValid = true;
+    else if (req.file.mimetype === 'image/svg+xml') magicValid = true;
 
     if (!magicValid) {
       return res.status(400).json({ success: false, error: { message: 'File contents do not match the declared MIME type or file is corrupted.' } });
@@ -633,10 +636,16 @@ exports.uploadFileHandler = async function uploadFileHandler(req, res, next) {
       [tenantId, leadId, userId, req.file.originalname, req.file.size, req.file.mimetype, storageKey]
     );
 
-    const eventBus = require('../utils/eventBus');
-    eventBus.emit('lead.file_uploaded', { tenantId, userId, leadId, file: result.rows[0] });
+    const downloadUrl = await storage.getDownloadUrl(storageKey);
+    const responseData = {
+      ...result.rows[0],
+      download_url: downloadUrl
+    };
 
-    res.json({ success: true, data: result.rows[0] });
+    const eventBus = require('../utils/eventBus');
+    eventBus.emit('lead.file_uploaded', { tenantId, userId, leadId, file: responseData });
+
+    res.json({ success: true, data: responseData });
   } catch (error) {
     logger.error('uploadFileHandler error:', error);
     return next(new Error('System error or unhandled exception'));
@@ -1107,6 +1116,30 @@ exports.deleteInspirationHandler = async function deleteInspirationHandler(req, 
     res.json({ success: true });
   } catch (error) {
     logger.error('deleteInspirationHandler error:', error);
+    return next(new Error('System error or unhandled exception'));
+  }
+};
+
+exports.updateInspirationHandler = async function updateInspirationHandler(req, res, next) {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { id: leadId, iid } = req.params;
+    const { image_url, room_type, notes } = req.body;
+
+    const result = await pool.query(
+      `UPDATE lead_inspirations 
+       SET image_url = COALESCE($1, image_url), room_type = COALESCE($2, room_type), notes = COALESCE($3, notes)
+       WHERE id = $4 AND lead_id = $5 AND tenant_id = $6 RETURNING *`,
+      [image_url, room_type, notes, iid, leadId, tenantId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: { message: 'Inspiration not found' } });
+    }
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    logger.error('updateInspirationHandler error:', error);
     return next(new Error('System error or unhandled exception'));
   }
 };
@@ -2440,9 +2473,10 @@ exports.updateNativeEstimateHandler = async (req, res, next) => {
     const { tenantId, userId } = getTenantAndUser(req);
     const { id, estimateId } = req.params;
     
-    const rooms = req.body.rooms || (req.body.payload && req.body.payload.rooms) || [];
-    let total_amount = req.body.total_amount || 0;
-    if (!req.body.total_amount && rooms.length > 0) {
+    const rooms = req.body.rooms || (req.body.payload && req.body.payload.rooms);
+    let total_amount = req.body.total_amount;
+    if (total_amount === undefined && rooms && rooms.length > 0) {
+      total_amount = 0;
       rooms.forEach(r => {
         if (r.items) {
           r.items.forEach(i => {
@@ -2452,15 +2486,27 @@ exports.updateNativeEstimateHandler = async (req, res, next) => {
       });
     }
 
-    const payload = req.body.payload || { rooms };
+    const payload = req.body.payload || (rooms ? { rooms } : undefined);
 
     const query = `
       UPDATE lead_estimates
-      SET total_amount = $1, payload = $2, status = COALESCE($3, status), pdf_url = COALESCE($4, pdf_url), updated_at = NOW()
+      SET total_amount = COALESCE($1, total_amount), 
+          payload = COALESCE($2, payload), 
+          status = COALESCE($3, status), 
+          pdf_url = COALESCE($4, pdf_url), 
+          updated_at = NOW()
       WHERE id = $5 AND lead_id = $6 AND tenant_id = $7
       RETURNING *
     `;
-    const values = [total_amount, payload, req.body.status, req.body.pdf_url, estimateId, id, tenantId];
+    const values = [
+      total_amount !== undefined ? total_amount : null, 
+      payload !== undefined ? payload : null, 
+      req.body.status !== undefined ? req.body.status : null, 
+      req.body.pdf_url !== undefined ? req.body.pdf_url : null, 
+      estimateId, 
+      id, 
+      tenantId
+    ];
     const result = await pool.query(query, values);
     
     if (result.rows.length === 0) {

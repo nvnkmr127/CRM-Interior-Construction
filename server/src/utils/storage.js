@@ -102,7 +102,7 @@ class S3StorageProvider extends StorageProvider {
 class LocalStorageProvider extends StorageProvider {
   constructor() {
     super();
-    this.uploadDir = path.join(__dirname, '../../../uploads');
+    this.uploadDir = path.join(__dirname, '../../uploads');
     if (!fs.existsSync(this.uploadDir)) {
       fs.mkdirSync(this.uploadDir, { recursive: true });
     }

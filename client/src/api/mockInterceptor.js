@@ -1553,6 +1553,29 @@ export const setupMockInterceptor = (api) => {
               } else {
                 responseData.data = [];
               }
+            } else if (url.includes('/estimates/sync')) {
+              const match = url.match(/\/leads\/([a-zA-Z0-9-]+)\/estimates\/sync/);
+              const leadId = match ? match[1] : null;
+              if (leadId) {
+                if (!mockDatabase.estimates) mockDatabase.estimates = [];
+                const mockStatuses = ['draft', 'sent', 'accepted', 'rejected'];
+                mockDatabase.estimates = mockDatabase.estimates.map(e => {
+                  if (e.lead_id === leadId) {
+                    return {
+                      ...e,
+                      estimator_reference_id: e.estimator_reference_id || `EST-${Math.floor(1000 + Math.random() * 9000)}`,
+                      status: mockStatuses[Math.floor(Math.random() * mockStatuses.length)],
+                      total_amount: e.total_amount > 0 ? e.total_amount : Math.floor(5000 + Math.random() * 45000),
+                      updated_at: new Date().toISOString()
+                    };
+                  }
+                  return e;
+                });
+                persistDb();
+                responseData.data = mockDatabase.estimates.filter(e => e.lead_id === leadId);
+              } else {
+                responseData.data = [];
+              }
             } else if (url.includes('/estimates')) {
               const match = url.match(/\/leads\/([a-zA-Z0-9-]+)\/estimates/);
               const leadId = match ? match[1] : null;
@@ -1565,9 +1588,11 @@ export const setupMockInterceptor = (api) => {
                   const newEstimate = {
                     id: `mock-est-${Date.now()}`,
                     lead_id: leadId,
+                    estimator_reference_id: `EST-${Math.floor(1000 + Math.random() * 9000)}`,
                     total_amount: payload.total_amount || 0,
                     status: payload.status || 'draft',
-                    created_at: new Date().toISOString()
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
                   };
                   mockDatabase.estimates.push(newEstimate);
                   

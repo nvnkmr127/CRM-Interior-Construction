@@ -66,7 +66,7 @@ router.get('/milestone/:milestoneId/download', authorize('invoices:print'), asyn
     if (env.storageProvider === 'local') {
       const path = require('path');
       const fs = require('fs');
-      const filePath = path.join(__dirname, '../../../uploads', invoice.pdf_storage_key);
+      const filePath = path.join(__dirname, '../../uploads', invoice.pdf_storage_key);
       if (fs.existsSync(filePath)) {
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${invoice.invoice_number}.pdf"`);
@@ -146,7 +146,7 @@ router.get('/:id/download', authorize('invoices:print'), async (req, res, next) 
       const path = require('path');
       const fs = require('fs');
       // Look up files in uploads directory
-      const filePath = path.join(__dirname, '../../../uploads', invoice.pdf_storage_key);
+      const filePath = path.join(__dirname, '../../uploads', invoice.pdf_storage_key);
       if (fs.existsSync(filePath)) {
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${invoice.invoice_number}.pdf"`);

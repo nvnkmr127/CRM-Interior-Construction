@@ -57,6 +57,36 @@ const EFFORT_OPTIONS = [
   { value: '13', label: '13 Points (Complex)' }
 ];
 
+const PRESETS = [
+  {
+    name: 'Initial Onboarding',
+    description: 'Standard initial contact and onboarding tasks',
+    tasks: [
+      { title: 'Conduct initial discovery call', description: 'Understand requirements, budget range, and timeline.', priority: 'high', task_type: 'meeting' },
+      { title: 'Update lead preferences', description: 'Record aesthetic style preferences and functional requirements.', priority: 'medium', task_type: 'task' },
+      { title: 'Schedule site measurement visit', description: 'Coordinate date and time with the client for physical site visit.', priority: 'medium', task_type: 'meeting' }
+    ]
+  },
+  {
+    name: 'Site Measurement & Design',
+    description: 'Site inspection and conceptual design layout tasks',
+    tasks: [
+      { title: 'Perform detailed site measurement', description: 'Measure wall lengths, heights, window locations, and plumbing points.', priority: 'high', task_type: 'task' },
+      { title: 'Create 2D layout drafts', description: 'Draft the initial 2D layout based on measurements.', priority: 'medium', task_type: 'task' },
+      { title: 'Prepare design mood board', description: 'Compile design inspiration images into the inspiration board.', priority: 'low', task_type: 'task' }
+    ]
+  },
+  {
+    name: 'Quotation & Presentation',
+    description: 'Budget estimations and design approvals',
+    tasks: [
+      { title: 'Generate initial BOQ estimation', description: 'Run estimator builder for preliminary pricing.', priority: 'high', task_type: 'crm_record' },
+      { title: 'Present design presentation', description: 'Present mood board and layouts to lead.', priority: 'high', task_type: 'meeting' },
+      { title: 'Negotiate and lock budget', description: 'Review budget planner and finalize commercials.', priority: 'urgent', task_type: 'crm_record' }
+    ]
+  }
+];
+
 export default function TaskWidget({ leadId, reps }) {
   const { confirm } = useConfirm();
 
@@ -65,6 +95,79 @@ export default function TaskWidget({ leadId, reps }) {
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
   const [editingTask, setEditingTask] = useState(null); // Task object being edited
+
+  // View mode, calendar, and drag and drop states
+  const [viewMode, setViewMode] = useState('list'); // 'list', 'kanban', or 'calendar'
+  const [calMonth, setCalMonth] = useState(new Date().getMonth());
+  const [calYear, setCalYear] = useState(new Date().getFullYear());
+  const [showPresets, setShowPresets] = useState(false);
+  const [draggedTaskId, setDraggedTaskId] = useState(null);
+  const [dragOverStatus, setDragOverStatus] = useState(null);
+
+  // Drag and drop handlers
+  const handleDragStart = (e, taskId) => {
+    e.dataTransfer.setData('text/plain', taskId);
+    setDraggedTaskId(taskId);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = async (e, targetStatus) => {
+    e.preventDefault();
+    const taskId = e.dataTransfer.getData('text/plain') || draggedTaskId;
+    setDraggedTaskId(null);
+    if (!taskId) return;
+    
+    const task = tasks.find(t => t.id === taskId);
+    if (!task || task.status === targetStatus) return;
+
+    try {
+      await updateGlobalTask(taskId, { status: targetStatus });
+      toast.success(`Task status updated to ${STATUS_META[targetStatus].label}`);
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: targetStatus } : t));
+      
+      if (expandedTaskId === taskId) {
+        setExpandedTaskDetails(prev => prev ? { ...prev, status: targetStatus } : null);
+      }
+
+      await logActivity(leadId, { 
+        type: 'note', 
+        notes: `Moved task "${task.title}" to ${STATUS_META[targetStatus].label}` 
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update task status.');
+    }
+  };
+
+  // Preset workflow tasks creator
+  const handleAddPreset = async (preset) => {
+    if (!await confirm(`Are you sure you want to add all tasks from the "${preset.name}" preset?`)) return;
+    try {
+      const promises = preset.tasks.map(t => 
+        createGlobalTask({
+          leadId,
+          title: t.title,
+          description: t.description || null,
+          priority: t.priority || 'medium',
+          status: 'todo',
+          customFields: {
+            task_type: t.task_type || 'task',
+            recurrence: 'none',
+            links: []
+          }
+        })
+      );
+      await Promise.all(promises);
+      toast.success(`Successfully added ${preset.tasks.length} preset tasks!`);
+      fetchTasks();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to add preset tasks.');
+    }
+  };
 
   // Expand and Detail details state
   const [expandedTaskId, setExpandedTaskId] = useState(null);
@@ -172,7 +275,7 @@ export default function TaskWidget({ leadId, reps }) {
       }
 
       await logActivity(leadId, { 
-        type: 'task_completed', 
+        type: 'note', 
         notes: `Marked task "${task.title}" as ${nextStatus === 'done' ? 'completed' : 'pending'}` 
       });
     } catch (e) {
@@ -248,7 +351,7 @@ export default function TaskWidget({ leadId, reps }) {
 
     setSubmittingComment(true);
     try {
-      const res = await addGlobalTaskComment(expandedTaskId, newCommentText.trim());
+      const res = await addGlobalTaskComment(expandedTaskId, { content: newCommentText.trim() });
       const comment = res.data?.data || res.data;
       
       setExpandedTaskDetails(prev => {
@@ -447,31 +550,90 @@ export default function TaskWidget({ leadId, reps }) {
     done: tasks.filter(t => t.status === 'done').length
   };
 
+  const completionPercentage = stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0;
+
+  const handlePrevMonth = () => {
+    if (calMonth === 0) {
+      setCalMonth(11);
+      setCalYear(prev => prev - 1);
+    } else {
+      setCalMonth(prev => prev - 1);
+    }
+  };
+  
+  const handleNextMonth = () => {
+    if (calMonth === 11) {
+      setCalMonth(0);
+      setCalYear(prev => prev + 1);
+    } else {
+      setCalMonth(prev => prev + 1);
+    }
+  };
+
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const firstDayOfMonth = new Date(calYear, calMonth, 1).getDay();
+
+  const calendarDays = [];
+  for (let i = 0; i < firstDayOfMonth; i++) {
+    calendarDays.push(null);
+  }
+  for (let i = 1; i <= daysInMonth; i++) {
+    calendarDays.push(new Date(calYear, calMonth, i));
+  }
+
+  const tasksByDate = {};
+  filteredTasks.forEach(task => {
+    if (!task.due_date) return;
+    const d = new Date(task.due_date);
+    if (isNaN(d.getTime())) return;
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    if (!tasksByDate[key]) tasksByDate[key] = [];
+    tasksByDate[key].push(task);
+  });
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 text-slate-800">
       
-      {/* Task Statistics Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <div className="border rounded-xl p-3 text-center shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(10px)', borderColor: 'rgba(255, 255, 255, 0.3)' }}>
-          <div className="text-[10px] text-slate-500 uppercase font-extrabold tracking-wider">Total</div>
-          <div className="text-xl font-bold text-slate-800 mt-1">{stats.total}</div>
+      {/* Task Statistics & Progress Bar */}
+      <div className="space-y-2">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          <div className="border rounded-xl p-2.5 text-center shadow-sm transition-all bg-white/40 backdrop-blur-md border-white/30">
+            <div className="text-[9px] text-slate-500 uppercase font-black tracking-wider">Total</div>
+            <div className="text-lg font-bold text-slate-800 mt-0.5">{stats.total}</div>
+          </div>
+          <div className="border rounded-xl p-2.5 text-center shadow-sm transition-all bg-white/20 backdrop-blur-sm border-white/30">
+            <div className="text-[9px] text-slate-600 uppercase font-black tracking-wider">To Do</div>
+            <div className="text-lg font-bold text-slate-700 mt-0.5">{stats.todo}</div>
+          </div>
+          <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-2.5 text-center shadow-sm">
+            <div className="text-[9px] text-amber-600 uppercase font-black tracking-wider">In Progress</div>
+            <div className="text-lg font-bold text-amber-800 mt-0.5">{stats.in_progress}</div>
+          </div>
+          <div className="bg-red-50/70 border border-red-200 rounded-xl p-2.5 text-center shadow-sm">
+            <div className="text-[9px] text-red-600 uppercase font-black tracking-wider">Blocked</div>
+            <div className="text-lg font-bold text-red-800 mt-0.5">{stats.blocked}</div>
+          </div>
+          <div className="bg-emerald-50/70 border border-emerald-250 rounded-xl p-2.5 text-center col-span-2 sm:col-span-1 shadow-sm">
+            <div className="text-[9px] text-emerald-650 uppercase font-black tracking-wider">Completed</div>
+            <div className="text-lg font-bold text-emerald-800 mt-0.5">{stats.done}</div>
+          </div>
         </div>
-        <div className="border rounded-xl p-3 text-center shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.2)', backdropFilter: 'blur(5px)', borderColor: 'rgba(255, 255, 255, 0.3)' }}>
-          <div className="text-[10px] text-slate-600 uppercase font-extrabold tracking-wider">To Do</div>
-          <div className="text-xl font-bold text-slate-700 mt-1">{stats.todo}</div>
-        </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center shadow-sm">
-          <div className="text-[10px] text-amber-600 uppercase font-extrabold tracking-wider">In Progress</div>
-          <div className="text-xl font-bold text-amber-800 mt-1">{stats.in_progress}</div>
-        </div>
-        <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-center shadow-sm">
-          <div className="text-[10px] text-red-600 uppercase font-extrabold tracking-wider">Blocked</div>
-          <div className="text-xl font-bold text-red-800 mt-1">{stats.blocked}</div>
-        </div>
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center col-span-2 sm:col-span-1 shadow-sm">
-          <div className="text-[10px] text-emerald-600 uppercase font-extrabold tracking-wider">Completed</div>
-          <div className="text-xl font-bold text-emerald-800 mt-1">{stats.done}</div>
-        </div>
+
+        {/* Dynamic Task Progress Line */}
+        {stats.total > 0 && (
+          <div className="rounded-xl p-2.5 shadow-sm space-y-1.5 border border-white/30 bg-white/40 backdrop-blur-md">
+            <div className="flex justify-between items-center text-xs font-bold text-slate-750">
+              <span className="flex items-center gap-1 text-[11px]">🎯 Task Completion Progress</span>
+              <span className="text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full text-[10px] font-black">{completionPercentage}%</span>
+            </div>
+            <div className="w-full bg-slate-200/80 rounded-full h-2 overflow-hidden">
+              <div 
+                className="bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500 h-full rounded-full transition-all duration-500 ease-out" 
+                style={{ width: `${completionPercentage}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Control Filters & Toggle bar */}
@@ -481,17 +643,85 @@ export default function TaskWidget({ leadId, reps }) {
             <span>📋 Lead Tasks</span>
             <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-bold">{filteredTasks.length}</span>
           </h3>
-          <Button 
-            variant={isAdding ? 'outline' : 'primary'}
-            onClick={async () => {
-              setIsAdding(!isAdding);
-              if (!isAdding) resetForm();
-              setEditingTask(null);
-            }}
-            className="flex items-center gap-1 self-start md:self-auto"
-          >
-            {isAdding ? 'Cancel Form' : '⚡ Add ClickUp Task'}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
+            {/* View Mode Toggle Switch */}
+            <div className="flex rounded-lg bg-gray-100 p-1 text-xs border border-gray-250">
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className={`px-3 py-1 font-bold rounded-md transition-all ${
+                  viewMode === 'list' ? 'bg-white text-blue-700 shadow-sm border border-gray-150' : 'text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                📝 List
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('kanban')}
+                className={`px-3 py-1 font-bold rounded-md transition-all ${
+                  viewMode === 'kanban' ? 'bg-white text-blue-700 shadow-sm border border-gray-150' : 'text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                📊 Kanban
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('calendar')}
+                className={`px-3 py-1 font-bold rounded-md transition-all ${
+                  viewMode === 'calendar' ? 'bg-white text-blue-700 shadow-sm border border-gray-150' : 'text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                📅 Calendar
+              </button>
+            </div>
+
+            {/* Workflow Presets Dropdown */}
+            <div className="relative" onMouseLeave={() => setShowPresets(false)}>
+              <button
+                type="button"
+                onClick={() => setShowPresets(!showPresets)}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+              >
+                <span>⚡ Workflow Presets</span>
+                <svg className={`w-3 h-3 text-gray-400 transform transition-transform ${showPresets ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {showPresets && (
+                <div className="absolute right-0 mt-1 w-56 bg-white border border-gray-200 rounded-xl shadow-lg py-1.5 z-50 transition-all animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="px-3 py-1 border-b border-gray-100 text-[9px] uppercase font-extrabold tracking-wider text-gray-400">
+                    Select Workflow Preset
+                  </div>
+                  {PRESETS.map((p, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        handleAddPreset(p);
+                        setShowPresets(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 transition-colors flex flex-col cursor-pointer"
+                    >
+                      <span className="font-bold text-gray-800">{p.name}</span>
+                      <span className="text-[10px] text-gray-400 font-medium truncate">{p.description}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <Button 
+              variant={isAdding ? 'outline' : 'primary'}
+              onClick={async () => {
+                setIsAdding(!isAdding);
+                if (!isAdding) resetForm();
+                setEditingTask(null);
+              }}
+              className="flex items-center gap-1"
+            >
+              {isAdding ? 'Cancel Form' : '⚡ Add ClickUp Task'}
+            </Button>
+          </div>
         </div>
 
         {/* Filters Grid */}
@@ -690,17 +920,30 @@ export default function TaskWidget({ leadId, reps }) {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Effort Rating</label>
-                <select
-                  value={formFields.effort}
-                  onChange={e => setFormFields({ ...formFields, effort: e.target.value })}
-                  className="w-full text-sm border border-gray-300 rounded-lg p-2 bg-white text-gray-800 focus:ring-blue-500 focus:border-blue-500 outline-none cursor-pointer transition-colors shadow-sm"
-                >
-                  {EFFORT_OPTIONS.map(o => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Effort Rating</label>
+                  <select
+                    value={formFields.effort}
+                    onChange={e => setFormFields({ ...formFields, effort: e.target.value })}
+                    className="w-full text-sm border border-gray-300 rounded-lg p-2 bg-white text-gray-800 focus:ring-blue-500 focus:border-blue-500 outline-none cursor-pointer transition-colors shadow-sm"
+                  >
+                    {EFFORT_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Budget Allocation (₹)</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 5000"
+                    value={formFields.budget}
+                    onChange={e => setFormFields({ ...formFields, budget: e.target.value })}
+                    className="w-full text-sm border border-gray-300 rounded-lg p-2 bg-white text-gray-800 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors shadow-sm"
+                  />
+                </div>
               </div>
 
               <div>
@@ -749,13 +992,264 @@ export default function TaskWidget({ leadId, reps }) {
       )}
 
       {/* Task Listing View */}
-      {filteredTasks.length === 0 ? (
+      {viewMode === 'calendar' ? (
+        <div className="rounded-xl p-5 border" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(10px)', borderColor: 'rgba(255, 255, 255, 0.3)' }}>
+          {/* Calendar Controller Header */}
+          <div className="flex justify-between items-center mb-4">
+            <h4 className="text-sm font-bold text-gray-800 flex items-center gap-1.5">
+              <span>📅</span>
+              <span>{new Date(calYear, calMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}</span>
+            </h4>
+            <div className="flex gap-1.5 text-xs">
+              <button
+                type="button"
+                onClick={handlePrevMonth}
+                className="px-2 py-1 rounded bg-white border hover:bg-slate-50 transition font-bold"
+              >
+                ◀ Prev
+              </button>
+              <button
+                type="button"
+                onClick={() => { setCalMonth(new Date().getMonth()); setCalYear(new Date().getFullYear()); }}
+                className="px-2.5 py-1 rounded bg-white border hover:bg-slate-50 transition font-semibold"
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                onClick={handleNextMonth}
+                className="px-2 py-1 rounded bg-white border hover:bg-slate-50 transition font-bold"
+              >
+                Next ▶
+              </button>
+            </div>
+          </div>
+
+          {/* Grid structure */}
+          <div className="grid grid-cols-7 gap-px bg-slate-200 border rounded-xl overflow-hidden shadow-sm">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+              <div key={day} className="py-2 text-center text-[10px] font-black uppercase tracking-wider text-slate-500 bg-slate-50/80">
+                {day}
+              </div>
+            ))}
+            
+            {calendarDays.map((date, idx) => {
+              if (!date) return <div key={`empty-${idx}`} className="min-h-[65px] bg-slate-100/30"></div>;
+              
+              const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+              const dayTasks = tasksByDate[dateKey] || [];
+              const isToday = new Date().toDateString() === date.toDateString();
+
+              return (
+                <div 
+                  key={dateKey} 
+                  className="p-1.5 min-h-[65px] flex flex-col gap-1 transition-colors duration-200 bg-white/70"
+                  style={{
+                    background: isToday ? 'rgba(59, 130, 246, 0.05)' : 'rgba(255, 255, 255, 0.65)'
+                  }}
+                >
+                  <div className="flex justify-between items-center">
+                    <span 
+                      className={`text-[9px] font-bold w-4.5 h-4.5 flex items-center justify-center rounded-full ${
+                        isToday ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500'
+                      }`}
+                    >
+                      {date.getDate()}
+                    </span>
+                  </div>
+                  
+                  {/* Day Tasks List */}
+                  <div className="flex-1 overflow-y-auto space-y-0.5 max-h-[40px] pr-0.5">
+                    {dayTasks.map(task => {
+                      const statusStyle = STATUS_META[task.status] || STATUS_META.todo;
+                      return (
+                        <div 
+                          key={task.id}
+                          onClick={() => handleToggleExpand(task.id)}
+                          className="text-[9px] px-1.5 py-0.5 rounded cursor-pointer truncate transition font-bold border hover:translate-y-[-1px]"
+                          style={{
+                            background: task.status === 'done' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255, 255, 255, 0.95)',
+                            borderColor: task.priority === 'urgent' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(0,0,0,0.06)',
+                            color: task.status === 'done' ? '#047857' : '#1e293b'
+                          }}
+                          title={`${task.title} (${statusStyle.label})`}
+                        >
+                          {task.status === 'done' ? '✓ ' : ''}{task.title}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : filteredTasks.length === 0 ? (
         <div className="text-center py-12 rounded-xl border border-dashed border-gray-300 transition-all" style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(5px)' }}>
           <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
           </svg>
           <h3 className="mt-2 text-sm font-medium text-gray-900">No matching tasks</h3>
           <p className="mt-1 text-xs text-gray-500">Try adjusting your filters or search criteria, or add a new task.</p>
+        </div>
+      ) : viewMode === 'kanban' ? (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start select-none">
+          {Object.entries(STATUS_META).map(([statusKey, statusInfo]) => {
+            const columnTasks = filteredTasks.filter(t => t.status === statusKey);
+            const isHovered = dragOverStatus === statusKey;
+            return (
+              <div
+                key={statusKey}
+                onDragOver={handleDragOver}
+                onDragLeave={() => setDragOverStatus(null)}
+                onDrop={(e) => handleDrop(e, statusKey)}
+                className={`rounded-xl p-2.5 border transition-all duration-300 min-h-[320px] flex flex-col gap-2.5 ${
+                  isHovered ? 'border-blue-400 bg-blue-50/15 shadow-md' : 'border-gray-200 bg-slate-50/30'
+                }`}
+                style={{
+                  background: isHovered ? 'rgba(59, 130, 246, 0.05)' : 'rgba(248, 250, 252, 0.3)',
+                  backdropFilter: 'blur(5px)'
+                }}
+              >
+                {/* Column Header */}
+                <div className="flex justify-between items-center pb-2 border-b border-gray-155">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${
+                      statusKey === 'done' ? 'bg-emerald-500' : statusKey === 'blocked' ? 'bg-red-500' : statusKey === 'in_progress' ? 'bg-amber-500' : 'bg-slate-400'
+                    }`} />
+                    <span className="text-[11px] font-black text-gray-800 uppercase tracking-wider">{statusInfo.label}</span>
+                  </div>
+                  <span className="bg-gray-200/85 text-gray-700 text-[9px] px-2 py-0.5 rounded-full font-bold">
+                    {columnTasks.length}
+                  </span>
+                </div>
+
+                {/* Column Items */}
+                <div className="flex-1 overflow-y-auto space-y-2 max-h-[380px] pr-1">
+                  {columnTasks.length === 0 ? (
+                    <div className="text-center py-8 text-[11px] text-gray-400 italic">
+                      Drag tasks here
+                    </div>
+                  ) : (
+                    columnTasks.map(task => {
+                      const isOverdue = task.due_date && isPast(new Date(task.due_date)) && task.status !== 'done';
+                      let cf = {};
+                      if (task.custom_fields) {
+                        cf = typeof task.custom_fields === 'string' ? JSON.parse(task.custom_fields) : task.custom_fields;
+                      }
+                      const priorityStyle = PRIORITY_META[task.priority] || PRIORITY_META.medium;
+                      const isExpanded = expandedTaskId === task.id;
+
+                      return (
+                        <div
+                          key={task.id}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, task.id)}
+                          className={`group rounded-xl p-3 border shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 cursor-grab active:cursor-grabbing ${
+                            isExpanded ? 'border-blue-400 ring-1 ring-blue-400' : isOverdue ? 'border-red-300' : 'border-gray-250'
+                          }`}
+                          style={{
+                            background: isOverdue ? 'rgba(254, 226, 226, 0.65)' : 'rgba(255, 255, 255, 0.75)',
+                            backdropFilter: 'blur(5px)'
+                          }}
+                        >
+                          <div className="space-y-2">
+                            {/* Priority / Type badges */}
+                            <div className="flex justify-between items-center">
+                              <span className={`inline-flex items-center gap-1 px-1 py-0.2 rounded border text-[8px] uppercase tracking-wider font-extrabold ${priorityStyle.color}`}>
+                                <span className={`w-1 h-1 rounded-full ${priorityStyle.dot}`} />
+                                {priorityStyle.label}
+                              </span>
+                              {cf.task_type && cf.task_type !== 'task' && (
+                                <span className="px-1 py-0.2 text-[8px] font-black uppercase tracking-wider bg-slate-900 text-white rounded">
+                                  {cf.task_type.replace('_', ' ')}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Title */}
+                            <div className="flex items-start gap-2">
+                              <input 
+                                type="checkbox" 
+                                checked={task.status === 'done'}
+                                className="mt-0.5 w-3.5 h-3.5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer transition"
+                                onChange={() => handleToggleTaskStatus(task)}
+                              />
+                              <p className={`text-xs font-bold text-gray-800 break-words flex-1 leading-snug ${task.status === 'done' ? 'line-through text-gray-400' : ''}`}>
+                                {task.title}
+                              </p>
+                            </div>
+
+                            {/* Details section toggler */}
+                            <div className="flex justify-between items-center pt-1 text-[10px] text-gray-450 border-t border-gray-100/50">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleExpand(task.id)}
+                                className="hover:text-blue-600 font-bold transition-colors"
+                              >
+                                {isExpanded ? 'Collapse' : 'Details 🔍'}
+                              </button>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditClick(task)}
+                                  className="text-gray-400 hover:text-blue-650 transition"
+                                  title="Edit"
+                                >
+                                  ✏️
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteTask(task.id)}
+                                  className="text-gray-400 hover:text-red-650 transition"
+                                  title="Delete"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Render Expanded details block inside Kanban card if expanded */}
+                          {isExpanded && (
+                            <div className="mt-3 pt-3 border-t border-gray-200 space-y-3 text-left">
+                              {detailsLoading || !expandedTaskDetails ? (
+                                <div className="text-[10px] text-center text-gray-400">Loading...</div>
+                              ) : (
+                                <div className="space-y-2 text-[10px]">
+                                  {expandedTaskDetails.description && (
+                                    <div>
+                                      <span className="font-bold text-gray-600 block">Description:</span>
+                                      <p className="text-gray-750 bg-white/60 p-1.5 rounded border border-gray-100 whitespace-pre-wrap">{expandedTaskDetails.description}</p>
+                                    </div>
+                                  )}
+                                  {task.due_date && (
+                                    <div className={isOverdue ? 'text-red-650 font-bold' : 'text-gray-550'}>
+                                      📅 Due: {new Date(task.due_date).toLocaleDateString('en-IN')} {cf.due_time && `at ${cf.due_time}`}
+                                    </div>
+                                  )}
+                                  {task.assignee_name && (
+                                    <div className="text-slate-700 bg-slate-100/80 px-2 py-0.5 rounded-full inline-block font-bold">
+                                      👤 {task.assignee_name}
+                                    </div>
+                                  )}
+                                  {cf.budget && (
+                                    <div className="text-emerald-700 font-bold">
+                                      ₹ Budget: {parseFloat(cf.budget).toLocaleString('en-IN')}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="space-y-3">
@@ -820,10 +1314,35 @@ export default function TaskWidget({ leadId, reps }) {
                           {priorityStyle.label}
                         </span>
 
-                        {/* Status Badge */}
-                        <span className={`inline-flex px-1.5 py-0.5 rounded-full border text-[9px] font-black uppercase ${statusStyle.color}`}>
-                          {statusStyle.label}
-                        </span>
+                        {/* Status Select Dropdown Badge */}
+                        <select
+                          value={task.status}
+                          onChange={async (e) => {
+                            const nextStatus = e.target.value;
+                            try {
+                              await updateGlobalTask(task.id, { status: nextStatus });
+                              toast.success(`Task status updated to ${STATUS_META[nextStatus].label}`);
+                              setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: nextStatus } : t));
+                              if (expandedTaskId === task.id) {
+                                setExpandedTaskDetails(prev => prev ? { ...prev, status: nextStatus } : null);
+                              }
+                              await logActivity(leadId, { 
+                                type: 'note', 
+                                notes: `Changed task "${task.title}" status to ${STATUS_META[nextStatus].label}` 
+                              });
+                            } catch (err) {
+                              console.error(err);
+                              toast.error('Failed to update task status.');
+                            }
+                          }}
+                          className={`inline-flex px-1.5 py-0.5 rounded-full border text-[9px] font-black uppercase cursor-pointer outline-none bg-transparent ${statusStyle.color}`}
+                        >
+                          {Object.entries(STATUS_META).map(([key, val]) => (
+                            <option key={key} value={key} className="text-gray-800 bg-white font-medium normal-case text-[10px]">
+                              {val.label}
+                            </option>
+                          ))}
+                        </select>
 
                         {/* Dates */}
                         {cf.start_date && (
@@ -889,7 +1408,7 @@ export default function TaskWidget({ leadId, reps }) {
                     </button>
                     <button
                       onClick={async () => handleDeleteTask(task.id)}
-                      className="text-gray-400 hover:text-red-600 p-1.5 hover:bg-slate-100 rounded transition"
+                      className="text-gray-400 hover:text-red-650 p-1.5 hover:bg-slate-100 rounded transition"
                       title="Delete Task"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -899,24 +1418,83 @@ export default function TaskWidget({ leadId, reps }) {
                   </div>
                 </div>
 
-                {/* Expanded Details Section */}
                 {isExpanded && (
                   <div className="border-t border-gray-150 p-5 space-y-5 animate-in fade-in duration-200 transition-all" style={{ background: 'rgba(255, 255, 255, 0.3)', backdropFilter: 'blur(10px)' }}>
                     {detailsLoading || !expandedTaskDetails ? (
                       <div className="text-center text-xs text-gray-500 py-6">Loading details...</div>
-                    ) : (
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        
-                        {/* Column 1 & 2: Details, subtasks, checklists */}
-                        <div className="lg:col-span-2 space-y-5">
-                          {/* Task Description */}
-                          <div>
-                            <h5 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 mb-1">Description</h5>
-                            <p className="text-xs text-gray-750 p-3 rounded-lg border whitespace-pre-wrap min-h-[50px] transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(5px)', border: '1px solid rgba(255, 255, 255, 0.3)' }}>
-                              {expandedTaskDetails.description || <span className="italic text-gray-450">No description provided.</span>}
-                            </p>
-                          </div>
+                    ) : (() => {
+                      let detailsCf = {};
+                      if (expandedTaskDetails.custom_fields) {
+                        detailsCf = typeof expandedTaskDetails.custom_fields === 'string'
+                          ? JSON.parse(expandedTaskDetails.custom_fields)
+                          : expandedTaskDetails.custom_fields;
+                      }
+                      return (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          
+                          {/* Column 1: Task Description & ClickUp Custom Fields */}
+                          <div className="space-y-4">
+                            {/* Task Description */}
+                            <div>
+                              <h5 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 mb-1">Description</h5>
+                              <p className="text-xs text-gray-750 p-3 rounded-lg border whitespace-pre-wrap min-h-[60px] transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(5px)', border: '1px solid rgba(255, 255, 255, 0.3)' }}>
+                                {expandedTaskDetails.description || <span className="italic text-gray-450">No description provided.</span>}
+                              </p>
+                            </div>
 
+                            {/* Premium Custom Fields Box */}
+                            <div className="p-4 rounded-xl border shadow-sm space-y-3 transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
+                              <h5 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 border-b pb-1.5 mb-2">ClickUp Custom Fields</h5>
+                              
+                              <div className="grid grid-cols-2 gap-y-2.5 gap-x-2 text-xs">
+                                <div>
+                                  <span className="text-gray-400 block text-[9px] uppercase tracking-wider">Effort Score</span>
+                                  <span className="font-semibold text-gray-800">
+                                    {detailsCf.effort ? `${detailsCf.effort} points` : '—'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-400 block text-[9px] uppercase tracking-wider">Budget Allocation</span>
+                                  <span className="font-semibold text-gray-800">
+                                    {detailsCf.budget ? `₹${parseFloat(detailsCf.budget).toLocaleString('en-IN')}` : '—'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-400 block text-[9px] uppercase tracking-wider">Start Date</span>
+                                  <span className="font-semibold text-gray-800">
+                                    {detailsCf.start_date ? new Date(detailsCf.start_date).toLocaleDateString('en-IN') : '—'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-gray-400 block text-[9px] uppercase tracking-wider">QA Checklist Req.</span>
+                                  <span className="font-semibold text-gray-800">
+                                    {detailsCf.custom_checkbox ? '✅ Required' : '❌ No'}
+                                  </span>
+                                </div>
+                              </div>
+
+                            {/* Relationship links list */}
+                            {detailsCf.links && detailsCf.links.length > 0 && (
+                              <div className="pt-2 border-t text-xs">
+                                <span className="text-gray-400 block text-[9px] uppercase tracking-wider mb-1">Relationship Links</span>
+                                {detailsCf.links.map((link, idx) => (
+                                  <a 
+                                    key={idx} 
+                                    href={link} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="text-blue-600 hover:underline truncate block font-semibold"
+                                  >
+                                    🔗 Link Resource {idx + 1}
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Column 2: Checklist Subtasks & Discussion Activity */}
+                        <div className="space-y-4">
                           {/* Inline Subtasks / Checklist */}
                           <div className="space-y-2">
                             <h5 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 flex items-center justify-between">
@@ -973,66 +1551,13 @@ export default function TaskWidget({ leadId, reps }) {
                               </Button>
                             </form>
                           </div>
-                        </div>
-
-                        {/* Column 3: Custom fields details and comments */}
-                        <div className="space-y-5">
-                          {/* Premium Custom Fields Box */}
-                          <div className="p-4 rounded-xl border shadow-sm space-y-3 transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
-                            <h5 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 border-b pb-1.5 mb-2">ClickUp Custom Fields</h5>
-                            
-                            <div className="grid grid-cols-2 gap-y-2.5 gap-x-2 text-xs">
-                              <div>
-                                <span className="text-gray-400 block text-[9px] uppercase tracking-wider">Effort Score</span>
-                                <span className="font-semibold text-gray-800">
-                                  {cf.effort ? `${cf.effort} points` : '—'}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-gray-400 block text-[9px] uppercase tracking-wider">Budget Allocation</span>
-                                <span className="font-semibold text-gray-800">
-                                  {cf.budget ? `₹${parseFloat(cf.budget).toLocaleString('en-IN')}` : '—'}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-gray-400 block text-[9px] uppercase tracking-wider">Start Date</span>
-                                <span className="font-semibold text-gray-800">
-                                  {cf.start_date ? new Date(cf.start_date).toLocaleDateString('en-IN') : '—'}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-gray-400 block text-[9px] uppercase tracking-wider">QA Checklist Req.</span>
-                                <span className="font-semibold text-gray-800">
-                                  {cf.custom_checkbox ? '✅ Required' : '❌ No'}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Relationship links list */}
-                            {cf.links && cf.links.length > 0 && (
-                              <div className="pt-2 border-t text-xs">
-                                <span className="text-gray-400 block text-[9px] uppercase tracking-wider mb-1">Relationship Links</span>
-                                {cf.links.map((link, idx) => (
-                                  <a 
-                                    key={idx} 
-                                    href={link} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer" 
-                                    className="text-blue-600 hover:underline truncate block font-semibold"
-                                  >
-                                    🔗 Link Resource {idx + 1}
-                                  </a>
-                                ))}
-                              </div>
-                            )}
-                          </div>
 
                           {/* Task Comments Section */}
                           <div className="space-y-3 p-4 rounded-xl border shadow-sm transition-all" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)' }}>
                             <h5 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 border-b pb-1.5 mb-2">Discussion Activity</h5>
                             
                             {/* Comments list */}
-                            <div className="space-y-3 max-h-[200px] overflow-y-auto pr-1">
+                            <div className="space-y-3 max-h-[160px] overflow-y-auto pr-1">
                               {(!expandedTaskDetails.comments || expandedTaskDetails.comments.length === 0) ? (
                                 <p className="text-xs text-gray-400 italic text-center py-2">No comments posted yet.</p>
                               ) : (
@@ -1072,7 +1597,8 @@ export default function TaskWidget({ leadId, reps }) {
                         </div>
 
                       </div>
-                    )}
+                    );
+                  })()}
                   </div>
                 )}
 

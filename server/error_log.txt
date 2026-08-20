@@ -124,4 +124,24 @@
     at async updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\leads\updateLead.js:16:23)
     at async exports.updateLeadHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2664:25)\n\n2026-08-19T17:23:28.063Z\nError: System error or unhandled exception
     at getFilesHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:672:17)
-    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\n
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\n2026-08-20T07:51:08.494Z\nSyntaxError: Unexpected token '"', ""dssdssdsdssds"" is not valid JSON
+    at JSON.parse (<anonymous>)
+    at createStrictSyntaxError (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\body-parser\lib\types\json.js:109:10)
+    at parse (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\body-parser\lib\types\json.js:66:15)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\body-parser\lib\read.js:162:18
+    at AsyncResource.runInAsyncScope (node:async_hooks:214:14)
+    at invokeCallback (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\raw-body\index.js:238:16)
+    at done (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\raw-body\index.js:287:7)
+    at IncomingMessage.emit (node:events:508:28)
+    at endReadableNT (node:internal/streams/readable:1701:12)\n\n2026-08-20T07:52:06.463Z\nSyntaxError: Unexpected token '"', ""dsdssdsdsd"" is not valid JSON
+    at JSON.parse (<anonymous>)
+    at createStrictSyntaxError (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\body-parser\lib\types\json.js:109:10)
+    at parse (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\body-parser\lib\types\json.js:66:15)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\body-parser\lib\read.js:162:18
+    at AsyncResource.runInAsyncScope (node:async_hooks:214:14)
+    at invokeCallback (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\raw-body\index.js:238:16)
+    at done (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\raw-body\index.js:287:7)
+    at IncomingMessage.emit (node:events:508:28)
+    at endReadableNT (node:internal/streams/readable:1701:12)\n\n

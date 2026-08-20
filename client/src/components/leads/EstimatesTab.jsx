@@ -5,7 +5,7 @@ import api from '../../api/axios';
 import { deleteEstimate } from '../../api/leads';
 import EstimatorBuilder from './EstimatorBuilder';
 
-export default function EstimatesTab({ leadId }) {
+export default function EstimatesTab({ leadId, lead }) {
   const toast = useToast();
   const [estimates, setEstimates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,6 +16,140 @@ export default function EstimatesTab({ leadId }) {
 
   const [estimateToDelete, setEstimateToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+
+  const handleUpdateStatus = async (estimateId, status) => {
+    try {
+      const res = await api.patch(`/leads/${leadId}/estimates/${estimateId}`, { status });
+      if (res.data.success) {
+        toast.success(`Estimate status updated to ${status}`);
+        fetchEstimates();
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update estimate status');
+    }
+  };
+
+  const handlePrintEstimate = (estimate) => {
+    let rooms = [];
+    if (estimate.payload) {
+      if (Array.isArray(estimate.payload.rooms)) {
+        rooms = estimate.payload.rooms;
+      } else if (estimate.payload.payload && Array.isArray(estimate.payload.payload.rooms)) {
+        rooms = estimate.payload.payload.rooms;
+      }
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error('Pop-up blocker is preventing opening the print view.');
+      return;
+    }
+
+    const leadName = lead?.name || 'Customer';
+    const estimateRef = estimate.estimator_reference_id || `#${estimate.id.substring(0, 6).toUpperCase()}`;
+    const totalVal = Number(estimate.total_amount || 0).toLocaleString('en-IN');
+
+    let roomsHtml = '';
+    rooms.forEach(room => {
+      let itemsHtml = '';
+      if (Array.isArray(room.items)) {
+        room.items.forEach((item, idx) => {
+          const itemTotal = (Number(item.qty || 0) * Number(item.rate || 0)).toLocaleString('en-IN');
+          itemsHtml += `
+            <tr style="border-bottom: 1px solid #f3f4f6;">
+              <td style="padding: 10px; font-size: 13px; color: #374151;">${idx + 1}</td>
+              <td style="padding: 10px; font-size: 13px; color: #374151;">
+                <div style="font-weight: 600;">${item.name || item.item_name || 'Material Item'}</div>
+                ${item.description ? `<div style="font-size: 11px; color: #9ca3af; margin-top: 2px;">${item.description}</div>` : ''}
+              </td>
+              <td style="padding: 10px; font-size: 13px; color: #374151; text-align: center;">${item.qty} ${item.unit || 'sqft'}</td>
+              <td style="padding: 10px; font-size: 13px; color: #374151; text-align: right;">₹${Number(item.rate).toLocaleString('en-IN')}</td>
+              <td style="padding: 10px; font-size: 13px; font-weight: 600; color: #111827; text-align: right;">₹${itemTotal}</td>
+            </tr>
+          `;
+        });
+      }
+
+      roomsHtml += `
+        <div style="margin-bottom: 25px; background: white; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; page-break-inside: avoid;">
+          <div style="background: #f8fafc; padding: 12px 18px; border-bottom: 1px solid #e5e7eb; font-weight: 700; color: #1e293b; font-size: 14px;">
+            ${room.name}
+          </div>
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="background: #ffffff; border-bottom: 2px solid #e5e7eb;">
+                <th style="padding: 10px; text-align: left; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; width: 40px;">#</th>
+                <th style="padding: 10px; text-align: left; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Specification & Material</th>
+                <th style="padding: 10px; text-align: center; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; width: 100px;">Qty</th>
+                <th style="padding: 10px; text-align: right; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; width: 120px;">Rate</th>
+                <th style="padding: 10px; text-align: right; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; width: 140px;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml || '<tr><td colspan="5" style="padding: 15px; text-align: center; color: #9ca3af; font-size: 13px;">No specifications added for this room</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      `;
+    });
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Estimate Proposal ${estimateRef}</title>
+          <style>
+            body { font-family: 'Inter', system-ui, sans-serif; color: #1f2937; padding: 40px; margin: 0; background-color: #ffffff; }
+            @media print {
+              body { padding: 0; }
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="no-print" style="margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; background: #f3f4f6; padding: 15px 25px; border-radius: 12px;">
+            <span style="font-weight: 600; font-size: 14px; color: #4b5563;">Print Preview - Estimate &nbsp;${estimateRef}</span>
+            <button onclick="window.print()" style="background: #E38E54; color: white; border: none; padding: 8px 20px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; transition: background 0.2s;">
+              Print / Save PDF
+            </button>
+          </div>
+
+          <!-- Invoice/Estimate Header -->
+          <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #e5e7eb; padding-bottom: 25px; margin-bottom: 35px;">
+            <div>
+              <h1 style="font-size: 24px; font-weight: 800; color: #111827; margin: 0;">Interior Design Estimate</h1>
+              <p style="font-size: 13px; color: #6b7280; margin: 5px 0 0 0;">Reference ID: <strong>${estimateRef}</strong></p>
+            </div>
+            <div style="text-align: right;">
+              <h2 style="font-size: 18px; font-weight: 700; color: #4b5563; margin: 0;">CRM Interior Construction</h2>
+              <p style="font-size: 12px; color: #9ca3af; margin: 4px 0 0 0;">Date: ${new Date(estimate.created_at).toLocaleDateString()}</p>
+            </div>
+          </div>
+
+          <!-- Customer Info -->
+          <div style="display: flex; justify-content: space-between; margin-bottom: 35px; background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #f1f5f9;">
+            <div>
+              <span style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Prepared For</span>
+              <strong style="font-size: 16px; color: #1e293b;">${leadName}</strong>
+            </div>
+            <div style="text-align: right; display: flex; flex-direction: column; justify-content: center;">
+              <span style="font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 4px;">Total Estimated Amount</span>
+              <span style="font-size: 22px; font-weight: 800; color: #E38E54;">₹${totalVal}</span>
+            </div>
+          </div>
+
+          <!-- Rooms Spec Lists -->
+          ${roomsHtml}
+
+          <!-- Terms Summary -->
+          <div style="margin-top: 40px; border-top: 2px solid #e5e7eb; padding-top: 20px; font-size: 12px; color: #9ca3af; text-align: center; page-break-inside: avoid;">
+            <p>This is a system generated design estimate proposal. Final prices may vary based on exact site dimensions and design customization.</p>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   const handleEditEstimate = (estimate) => {
     setEditingEstimate(estimate);
@@ -166,9 +300,29 @@ export default function EstimatesTab({ leadId }) {
                   </h4>
                   <p className="text-xs text-gray-500 mt-1">Created: {new Date(est.created_at).toLocaleDateString()}</p>
                 </div>
-                <Badge variant={est.status === 'accepted' ? 'success' : est.status === 'sent' ? 'primary' : 'secondary'}>
-                  {est.status}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant={est.status === 'accepted' ? 'success' : est.status === 'sent' ? 'primary' : 'secondary'} className="capitalize">
+                    {est.status}
+                  </Badge>
+                  {est.status === 'draft' && (
+                    <button
+                      onClick={() => handleUpdateStatus(est.id, 'sent')}
+                      className="px-2 py-0.5 text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-100 rounded-md transition-all uppercase tracking-wider shadow-sm"
+                      title="Mark as Sent to Client"
+                    >
+                      Send
+                    </button>
+                  )}
+                  {est.status === 'sent' && (
+                    <button
+                      onClick={() => handleUpdateStatus(est.id, 'accepted')}
+                      className="px-2 py-0.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 rounded-md transition-all uppercase tracking-wider shadow-sm"
+                      title="Mark as Approved/Accepted"
+                    >
+                      Accept
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="bg-gray-50/50 p-4 rounded-xl border border-gray-100 mb-4 flex items-center justify-between">
@@ -176,7 +330,7 @@ export default function EstimatesTab({ leadId }) {
                   <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Total Value</span>
                   <p className="text-xl font-extrabold text-gray-900">₹{est.total_amount ? Number(est.total_amount).toLocaleString('en-IN') : '0'}</p>
                 </div>
-                {est.pdf_url && (
+                {est.pdf_url ? (
                   <a 
                     href={est.pdf_url} 
                     target="_blank" 
@@ -188,6 +342,16 @@ export default function EstimatesTab({ leadId }) {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                     </svg>
                   </a>
+                ) : (
+                  <button 
+                    onClick={() => handlePrintEstimate(est)}
+                    className="flex items-center justify-center w-10 h-10 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors"
+                    title="Print / Save PDF"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                  </button>
                 )}
               </div>
 
@@ -227,6 +391,7 @@ export default function EstimatesTab({ leadId }) {
       {isBuildingEstimate && (
         <EstimatorBuilder
           leadId={leadId}
+          lead={lead}
           initialEstimate={editingEstimate}
           onCancel={handleCloseBuilder}
           onSaved={() => {
