@@ -67,9 +67,9 @@ const getMeetingCountdown = (dateStr) => {
   if (diffMs < 0) {
     const twoHoursInMs = 2 * 60 * 60 * 1000;
     if (Math.abs(diffMs) < twoHoursInMs) {
-      return '⏱️ In Progress';
+      return 'Ã¢ÂÂ±Ã¯Â¸Â In Progress';
     }
-    return '📅 Past Meeting';
+    return 'Ã°Å¸â€œâ€¦ Past Meeting';
   }
   
   const diffMins = Math.floor(diffMs / 60000);
@@ -77,15 +77,15 @@ const getMeetingCountdown = (dateStr) => {
   const diffDays = Math.floor(diffHours / 24);
 
   if (diffDays > 0) {
-    return `⏱️ Starts in ${diffDays} day${diffDays > 1 ? 's' : ''}`;
+    return `Ã¢ÂÂ±Ã¯Â¸Â Starts in ${diffDays} day${diffDays > 1 ? 's' : ''}`;
   }
   if (diffHours > 0) {
-    return `⏱️ Starts in ${diffHours} hour${diffHours > 1 ? 's' : ''}`;
+    return `Ã¢ÂÂ±Ã¯Â¸Â Starts in ${diffHours} hour${diffHours > 1 ? 's' : ''}`;
   }
   if (diffMins > 0) {
-    return `⏱️ Starts in ${diffMins} minute${diffMins > 1 ? 's' : ''}`;
+    return `Ã¢ÂÂ±Ã¯Â¸Â Starts in ${diffMins} minute${diffMins > 1 ? 's' : ''}`;
   }
-  return '⏱️ Starting now';
+  return 'Ã¢ÂÂ±Ã¯Â¸Â Starting now';
 };
 
 export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, stages = [], initialTab = 'overview' }) {
@@ -819,15 +819,15 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               <div className="space-y-4">
                 <div className="flex items-center justify-between py-1">
                   <span className="text-base text-gray-500 w-28">Phone</span>
-                  <span className="flex-1 text-base font-semibold text-gray-800 px-3">{lead.phone || '—'}</span>
+                  <span className="flex-1 text-base font-semibold text-gray-800 px-3">{lead.phone || '—'}</span>
                 </div>
                 <div className="flex items-center justify-between py-1">
                   <span className="text-base text-gray-500 w-28">Email</span>
-                  <span className="flex-1 text-base font-semibold text-gray-850 px-3">{lead.email || '—'}</span>
+                  <span className="flex-1 text-base font-semibold text-gray-850 px-3">{lead.email || '—'}</span>
                 </div>
                 <div className="flex items-center justify-between py-1">
                   <span className="text-base text-gray-500 w-28">Source</span>
-                  <span className="flex-1 text-base font-semibold text-gray-800 px-3">{lead.source || '—'}</span>
+                  <span className="flex-1 text-base font-semibold text-gray-800 px-3">{lead.source || '—'}</span>
                 </div>
               </div>
             </div>
@@ -838,19 +838,19 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               <div className="space-y-4">
                 <div className="flex items-center justify-between py-1">
                   <span className="text-base text-gray-500 w-32">Property Type</span>
-                  <span className="flex-1 text-base font-semibold text-gray-800 px-3">{lead.property_type || '—'}</span>
+                  <span className="flex-1 text-base font-semibold text-gray-800 px-3">{lead.property_type || '—'}</span>
                 </div>
                 <div className="flex items-center justify-between py-1">
                   <span className="text-base text-gray-500 w-32">Address</span>
-                  <span className="flex-1 text-base font-semibold text-gray-800 px-3">{lead.locality || '—'}</span>
+                  <span className="flex-1 text-base font-semibold text-gray-800 px-3">{lead.locality || '—'}</span>
                 </div>
                 <div className="flex items-center justify-between py-1">
                   <span className="text-base text-gray-500 w-32">Budget Max</span>
-                  <span className="flex-1 text-base font-semibold text-gray-800 px-3">{lead.budget_max ? `₹${Number(lead.budget_max).toLocaleString()}` : '—'}</span>
+                  <span className="flex-1 text-base font-semibold text-gray-800 px-3">{lead.budget_max ? `₹${Number(lead.budget_max).toLocaleString()}` : '—'}</span>
                 </div>
                 <div className="flex items-center justify-between py-1">
                   <span className="text-base text-gray-500 w-32">Carpet Area</span>
-                  <span className="flex-1 text-base font-semibold text-gray-800 px-3">{lead.carpet_area_sqft ? `${lead.carpet_area_sqft} sq.ft` : '—'}</span>
+                  <span className="flex-1 text-base font-semibold text-gray-800 px-3">{lead.carpet_area_sqft ? `${lead.carpet_area_sqft} sq.ft` : '—'}</span>
                 </div>
               </div>
             </div>
@@ -881,7 +881,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
             {lead?.deleted_at && (
             <div className="bg-red-50 border-b border-red-200 px-6 py-3 flex items-center justify-between text-sm shrink-0">
               <div className="flex items-center gap-2 text-red-700 font-medium">
-                <span style={{ fontSize: '18px' }}>⚠️</span>
+                <span style={{ fontSize: '18px' }}>Ã¢Å¡Â Ã¯Â¸Â</span>
                 <span>This lead has been deleted.</span>
               </div>
               <div className="flex gap-2">
@@ -1070,73 +1070,34 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                         Edit
                       </button>
                     </div>
-                    <div className="space-y-4 relative z-10">
+                    <div className="space-y-3 relative z-10">
                       {/* Full Name */}
-                      <div className="flex items-center group/field">
+                      <div className="flex items-center py-2">
                         <div className="w-10 h-10 rounded-full bg-violet-50 flex items-center justify-center text-violet-600 shrink-0 mr-4">
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                         </div>
-                        <div className="flex-1 border border-transparent group-hover/field:border-[var(--color-border)] rounded-xl bg-gray-50/50 group-hover/field:bg-[var(--color-surface)] transition-all">
-                          <input
-                            type="text" value={lead.name || ''}
-                            onChange={e => handleFieldChange('name', e.target.value)}
-                            onBlur={e => handleFieldBlur('name', e.target.value)}
-                            className="w-full text-base font-semibold text-[var(--color-text)] bg-transparent border-none focus:ring-2 focus:ring-violet-500/20 rounded-xl px-4 py-2.5 placeholder-gray-400 outline-none"
-                            placeholder="Add full name"
-                          />
-                        </div>
+                        <span className="text-base font-semibold text-[var(--color-text)]">{lead.name || <span className="text-gray-400 font-normal italic">No name</span>}</span>
                       </div>
                       {/* Phone */}
-                      <div className="flex items-center group/field">
+                      <div className="flex items-center py-2">
                         <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 mr-4">
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
                         </div>
-                        <div className="flex-1 border border-transparent group-hover/field:border-[var(--color-border)] rounded-xl bg-gray-50/50 group-hover/field:bg-[var(--color-surface)] transition-all">
-                          <input
-                            type="text" value={lead.phone || ''}
-                            onChange={e => handleFieldChange('phone', e.target.value)}
-                            onBlur={e => handleFieldBlur('phone', e.target.value)}
-                            className="w-full text-base font-semibold text-[var(--color-text)] bg-transparent border-none focus:ring-2 focus:ring-blue-500/20 rounded-xl px-4 py-2.5 placeholder-gray-400 outline-none"
-                            placeholder="Add phone number"
-                          />
-                        </div>
+                        <span className="text-base font-semibold text-[var(--color-text)]">{lead.phone || <span className="text-gray-400 font-normal italic">No phone</span>}</span>
                       </div>
                       {/* Email */}
-                      <div className="flex items-center group/field">
+                      <div className="flex items-center py-2">
                         <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0 mr-4">
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                         </div>
-                        <div className="flex-1 border border-transparent group-hover/field:border-[var(--color-border)] rounded-xl bg-gray-50/50 group-hover/field:bg-[var(--color-surface)] transition-all">
-                          <input
-                            type="email" value={lead.email || ''}
-                            onChange={e => handleFieldChange('email', e.target.value)}
-                            onBlur={e => handleFieldBlur('email', e.target.value)}
-                            className="w-full text-base font-semibold text-[var(--color-text)] bg-transparent border-none focus:ring-2 focus:ring-indigo-500/20 rounded-xl px-4 py-2.5 placeholder-gray-400 outline-none"
-                            placeholder="Add email address"
-                          />
-                        </div>
+                        <span className="text-base font-semibold text-[var(--color-text)]">{lead.email || <span className="text-gray-400 font-normal italic">No email</span>}</span>
                       </div>
                       {/* Lead Source */}
-                      <div className="flex items-center group/field">
+                      <div className="flex items-center py-2">
                         <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 shrink-0 mr-4">
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>
                         </div>
-                        <div className="flex-1 border border-transparent group-hover/field:border-[var(--color-border)] rounded-xl bg-gray-50/50 group-hover/field:bg-[var(--color-surface)] transition-all">
-                          <select
-                            value={lead.source || ''}
-                            onChange={e => { handleFieldChange('source', e.target.value); handleFieldBlur('source', e.target.value); }}
-                            className="w-full text-base font-semibold text-[var(--color-text)] bg-transparent border-none focus:ring-2 focus:ring-amber-500/20 rounded-xl px-4 py-2.5 placeholder-gray-400 outline-none cursor-pointer appearance-none"
-                            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3E%3Cpath stroke=\'%236b7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'M6 8l4 4 4-4\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '20px' }}
-                          >
-                            <option value="">Select source</option>
-                            <option value="Facebook">Facebook</option>
-                            <option value="IndiaMART">IndiaMART</option>
-                            <option value="Referral">Referral</option>
-                            <option value="Website">Website</option>
-                            <option value="Direct">Direct</option>
-                            <option value="Other">Other</option>
-                          </select>
-                        </div>
+                        <span className="text-base font-semibold text-[var(--color-text)]">{lead.source || <span className="text-gray-400 font-normal italic">No source</span>}</span>
                       </div>
                     </div>
                   </div>
@@ -1155,198 +1116,84 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       </button>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-x-5 gap-y-6 relative z-10">
+                    <div className="grid grid-cols-2 gap-x-5 gap-y-5 relative z-10">
                       {/* Property Type */}
-                      <div className="group/input">
+                      <div>
                         <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
                           <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                           Type of property
                         </label>
-                        <select
-                          value={lead.property_type || ''}
-                          onChange={e => handleFieldChange('property_type', e.target.value)}
-                          onBlur={e => handleFieldBlur('property_type', e.target.value)}
-                          className="w-full text-sm font-semibold border border-[var(--color-border)] rounded-xl p-2.5 bg-gray-50/50 group-hover/input:bg-[var(--color-surface)] focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
-                        >
-                          <option value="">Select...</option>
-                          <option value="1bhk">1 BHK</option>
-                          <option value="2bhk">2 BHK</option>
-                          <option value="3bhk">3 BHK</option>
-                          <option value="4bhk">4 BHK</option>
-                          <option value="5bhk">5 BHK</option>
-                        </select>
+                        <span className="text-sm font-semibold text-[var(--color-text)] block py-2">{lead.property_type ? lead.property_type.toUpperCase().replace('BHK', ' BHK') : <span className="text-gray-400 font-normal italic">Not set</span>}</span>
                       </div>
 
                       {/* Segment */}
-                      <div className="group/input">
+                      <div>
                         <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
                           <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
                           Segment
                         </label>
-                        <select
-                          value={lead.segment || ''}
-                          onChange={e => handleFieldChange('segment', e.target.value)}
-                          onBlur={e => handleFieldBlur('segment', e.target.value)}
-                          className="w-full text-sm font-semibold border border-[var(--color-border)] rounded-xl p-2.5 bg-gray-50/50 group-hover/input:bg-[var(--color-surface)] focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
-                        >
-                          <option value="">Select...</option>
-                          <option value="residential">Residential</option>
-                          <option value="commercial">Commercial</option>
-                          <option value="hospitality">Hospitality</option>
-                          <option value="retail">Retail</option>
-                        </select>
+                        <span className="text-sm font-semibold text-[var(--color-text)] block py-2 capitalize">{lead.segment || <span className="text-gray-400 font-normal italic">Not set</span>}</span>
                       </div>
 
                       {/* Scope */}
-                      <div className="col-span-2 group/input">
+                      <div className="col-span-2">
                         <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
                           <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
                           Product Scope
                         </label>
-                        <div className="text-sm font-semibold shadow-sm">
-                          <Select
-                            multi
-                            options={[
-                              { value: 'kitchen', label: 'Kitchen' },
-                              { value: 'bedroom', label: 'Bedroom' },
-                              { value: 'wardrobe', label: 'Wardrobe' },
-                              { value: 'fullhouse', label: 'Full House' },
-                              { value: 'living_room', label: 'Living Room' },
-                              { value: 'bathroom', label: 'Bathroom' },
-                              { value: 'office', label: 'Office / Study' },
-                              { value: 'false_ceiling', label: 'False Ceiling' },
-                              { value: 'flooring', label: 'Flooring' },
-                              { value: 'painting', label: 'Painting' },
-                              { value: 'custom_furniture', label: 'Custom Furniture' }
-                            ]}
-                            value={typeof lead.scope === 'string' && lead.scope ? lead.scope.split(',') : (Array.isArray(lead.scope) ? lead.scope : [])}
-                            onChange={selectedArray => {
-                              const newValue = selectedArray.join(',');
-                              handleFieldChange('scope', newValue);
-                              handleFieldBlur('scope', newValue);
-                            }}
-                            placeholder="Select products..."
-                          />
+                        <div className="flex flex-wrap gap-1.5 py-1">
+                          {(typeof lead.scope === 'string' && lead.scope ? lead.scope.split(',') : (Array.isArray(lead.scope) ? lead.scope : [])).length > 0
+                            ? (typeof lead.scope === 'string' ? lead.scope.split(',') : lead.scope).map(s => (
+                                <span key={s} className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100 capitalize">{s.replace(/\[AI Fallback Extraction\]/g, '').replace(/\[AI Extraction\]/g, '').trim().replace(/_/g, ' ')}</span>
+                              ))
+                            : <span className="text-gray-400 font-normal italic text-sm">Not set</span>
+                          }
                         </div>
                       </div>
 
                       {/* Property Name */}
-                      <div className="col-span-2 group/input">
+                      <div className="col-span-2">
                         <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
                           <svg className="w-4 h-4 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                           Property Name / Complex
                         </label>
-                        <input
-                          type="text" value={lead.property_name || ''}
-                          onChange={e => handleFieldChange('property_name', e.target.value)}
-                          onBlur={e => handleFieldBlur('property_name', e.target.value)}
-                          className="w-full text-sm font-semibold border border-[var(--color-border)] rounded-xl p-2.5 bg-gray-50/50 group-hover/input:bg-[var(--color-surface)] focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 outline-none transition-all"
-                          placeholder="e.g. Prestige Shantiniketan"
-                        />
+                        <span className="text-sm font-semibold text-[var(--color-text)] block py-2">{lead.property_name || <span className="text-gray-400 font-normal italic">Not set</span>}</span>
                       </div>
 
                       {/* Address */}
-                      <div className="col-span-2 group/input">
+                      <div className="col-span-2">
                         <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
                           <svg className="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"></path></svg>
                           Locality / Address
                         </label>
-                        <input
-                          type="text" value={lead.locality || ''}
-                          onChange={e => handleFieldChange('locality', e.target.value)}
-                          onBlur={e => handleFieldBlur('locality', e.target.value)}
-                          className="w-full text-sm font-semibold border border-[var(--color-border)] rounded-xl p-2.5 bg-gray-50/50 group-hover/input:bg-[var(--color-surface)] focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all"
-                          placeholder="e.g. Indiranagar, Bangalore"
-                        />
+                        <span className="text-sm font-semibold text-[var(--color-text)] block py-2">{lead.locality || <span className="text-gray-400 font-normal italic">Not set</span>}</span>
                       </div>
 
                       {/* Carpet Area */}
-                      <div className="group/input">
+                      <div>
                         <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
                           <svg className="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
                           Carpet Area
                         </label>
-                        <div className="relative">
-                          <input
-                            type="number" value={lead.carpet_area_sqft || ''}
-                            onChange={e => handleFieldChange('carpet_area_sqft', e.target.value)}
-                            onBlur={e => handleFieldBlur('carpet_area_sqft', e.target.value)}
-                            className="w-full text-sm font-semibold border border-[var(--color-border)] rounded-xl p-2.5 pr-12 bg-gray-50/50 group-hover/input:bg-[var(--color-surface)] focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
-                            placeholder="0"
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold pointer-events-none uppercase">sq.ft</span>
-                        </div>
+                        <span className="text-sm font-semibold text-[var(--color-text)] block py-2">{lead.carpet_area_sqft ? `${Number(lead.carpet_area_sqft).toLocaleString()} sq.ft` : <span className="text-gray-400 font-normal italic">Not set</span>}</span>
                       </div>
 
                       {/* Budget */}
-                      <div className="group/input">
+                      <div>
                         <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
                           <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                           Budget Max
                         </label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold pointer-events-none">&#8377;</span>
-                          <input
-                            type="number" value={lead.budget_max || ''}
-                            onChange={e => handleFieldChange('budget_max', e.target.value)}
-                            onBlur={e => handleFieldBlur('budget_max', e.target.value)}
-                            className="w-full text-sm font-semibold border border-[var(--color-border)] rounded-xl p-2.5 pl-7 bg-gray-50/50 group-hover/input:bg-[var(--color-surface)] focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition-all"
-                            placeholder="1500000"
-                          />
-                        </div>
+                        <span className="text-sm font-semibold text-[var(--color-text)] block py-2">{lead.budget_max ? `₹${Number(lead.budget_max).toLocaleString()}` : <span className="text-gray-400 font-normal italic">Not set</span>}</span>
                       </div>
 
                       {/* Possession Date */}
-                      <div className="col-span-2 group/input">
-                        <div className="flex justify-between items-center mb-1.5">
-                          <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">
-                            <svg className="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                            Possession Date
-                          </label>
-                          <button 
-                            type="button" 
-                            onClick={async () => setIsPossessionManual(!isPossessionManual)} 
-                            className="text-[10px] bg-gray-100 text-gray-600 hover:bg-gray-200 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider transition-colors"
-                          >
-                            {isPossessionManual ? 'Use Calendar' : 'Manual Entry'}
-                          </button>
-                        </div>
-                        {isPossessionManual ? (
-                          <input
-                            type="text" value={lead.possession_month || ''}
-                            onChange={e => handleFieldChange('possession_month', e.target.value)}
-                            onBlur={e => handleFieldBlur('possession_month', e.target.value)}
-                            className="w-full text-sm font-semibold border border-[var(--color-border)] rounded-xl p-2.5 bg-gray-50/50 group-hover/input:bg-[var(--color-surface)] focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none transition-all"
-                            placeholder="e.g. Q4 2026, Next year"
-                          />
-                        ) : (
-                          <div className="relative">
-                            <DatePicker
-                              selected={lead.possession_month ? new Date(lead.possession_month) : null}
-                              onChange={(date) => {
-                                if (date) {
-                                  const tzoffset = date.getTimezoneOffset() * 60000;
-                                  const localISOTime = (new Date(date - tzoffset)).toISOString().slice(0, 10);
-                                  handleFieldChange('possession_month', localISOTime);
-                                  handleFieldBlur('possession_month', localISOTime);
-                                } else {
-                                  handleFieldChange('possession_month', '');
-                                  handleFieldBlur('possession_month', '');
-                                }
-                              }}
-                              dateFormat="MMMM d, yyyy"
-                              placeholderText="Select Date"
-                              className="w-full text-sm font-semibold border border-[var(--color-border)] rounded-xl p-2.5 pr-10 bg-gray-50/50 group-hover/input:bg-[var(--color-surface)] focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none transition-all cursor-pointer shadow-sm"
-                              wrapperClassName="w-full"
-                              popperPlacement="bottom-start"
-                              calendarClassName="shadow-2xl rounded-2xl border-none font-sans text-sm p-2"
-                              popperProps={{ strategy: "fixed" }}
-                            />
-                            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-rose-400">
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                            </div>
-                          </div>
-                        )}
+                      <div className="col-span-2">
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
+                          <svg className="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                          Possession Date
+                        </label>
+                        <span className="text-sm font-semibold text-[var(--color-text)] block py-2">{lead.possession_month ? new Date(lead.possession_month).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : <span className="text-gray-400 font-normal italic">Not set</span>}</span>
                       </div>
                     </div>
                   </div>
@@ -1366,10 +1213,10 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                     </div>
                     
                     <div className="space-y-4 relative z-10">
-                      {/* DNC Toggle */}
-                      <label className="flex items-center justify-between p-3 rounded-xl hover:bg-red-50/50 transition-colors border border-transparent hover:border-red-100 cursor-pointer group/toggle">
+                      {/* DNC Status */}
+                      <div className="flex items-center justify-between p-3 rounded-xl border border-transparent">
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${lead.dnc_flag ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-400 group-hover/toggle:text-gray-600'}`}>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${lead.dnc_flag ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-400'}`}>
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
                           </div>
                           <div>
@@ -1377,24 +1224,13 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                             <span className="text-xs text-[var(--color-text-secondary)]">Opt-out of all communications</span>
                           </div>
                         </div>
-                        <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${lead.dnc_flag ? 'bg-red-500' : 'bg-gray-200'}`}>
-                          <input
-                            type="checkbox"
-                            checked={lead.dnc_flag || false}
-                            onChange={e => {
-                              handleFieldChange('dnc_flag', e.target.checked);
-                              handleFieldBlur('dnc_flag', e.target.checked);
-                            }}
-                            className="sr-only peer"
-                          />
-                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${lead.dnc_flag ? 'translate-x-6' : 'translate-x-1'}`} />
-                        </div>
-                      </label>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${lead.dnc_flag ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'}`}>{lead.dnc_flag ? 'Enabled' : 'Disabled'}</span>
+                      </div>
 
-                      {/* Consent Toggle */}
-                      <label className="flex items-center justify-between p-3 rounded-xl hover:bg-green-50/50 transition-colors border border-transparent hover:border-green-100 cursor-pointer group/toggle">
+                      {/* Consent Status */}
+                      <div className="flex items-center justify-between p-3 rounded-xl border border-transparent">
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${lead.consent_whatsapp ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400 group-hover/toggle:text-gray-600'}`}>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${lead.consent_whatsapp ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
                           </div>
                           <div>
@@ -1402,37 +1238,19 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                             <span className="text-xs text-[var(--color-text-secondary)]">Opt-in for WhatsApp messages</span>
                           </div>
                         </div>
-                        <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${lead.consent_whatsapp ? 'bg-green-500' : 'bg-gray-200'}`}>
-                          <input
-                            type="checkbox"
-                            checked={lead.consent_whatsapp || false}
-                            onChange={e => {
-                              handleFieldChange('consent_whatsapp', e.target.checked);
-                              handleFieldBlur('consent_whatsapp', e.target.checked);
-                            }}
-                            className="sr-only peer"
-                          />
-                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${lead.consent_whatsapp ? 'translate-x-6' : 'translate-x-1'}`} />
-                        </div>
-                      </label>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${lead.consent_whatsapp ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{lead.consent_whatsapp ? 'Opted In' : 'Not Set'}</span>
+                      </div>
 
                       {/* Competitor */}
-                      <div className="mt-4 pt-4 border-t border-[var(--color-border)] group/input">
+                      <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
                         <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
                           <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                           Competitor Mentioned
                         </label>
-                        <input
-                          type="text" value={lead.competitor_mentioned || ''}
-                          onChange={e => handleFieldChange('competitor_mentioned', e.target.value)}
-                          onBlur={e => handleFieldBlur('competitor_mentioned', e.target.value)}
-                          className="w-full text-sm font-semibold border border-[var(--color-border)] rounded-xl p-2.5 bg-gray-50/50 group-hover/input:bg-[var(--color-surface)] focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                          placeholder="e.g. Livspace, HomeLane"
-                        />
+                        <span className="text-sm font-semibold text-[var(--color-text)] block py-2">{lead.competitor_mentioned || <span className="text-gray-400 font-normal italic">None</span>}</span>
                       </div>
                     </div>
                   </div>
-
                   {/* Notes Card */}
                   <div className="relative overflow-hidden p-6 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 border border-[var(--color-border)] bg-[var(--color-surface)] group mt-6">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
@@ -1450,9 +1268,9 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       )}
                     </div>
                     
-                    <div className="relative z-10 group/input">
-                      <textarea
-                        value={lead.notes ? (
+                    <div className="relative z-10">
+                      <p className="text-sm font-medium text-[var(--color-text)] whitespace-pre-wrap leading-relaxed min-h-[60px]">
+                        {lead.notes ? (
                           lead.notes.includes('[AI Fallback Extraction]') ? (
                             lead.notes.replace('[AI Fallback Extraction]', '').trim()
                           ) : lead.notes.includes('[AI Extraction]') ? (
@@ -1460,12 +1278,8 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                           ) : (
                             lead.notes
                           )
-                        ) : ''}
-                        onChange={e => handleFieldChange('notes', e.target.value)}
-                        onBlur={e => handleFieldBlur('notes', e.target.value)}
-                        className="w-full min-h-[100px] text-sm font-semibold border border-[var(--color-border)] rounded-xl p-3 bg-gray-50/50 group-hover/input:bg-[var(--color-surface)] focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all resize-y"
-                        placeholder="Add notes or extracted design scope details..."
-                      />
+                        ) : <span className="text-gray-400 font-normal italic">No notes</span>}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1492,7 +1306,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                         </div>
                         <div className="flex flex-col gap-2 text-sm text-gray-600">
                           <div className="flex items-center gap-2">
-                            <span className="text-gray-400">📅</span>
+                            <span className="text-gray-400">Ã°Å¸â€œâ€¦</span>
                             <span className="font-medium text-gray-700">{formatMeetingSchedule(lead.next_meeting_schedule)}</span>
                             {lead.next_meeting_duration && (
                               <span className="text-gray-400">({lead.next_meeting_duration} mins)</span>
@@ -1500,13 +1314,13 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                           </div>
                           {lead.next_meeting_type && (
                             <div className="flex items-center gap-2">
-                              <span className="text-gray-400">📍</span>
+                              <span className="text-gray-400">Ã°Å¸â€œÂ</span>
                               <span className="font-medium text-gray-700">{lead.next_meeting_type}</span>
                             </div>
                           )}
                           {lead.next_meeting_host && (
                             <div className="flex items-center gap-2">
-                              <span className="text-gray-400">👤</span>
+                              <span className="text-gray-400">Ã°Å¸â€˜Â¤</span>
                               <span className="font-medium text-gray-700">Host: {lead.next_meeting_host}</span>
                             </div>
                           )}
@@ -1584,9 +1398,9 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                             buyingIntent.intent === 'Hot' ? 'text-red-600' : 
                             buyingIntent.intent === 'Warm' ? 'text-orange-500' : 'text-blue-500'
                           }`}>
-                            {buyingIntent.intent === 'Hot' && '🔥 '}
-                            {buyingIntent.intent === 'Warm' && '☀️ '}
-                            {buyingIntent.intent === 'Cold' && '❄️ '}
+                            {buyingIntent.intent === 'Hot' && 'Ã°Å¸â€Â¥ '}
+                            {buyingIntent.intent === 'Warm' && '☀️ '}
+                            {buyingIntent.intent === 'Cold' && 'Ã¢Ââ€žÃ¯Â¸Â '}
                             {buyingIntent.intent} ({buyingIntent.confidence}%)
                           </div>
                           <div className="text-sm text-gray-700 mt-2">{buyingIntent.reason}</div>
@@ -1602,7 +1416,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   {/* REFERRAL NETWORK WIDGET */}
                   <div className="bg-indigo-50/50 rounded-2xl p-6 border border-indigo-100">
                     <div className="flex items-center gap-3 mb-5">
-                      <span className="text-2xl">🤝</span>
+                      <span className="text-2xl">🤝</span>
                       <h3 className="text-base font-bold text-indigo-900 uppercase tracking-wider">Referral Network</h3>
                     </div>
                     {lead.referrals && lead.referrals.length > 0 ? (
@@ -1743,7 +1557,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   <div className="flex items-center justify-between border-b pb-4 mb-6">
                     <div>
                       <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                        <span>📅</span> Meetings Hub
+                        <span>Ã°Å¸â€œâ€¦</span> Meetings Hub
                       </h3>
                       <p className="text-sm text-gray-500 mt-1">Schedule client consultations, log summaries, and get AI Sales Coaching.</p>
                     </div>
@@ -1934,7 +1748,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                     <div className="space-y-5 pt-2">
                       <div className="bg-green-50/50 p-5 rounded-xl border border-green-200">
                         <h4 className="text-base font-bold text-green-800 flex items-center gap-1.5">
-                          <span>✅</span> Conclude "{lead.next_meeting_title || 'Lead Consultation Meeting'}"
+                          <span>Ã¢Å“â€¦</span> Conclude "{lead.next_meeting_title || 'Lead Consultation Meeting'}"
                         </h4>
                         <p className="text-sm text-gray-500 mt-1">
                           Select the conclusion method. The AI Summarizer automatically extracts tasks and logs feedback.
@@ -1948,14 +1762,14 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                           onClick={() => setConcludeMode('ai')}
                           className={`flex-1 text-center py-2 text-xs font-bold rounded-md transition-all ${concludeMode === 'ai' ? 'bg-white shadow-sm text-blue-600 font-extrabold' : 'text-gray-500 hover:text-gray-900'}`}
                         >
-                          🤖 AI Summarizer & Coach
+                          Ã°Å¸Â¤â€“ AI Summarizer & Coach
                         </button>
                         <button
                           type="button"
                           onClick={() => setConcludeMode('manual')}
                           className={`flex-1 text-center py-2 text-xs font-bold rounded-md transition-all ${concludeMode === 'manual' ? 'bg-white shadow-sm text-blue-600 font-extrabold' : 'text-gray-500 hover:text-gray-900'}`}
                         >
-                          📝 Manual Notes
+                          Ã°Å¸â€œÂ Manual Notes
                         </button>
                       </div>
 
@@ -1993,7 +1807,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                                   disabled={aiSummarizing || !meetingTranscript.trim()}
                                   className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white text-sm font-bold rounded-lg shadow-sm hover:shadow transition-all disabled:opacity-50 cursor-pointer"
                                 >
-                                  {aiSummarizing ? '🤖 AI is analyzing...' : '✨ Generate AI Summary & Conclude'}
+                                  {aiSummarizing ? 'Ã°Å¸Â¤â€“ AI is analyzing...' : 'Ã¢Å“Â¨ Generate AI Summary & Conclude'}
                                 </button>
                               </div>
                             </form>
@@ -2001,7 +1815,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                             <div className="space-y-6 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                               <div className="flex items-center justify-between border-b pb-3">
                                 <h4 className="text-lg font-bold text-gray-900 flex items-center gap-1.5">
-                                  <span>🤖</span> Gemini AI Analysis Complete
+                                  <span>Ã°Å¸Â¤â€“</span> Gemini AI Analysis Complete
                                 </h4>
                                 <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full flex items-center gap-1 border border-green-200">
                                   <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping"></span> Concluded & Saved
@@ -2016,7 +1830,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                                   aiResult.customer_sentiment === 'Negative' ? 'bg-red-50 text-red-700 border border-red-200' :
                                   'bg-gray-50 text-gray-700 border border-gray-200'
                                 }`}>
-                                  <span>{aiResult.customer_sentiment === 'Positive' ? '🙂' : aiResult.customer_sentiment === 'Negative' ? '😞' : '😐'}</span>
+                                  <span>{aiResult.customer_sentiment === 'Positive' ? 'Ã°Å¸â„¢â€š' : aiResult.customer_sentiment === 'Negative' ? 'Ã°Å¸ËœÅ¾' : 'Ã°Å¸ËœÂ'}</span>
                                   {aiResult.customer_sentiment}
                                 </span>
                               </div>
@@ -2036,7 +1850,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                                   <div className="space-y-2">
                                     {aiResult.action_items.map((item, idx) => (
                                       <div key={idx} className="flex items-start gap-2.5 p-2.5 rounded-lg bg-indigo-50/50 border border-indigo-100/50 text-sm animate-fadeIn">
-                                        <span className="text-indigo-600 font-bold mt-0.5">✓</span>
+                                        <span className="text-indigo-600 font-bold mt-0.5">Ã¢Å“â€œ</span>
                                         <div>
                                           <p className="font-semibold text-gray-800">{typeof item === 'string' ? item : item.title}</p>
                                           <p className="text-xs text-gray-500 mt-0.5">Due in {typeof item === 'object' && item.due_in_days ? item.due_in_days : 1} day(s)</p>
@@ -2053,7 +1867,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                               {aiCoachFeedback && (
                                 <div className="mt-4 p-5 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-orange-100 animate-fadeIn">
                                   <h5 className="text-xs font-bold text-orange-800 uppercase tracking-wider flex items-center gap-1.5 mb-3">
-                                    <span>🧠</span> AI Sales Coach Feedback
+                                    <span>Ã°Å¸Â§Â </span> AI Sales Coach Feedback
                                   </h5>
                                   <p className="text-sm text-gray-700 italic mb-4 leading-relaxed">
                                     "{aiCoachFeedback.feedback}"
@@ -2180,14 +1994,14 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
                           <div className="grid grid-cols-2 gap-4">
                             <div className="flex items-center gap-3 bg-white/70 p-3 rounded-xl border border-gray-250 shadow-sm">
-                              <span className="text-2xl">👤</span>
+                              <span className="text-2xl">Ã°Å¸â€˜Â¤</span>
                               <div>
                                 <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Host</span>
                                 <span className="text-sm font-semibold text-gray-700">{lead.next_meeting_host || lead.assignee_name || 'Unassigned'}</span>
                               </div>
                             </div>
                             <div className="flex items-center gap-3 bg-white/70 p-3 rounded-xl border border-gray-250 shadow-sm">
-                              <span className="text-2xl">🔔</span>
+                              <span className="text-2xl">Ã°Å¸â€â€</span>
                               <div>
                                 <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Reminders</span>
                                 <span className="text-sm font-semibold text-gray-700">WhatsApp &amp; Email</span>
@@ -2201,7 +2015,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                             <div>
                               <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Date &amp; Time</span>
                               <div className="text-sm font-bold text-gray-800 mt-1 flex items-center gap-2">
-                                <span>📅</span>
+                                <span>Ã°Å¸â€œâ€¦</span>
                                 {formatMeetingSchedule(lead.next_meeting_schedule)}
                               </div>
                             </div>
@@ -2209,7 +2023,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                               <div>
                                 <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Duration</span>
                                 <div className="text-sm font-semibold text-gray-700 mt-1 flex items-center gap-2">
-                                  <span>⏱️</span>
+                                  <span>Ã¢ÂÂ±Ã¯Â¸Â</span>
                                   {lead.next_meeting_duration} minutes
                                 </div>
                               </div>
@@ -2218,7 +2032,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                               <div>
                                 <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Meeting Type</span>
                                 <div className="text-sm font-semibold text-gray-700 mt-1 flex items-center gap-2">
-                                  <span>📍</span>
+                                  <span>Ã°Å¸â€œÂ</span>
                                   {lead.next_meeting_type}
                                 </div>
                               </div>
@@ -2285,7 +2099,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                     </div>
                   ) : (
                     <div className="text-center py-12 rounded-2xl border border-dashed border-gray-300 bg-white/30 backdrop-blur-sm">
-                      <span className="text-5xl block mb-3 animate-bounce">📅</span>
+                      <span className="text-5xl block mb-3 animate-bounce">Ã°Å¸â€œâ€¦</span>
                       <h4 className="text-lg font-bold text-gray-800">No Meetings Scheduled</h4>
                       <p className="text-sm text-gray-400 mt-1 max-w-xs mx-auto">Build momentum by scheduling a design consultation.</p>
                       <button
@@ -2302,7 +2116,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                 <div className="p-6 rounded-2xl shadow-sm transition-all bg-white border border-gray-100">
                   <div className="border-b pb-3 mb-5">
                     <h4 className="text-base font-bold text-gray-800 flex items-center gap-2">
-                      <span>📜</span> Meeting History &amp; Logs
+                      <span>Ã°Å¸â€œÅ“</span> Meeting History &amp; Logs
                     </h4>
                   </div>
 
@@ -2352,14 +2166,14 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                                     )}
                                     {sentiment && (
                                       <span className="text-xs" title={`Customer Sentiment: ${sentiment}`}>
-                                        {sentiment === 'Positive' ? '🟢 Positive' : sentiment === 'Negative' ? '🔴 Negative' : '🟡 Neutral'}
+                                        {sentiment === 'Positive' ? 'Ã°Å¸Å¸Â¢ Positive' : sentiment === 'Negative' ? 'Ã°Å¸â€Â´ Negative' : 'Ã°Å¸Å¸Â¡ Neutral'}
                                       </span>
                                     )}
                                   </div>
                                   <div className="text-xs text-gray-400 flex flex-wrap gap-x-4 gap-y-1">
-                                    <span>📅 {formatMeetingSchedule(act.scheduled_at || act.created_at)}</span>
-                                    <span>👤 Host: {meta.meeting_host || act.user_name || 'Coordinator'}</span>
-                                    {meta.duration && <span>⏱️ {meta.duration} mins</span>}
+                                    <span>Ã°Å¸â€œâ€¦ {formatMeetingSchedule(act.scheduled_at || act.created_at)}</span>
+                                    <span>Ã°Å¸â€˜Â¤ Host: {meta.meeting_host || act.user_name || 'Coordinator'}</span>
+                                    {meta.duration && <span>Ã¢ÂÂ±Ã¯Â¸Â {meta.duration} mins</span>}
                                   </div>
                                 </div>
 
@@ -2369,7 +2183,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                                       onClick={() => setExpandedMeetingId(isExpanded ? null : act.id)}
                                       className="px-3 py-1.5 hover:bg-gray-100 text-blue-600 hover:text-blue-800 text-xs font-bold rounded-lg border border-gray-200 transition-colors flex items-center gap-1 cursor-pointer"
                                     >
-                                      {isExpanded ? 'Hide Details ▲' : 'View AI Summary ▾'}
+                                      {isExpanded ? 'Hide Details Ã¢â€“Â²' : 'View AI Summary Ã¢â€“Â¾'}
                                     </button>
                                   )}
                                   <button
@@ -2404,7 +2218,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                         {actionItems.map((item, idx) => (
                                           <div key={idx} className="flex items-start gap-2 bg-white p-2.5 rounded-lg border border-gray-100 text-xs shadow-sm">
-                                            <span className="text-indigo-650 font-bold">✓</span>
+                                            <span className="text-indigo-650 font-bold">Ã¢Å“â€œ</span>
                                             <div>
                                               <p className="font-semibold text-gray-800">{typeof item === 'string' ? item : item.title}</p>
                                               <p className="text-[10px] text-gray-400 mt-0.5">Due in {typeof item === 'object' && item.due_in_days ? item.due_in_days : 1} days</p>
@@ -2520,7 +2334,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                               className="text-xs text-primary hover:text-primary-dark font-medium mr-2"
                               title="Extract properties with AI"
                             >
-                              ✨ Extract
+                              Ã¢Å“Â¨ Extract
                             </button>
                           )}
                           <button onClick={async () => deleteFile(f.id)} className="text-gray-400 hover:text-red-500 shrink-0 text-lg leading-none">&times;</button>
@@ -2774,7 +2588,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
         >
           <div className="p-6 text-center space-y-4">
             <div className="w-16 h-16 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto text-3xl">
-              🔄
+              Ã°Å¸â€â€ž
             </div>
             <div>
               <h3 className="text-lg font-bold text-gray-900">Restore Lead?</h3>
@@ -2819,7 +2633,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
         >
           <div className="p-6 text-center space-y-4">
             <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto text-3xl">
-              ⚠️
+              Ã¢Å¡Â Ã¯Â¸Â
             </div>
             <div>
               <h3 className="text-lg font-bold text-gray-900">Permanently Delete Lead?</h3>
@@ -2858,7 +2672,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
             {previewFile.download_url === '#' || previewFile.storage_key === '#' ? (
               <div className="text-center p-8 space-y-4 max-w-md bg-white rounded-xl shadow-sm border border-gray-100">
                 <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto text-3xl">
-                  ℹ️
+                  Ã¢â€žÂ¹Ã¯Â¸Â
                 </div>
                 <h4 className="text-base font-semibold text-gray-800">Mock Document Preview</h4>
                 <p className="text-sm text-gray-500">
@@ -2898,7 +2712,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
             ) : (
               <div className="text-center p-8 space-y-4 max-w-md bg-white rounded-xl shadow-sm border border-gray-100">
                 <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto text-3xl">
-                  📄
+                  Ã°Å¸â€œâ€ž
                 </div>
                 <h4 className="text-base font-semibold text-gray-800">{previewFile.file_name}</h4>
                 <p className="text-sm text-gray-500">
