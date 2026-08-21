@@ -19,6 +19,7 @@ import AutomationHistoryTab from './AutomationHistoryTab';
 import LeadQualificationScore from './LeadQualificationScore';
 import DiscoveryCallChecklist from './DiscoveryCallChecklist';
 import LeadForm from './LeadForm';
+import LeadSiteVisitsTab from './LeadSiteVisitsTab';
 
 import NegotiationDesk from './NegotiationDesk';
 import DesignPresentationModal from './DesignPresentationModal';
@@ -87,14 +88,20 @@ const getMeetingCountdown = (dateStr) => {
   return '⏱️ Starting now';
 };
 
-export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, stages = [] }) {
+export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, stages = [], initialTab = 'overview' }) {
   const { confirm } = useConfirm();
 
   const navigate = useNavigate();
   const toast = useToast();
   const [lead, setLead] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview'); // overview, activity, tasks, followups, files
+  const [activeTab, setActiveTab] = useState(initialTab); // overview, activity, tasks, followups, files
+
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
   const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
   const [isPresentModalOpen, setIsPresentModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -102,7 +109,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   const [historicalMeetingToDelete, setHistoricalMeetingToDelete] = useState(null);
   const [isDeletingHistorical, setIsDeletingHistorical] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
-  const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
+  const [isLeadFormOpen, setIsLeadFormOpen] = useState(null);
   const [isRestoreConfirmOpen, setIsRestoreConfirmOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isMarkLostModalOpen, setIsMarkLostModalOpen] = useState(false);
@@ -183,6 +190,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
   // Files state
   const [files, setFiles] = useState([]);
+  const [previewFile, setPreviewFile] = useState(null);
   
   // Buying intent state
   const [buyingIntent, setBuyingIntent] = useState(null);
@@ -551,8 +559,16 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
     if (!stageInfo) return;
 
     const missing = [];
-    if (stageInfo.mandatory_fields) {
-      stageInfo.mandatory_fields.forEach(f => {
+    let mandatoryFields = stageInfo.mandatory_fields || [];
+    if (typeof mandatoryFields === 'string') {
+      try {
+        mandatoryFields = JSON.parse(mandatoryFields);
+      } catch {
+        mandatoryFields = [];
+      }
+    }
+    if (Array.isArray(mandatoryFields)) {
+      mandatoryFields.forEach(f => {
         if (!lead[f] && (!lead.custom_fields || !lead.custom_fields[f])) {
           missing.push(f);
         }
@@ -684,9 +700,15 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
         const { carpet_area, room_count, property_type, extracted_scope } = res.data.data;
         // Optionally update the lead
         const updates = {};
-        if (extracted_scope) updates.scope = (lead.scope ? lead.scope + '\n\n' : '') + extracted_scope;
-        if (property_type) updates.project_type = property_type;
-        // We could store carpet_area and room_count in lifestyle_preferences or directly if fields exist.
+        if (extracted_scope) {
+          updates.notes = (lead.notes ? lead.notes + '\n\n' : '') + extracted_scope;
+        }
+        if (property_type) {
+          updates.property_type = property_type.slice(0, 50); // DB limit is 50 characters
+        }
+        if (carpet_area) {
+          updates.carpet_area_sqft = carpet_area;
+        }
         
         // Update local state and backend
         if (Object.keys(updates).length > 0) {
@@ -1011,7 +1033,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               ref={tabsRef}
               className="flex gap-4 overflow-x-auto custom-scrollbar p-2 bg-white border border-gray-200 rounded-xl shadow-sm"
             >
-              {['overview', 'activity', 'communications', 'tasks', 'followups', 'meeting-schedule', 'stakeholders', 'preferences', 'inspirations', 'estimates', 'negotiation', 'files', 'ai-copilot', 'knowledge-base', 'twin', 'automations'].map(tab => (
+              {['overview', 'activity', 'communications', 'tasks', 'followups', 'meeting-schedule', 'site-visits', 'stakeholders', 'preferences', 'inspirations', 'estimates', 'negotiation', 'files', 'ai-copilot', 'knowledge-base', 'twin', 'automations'].map(tab => (
                 <button
                   key={tab}
                   onClick={(e) => {
@@ -1023,7 +1045,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       : 'bg-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
-                  {tab === 'knowledge-base' ? 'AI Knowledge Base' : tab === 'automations' ? 'Automation History' : tab === 'meeting-schedule' ? 'Meeting Schedule' : tab.replace('-', ' ')}
+                  {tab === 'knowledge-base' ? 'AI Knowledge Base' : tab === 'automations' ? 'Automation History' : tab === 'meeting-schedule' ? 'Meeting Schedule' : tab === 'site-visits' ? 'Site Visits' : tab.replace('-', ' ')}
                 </button>
               ))}
             </nav>
@@ -1043,12 +1065,28 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                         <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"></path></svg>
                         Contact Info
                       </h4>
-                      <button onClick={async () => setIsLeadFormOpen(true)} className="text-sm text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={async () => setIsLeadFormOpen('contact')} className="text-sm text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                         Edit
                       </button>
                     </div>
                     <div className="space-y-4 relative z-10">
+                      {/* Full Name */}
+                      <div className="flex items-center group/field">
+                        <div className="w-10 h-10 rounded-full bg-violet-50 flex items-center justify-center text-violet-600 shrink-0 mr-4">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                        </div>
+                        <div className="flex-1 border border-transparent group-hover/field:border-[var(--color-border)] rounded-xl bg-gray-50/50 group-hover/field:bg-[var(--color-surface)] transition-all">
+                          <input
+                            type="text" value={lead.name || ''}
+                            onChange={e => handleFieldChange('name', e.target.value)}
+                            onBlur={e => handleFieldBlur('name', e.target.value)}
+                            className="w-full text-base font-semibold text-[var(--color-text)] bg-transparent border-none focus:ring-2 focus:ring-violet-500/20 rounded-xl px-4 py-2.5 placeholder-gray-400 outline-none"
+                            placeholder="Add full name"
+                          />
+                        </div>
+                      </div>
+                      {/* Phone */}
                       <div className="flex items-center group/field">
                         <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 mr-4">
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
@@ -1063,6 +1101,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                           />
                         </div>
                       </div>
+                      {/* Email */}
                       <div className="flex items-center group/field">
                         <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0 mr-4">
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
@@ -1077,6 +1116,28 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                           />
                         </div>
                       </div>
+                      {/* Lead Source */}
+                      <div className="flex items-center group/field">
+                        <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 shrink-0 mr-4">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>
+                        </div>
+                        <div className="flex-1 border border-transparent group-hover/field:border-[var(--color-border)] rounded-xl bg-gray-50/50 group-hover/field:bg-[var(--color-surface)] transition-all">
+                          <select
+                            value={lead.source || ''}
+                            onChange={e => { handleFieldChange('source', e.target.value); handleFieldBlur('source', e.target.value); }}
+                            className="w-full text-base font-semibold text-[var(--color-text)] bg-transparent border-none focus:ring-2 focus:ring-amber-500/20 rounded-xl px-4 py-2.5 placeholder-gray-400 outline-none cursor-pointer appearance-none"
+                            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3E%3Cpath stroke=\'%236b7280\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'M6 8l4 4 4-4\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '20px' }}
+                          >
+                            <option value="">Select source</option>
+                            <option value="Facebook">Facebook</option>
+                            <option value="IndiaMART">IndiaMART</option>
+                            <option value="Referral">Referral</option>
+                            <option value="Website">Website</option>
+                            <option value="Direct">Direct</option>
+                            <option value="Other">Other</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   
@@ -1088,7 +1149,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                         <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
                         Property Details
                       </h4>
-                      <button onClick={async () => setIsLeadFormOpen(true)} className="text-sm text-emerald-600 hover:text-emerald-800 font-semibold flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={async () => setIsLeadFormOpen('property')} className="text-sm text-emerald-600 hover:text-emerald-800 font-semibold flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                         Edit
                       </button>
@@ -1298,7 +1359,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                         <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
                         Preferences
                       </h4>
-                      <button onClick={async () => setIsLeadFormOpen(true)} className="text-sm text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={async () => setIsLeadFormOpen('preferences')} className="text-sm text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                         Edit
                       </button>
@@ -1369,6 +1430,42 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                           placeholder="e.g. Livspace, HomeLane"
                         />
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Notes Card */}
+                  <div className="relative overflow-hidden p-6 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 border border-[var(--color-border)] bg-[var(--color-surface)] group mt-6">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                    
+                    <div className="relative z-10 flex justify-between items-center mb-5">
+                      <h4 className="text-sm font-bold text-[var(--color-text-secondary)] uppercase tracking-wider flex items-center gap-2">
+                        <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                        Notes & Extracted Scope
+                      </h4>
+                      {lead.notes && (lead.notes.includes('[AI') || lead.notes.includes('[Mock')) && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200/50 uppercase tracking-wide flex items-center gap-1 shadow-sm">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                          AI Parsed
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="relative z-10 group/input">
+                      <textarea
+                        value={lead.notes ? (
+                          lead.notes.includes('[AI Fallback Extraction]') ? (
+                            lead.notes.replace('[AI Fallback Extraction]', '').trim()
+                          ) : lead.notes.includes('[AI Extraction]') ? (
+                            lead.notes.replace('[AI Extraction]', '').trim()
+                          ) : (
+                            lead.notes
+                          )
+                        ) : ''}
+                        onChange={e => handleFieldChange('notes', e.target.value)}
+                        onBlur={e => handleFieldBlur('notes', e.target.value)}
+                        className="w-full min-h-[100px] text-sm font-semibold border border-[var(--color-border)] rounded-xl p-3 bg-gray-50/50 group-hover/input:bg-[var(--color-surface)] focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all resize-y"
+                        placeholder="Add notes or extracted design scope details..."
+                      />
                     </div>
                   </div>
                 </div>
@@ -2406,7 +2503,14 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       <li key={f.id} className="p-3 flex items-center justify-between hover:bg-gray-50">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="text-gray-400">&#128206;</span>
-                          <a href={f.download_url || f.storage_key} download={f.file_name} className="text-blue-600 hover:underline truncate text-sm font-medium">{f.file_name}</a>
+                          <button
+                            type="button"
+                            onClick={() => setPreviewFile(f)}
+                            className="text-blue-600 hover:underline truncate text-sm font-medium text-left focus:outline-none border-none bg-transparent p-0 cursor-pointer"
+                            title="Click to preview file"
+                          >
+                            {f.file_name}
+                          </button>
                           <span className="text-xs text-gray-400 shrink-0">{f.file_size ? `${(f.file_size/1024).toFixed(0)}KB` : ''}</span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -2429,6 +2533,10 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
             )}
             {activeTab === 'estimates' && (
               <EstimatesTab leadId={leadId} lead={lead} />
+            )}
+
+            {activeTab === 'site-visits' && (
+              <LeadSiteVisitsTab leadId={leadId} onLeadUpdated={() => fetchLead(false)} />
             )}
 
             {activeTab === 'inspirations' && (
@@ -2517,11 +2625,12 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
           {isLeadFormOpen && (
             <LeadForm
               lead={lead}
-              onClose={() => setIsLeadFormOpen(false)}
+              editSection={isLeadFormOpen}
+              onClose={() => setIsLeadFormOpen(null)}
               onSave={(updatedLead) => {
                 setLead(prev => ({ ...prev, ...updatedLead }));
                 onLeadUpdated?.(updatedLead);
-                setIsLeadFormOpen(false);
+                setIsLeadFormOpen(null);
                 fetchLead();
               }}
             />
@@ -2734,6 +2843,81 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                 {actionSubmitting ? 'Deleting...' : 'Yes, Delete'}
               </Button>
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {previewFile && (
+        <Modal
+          isOpen={!!previewFile}
+          onClose={() => setPreviewFile(null)}
+          title={`Preview: ${previewFile.file_name}`}
+          size="lg"
+        >
+          <div className="flex flex-col items-center justify-center p-2 bg-gray-50 rounded-lg min-h-[400px]">
+            {previewFile.download_url === '#' || previewFile.storage_key === '#' ? (
+              <div className="text-center p-8 space-y-4 max-w-md bg-white rounded-xl shadow-sm border border-gray-100">
+                <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto text-3xl">
+                  ℹ️
+                </div>
+                <h4 className="text-base font-semibold text-gray-800">Mock Document Preview</h4>
+                <p className="text-sm text-gray-500">
+                  This is a pre-loaded placeholder file ("{previewFile.file_name}"). For files you upload during this session, a full interactive preview will be displayed automatically.
+                </p>
+                <div className="pt-2">
+                  <Button variant="outline" size="sm" onClick={() => setPreviewFile(null)}>
+                    Close Preview
+                  </Button>
+                </div>
+              </div>
+            ) : previewFile.mime_type?.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(previewFile.file_name) ? (
+              <div className="w-full flex justify-center items-center overflow-auto max-h-[70vh]">
+                <img
+                  src={previewFile.download_url || previewFile.storage_key}
+                  alt={previewFile.file_name}
+                  className="max-w-full max-h-[65vh] object-contain rounded-md shadow-md border"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.style.display = 'none';
+                    const fallback = document.getElementById('preview-image-fallback');
+                    if (fallback) fallback.style.display = 'block';
+                  }}
+                />
+                <div id="preview-image-fallback" style={{ display: 'none' }} className="text-center p-8 text-gray-500 bg-white rounded-xl border">
+                  Failed to load image. It might have been cleared from memory.
+                </div>
+              </div>
+            ) : previewFile.mime_type === 'application/pdf' || /\.(pdf)$/i.test(previewFile.file_name) ? (
+              <div className="w-full h-[65vh] rounded-md overflow-hidden shadow-md border bg-white">
+                <iframe
+                  src={previewFile.download_url || previewFile.storage_key}
+                  title={previewFile.file_name}
+                  className="w-full h-full border-0"
+                />
+              </div>
+            ) : (
+              <div className="text-center p-8 space-y-4 max-w-md bg-white rounded-xl shadow-sm border border-gray-100">
+                <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto text-3xl">
+                  📄
+                </div>
+                <h4 className="text-base font-semibold text-gray-800">{previewFile.file_name}</h4>
+                <p className="text-sm text-gray-500">
+                  Preview is not supported for this file type ({previewFile.mime_type || 'Unknown type'}).
+                </p>
+                <div className="flex gap-2 justify-center pt-2">
+                  <a
+                    href={previewFile.download_url || previewFile.storage_key}
+                    download={previewFile.file_name}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium transition-colors"
+                  >
+                    Download File
+                  </a>
+                  <Button variant="outline" size="sm" onClick={() => setPreviewFile(null)}>
+                    Close
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </Modal>
       )}

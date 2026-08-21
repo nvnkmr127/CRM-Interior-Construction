@@ -43,7 +43,17 @@ async function updateLead({ tenantId, userId, leadId, data, txClient = null, ski
        });
     }
 
-    enqueueAutomation(tenantId, 'lead.updated', { leadId });
+    try {
+      await enqueueAutomation({
+        tenantId,
+        eventType: 'record.updated',
+        entity: 'lead',
+        record: updatedLead,
+        changes: data
+      });
+    } catch (queueErr) {
+      logger.error('Failed to enqueue automation UPDATE_LEAD', queueErr);
+    }
   }
 
   return updatedLead;

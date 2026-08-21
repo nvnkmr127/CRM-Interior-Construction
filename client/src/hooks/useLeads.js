@@ -24,7 +24,7 @@ export function useLeads(filters = {}) {
       const [leadsRes, stagesRes, statsRes] = await Promise.all([
         getLeads(params),
         api.get('/config/lead-stages').catch(() => ({ data: { data: [] } })),
-        api.get('/leads/stats').catch(() => ({ data: { data: { total: 0, wonThisMonth: 0, avgScore: 0, convPct: 0 } } }))
+        api.get('/leads/stats', { params }).catch(() => ({ data: { data: { total: 0, wonThisMonth: 0, avgScore: 0, convPct: 0 } } }))
       ]);
 
       if (stagesRes.data?.success) {

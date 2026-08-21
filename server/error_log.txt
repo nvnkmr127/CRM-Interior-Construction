@@ -144,4 +144,21 @@
     at done (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\raw-body\index.js:227:7)
     at IncomingMessage.onEnd (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\raw-body\index.js:287:7)
     at IncomingMessage.emit (node:events:508:28)
-    at endReadableNT (node:internal/streams/readable:1701:12)\n\n
+    at endReadableNT (node:internal/streams/readable:1701:12)\n\n2026-08-20T17:18:20.414Z\nError: System error or unhandled exception
+    at parseFileHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:749:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\n2026-08-20T17:18:38.727Z\nError: System error or unhandled exception
+    at parseFileHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:749:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\n2026-08-20T17:19:27.471Z\nError: System error or unhandled exception
+    at parseFileHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:749:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\n2026-08-21T04:38:25.653Z\nError: System error or unhandled exception
+    at parseFileHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:754:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\n2026-08-21T04:38:35.781Z\nError: System error or unhandled exception
+    at parseFileHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:754:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\n2026-08-21T04:38:40.371Z\nError: System error or unhandled exception
+    at parseFileHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:754:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\n2026-08-21T04:43:51.463Z\nerror: value too long for type character varying(100)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Object.updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:408:9)
+    at async updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\leads\updateLead.js:16:23)
+    at async exports.updateLeadHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2715:25)\n\n

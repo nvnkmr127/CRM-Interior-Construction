@@ -717,12 +717,16 @@ export const setupMockInterceptor = (api) => {
                 let fileSize = 102400;
                 let mimeType = 'application/pdf';
 
+                let downloadUrl = '#';
                 if (config.data instanceof FormData) {
                   const fileObj = config.data.get('file');
                   if (fileObj) {
                     fileName = fileObj.name;
                     fileSize = fileObj.size;
                     mimeType = fileObj.type;
+                    if (typeof URL !== 'undefined' && URL.createObjectURL && fileObj instanceof File) {
+                      downloadUrl = URL.createObjectURL(fileObj);
+                    }
                   }
                 } else if (config.data) {
                   const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
@@ -736,8 +740,8 @@ export const setupMockInterceptor = (api) => {
                   file_name: fileName,
                   file_size: fileSize,
                   mime_type: mimeType,
-                  download_url: '#',
-                  storage_key: '#'
+                  download_url: downloadUrl,
+                  storage_key: downloadUrl
                 };
 
                 if (!mockDatabase.files) mockDatabase.files = [];

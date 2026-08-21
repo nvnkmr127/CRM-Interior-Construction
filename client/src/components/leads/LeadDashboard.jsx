@@ -2,15 +2,28 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { dashboardApi } from '../../api/dashboard';
-import { Card, Button } from '../ui';
+import { Card, Button, Modal } from '../ui';
 import { useAuth } from '../../store/authContext';
 import styles from './LeadDashboard.module.css';
 
-export default function LeadDashboard({ leads, loading, onLeadClick, onViewChange }) {
+export default function LeadDashboard({ leads, stages = [], loading, onLeadClick, onViewChange, onSiteVisitsTodayClick }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [showVisitsModal, setShowVisitsModal] = useState(false);
+
+  const handleSiteVisitsTodayClick = () => {
+    const visits = stats?.siteVisits?.visits || [];
+    if (visits.length === 0) return;
+    if (visits.length === 1) {
+      if (onSiteVisitsTodayClick) {
+        onSiteVisitsTodayClick(visits[0].lead_id);
+      }
+    } else {
+      setShowVisitsModal(true);
+    }
+  };
 
   useEffect(() => {
     dashboardApi.getStats()
@@ -23,7 +36,7 @@ export default function LeadDashboard({ leads, loading, onLeadClick, onViewChang
   const [activityLoading, setActivityLoading] = useState(true);
 
   useEffect(() => {
-    dashboardApi.getMyTasks(5)
+    dashboardApi.getMyTasks(7)
       .then(res => setMyTasks(res))
       .catch(err => console.error(err))
       .finally(() => setActivityLoading(false));
@@ -59,10 +72,33 @@ export default function LeadDashboard({ leads, loading, onLeadClick, onViewChang
 
   const atRiskLeadsCount = (leads || []).filter(l => l.status === 'stale').length || 0;
 
+  // Group active leads by stage for distribution graph
+  const activeLeads = leads || [];
+  const totalActive = activeLeads.length;
+
+  const stageBreakdown = stages.map(stg => {
+    const count = activeLeads.filter(l => l.stage_id === stg.id).length;
+    const pct = totalActive > 0 ? (count / totalActive) * 100 : 0;
+    return {
+      id: stg.id,
+      name: stg.name,
+      color: stg.color || '#cbd5e1',
+      count,
+      pct
+    };
+  });
+
   // Real Timeline from tasks
   const timelineEvents = myTasks.map(t => {
     const timeStr = t.due_date ? new Date(t.due_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Today';
-    return { time: timeStr, title: t.title, type: 'task' };
+    return { 
+      time: timeStr, 
+      title: t.title, 
+      type: 'task',
+      leadId: t.lead_id,
+      leadName: t.lead_name,
+      projectName: t.project_name
+    };
   });
 
   if (timelineEvents.length === 0) {
@@ -100,8 +136,8 @@ export default function LeadDashboard({ leads, loading, onLeadClick, onViewChang
           <div className={styles.metricLabel}>Tasks Due Today</div>
           <div className={styles.metricValue}>{meetingsCount}</div>
         </div>
-        <div className={styles.metricCard} onClick={() => navigate('/tasks')}>
-          <div className={styles.metricLabel}>Site Visits</div>
+        <div className={styles.metricCard} onClick={handleSiteVisitsTodayClick} style={{ cursor: stats?.siteVisits?.count > 0 ? 'pointer' : 'default' }}>
+          <div className={styles.metricLabel}>Site Visits Today</div>
           <div className={styles.metricValue}>{visitsCount}</div>
         </div>
         <div className={styles.metricCard} onClick={() => navigate('/analytics/leads')}>
@@ -129,6 +165,35 @@ export default function LeadDashboard({ leads, loading, onLeadClick, onViewChang
                   </div>
                 </div>
               ))}
+              {priorityLeads.length === 0 && (
+                <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px', margin: 0 }}>No high probability leads currently.</p>
+              )}
+            </div>
+          </Card>
+
+          <Card className={styles.pipelineCard}>
+            <div className={styles.cardHeader}>
+              <h3>📊 Pipeline Stage Distribution</h3>
+              <span className={styles.riskBadge} style={{ background: 'var(--color-accent)' }}>{totalActive} Active</span>
+            </div>
+            <div className={styles.pipelineProgressList}>
+              {stageBreakdown.map((item, idx) => (
+                <div key={idx} className={styles.pipelineProgressItem}>
+                  <div className={styles.pipelineProgressHeader}>
+                    <span className={styles.stageName}>{item.name}</span>
+                    <span className={styles.stageCount}>{item.count} leads ({Math.round(item.pct)}%)</span>
+                  </div>
+                  <div className={styles.progressBarContainer}>
+                    <div 
+                      className={styles.progressBar} 
+                      style={{ 
+                        width: `${item.pct}%`, 
+                        backgroundColor: item.color 
+                      }} 
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
           </Card>
 
@@ -137,7 +202,7 @@ export default function LeadDashboard({ leads, loading, onLeadClick, onViewChang
               <h3>⚠ Leads At Risk</h3>
               <span className={styles.riskBadge}>{atRiskLeadsCount}</span>
             </div>
-            <p className={styles.riskHint} style={{ marginBottom: '16px' }}>
+            <p className={styles.riskHint}>
               Customers inactive for over 14 days or expressing budget concerns.
             </p>
             {staleLeads.length > 0 ? (
@@ -147,7 +212,7 @@ export default function LeadDashboard({ leads, loading, onLeadClick, onViewChang
                     <div className={styles.priorityRank} style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)' }}>⚠</div>
                     <div className={styles.priorityInfo}>
                       <h4>{rl.name}</h4>
-                      <span className={styles.probability} style={{ color: 'var(--color-danger)' }}>Stale Lead</span>
+                      <span className={styles.probability} style={{ color: 'var(--color-danger)', background: 'rgba(239, 68, 68, 0.1)' }}>Stale Lead</span>
                     </div>
                     <div className={styles.priorityAction}>
                       <Button variant="outline" size="small" style={{ borderColor: 'var(--color-danger)', color: 'var(--color-danger)' }}>Re-engage</Button>
@@ -156,7 +221,7 @@ export default function LeadDashboard({ leads, loading, onLeadClick, onViewChang
                 ))}
               </div>
             ) : (
-              <p className={styles.riskHint} style={{ color: 'var(--color-success)' }}>No at-risk leads found! All clear. 🎉</p>
+              <p className={styles.riskHint} style={{ color: 'var(--color-success)', margin: 0 }}>No at-risk leads found! All clear. 🎉</p>
             )}
           </Card>
         </div>
@@ -168,16 +233,74 @@ export default function LeadDashboard({ leads, loading, onLeadClick, onViewChang
             </div>
             <div className={styles.timelineList}>
               {timelineEvents.map((ev, idx) => (
-                <div key={idx} className={styles.timelineItem}>
+                <div 
+                  key={idx} 
+                  className={styles.timelineItem}
+                  onClick={() => ev.leadId && onLeadClick && onLeadClick(ev.leadId)}
+                >
                   <div className={styles.timelineTime}>{ev.time}</div>
                   <div className={styles.timelineDot} />
-                  <div className={styles.timelineContent}>{ev.title}</div>
+                  <div className={styles.timelineContent}>
+                    <div>{ev.title}</div>
+                    {ev.leadName && (
+                      <span className={styles.timelineMeta}>Lead: {ev.leadName}</span>
+                    )}
+                    {ev.projectName && (
+                      <span className={styles.timelineMeta}>Project: {ev.projectName}</span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           </Card>
         </div>
       </div>
+
+      {showVisitsModal && (
+        <Modal
+          isOpen={showVisitsModal}
+          onClose={() => setShowVisitsModal(false)}
+          title="📍 Today's Scheduled Site Visits"
+        >
+          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+            <p className="text-sm text-gray-500 mb-4">Click on any site visit below to open the lead details directly on the Site Visits tab.</p>
+            {stats?.siteVisits?.visits?.map((visit) => {
+              const formattedTime = new Date(visit.scheduled_at).toLocaleTimeString('en-IN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+              });
+              return (
+                <div
+                  key={visit.id}
+                  onClick={() => {
+                    setShowVisitsModal(false);
+                    if (onSiteVisitsTodayClick) {
+                      onSiteVisitsTodayClick(visit.lead_id);
+                    }
+                  }}
+                  className="p-4 border border-gray-150 rounded-xl hover:border-blue-500 hover:bg-blue-50/30 transition-all cursor-pointer flex justify-between items-center group"
+                >
+                  <div>
+                    <h4 className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors text-sm">
+                      {visit.lead_name}
+                    </h4>
+                    <p className="text-xs text-gray-500 mt-1">
+                      <span>👤 Assignee: </span>
+                      <span className="font-medium text-gray-700">{visit.assignee_name || 'Unassigned'}</span>
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className="inline-block px-3 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-lg border border-blue-100">
+                      {formattedTime}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

@@ -36,7 +36,7 @@ async function changeStage({ tenantId, userId, leadId, newStageId }) {
     tenantId,
     userId,
     leadId,
-    data: { stageId: newStageId }
+    data: { stage_id: newStageId }
   });
 
   // 5. Log the specific funnel analytics action
@@ -59,9 +59,16 @@ async function changeStage({ tenantId, userId, leadId, newStageId }) {
   // 6. Return the updated lead with fully joined properties (stage_name, assignee_name)
   const updatedLeadFull = await leadRepository.findLeadById(tenantId, leadId);
 
-  const mandatoryFields = newStage.mandatory_fields || [];
+  let mandatoryFields = newStage.mandatory_fields || [];
+  if (typeof mandatoryFields === 'string') {
+    try {
+      mandatoryFields = JSON.parse(mandatoryFields);
+    } catch (e) {
+      mandatoryFields = [];
+    }
+  }
   let mandatoryFieldsText = "";
-  if (mandatoryFields.length > 0) {
+  if (Array.isArray(mandatoryFields) && mandatoryFields.length > 0) {
     const filledFields = [];
     const customFields = typeof updatedLeadFull.custom_fields === "string" ? JSON.parse(updatedLeadFull.custom_fields) : (updatedLeadFull.custom_fields || {});
     mandatoryFields.forEach(f => {

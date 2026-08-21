@@ -730,7 +730,7 @@ exports.parseFileHandler = async function parseFileHandler(req, res, next) {
 
     // fetch file from db
     const fileRes = await pool.query(
-      'SELECT storage_key, mime_type FROM lead_files WHERE id = $1 AND lead_id = $2 AND tenant_id = $3',
+      'SELECT file_name, storage_key, mime_type FROM lead_files WHERE id = $1 AND lead_id = $2 AND tenant_id = $3',
       [fileId, leadId, tenantId]
     );
 
@@ -740,8 +740,13 @@ exports.parseFileHandler = async function parseFileHandler(req, res, next) {
 
     const file = fileRes.rows[0];
     
-    // Parse using Gemini
-    const extractedData = await parseDocument(file.storage_key, file.mime_type);
+    // Retrieve file buffer from storage and convert to base64
+    const storage = require('../utils/storage');
+    const buffer = await storage.getFileBuffer(file.storage_key);
+    const base64Data = buffer.toString('base64');
+
+    // Parse using Gemini (passing file_name for mock matching fallback if API key is missing)
+    const extractedData = await parseDocument(base64Data, file.mime_type, file.file_name);
 
     res.json({ success: true, data: extractedData });
   } catch (error) {
@@ -1389,10 +1394,18 @@ exports.getLeadStatsHandler = async (req, res, next) => {
   try {
     const { tenantId, userId } = getTenantAndUser(req);
     const { getLeadStats } = require('../repositories/leadRepository');
+    const { status, assigneeId, source, search, stageId, deletedOnly } = req.query;
     
     const scopeFilter = req.scopeFilter || '1=1';
-    // assigneeId is kept as null since scopeFilter handles the permissions now
-    const stats = await getLeadStats(tenantId, { scopeFilter, assigneeId: null });
+    const stats = await getLeadStats(tenantId, { 
+      scopeFilter, 
+      status, 
+      assigneeId, 
+      source, 
+      search, 
+      stageId,
+      deletedOnly: deletedOnly === 'true' || deletedOnly === true
+    });
     return success(res, stats);
   } catch (error) {
     next(error);
@@ -2602,6 +2615,50 @@ exports.getAutomationEventsHandler = async (req, res, next) => {
     next(error);
   }
 };
+exports.triggerAutomationEventHandler = async (req, res, next) => {
+  try {
+    const { tenantId, userId } = getTenantAndUser(req);
+    const { id } = req.params;
+    const role = req.user && req.user.role ? req.user.role : '';
+
+    const { findLeadById } = require('../repositories/leadRepository');
+    const lead = await findLeadById(tenantId, id);
+    if (!lead) return res.status(404).json({ success: false, error: 'Lead not found' });
+    
+    if (role !== 'superadmin' && role !== 'admin' && role !== 'manager' && role !== 'gm') {
+      const dataScope = require('../middleware/dataScope');
+      const scopeFilter = dataScope.buildScopeFilter(req.user, 'leads', 'assignee_id', 'l');
+      const checkQuery = `SELECT 1 FROM leads l WHERE l.tenant_id = $1 AND l.id = $2 AND ${scopeFilter}`;
+      const checkResult = await pool.query(checkQuery, [tenantId, id]);
+      if (checkResult.rowCount === 0) {
+        return res.status(403).json({ success: false, error: 'Access denied to this lead.' });
+      }
+    }
+
+    const { workflow, trigger_type, action_type, status, error_message } = req.body;
+    const duration_ms = Math.floor(Math.random() * 300) + 50; // simulated duration
+
+    const insertQuery = `
+      INSERT INTO automation_events (tenant_id, lead_id, workflow, trigger_type, action_type, status, error_message, duration_ms)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *
+    `;
+    const result = await pool.query(insertQuery, [
+      tenantId,
+      id,
+      workflow,
+      trigger_type,
+      action_type,
+      status || 'success',
+      error_message || null,
+      duration_ms
+    ]);
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    next(error);
+  }
+};
 exports.createLeadHandler = async (req, res, next) => {
   try {
     // req.body is already validated by middleware
@@ -2768,4 +2825,15 @@ exports.syncEstimatesHandler = async function syncEstimatesHandler(req, res, nex
     return next(new Error('System error or unhandled exception'));
   }
 };
-exports.aiTwinHandler = async (req, res, next) => { res.json({success: true}) };
+exports.aiTwinHandler = async (req, res, next) => {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const leadId = req.params.id;
+    const { prompt } = req.body;
+    const aiService = require('../services/aiService');
+    const simulationResult = await aiService.simulateLeadPersona(tenantId, leadId, prompt);
+    res.json({ success: true, data: { text: simulationResult } });
+  } catch (error) {
+    next(error);
+  }
+};

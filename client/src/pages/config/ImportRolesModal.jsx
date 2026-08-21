@@ -3,9 +3,10 @@ import { Modal, Button } from '../../components/ui';
 import styles from './ImportRolesModal.module.css';
 import * as XLSX from 'xlsx';
 import api from '../../store/api';
-import { toast } from 'react-hot-toast';
+import { useToast } from '../../store/toastContext';
 
 export default function ImportRolesModal({ isOpen, onClose, roles = [], schemaActions = [], onSuccess }) {
+  const toast = useToast();
   const [file, setFile] = useState(null);
   const [parsedRoles, setParsedRoles] = useState([]);
   const [isUploading, setIsUploading] = useState(false);

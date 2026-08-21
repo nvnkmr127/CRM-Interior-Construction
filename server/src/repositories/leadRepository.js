@@ -7,7 +7,8 @@ async function createLead(tenantId, data, txClient = null) {
     builder_name, possession_date, house_status, _loan_approved, interior_style, material_preference, 
     preferred_communication, preferred_language, referral_source, lifestyle_preferences, additional_contacts,
     win_probability, last_contacted_at, ai_score_breakdown,
-    property_type, _scope, _locality, _budget_max, carpet_area_sqft, _dnc_flag, _consent_whatsapp, _competitor_mentioned, _lead_number
+    property_type, _scope, _locality, _budget_max, carpet_area_sqft, _dnc_flag, _consent_whatsapp, _competitor_mentioned, _lead_number,
+    referred_by_lead_id
   } = data;
   
   const client = txClient || await pool.connect();
@@ -32,16 +33,16 @@ async function createLead(tenantId, data, txClient = null) {
 
     const leadQuery = `
       INSERT INTO leads (
-        tenant_id, name, email, phone, source, stage_id, assignee_id, score, custom_fields, notes, status, created_by, win_probability
+        tenant_id, name, email, phone, source, stage_id, assignee_id, score, custom_fields, notes, status, created_by, win_probability, referred_by_lead_id
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
       ) RETURNING *
     `;
     
     const leadValues = [
       tenantId, name, email || null, phone || null, source || null, stage_id || null, assignee_id || null, score || 0,
       JSON.stringify(finalCustomFields),
-      notes || null, status || 'active', created_by || null, win_probability || 0
+      notes || null, status || 'active', created_by || null, win_probability || 0, referred_by_lead_id || null
     ];
     
     const leadResult = await client.query(leadQuery, leadValues);
@@ -142,7 +143,19 @@ async function findLeadById(tenantId, leadId, txClient = null, includeDeleted = 
   `;
   
   const result = await client.query(query, [tenantId, leadId]);
-  return result.rows[0] || null;
+  const lead = result.rows[0] || null;
+  if (lead) {
+    const referralsRes = await client.query(
+      `SELECT l.id, l.name, l.created_at, l.budget_max, s.name AS stage_name
+       FROM leads l
+       LEFT JOIN lead_stages s ON l.stage_id = s.id
+       WHERE l.referred_by_lead_id = $1 AND l.tenant_id = $2 AND l.deleted_at IS NULL
+       ORDER BY l.created_at DESC`,
+      [leadId, tenantId]
+    );
+    lead.referrals = referralsRes.rows;
+  }
+  return lead;
 }
 
 async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy, sortDesc, page = 1, limit = 20, createdFrom, createdTo, scoreMin, scoreMax, intent, cursor, scopeFilter = '1=1', deletedOnly = false, status }) {
@@ -356,7 +369,10 @@ async function updateLead(tenantId, leadId, updates) {
     for (const [key, value] of Object.entries(updates)) {
       if (propertyFields.includes(key)) {
         if (key === 'builder_name') propUpdates['builder'] = value;
-        else if (key === 'carpet_area_sqft') propUpdates['carpet_area'] = value;
+        else if (key === 'carpet_area_sqft') {
+          propUpdates['carpet_area'] = value;
+          propUpdates['carpet_area_sqft'] = value;
+        }
         else propUpdates[key] = value;
       } else if (preferenceFields.includes(key)) {
         if (key === 'material_preference') prefUpdates['material'] = value;
@@ -661,12 +677,26 @@ async function getLeadStats(tenantId, options = {}) {
   // Backwards compatibility for when assigneeId is passed directly as second argument
   let scopeFilter = '1=1';
   let assigneeId = null;
+  let status = null;
+  let source = null;
+  let search = null;
+  let stageId = null;
+  let deletedOnly = false;
+
   if (typeof options === 'string' || typeof options === 'number') {
     assigneeId = options;
   } else if (options && typeof options === 'object') {
     scopeFilter = options.scopeFilter || '1=1';
     assigneeId = options.assigneeId || null;
+    status = options.status || null;
+    source = options.source || null;
+    search = options.search || null;
+    stageId = options.stageId || null;
+    deletedOnly = options.deletedOnly || false;
   }
+
+  const isDeletedOnly = deletedOnly === 'true' || deletedOnly === true;
+  const deletedCondition = isDeletedOnly ? 'l.deleted_at IS NOT NULL' : 'l.deleted_at IS NULL';
 
   let query = `
     SELECT
@@ -679,13 +709,42 @@ async function getLeadStats(tenantId, options = {}) {
       AVG(NULLIF(l.score, 0)) AS avg_score
     FROM leads l
     LEFT JOIN lead_stages s ON l.stage_id = s.id
-    WHERE l.tenant_id = $1 AND l.deleted_at IS NULL AND (${scopeFilter})
+    WHERE l.tenant_id = $1 AND ${deletedCondition} AND (${scopeFilter})
   `;
+
   const values = [tenantId];
+  let paramIndex = 2;
+
+  if (stageId) {
+    query += ` AND l.stage_id = $${paramIndex++}`;
+    values.push(stageId);
+  }
+
+  if (status === 'active') {
+    query += ` AND (l.status IS NULL OR l.status != 'parked')`;
+  } else if (status === 'parked') {
+    query += ` AND l.status = 'parked'`;
+  } else if (status) {
+    query += ` AND l.status = $${paramIndex++}`;
+    values.push(status);
+  }
+
   if (assigneeId) {
-    query += ` AND l.assignee_id = $2`;
+    query += ` AND l.assignee_id = $${paramIndex++}`;
     values.push(assigneeId);
   }
+
+  if (source) {
+    query += ` AND l.source = $${paramIndex++}`;
+    values.push(source);
+  }
+
+  if (search) {
+    query += ` AND (l.name ILIKE $${paramIndex} OR l.email ILIKE $${paramIndex} OR l.phone ILIKE $${paramIndex})`;
+    values.push(`%${search}%`);
+    paramIndex++;
+  }
+
   const result = await pool.query(query, values);
   const row = result.rows[0];
   

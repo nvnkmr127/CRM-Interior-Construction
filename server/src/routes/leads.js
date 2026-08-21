@@ -54,6 +54,7 @@ router.patch('/:id/activities/:aid', authenticate, validate(logActivitySchema.pa
 router.delete('/:id/activities/:aid', authenticate, leadController.deleteActivityHandler);
 router.get('/:id/timeline', authenticate, leadController.getTimelineHandler);
 router.get('/:id/automation-events', authenticate, authorize('leads:read'), leadController.getAutomationEventsHandler);
+router.post('/:id/automation-events', authenticate, authorize('leads:update'), leadController.triggerAutomationEventHandler);
 
 router.post('/:id/files', authenticate, authorize('leads:update'), upload.single('file'), leadController.uploadFileHandler);
 router.get('/:id/files', authenticate, authorize('leads:read'), leadController.getFilesHandler);

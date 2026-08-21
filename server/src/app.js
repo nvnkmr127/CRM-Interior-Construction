@@ -276,8 +276,10 @@ app.get('/api/local-download', (req, res) => {
   const uploadsDir = path.resolve(__dirname, '../uploads');
   const filePath = path.resolve(uploadsDir, key);
   
-  // Enterprise Security: Prevent absolute path traversal and directory escape
-  if (!filePath.startsWith(uploadsDir)) {
+  // Enterprise Security: Prevent absolute path traversal and directory escape using cross-platform path.relative
+  const relative = path.relative(uploadsDir, filePath);
+  const isSafe = relative && !relative.startsWith('..') && !path.isAbsolute(relative);
+  if (!isSafe) {
     return res.status(403).send('Invalid file path');
   }
 
@@ -289,7 +291,18 @@ app.get('/api/local-download', (req, res) => {
   if (ext === '.pdf') contentType = 'application/pdf';
   else if (ext === '.png') contentType = 'image/png';
   else if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
+  else if (ext === '.gif') contentType = 'image/gif';
+  else if (ext === '.svg') contentType = 'image/svg+xml';
+  else if (ext === '.webp') contentType = 'image/webp';
+
   res.setHeader('Content-Type', contentType);
+
+  // If it's a previewable type (image, pdf), send it inline via res.sendFile instead of forcing download via res.download
+  const isPreviewable = ext === '.pdf' || ext === '.png' || ext === '.jpg' || ext === '.jpeg' || ext === '.gif' || ext === '.svg' || ext === '.webp';
+  if (isPreviewable) {
+    return res.sendFile(filePath);
+  }
+
   return res.download(filePath);
 });
 app.use('/api/projects/:id/handover', handoverRoutes);

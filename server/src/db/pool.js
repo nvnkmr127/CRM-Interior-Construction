@@ -1,6 +1,11 @@
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
 const path = require('path');
 const logger = require('../utils/logger');
+
+// Force PostgreSQL OID 1114 (TIMESTAMP WITHOUT TIME ZONE) to parse as UTC instead of local system time
+types.setTypeParser(1114, function(stringValue) {
+  return stringValue ? new Date(stringValue.replace(' ', 'T') + 'Z') : null;
+});
 const dns = require('dns');
 
 if (typeof dns.setDefaultResultOrder === 'function') {

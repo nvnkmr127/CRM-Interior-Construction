@@ -109,9 +109,12 @@ router.get('/my-tasks', async (req, res) => {
 
   try {
     const { rows } = await readPool.query(`
-      SELECT t.*, p.name as project_name, p.id as project_id
+      SELECT t.*, 
+             p.name as project_name, p.id as project_id,
+             l.name as lead_name, l.id as lead_id
       FROM tasks t
-      JOIN projects p ON p.id=t.project_id
+      LEFT JOIN projects p ON p.id=t.project_id
+      LEFT JOIN leads l ON l.id=t.lead_id
       WHERE t.tenant_id=$1 AND t.assignee_id=$2
       AND t.status!='done' AND t.deleted_at IS NULL
       ORDER BY t.due_date ASC NULLS LAST LIMIT $3

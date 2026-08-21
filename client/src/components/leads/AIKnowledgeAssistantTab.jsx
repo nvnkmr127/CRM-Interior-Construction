@@ -774,12 +774,13 @@ export default function AIKnowledgeAssistantTab({ leadId, lead }) {
               <Select
                 label="Record Type"
                 value={newRecord.type}
-                onChange={(e) => setNewRecord(prev => ({ ...prev, type: e.target.value }))}
-              >
-                <option value="Meeting Summary">Meeting Summary</option>
-                <option value="Objection Log">Objection Log</option>
-                <option value="Preference Sheet">Preference Sheet</option>
-              </Select>
+                onChange={(val) => setNewRecord(prev => ({ ...prev, type: val }))}
+                options={[
+                  { value: 'Meeting Summary', label: 'Meeting Summary' },
+                  { value: 'Objection Log', label: 'Objection Log' },
+                  { value: 'Preference Sheet', label: 'Preference Sheet' }
+                ]}
+              />
 
               <Input
                 label="Title"

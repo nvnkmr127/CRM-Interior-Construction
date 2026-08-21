@@ -1,37 +1,37 @@
 /* eslint-disable no-unused-vars, react-hooks/set-state-in-effect */
 import React, { useState, useMemo, useEffect } from 'react';
 import { DndContext, DragOverlay, closestCorners, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useDroppable } from '@dnd-kit/core';
 import KanbanLeadCard from './KanbanLeadCard';
-import LeadFilterBar from './LeadFilterBar';
 import { Badge } from '../ui'; // Standard UI badge
-
-// Stages are now passed as props from the database
+import styles from './LeadKanbanBoard.module.css';
 
 // Droppable Column Component
-const KanbanColumn = React.memo(function KanbanColumn({ stage, leads, activeId, onLeadClick, onMarkLost, onPark }) {
+const KanbanColumn = React.memo(function KanbanColumn({ stage, leads, activeId, users, onLeadClick, onMarkLost, onPark, onReassign }) {
   const { setNodeRef } = useDroppable({ id: stage.id });
   const [visibleCount, setVisibleCount] = useState(50);
   
   const visibleLeads = useMemo(() => leads.slice(0, visibleCount), [leads, visibleCount]);
   
-  const totalValue = leads.reduce((sum, lead) => sum + (Number(lead.budget_max) || 0), 0);
+  const totalValue = leads.reduce((sum, lead) => sum + (Number(lead.budget_max) || Number(lead.revenue_potential) || 0), 0);
   const formattedValue = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(totalValue);
 
   const isOverLimit = stage.wip_limit != null && leads.length > stage.wip_limit;
 
   return (
-    <div className={`flex flex-col rounded-xl min-w-[280px] max-w-[280px] flex-shrink-0 mr-4 transition-all`} style={{ background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(10px)', borderColor: isOverLimit ? 'var(--color-danger, #ef4444)' : 'rgba(255, 255, 255, 0.4)', borderWidth: isOverLimit ? '2px' : '1px' }}>
-      <div className="p-3 flex justify-between items-center rounded-t-xl transition-all" style={{ background: 'rgba(255, 255, 255, 0.5)', borderBottom: '1px solid rgba(255, 255, 255, 0.2)' }}>
+    <div 
+      className={`${styles.column} ${isOverLimit ? styles.columnLimitExceeded : ''}`}
+    >
+      <div className={styles.colHeader}>
         <div>
-          <h3 className="font-semibold flex items-center" style={{ color: isOverLimit ? 'var(--color-danger, #ef4444)' : 'var(--color-text)' }}>
+          <h3 className={styles.colTitle}>
             {stage.name} 
-            <Badge variant={isOverLimit ? "danger" : "secondary"} className="ml-2">
+            <Badge variant={isOverLimit ? "danger" : "secondary"}>
               {leads.length}{stage.wip_limit != null ? ` / ${stage.wip_limit}` : ''}
             </Badge>
           </h3>
-          <p className="text-xs mt-1 font-medium" style={{ color: 'var(--color-text-secondary)' }}>{formattedValue}</p>
+          <p className={styles.colSubtitle}>{formattedValue}</p>
         </div>
         {isOverLimit && (
           <div title="WIP Limit Exceeded" style={{ color: 'var(--color-danger, #ef4444)' }}>
@@ -40,23 +40,25 @@ const KanbanColumn = React.memo(function KanbanColumn({ stage, leads, activeId, 
         )}
       </div>
       
-      <div ref={setNodeRef} className="flex-1 p-2 min-h-[150px]">
+      <div ref={setNodeRef} className={styles.colBody}>
         <SortableContext items={visibleLeads.map(l => l.id)} strategy={verticalListSortingStrategy}>
           {visibleLeads.map(lead => (
             <KanbanLeadCard 
               key={lead.id} 
               lead={lead} 
-              onAction={(action) => {
+              users={users}
+              onAction={(action, payload) => {
                 if (action === 'view' && onLeadClick) onLeadClick(lead.id);
                 if (action === 'lost' && onMarkLost) onMarkLost(lead.id);
                 if (action === 'park' && onPark) onPark(lead.id);
+                if (action === 'reassign' && onReassign) onReassign(lead.id, payload);
               }} 
             />
           ))}
         </SortableContext>
         
         {leads.length > visibleCount && (
-          <div className="py-3 text-center">
+          <div style={{ padding: '12px 0', textAlign: 'center' }}>
             <button 
               className="text-xs font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-1.5 rounded-full shadow-sm transition-all"
               style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(10px)' }}
@@ -68,7 +70,7 @@ const KanbanColumn = React.memo(function KanbanColumn({ stage, leads, activeId, 
         )}
 
         {leads.length === 0 && (
-          <div className="h-full flex items-center justify-center text-sm border-2 border-dashed rounded-lg" style={{ color: 'var(--color-text-muted)', borderColor: 'var(--color-border-strong)' }}>
+          <div className={styles.emptyColumnState}>
             Drop leads here
           </div>
         )}
@@ -77,21 +79,13 @@ const KanbanColumn = React.memo(function KanbanColumn({ stage, leads, activeId, 
   );
 });
 
-export default function LeadKanbanBoard({ initialLeads = [], stages = [], reps = [], onStageChange, onLeadClick, onMarkLost, onPark }) {
+export default function LeadKanbanBoard({ initialLeads = [], stages = [], users = [], onStageChange, onReassign, onLeadClick, onMarkLost, onPark }) {
   const [leads, setLeads] = useState(initialLeads);
   const [activeId, setActiveId] = useState(null);
   
   useEffect(() => {
     setLeads(initialLeads);
   }, [initialLeads]);
-
-  const [filters, setFilters] = useState({
-    search: '',
-    reps: [],
-    scoreTier: '',
-    source: '',
-    locality: ''
-  });
 
   const [toast, setToast] = useState(null);
 
@@ -105,31 +99,6 @@ export default function LeadKanbanBoard({ initialLeads = [], stages = [], reps =
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const filteredLeads = useMemo(() => {
-    return leads.filter(lead => {
-      if (filters.search) {
-        const term = filters.search.toLowerCase();
-        const matchName = String(lead.name || '').toLowerCase().includes(term);
-        const matchPhone = String(lead.phone || '').toLowerCase().includes(term);
-        if (!matchName && !matchPhone) return false;
-      }
-      if (filters.reps.length > 0 && !filters.reps.includes(lead.assignee_id)) return false;
-      if (filters.scoreTier) {
-        const score = Number(lead.score) || 0;
-        let leadTier = 'dead';
-        if (score >= 61) leadTier = 'hot';
-        else if (score >= 31) leadTier = 'warm';
-        else if (score > 0) leadTier = 'cold';
-        
-        if (leadTier !== filters.scoreTier) return false;
-      }
-      if (filters.intent && String(lead.buying_intent || '').toLowerCase() !== filters.intent.toLowerCase()) return false;
-      if (filters.source && String(lead.source || '').toLowerCase() !== filters.source.toLowerCase()) return false;
-      if (filters.locality && !String(lead.locality || '').toLowerCase().includes(filters.locality.toLowerCase())) return false;
-      return true;
-    });
-  }, [leads, filters]);
-
   const leadsByStage = useMemo(() => {
     const acc = {};
     if (Array.isArray(stages)) {
@@ -137,21 +106,19 @@ export default function LeadKanbanBoard({ initialLeads = [], stages = [], reps =
         acc[s.id] = [];
       }
     }
-    if (Array.isArray(filteredLeads)) {
-      for (const lead of filteredLeads) {
-        // lead.stage_id from database
+    if (Array.isArray(leads)) {
+      for (const lead of leads) {
         const stageId = lead.stage_id || lead.stage;
         if (acc[stageId]) {
           acc[stageId].push(lead);
         } else {
-          // Fallback if stage is unknown
           if (!acc['unknown']) acc['unknown'] = [];
           acc['unknown'].push(lead);
         }
       }
     }
     return acc;
-  }, [filteredLeads, stages]);
+  }, [leads, stages]);
 
   const handleDragStart = (event) => {
     setActiveId(event.active.id);
@@ -163,7 +130,13 @@ export default function LeadKanbanBoard({ initialLeads = [], stages = [], reps =
     if (!over) return;
 
     const leadId = active.id;
-    const targetStageId = over.id; // Usually we set droppable id to the stage id
+    let targetStageId = over.id;
+
+    // Handle dropping over another card instead of column background
+    const targetLead = leads.find(l => l.id === targetStageId);
+    if (targetLead) {
+      targetStageId = targetLead.stage_id || targetLead.stage;
+    }
 
     const lead = leads.find(l => l.id === leadId);
     const leadStageId = lead?.stage_id || lead?.stage;
@@ -224,36 +197,37 @@ export default function LeadKanbanBoard({ initialLeads = [], stages = [], reps =
   const activeLead = useMemo(() => leads.find(l => l.id === activeId), [activeId, leads]);
 
   return (
-    <div className="flex flex-col h-auto min-h-min">
-      
+    <div className={styles.boardContainer}>
       {toast && (
         <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg text-white font-medium transition-all ${toast.type === 'error' ? 'bg-red-500' : 'bg-green-500'}`}>
           {toast.message}
         </div>
       )}
 
-      <LeadFilterBar filters={filters} setFilters={setFilters} reps={reps} />
+      <div className={styles.board}>
+        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          {stages.map(stage => (
+            <KanbanColumn 
+              key={stage.id} 
+              stage={stage} 
+              leads={leadsByStage[stage.id] || []} 
+              activeId={activeId} 
+              users={users}
+              onLeadClick={onLeadClick}
+              onMarkLost={onMarkLost}
+              onPark={onPark}
+              onReassign={onReassign}
+            />
+          ))}
 
-      <div className="flex-1 overflow-x-auto overflow-y-visible pb-4">
-        <div className="flex items-start">
-          <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-            {stages.map(stage => (
-              <KanbanColumn 
-                key={stage.id} 
-                stage={stage} 
-                leads={leadsByStage[stage.id] || []} 
-                activeId={activeId} 
-                onLeadClick={onLeadClick}
-                onMarkLost={onMarkLost}
-                onPark={onPark}
-              />
-            ))}
-
-            <DragOverlay>
-              {activeLead ? <KanbanLeadCard lead={activeLead} /> : null}
-            </DragOverlay>
-          </DndContext>
-        </div>
+          <DragOverlay>
+            {activeLead ? (
+              <div style={{ transform: 'rotate(2deg)', width: '260px' }}>
+                <KanbanLeadCard lead={activeLead} users={users} isDraggingOverlay />
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       </div>
     </div>
   );

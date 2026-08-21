@@ -19,9 +19,10 @@ exports.getGlobalStats = async (tenantId, userId, user) => {
     tasksRes,
     prevWeekLeadsRes,
     targetsRes,
-    revenueTrendRes
+    revenueTrendRes,
+    siteVisitsRes
   ] = await Promise.all([
-    readPool.query(`SELECT COUNT(*) FROM leads WHERE tenant_id=$1 AND (${leadsFilter}) AND deleted_at IS NULL`, params),
+    readPool.query(`SELECT COUNT(*) FROM leads WHERE tenant_id=$1 AND (${leadsFilter}) AND deleted_at IS NULL AND (status IS NULL OR status != 'parked')`, params),
     readPool.query(`
       SELECT COUNT(*) as count, COALESCE(SUM(l.budget_max), 0) as won_value
       FROM leads l
@@ -58,7 +59,17 @@ exports.getGlobalStats = async (tenantId, userId, user) => {
       WHERE p.tenant_id = $1 AND pm.status = 'paid' AND pm.paid_at IS NOT NULL AND pm.paid_at != '' AND pm.paid_at::timestamp >= NOW() - INTERVAL '12 weeks'
       GROUP BY date_trunc('week', pm.paid_at::timestamp)
       ORDER BY date_trunc('week', pm.paid_at::timestamp) ASC
-    `, [tenantId])
+    `, [tenantId]),
+    readPool.query(`
+      SELECT sv.id, sv.lead_id, sv.scheduled_at, l.name as lead_name, u.name as assignee_name
+      FROM site_visits sv
+      LEFT JOIN leads l ON sv.lead_id = l.id
+      LEFT JOIN users u ON sv.assignee_id = u.id
+      WHERE sv.tenant_id = $1 
+        AND sv.status = 'scheduled' 
+        AND (sv.scheduled_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date
+      ORDER BY sv.scheduled_at ASC
+    `, params)
   ]);
 
   const activeCount = parseInt(activeLeadsRes.rows[0].count, 10);
@@ -101,6 +112,10 @@ exports.getGlobalStats = async (tenantId, userId, user) => {
     tasksDueToday: {
       count: parseInt(tasksRes.rows[0].due_today, 10) || 0,
       overdueCount: parseInt(tasksRes.rows[0].overdue, 10) || 0
+    },
+    siteVisits: {
+      count: siteVisitsRes.rows.length,
+      visits: siteVisitsRes.rows
     },
     salesTargets: {
       targetRevenue: parseFloat(targets.target_revenue) || 0,

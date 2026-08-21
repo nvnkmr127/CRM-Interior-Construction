@@ -8,7 +8,8 @@ const createLeadSchema = z.object({
   stageId: z.string().uuid('Invalid stage ID').optional().or(z.literal('')),
   assigneeId: z.string().uuid('Invalid assignee ID').optional().or(z.literal('')),
   notes: z.string().optional(),
-  custom_fields: z.record(z.any()).optional()
+  custom_fields: z.record(z.any()).optional(),
+  referred_by_lead_id: z.string().uuid('Invalid referred by lead ID').optional().nullable()
 });
 
 const logActivitySchema = z.object({

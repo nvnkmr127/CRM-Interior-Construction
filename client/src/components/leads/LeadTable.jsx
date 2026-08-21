@@ -17,12 +17,27 @@ function getInitials(name = '') {
   return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 }
 
+function safeParseDate(dateStr) {
+  if (!dateStr) return new Date(NaN);
+  if (dateStr instanceof Date) return dateStr;
+  if (typeof dateStr === 'number') return new Date(dateStr);
+  if (typeof dateStr === 'string') {
+    const trimmed = dateStr.trim();
+    const hasTimezone = trimmed.includes('Z') || /[+-]\d{2}:?\d{2}$/.test(trimmed);
+    if (!hasTimezone && trimmed.includes(':')) {
+      return new Date(trimmed.endsWith('Z') ? trimmed : `${trimmed.replace(' ', 'T')}Z`);
+    }
+  }
+  return new Date(dateStr);
+}
+
 function formatDate(dateStr) {
   if (!dateStr) return '—';
-  const d = new Date(dateStr);
-  if (isNaN(d)) return dateStr;
-  const now = import.meta.env.DEV ? new Date(1786536584000) : new Date();
+  const d = safeParseDate(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const now = (import.meta.env.DEV && new Date().getTime() >= 1786536584000) ? new Date(1786536584000) : new Date();
   const diffMs = now - d;
+  if (diffMs < 0) return 'just now';
   const diffMins = Math.floor(diffMs / 60000);
   if (diffMins < 60) return `${diffMins}m ago`;
   const diffHrs = Math.floor(diffMins / 60);
@@ -34,8 +49,8 @@ function formatDate(dateStr) {
 
 function formatMeetingSchedule(dateStr) {
   if (!dateStr) return null;
-  const d = new Date(dateStr);
-  if (isNaN(d)) return dateStr;
+  const d = safeParseDate(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
   return d.toLocaleString('en-IN', {
     day: '2-digit',
     month: 'short',
@@ -45,10 +60,22 @@ function formatMeetingSchedule(dateStr) {
   });
 }
 
+function getLatestActivityDate(lead) {
+  if (!lead) return null;
+  const dates = [
+    safeParseDate(lead.last_activity_at),
+    safeParseDate(lead.updated_at),
+    safeParseDate(lead.created_at)
+  ].filter(d => d && !isNaN(d.getTime()));
+  
+  if (dates.length === 0) return null;
+  return new Date(Math.max(...dates.map(d => d.getTime())));
+}
+
 function getAgingBadge(lastActivityAt, createdAt) {
-  const date = new Date(lastActivityAt || createdAt);
-  if (isNaN(date)) return null;
-  const now = import.meta.env.DEV ? new Date(1786536584000) : new Date();
+  const date = safeParseDate(lastActivityAt || createdAt);
+  if (isNaN(date.getTime())) return null;
+  const now = (import.meta.env.DEV && new Date().getTime() >= 1786536584000) ? new Date(1786536584000) : new Date();
   const daysOld = Math.floor((now - date) / (1000 * 60 * 60 * 24));
   if (daysOld >= 7) return <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 uppercase tracking-wide">Stale {daysOld}d</span>;
   if (daysOld <= 1) return <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 uppercase tracking-wide">Fresh</span>;
@@ -406,9 +433,9 @@ export default function LeadTable({
                 <td className={styles.listTd}>
                   <div style={{ display: 'flex', alignItems: 'center' }}>
                     <span className={styles.lastActivity}>
-                      {formatDate(lead.last_activity_at || lead.updated_at)}
+                      {formatDate(getLatestActivityDate(lead))}
                     </span>
-                    {getAgingBadge(lead.last_activity_at, lead.created_at)}
+                    {getAgingBadge(getLatestActivityDate(lead))}
                   </div>
                 </td>
                 <td className={styles.listTd} onClick={e => e.stopPropagation()}>

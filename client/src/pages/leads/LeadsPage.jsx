@@ -157,6 +157,7 @@ export default function LeadsPage() {
     navigate({ search: params.toString() });
   };
   const [selectedLeadId, setSelectedLeadId] = useState(null);
+  const [drawerInitialTab, setDrawerInitialTab] = useState('overview');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [stageMenuLeadId, setStageMenuLeadId] = useState(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -205,7 +206,7 @@ export default function LeadsPage() {
   }, []);
 
   const filters = useMemo(() => {
-    const f = { page, limit };
+    const f = { page, limit: (view === 'calendar' || view === 'kanban' || view === 'map' || view === 'dashboard') ? 200 : limit };
     if (debouncedSearch.trim()) f.search = debouncedSearch.trim();
     if (sourceFilter && sourceFilter !== 'All Sources') f.source = sourceFilter;
     if (assigneeFilter) f.assigneeId = assigneeFilter;
@@ -227,7 +228,7 @@ export default function LeadsPage() {
       else if (sortBy === 'name') { f.sortBy = 'name'; f.sortDesc = false; }
     }
     return f;
-  }, [debouncedSearch, sourceFilter, assigneeFilter, scoreRange, intentFilter, sortBy, createdFrom, createdTo, stageIdFilter, statusFilter, page, limit]);
+  }, [debouncedSearch, sourceFilter, assigneeFilter, scoreRange, intentFilter, sortBy, createdFrom, createdTo, stageIdFilter, statusFilter, page, limit, view]);
 
   const { leads, stages, stats, total, loading, error, optimisticStageChange, bulkChangeStage, bulkDelete, refetch } = useLeads(filters);
 
@@ -294,6 +295,17 @@ export default function LeadsPage() {
       throw err;
     }
   };
+
+  const handleReassignLead = async (leadId, newAssigneeId) => {
+    try {
+      await api.patch(`/leads/${leadId}`, { assignee_id: newAssigneeId || null });
+      toast.success('Lead reassigned successfully');
+      refetch();
+    } catch (e) {
+      toast.error('Failed to reassign lead.');
+    }
+  };
+
 
   const clearFilters = () => {
     setSearch('');
@@ -441,9 +453,14 @@ export default function LeadsPage() {
           <ErrorBoundary>
             <LeadDashboard 
               leads={filteredLeads} 
+              stages={stages}
               loading={loading} 
               onLeadClick={setSelectedLeadId} 
               onViewChange={handleViewChange}
+              onSiteVisitsTodayClick={(leadId) => {
+                setDrawerInitialTab('site-visits');
+                setSelectedLeadId(leadId);
+              }}
             />
           </ErrorBoundary>
         ) : view === 'kanban' && !loading ? (
@@ -451,7 +468,9 @@ export default function LeadsPage() {
             <LeadKanbanBoard
               initialLeads={filteredLeads}
               stages={stages}
+              users={users}
               onStageChange={handleMoveStage}
+              onReassign={handleReassignLead}
               onLeadClick={setSelectedLeadId}
               onMarkLost={(id) => setMarkLostLeadId(id)}
               onPark={handleParkLead}
@@ -494,12 +513,16 @@ export default function LeadsPage() {
           <LeadDrawer
             leadId={selectedLeadId}
             isOpen={!!selectedLeadId}
-            onClose={() => setSelectedLeadId(null)}
+            onClose={() => {
+              setSelectedLeadId(null);
+              setDrawerInitialTab('overview');
+            }}
             onLeadUpdated={(updatedLead) => {
               if (!updatedLead) setSelectedLeadId(null);
               refetch();
             }}
             stages={stages}
+            initialTab={drawerInitialTab}
           />
         </div>
       )}

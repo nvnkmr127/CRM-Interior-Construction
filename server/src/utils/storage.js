@@ -10,6 +10,7 @@ class StorageProvider {
   async deleteFile(_key) { return true; }
   async validateMagicNumber(_key, _expectedMime) { return true; } // Mock local validation passing
   async uploadBuffer(key, _buffer, _mimeType) { return key; }
+  async getFileBuffer(_key) { throw new Error('Not implemented'); }
 }
 
 class S3StorageProvider extends StorageProvider {
@@ -97,6 +98,19 @@ class S3StorageProvider extends StorageProvider {
     // Allow others by default if we don't have a signature
     return true;
   }
+
+  async getFileBuffer(key) {
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: key
+    });
+    const response = await this.s3Client.send(command);
+    const chunks = [];
+    for await (const chunk of response.Body) {
+      chunks.push(chunk);
+    }
+    return Buffer.concat(chunks);
+  }
 }
 
 class LocalStorageProvider extends StorageProvider {
@@ -163,6 +177,14 @@ class LocalStorageProvider extends StorageProvider {
     }
     fs.writeFileSync(filePath, buffer);
     return key;
+  }
+
+  async getFileBuffer(key) {
+    const filePath = path.join(this.uploadDir, key);
+    if (!fs.existsSync(filePath)) {
+      throw new Error('File not found locally');
+    }
+    return fs.readFileSync(filePath);
   }
 }
 

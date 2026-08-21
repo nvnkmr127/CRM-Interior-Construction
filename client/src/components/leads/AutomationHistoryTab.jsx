@@ -128,56 +128,58 @@ export default function AutomationHistoryTab({ leadId }) {
       {/* Top Banner & Control Console */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Metric Card 1: Total */}
-        <div className="bg-white/40 backdrop-blur-md border border-white/60 p-4 rounded-2xl flex items-center justify-between shadow-sm">
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] p-5 rounded-2xl flex items-center justify-between shadow-sm">
           <div>
-            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Total Runs</p>
-            <h4 className="text-2xl font-black text-gray-800 mt-1">{totalRuns}</h4>
+            <p className="text-xs text-[var(--color-text-secondary)] font-bold uppercase tracking-wider">Total Runs</p>
+            <h4 className="text-2xl font-black text-[var(--color-text)] mt-1">{totalRuns}</h4>
           </div>
-          <span className="text-2xl p-2 bg-indigo-50 rounded-xl">🤖</span>
+          <span className="text-2xl p-2 bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl">🤖</span>
         </div>
 
         {/* Metric Card 2: Successes */}
-        <div className="bg-white/40 backdrop-blur-md border border-white/60 p-4 rounded-2xl flex items-center justify-between shadow-sm">
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] p-5 rounded-2xl flex items-center justify-between shadow-sm">
           <div>
-            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Successful</p>
+            <p className="text-xs text-[var(--color-text-secondary)] font-bold uppercase tracking-wider">Successful</p>
             <h4 className="text-2xl font-black text-green-600 mt-1">{successRuns}</h4>
           </div>
-          <span className="text-2xl p-2 bg-green-50 rounded-xl">✓</span>
+          <span className="text-2xl p-2 bg-green-50/50 border border-green-150 rounded-xl text-green-600">✓</span>
         </div>
 
         {/* Metric Card 3: Failures */}
-        <div className="bg-white/40 backdrop-blur-md border border-white/60 p-4 rounded-2xl flex items-center justify-between shadow-sm">
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] p-5 rounded-2xl flex items-center justify-between shadow-sm">
           <div>
-            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Failed Runs</p>
-            <h4 className="text-2xl font-black text-red-650 mt-1">{failedRuns}</h4>
+            <p className="text-xs text-[var(--color-text-secondary)] font-bold uppercase tracking-wider">Failed Runs</p>
+            <h4 className="text-2xl font-black text-red-600 mt-1">{failedRuns}</h4>
           </div>
-          <span className="text-2xl p-2 bg-red-50 rounded-xl">✗</span>
+          <span className="text-2xl p-2 bg-red-50/50 border border-red-150 rounded-xl text-red-650">✗</span>
         </div>
       </div>
 
       {/* Action Console & Live Tester */}
-      <div className="bg-gradient-to-r from-indigo-50/50 to-purple-50/50 border border-indigo-100/80 p-5 rounded-2xl shadow-sm">
-        <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2 mb-3">
+      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] p-6 rounded-2xl shadow-sm">
+        <h4 className="text-sm font-bold text-[var(--color-text)] flex items-center gap-2 mb-4">
           <span>⚙️</span> Automation Testing Console
         </h4>
-        <form onSubmit={handleTestTrigger} className="flex flex-col sm:flex-row gap-3 items-end sm:items-center">
+        <form onSubmit={handleTestTrigger} className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-end">
           <div className="flex-1 w-full">
             <Select
               label="Select Automation Rule to Test"
               value={selectedPreset}
-              onChange={(e) => setSelectedPreset(e.target.value)}
-            >
-              <option value="allocation">Round Robin Assignment Routing (Success)</option>
-              <option value="welcome">Auto Welcome Email Campaign (Success)</option>
-              <option value="alert">High Value Alert SMS Trigger (Success)</option>
-              <option value="sync">Sync Contact Details with External ERP (Failed)</option>
-            </Select>
+              onChange={(val) => setSelectedPreset(val)}
+              options={[
+                { value: 'allocation', label: 'Round Robin Assignment Routing (Success)' },
+                { value: 'welcome', label: 'Auto Welcome Email Campaign (Success)' },
+                { value: 'alert', label: 'High Value Alert SMS Trigger (Success)' },
+                { value: 'sync', label: 'Sync Contact Details with External ERP (Failed)' }
+              ]}
+            />
           </div>
           <Button
             type="submit"
             variant="primary"
             disabled={triggering}
-            style={{ height: '38px', padding: '0 16px', whiteSpace: 'nowrap' }}
+            className="h-[38px] px-6 whitespace-nowrap"
+            style={{ minHeight: '38px' }}
           >
             {triggering ? 'Triggering...' : '⚡ Fire Test Event'}
           </Button>
@@ -205,9 +207,9 @@ export default function AutomationHistoryTab({ leadId }) {
               onClick={() => setStatusFilter(tab.id)}
               className="text-xs font-bold px-3.5 py-1.5 rounded-xl border transition-all duration-200"
               style={{
-                background: statusFilter === tab.id ? 'var(--color-accent)' : '#fff',
-                borderColor: statusFilter === tab.id ? 'var(--color-accent)' : 'rgba(0,0,0,0.06)',
-                color: statusFilter === tab.id ? '#fff' : '#4b5563',
+                background: statusFilter === tab.id ? 'var(--color-accent)' : 'var(--color-surface)',
+                borderColor: statusFilter === tab.id ? 'var(--color-accent)' : 'var(--color-border)',
+                color: statusFilter === tab.id ? '#fff' : 'var(--color-text-secondary)',
                 boxShadow: statusFilter === tab.id ? '0 4px 12px rgba(139,92,246,0.15)' : 'none'
               }}
             >
@@ -234,19 +236,19 @@ export default function AutomationHistoryTab({ leadId }) {
             return (
               <div 
                 key={evt.id} 
-                className="group relative bg-white/45 backdrop-blur-md border border-white/50 hover:border-indigo-200 hover:bg-white/80 p-5 rounded-2xl shadow-sm transition-all duration-200"
+                className="group relative bg-[var(--color-surface)] border border-[var(--color-border)] hover:border-[var(--color-accent)] hover:bg-[var(--color-surface-2)] p-5 rounded-2xl shadow-sm transition-all duration-200"
               >
                 {/* Header row */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                   <div className="flex items-center gap-2.5 flex-wrap">
-                    <span className="text-sm font-black text-gray-800 bg-indigo-50 border border-indigo-100/60 px-3 py-1 rounded-xl">
+                    <span className="text-sm font-bold text-[var(--color-text)] bg-[var(--color-surface-2)] border border-[var(--color-border)] px-3 py-1 rounded-xl">
                       {evt.workflow || 'Unknown Workflow'}
                     </span>
                     <Badge variant={badgeCfg.variant}>
                       <span className="mr-1">{badgeCfg.icon}</span> {badgeCfg.label}
                     </Badge>
                   </div>
-                  <span className="text-[11.5px] text-gray-400 font-medium sm:text-right shrink-0">
+                  <span className="text-[11.5px] text-[var(--color-text-secondary)] font-medium sm:text-right shrink-0">
                     🕒 {formatDate(evt.executed_at)}
                   </span>
                 </div>
@@ -254,31 +256,31 @@ export default function AutomationHistoryTab({ leadId }) {
                 {/* Details layout Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                   {evt.trigger_type && (
-                    <div className="bg-gray-50/40 p-2.5 rounded-xl border border-gray-100/30">
-                      <span className="text-gray-400 block font-semibold uppercase tracking-wider mb-0.5" style={{ fontSize: '9px' }}>Trigger</span>
-                      <span className="text-gray-700 font-medium">{evt.trigger_type}</span>
+                    <div className="bg-[var(--color-surface-2)] p-2.5 rounded-xl border border-[var(--color-border)]">
+                      <span className="text-[var(--color-text-secondary)] block font-semibold uppercase tracking-wider mb-0.5" style={{ fontSize: '9px' }}>Trigger</span>
+                      <span className="text-[var(--color-text)] font-medium">{evt.trigger_type}</span>
                     </div>
                   )}
                   {evt.action_type && (
-                    <div className="bg-gray-50/40 p-2.5 rounded-xl border border-gray-100/30">
-                      <span className="text-gray-400 block font-semibold uppercase tracking-wider mb-0.5" style={{ fontSize: '9px' }}>Action</span>
-                      <span className="text-gray-700 font-medium">{evt.action_type}</span>
+                    <div className="bg-[var(--color-surface-2)] p-2.5 rounded-xl border border-[var(--color-border)]">
+                      <span className="text-[var(--color-text-secondary)] block font-semibold uppercase tracking-wider mb-0.5" style={{ fontSize: '9px' }}>Action</span>
+                      <span className="text-[var(--color-text)] font-medium">{evt.action_type}</span>
                     </div>
                   )}
                   {evt.duration_ms != null && (
-                    <div className="bg-gray-50/40 p-2.5 rounded-xl border border-gray-100/30">
-                      <span className="text-gray-400 block font-semibold uppercase tracking-wider mb-0.5" style={{ fontSize: '9px' }}>Duration</span>
-                      <span className="text-gray-700 font-bold">{evt.duration_ms} ms</span>
+                    <div className="bg-[var(--color-surface-2)] p-2.5 rounded-xl border border-[var(--color-border)]">
+                      <span className="text-[var(--color-text-secondary)] block font-semibold uppercase tracking-wider mb-0.5" style={{ fontSize: '9px' }}>Duration</span>
+                      <span className="text-[var(--color-text)] font-bold">{evt.duration_ms} ms</span>
                     </div>
                   )}
                 </div>
 
                 {/* Error Banner */}
                 {evt.status === 'failed' && evt.error_message && (
-                  <div className="mt-4 p-3 bg-red-50/65 border border-red-100 rounded-xl text-xs text-red-700 flex items-start gap-2 animate-fadeIn">
+                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-750 flex items-start gap-2 animate-fadeIn">
                     <span className="text-sm mt-0.5">⚠️</span>
                     <div>
-                      <strong className="block font-bold mb-0.5">Execution Failure Details:</strong>
+                      <strong className="block font-bold mb-0.5 text-red-800">Execution Failure Details:</strong>
                       <span className="font-mono leading-relaxed">{evt.error_message}</span>
                     </div>
                   </div>

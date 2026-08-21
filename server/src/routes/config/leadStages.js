@@ -20,7 +20,18 @@ router.get('/', async (req, res, next) => {
       ORDER BY sort_order ASC
     `;
     const result = await pool.query(query, [tenantId]);
-    return success(res, result.rows);
+    const parsedStages = result.rows.map(row => {
+      let fields = row.mandatory_fields || [];
+      if (typeof fields === 'string') {
+        try {
+          fields = JSON.parse(fields);
+        } catch {
+          fields = [];
+        }
+      }
+      return { ...row, mandatory_fields: fields };
+    });
+    return success(res, parsedStages);
   } catch (error) {
     next(error);
   }
