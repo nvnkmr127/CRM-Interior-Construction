@@ -161,4 +161,29 @@
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
     at async Object.updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:408:9)
     at async updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\leads\updateLead.js:16:23)
-    at async exports.updateLeadHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2715:25)\n\n
+    at async exports.updateLeadHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2715:25)\n\n2026-08-22T13:12:28.158Z\nerror: value too long for type character varying(100)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Object.updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:424:9)
+    at async updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\leads\updateLead.js:16:23)
+    at async exports.updateLeadHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2767:25)\n\n2026-08-22T13:12:30.914Z\nerror: value too long for type character varying(100)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Object.updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:424:9)
+    at async updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\leads\updateLead.js:16:23)
+    at async exports.updateLeadHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2767:25)\n\n2026-08-22T13:13:16.233Z\nerror: value too long for type character varying(100)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Object.updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:424:9)
+    at async updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\leads\updateLead.js:16:23)
+    at async exports.updateLeadHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2767:25)\n\n2026-08-22T13:18:51.930Z\nerror: invalid input syntax for type date: ""
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Object.updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:449:10)
+    at async updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\leads\updateLead.js:16:23)
+    at async exports.updateLeadHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2767:25)\n\n2026-08-22T13:19:05.596Z\nerror: invalid input syntax for type date: ""
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Object.updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:449:10)
+    at async updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\leads\updateLead.js:16:23)
+    at async exports.updateLeadHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2767:25)\n\n

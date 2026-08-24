@@ -67,9 +67,9 @@ const getMeetingCountdown = (dateStr) => {
   if (diffMs < 0) {
     const twoHoursInMs = 2 * 60 * 60 * 1000;
     if (Math.abs(diffMs) < twoHoursInMs) {
-      return 'Ã¢ÂÂ±Ã¯Â¸Â In Progress';
+      return '⏳ In Progress';
     }
-    return 'Ã°Å¸â€œâ€¦ Past Meeting';
+    return '📅 Past Meeting';
   }
   
   const diffMins = Math.floor(diffMs / 60000);
@@ -77,15 +77,15 @@ const getMeetingCountdown = (dateStr) => {
   const diffDays = Math.floor(diffHours / 24);
 
   if (diffDays > 0) {
-    return `Ã¢ÂÂ±Ã¯Â¸Â Starts in ${diffDays} day${diffDays > 1 ? 's' : ''}`;
+    return `⏳ Starts in ${diffDays} day${diffDays > 1 ? 's' : ''}`;
   }
   if (diffHours > 0) {
-    return `Ã¢ÂÂ±Ã¯Â¸Â Starts in ${diffHours} hour${diffHours > 1 ? 's' : ''}`;
+    return `⏳ Starts in ${diffHours} hour${diffHours > 1 ? 's' : ''}`;
   }
   if (diffMins > 0) {
-    return `Ã¢ÂÂ±Ã¯Â¸Â Starts in ${diffMins} minute${diffMins > 1 ? 's' : ''}`;
+    return `⏳ Starts in ${diffMins} minute${diffMins > 1 ? 's' : ''}`;
   }
-  return 'Ã¢ÂÂ±Ã¯Â¸Â Starting now';
+  return '⏳ Starting now';
 };
 
 export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, stages = [], initialTab = 'overview' }) {
@@ -881,7 +881,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
             {lead?.deleted_at && (
             <div className="bg-red-50 border-b border-red-200 px-6 py-3 flex items-center justify-between text-sm shrink-0">
               <div className="flex items-center gap-2 text-red-700 font-medium">
-                <span style={{ fontSize: '18px' }}>Ã¢Å¡Â Ã¯Â¸Â</span>
+                <span style={{ fontSize: '18px' }}>⚠️</span>
                 <span>This lead has been deleted.</span>
               </div>
               <div className="flex gap-2">
@@ -1045,7 +1045,16 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       : 'bg-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
-                  {tab === 'knowledge-base' ? 'AI Knowledge Base' : tab === 'automations' ? 'Automation History' : tab === 'meeting-schedule' ? 'Meeting Schedule' : tab === 'site-visits' ? 'Site Visits' : tab.replace('-', ' ')}
+                  {(() => {
+                    if (tab === 'knowledge-base') return 'AI Knowledge Base';
+                    if (tab === 'automations') return 'Automation History';
+                    if (tab === 'meeting-schedule') return 'Meeting Schedule';
+                    if (tab === 'site-visits') return 'Site Visits';
+                    if (tab === 'ai-copilot') return 'AI Copilot';
+                    
+                    const label = tab.replace('-', ' ');
+                    return label.charAt(0).toUpperCase() + label.slice(1);
+                  })()}
                 </button>
               ))}
             </nav>
@@ -1116,84 +1125,121 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       </button>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-x-5 gap-y-5 relative z-10">
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-5 relative z-10">
                       {/* Property Type */}
                       <div>
-                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1 uppercase tracking-wide">
                           <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                           Type of property
                         </label>
-                        <span className="text-sm font-semibold text-[var(--color-text)] block py-2">{lead.property_type ? lead.property_type.toUpperCase().replace('BHK', ' BHK') : <span className="text-gray-400 font-normal italic">Not set</span>}</span>
+                        <span className="text-sm font-semibold text-[var(--color-text)] block mt-1">{lead.property_type ? lead.property_type.toUpperCase().replace('BHK', ' BHK') : <span className="text-gray-400 font-normal italic">Not set</span>}</span>
                       </div>
 
                       {/* Segment */}
                       <div>
-                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1 uppercase tracking-wide">
                           <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
                           Segment
                         </label>
-                        <span className="text-sm font-semibold text-[var(--color-text)] block py-2 capitalize">{lead.segment || <span className="text-gray-400 font-normal italic">Not set</span>}</span>
+                        <span className="text-sm font-semibold text-[var(--color-text)] block mt-1 capitalize">{lead.segment || <span className="text-gray-400 font-normal italic">Not set</span>}</span>
                       </div>
 
                       {/* Scope */}
-                      <div className="col-span-2">
-                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
+                      <div>
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1 uppercase tracking-wide">
                           <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
                           Product Scope
                         </label>
-                        <div className="flex flex-wrap gap-1.5 py-1">
-                          {(typeof lead.scope === 'string' && lead.scope ? lead.scope.split(',') : (Array.isArray(lead.scope) ? lead.scope : [])).length > 0
-                            ? (typeof lead.scope === 'string' ? lead.scope.split(',') : lead.scope).map(s => (
-                                <span key={s} className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100 capitalize">{s.replace(/\[AI Fallback Extraction\]/g, '').replace(/\[AI Extraction\]/g, '').trim().replace(/_/g, ' ')}</span>
-                              ))
-                            : <span className="text-gray-400 font-normal italic text-sm">Not set</span>
-                          }
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                          {(() => {
+                            const scopeField = lead.scope;
+                            if (!scopeField) return <span className="text-gray-400 font-normal italic text-sm">Not set</span>;
+                            const text = String(scopeField).toLowerCase();
+                            const cleanList = [];
+                            if (text.includes('fullhouse') || text.includes('full_home') || text.includes('full house') || text.includes('fullhome')) {
+                              cleanList.push('Full House');
+                            }
+                            if (text.includes('kitchen')) {
+                              cleanList.push('Modular Kitchen');
+                            }
+                            if (text.includes('wardrobe')) {
+                              cleanList.push('Wardrobe / Storage');
+                            }
+                            if (text.includes('ceiling')) {
+                              cleanList.push('False Ceiling');
+                            }
+                            if (text.includes('living')) {
+                              cleanList.push('Living House / Room');
+                            }
+                            if (text.includes('flooring')) {
+                              cleanList.push('Flooring');
+                            }
+                            if (text.includes('painting') || text.includes('paint')) {
+                              cleanList.push('Painting');
+                            }
+                            
+                            const uniqueList = [...new Set(cleanList)];
+                            if (uniqueList.length > 0) {
+                              return uniqueList.map(s => (
+                                <span key={s} className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">{s}</span>
+                              ));
+                            }
+                            
+                            // Fallback if none of the standard keywords are found
+                            const cleanOrig = String(scopeField).replace(/\[AI Fallback Extraction\]/g, '').replace(/\[AI Extraction\]/g, '').replace(/_/g, ' ').trim();
+                            const displayOrig = cleanOrig.substring(0, 30) + (cleanOrig.length > 30 ? '...' : '');
+                            return displayOrig ? (
+                              <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">{displayOrig}</span>
+                            ) : (
+                              <span className="text-gray-400 font-normal italic text-sm">Not set</span>
+                            );
+                          })()}
                         </div>
                       </div>
 
-                      {/* Property Name */}
-                      <div className="col-span-2">
-                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
-                          <svg className="w-4 h-4 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                          Property Name / Complex
+                      {/* Possession Date */}
+                      <div>
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1 uppercase tracking-wide">
+                          <svg className="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                          Possession Date
                         </label>
-                        <span className="text-sm font-semibold text-[var(--color-text)] block py-2">{lead.property_name || <span className="text-gray-400 font-normal italic">Not set</span>}</span>
-                      </div>
-
-                      {/* Address */}
-                      <div className="col-span-2">
-                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
-                          <svg className="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"></path></svg>
-                          Locality / Address
-                        </label>
-                        <span className="text-sm font-semibold text-[var(--color-text)] block py-2">{lead.locality || <span className="text-gray-400 font-normal italic">Not set</span>}</span>
+                        <span className="text-sm font-semibold text-[var(--color-text)] block mt-1">{lead.possession_month ? new Date(lead.possession_month).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : <span className="text-gray-400 font-normal italic">Not set</span>}</span>
                       </div>
 
                       {/* Carpet Area */}
                       <div>
-                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1 uppercase tracking-wide">
                           <svg className="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
                           Carpet Area
                         </label>
-                        <span className="text-sm font-semibold text-[var(--color-text)] block py-2">{lead.carpet_area_sqft ? `${Number(lead.carpet_area_sqft).toLocaleString()} sq.ft` : <span className="text-gray-400 font-normal italic">Not set</span>}</span>
+                        <span className="text-sm font-semibold text-[var(--color-text)] block mt-1">{lead.carpet_area_sqft ? `${Number(lead.carpet_area_sqft).toLocaleString()} sq.ft` : <span className="text-gray-400 font-normal italic">Not set</span>}</span>
                       </div>
 
                       {/* Budget */}
                       <div>
-                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1 uppercase tracking-wide">
                           <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                           Budget Max
                         </label>
-                        <span className="text-sm font-semibold text-[var(--color-text)] block py-2">{lead.budget_max ? `₹${Number(lead.budget_max).toLocaleString()}` : <span className="text-gray-400 font-normal italic">Not set</span>}</span>
+                        <span className="text-sm font-semibold text-[var(--color-text)] block mt-1">{lead.budget_max ? `₹${Number(lead.budget_max).toLocaleString()}` : <span className="text-gray-400 font-normal italic">Not set</span>}</span>
                       </div>
 
-                      {/* Possession Date */}
+                      {/* Property Name */}
                       <div className="col-span-2">
-                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
-                          <svg className="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                          Possession Date
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1 uppercase tracking-wide">
+                          <svg className="w-4 h-4 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                          Property Name / Complex
                         </label>
-                        <span className="text-sm font-semibold text-[var(--color-text)] block py-2">{lead.possession_month ? new Date(lead.possession_month).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : <span className="text-gray-400 font-normal italic">Not set</span>}</span>
+                        <span className="text-sm font-semibold text-[var(--color-text)] block mt-1">{lead.property_name || <span className="text-gray-400 font-normal italic">Not set</span>}</span>
+                      </div>
+
+                      {/* Address */}
+                      <div className="col-span-2">
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1 uppercase tracking-wide">
+                          <svg className="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"></path></svg>
+                          Locality / Address
+                        </label>
+                        <span className="text-sm font-semibold text-[var(--color-text)] block mt-1">{lead.locality || <span className="text-gray-400 font-normal italic">Not set</span>}</span>
                       </div>
                     </div>
                   </div>
@@ -1213,8 +1259,44 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                     </div>
                     
                     <div className="space-y-4 relative z-10">
+                      {/* Design Preferences Grid */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1 uppercase tracking-wide">
+                            Interior Style
+                          </label>
+                          <span className="text-sm font-semibold text-[var(--color-text)] block">
+                            {lead.interior_style || <span className="text-gray-400 font-normal italic">Not specified</span>}
+                          </span>
+                        </div>
+                        <div>
+                          <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1 uppercase tracking-wide">
+                            Material Preference
+                          </label>
+                          <span className="text-sm font-semibold text-[var(--color-text)] block">
+                            {lead.material_preference || <span className="text-gray-400 font-normal italic">Not specified</span>}
+                          </span>
+                        </div>
+                        <div>
+                          <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1 uppercase tracking-wide">
+                            Preferred Comm.
+                          </label>
+                          <span className="text-sm font-semibold text-[var(--color-text)] block">
+                            {lead.preferred_communication || <span className="text-gray-400 font-normal italic">Not specified</span>}
+                          </span>
+                        </div>
+                        <div>
+                          <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1 uppercase tracking-wide">
+                            Preferred Language
+                          </label>
+                          <span className="text-sm font-semibold text-[var(--color-text)] block">
+                            {lead.preferred_language || <span className="text-gray-400 font-normal italic">Not specified</span>}
+                          </span>
+                        </div>
+                      </div>
+
                       {/* DNC Status */}
-                      <div className="flex items-center justify-between p-3 rounded-xl border border-transparent">
+                      <div className="flex items-center justify-between p-3 rounded-xl border border-transparent mt-4 pt-4 border-t border-[var(--color-border)]">
                         <div className="flex items-center gap-3">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center ${lead.dnc_flag ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-400'}`}>
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
@@ -1239,15 +1321,6 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                           </div>
                         </div>
                         <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${lead.consent_whatsapp ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{lead.consent_whatsapp ? 'Opted In' : 'Not Set'}</span>
-                      </div>
-
-                      {/* Competitor */}
-                      <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
-                        <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1.5 uppercase tracking-wide">
-                          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                          Competitor Mentioned
-                        </label>
-                        <span className="text-sm font-semibold text-[var(--color-text)] block py-2">{lead.competitor_mentioned || <span className="text-gray-400 font-normal italic">None</span>}</span>
                       </div>
                     </div>
                   </div>
@@ -1306,7 +1379,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                         </div>
                         <div className="flex flex-col gap-2 text-sm text-gray-600">
                           <div className="flex items-center gap-2">
-                            <span className="text-gray-400">Ã°Å¸â€œâ€¦</span>
+                            <span className="text-gray-400">📅</span>
                             <span className="font-medium text-gray-700">{formatMeetingSchedule(lead.next_meeting_schedule)}</span>
                             {lead.next_meeting_duration && (
                               <span className="text-gray-400">({lead.next_meeting_duration} mins)</span>
@@ -1314,13 +1387,13 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                           </div>
                           {lead.next_meeting_type && (
                             <div className="flex items-center gap-2">
-                              <span className="text-gray-400">Ã°Å¸â€œÂ</span>
+                              <span className="text-gray-400">📍</span>
                               <span className="font-medium text-gray-700">{lead.next_meeting_type}</span>
                             </div>
                           )}
                           {lead.next_meeting_host && (
                             <div className="flex items-center gap-2">
-                              <span className="text-gray-400">Ã°Å¸â€˜Â¤</span>
+                              <span className="text-gray-400">👤</span>
                               <span className="font-medium text-gray-700">Host: {lead.next_meeting_host}</span>
                             </div>
                           )}
@@ -1398,9 +1471,9 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                             buyingIntent.intent === 'Hot' ? 'text-red-600' : 
                             buyingIntent.intent === 'Warm' ? 'text-orange-500' : 'text-blue-500'
                           }`}>
-                            {buyingIntent.intent === 'Hot' && 'Ã°Å¸â€Â¥ '}
+                            {buyingIntent.intent === 'Hot' && '🔥 '}
                             {buyingIntent.intent === 'Warm' && '☀️ '}
-                            {buyingIntent.intent === 'Cold' && 'Ã¢Ââ€žÃ¯Â¸Â '}
+                            {buyingIntent.intent === 'Cold' && '❄️ '}
                             {buyingIntent.intent} ({buyingIntent.confidence}%)
                           </div>
                           <div className="text-sm text-gray-700 mt-2">{buyingIntent.reason}</div>
@@ -1557,7 +1630,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   <div className="flex items-center justify-between border-b pb-4 mb-6">
                     <div>
                       <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                        <span>Ã°Å¸â€œâ€¦</span> Meetings Hub
+                        <span>📅</span> Meetings Hub
                       </h3>
                       <p className="text-sm text-gray-500 mt-1">Schedule client consultations, log summaries, and get AI Sales Coaching.</p>
                     </div>
@@ -1748,7 +1821,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                     <div className="space-y-5 pt-2">
                       <div className="bg-green-50/50 p-5 rounded-xl border border-green-200">
                         <h4 className="text-base font-bold text-green-800 flex items-center gap-1.5">
-                          <span>Ã¢Å“â€¦</span> Conclude "{lead.next_meeting_title || 'Lead Consultation Meeting'}"
+                          <span>✅</span> Conclude "{lead.next_meeting_title || 'Lead Consultation Meeting'}"
                         </h4>
                         <p className="text-sm text-gray-500 mt-1">
                           Select the conclusion method. The AI Summarizer automatically extracts tasks and logs feedback.
@@ -1762,14 +1835,14 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                           onClick={() => setConcludeMode('ai')}
                           className={`flex-1 text-center py-2 text-xs font-bold rounded-md transition-all ${concludeMode === 'ai' ? 'bg-white shadow-sm text-blue-600 font-extrabold' : 'text-gray-500 hover:text-gray-900'}`}
                         >
-                          Ã°Å¸Â¤â€“ AI Summarizer & Coach
+                          🤖 AI Summarizer & Coach
                         </button>
                         <button
                           type="button"
                           onClick={() => setConcludeMode('manual')}
                           className={`flex-1 text-center py-2 text-xs font-bold rounded-md transition-all ${concludeMode === 'manual' ? 'bg-white shadow-sm text-blue-600 font-extrabold' : 'text-gray-500 hover:text-gray-900'}`}
                         >
-                          Ã°Å¸â€œÂ Manual Notes
+                          📝 Manual Notes
                         </button>
                       </div>
 
@@ -1807,7 +1880,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                                   disabled={aiSummarizing || !meetingTranscript.trim()}
                                   className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white text-sm font-bold rounded-lg shadow-sm hover:shadow transition-all disabled:opacity-50 cursor-pointer"
                                 >
-                                  {aiSummarizing ? 'Ã°Å¸Â¤â€“ AI is analyzing...' : 'Ã¢Å“Â¨ Generate AI Summary & Conclude'}
+                                  {aiSummarizing ? '🤖 AI is analyzing...' : '✨ Generate AI Summary & Conclude'}
                                 </button>
                               </div>
                             </form>
@@ -1815,7 +1888,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                             <div className="space-y-6 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                               <div className="flex items-center justify-between border-b pb-3">
                                 <h4 className="text-lg font-bold text-gray-900 flex items-center gap-1.5">
-                                  <span>Ã°Å¸Â¤â€“</span> Gemini AI Analysis Complete
+                                  <span>🤖</span> Gemini AI Analysis Complete
                                 </h4>
                                 <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full flex items-center gap-1 border border-green-200">
                                   <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping"></span> Concluded & Saved
@@ -1830,7 +1903,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                                   aiResult.customer_sentiment === 'Negative' ? 'bg-red-50 text-red-700 border border-red-200' :
                                   'bg-gray-50 text-gray-700 border border-gray-200'
                                 }`}>
-                                  <span>{aiResult.customer_sentiment === 'Positive' ? 'Ã°Å¸â„¢â€š' : aiResult.customer_sentiment === 'Negative' ? 'Ã°Å¸ËœÅ¾' : 'Ã°Å¸ËœÂ'}</span>
+                                  <span>{aiResult.customer_sentiment === 'Positive' ? '🙂' : aiResult.customer_sentiment === 'Negative' ? '😞' : '😐'}</span>
                                   {aiResult.customer_sentiment}
                                 </span>
                               </div>
@@ -1850,7 +1923,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                                   <div className="space-y-2">
                                     {aiResult.action_items.map((item, idx) => (
                                       <div key={idx} className="flex items-start gap-2.5 p-2.5 rounded-lg bg-indigo-50/50 border border-indigo-100/50 text-sm animate-fadeIn">
-                                        <span className="text-indigo-600 font-bold mt-0.5">Ã¢Å“â€œ</span>
+                                        <span className="text-indigo-600 font-bold mt-0.5">✓</span>
                                         <div>
                                           <p className="font-semibold text-gray-800">{typeof item === 'string' ? item : item.title}</p>
                                           <p className="text-xs text-gray-500 mt-0.5">Due in {typeof item === 'object' && item.due_in_days ? item.due_in_days : 1} day(s)</p>
@@ -1867,7 +1940,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                               {aiCoachFeedback && (
                                 <div className="mt-4 p-5 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-orange-100 animate-fadeIn">
                                   <h5 className="text-xs font-bold text-orange-800 uppercase tracking-wider flex items-center gap-1.5 mb-3">
-                                    <span>Ã°Å¸Â§Â </span> AI Sales Coach Feedback
+                                    <span>🧠</span> AI Sales Coach Feedback
                                   </h5>
                                   <p className="text-sm text-gray-700 italic mb-4 leading-relaxed">
                                     "{aiCoachFeedback.feedback}"
@@ -1994,14 +2067,14 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
                           <div className="grid grid-cols-2 gap-4">
                             <div className="flex items-center gap-3 bg-white/70 p-3 rounded-xl border border-gray-250 shadow-sm">
-                              <span className="text-2xl">Ã°Å¸â€˜Â¤</span>
+                              <span className="text-2xl">👤</span>
                               <div>
                                 <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Host</span>
                                 <span className="text-sm font-semibold text-gray-700">{lead.next_meeting_host || lead.assignee_name || 'Unassigned'}</span>
                               </div>
                             </div>
                             <div className="flex items-center gap-3 bg-white/70 p-3 rounded-xl border border-gray-250 shadow-sm">
-                              <span className="text-2xl">Ã°Å¸â€â€</span>
+                              <span className="text-2xl">👥</span>
                               <div>
                                 <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Reminders</span>
                                 <span className="text-sm font-semibold text-gray-700">WhatsApp &amp; Email</span>
@@ -2015,7 +2088,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                             <div>
                               <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Date &amp; Time</span>
                               <div className="text-sm font-bold text-gray-800 mt-1 flex items-center gap-2">
-                                <span>Ã°Å¸â€œâ€¦</span>
+                                <span>📅</span>
                                 {formatMeetingSchedule(lead.next_meeting_schedule)}
                               </div>
                             </div>
@@ -2023,7 +2096,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                               <div>
                                 <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Duration</span>
                                 <div className="text-sm font-semibold text-gray-700 mt-1 flex items-center gap-2">
-                                  <span>Ã¢ÂÂ±Ã¯Â¸Â</span>
+                                  <span>⏳</span>
                                   {lead.next_meeting_duration} minutes
                                 </div>
                               </div>
@@ -2032,7 +2105,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                               <div>
                                 <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">Meeting Type</span>
                                 <div className="text-sm font-semibold text-gray-700 mt-1 flex items-center gap-2">
-                                  <span>Ã°Å¸â€œÂ</span>
+                                  <span>📍</span>
                                   {lead.next_meeting_type}
                                 </div>
                               </div>
@@ -2099,7 +2172,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                     </div>
                   ) : (
                     <div className="text-center py-12 rounded-2xl border border-dashed border-gray-300 bg-white/30 backdrop-blur-sm">
-                      <span className="text-5xl block mb-3 animate-bounce">Ã°Å¸â€œâ€¦</span>
+                      <span className="text-5xl block mb-3 animate-bounce">📅</span>
                       <h4 className="text-lg font-bold text-gray-800">No Meetings Scheduled</h4>
                       <p className="text-sm text-gray-400 mt-1 max-w-xs mx-auto">Build momentum by scheduling a design consultation.</p>
                       <button
@@ -2116,7 +2189,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                 <div className="p-6 rounded-2xl shadow-sm transition-all bg-white border border-gray-100">
                   <div className="border-b pb-3 mb-5">
                     <h4 className="text-base font-bold text-gray-800 flex items-center gap-2">
-                      <span>Ã°Å¸â€œÅ“</span> Meeting History &amp; Logs
+                      <span>📜</span> Meeting History &amp; Logs
                     </h4>
                   </div>
 
@@ -2166,14 +2239,14 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                                     )}
                                     {sentiment && (
                                       <span className="text-xs" title={`Customer Sentiment: ${sentiment}`}>
-                                        {sentiment === 'Positive' ? 'Ã°Å¸Å¸Â¢ Positive' : sentiment === 'Negative' ? 'Ã°Å¸â€Â´ Negative' : 'Ã°Å¸Å¸Â¡ Neutral'}
+                                        {sentiment === 'Positive' ? '🟢 Positive' : sentiment === 'Negative' ? '🔴 Negative' : '🟡 Neutral'}
                                       </span>
                                     )}
                                   </div>
                                   <div className="text-xs text-gray-400 flex flex-wrap gap-x-4 gap-y-1">
-                                    <span>Ã°Å¸â€œâ€¦ {formatMeetingSchedule(act.scheduled_at || act.created_at)}</span>
-                                    <span>Ã°Å¸â€˜Â¤ Host: {meta.meeting_host || act.user_name || 'Coordinator'}</span>
-                                    {meta.duration && <span>Ã¢ÂÂ±Ã¯Â¸Â {meta.duration} mins</span>}
+                                    <span>📅 {formatMeetingSchedule(act.scheduled_at || act.created_at)}</span>
+                                    <span>👤 Host: {meta.meeting_host || act.user_name || 'Coordinator'}</span>
+                                    {meta.duration && <span>⏳ {meta.duration} mins</span>}
                                   </div>
                                 </div>
 
@@ -2183,7 +2256,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                                       onClick={() => setExpandedMeetingId(isExpanded ? null : act.id)}
                                       className="px-3 py-1.5 hover:bg-gray-100 text-blue-600 hover:text-blue-800 text-xs font-bold rounded-lg border border-gray-200 transition-colors flex items-center gap-1 cursor-pointer"
                                     >
-                                      {isExpanded ? 'Hide Details Ã¢â€“Â²' : 'View AI Summary Ã¢â€“Â¾'}
+                                      {isExpanded ? 'Hide Details ▲' : 'View AI Summary ▾'}
                                     </button>
                                   )}
                                   <button
@@ -2218,7 +2291,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                         {actionItems.map((item, idx) => (
                                           <div key={idx} className="flex items-start gap-2 bg-white p-2.5 rounded-lg border border-gray-100 text-xs shadow-sm">
-                                            <span className="text-indigo-650 font-bold">Ã¢Å“â€œ</span>
+                                            <span className="text-indigo-650 font-bold">✓</span>
                                             <div>
                                               <p className="font-semibold text-gray-800">{typeof item === 'string' ? item : item.title}</p>
                                               <p className="text-[10px] text-gray-400 mt-0.5">Due in {typeof item === 'object' && item.due_in_days ? item.due_in_days : 1} days</p>
@@ -2334,7 +2407,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                               className="text-xs text-primary hover:text-primary-dark font-medium mr-2"
                               title="Extract properties with AI"
                             >
-                              Ã¢Å“Â¨ Extract
+                              ✨ Extract
                             </button>
                           )}
                           <button onClick={async () => deleteFile(f.id)} className="text-gray-400 hover:text-red-500 shrink-0 text-lg leading-none">&times;</button>
@@ -2588,7 +2661,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
         >
           <div className="p-6 text-center space-y-4">
             <div className="w-16 h-16 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto text-3xl">
-              Ã°Å¸â€â€ž
+              🔄
             </div>
             <div>
               <h3 className="text-lg font-bold text-gray-900">Restore Lead?</h3>
@@ -2633,7 +2706,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
         >
           <div className="p-6 text-center space-y-4">
             <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto text-3xl">
-              Ã¢Å¡Â Ã¯Â¸Â
+              ⚠️
             </div>
             <div>
               <h3 className="text-lg font-bold text-gray-900">Permanently Delete Lead?</h3>
@@ -2672,7 +2745,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
             {previewFile.download_url === '#' || previewFile.storage_key === '#' ? (
               <div className="text-center p-8 space-y-4 max-w-md bg-white rounded-xl shadow-sm border border-gray-100">
                 <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto text-3xl">
-                  Ã¢â€žÂ¹Ã¯Â¸Â
+                  ℹ️
                 </div>
                 <h4 className="text-base font-semibold text-gray-800">Mock Document Preview</h4>
                 <p className="text-sm text-gray-500">
@@ -2712,7 +2785,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
             ) : (
               <div className="text-center p-8 space-y-4 max-w-md bg-white rounded-xl shadow-sm border border-gray-100">
                 <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto text-3xl">
-                  Ã°Å¸â€œâ€ž
+                  📄
                 </div>
                 <h4 className="text-base font-semibold text-gray-800">{previewFile.file_name}</h4>
                 <p className="text-sm text-gray-500">

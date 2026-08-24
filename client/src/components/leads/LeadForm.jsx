@@ -10,6 +10,55 @@ import styles from './LeadForm.module.css';
 
 import { useConfirm } from '../../store/confirmContext';
 
+const cleanLeadScope = (scopeField) => {
+  if (!scopeField) return '';
+  const validOptions = ['kitchen', 'bedroom', 'wardrobe', 'fullhouse', 'living_room', 'bathroom', 'office', 'false_ceiling', 'flooring', 'painting', 'custom_furniture'];
+  const rawScope = String(scopeField);
+  
+  if (rawScope.includes('[AI') || rawScope.includes('[Mock')) {
+    const text = rawScope.toLowerCase();
+    const extracted = [];
+    if (text.includes('fullhouse') || text.includes('full_home') || text.includes('full house') || text.includes('fullhome')) {
+      extracted.push('fullhouse');
+    }
+    if (text.includes('kitchen')) {
+      extracted.push('kitchen');
+    }
+    if (text.includes('wardrobe')) {
+      extracted.push('wardrobe');
+    }
+    if (text.includes('bedroom')) {
+      extracted.push('bedroom');
+    }
+    if (text.includes('ceiling')) {
+      extracted.push('false_ceiling');
+    }
+    if (text.includes('living')) {
+      extracted.push('living_room');
+    }
+    if (text.includes('flooring')) {
+      extracted.push('flooring');
+    }
+    if (text.includes('painting') || text.includes('paint')) {
+      extracted.push('painting');
+    }
+    
+    rawScope.split(',').forEach(p => {
+      const trimmed = p.trim().toLowerCase();
+      if (validOptions.includes(trimmed)) {
+        extracted.push(trimmed);
+      }
+    });
+    
+    return [...new Set(extracted)].join(',');
+  }
+  
+  return rawScope.split(',')
+    .map(s => s.trim().toLowerCase())
+    .filter(s => validOptions.includes(s))
+    .join(',');
+};
+
 export default function LeadForm({ lead, onSave, onClose, editSection }) {
   const { confirm } = useConfirm();
 
@@ -80,7 +129,7 @@ export default function LeadForm({ lead, onSave, onClose, editSection }) {
     referred_by_lead_id: lead?.referred_by_lead_id || '',
     property_type: lead?.property_type || '',
     segment: lead?.segment || '',
-    scope: lead?.scope || '',
+    scope: cleanLeadScope(lead?.scope),
     property_name: lead?.property_name || '',
     locality: lead?.locality || '',
     carpet_area_sqft: lead?.carpet_area_sqft || '',
@@ -263,7 +312,8 @@ export default function LeadForm({ lead, onSave, onClose, editSection }) {
                       { value: 'painting', label: 'Painting' },
                       { value: 'custom_furniture', label: 'Custom Furniture' }
                     ]}
-                    value={typeof values.scope === 'string' && values.scope ? values.scope.split(',') : (Array.isArray(values.scope) ? values.scope : [])}
+                    value={(typeof values.scope === 'string' && values.scope ? values.scope.split(',') : (Array.isArray(values.scope) ? values.scope : []))
+                      .filter(val => ['kitchen', 'bedroom', 'wardrobe', 'fullhouse', 'living_room', 'bathroom', 'office', 'false_ceiling', 'flooring', 'painting', 'custom_furniture'].includes(val.trim()))}
                     onChange={selectedArray => {
                       const newValue = selectedArray.join(',');
                       handleChange('scope', newValue);

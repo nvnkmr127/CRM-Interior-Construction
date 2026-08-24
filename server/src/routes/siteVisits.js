@@ -336,4 +336,25 @@ router.get('/:id/linked-items', authenticate, async (req, res, next) => {
   }
 });
 
+// Get all site visits globally
+router.get('/', authenticate, async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId || req.user.tenantId;
+
+    const query = `
+      SELECT sv.*, u.name as assignee_name, l.name as lead_name
+      FROM site_visits sv
+      LEFT JOIN users u ON sv.assignee_id = u.id
+      LEFT JOIN leads l ON sv.lead_id = l.id
+      WHERE sv.tenant_id = $1
+      ORDER BY sv.scheduled_at DESC
+    `;
+    const result = await pool.query(query, [tenantId]);
+    
+    return success(res, result.rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

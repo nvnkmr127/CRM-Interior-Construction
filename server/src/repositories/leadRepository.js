@@ -328,6 +328,13 @@ async function updateLead(tenantId, leadId, updates) {
   try {
     await client.query('BEGIN');
 
+    // Clean empty string values for date/numeric fields to prevent SQL syntax errors
+    const cleanedUpdates = { ...updates };
+    if (cleanedUpdates.possession_date === '') cleanedUpdates.possession_date = null;
+    if (cleanedUpdates.carpet_area_sqft === '') cleanedUpdates.carpet_area_sqft = null;
+    if (cleanedUpdates.budget_max === '') cleanedUpdates.budget_max = null;
+    if (cleanedUpdates.budget_min === '') cleanedUpdates.budget_min = null;
+
     // Separate lead fields from property/preference fields
     const propertyFields = ['builder_name', 'possession_date', 'house_status', 'property_type', 'carpet_area_sqft'];
     const preferenceFields = [
@@ -366,7 +373,7 @@ async function updateLead(tenantId, leadId, updates) {
       }
     }
 
-    for (const [key, value] of Object.entries(updates)) {
+    for (const [key, value] of Object.entries(cleanedUpdates)) {
       if (propertyFields.includes(key)) {
         if (key === 'builder_name') propUpdates['builder'] = value;
         else if (key === 'carpet_area_sqft') {

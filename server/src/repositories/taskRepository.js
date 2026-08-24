@@ -135,10 +135,12 @@ class TaskRepository {
       SELECT t.*,
         u.name as assignee_name,
         p.name as project_name,
+        l.name as lead_name,
         (SELECT count(id)::int FROM tasks sub WHERE sub.parent_task_id = t.id AND sub.deleted_at IS NULL) as subtask_count
       FROM tasks t
       LEFT JOIN users u ON t.assignee_id = u.id
       LEFT JOIN projects p ON t.project_id = p.id
+      LEFT JOIN leads l ON t.lead_id = l.id
       WHERE ${whereClause}
       ORDER BY t.sort_order ASC, t.created_at DESC
       LIMIT $${idx++} OFFSET $${idx}
