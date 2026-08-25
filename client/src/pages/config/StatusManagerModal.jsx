@@ -101,13 +101,13 @@ export default function StatusManagerModal({ isOpen, onClose, user, onStatusChan
     >
       <div style={{ display: 'flex', gap: '24px', borderBottom: '1px solid var(--color-border)', marginBottom: '16px' }}>
         <div 
-          style={{ paddingBottom: '8px', cursor: 'pointer', fontWeight: activeTab === 'change' ? 600 : 400, color: activeTab === 'change' ? 'var(--color-primary)' : 'var(--color-text-secondary)', borderBottom: activeTab === 'change' ? '2px solid var(--color-primary)' : '2px solid transparent' }} 
+          style={{ paddingBottom: '8px', cursor: 'pointer', fontWeight: activeTab === 'change' ? 600 : 400, color: activeTab === 'change' ? 'var(--color-accent)' : 'var(--color-text-secondary)', borderBottom: activeTab === 'change' ? '2px solid var(--color-accent)' : '2px solid transparent' }} 
           onClick={() => setActiveTab('change')}
         >
           Change Status
         </div>
         <div 
-          style={{ paddingBottom: '8px', cursor: 'pointer', fontWeight: activeTab === 'history' ? 600 : 400, color: activeTab === 'history' ? 'var(--color-primary)' : 'var(--color-text-secondary)', borderBottom: activeTab === 'history' ? '2px solid var(--color-primary)' : '2px solid transparent' }} 
+          style={{ paddingBottom: '8px', cursor: 'pointer', fontWeight: activeTab === 'history' ? 600 : 400, color: activeTab === 'history' ? 'var(--color-accent)' : 'var(--color-text-secondary)', borderBottom: activeTab === 'history' ? '2px solid var(--color-accent)' : '2px solid transparent' }} 
           onClick={() => setActiveTab('history')}
         >
           History Timeline

@@ -715,35 +715,35 @@ export default function RolesManager() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <div className={styles.formGroup} style={{ margin: 0 }}>
                       <label className={styles.label}>Role</label>
-                      <Select
-                        options={[
-                          { value: 'superadmin', label: 'Superadmin' },
-                          { value: 'admin', label: 'Admin' },
-                          { value: 'Project Manager', label: 'Project Manager' },
-                          { value: 'Designer', label: 'Designer' },
-                          { value: 'Lead Designer', label: 'Lead Designer' },
-                          { value: 'Junior Designer', label: 'Junior Designer' },
-                          { value: 'Sales', label: 'Sales' },
-                          { value: 'Sales Representative', label: 'Sales Representative' },
-                          { value: 'Site Engineer', label: 'Site Engineer' },
-                          { value: 'Site Supervisor', label: 'Site Supervisor' },
-                          { value: 'Procurement Officer', label: 'Procurement Officer' },
-                          { value: 'Procurement Manager', label: 'Procurement Manager' },
-                          { value: 'Finance Manager', label: 'Finance Manager' },
-                          { value: 'Finance Controller', label: 'Finance Controller' },
-                          { value: 'QC Engineer', label: 'QC Engineer' },
-                          { value: 'QC Inspector', label: 'QC Inspector' },
-                          { value: 'Handover Specialist', label: 'Handover Specialist' },
-                          { value: 'Warranty Manager', label: 'Warranty Manager' },
-                          { value: 'CRM Executive', label: 'CRM Executive' },
-                          { value: 'Customer Support Rep', label: 'Customer Support Rep' }
-                        ]}
+                      <Input
                         value={formData.name}
-                        onChange={handleRoleNameChange}
-                        placeholder="Select Role"
-                        searchable={true}
+                        onChange={e => handleRoleNameChange(e.target.value)}
+                        placeholder="Enter Role Name (e.g. Lead Designer)"
                         disabled={editingRole?.name === 'superadmin'}
+                        list="roles-list"
                       />
+                      <datalist id="roles-list">
+                        <option value="superadmin" />
+                        <option value="admin" />
+                        <option value="Project Manager" />
+                        <option value="Designer" />
+                        <option value="Lead Designer" />
+                        <option value="Junior Designer" />
+                        <option value="Sales" />
+                        <option value="Sales Representative" />
+                        <option value="Site Engineer" />
+                        <option value="Site Supervisor" />
+                        <option value="Procurement Officer" />
+                        <option value="Procurement Manager" />
+                        <option value="Finance Manager" />
+                        <option value="Finance Controller" />
+                        <option value="QC Engineer" />
+                        <option value="QC Inspector" />
+                        <option value="Handover Specialist" />
+                        <option value="Warranty Manager" />
+                        <option value="CRM Executive" />
+                        <option value="Customer Support Rep" />
+                      </datalist>
                     </div>
                     
 

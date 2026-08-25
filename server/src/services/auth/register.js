@@ -17,6 +17,15 @@ async function registerUser({ tenantId, email, name, password, roleId }) {
     throw new Error('EMAIL_EXISTS');
   }
 
+  // 1.2 Check user limit as per tenant configuration
+  const tenantRes = await pool.query('SELECT max_users FROM tenants WHERE id = $1 LIMIT 1', [tenantId]);
+  const maxUsers = tenantRes.rows[0]?.max_users || 10;
+
+  const countRes = await pool.query('SELECT COUNT(*)::int as count FROM users WHERE tenant_id = $1', [tenantId]);
+  if (countRes.rows[0].count >= maxUsers) {
+    throw new Error('PLAN_LIMIT_EXCEEDED');
+  }
+
   // 1.5 Validate Password Policy
   await validatePasswordPolicy(password, tenantId, null);
 

@@ -313,6 +313,8 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/users/bulk', usersBulkRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/roles', rolesRoutes);
+const superadminRoutes = require('./routes/superadmin');
+app.use('/api/superadmin', superadminRoutes);
 app.use('/api/offboarding', require('./routes/offboarding'));
 app.use('/api/filters', savedFiltersRoutes);
 app.use('/api/org', orgRoutes);
@@ -537,7 +539,8 @@ pool.query(`
   ALTER TABLE sessions ALTER COLUMN last_active_at TYPE TIMESTAMPTZ USING last_active_at::timestamptz;
   ALTER TABLE sessions ALTER COLUMN expires_at TYPE TIMESTAMPTZ USING expires_at::timestamptz;
 
-  
+  ALTER TABLE tenants ADD COLUMN IF NOT EXISTS max_users INT DEFAULT 10;
+
   INSERT INTO user_security (user_id)
   SELECT id FROM users
   ON CONFLICT (user_id) DO NOTHING;

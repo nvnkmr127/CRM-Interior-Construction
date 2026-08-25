@@ -78,7 +78,7 @@ router.post('/login', async (req, res, next) => {
 
     // 2. Lookup tenant by slug -> tenantId
     const tenantResult = await pool.query(
-      'SELECT id FROM tenants WHERE slug = $1 LIMIT 1',
+      'SELECT id, is_active FROM tenants WHERE slug = $1 LIMIT 1',
       [tenantSlug]
     );
 
@@ -87,7 +87,11 @@ router.post('/login', async (req, res, next) => {
       return fail(res, 'INVALID_CREDENTIALS', 'Invalid email or password', 401);
     }
 
-    const tenantId = tenantResult.rows[0].id;
+    const { id: tenantId, is_active } = tenantResult.rows[0];
+
+    if (!is_active) {
+      return fail(res, 'TENANT_DEACTIVATED', 'This workspace has been deactivated. Please contact support.', 403);
+    }
 
     // 3. Call loginUser
     const ip = req.ip || req.connection?.remoteAddress || 'Unknown';

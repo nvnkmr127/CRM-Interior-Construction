@@ -15,12 +15,12 @@ async function getConstructionFinancialSummary(approvalId, tenantId) {
 
   if (app.transaction_type === 'vendor_bill' || app.transaction_type === 'invoice') {
     try {
-      const { rows: vb } = await pool.query('SELECT * FROM vendor_bills WHERE id = $1', [app.target_id]);
+      const { rows: vb } = await pool.query('SELECT * FROM vendor_bills WHERE id = $1 AND tenant_id = $2', [app.target_id, tenantId]);
       if (vb.length > 0) {
         projectId = vb[0].project_id;
         vendorBill = vb[0];
       } else {
-        const { rows: inv } = await pool.query('SELECT * FROM invoices WHERE id = $1', [app.target_id]);
+        const { rows: inv } = await pool.query('SELECT * FROM invoices WHERE id = $1 AND tenant_id = $2', [app.target_id, tenantId]);
         if (inv.length > 0) {
           projectId = inv[0].project_id;
           vendorBill = { ...inv[0], base_amount: inv[0].amount, net_payable: inv[0].amount }; // Map old invoice format
@@ -29,12 +29,12 @@ async function getConstructionFinancialSummary(approvalId, tenantId) {
     } catch (error){}
   } else if (app.transaction_type === 'payment' || app.transaction_type === 'payment_update') {
     try {
-      const { rows: pm } = await pool.query('SELECT project_id FROM payment_milestones WHERE id = $1', [app.target_id]);
+      const { rows: pm } = await pool.query('SELECT project_id FROM payment_milestones WHERE id = $1 AND tenant_id = $2', [app.target_id, tenantId]);
       if (pm.length > 0) projectId = pm[0].project_id;
     } catch (error){}
   } else if (app.transaction_type === 'site_expense') {
     try {
-      const { rows: se } = await pool.query('SELECT project_id FROM site_expenses WHERE id = $1', [app.target_id]);
+      const { rows: se } = await pool.query('SELECT project_id FROM site_expenses WHERE id = $1 AND tenant_id = $2', [app.target_id, tenantId]);
       if (se.length > 0) projectId = se[0].project_id;
     } catch (error){}
   }
@@ -58,33 +58,33 @@ async function getConstructionFinancialSummary(approvalId, tenantId) {
 
   // 2. Fetch Aggregates (Wrap in try/catch since schema might be partially migrated)
   try {
-    const { rows: boq } = await pool.query('SELECT SUM(total_amount) as total FROM boqs WHERE project_id = $1', [projectId]);
+    const { rows: boq } = await pool.query('SELECT SUM(total_amount) as total FROM boqs WHERE project_id = $1 AND tenant_id = $2', [projectId, tenantId]);
     summary.totalBoq = Number(boq[0]?.total || 0);
   } catch (error){}
   try {
-    const { rows: po } = await pool.query('SELECT SUM(total_amount) as total FROM purchase_orders WHERE project_id = $1', [projectId]);
+    const { rows: po } = await pool.query('SELECT SUM(total_amount) as total FROM purchase_orders WHERE project_id = $1 AND tenant_id = $2', [projectId, tenantId]);
     summary.totalPOs = Number(po[0]?.total || 0);
   } catch (error){}
   try {
-    const { rows: wo } = await pool.query('SELECT SUM(total_amount) as total FROM work_orders WHERE project_id = $1', [projectId]);
+    const { rows: wo } = await pool.query('SELECT SUM(total_amount) as total FROM work_orders WHERE project_id = $1 AND tenant_id = $2', [projectId, tenantId]);
     summary.totalWOs = Number(wo[0]?.total || 0);
   } catch (error){}
   try {
-    const { rows: se } = await pool.query('SELECT SUM(amount) as total FROM site_expenses WHERE project_id = $1', [projectId]);
+    const { rows: se } = await pool.query('SELECT SUM(amount) as total FROM site_expenses WHERE project_id = $1 AND tenant_id = $2', [projectId, tenantId]);
     summary.totalSiteExpenses = Number(se[0]?.total || 0);
   } catch (error){}
   try {
-    const { rows: pm } = await pool.query('SELECT SUM(amount) as total FROM payment_milestones WHERE project_id = $1', [projectId]);
+    const { rows: pm } = await pool.query('SELECT SUM(amount) as total FROM payment_milestones WHERE project_id = $1 AND tenant_id = $2', [projectId, tenantId]);
     summary.totalMilestones = Number(pm[0]?.total || 0);
   } catch (error){}
 
   
   try {
-    const { rows: mr } = await pool.query('SELECT SUM(estimated_cost) as total FROM material_requests WHERE project_id = $1', [projectId]);
+    const { rows: mr } = await pool.query('SELECT SUM(estimated_cost) as total FROM material_requests WHERE project_id = $1 AND tenant_id = $2', [projectId, tenantId]);
     summary.totalMaterialRequests = Number(mr[0]?.total || 0);
   } catch (error){}
   try {
-    const { rows: adv } = await pool.query("SELECT SUM(amount) as total FROM site_expenses WHERE project_id = $1 AND expense_type = 'labour_advance'", [projectId]);
+    const { rows: adv } = await pool.query("SELECT SUM(amount) as total FROM site_expenses WHERE project_id = $1 AND expense_type = 'labour_advance' AND tenant_id = $2", [projectId, tenantId]);
     summary.totalAdvances = Number(adv[0]?.total || 0);
   } catch (error){}
   

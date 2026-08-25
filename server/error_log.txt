@@ -186,4 +186,137 @@
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
     at async Object.updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:449:10)
     at async updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\leads\updateLead.js:16:23)
-    at async exports.updateLeadHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2767:25)\n\n
+    at async exports.updateLeadHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2767:25)\n\n2026-08-24T07:48:33.589Z\nTypeError: res.status is not a function
+    at success (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\response.js:5:14)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\superadmin.js:84:14
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)\n\n2026-08-24T07:48:33.846Z\nTypeError: res.status is not a function
+    at success (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\response.js:5:14)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\superadmin.js:109:14
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\n2026-08-24T07:48:47.501Z\nTypeError: res.status is not a function
+    at success (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\response.js:5:14)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\superadmin.js:84:14
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)\n\n2026-08-24T07:48:47.797Z\nTypeError: res.status is not a function
+    at success (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\response.js:5:14)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\superadmin.js:109:14
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\n2026-08-24T07:50:43.191Z\nTypeError: res.status is not a function
+    at success (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\response.js:5:14)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\superadmin.js:84:14
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)\n\n2026-08-24T07:50:43.450Z\nTypeError: res.status is not a function
+    at success (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\response.js:5:14)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\superadmin.js:109:14
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\n2026-08-24T07:52:21.441Z\nTypeError: res.status is not a function
+    at success (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\response.js:5:14)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\superadmin.js:84:14
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)\n\n2026-08-24T07:52:21.696Z\nTypeError: res.status is not a function
+    at success (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\response.js:5:14)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\superadmin.js:109:14
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\n2026-08-24T07:52:43.284Z\nTypeError: res.status is not a function
+    at success (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\response.js:5:14)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\superadmin.js:84:14
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)\n\n2026-08-24T07:52:43.542Z\nTypeError: res.status is not a function
+    at success (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\response.js:5:14)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\superadmin.js:109:14
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\n2026-08-24T07:53:15.906Z\nTypeError: res.status is not a function
+    at success (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\response.js:5:14)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\superadmin.js:84:14
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)\n\n2026-08-24T07:53:18.293Z\nTypeError: res.status is not a function
+    at success (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\response.js:5:14)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\superadmin.js:109:14
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n\n2026-08-24T07:54:40.690Z\nerror: column "description" of relation "roles" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\superadmin.js:165:24\n\n2026-08-24T07:54:50.937Z\nerror: column "description" of relation "roles" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\superadmin.js:165:24\n\n2026-08-24T07:54:57.768Z\nerror: column "description" of relation "roles" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\superadmin.js:165:24\n\n2026-08-24T07:57:04.353Z\nerror: column "description" of relation "roles" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\superadmin.js:158:24\n\n2026-08-24T07:57:16.322Z\nerror: column "description" of relation "roles" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\superadmin.js:158:24\n\n2026-08-24T07:58:27.122Z\nerror: column "description" of relation "roles" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\superadmin.js:158:24\n\n2026-08-24T07:58:29.569Z\nerror: column "description" of relation "roles" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\superadmin.js:158:24\n\n2026-08-24T07:59:04.728Z\nerror: column "description" of relation "roles" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\superadmin.js:158:24\n\n2026-08-24T08:03:39.790Z\nError: Password must contain at least one special character.
+    at validatePasswordPolicy (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\password.js:45:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async registerUser (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\register.js:21:3)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\superadmin.js:170:21\n\n2026-08-24T08:06:45.754Z\nError: INVALID_CREDENTIALS
+    at loginUser (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\login.js:84:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:95:25\n\n2026-08-24T08:06:53.665Z\nError: INVALID_CREDENTIALS
+    at loginUser (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\login.js:84:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:95:25\n\n2026-08-24T08:07:06.408Z\nError: INVALID_CREDENTIALS
+    at loginUser (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\login.js:84:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:95:25\n\n2026-08-24T09:24:07.699Z\nerror: column "key_prefix" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\config\apiKeys.js:26:20\n\n2026-08-24T09:24:10.001Z\nerror: column "key_prefix" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\config\apiKeys.js:26:20\n\n2026-08-24T09:24:26.768Z\nerror: column "key_prefix" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\config\apiKeys.js:26:20\n\n2026-08-24T09:45:28.815Z\nError: INVALID_CREDENTIALS
+    at loginUser (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\login.js:161:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:95:25\n\n2026-08-24T10:00:23.069Z\nError: getaddrinfo ENOTFOUND ep-noisy-smoke-aw8j01pj-pooler.c-12.us-east-1.aws.neon.tech
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:237:20\n\n2026-08-24T12:03:29.346Z\nerror: column "key_prefix" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\config\apiKeys.js:26:20\n\n

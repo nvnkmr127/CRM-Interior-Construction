@@ -138,6 +138,7 @@ export default function App() {
                     <Route path='/settings/preferences' element={<ProtectedRoute requiredModule="settings"><PreferencesPage /></ProtectedRoute>} />
                     <Route path='/settings/audit-trail' element={<ProtectedRoute requiredModule="settings"><AuditTrailPage /></ProtectedRoute>} />
                     <Route path='/settings/approval-matrix' element={<ProtectedRoute requiredModule="settings"><ApprovalMatrixPage /></ProtectedRoute>} />
+                    <Route path='/settings/superadmin' element={<ProtectedRoute requiredModule="settings"><SuperAdminSettings /></ProtectedRoute>} />
                     <Route path='/team/members' element={<ProtectedRoute requiredModule="settings"><UsersManager /></ProtectedRoute>} />
                     <Route path='/team/roles' element={<ProtectedRoute requiredModule="settings"><RolesManager /></ProtectedRoute>} />
                     

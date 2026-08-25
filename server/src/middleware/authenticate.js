@@ -30,9 +30,28 @@ async function authenticate(req, res, next) {
     // 3. Verify the token
     const decoded = verifyAccessToken(token);
 
+    // Check if the tenant is active
+    const tenantActiveKey = `tenant_active:${decoded.tenantId}`;
+    const { getCache, setCache } = require('../utils/cache');
+    let isTenantActive = await getCache(tenantActiveKey).catch(() => null);
+    
+    if (isTenantActive === null) {
+      const pool = require('../db/pool');
+      const tenantCheck = await pool.query('SELECT is_active FROM tenants WHERE id = $1', [decoded.tenantId]);
+      if (tenantCheck.rowCount === 0 || !tenantCheck.rows[0].is_active) {
+        isTenantActive = 'false';
+      } else {
+        isTenantActive = 'true';
+      }
+      await setCache(tenantActiveKey, isTenantActive, 300).catch(() => {});
+    }
+
+    if (isTenantActive === 'false') {
+      return res.status(403).json({ success: false, error: 'TENANT_DEACTIVATED', message: 'This workspace has been deactivated.' });
+    }
+
     // V4: Continuous Authentication (Zero Trust) - Ensure session still exists
     const pool = require('../db/pool'); // Get pool reference
-    const { getCache, setCache } = require('../utils/cache');
     
     if (decoded.sessionId && pool) {
       const cacheKey = `session:${decoded.sessionId}`;

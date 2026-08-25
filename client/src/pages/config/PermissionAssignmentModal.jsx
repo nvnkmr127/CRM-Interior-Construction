@@ -139,8 +139,8 @@ export default function PermissionAssignmentModal({ user, isOpen, onClose }) {
 
   const tabStyle = (id) => ({
     padding: '8px 16px', cursor: 'pointer', fontWeight: 500,
-    borderBottom: activeTab === id ? '2px solid var(--color-primary)' : '2px solid transparent',
-    color: activeTab === id ? 'var(--color-primary)' : 'var(--color-text-secondary)'
+    borderBottom: activeTab === id ? '2px solid var(--color-accent)' : '2px solid transparent',
+    color: activeTab === id ? 'var(--color-accent)' : 'var(--color-text-secondary)'
   });
 
   return (

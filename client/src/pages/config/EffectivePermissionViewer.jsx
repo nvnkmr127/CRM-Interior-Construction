@@ -81,9 +81,9 @@ export default function EffectivePermissionViewer({ user, isOpen, onClose }) {
   const tabStyle = (tabId) => ({
     padding: '8px 16px',
     cursor: 'pointer',
-    borderBottom: activeTab === tabId ? '2px solid var(--color-primary)' : '2px solid transparent',
+    borderBottom: activeTab === tabId ? '2px solid var(--color-accent)' : '2px solid transparent',
     fontWeight: activeTab === tabId ? 600 : 400,
-    color: activeTab === tabId ? 'var(--color-primary)' : 'var(--color-text-secondary)'
+    color: activeTab === tabId ? 'var(--color-accent)' : 'var(--color-text-secondary)'
   });
 
   return (

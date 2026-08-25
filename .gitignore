@@ -17,3 +17,7 @@ token.json
 # Local Uploads
 server/uploads/
 uploads/
+
+# Scratch files
+server/scratch/
+

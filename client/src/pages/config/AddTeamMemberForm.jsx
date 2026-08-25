@@ -97,8 +97,8 @@ export default function AddTeamMemberForm({ onCancel, onSuccess, roleOptions }) 
             style={{ 
               padding: '14px 20px', 
               cursor: 'pointer',
-              borderBottom: activeSection === idx ? '3px solid var(--color-primary)' : '3px solid transparent',
-              color: activeSection === idx ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+              borderBottom: activeSection === idx ? '3px solid var(--color-accent)' : '3px solid transparent',
+              color: activeSection === idx ? 'var(--color-accent)' : 'var(--color-text-secondary)',
               fontWeight: activeSection === idx ? 600 : 500,
               whiteSpace: 'nowrap',
               transition: 'all 0.2s ease',

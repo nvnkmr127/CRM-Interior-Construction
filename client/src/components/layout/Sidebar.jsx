@@ -70,6 +70,7 @@ const NAV_ITEMS = [
     { to: '/settings/audit-trail', icon: '📜', label: 'Audit Trail', module: 'settings' }
   ]},
   { group: 'DEVELOPER TOOLS', adminOnly: true, items: [
+    { to: '/settings/superadmin', icon: '⚡', label: 'Super Admin Center', module: 'settings' },
     { to: '/api-keys', icon: '⊙', label: 'API Keys', module: 'settings' },
     { to: '/developer/api', icon: '🔌', label: 'API Integration', module: 'settings' },
     { to: '/developer/webhooks', icon: '🪝', label: 'Webhooks', module: 'settings' },

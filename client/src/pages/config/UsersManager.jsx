@@ -73,7 +73,13 @@ export default function UsersManager() {
   const roleOptions = roles.length > 0 
     ? [
         ...roles.map(r => ({ value: r.id, label: r.name })),
-        ...DEFAULT_ROLE_OPTIONS.filter(d => !roles.some(r => r.id === d.value || r.name.toLowerCase() === d.label.toLowerCase()))
+        ...DEFAULT_ROLE_OPTIONS.filter(d => 
+          !roles.some(r => 
+            r.id.toLowerCase() === d.value.toLowerCase() || 
+            r.name.toLowerCase().replace(/\s+/g, '') === d.label.toLowerCase().replace(/\s+/g, '') ||
+            r.name.toLowerCase().replace(/\s+/g, '') === d.value.toLowerCase().replace(/\s+/g, '')
+          )
+        )
       ]
     : DEFAULT_ROLE_OPTIONS
 
@@ -245,7 +251,7 @@ export default function UsersManager() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={async () => setSelectedUserId(u.id)}>
           <Avatar name={u.name || '?'} size="sm" />
           <div>
-            <div style={{ fontWeight: 500, color: 'var(--color-primary)', textDecoration: 'underline' }}>{u.name || 'Unknown User'}</div>
+            <div style={{ fontWeight: 500, color: 'var(--color-accent)', textDecoration: 'underline' }}>{u.name || 'Unknown User'}</div>
             <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>{u.email || '-'}</div>
           </div>
         </div>
@@ -314,7 +320,7 @@ export default function UsersManager() {
               )}
               
               <Button variant="ghost" onClick={async () => setEffectivePermUserTarget(u)} title="View Effective Permissions">
-                <i className="ri-shield-keyhole-line" style={{ fontSize: '1.2rem', color: 'var(--color-primary)' }}></i>
+                <i className="ri-shield-keyhole-line" style={{ fontSize: '1.2rem', color: 'var(--color-accent)' }}></i>
               </Button>
               <Button variant="ghost" onClick={async () => setAssignPermUserTarget(u)} title="Assign Direct/Temporary Permissions">
                 <i className="ri-user-settings-line" style={{ fontSize: '1.2rem', color: 'var(--color-secondary)' }}></i>
@@ -336,12 +342,12 @@ export default function UsersManager() {
             padding: '16px', 
             background: 'linear-gradient(145deg, var(--color-bg-subtle), transparent)', 
             borderRadius: '8px', 
-            borderLeft: '4px solid var(--color-primary)',
+            borderLeft: '4px solid var(--color-accent)',
             color: 'var(--color-text-muted)',
             fontSize: '0.9rem',
             lineHeight: '1.5'
           }}>
-            <strong style={{ color: 'var(--color-primary)', display: 'block', marginBottom: '4px' }}>Mock Environment Override</strong>
+            <strong style={{ color: 'var(--color-accent)', display: 'block', marginBottom: '4px' }}>Mock Environment Override</strong>
             Configure the credentials and role that will be automatically loaded when using the <strong>Team</strong> login button in dev mode.
           </div>
 
@@ -475,7 +481,7 @@ export default function UsersManager() {
   return (
     <div className="w-full space-y-8 fade-in">
       <div className={layoutStyles.configSection}>
-        <div className={layoutStyles.sectionHeader}>
+        <div className={layoutStyles.sectionHeader} style={{ alignItems: 'center' }}>
           <div>
             <h2 className={layoutStyles.sectionTitle}>Team Members</h2>
             <p className={layoutStyles.sectionDesc}>Manage who has access to this workspace.</p>
@@ -515,11 +521,11 @@ export default function UsersManager() {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '16px', marginBottom: '8px', borderBottom: '1px solid var(--color-border, #f3f4f6)' }}>
               <div style={{ 
-                background: 'var(--color-primary, #3b82f6)', color: 'white', 
+                background: 'var(--color-accent)', color: 'white', 
                 width: '32px', height: '32px', borderRadius: '50%', 
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontWeight: '700', fontSize: '14px',
-                boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.3)'
+                boxShadow: '0 4px 6px -1px rgba(232, 147, 90, 0.3)'
               }}>
                 {selectedIds.size}
               </div>
@@ -544,7 +550,7 @@ export default function UsersManager() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%' }}>
               <PermissionButton permission="users:assign_roles" variant="ghost" onClick={async () => setBulkModalType('role')} style={{ width: '100%', justifyContent: 'flex-start', padding: '10px 12px', borderRadius: '8px', fontWeight: 500, color: 'var(--color-text-secondary)', display: 'flex', gap: '10px' }}>
-                <i className="ri-shield-user-line" style={{ fontSize: '18px', color: 'var(--color-primary)' }}></i> Change Role
+                <i className="ri-shield-user-line" style={{ fontSize: '18px', color: 'var(--color-accent)' }}></i> Change Role
               </PermissionButton>
               <PermissionButton permission="users:change_department" variant="ghost" onClick={async () => setBulkModalType('department')} style={{ width: '100%', justifyContent: 'flex-start', padding: '10px 12px', borderRadius: '8px', fontWeight: 500, color: 'var(--color-text-secondary)', display: 'flex', gap: '10px' }}>
                 <i className="ri-building-line" style={{ fontSize: '18px', color: 'var(--color-secondary)' }}></i> Change Dept
@@ -587,25 +593,25 @@ export default function UsersManager() {
 
         <div style={{ display: 'flex', gap: '8px', padding: '4px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', marginBottom: '16px', width: 'fit-content' }}>
           <button 
-            style={{ padding: '8px 16px', border: 'none', background: activeTab === 'directory' ? 'var(--color-bg)' : 'transparent', color: activeTab === 'directory' ? 'var(--color-primary)' : 'var(--color-text-secondary)', borderRadius: 'var(--radius-md)', fontWeight: activeTab === 'directory' ? 600 : 500, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'directory' ? 'var(--shadow-sm)' : 'none' }} 
+            style={{ padding: '8px 16px', border: 'none', background: activeTab === 'directory' ? 'var(--color-bg)' : 'transparent', color: activeTab === 'directory' ? 'var(--color-accent)' : 'var(--color-text-secondary)', borderRadius: 'var(--radius-md)', fontWeight: activeTab === 'directory' ? 600 : 500, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'directory' ? 'var(--shadow-sm)' : 'none' }} 
             onClick={async () => { setActiveTab('directory'); setSelectedIds(new Set()); }}
           >
             Active Directory
           </button>
           <button 
-            style={{ padding: '8px 16px', border: 'none', background: activeTab === 'approvals' ? 'var(--color-bg)' : 'transparent', color: activeTab === 'approvals' ? 'var(--color-primary)' : 'var(--color-text-secondary)', borderRadius: 'var(--radius-md)', fontWeight: activeTab === 'approvals' ? 600 : 500, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'approvals' ? 'var(--shadow-sm)' : 'none' }} 
+            style={{ padding: '8px 16px', border: 'none', background: activeTab === 'approvals' ? 'var(--color-bg)' : 'transparent', color: activeTab === 'approvals' ? 'var(--color-accent)' : 'var(--color-text-secondary)', borderRadius: 'var(--radius-md)', fontWeight: activeTab === 'approvals' ? 600 : 500, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'approvals' ? 'var(--shadow-sm)' : 'none' }} 
             onClick={async () => { setActiveTab('approvals'); setSelectedIds(new Set()); }}
           >
             Pending Approvals <Badge variant="neutral">{allUsers.filter(u => u.status === 'pending_approval' || u.status === 'changes_requested').length}</Badge>
           </button>
           <button 
-            style={{ padding: '8px 16px', border: 'none', background: activeTab === 'emails' ? 'var(--color-bg)' : 'transparent', color: activeTab === 'emails' ? 'var(--color-primary)' : 'var(--color-text-secondary)', borderRadius: 'var(--radius-md)', fontWeight: activeTab === 'emails' ? 600 : 500, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'emails' ? 'var(--shadow-sm)' : 'none' }} 
+            style={{ padding: '8px 16px', border: 'none', background: activeTab === 'emails' ? 'var(--color-bg)' : 'transparent', color: activeTab === 'emails' ? 'var(--color-accent)' : 'var(--color-text-secondary)', borderRadius: 'var(--radius-md)', fontWeight: activeTab === 'emails' ? 600 : 500, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'emails' ? 'var(--shadow-sm)' : 'none' }} 
             onClick={async () => { setActiveTab('emails'); setSelectedIds(new Set()); }}
           >
             Email Logs
           </button>
           <button 
-            style={{ padding: '8px 16px', border: 'none', background: activeTab === 'offboarding' ? 'var(--color-bg)' : 'transparent', color: activeTab === 'offboarding' ? 'var(--color-primary)' : 'var(--color-text-secondary)', borderRadius: 'var(--radius-md)', fontWeight: activeTab === 'offboarding' ? 600 : 500, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'offboarding' ? 'var(--shadow-sm)' : 'none' }} 
+            style={{ padding: '8px 16px', border: 'none', background: activeTab === 'offboarding' ? 'var(--color-bg)' : 'transparent', color: activeTab === 'offboarding' ? 'var(--color-accent)' : 'var(--color-text-secondary)', borderRadius: 'var(--radius-md)', fontWeight: activeTab === 'offboarding' ? 600 : 500, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'offboarding' ? 'var(--shadow-sm)' : 'none' }} 
             onClick={async () => { setActiveTab('offboarding'); setSelectedIds(new Set()); }}
           >
             Offboarding

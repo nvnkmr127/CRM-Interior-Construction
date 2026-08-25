@@ -12,10 +12,10 @@ async function getProjectBudgetValidation(approvalId, tenantId) {
   let projectId = null;
   
   if (app.transaction_type === 'invoice') {
-    const { rows: inv } = await pool.query('SELECT project_id FROM invoices WHERE id = $1', [app.target_id]);
+    const { rows: inv } = await pool.query('SELECT project_id FROM invoices WHERE id = $1 AND tenant_id = $2', [app.target_id, tenantId]);
     if (inv.length > 0) projectId = inv[0].project_id;
   } else if (app.transaction_type === 'payment' || app.transaction_type === 'payment_update') {
-    const { rows: pm } = await pool.query('SELECT project_id FROM payment_milestones WHERE id = $1', [app.target_id]);
+    const { rows: pm } = await pool.query('SELECT project_id FROM payment_milestones WHERE id = $1 AND tenant_id = $2', [app.target_id, tenantId]);
     if (pm.length > 0) projectId = pm[0].project_id;
   }
   
@@ -34,12 +34,12 @@ async function getProjectBudgetValidation(approvalId, tenantId) {
   
   // 3. Get Project Contract Value & Budgets
   let totalBudget = 0;
-  const { rows: projRows } = await pool.query('SELECT contract_value FROM projects WHERE id = $1', [projectId]);
+  const { rows: projRows } = await pool.query('SELECT contract_value FROM projects WHERE id = $1 AND tenant_id = $2', [projectId, tenantId]);
   if (projRows.length > 0 && projRows[0].contract_value) {
     totalBudget = Number(projRows[0].contract_value);
   } else {
     // Sum project_budgets
-    const { rows: budgRows } = await pool.query('SELECT SUM(budgeted_cost) as total FROM project_budgets WHERE project_id = $1', [projectId]);
+    const { rows: budgRows } = await pool.query('SELECT SUM(budgeted_cost) as total FROM project_budgets WHERE project_id = $1 AND tenant_id = $2', [projectId, tenantId]);
     if (budgRows.length > 0 && budgRows[0].total) totalBudget = Number(budgRows[0].total);
   }
   

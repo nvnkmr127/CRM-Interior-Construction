@@ -591,6 +591,15 @@ router.post('/add-member', authorize('users:invite_user'), async (req, res, next
     if (checkRes.rows.length > 0) {
       return fail(res, 'VALIDATION_ERROR', 'Email already registered in this tenant', 400);
     }
+    // Check user limit as per tenant configuration
+    const tenantRes = await pool.query('SELECT max_users FROM tenants WHERE id = $1 LIMIT 1', [tenantId]);
+    const maxUsers = tenantRes.rows[0]?.max_users || 10;
+
+    const countRes = await pool.query('SELECT COUNT(*)::int as count FROM users WHERE tenant_id = $1', [tenantId]);
+    if (countRes.rows[0].count >= maxUsers) {
+      return fail(res, 'LIMIT_EXCEEDED', 'You have reached the maximum user limit for your billing plan. Please upgrade your workspace.', 400);
+    }
+
 
     // Generate a temporary password hash to satisfy DB constraints, 
     // but no usable credentials will be provided until approval.

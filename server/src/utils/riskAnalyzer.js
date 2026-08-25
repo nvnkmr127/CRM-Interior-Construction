@@ -67,9 +67,9 @@ async function analyzeFinancialRisk(approvalId, tenantId) {
   // 5. Vendor Risk (If invoice, check project_vendors for default_date)
   if (app.transaction_type === 'invoice' && app.target_id) {
     try {
-      const { rows: inv } = await pool.query('SELECT project_id, vendor_id FROM invoices WHERE id = $1', [app.target_id]);
+      const { rows: inv } = await pool.query('SELECT project_id, vendor_id FROM invoices WHERE id = $1 AND tenant_id = $2', [app.target_id, tenantId]);
       if (inv.length > 0 && inv[0].project_id && inv[0].vendor_id) {
-        const { rows: ven } = await pool.query('SELECT default_date FROM project_vendors WHERE project_id = $1 AND vendor_id = $2', [inv[0].project_id, inv[0].vendor_id]);
+        const { rows: ven } = await pool.query('SELECT default_date FROM project_vendors WHERE project_id = $1 AND vendor_id = $2 AND tenant_id = $3', [inv[0].project_id, inv[0].vendor_id, tenantId]);
         if (ven.length > 0 && ven[0].default_date) {
           riskScore += 50;
           reasons.push('High Vendor Risk (Previous Default Detected on Project)');

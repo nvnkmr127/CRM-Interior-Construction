@@ -2,11 +2,6 @@
 import React from 'react';
 
 export function OverdueFollowUpWidget({ items = [] }) {
-  const displayItems = items.length > 0 ? items : [
-    { id: 1, name: 'Arjun Gupta', type: 'Call', daysOverdue: 2 },
-    { id: 2, name: 'Sonia Mehta', type: 'Email Quote', daysOverdue: 1 }
-  ];
-
   return (
     <div style={{
       background: 'var(--color-surface)',
@@ -27,32 +22,38 @@ export function OverdueFollowUpWidget({ items = [] }) {
       }}>
         <span>Overdue Follow-ups</span>
         <span style={{ 
-          background: 'var(--color-danger)', 
-          color: 'white', 
+          background: items.length > 0 ? 'var(--color-danger)' : 'var(--color-border)', 
+          color: items.length > 0 ? 'white' : 'var(--color-text-secondary)', 
           borderRadius: '50%', 
           padding: '2px 8px',
           fontSize: '0.8rem'
-        }}>{displayItems.length}</span>
+        }}>{items.length}</span>
       </div>
       <div style={{ padding: '1rem', flex: 1 }}>
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {displayItems.map(item => (
-            <li key={item.id} style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              padding: '0.75rem 0',
-              borderBottom: '1px solid var(--color-border)'
-            }}>
-              <div>
-                <div style={{ fontWeight: '500', fontSize: '0.9rem' }}>{item.name}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{item.type}</div>
-              </div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--color-danger)', fontWeight: '600' }}>
-                {item.daysOverdue} days late
-              </div>
-            </li>
-          ))}
-        </ul>
+        {items.length === 0 ? (
+          <div style={{ textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '0.85rem', padding: '24px 0' }}>
+            All caught up! No overdue tasks.
+          </div>
+        ) : (
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            {items.map(item => (
+              <li key={item.id} style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                padding: '0.75rem 0',
+                borderBottom: '1px solid var(--color-border)'
+              }}>
+                <div>
+                  <div style={{ fontWeight: '500', fontSize: '0.9rem' }}>{item.name}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{item.type}</div>
+                </div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--color-danger)', fontWeight: '600' }}>
+                  {item.daysOverdue} days late
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

@@ -10,7 +10,8 @@ export default function Select({
   multi = false,
   disabled = false, 
   label, 
-  required 
+  required,
+  allowCustom = false
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -40,6 +41,11 @@ export default function Select({
   const filteredOptions = searchable 
     ? options.filter(opt => opt.label.toLowerCase().includes(searchTerm.toLowerCase()))
     : options
+
+  const hasExactMatch = options.some(opt => opt.label.toLowerCase() === searchTerm.toLowerCase())
+  const displayOptions = (allowCustom && searchTerm && !hasExactMatch)
+    ? [...filteredOptions, { value: searchTerm, label: `Use "${searchTerm}"` }]
+    : filteredOptions
 
   const handleSelect = (option) => {
     if (multi) {
@@ -100,14 +106,14 @@ export default function Select({
       setIsOpen(false)
     } else if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setHighlightedIndex(prev => (prev + 1) % filteredOptions.length)
+      setHighlightedIndex(prev => (prev + 1) % displayOptions.length)
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setHighlightedIndex(prev => (prev - 1 + filteredOptions.length) % filteredOptions.length)
+      setHighlightedIndex(prev => (prev - 1 + displayOptions.length) % displayOptions.length)
     } else if (e.key === 'Enter') {
       e.preventDefault()
-      if (filteredOptions[highlightedIndex]) {
-        handleSelect(filteredOptions[highlightedIndex])
+      if (displayOptions[highlightedIndex]) {
+        handleSelect(displayOptions[highlightedIndex])
       }
     }
   }
@@ -144,7 +150,7 @@ export default function Select({
             </div>
           )}
           <div className={styles.options}>
-            {filteredOptions.length > 0 ? filteredOptions.map((opt, index) => {
+            {displayOptions.length > 0 ? displayOptions.map((opt, index) => {
               const isSelected = multi 
                 ? (value || []).includes(opt.value) 
                 : value === opt.value
