@@ -319,4 +319,7 @@
     at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:237:20\n\n2026-08-24T12:03:29.346Z\nerror: column "key_prefix" does not exist
     at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\config\apiKeys.js:26:20\n\n
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\config\apiKeys.js:26:20\n\n2026-08-25T09:33:08.101Z\nError: INVALID_CREDENTIALS
+    at loginUser (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\login.js:84:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:99:25\n\n

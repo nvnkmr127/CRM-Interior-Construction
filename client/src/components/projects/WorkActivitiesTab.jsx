@@ -5,9 +5,8 @@ import styles from './WorkActivitiesTab.module.css';
 import { getPhases } from '../../api/projects';
 import { usersApi } from '../../api/users';
 import { useToast } from '../../store/toastContext';
-import {
 import { useConfirm } from '../../store/confirmContext';
-
+import {
   getWorkActivities,
   createWorkActivity,
   updateWorkActivity,

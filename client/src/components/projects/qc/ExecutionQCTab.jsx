@@ -1,7 +1,7 @@
-/* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from 'react';
 import api from '../../../api/axios';
 import { Button, Badge, Card } from '../../ui';
+import styles from './ExecutionQCTab.module.css';
 
 export default function ExecutionQCTab({ projectId, project }) {
   const [templates, setTemplates] = useState([]);
@@ -9,6 +9,7 @@ export default function ExecutionQCTab({ projectId, project }) {
   const [loading, setLoading] = useState(true);
   const [selectedPhase, setSelectedPhase] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
+  const [selectedStageId, setSelectedStageId] = useState(null);
   
   // Exclude non-execution phases for the dropdown
   const executionPhases = project?.phases?.filter(p => p.name.toLowerCase().includes('execution')) || [];
@@ -20,8 +21,20 @@ export default function ExecutionQCTab({ projectId, project }) {
         api.get('/qc/templates'),
         api.get(`/projects/${projectId}/qc`)
       ]);
-      setTemplates(Array.isArray(tplRes.data?.data) ? tplRes.data.data : (Array.isArray(tplRes.data) ? tplRes.data : []));
-      setStages(Array.isArray(stgRes.data?.data) ? stgRes.data.data : (Array.isArray(stgRes.data) ? stgRes.data : []));
+      const fetchedTemplates = Array.isArray(tplRes.data?.data) ? tplRes.data.data : (Array.isArray(tplRes.data) ? tplRes.data : []);
+      const fetchedStages = Array.isArray(stgRes.data?.data) ? stgRes.data.data : (Array.isArray(stgRes.data) ? stgRes.data : []);
+      
+      setTemplates(fetchedTemplates);
+      setStages(fetchedStages);
+      
+      if (fetchedStages.length > 0) {
+        setSelectedStageId(prev => {
+          // Keep current selection if it still exists, otherwise default to first
+          const exists = fetchedStages.some(s => s.id === prev);
+          return exists ? prev : fetchedStages[0].id;
+        });
+      }
+      
       if (executionPhases.length > 0) {
         setSelectedPhase(executionPhases[0].id);
       } else if (project?.phases?.length > 0) {
@@ -48,10 +61,14 @@ export default function ExecutionQCTab({ projectId, project }) {
       return;
     }
     try {
-      await api.post(`/projects/${projectId}/qc`, {
+      const res = await api.post(`/projects/${projectId}/qc`, {
         phaseId: selectedPhase,
         templateId: selectedTemplate
       });
+      const newId = res.data?.data?.id || res.data?.id;
+      if (newId) {
+        setSelectedStageId(newId);
+      }
       loadData();
       setSelectedTemplate('');
     } catch (err) {
@@ -88,161 +105,205 @@ export default function ExecutionQCTab({ projectId, project }) {
     }
   };
 
-  if (loading) return <div>Loading QC Data...</div>;
+  if (loading) return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading QC Data...</div>;
+
+  const currentStage = stages.find(s => s.id === selectedStageId) || stages[0];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>Execution Stage QC Checklists</h2>
-      </div>
+    <div className={styles.container}>
+      {/* Left Sidebar */}
+      <div className={styles.sidebar}>
+        <div className={styles.sidebarHeader}>
+          <h3>Quality Checklists</h3>
+          {project?.status !== 'completed' && (
+            <div className={styles.formContainer}>
+              <select 
+                value={selectedPhase} 
+                onChange={e => setSelectedPhase(e.target.value)}
+                className={styles.select}
+              >
+                <option value="">Select Phase</option>
+                {project?.phases?.map(p => (
+                  <option key={p.id} value={p.id}>{p.name} ({p.status})</option>
+                ))}
+              </select>
 
-      {/* Add new Stage Form */}
-      {project?.status !== 'completed' && (
-        <Card style={{ padding: '20px' }}>
-          <h3 style={{ margin: '0 0 16px 0', fontSize: 'var(--text-md)' }}>Add QC Stage to Phase</h3>
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-            <select 
-              value={selectedPhase} 
-              onChange={e => setSelectedPhase(e.target.value)}
-              style={{ padding: '8px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
-            >
-              <option value="">Select Phase</option>
-              {project?.phases?.map(p => (
-                <option key={p.id} value={p.id}>{p.name} ({p.status})</option>
-              ))}
-            </select>
+              <select 
+                value={selectedTemplate} 
+                onChange={e => setSelectedTemplate(e.target.value)}
+                className={styles.select}
+              >
+                <option value="">Select Template</option>
+                {templates.map(t => (
+                  <option key={t.id} value={t.id}>{t.stage_name}</option>
+                ))}
+              </select>
 
-            <select 
-              value={selectedTemplate} 
-              onChange={e => setSelectedTemplate(e.target.value)}
-              style={{ padding: '8px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
-            >
-              <option value="">Select QC Template</option>
-              {templates.map(t => (
-                <option key={t.id} value={t.id}>{t.stage_name}</option>
-              ))}
-            </select>
+              <Button variant="primary" size="sm" onClick={handleInitializeStage} style={{ width: '100%' }}>
+                + Add Checklist
+              </Button>
+            </div>
+          )}
+        </div>
 
-            <Button variant="primary" onClick={handleInitializeStage}>
-              Add Checklist
-            </Button>
-          </div>
-        </Card>
-      )}
-
-      {/* List Stages */}
-      {stages.length === 0 ? (
-        <Card style={{ padding: '20px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-          No QC checklists initialized for this project yet.
-        </Card>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div className={styles.checklistList}>
           {stages.map(stage => {
             const phase = project?.phases?.find(p => p.id === stage.phase_id);
             const totalItems = stage.items?.length || 0;
             const passedItems = stage.items?.filter(i => i.is_passed === true).length || 0;
-            
-            return (
-              <Card key={stage.id} style={{ padding: '20px', borderLeft: stage.status === 'completed' ? '4px solid var(--color-success)' : '4px solid var(--color-warning)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                  <div>
-                    <h3 style={{ margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {stage.stage_name}
-                      <Badge variant={stage.status === 'completed' ? 'success' : stage.status === 'in_progress' ? 'info' : 'warning'}>
-                        {stage.status.replace(/_/g, ' ')}
-                      </Badge>
-                    </h3>
-                    <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
-                      Phase: {phase ? phase.name : 'Unknown'} • Progress: {passedItems}/{totalItems} Items Passed
-                    </div>
-                  </div>
-                  
-                  {stage.status !== 'completed' && project?.status !== 'completed' && (
-                    <Button 
-                      variant="primary" 
-                      onClick={() => handleSignOff(stage.id)}
-                      disabled={passedItems !== totalItems}
-                    >
-                      Sign Off Stage
-                    </Button>
-                  )}
-                  {stage.status === 'completed' && (
-                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-success)', fontWeight: 600 }}>
-                      Signed Off ✅
-                    </div>
-                  )}
-                </div>
+            const isActive = selectedStageId === stage.id || (!selectedStageId && stages[0]?.id === stage.id);
 
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                      <th style={{ textAlign: 'left', padding: '8px', fontSize: 'var(--text-xs)' }}>Checklist Item</th>
-                      <th style={{ textAlign: 'center', padding: '8px', fontSize: 'var(--text-xs)', width: '100px' }}>Pass/Fail</th>
-                      <th style={{ textAlign: 'left', padding: '8px', fontSize: 'var(--text-xs)' }}>Photo Evidence</th>
-                      <th style={{ textAlign: 'left', padding: '8px', fontSize: 'var(--text-xs)' }}>Notes</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stage.items?.map(item => (
-                      <tr key={item.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                        <td style={{ padding: '12px 8px', fontSize: 'var(--text-sm)' }}>
-                          {item.item_text} {item.is_photo_mandatory && <span style={{color:'red'}}>*</span>}
-                        </td>
-                        <td style={{ padding: '12px 8px', textAlign: 'center' }}>
-                          <select 
-                            disabled={stage.status === 'completed' || project?.status === 'completed'}
-                            value={item.is_passed === true ? 'pass' : item.is_passed === false ? 'fail' : ''}
-                            onChange={(e) => {
-                              const val = e.target.value === 'pass' ? true : e.target.value === 'fail' ? false : null;
-                              handleUpdateItem(stage.id, item.id, { is_passed: val });
-                            }}
-                            style={{ padding: '4px', borderRadius: '4px', border: '1px solid var(--color-border)',
-                                     background: item.is_passed === true ? 'var(--color-success-bg)' : item.is_passed === false ? 'var(--color-danger-bg)' : 'transparent',
-                                     color: item.is_passed === true ? 'var(--color-success)' : item.is_passed === false ? 'var(--color-danger)' : 'inherit' }}
-                          >
-                            <option value="">Select...</option>
-                            <option value="pass">Pass</option>
-                            <option value="fail">Fail</option>
-                          </select>
-                        </td>
-                        <td style={{ padding: '12px 8px' }}>
-                          {item.photo_url ? (
-                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                              <a href={item.photo_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 'var(--text-xs)' }}>View Photo</a>
-                              {stage.status !== 'completed' && project?.status !== 'completed' && (
-                                <button onClick={() => handleUpdateItem(stage.id, item.id, { photo_url: null })} style={{background:'none', border:'none', color:'red', cursor:'pointer', fontSize:'10px'}}>Remove</button>
-                              )}
-                            </div>
-                          ) : (
-                            stage.status !== 'completed' && project?.status !== 'completed' && (
-                              <button onClick={() => {
-                                const url = prompt('Enter photo URL (Mock upload):');
-                                if (url) handleUpdateItem(stage.id, item.id, { photo_url: url });
-                              }} style={{ fontSize: 'var(--text-xs)', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--color-border)', cursor: 'pointer' }}>
-                                Upload Photo
-                              </button>
-                            )
-                          )}
-                        </td>
-                        <td style={{ padding: '12px 8px' }}>
-                          <input 
-                            type="text" 
-                            disabled={stage.status === 'completed' || project?.status === 'completed'}
-                            value={item.notes || ''}
-                            onChange={(e) => handleUpdateItem(stage.id, item.id, { notes: e.target.value })}
-                            placeholder="Add notes..."
-                            style={{ width: '100%', padding: '4px', borderRadius: '4px', border: '1px solid var(--color-border)', fontSize: 'var(--text-xs)' }}
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </Card>
+            return (
+              <div 
+                key={stage.id} 
+                className={`${styles.sidebarItem} ${isActive ? styles.activeItem : ''}`}
+                onClick={() => setSelectedStageId(stage.id)}
+              >
+                <div className={styles.itemTitle}>
+                  {stage.stage_name}
+                  <Badge variant={stage.status === 'completed' ? 'success' : stage.status === 'in_progress' ? 'info' : 'warning'} size="sm">
+                    {stage.status === 'completed' ? 'Signed Off' : stage.status.replace(/_/g, ' ')}
+                  </Badge>
+                </div>
+                <div className={styles.itemMeta}>
+                  Phase: {phase ? phase.name : 'Unknown'}
+                </div>
+                <div className={styles.itemCounts}>
+                  Passed: {passedItems}/{totalItems} items
+                </div>
+              </div>
             );
           })}
+          {stages.length === 0 && (
+            <div style={{ padding: '12px', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textAlign: 'center' }}>
+              No checklists initialized.
+            </div>
+          )}
         </div>
-      )}
+      </div>
+
+      {/* Right Workspace */}
+      <div className={styles.workspace}>
+        {stages.length === 0 ? (
+          <div className={styles.emptyState}>
+            <h2>Execution Stage Quality Control</h2>
+            <p>No QC checklists have been initialized for this project yet. Use the sidebar controls to add checklists for your execution phases.</p>
+          </div>
+        ) : !currentStage ? (
+          <div className={styles.emptyState}>
+            <h2>Quality Control Checklist</h2>
+            <p>Select a checklist from the sidebar to review items, upload photo evidence, and complete sign-offs.</p>
+          </div>
+        ) : (
+          <>
+            {/* Stage Detail Workspace */}
+            {(() => {
+              const phase = project?.phases?.find(p => p.id === currentStage.phase_id);
+              const totalItems = currentStage.items?.length || 0;
+              const passedItems = currentStage.items?.filter(i => i.is_passed === true).length || 0;
+
+              return (
+                <>
+                  <div className={styles.stageHeader}>
+                    <div className={styles.stageInfo}>
+                      <h3 className={styles.stageTitle}>
+                        {currentStage.stage_name}
+                        <Badge variant={currentStage.status === 'completed' ? 'success' : currentStage.status === 'in_progress' ? 'info' : 'warning'}>
+                          {currentStage.status.replace(/_/g, ' ')}
+                        </Badge>
+                      </h3>
+                      <div className={styles.stageMeta}>
+                        Phase: {phase ? phase.name : 'Unknown'} • Progress: {passedItems}/{totalItems} Items Passed
+                      </div>
+                    </div>
+                    
+                    {currentStage.status !== 'completed' && project?.status !== 'completed' && (
+                      <Button 
+                        variant="primary" 
+                        onClick={() => handleSignOff(currentStage.id)}
+                        disabled={passedItems !== totalItems}
+                      >
+                        Sign Off Stage
+                      </Button>
+                    )}
+                    {currentStage.status === 'completed' && (
+                      <div className={styles.signedOffText}>
+                        Signed Off ✅
+                      </div>
+                    )}
+                  </div>
+
+                  <div className={styles.tableWrapper}>
+                    <table className={styles.checklistTable}>
+                      <thead>
+                        <tr>
+                          <th style={{ textAlign: 'left' }}>Checklist Item</th>
+                          <th style={{ textAlign: 'center', width: '120px' }}>Pass/Fail</th>
+                          <th style={{ textAlign: 'left' }}>Photo Evidence</th>
+                          <th style={{ textAlign: 'left' }}>Notes</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentStage.items?.map(item => (
+                          <tr key={item.id}>
+                            <td>
+                              {item.item_text} {item.is_photo_mandatory && <span className={styles.mandatoryStar}>*</span>}
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <select 
+                                disabled={currentStage.status === 'completed' || project?.status === 'completed'}
+                                value={item.is_passed === true ? 'pass' : item.is_passed === false ? 'fail' : ''}
+                                onChange={(e) => {
+                                  const val = e.target.value === 'pass' ? true : e.target.value === 'fail' ? false : null;
+                                  handleUpdateItem(currentStage.id, item.id, { is_passed: val });
+                                }}
+                                className={`${styles.passFailSelect} ${item.is_passed === true ? styles.pass : item.is_passed === false ? styles.fail : ''}`}
+                              >
+                                <option value="">Select...</option>
+                                <option value="pass">Pass</option>
+                                <option value="fail">Fail</option>
+                              </select>
+                            </td>
+                            <td>
+                              {item.photo_url ? (
+                                <div className={styles.photoEvidenceContainer}>
+                                  <a href={item.photo_url} target="_blank" rel="noopener noreferrer" className={styles.evidenceLink}>View Photo</a>
+                                  {currentStage.status !== 'completed' && project?.status !== 'completed' && (
+                                    <button onClick={() => handleUpdateItem(currentStage.id, item.id, { photo_url: null })} className={styles.removePhotoBtn}>Remove</button>
+                                  )}
+                                </div>
+                              ) : (
+                                currentStage.status !== 'completed' && project?.status !== 'completed' && (
+                                  <button onClick={() => {
+                                    const url = prompt('Enter photo URL (Mock upload):');
+                                    if (url) handleUpdateItem(currentStage.id, item.id, { photo_url: url });
+                                  }} className={styles.uploadPhotoBtn}>
+                                    Upload Photo
+                                  </button>
+                                )
+                              )}
+                            </td>
+                            <td>
+                              <input 
+                                type="text" 
+                                disabled={currentStage.status === 'completed' || project?.status === 'completed'}
+                                value={item.notes || ''}
+                                onChange={(e) => handleUpdateItem(currentStage.id, item.id, { notes: e.target.value })}
+                                placeholder="Add notes..."
+                                className={styles.notesInput}
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              );
+            })()}
+          </>
+        )}
+      </div>
     </div>
   );
 }

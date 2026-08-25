@@ -267,7 +267,7 @@ export default function HandoverReadinessTab({ projectId }) {
               Once all checklist items, snags, invoices, and drawings are verified and approved, sign off on the handover readiness state below.
             </p>
             {pmSignedOff.passed ? (
-              <div style={{ background: '#ecfdf5', color: '#047857', padding: '12px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 600 }}>
+              <div className={styles.pmSignedOffAlert}>
                 ✓ Verification Completed by PM
               </div>
             ) : (
@@ -280,7 +280,7 @@ export default function HandoverReadinessTab({ projectId }) {
               </Button>
             )}
             {!canPMSignOff && !pmSignedOff.passed && (
-              <span style={{ fontSize: '11px', color: 'var(--color-danger)' }}>
+              <span className={styles.pmLockedText}>
                 * Solve tasks, snags, dues, and document approvals to unlock PM verification.
               </span>
             )}
@@ -295,7 +295,7 @@ export default function HandoverReadinessTab({ projectId }) {
               {editingApptId ? 'Modify the date, time, and instructions for this handover meeting.' : 'Book the client appointment for site handover and key delivery (disabled until all gates are green).'}
             </p>
 
-            <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+            <div className={styles.formRow} style={{ marginBottom: '16px' }}>
               <div className={styles.formGroup} style={{ flex: 1 }}>
                 <label className={styles.label}>Appointment Date 📅</label>
                 <input
@@ -330,7 +330,7 @@ export default function HandoverReadinessTab({ projectId }) {
               />
             </div>
 
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div className={styles.formActions}>
               <Button
                 type="submit"
                 variant="primary"
@@ -359,12 +359,12 @@ export default function HandoverReadinessTab({ projectId }) {
       </div>
 
       {/* History of Scheduled Appointments */}
-      <div style={{ marginTop: '16px' }}>
-        <h3 style={{ fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--color-text)', marginBottom: '16px' }}>
+      <div className={styles.historySection}>
+        <h3 className={styles.historyTitle}>
           Scheduled Handover Appointments
         </h3>
         {appointments.length === 0 ? (
-          <div style={{ padding: '24px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '13px' }}>
+          <div className={styles.emptyState}>
             No appointments booked yet.
           </div>
         ) : (
@@ -376,12 +376,12 @@ export default function HandoverReadinessTab({ projectId }) {
                   {appt.notes && <span className={styles.apptNotes}>{appt.notes}</span>}
                   <span className={styles.apptMeta}>Scheduled by {appt.creator_name || 'Project Manager'}</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span className={`${styles.badge} ${styles['badge_' + appt.status] || styles.badgeScheduled}`}>
+                <div className={styles.apptRight}>
+                  <span className={`${styles.badge} ${styles['badge_' + appt.status.toLowerCase()] || styles['badge_' + appt.status] || styles.badgeScheduled}`}>
                     {appt.status}
                   </span>
                   {overallReady && (
-                    <div style={{ display: 'flex', gap: '6px' }}>
+                    <div className={styles.apptActions}>
                       <Button
                         variant="outline"
                         onClick={() => handleEditClick(appt)}

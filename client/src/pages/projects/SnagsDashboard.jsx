@@ -54,6 +54,8 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
           createdAt: s.created_at || s.createdAt,
           slaHours: s.sla_hours || 48,
           photos: s.photos || [],
+          vendor_id: s.vendor_id,
+          rootCauseCategory: s.root_cause_category,
         })))
       })
       .catch(() => setSnags([]))
@@ -139,17 +141,21 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
         reworkRootCauseCategory: reworkRequired ? reworkRootCauseCategory : null,
         reworkEstimatedHours: reworkRequired ? parseFloat(reworkEstimatedHours) : 0,
         reworkActualHours: reworkRequired ? parseFloat(reworkActualHours) : 0,
-        reworkCost: reworkRequired ? parseFloat(reworkCost) : 0
+        reworkCost: reworkRequired ? parseFloat(reworkCost) : 0,
+        rootCauseCategory: reworkRootCauseCategory,
+        vendorId: resolveTarget.vendor_id || null
       })
       setSnags(prev => prev.map(s => s.id === resolveTarget.id ? { 
         ...s, 
         status: 'resolved', 
         resolutionNote,
         reworkRequired,
-        reworkRootCauseCategory,
+        reworkRootCauseCategory: reworkRequired ? reworkRootCauseCategory : null,
         reworkEstimatedHours,
         reworkActualHours,
-        reworkCost
+        reworkCost,
+        rootCauseCategory: reworkRootCauseCategory,
+        vendor_id: resolveTarget.vendor_id
       } : s))
       toast.success('Snag resolved and rework logged.')
     } catch {
@@ -244,42 +250,46 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
             <span className={styles.slaText}>48h average resolution time</span>
           </div>
         </div>
-        <div style={{display:'flex', gap:12}}>
-          <Button variant={activeTab === 'internal' ? 'primary' : 'outline'} size="sm" onClick={() => setActiveTab('internal')}>Internal QC Snags</Button>
-          <Button variant={activeTab === 'external' ? 'primary' : 'outline'} size="sm" onClick={() => setActiveTab('external')}>Third-Party Inspections</Button>
+        <div className={styles.headerActions}>
+          <div style={{display:'flex', gap:8}}>
+            <Button variant={activeTab === 'internal' ? 'primary' : 'outline'} size="sm" onClick={() => setActiveTab('internal')}>Internal QC Snags</Button>
+            <Button variant={activeTab === 'external' ? 'primary' : 'outline'} size="sm" onClick={() => setActiveTab('external')}>Third-Party Inspections</Button>
+          </div>
+          {projectStatus !== 'completed' && (
+            activeTab === 'internal' ? (
+              <Button variant="primary" size="sm" onClick={() => setIsReportModalOpen(true)}>+ Report Snag</Button>
+            ) : (
+              <Button variant="primary" size="sm" onClick={() => setIsExternalModalOpen(true)}>+ Log External Inspection</Button>
+            )
+          )}
         </div>
       </div>
 
       {activeTab === 'internal' && (
         <>
-          {projectStatus !== 'completed' && (
-            <div style={{display:'flex', justifyContent:'flex-end', marginBottom:16}}>
-              <Button variant="primary" size="sm" onClick={() => setIsReportModalOpen(true)}>+ Report Snag</Button>
-            </div>
-          )}
 
           {analytics && (
-            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(250px, 1fr))', gap:16, marginBottom:24}}>
-              <div className={styles.card}>
-                <div style={{fontSize:'var(--text-xs)', fontWeight:600, color:'var(--color-text-muted)', marginBottom:12}}>Defects by Root Cause</div>
-                <div style={{display:'flex', flexDirection:'column', gap:8}}>
-                  {(analytics.byRootCause || []).length === 0 && <div style={{fontSize:'var(--text-xs)', color:'#999'}}>No data</div>}
+            <div className={styles.analyticsGrid}>
+              <div className={styles.analyticsCard}>
+                <div className={styles.analyticsCardTitle}>Defects by Root Cause</div>
+                <div className={styles.analyticsList}>
+                  {(analytics.byRootCause || []).length === 0 && <div className={styles.noData}>No data</div>}
                   {(analytics.byRootCause || []).map(item => (
-                    <div key={item.label} style={{display:'flex', justifyContent:'space-between', fontSize:'var(--text-sm)'}}>
-                      <span style={{textTransform:'capitalize'}}>{item.label.replace('_', ' ')}</span>
-                      <span style={{fontWeight:600}}>{item.count}</span>
+                    <div key={item.label} className={styles.analyticsRow}>
+                      <span className={styles.analyticsLabel}>{item.label.replace('_', ' ')}</span>
+                      <span className={styles.analyticsValue}>{item.count}</span>
                     </div>
                   ))}
                 </div>
               </div>
-              <div className={styles.card}>
-                <div style={{fontSize:'var(--text-xs)', fontWeight:600, color:'var(--color-text-muted)', marginBottom:12}}>Defects by Vendor</div>
-                <div style={{display:'flex', flexDirection:'column', gap:8}}>
-                  {(analytics.byVendor || []).length === 0 && <div style={{fontSize:'var(--text-xs)', color:'#999'}}>No data</div>}
+              <div className={styles.analyticsCard}>
+                <div className={styles.analyticsCardTitle}>Defects by Vendor</div>
+                <div className={styles.analyticsList}>
+                  {(analytics.byVendor || []).length === 0 && <div className={styles.noData}>No data</div>}
                   {(analytics.byVendor || []).map(item => (
-                    <div key={item.label} style={{display:'flex', justifyContent:'space-between', fontSize:'var(--text-sm)'}}>
-                      <span>{item.label}</span>
-                      <span style={{fontWeight:600}}>{item.count}</span>
+                    <div key={item.label} className={styles.analyticsRow}>
+                      <span className={styles.analyticsLabel}>{item.label}</span>
+                      <span className={styles.analyticsValue}>{item.count}</span>
                     </div>
                   ))}
                 </div>
@@ -325,22 +335,22 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
                   {snag.photos && snag.photos.length > 0 && (
                     <div className={styles.photos}>
                       {snag.photos.map((p, i) => (
-                        <div key={i} className={styles.photoThumb} style={{background:'#eee', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, color:'#aaa'}}>IMG</div>
+                        <div key={i} className={styles.photoThumb}>IMG</div>
                       ))}
                     </div>
                   )}
 
-                  <div style={{display:'flex', flexDirection:'column', gap:8}}>
+                  <div className={styles.metaSection}>
                     <div className={styles.metaRow}>
                       <div className={styles.metaLabel}>Raised By</div>
-                      <div style={{display:'flex', alignItems:'center', gap:6}}>
-                        {snag.raisedBy.type === 'client' ? <span style={{color:'var(--color-accent)'}}>◉ Client</span> : <Avatar name={snag.raisedBy.name} size="xs" />}
+                      <div className={styles.metaValueContainer}>
+                        {snag.raisedBy.type === 'client' ? <span className={styles.clientBadge}>◉ Client</span> : <Avatar name={snag.raisedBy.name} size="xs" />}
                         <span>· {snag.raisedBy.name} · {Math.ceil((Date.now() - new Date(snag.raisedBy.date)) / 86400000)} days ago</span>
                       </div>
                     </div>
                     <div className={styles.metaRow}>
                       <div className={styles.metaLabel}>Assignee</div>
-                      <div style={{display:'flex', alignItems:'center', gap:6}}>
+                      <div className={styles.metaValueContainer}>
                         {snag.assignee ? (
                           <><Avatar name={snag.assignee.name} size="xs" /> {snag.assignee.name}</>
                         ) : (
@@ -356,7 +366,7 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
                     <div>
                       {snag.status === 'open' && <Button variant="secondary" size="sm" onClick={() => handleStatusChange(snag.id, 'assigned')} disabled={projectStatus === 'completed'}>Assign</Button>}
                       {snag.status === 'assigned' && <Button variant="primary" size="sm" onClick={() => handleStatusChange(snag.id, 'in_progress')} disabled={projectStatus === 'completed'}>Start Work</Button>}
-                      {snag.status === 'in_progress' && <Button variant="primary" size="sm" onClick={() => setResolveTarget(snag)} disabled={projectStatus === 'completed'}>Resolve</Button>}
+                      {snag.status === 'in_progress' && <Button variant="primary" size="sm" onClick={() => { setResolveTarget(snag); if (snag.rootCauseCategory) setReworkRootCauseCategory(snag.rootCauseCategory); }} disabled={projectStatus === 'completed'}>Resolve</Button>}
                       {snag.status === 'resolved' && <Badge variant="neutral">Awaiting Client Verification</Badge>}
                       {snag.status === 'client_verified' && <Badge variant="success">✓ Completed</Badge>}
                     </div>
@@ -381,11 +391,11 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
               </>
             }
           >
-            <div style={{display:'flex', flexDirection:'column', gap:16}}>
-              <div style={{display:'flex', flexDirection:'column', gap:8}}>
-                <label style={{fontSize:'var(--text-sm)', fontWeight:600, color:'var(--color-text)'}}>Resolution notes *</label>
+            <div className={styles.formGroup} style={{gap:16}}>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Resolution notes *</label>
                 <textarea 
-                  style={{width:'100%', minHeight:80, padding:12, borderRadius:8, border:'1px solid var(--color-border)', outline:'none', fontFamily:'inherit', fontSize:'var(--text-xs)'}}
+                  className={styles.textarea}
                   placeholder="Describe what was done to fix this issue..."
                   value={resolutionNote}
                   onChange={e => setResolutionNote(e.target.value)}
@@ -394,7 +404,39 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
                 />
               </div>
 
-              <div style={{display:'flex', alignItems:'center', gap:8, borderTop:'1px solid var(--color-border)', paddingTop:12}}>
+              <div className={styles.grid2Col}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Root Cause Category</label>
+                  <select 
+                    className={styles.select}
+                    value={reworkRootCauseCategory}
+                    onChange={e => setReworkRootCauseCategory(e.target.value)}
+                    disabled={projectStatus === 'completed'}
+                  >
+                    <option value="workmanship_error">Workmanship Error</option>
+                    <option value="material_defect">Material Defect</option>
+                    <option value="design_flaw">Design Flaw</option>
+                    <option value="site_damage">Site / Transit Damage</option>
+                    <option value="vendor_fault">Vendor Fault</option>
+                    <option value="other">Other / General</option>
+                  </select>
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Responsible Vendor</label>
+                  <select 
+                    className={styles.select}
+                    value={resolveTarget?.vendor_id || ''}
+                    onChange={e => setResolveTarget(prev => ({ ...prev, vendor_id: e.target.value }))}
+                    disabled={projectStatus === 'completed'}
+                  >
+                    <option value="">No specific vendor</option>
+                    {vendors.map(v => <option key={v.id} value={v.id}>{v.vendor_name}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className={styles.checkboxGroup}>
                 <input 
                   type="checkbox" 
                   id="reworkCheckbox"
@@ -403,62 +445,32 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
                   style={{cursor:'pointer'}}
                   disabled={projectStatus === 'completed'}
                 />
-                <label htmlFor="reworkCheckbox" style={{fontSize:'var(--text-sm)', fontWeight:600, color:'var(--color-text)', cursor:'pointer'}}>
+                <label htmlFor="reworkCheckbox" className={styles.checkboxLabel}>
                   Defect required rework (materials replaced or correction hours spent)
                 </label>
               </div>
 
               {reworkRequired && (
-                <div style={{display:'flex', flexDirection:'column', gap:12, padding:12, borderRadius:8, background:'var(--color-bg-subtle, #f9fafb)', border:'1px solid var(--color-border)'}}>
-                  <div style={{display:'flex', flexDirection:'column', gap:4}}>
-                    <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Root Cause Category</label>
-                    <select 
-                      style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-xs)'}}
-                      value={reworkRootCauseCategory}
-                      onChange={e => setReworkRootCauseCategory(e.target.value)}
-                      disabled={projectStatus === 'completed'}
-                    >
-                      <option value="workmanship_error">Workmanship Error</option>
-                      <option value="material_defect">Material Defect</option>
-                      <option value="design_flaw">Design Flaw</option>
-                      <option value="site_damage">Site / Transit Damage</option>
-                      <option value="vendor_fault">Vendor Fault</option>
-                      <option value="other">Other / General</option>
-                    </select>
-                  </div>
-
-                  <div style={{display:'flex', flexDirection:'column', gap:4}}>
-                    <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Responsible Vendor</label>
-                    <select 
-                      style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-xs)'}}
-                      value={resolveTarget?.vendor_id || ''}
-                      onChange={e => setResolveTarget(prev => ({ ...prev, vendor_id: e.target.value }))}
-                      disabled={projectStatus === 'completed'}
-                    >
-                      <option value="">No specific vendor</option>
-                      {vendors.map(v => <option key={v.id} value={v.id}>{v.vendor_name}</option>)}
-                    </select>
-                  </div>
-
-                  <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
-                    <div style={{display:'flex', flexDirection:'column', gap:4}}>
-                      <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Est. Rework Hours</label>
+                <div className={styles.reworkContainer}>
+                  <div className={styles.grid2Col}>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Est. Rework Hours</label>
                       <input 
                         type="number" 
                         step="0.1"
-                        style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-xs)'}}
+                        className={styles.input}
                         value={reworkEstimatedHours}
                         onChange={e => setReworkEstimatedHours(e.target.value)}
                         disabled={projectStatus === 'completed'}
                       />
                     </div>
 
-                    <div style={{display:'flex', flexDirection:'column', gap:4}}>
-                      <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Actual Rework Hours</label>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Actual Rework Hours</label>
                       <input 
                         type="number" 
                         step="0.1"
-                        style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-xs)'}}
+                        className={styles.input}
                         value={reworkActualHours}
                         onChange={e => setReworkActualHours(e.target.value)}
                         disabled={projectStatus === 'completed'}
@@ -466,12 +478,12 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
                     </div>
                   </div>
 
-                  <div style={{display:'flex', flexDirection:'column', gap:4}}>
-                    <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Total Rework Cost (₹)</label>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label}>Total Rework Cost (₹)</label>
                     <input 
                       type="number" 
                       step="1"
-                      style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-xs)'}}
+                      className={styles.input}
                       value={reworkCost}
                       onChange={e => setReworkCost(e.target.value)}
                       disabled={projectStatus === 'completed'}
@@ -494,11 +506,11 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
               </>
             }
           >
-            <div style={{display:'flex', flexDirection:'column', gap:16}}>
-              <div style={{display:'flex', flexDirection:'column', gap:4}}>
-                <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Title *</label>
+            <div className={styles.formGroup} style={{gap:16}}>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Title *</label>
                 <input 
-                  style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-sm)'}}
+                  className={styles.input}
                   placeholder="e.g. Broken tile in master bathroom"
                   value={newSnag.title}
                   onChange={e => setNewSnag({...newSnag, title: e.target.value})}
@@ -506,10 +518,10 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
                 />
               </div>
 
-              <div style={{display:'flex', flexDirection:'column', gap:4}}>
-                <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Description</label>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Description</label>
                 <textarea 
-                  style={{width:'100%', minHeight:80, padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-sm)', fontFamily:'inherit'}}
+                  className={styles.textarea}
                   placeholder="Provide more details..."
                   value={newSnag.desc}
                   onChange={e => setNewSnag({...newSnag, desc: e.target.value})}
@@ -517,53 +529,20 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
                 />
               </div>
               
-              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
-                <div style={{display:'flex', flexDirection:'column', gap:4}}>
-                  <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Category</label>
-                  <select 
-                    style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-sm)'}}
-                    value={newSnag.category}
-                    onChange={e => setNewSnag({...newSnag, category: e.target.value})}
-                    disabled={projectStatus === 'completed'}
-                  >
-                    <option value="Civil">Civil</option>
-                    <option value="Electrical">Electrical</option>
-                    <option value="Plumbing">Plumbing</option>
-                    <option value="Carpentry">Carpentry</option>
-                    <option value="Painting">Painting</option>
-                    <option value="General">General</option>
-                  </select>
-                </div>
-                
-                <div style={{display:'flex', flexDirection:'column', gap:4}}>
-                  <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Root Cause Category (Optional)</label>
-                  <select 
-                    style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-sm)'}}
-                    value={newSnag.rootCauseCategory}
-                    onChange={e => setNewSnag({...newSnag, rootCauseCategory: e.target.value})}
-                    disabled={projectStatus === 'completed'}
-                  >
-                    <option value="">Unknown / None</option>
-                    <option value="workmanship_error">Workmanship Error</option>
-                    <option value="material_defect">Material Defect</option>
-                    <option value="design_flaw">Design Flaw</option>
-                    <option value="site_damage">Site / Transit Damage</option>
-                    <option value="vendor_fault">Vendor Fault</option>
-                    <option value="other">Other / General</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div style={{display:'flex', flexDirection:'column', gap:4}}>
-                <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Responsible Vendor (Optional)</label>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Category</label>
                 <select 
-                  style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-sm)'}}
-                  value={newSnag.vendorId}
-                  onChange={e => setNewSnag({...newSnag, vendorId: e.target.value})}
+                  className={styles.select}
+                  value={newSnag.category}
+                  onChange={e => setNewSnag({...newSnag, category: e.target.value})}
                   disabled={projectStatus === 'completed'}
                 >
-                  <option value="">No specific vendor</option>
-                  {vendors.map(v => <option key={v.id} value={v.id}>{v.vendor_name}</option>)}
+                  <option value="Civil">Civil</option>
+                  <option value="Electrical">Electrical</option>
+                  <option value="Plumbing">Plumbing</option>
+                  <option value="Carpentry">Carpentry</option>
+                  <option value="Painting">Painting</option>
+                  <option value="General">General</option>
                 </select>
               </div>
             </div>
@@ -571,14 +550,8 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
         </>
       )}
 
-      {activeTab === 'external' && (
+       {activeTab === 'external' && (
         <>
-          {projectStatus !== 'completed' && (
-            <div style={{display:'flex', justifyContent:'flex-end', marginBottom:16}}>
-              <Button variant="primary" size="sm" onClick={() => setIsExternalModalOpen(true)}>+ Log External Inspection</Button>
-            </div>
-          )}
-
           <div className={styles.grid}>
             {externalInspections.length === 0 && <div style={{color:'var(--color-text-muted)'}}>No external inspections logged.</div>}
             {externalInspections.map(ext => (
@@ -598,7 +571,7 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
                   <div className={styles.cardDesc} style={{whiteSpace:'pre-wrap'}}>{ext.findings || 'No findings provided.'}</div>
                 </div>
 
-                <div className={styles.cardFooter} style={{marginTop:16, borderTop:'1px solid var(--color-border)', paddingTop:12}}>
+                <div className={styles.cardFooter}>
                   <div></div>
                   <div style={{display:'flex', gap:8}}>
                     {ext.status === 'open' && <Button variant="secondary" size="sm" onClick={() => updateExtStatus(ext.id, 'in_progress')} disabled={projectStatus === 'completed'}>Start Fixes</Button>}
@@ -621,21 +594,21 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
               </>
             }
           >
-            <div style={{display:'flex', flexDirection:'column', gap:16}}>
-              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
-                <div style={{display:'flex', flexDirection:'column', gap:4}}>
-                  <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Inspector Name *</label>
+            <div className={styles.formGroup} style={{gap:16}}>
+              <div className={styles.grid2Col}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Inspector Name *</label>
                   <input 
-                    style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-sm)'}}
+                    className={styles.input}
                     value={newExternal.inspectorName}
                     onChange={e => setNewExternal({...newExternal, inspectorName: e.target.value})}
                     disabled={projectStatus === 'completed'}
                   />
                 </div>
-                <div style={{display:'flex', flexDirection:'column', gap:4}}>
-                  <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Organization</label>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Organization</label>
                   <input 
-                    style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-sm)'}}
+                    className={styles.input}
                     placeholder="e.g. Client Rep, City Inspector"
                     value={newExternal.organization}
                     onChange={e => setNewExternal({...newExternal, organization: e.target.value})}
@@ -644,21 +617,21 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
                 </div>
               </div>
 
-              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
-                <div style={{display:'flex', flexDirection:'column', gap:4}}>
-                  <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Inspection Date *</label>
+              <div className={styles.grid2Col}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Inspection Date *</label>
                   <input 
                     type="date"
-                    style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-sm)'}}
+                    className={styles.input}
                     value={newExternal.inspectionDate}
                     onChange={e => setNewExternal({...newExternal, inspectionDate: e.target.value})}
                     disabled={projectStatus === 'completed'}
                   />
                 </div>
-                <div style={{display:'flex', flexDirection:'column', gap:4}}>
-                  <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Severity</label>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Severity</label>
                   <select 
-                    style={{width:'100%', padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-sm)'}}
+                    className={styles.select}
                     value={newExternal.severity}
                     onChange={e => setNewExternal({...newExternal, severity: e.target.value})}
                     disabled={projectStatus === 'completed'}
@@ -671,10 +644,11 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
                 </div>
               </div>
 
-              <div style={{display:'flex', flexDirection:'column', gap:4}}>
-                <label style={{fontSize:'11px', fontWeight:600, color:'var(--color-text-muted)'}}>Findings / Notes</label>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Findings / Notes</label>
                 <textarea 
-                  style={{width:'100%', minHeight:100, padding:8, borderRadius:6, border:'1px solid var(--color-border)', outline:'none', fontSize:'var(--text-sm)', fontFamily:'inherit'}}
+                  className={styles.textarea}
+                  style={{minHeight: 100}}
                   placeholder="Summarize the inspector's findings..."
                   value={newExternal.findings}
                   onChange={e => setNewExternal({...newExternal, findings: e.target.value})}

@@ -278,4 +278,38 @@ router.post('/:documentId/comments', authorize('projects:manage'), async (req, r
   }
 });
 
+// DELETE /api/projects/:projectId/documents/:did
+router.delete('/:did', authorize('projects:manage'), async (req, res, next) => {
+  try {
+    const { projectId, did } = req.params;
+    const tenantId = req.tenantId;
+
+    // Verify the document exists in this project
+    const check = await pool.query(
+      `SELECT id, storage_key FROM documents WHERE id = $1 AND project_id = $2 AND tenant_id = $3`,
+      [did, projectId, tenantId]
+    );
+    if (check.rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Document not found.', 404);
+    }
+
+    // Delete from database
+    await pool.query(
+      `DELETE FROM documents WHERE id = $1 AND project_id = $2 AND tenant_id = $3`,
+      [did, projectId, tenantId]
+    );
+
+    // Optionally delete from S3/storage if needed
+    const storage = require('../utils/storage');
+    if (check.rows[0].storage_key) {
+      await storage.deleteFile(check.rows[0].storage_key).catch(err => logger.error('Failed to delete S3 file:', err));
+    }
+
+    return success(res, null, { message: 'Document deleted successfully' });
+  } catch (error) {
+    logger.error('[Documents Router] Delete document error:', error);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to delete document.', 500);
+  }
+});
+
 module.exports = router;

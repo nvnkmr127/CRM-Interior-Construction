@@ -3,6 +3,11 @@ const pool = require('../config/db');
 const { fail } = require('../utils/response');
 async function verifyProjectBooked(req, res, next) {
   try {
+    // Allow read-only (GET) requests to view information
+    if (req.method === 'GET') {
+      return next();
+    }
+
     const projectId = req.params.projectId || req.params.id;
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!projectId || !uuidRegex.test(projectId)) {

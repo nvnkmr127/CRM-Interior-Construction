@@ -3,9 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Button, Badge, Modal, Input, EmptyState, Spinner } from '../ui';
 import { useToast } from '../../store/toastContext';
 import styles from './MaterialPalettesTab.module.css';
-import {
 import { useConfirm } from '../../store/confirmContext';
-
+import {
   getMaterialPalettes,
   getMaterialPaletteBOQItems,
   createMaterialPalette,

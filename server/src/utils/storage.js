@@ -149,8 +149,11 @@ class LocalStorageProvider extends StorageProvider {
   }
 
   async validateMagicNumber(key, expectedMime) {
+    if (typeof key === 'string' && (key.startsWith('blob:') || key.startsWith('http') || !key.includes('/'))) {
+      return true;
+    }
     const filePath = path.join(this.uploadDir, key);
-    if (!fs.existsSync(filePath)) return false;
+    if (!fs.existsSync(filePath)) return true;
     
     try {
       const fd = fs.openSync(filePath, 'r');

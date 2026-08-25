@@ -102,15 +102,15 @@ export default function FunnelChart({ filters, data: propData }) {
               axisLine={false} 
               tickLine={false} 
               tickFormatter={(v) => v ? v.toString().replace(/_/g, ' ') : ''} 
-              width={160} 
-              tick={{ fontSize: 13, textTransform: 'capitalize', fill: 'var(--text)' }}
+              width={120} 
+              tick={{ fontSize: 12, textTransform: 'capitalize', fill: 'var(--color-text-secondary)' }}
             />
             <Tooltip content={<CustomTooltip />} cursor={{fill: 'var(--color-bg-subtle, rgba(0,0,0,0.05))'}} />
-            <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={32} onClick={handleBarClick} style={{ cursor: 'pointer' }}>
+            <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={24} onClick={handleBarClick} style={{ cursor: 'pointer' }}>
               {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={`var(--color-accent, hsl(270, 100%, ${55 + index * 8}%))`} />
+                <Cell key={`cell-${index}`} fill={`var(--color-accent, hsl(270, 100%, ${55 + index * 6}%))`} />
               ))}
-              <LabelList dataKey="count" position="right" fill="var(--text-h)" fontSize={13} fontWeight={600} offset={15} />
+              <LabelList dataKey="count" position="right" fill="var(--color-text)" fontSize={12} fontWeight={600} offset={10} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>

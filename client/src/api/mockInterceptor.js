@@ -6120,22 +6120,504 @@ export const setupMockInterceptor = (api) => {
                     totalSnags: snags.length,
                     openSnags: snags.filter(s => s.status !== 'resolved' && s.status !== 'closed' && s.status !== 'client_verified').length
                   };
-                } else if (url.includes('/analytics/leads/funnel') || 
-                   url.includes('/analytics/leads/by_source') || 
-                   url.includes('/analytics/leads/rep_performance') || 
-                   url.includes('/analytics/leads/lost_reasons') ||
-                   url.includes('/analytics/pipeline') ||
-                   url.includes('/analytics/revenue')) {
-                 responseData.data = [];
-               } else {
-                 // Generic fallback for other analytics routes in mock mode
-                 responseData.data = {
-                   summary: { total: 0 },
-                   funnel: [],
-                   revenue: 0,
-                   pipeline: []
-                 };
-               }
+                } else if (url.includes('/analytics/leads/summary')) {
+                  const getParam = (name) => {
+                    if (config.params && config.params[name] !== undefined) return config.params[name];
+                    const urlParts = url.split('?');
+                    if (urlParts[1]) {
+                      const searchParams = new URLSearchParams(urlParts[1]);
+                      return searchParams.get(name);
+                    }
+                    return undefined;
+                  };
+                  const fromParam = getParam('from');
+                  const toParam = getParam('to');
+                  const period = getParam('period');
+                  let leadsScope = (mockDatabase.leads || []).filter(l => !l.deleted_at);
+                  if (fromParam) {
+                    const fromDate = new Date(fromParam);
+                    leadsScope = leadsScope.filter(l => new Date(l.created_at || l.createdAt) >= fromDate);
+                  }
+                  if (toParam) {
+                    const toDate = new Date(toParam);
+                    leadsScope = leadsScope.filter(l => new Date(l.created_at || l.createdAt) <= toDate);
+                  }
+                  if (!fromParam && !toParam) {
+                    let periodDays = 30;
+                    if (period === '7d') periodDays = 7;
+                    else if (period === '90d') periodDays = 90;
+                    else if (period && period.match(/^\d+d$/)) periodDays = parseInt(period, 10);
+                    const toDate = new Date();
+                    const fromDate = new Date(toDate.getTime() - periodDays * 24 * 60 * 60 * 1000);
+                    leadsScope = leadsScope.filter(l => {
+                      const d = new Date(l.created_at || l.createdAt);
+                      return d >= fromDate && d <= toDate;
+                    });
+                  }
+                  const total = leadsScope.length;
+                  const won = leadsScope.filter(l => l.status === 'won' || l.status === 'converted' || l.stage_name?.toLowerCase().includes('won')).length;
+                  const newThisPeriod = leadsScope.filter(l => l.stage_name?.toLowerCase().includes('new') || l.status === 'new').length;
+                  const pipelineValueTotal = leadsScope.reduce((sum, l) => sum + (l.budget_max || l.budget || 0), 0);
+                  
+                  responseData.data = {
+                    total_leads: total,
+                    new_this_period: newThisPeriod,
+                    conversion_rate: total > 0 ? parseFloat(((won / total) * 100).toFixed(1)) : 0,
+                    avg_time_to_close_days: 12,
+                    pipeline_value_total: pipelineValueTotal,
+                    leads_by_tier: {
+                      hot: leadsScope.filter(l => (l.score || 0) >= 80).length,
+                      warm: leadsScope.filter(l => (l.score || 0) >= 50 && (l.score || 0) < 80).length,
+                      cold: leadsScope.filter(l => (l.score || 0) >= 20 && (l.score || 0) < 50).length,
+                      dead: leadsScope.filter(l => (l.score || 0) < 20).length
+                    }
+                  };
+                } else if (url.includes('/analytics/leads/funnel')) {
+                  const getParam = (name) => {
+                    if (config.params && config.params[name] !== undefined) return config.params[name];
+                    const urlParts = url.split('?');
+                    if (urlParts[1]) {
+                      const searchParams = new URLSearchParams(urlParts[1]);
+                      return searchParams.get(name);
+                    }
+                    return undefined;
+                  };
+                  const fromParam = getParam('from');
+                  const toParam = getParam('to');
+                  const period = getParam('period');
+                  let leadsScope = (mockDatabase.leads || []).filter(l => !l.deleted_at);
+                  if (fromParam) {
+                    const fromDate = new Date(fromParam);
+                    leadsScope = leadsScope.filter(l => new Date(l.created_at || l.createdAt) >= fromDate);
+                  }
+                  if (toParam) {
+                    const toDate = new Date(toParam);
+                    leadsScope = leadsScope.filter(l => new Date(l.created_at || l.createdAt) <= toDate);
+                  }
+                  if (!fromParam && !toParam) {
+                    let periodDays = 30;
+                    if (period === '7d') periodDays = 7;
+                    else if (period === '90d') periodDays = 90;
+                    else if (period && period.match(/^\d+d$/)) periodDays = parseInt(period, 10);
+                    const toDate = new Date();
+                    const fromDate = new Date(toDate.getTime() - periodDays * 24 * 60 * 60 * 1000);
+                    leadsScope = leadsScope.filter(l => {
+                      const d = new Date(l.created_at || l.createdAt);
+                      return d >= fromDate && d <= toDate;
+                    });
+                  }
+                  const allStages = mockDatabase.leadStages || mockDatabase.stages || [];
+                  let prevCount = null;
+                  responseData.data = allStages.map(stg => {
+                    const count = leadsScope.filter(l => l.stage_id === stg.id || l.stage_name === stg.name).length;
+                    let drop_off_rate = 0;
+                    if (prevCount !== null && prevCount > 0) {
+                      drop_off_rate = parseFloat((((prevCount - count) / prevCount) * 100).toFixed(1));
+                    }
+                    prevCount = count;
+                    return { stage: stg.name, count, drop_off_rate };
+                  });
+                } else if (url.includes('/analytics/leads/by_source')) {
+                  const getParam = (name) => {
+                    if (config.params && config.params[name] !== undefined) return config.params[name];
+                    const urlParts = url.split('?');
+                    if (urlParts[1]) {
+                      const searchParams = new URLSearchParams(urlParts[1]);
+                      return searchParams.get(name);
+                    }
+                    return undefined;
+                  };
+                  const fromParam = getParam('from');
+                  const toParam = getParam('to');
+                  const period = getParam('period');
+                  let leadsScope = (mockDatabase.leads || []).filter(l => !l.deleted_at);
+                  if (fromParam) {
+                    const fromDate = new Date(fromParam);
+                    leadsScope = leadsScope.filter(l => new Date(l.created_at || l.createdAt) >= fromDate);
+                  }
+                  if (toParam) {
+                    const toDate = new Date(toParam);
+                    leadsScope = leadsScope.filter(l => new Date(l.created_at || l.createdAt) <= toDate);
+                  }
+                  if (!fromParam && !toParam) {
+                    let periodDays = 30;
+                    if (period === '7d') periodDays = 7;
+                    else if (period === '90d') periodDays = 90;
+                    else if (period && period.match(/^\d+d$/)) periodDays = parseInt(period, 10);
+                    const toDate = new Date();
+                    const fromDate = new Date(toDate.getTime() - periodDays * 24 * 60 * 60 * 1000);
+                    leadsScope = leadsScope.filter(l => {
+                      const d = new Date(l.created_at || l.createdAt);
+                      return d >= fromDate && d <= toDate;
+                    });
+                  }
+                  const sourceCounts = {};
+                  leadsScope.forEach(l => {
+                    const src = l.source || 'Other';
+                    if (!sourceCounts[src]) sourceCounts[src] = { count: 0, won: 0, value: 0 };
+                    sourceCounts[src].count++;
+                    if (l.status === 'won' || l.status === 'converted' || l.stage_name?.toLowerCase().includes('won')) {
+                      sourceCounts[src].won++;
+                    }
+                    sourceCounts[src].value += (l.budget_max || l.budget || 0);
+                  });
+                  responseData.data = Object.entries(sourceCounts).map(([source, s]) => ({
+                    source,
+                    count: s.count,
+                    won_count: s.won,
+                    conversion_rate: s.count > 0 ? parseFloat(((s.won / s.count) * 100).toFixed(1)) : 0,
+                    total_value: s.value
+                  })).sort((a, b) => b.count - a.count);
+                } else if (url.includes('/analytics/leads/rep_performance')) {
+                  const getParam = (name) => {
+                    if (config.params && config.params[name] !== undefined) return config.params[name];
+                    const urlParts = url.split('?');
+                    if (urlParts[1]) {
+                      const searchParams = new URLSearchParams(urlParts[1]);
+                      return searchParams.get(name);
+                    }
+                    return undefined;
+                  };
+                  const fromParam = getParam('from');
+                  const toParam = getParam('to');
+                  const period = getParam('period');
+                  let leadsScope = (mockDatabase.leads || []).filter(l => !l.deleted_at);
+                  if (fromParam) {
+                    const fromDate = new Date(fromParam);
+                    leadsScope = leadsScope.filter(l => new Date(l.created_at || l.createdAt) >= fromDate);
+                  }
+                  if (toParam) {
+                    const toDate = new Date(toParam);
+                    leadsScope = leadsScope.filter(l => new Date(l.created_at || l.createdAt) <= toDate);
+                  }
+                  if (!fromParam && !toParam) {
+                    let periodDays = 30;
+                    if (period === '7d') periodDays = 7;
+                    else if (period === '90d') periodDays = 90;
+                    else if (period && period.match(/^\d+d$/)) periodDays = parseInt(period, 10);
+                    const toDate = new Date();
+                    const fromDate = new Date(toDate.getTime() - periodDays * 24 * 60 * 60 * 1000);
+                    leadsScope = leadsScope.filter(l => {
+                      const d = new Date(l.created_at || l.createdAt);
+                      return d >= fromDate && d <= toDate;
+                    });
+                  }
+                  const reps = (mockDatabase.users || []).filter(u => u.role === 'sales_executive' || u.role === 'sales_rep');
+                  responseData.data = reps.map(rep => {
+                    const repLeads = leadsScope.filter(l => l.assignee_id === rep.id || l.assignee_name === rep.name);
+                    const won = repLeads.filter(l => l.status === 'won' || l.status === 'converted' || l.stage_name?.toLowerCase().includes('won')).length;
+                    const assigned = repLeads.length;
+                    return {
+                      rep_id: rep.id,
+                      rep_name: rep.name,
+                      avatar_url: rep.avatar_url,
+                      leads_assigned: assigned,
+                      contacted_within_sla: '92%',
+                      visits_done: 5,
+                      proposals_sent: 4,
+                      won,
+                      conversion_rate: assigned > 0 ? parseFloat(((won / assigned) * 100).toFixed(1)) : 0
+                    };
+                  });
+                } else if (url.includes('/analytics/leads/lost_reasons')) {
+                  const getParam = (name) => {
+                    if (config.params && config.params[name] !== undefined) return config.params[name];
+                    const urlParts = url.split('?');
+                    if (urlParts[1]) {
+                      const searchParams = new URLSearchParams(urlParts[1]);
+                      return searchParams.get(name);
+                    }
+                    return undefined;
+                  };
+                  const fromParam = getParam('from');
+                  const toParam = getParam('to');
+                  const period = getParam('period');
+                  let leadsScope = (mockDatabase.leads || []).filter(l => !l.deleted_at);
+                  if (fromParam) {
+                    const fromDate = new Date(fromParam);
+                    leadsScope = leadsScope.filter(l => new Date(l.created_at || l.createdAt) >= fromDate);
+                  }
+                  if (toParam) {
+                    const toDate = new Date(toParam);
+                    leadsScope = leadsScope.filter(l => new Date(l.created_at || l.createdAt) <= toDate);
+                  }
+                  if (!fromParam && !toParam) {
+                    let periodDays = 30;
+                    if (period === '7d') periodDays = 7;
+                    else if (period === '90d') periodDays = 90;
+                    else if (period && period.match(/^\d+d$/)) periodDays = parseInt(period, 10);
+                    const toDate = new Date();
+                    const fromDate = new Date(toDate.getTime() - periodDays * 24 * 60 * 60 * 1000);
+                    leadsScope = leadsScope.filter(l => {
+                      const d = new Date(l.created_at || l.createdAt);
+                      return d >= fromDate && d <= toDate;
+                    });
+                  }
+                  const lostCounts = {};
+                  const lostLeads = leadsScope.filter(l => l.status === 'lost' || l.stage_name?.toLowerCase().includes('lost') || l.lost_reason);
+                  lostLeads.forEach(l => {
+                    const reason = l.lost_reason || l.custom_fields?.lost_reason || 'No Reason Given';
+                    lostCounts[reason] = (lostCounts[reason] || 0) + 1;
+                  });
+                  const totalLost = lostLeads.length;
+                  responseData.data = Object.entries(lostCounts).map(([reason, count]) => ({
+                    reason,
+                    count,
+                    percentage: totalLost > 0 ? parseFloat(((count / totalLost) * 100).toFixed(1)) : 0
+                  })).sort((a, b) => b.count - a.count);
+                } else if (url.includes('/analytics/leads')) {
+                  const getParam = (name) => {
+                    if (config.params && config.params[name] !== undefined) return config.params[name];
+                    const urlParts = url.split('?');
+                    if (urlParts[1]) {
+                      const searchParams = new URLSearchParams(urlParts[1]);
+                      return searchParams.get(name);
+                    }
+                    return undefined;
+                  };
+                  const fromParam = getParam('from');
+                  const toParam = getParam('to');
+                  const period = getParam('period');
+                  let leadsScope = (mockDatabase.leads || []).filter(l => !l.deleted_at);
+                  if (fromParam) {
+                    const fromDate = new Date(fromParam);
+                    leadsScope = leadsScope.filter(l => new Date(l.created_at || l.createdAt) >= fromDate);
+                  }
+                  if (toParam) {
+                    const toDate = new Date(toParam);
+                    leadsScope = leadsScope.filter(l => new Date(l.created_at || l.createdAt) <= toDate);
+                  }
+                  if (!fromParam && !toParam) {
+                    let periodDays = 30;
+                    if (period === '7d') periodDays = 7;
+                    else if (period === '90d') periodDays = 90;
+                    else if (period && period.match(/^\d+d$/)) periodDays = parseInt(period, 10);
+                    const toDate = new Date();
+                    const fromDate = new Date(toDate.getTime() - periodDays * 24 * 60 * 60 * 1000);
+                    leadsScope = leadsScope.filter(l => {
+                      const d = new Date(l.created_at || l.createdAt);
+                      return d >= fromDate && d <= toDate;
+                    });
+                  }
+                  const stageCounts = {};
+                  leadsScope.forEach(l => {
+                    const sName = l.stage_name || 'New';
+                    stageCounts[sName] = (stageCounts[sName] || 0) + 1;
+                  });
+                  const stageDistribution = Object.entries(stageCounts).map(([stageName, count]) => ({ stageName, count }));
+                  
+                  const sourceCounts = {};
+                  leadsScope.forEach(l => {
+                    const src = l.source || 'Other';
+                    sourceCounts[src] = (sourceCounts[src] || 0) + 1;
+                  });
+                  const sourceBreakdown = Object.entries(sourceCounts).map(([source, count]) => ({ source, count }));
+                  
+                  const reps = (mockDatabase.users || []).filter(u => u.role === 'sales_executive' || u.role === 'sales_rep');
+                  const teamPerformance = reps.map(rep => {
+                    const repLeads = leadsScope.filter(l => l.assignee_id === rep.id || l.assignee_name === rep.name);
+                    const wonLeads = repLeads.filter(l => l.status === 'won' || l.status === 'converted' || l.stage_name?.toLowerCase().includes('won')).length;
+                    const totalLeads = repLeads.length;
+                    const totalScore = repLeads.reduce((sum, l) => sum + (l.score || 0), 0);
+                    const avgScore = totalLeads > 0 ? Math.round(totalScore / totalLeads) : 0;
+                    return {
+                      userId: rep.id,
+                      name: rep.name,
+                      totalLeads,
+                      wonLeads,
+                      avgScore
+                    };
+                  });
+                  
+                  const timeSeries = [];
+                  for (let i = 3; i >= 0; i--) {
+                    const start = new Date(Date.now() - (i + 1) * 7 * 24 * 60 * 60 * 1000);
+                    const end = new Date(Date.now() - i * 7 * 24 * 60 * 60 * 1000);
+                    const weekLeads = leadsScope.filter(l => {
+                      const d = new Date(l.created_at || l.createdAt);
+                      return d >= start && d <= end;
+                    });
+                    const count = weekLeads.length;
+                    const wonCount = weekLeads.filter(l => l.status === 'won' || l.status === 'converted' || l.stage_name?.toLowerCase().includes('won')).length;
+                    timeSeries.push({ count, wonCount });
+                  }
+                  
+                  responseData.data = {
+                    stageDistribution,
+                    sourceBreakdown,
+                    teamPerformance,
+                    timeSeries
+                  };
+                } else if (url.includes('/analytics/revenue-leads') || url.includes('/analytics/revenue')) {
+                  const getParam = (name) => {
+                    if (config.params && config.params[name] !== undefined) return config.params[name];
+                    const urlParts = url.split('?');
+                    if (urlParts[1]) {
+                      const searchParams = new URLSearchParams(urlParts[1]);
+                      return searchParams.get(name);
+                    }
+                    return undefined;
+                  };
+                  const fromParam = getParam('from');
+                  const toParam = getParam('to');
+                  const period = getParam('period');
+                  let leadsScope = (mockDatabase.leads || []).filter(l => !l.deleted_at);
+                  if (fromParam) {
+                    const fromDate = new Date(fromParam);
+                    leadsScope = leadsScope.filter(l => new Date(l.created_at || l.createdAt) >= fromDate);
+                  }
+                  if (toParam) {
+                    const toDate = new Date(toParam);
+                    leadsScope = leadsScope.filter(l => new Date(l.created_at || l.createdAt) <= toDate);
+                  }
+                  if (!fromParam && !toParam) {
+                    let periodDays = 30;
+                    if (period === '7d') periodDays = 7;
+                    else if (period === '90d') periodDays = 90;
+                    else if (period && period.match(/^\d+d$/)) periodDays = parseInt(period, 10);
+                    const toDate = new Date();
+                    const fromDate = new Date(toDate.getTime() - periodDays * 24 * 60 * 60 * 1000);
+                    leadsScope = leadsScope.filter(l => {
+                      const d = new Date(l.created_at || l.createdAt);
+                      return d >= fromDate && d <= toDate;
+                    });
+                  }
+                  const activeLeads = leadsScope.filter(l => l.status !== 'lost' && l.status !== 'won' && !l.stage_name?.toLowerCase().includes('won') && !l.stage_name?.toLowerCase().includes('lost'));
+                  const wonLeads = leadsScope.filter(l => l.status === 'won' || l.status === 'converted' || l.stage_name?.toLowerCase().includes('won'));
+                  const lostLeads = leadsScope.filter(l => l.status === 'lost' || l.stage_name?.toLowerCase().includes('lost'));
+                  
+                  const totalPipelineVal = activeLeads.reduce((sum, l) => sum + (l.budget_max || l.budget || 0), 0);
+                  const wonRevenueVal = wonLeads.reduce((sum, l) => sum + (l.budget_max || l.budget || 0), 0);
+                  const lostRevenueVal = lostLeads.reduce((sum, l) => sum + (l.budget_max || l.budget || 0), 0);
+                  const expectedRevenueVal = activeLeads.reduce((sum, l) => sum + ((l.budget_max || l.budget || 0) * (l.probability || 50) / 100), 0);
+                  const avgDealSizeVal = leadsScope.length > 0 ? Math.round(leadsScope.reduce((sum, l) => sum + (l.budget_max || l.budget || 0), 0) / leadsScope.length) : 0;
+                  const largestDealVal = leadsScope.length > 0 ? Math.max(...leadsScope.map(l => l.budget_max || l.budget || 0)) : 0;
+                  
+                  const formatVal = (num) => {
+                    if (num >= 10000000) return `₹${(num / 10000000).toFixed(2)} Cr`;
+                    if (num >= 100000) return `₹${(num / 100000).toFixed(2)} L`;
+                    if (num >= 1000) return `₹${(num / 1000).toFixed(0)}k`;
+                    return `₹${num}`;
+                  };
+                  
+                  const stageRevMap = {};
+                  leadsScope.forEach(l => {
+                    const sName = l.stage_name || 'New';
+                    stageRevMap[sName] = (stageRevMap[sName] || 0) + (l.budget_max || l.budget || 0);
+                  });
+                  const stageRevenue = Object.entries(stageRevMap).map(([stage, revenue]) => ({ stage, revenue }));
+                  
+                  const sourceRevMap = {};
+                  leadsScope.forEach(l => {
+                    const src = l.source || 'Other';
+                    sourceRevMap[src] = (sourceRevMap[src] || 0) + (l.budget_max || l.budget || 0);
+                  });
+                  const sourceRevenue = Object.entries(sourceRevMap).map(([name, revenue]) => ({ name, revenue }));
+                  
+                  const monthlyTrend = [];
+                  for (let i = 5; i >= 0; i--) {
+                    const date = new Date();
+                    date.setMonth(date.getMonth() - i);
+                    const mName = date.toLocaleString('default', { month: 'short' });
+                    const mYear = date.getFullYear();
+                    const monthLeads = leadsScope.filter(l => {
+                      const d = new Date(l.created_at || l.createdAt);
+                      return d.getMonth() === date.getMonth() && d.getFullYear() === mYear;
+                    });
+                    const won = monthLeads.filter(l => l.status === 'won' || l.status === 'converted' || l.stage_name?.toLowerCase().includes('won')).reduce((sum, l) => sum + (l.budget_max || l.budget || 0), 0);
+                    const lost = monthLeads.filter(l => l.status === 'lost' || l.stage_name?.toLowerCase().includes('lost')).reduce((sum, l) => sum + (l.budget_max || l.budget || 0), 0);
+                    monthlyTrend.push({ month: mName, won, lost, actual: won, target: Math.round(won * 1.1) || 50000 });
+                  }
+                  
+                  const drillDownLeads = leadsScope.map(l => ({
+                    id: l.id,
+                    name: l.name,
+                    stage: l.stage_name || l.status,
+                    amount: formatVal(l.budget_max || l.budget || 0),
+                    source: l.source || 'Other',
+                    date: new Date(l.created_at || l.createdAt).toISOString().split('T')[0]
+                  }));
+                  
+                  if (url.includes('/analytics/revenue-leads')) {
+                    responseData.data = {
+                      kpis: {
+                        totalPipeline: { val: formatVal(totalPipelineVal), trend: 15 },
+                        wonRevenue: { val: formatVal(wonRevenueVal), trend: 8 },
+                        lostRevenue: { val: formatVal(lostRevenueVal), trend: -5 },
+                        expectedRevenue: { val: formatVal(expectedRevenueVal), trend: 12 },
+                        avgDealSize: { val: formatVal(avgDealSizeVal), trend: 3 },
+                        largestDeal: { val: formatVal(largestDealVal), trend: 0 }
+                      },
+                      stageRevenue,
+                      sourceRevenue,
+                      monthlyTrend,
+                      drillDownLeads
+                    };
+                  } else {
+                    responseData.data = {
+                      total: wonRevenueVal,
+                      pipeline: totalPipelineVal,
+                      forecast: wonRevenueVal + (totalPipelineVal * 0.3),
+                      avgDealSize: avgDealSizeVal,
+                      trend: monthlyTrend
+                    };
+                  }
+                } else if (url.includes('/analytics/pipeline')) {
+                  const getParam = (name) => {
+                    if (config.params && config.params[name] !== undefined) return config.params[name];
+                    const urlParts = url.split('?');
+                    if (urlParts[1]) {
+                      const searchParams = new URLSearchParams(urlParts[1]);
+                      return searchParams.get(name);
+                    }
+                    return undefined;
+                  };
+                  const fromParam = getParam('from');
+                  const toParam = getParam('to');
+                  const period = getParam('period');
+                  let leadsScope = (mockDatabase.leads || []).filter(l => !l.deleted_at);
+                  if (fromParam) {
+                    const fromDate = new Date(fromParam);
+                    leadsScope = leadsScope.filter(l => new Date(l.created_at || l.createdAt) >= fromDate);
+                  }
+                  if (toParam) {
+                    const toDate = new Date(toParam);
+                    leadsScope = leadsScope.filter(l => new Date(l.created_at || l.createdAt) <= toDate);
+                  }
+                  if (!fromParam && !toParam) {
+                    let periodDays = 30;
+                    if (period === '7d') periodDays = 7;
+                    else if (period === '90d') periodDays = 90;
+                    else if (period && period.match(/^\d+d$/)) periodDays = parseInt(period, 10);
+                    const toDate = new Date();
+                    const fromDate = new Date(toDate.getTime() - periodDays * 24 * 60 * 60 * 1000);
+                    leadsScope = leadsScope.filter(l => {
+                      const d = new Date(l.created_at || l.createdAt);
+                      return d >= fromDate && d <= toDate;
+                    });
+                  }
+                  const activeLeads = leadsScope.filter(l => l.status !== 'lost' && l.status !== 'won' && !l.stage_name?.toLowerCase().includes('won') && !l.stage_name?.toLowerCase().includes('lost')).length;
+                  const totalLeads = leadsScope.length;
+                  const wonLeads = leadsScope.filter(l => l.status === 'won' || l.status === 'converted' || l.stage_name?.toLowerCase().includes('won')).length;
+                  const winRatePct = totalLeads > 0 ? (wonLeads / totalLeads) : 0;
+                  const avgCycle = 15;
+                  responseData.data = {
+                    overall: activeLeads * 50000 * winRatePct / avgCycle,
+                    metrics: {
+                      activeLeads,
+                      winRate: `${(winRatePct * 100).toFixed(1)}%`,
+                      avgCycle: `${avgCycle} Days`
+                    }
+                  };
+                } else {
+                  // Generic fallback for other analytics routes in mock mode
+                  responseData.data = {
+                    summary: { total: 0 },
+                    funnel: [],
+                    revenue: 0,
+                    pipeline: []
+                  };
+                }
              }
            }
           else if (url.includes('/users/resource-capacity') && method === 'get') {

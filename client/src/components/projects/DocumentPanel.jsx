@@ -93,6 +93,8 @@ export default function DocumentPanel({ projectId, projectStatus }) {
   const [commentsList, setCommentsList] = useState([]);
   const [newCommentText, setNewCommentText] = useState('');
   const [isCommentsModalOpen, setIsCommentsModalOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState(null);
+  const [imageError, setImageError] = useState(false);
 
   const fetchDocs = () => {
     setLoading(true);
@@ -116,6 +118,8 @@ export default function DocumentPanel({ projectId, projectStatus }) {
             isVisibleToClient: d.is_visible_to_client || false,
             clientAcknowledgedAt: d.client_acknowledged_at || null,
             clientAcknowledgedBy: d.client_acknowledged_by || null,
+            storageKey: d.storage_key || d.storageKey || null,
+            mimeType: d.mime_type || d.mimeType || null,
           };
         }));
       })
@@ -139,32 +143,42 @@ export default function DocumentPanel({ projectId, projectStatus }) {
   };
 
   const handleOpenDocument = async (doc) => {
-    if (doc.url && doc.url !== '#') {
-      window.open(doc.url, '_blank');
-      return;
+    setImageError(false);
+    let fileUrl = doc.url;
+    
+    // Check if the URL is a local blob URL
+    const isBlobUrl = doc.storageKey && doc.storageKey.startsWith('blob:');
+    if (isBlobUrl) {
+      fileUrl = doc.storageKey;
     }
-    try {
-      const res = await getDocumentUrl(projectId, doc.id);
-      const fetchedUrl = res.data?.data?.url || res.data?.url || res.data;
-      
-      // Check if it's a valid string URL (not the mock interceptor fallback object)
-      if (fetchedUrl && typeof fetchedUrl === 'string' && fetchedUrl !== '#' && !fetchedUrl.includes('Mock session')) {
-        window.open(fetchedUrl, '_blank');
-      } else {
-        // Fallback for mock data: open a dummy placeholder
-        toast.info('Opening placeholder document (Mock Mode).');
-        
-        const isImage = /\\.(jpg|jpeg|png|gif|webp)$/i.test(doc.name);
-        const dummyUrl = isImage 
-          ? 'https://via.placeholder.com/800x600.png?text=Mock+Document+Preview'
-          : 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
-          
-        window.open(dummyUrl, '_blank');
+
+    if (!fileUrl || fileUrl === '#') {
+      try {
+        const res = await getDocumentUrl(projectId, doc.id);
+        const fetchedUrl = res.data?.data?.url || res.data?.url || res.data;
+        if (fetchedUrl && typeof fetchedUrl === 'string' && fetchedUrl !== '#' && !fetchedUrl.includes('Mock session')) {
+          fileUrl = fetchedUrl;
+        } else {
+          // Fallback for mock data: open a dummy placeholder
+          const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(doc.name);
+          fileUrl = isImage 
+            ? 'https://via.placeholder.com/800x600.png?text=Mock+Document+Preview'
+            : 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error('Failed to open document URL.');
+        return;
       }
-    } catch (err) {
-      console.error(err);
-      toast.error('Failed to open document URL.');
     }
+
+    setPreviewFile({
+      name: doc.name,
+      url: fileUrl,
+      storageKey: doc.storageKey,
+      mimeType: doc.mimeType || (/\.pdf$/i.test(doc.name) ? 'application/pdf' : 
+                 /\.(jpg|jpeg|png|gif|webp)$/i.test(doc.name) ? 'image/jpeg' : null)
+    });
   };
 
   const handleDeleteDocument = async (docId) => {
@@ -484,6 +498,77 @@ export default function DocumentPanel({ projectId, projectStatus }) {
           )}
         </div>
       </Modal>
+
+      {previewFile && (
+        <Modal
+          isOpen={!!previewFile}
+          onClose={() => setPreviewFile(null)}
+          title={`Preview: ${previewFile.name}`}
+          size="lg"
+        >
+          <div className="flex flex-col items-center justify-center p-2 bg-gray-50 rounded-lg min-h-[400px]">
+            {previewFile.url === '#' || previewFile.storageKey === '#' ? (
+              <div className="text-center p-8 space-y-4 max-w-md bg-white rounded-xl shadow-sm border border-gray-100">
+                <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto text-3xl">
+                  ℹ️ 
+                </div>
+                <h4 className="text-base font-semibold text-gray-800">Mock Document Preview</h4>
+                <p className="text-sm text-gray-500">
+                  This is a pre-loaded placeholder file ("{previewFile.name}"). For files you upload during this session, a full interactive preview will be displayed automatically.
+                </p>
+                <div className="pt-2">
+                  <Button variant="outline" size="sm" onClick={() => setPreviewFile(null)}>
+                    Close Preview
+                  </Button>
+                </div>
+              </div>
+            ) : (previewFile.mimeType?.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(previewFile.name)) && !imageError ? (
+              <div className="w-full flex justify-center items-center overflow-auto max-h-[70vh]">
+                <img
+                  src={previewFile.url}
+                  alt={previewFile.name}
+                  className="max-w-full max-h-[65vh] object-contain rounded-md shadow-md border"
+                  onError={() => {
+                    setImageError(true);
+                  }}
+                />
+              </div>
+            ) : previewFile.mimeType === 'application/pdf' || /\.(pdf)$/i.test(previewFile.name) ? (
+              <div className="w-full h-[65vh] rounded-md overflow-hidden shadow-md border bg-white">
+                <iframe
+                  src={previewFile.url}
+                  title={previewFile.name}
+                  className="w-full h-full border-0"
+                />
+              </div>
+            ) : (
+              <div className="text-center p-8 space-y-4 max-w-md bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col items-center">
+                <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto text-3xl">
+                  {imageError ? '🖼️' : '📄'}
+                </div>
+                <h4 className="text-base font-semibold text-gray-800" style={{ wordBreak: 'break-all' }}>{previewFile.name}</h4>
+                <p className="text-sm text-gray-500">
+                  {imageError 
+                    ? "This image was uploaded in a previous mock session and its temporary memory is cleared. However, the file record is fully registered." 
+                    : `Preview is not supported for this file type (${previewFile.mimeType || 'Unknown type'}).`}
+                </p>
+                <div className="flex gap-2 justify-center pt-2">
+                  <a
+                    href={previewFile.url}
+                    download={previewFile.name}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium transition-colors"
+                  >
+                    Download File
+                  </a>
+                  <Button variant="outline" size="sm" onClick={() => setPreviewFile(null)}>
+                    Close
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

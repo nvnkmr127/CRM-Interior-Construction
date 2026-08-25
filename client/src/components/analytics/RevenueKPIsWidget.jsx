@@ -51,23 +51,31 @@ export default function RevenueKPIsWidget({ filters }) {
     return <div style={{ padding: '16px', color: 'var(--color-text-secondary)', textAlign: 'center' }}>No revenue KPI data available.</div>;
   }
 
+  const formatVal = (num) => {
+    const val = parseFloat(num) || 0;
+    if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)} Cr`;
+    if (val >= 100000) return `₹${(val / 100000).toFixed(2)} L`;
+    if (val >= 1000) return `₹${(val / 1000).toFixed(1)}k`;
+    return `₹${val}`;
+  };
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '16px', padding: '16px' }}>
       <div style={{ background: 'var(--color-surface-2)', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
         <div style={{ color: 'var(--color-text-secondary)', fontSize: '13px', marginBottom: '8px' }}>Total Revenue</div>
-        <div style={{ fontSize: '24px', fontWeight: 'bold' }}>${(data.total / 1000).toFixed(1)}k</div>
+        <div style={{ fontSize: '20px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{formatVal(data.total)}</div>
       </div>
       <div style={{ background: 'var(--color-surface-2)', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
         <div style={{ color: 'var(--color-text-secondary)', fontSize: '13px', marginBottom: '8px' }}>Pipeline Value</div>
-        <div style={{ fontSize: '24px', fontWeight: 'bold' }}>${(data.pipeline / 1000).toFixed(1)}k</div>
+        <div style={{ fontSize: '20px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{formatVal(data.pipeline)}</div>
       </div>
       <div style={{ background: 'var(--color-surface-2)', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
         <div style={{ color: 'var(--color-text-secondary)', fontSize: '13px', marginBottom: '8px' }}>Forecast</div>
-        <div style={{ fontSize: '24px', fontWeight: 'bold' }}>${(data.forecast / 1000).toFixed(1)}k</div>
+        <div style={{ fontSize: '20px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{formatVal(data.forecast)}</div>
       </div>
       <div style={{ background: 'var(--color-surface-2)', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
         <div style={{ color: 'var(--color-text-secondary)', fontSize: '13px', marginBottom: '8px' }}>Avg Deal Size</div>
-        <div style={{ fontSize: '24px', fontWeight: 'bold' }}>${(data.avgDealSize / 1000).toFixed(1)}k</div>
+        <div style={{ fontSize: '20px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{formatVal(data.avgDealSize)}</div>
       </div>
     </div>
   );

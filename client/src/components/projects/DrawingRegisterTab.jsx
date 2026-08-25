@@ -4,9 +4,8 @@ import { Button, Badge, Modal, Input, EmptyState, Spinner, Select } from '../ui'
 import { useToast } from '../../store/toastContext';
 import { useS3Upload } from '../../hooks/useS3Upload';
 import styles from './DrawingRegisterTab.module.css';
-import {
 import { useConfirm } from '../../store/confirmContext';
-
+import {
   getDrawingRegister,
   createDrawingRegisterEntry,
   updateDrawingRegisterEntry,

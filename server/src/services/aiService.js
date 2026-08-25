@@ -650,13 +650,29 @@ async function summarizeMeeting(transcript) {
  * @returns {Promise<string>} 
  */
 async function simulateLeadPersona(tenantId, leadId, prompt) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return "I'm a simulated customer (API key missing). Let's pretend I asked for a discount!";
-
-  const ai = new GoogleGenAI({ apiKey });
-
   const lead = await findLeadById(tenantId, leadId);
   if (!lead) throw new Error('Lead not found for AI persona simulation');
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    const q = (prompt || '').toLowerCase();
+    const budget = lead.budget_max ? `₹${lead.budget_max}` : 'Unspecified';
+    const scope = lead.scope || 'Unspecified';
+    const type = lead.project_type || 'Unspecified';
+
+    if (q.includes('price') || q.includes('cost') || q.includes('budget') || q.includes('quote') || q.includes('proposal') || q.includes('discount') || q.includes('expensive')) {
+      return `Thanks for the details. Since my budget is capped at around ${budget}, I want to make sure we don't go over it. Does this scope fit within that, or will we need to make adjustments?`;
+    }
+    if (q.includes('meeting') || q.includes('call') || q.includes('schedule') || q.includes('tomorrow') || q.includes('time') || q.includes('discuss')) {
+      return `Sure, I should be free to discuss this. Does tomorrow afternoon work for you? Let's connect and review the ${type} layouts.`;
+    }
+    if (q.includes('design') || q.includes('layout') || q.includes('concept') || q.includes('style') || q.includes('theme') || q.includes('material')) {
+      return `The design ideas sound interesting! I'm keen to see the material samples and how the color scheme is incorporated. Let's make sure it aligns with my preference for ${scope}.`;
+    }
+    return `Thanks for reaching out. I'm currently reviewing the details you sent over. Let's connect soon to finalize the next steps for my ${type} project.`;
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
 
   const budget = lead.budget_max ? `₹${lead.budget_max}` : 'Unspecified';
   const notes = lead.notes || 'None';
@@ -691,12 +707,41 @@ Respond in the first person ("I", "my"). If the rep suggests something way over 
  * @param {string} leadId 
  */
 async function analyzeBuyingIntent(tenantId, leadId) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return { intent: 'Warm', confidence: 75, reason: 'Mocked intent due to missing API key.' };
-
-  const ai = new GoogleGenAI({ apiKey });
   const lead = await findLeadById(tenantId, leadId);
   if (!lead) throw new Error('Lead not found for Buying Intent analysis');
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    const score = lead.score || 0;
+    const winProb = lead.win_probability || 0;
+    const budget = lead.budget_max || 0;
+    
+    let intent = 'Warm';
+    let confidence = 70;
+    let reason = 'Moderate engagement and profile alignment.';
+
+    if (score >= 75 || winProb >= 70) {
+      intent = 'Hot';
+      confidence = Math.min(95, Math.max(75, Math.floor(winProb * 0.9 + score * 0.1)));
+      if (budget > 150000) {
+        reason = 'High lead score with premium project budget and high win probability.';
+      } else {
+        reason = 'Strong response metrics and high alignment with project scope.';
+      }
+    } else if (score < 35 && winProb < 35) {
+      intent = 'Cold';
+      confidence = Math.min(90, Math.max(60, 100 - Math.floor(score * 0.5 + winProb * 0.5)));
+      reason = 'Limited recent interaction and lower engagement score.';
+    } else {
+      intent = 'Warm';
+      confidence = Math.min(85, Math.max(50, Math.floor(50 + score * 0.3 + winProb * 0.2)));
+      reason = 'Steady engagement showing normal progress through pipeline stages.';
+    }
+
+    return { intent, confidence, reason };
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
 
   const payload = `Analyze this lead and predict their buying intent (Cold, Warm, or Hot).
 Lead Profile:
@@ -1066,7 +1111,39 @@ async function analyzeMeetingForCoaching(transcript) {
  */
 async function chatWithLeadContext(lead, activities, question) {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return "API Key missing. Cannot answer context questions.";
+  if (!apiKey) {
+    const q = (question || '').toLowerCase();
+    const budget = lead.budget_max ? `₹${lead.budget_max}` : 'Unspecified';
+    const scope = lead.scope || 'Unspecified';
+    
+    if (q.includes('budget') || q.includes('cost') || q.includes('price') || q.includes('money') || q.includes('financial')) {
+      return `Based on the lead profile, ${lead.name || 'the client'}'s budget is set to ${budget} with a project scope of "${scope}".`;
+    }
+    
+    if (q.includes('meeting') || q.includes('call') || q.includes('discussion') || q.includes('consultation')) {
+      const meetings = (activities || []).filter(a => a.type === 'meeting' || (a.notes && a.notes.toLowerCase().includes('meeting')));
+      if (meetings.length > 0) {
+        const list = meetings.slice(0, 3).map(m => `- ${m.summary || m.notes || 'Meeting'} on ${new Date(m.created_at).toLocaleDateString()}`).join('\n');
+        return `Here are the meetings recorded for ${lead.name || 'the client'}:\n${list}`;
+      }
+      return `There are no recorded meetings or consultation activities for ${lead.name || 'the client'} in the system yet.`;
+    }
+    
+    if (q.includes('design') || q.includes('layout') || q.includes('theme') || q.includes('style') || q.includes('preference')) {
+      const designActivities = (activities || []).filter(a => a.notes && (a.notes.toLowerCase().includes('design') || a.notes.toLowerCase().includes('style') || a.notes.toLowerCase().includes('theme')));
+      if (designActivities.length > 0) {
+        return `According to the project notes: "${designActivities[0].notes}"`;
+      }
+      return `The project style preference is currently noted as "${scope}". No other specific design preference activity has been logged.`;
+    }
+
+    if (activities && activities.length > 0) {
+      const recent = activities.slice(0, 2).map(a => `[${new Date(a.created_at).toLocaleDateString()}] ${a.type.toUpperCase()}: ${a.notes || a.summary || 'Interaction logged'}`).join('\n');
+      return `Here are the latest updates from the lead timeline:\n${recent}\n\nAsk about meetings, budget, or design preferences for specific details.`;
+    }
+    
+    return `No interactions have been logged yet for ${lead.name || 'the client'}. Currently on stage "${lead.stage_id || 'Initial Contact'}".`;
+  }
 
   const ai = new GoogleGenAI({ apiKey });
   

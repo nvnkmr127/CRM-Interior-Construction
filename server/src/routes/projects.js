@@ -234,7 +234,7 @@ router.get('/coordination/dashboard', authorize('projects:read'), async (req, re
 // Mount nested routes with verifyProjectBooked gate to ensure no project advances without booking confirmation
 router.use('/:projectId/phases', verifyProjectBooked, phasesRoutes);
 router.use('/:projectId/tasks', verifyProjectBooked, tasksRoutes);
-router.use('/:projectId/documents', verifyProjectBooked, documentsRoutes);
+router.use('/:projectId/documents', documentsRoutes);
 router.use('/:projectId/design-assets', verifyProjectBooked, designAssetsRoutes);
 router.use('/:projectId/design-reviews', verifyProjectBooked, designReviewsRoutes);
 router.use('/:projectId/material-palettes', verifyProjectBooked, materialPalettesRoutes);

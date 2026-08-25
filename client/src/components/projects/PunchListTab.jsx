@@ -272,6 +272,7 @@ export default function PunchListTab({ projectId, projectStatus }) {
         
         {punchLists.length === 0 ? (
           <div className={styles.emptySidebar}>
+            <div style={{ fontSize: '24px', marginBottom: '8px' }}>📋</div>
             No walkthroughs recorded yet. Start by creating a pre-handover walkthrough event.
           </div>
         ) : (
@@ -287,13 +288,15 @@ export default function PunchListTab({ projectId, projectStatus }) {
               >
                 <div className={styles.itemTitle}>{l.title}</div>
                 <div className={styles.itemMeta}>
-                  <span>📅 {l.walkthrough_date ? new Date(l.walkthrough_date).toLocaleDateString() : 'No date'}</span>
-                  <span>⚙ {l.status?.toUpperCase().replace('_', ' ')}</span>
+                  <span>📅 {l.walkthrough_date ? new Date(l.walkthrough_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'No date'}</span>
+                  <span style={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', color: l.status === 'fully_verified' ? 'var(--color-success)' : 'var(--color-primary)' }}>
+                    ● {l.status?.replace('_', ' ')}
+                  </span>
                 </div>
                 <div className={styles.itemCounts}>
                   <span>Total: {l.total_items}</span>
-                  <span>Resolved: {l.resolved_items}</span>
-                  <span>Verified: {l.verified_items}</span>
+                  <span style={{ color: 'var(--color-info)' }}>Resolved: {l.resolved_items}</span>
+                  <span style={{ color: 'var(--color-success)' }}>Verified: {l.verified_items}</span>
                 </div>
                 {projectStatus !== 'completed' && (
                   <button 
@@ -316,9 +319,15 @@ export default function PunchListTab({ projectId, projectStatus }) {
       {/* Main detail workspace */}
       <div className={styles.workspace}>
         {loading ? (
-          <div className={styles.loader}>Loading walkthrough details...</div>
+          <div className={styles.loader}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+              <div className="animate-spin" style={{ fontSize: '24px' }}>⚙️</div>
+              <span>Loading walkthrough details...</span>
+            </div>
+          </div>
         ) : !selectedList ? (
           <div className={styles.emptyState}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📋</div>
             <h2>Pre-Handover Punch Lists</h2>
             <p>Select a walkthrough event from the sidebar or record a new pre-handover walkthrough to track defects and item sign-offs.</p>
             {projectStatus !== 'completed' && (
@@ -331,9 +340,9 @@ export default function PunchListTab({ projectId, projectStatus }) {
               <div>
                 <h2>{selectedList.title}</h2>
                 <div className={styles.detailMeta}>
-                  <span><strong>Date:</strong> {selectedList.walkthrough_date ? new Date(selectedList.walkthrough_date).toLocaleDateString() : 'N/A'}</span>
-                  <span><strong>Recorded By:</strong> {selectedList.creator_name || '—'}</span>
-                  <span><strong>Status:</strong> {getStatusBadge(selectedList.status)}</span>
+                  <span>📅 <strong>Date:</strong> {selectedList.walkthrough_date ? new Date(selectedList.walkthrough_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : 'N/A'}</span>
+                  <span>👤 <strong>Recorded By:</strong> {selectedList.creator_name || '—'}</span>
+                  <span>🔍 <strong>Status:</strong> {getStatusBadge(selectedList.status)}</span>
                 </div>
               </div>
               {projectStatus !== 'completed' && (
@@ -345,6 +354,7 @@ export default function PunchListTab({ projectId, projectStatus }) {
 
             {(!selectedList.items || selectedList.items.length === 0) ? (
               <div className={styles.emptyItems}>
+                <div style={{ fontSize: '32px', marginBottom: '8px' }}>✨</div>
                 <p>No punch list items added to this walkthrough yet.</p>
                 {projectStatus !== 'completed' && (
                   <Button size="sm" onClick={async () => setShowItemModal(true)}>Add Walkthrough Item</Button>
@@ -395,7 +405,7 @@ export default function PunchListTab({ projectId, projectStatus }) {
                             </Button>
                           )}
                           {projectStatus === 'completed' && item.status === 'open' && (
-                            <span style={{fontSize:11, color:'var(--color-text-muted)'}}>Locked</span>
+                            <span style={{fontSize:11, color:'var(--color-text-muted)', fontWeight: 500}}>Locked</span>
                           )}
                           
                           {item.status === 'resolved' && (
@@ -414,7 +424,7 @@ export default function PunchListTab({ projectId, projectStatus }) {
                             <div className={styles.verifiedBlock}>
                               <div>✔ Client Verified</div>
                               <div className={styles.verifiedMeta}>
-                                at {new Date(item.client_verified_at || item.updated_at).toLocaleDateString()}
+                                at {new Date(item.client_verified_at || item.updated_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                               </div>
                             </div>
                           )}
