@@ -1,17 +1,20 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
-const pool = require('../src/config/db');
+const pool = require('../src/db/pool');
 
-async function run() {
+async function check() {
   try {
-    const tenants = await pool.query('SELECT id, name, slug FROM tenants');
-    console.log('Tenants:', tenants.rows);
-    const users = await pool.query('SELECT id, name, email, tenant_id FROM users');
-    console.log('Users:', users.rows);
+    const { rows: users } = await pool.query(`
+      SELECT u.id, u.name, u.email, u.password_hash, u.status, r.name as role_name 
+      FROM users u 
+      LEFT JOIN roles r ON u.role_id = r.id
+    `);
+    console.log('--- USERS IN DATABASE ---');
+    console.log(users);
   } catch (err) {
-    console.error('Failed to query:', err.message);
+    console.error(err);
   } finally {
     await pool.end();
+    await pool.readPool.end();
   }
 }
 
-run();
+check();
