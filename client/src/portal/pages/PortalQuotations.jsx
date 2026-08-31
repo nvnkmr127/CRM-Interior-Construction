@@ -153,7 +153,7 @@ export default function PortalQuotations() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
         <Spinner size="lg" />
-        <p style={{ color: 'var(--color-text-secondary)' }}>Loading your BOQ configurations...</p>
+        <p style={{ color: 'var(--color-text-secondary)' }}>Loading your quotation configurations...</p>
       </div>
     );
   }
@@ -161,7 +161,7 @@ export default function PortalQuotations() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <h1 className={styles.title} id="portal-boq-title">BOQ Revisions & History</h1>
+        <h1 className={styles.title} id="portal-boq-title">Quotations & Budget Revisions</h1>
         <p className={styles.subtitle}>
           Compare project quotation versions, view itemized additions/reductions, and sign off on revisions.
         </p>
@@ -417,7 +417,7 @@ export default function PortalQuotations() {
                 {activeQuotation.status === 'sent' && (
                   <div className={styles.actionBanner}>
                     <div className={styles.actionText}>
-                      <strong>Review Required:</strong> This quotation revision has been submitted for your approval. Please review the itemized BOQ list below or compare it to older versions before signing.
+                      <strong>Review Required:</strong> This quotation revision has been submitted for your approval. Please review the itemized quotation list below or compare it to older versions before signing.
                     </div>
                     <div className={styles.actionButtons}>
                       <button 
@@ -450,7 +450,7 @@ export default function PortalQuotations() {
                 {/* Items List */}
                 <div className={styles.sectionBlock}>
                   <h4 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>Itemized BOQ List ({activeItems.length} items)</span>
+                    <span>Itemized Quotation List ({activeItems.length} items)</span>
                     <strong style={{ fontSize: '15px' }}>Total: {formatCurrency(parseFloat(activeQuotation.total_amount || 0))}</strong>
                   </h4>
                   {itemsLoading ? (
@@ -539,7 +539,7 @@ export default function PortalQuotations() {
         <div className={styles.modalForm}>
           {actionType === 'accept' ? (
             <div className={styles.signatureWarning}>
-              By typing your name below and submitting, you confirm digital sign-off and approval of this revised BOQ contract configuration (Version {activeQuotation?.version}) totaling <strong>{activeQuotation ? formatCurrency(parseFloat(activeQuotation.total_amount)) : ''}</strong>.
+              By typing your name below and submitting, you confirm digital sign-off and approval of this revised quotation contract configuration (Version {activeQuotation?.version}) totaling <strong>{activeQuotation ? formatCurrency(parseFloat(activeQuotation.total_amount)) : ''}</strong>.
             </div>
           ) : (
             <div className={styles.signatureWarning} style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b' }}>

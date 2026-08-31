@@ -20,8 +20,8 @@ const STATUS_LABELS = {
 };
 
 export default function BOQVarianceReportPage() {
-  usePageTitle('BOQ Variance Report');
-  useBreadcrumbs([{ label: 'Analytics' }, { label: 'BOQ Variance' }]);
+  usePageTitle('Budget Variance Report');
+  useBreadcrumbs([{ label: 'Analytics' }, { label: 'Budget Variance' }]);
 
   const navigate = useNavigate();
   const [data, setData] = useState([]);
@@ -41,7 +41,7 @@ export default function BOQVarianceReportPage() {
         setData(res.data.data || []);
       }
     } catch (error) {
-      console.error('Failed to load portfolio BOQ variance report:', error);
+      console.error('Failed to load portfolio budget variance report:', error);
     } finally {
       setLoading(false);
     }
@@ -88,7 +88,7 @@ export default function BOQVarianceReportPage() {
 
       <div className={styles.headerRow}>
         <div>
-          <h1 className={styles.title}>BOQ Variance Portfolio Report</h1>
+          <h1 className={styles.title}>Budget Variance Portfolio Report</h1>
           <div className={styles.desc}>
             Track contract value deviations, scope additions, and material substitutions across your project portfolio.
           </div>
@@ -101,7 +101,7 @@ export default function BOQVarianceReportPage() {
       {/* KPI Cards */}
       <div className={styles.kpiStrip}>
         <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Original BOQ Total</span>
+          <span className={styles.kpiLabel}>Original Budget Total</span>
           <span className={styles.kpiValue}>{formatCurrency(totalOriginal)}</span>
           <span className={styles.kpiSub}>Approved base quotations</span>
         </div>
@@ -170,7 +170,7 @@ export default function BOQVarianceReportPage() {
       {loading ? (
         <div className={styles.loaderWrap}>
           <Spinner />
-          <p>Loading BOQ variance data...</p>
+          <p>Loading budget variance data...</p>
         </div>
       ) : filteredData.length === 0 ? (
         <EmptyState 
@@ -220,7 +220,7 @@ export default function BOQVarianceReportPage() {
                     <td className={styles.td}>
                       <button 
                         className={styles.viewDetailBtn}
-                        onClick={() => navigate(`/projects/${row.projectId}?tab=BOQ+Variance`)}
+                        onClick={() => navigate(`/projects/${row.projectId}?tab=Budget+Variance`)}
                       >
                         Detail →
                       </button>

@@ -4,12 +4,30 @@ import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import GlobalSearch from './GlobalSearch'
 import Breadcrumbs from './Breadcrumbs'
+import { useAuth } from '../../store/authContext'
 import styles from './Shell.module.css'
 
 export default function Shell() {
+  const { user } = useAuth()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+
+  useEffect(() => {
+    if (user?.tenant?.accentColour) {
+      document.documentElement.style.setProperty('--color-accent', user.tenant.accentColour);
+      document.documentElement.style.setProperty('--color-border-focus', user.tenant.accentColour);
+      document.documentElement.style.setProperty('--color-nav-active-bar', user.tenant.accentColour);
+      
+      const hex = user.tenant.accentColour.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+        document.documentElement.style.setProperty('--color-nav-active-bg', `rgba(${r}, ${g}, ${b}, 0.15)`);
+      }
+    }
+  }, [user?.tenant?.accentColour])
 
   useEffect(() => {
     const handler = (e) => { 

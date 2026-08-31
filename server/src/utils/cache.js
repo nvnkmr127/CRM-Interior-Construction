@@ -21,31 +21,77 @@ const connectRedis = async () => {
   }
 };
 
+// Simple high-performance in-memory cache fallback
+const memoryCache = new Map();
+
 const getCache = async (key) => {
-  if (!useRedis) return null;
-  await connectRedis();
-  const data = await client.get(key);
-  return data ? JSON.parse(data) : null;
+  if (useRedis) {
+    try {
+      await connectRedis();
+      const data = await client.get(key);
+      return data ? JSON.parse(data) : null;
+    } catch (e) {
+      logger.error('Redis getCache error, failing back to memory cache:', e);
+    }
+  }
+  
+  const cached = memoryCache.get(key);
+  if (cached) {
+    if (cached.expiresAt > Date.now()) {
+      return cached.value;
+    }
+    memoryCache.delete(key);
+  }
+  return null;
 };
 
 const setCache = async (key, value, expiresInSeconds = 3600) => {
-  if (!useRedis) return;
-  await connectRedis();
-  await client.setEx(key, expiresInSeconds, JSON.stringify(value));
+  if (useRedis) {
+    try {
+      await connectRedis();
+      await client.setEx(key, expiresInSeconds, JSON.stringify(value));
+      return;
+    } catch (e) {
+      logger.error('Redis setCache error, failing back to memory cache:', e);
+    }
+  }
+  
+  memoryCache.set(key, {
+    value,
+    expiresAt: Date.now() + (expiresInSeconds * 1000)
+  });
 };
 
 const clearCache = async (key) => {
-  if (!useRedis) return;
-  await connectRedis();
-  await client.del(key);
+  if (useRedis) {
+    try {
+      await connectRedis();
+      await client.del(key);
+      return;
+    } catch (e) {
+      logger.error('Redis clearCache error, failing back to memory cache:', e);
+    }
+  }
+  memoryCache.delete(key);
 };
 
 const clearCachePrefix = async (prefix) => {
-  if (!useRedis) return;
-  await connectRedis();
-  const keys = await client.keys(`${prefix}*`);
-  if (keys.length > 0) {
-    await client.del(keys);
+  if (useRedis) {
+    try {
+      await connectRedis();
+      const keys = await client.keys(`${prefix}*`);
+      if (keys.length > 0) {
+        await client.del(keys);
+      }
+      return;
+    } catch (e) {
+      logger.error('Redis clearCachePrefix error, failing back to memory cache:', e);
+    }
+  }
+  for (const key of memoryCache.keys()) {
+    if (key.startsWith(prefix)) {
+      memoryCache.delete(key);
+    }
   }
 };
 

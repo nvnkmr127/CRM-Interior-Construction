@@ -33,7 +33,7 @@ export default function BOQVarianceTab({ projectId }) {
     return (
       <div className={styles.loaderWrap}>
         <Spinner />
-        <p>Loading detailed BOQ variance report...</p>
+        <p>Loading detailed budget variance report...</p>
       </div>
     );
   }
@@ -42,7 +42,7 @@ export default function BOQVarianceTab({ projectId }) {
     return (
       <EmptyState 
         title="Failed to load report" 
-        description="There was an error loading the detailed BOQ variance report for this project."
+        description="There was an error loading the detailed budget variance report for this project."
       />
     );
   }
@@ -67,7 +67,7 @@ export default function BOQVarianceTab({ projectId }) {
       {/* Summary Cards Grid */}
       <div className={styles.metricsGrid}>
         <div className={styles.metricCard}>
-          <div className={styles.metricLabel}>Original BOQ Value</div>
+          <div className={styles.metricLabel}>Original Budget Value</div>
           <div className={styles.metricValue}>{formatCurrency(summary.originalSubtotal)}</div>
           <div className={styles.metricSub}>Initial approved contract scope</div>
         </div>
@@ -186,7 +186,7 @@ export default function BOQVarianceTab({ projectId }) {
                       </table>
                     </div>
                   ) : (
-                    <div className={styles.noItemsMsg}>No item-level BOQ additions/reductions recorded for this change order.</div>
+                    <div className={styles.noItemsMsg}>No item-level budget additions/reductions recorded for this change order.</div>
                   )}
                 </div>
               ))

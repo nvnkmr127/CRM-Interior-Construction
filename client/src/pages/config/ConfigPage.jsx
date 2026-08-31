@@ -41,13 +41,13 @@ export default function ConfigPage() {
     '/config/templates': 'Project Templates',
     '/config/automations': 'Automations',
     '/config/conversion-checklist': 'Conversion Checklist',
-    '/config/qc-checklists': 'Trade QC Checklists',
-    '/config/trade-activities': 'Trade Templates',
+    '/config/qc-checklists': 'Quality Checklists',
+    '/config/trade-activities': 'Work Templates',
     '/config/api-keys': 'API Keys',
     '/config/email-templates': 'Email Templates',
     '/config/logs': 'Logs',
     '/config/financial-settings': 'Financial Thresholds',
-    '/config/vendor-lead-times': 'Vendor Lead Times'
+    '/config/vendor-lead-times': 'Vendor Delivery Times'
   };
 
   const currentTitle = pathTitleMap[location.pathname] || 'Configuration';

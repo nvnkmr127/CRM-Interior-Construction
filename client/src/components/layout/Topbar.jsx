@@ -3,16 +3,36 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import styles from './Topbar.module.css'
 import { useState, useEffect } from 'react'
 import NotificationsPanel from './NotificationsPanel'
+import api from '../../api/axios'
+import { useToast } from '../../store/toastContext'
+
+const getInitials = (name) => {
+  if (!name) return 'U'
+  const parts = name.split(' ').filter(Boolean)
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
+}
 
 export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed, onSearchClick }) {
-  const { user, logout } = useAuth()
+  const { user, setUser, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const toast = useToast()
+  
   const isProjectDetail = location.pathname.startsWith('/projects/') && !['/projects/resources', '/projects/coordination', '/projects/handover-dashboard', '/projects/retention-dashboard', '/projects/absences'].includes(location.pathname);
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [switcherOpen, setSwitcherOpen] = useState(false)
+  const [tenants, setTenants] = useState([])
+  const [switching, setSwitching] = useState(false)
   const [isDark, setIsDark] = useState(() => {
     return localStorage.getItem('theme') === 'dark'
   })
+
+  const isAdmin = 
+    user?.role === 'superadmin' || 
+    user?.role?.name?.toLowerCase() === 'superadmin' || 
+    user?.role?.name?.toLowerCase() === 'super admin' || 
+    (user?.role?.permissions && user.role.permissions.includes('*'))
 
   useEffect(() => {
     if (isDark) {
@@ -23,6 +43,48 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed,
       localStorage.setItem('theme', 'light')
     }
   }, [isDark])
+
+  useEffect(() => {
+    if (isAdmin && switcherOpen) {
+      api.get('/superadmin/tenants')
+        .then(res => {
+          setTenants(res.data.data || [])
+        })
+        .catch(err => {
+          console.error('Failed to fetch tenants:', err)
+        })
+    }
+  }, [isAdmin, switcherOpen])
+
+  // Close menus when clicking anywhere
+  useEffect(() => {
+    const handleOutsideClick = () => {
+      setSwitcherOpen(false)
+      setUserMenuOpen(false)
+    }
+    window.addEventListener('click', handleOutsideClick)
+    return () => window.removeEventListener('click', handleOutsideClick)
+  }, [])
+
+  const handleSwitchTenant = async (e, tenantId, tenantName) => {
+    e.stopPropagation()
+    if (switching) return
+    setSwitching(true)
+    try {
+      const res = await api.post('/superadmin/switch-tenant', { tenantId })
+      if (res.data.success) {
+        setUser(res.data.data.user)
+        toast.success(`Switched to workspace: ${tenantName}`)
+        setSwitcherOpen(false)
+        navigate('/')
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error(err.response?.data?.error?.message || 'Failed to switch workspace')
+    } finally {
+      setSwitching(false)
+    }
+  }
 
   return (
     <header className={styles.topbar}>
@@ -80,6 +142,41 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed,
 
       {/* Right: notifications + user */}
       <div className={styles.right}>
+        {isAdmin && (
+          <div className={styles.switcherContainer} onClick={(e) => e.stopPropagation()}>
+            <button 
+              className={styles.jumpBtn} 
+              onClick={() => setSwitcherOpen(!switcherOpen)}
+              data-tooltip="Direct Jump"
+              aria-label="Direct Jump"
+            >
+              <span>🏢</span>
+              <span className={styles.desktopOnly}>Direct Jump</span>
+              <span>▼</span>
+            </button>
+            {switcherOpen && (
+              <div className={styles.switcherMenu}>
+                <div className={styles.switcherHeader}>Active Workspaces</div>
+                {tenants.map(t => (
+                  <button 
+                    key={t.id} 
+                    className={`${styles.switcherItem} ${user?.tenant?.id === t.id ? styles.switcherActiveItem : ''}`}
+                    onClick={(e) => handleSwitchTenant(e, t.id, t.name)}
+                    disabled={switching}
+                  >
+                    <div className={styles.switcherLabel}>
+                      <div className={styles.switcherLogo}>
+                        {t.name ? t.name.charAt(0).toUpperCase() : 'C'}
+                      </div>
+                      <span>{t.name}</span>
+                    </div>
+                    {user?.tenant?.id === t.id && <div className={styles.activeDot} />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <button 
           className={styles.iconBtn} 
           onClick={() => setIsDark(d => !d)} 
@@ -93,19 +190,21 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed,
           )}
         </button>
         <NotificationsPanel />
-        <button className={styles.userBtn} onClick={() => setUserMenuOpen(o => !o)} data-tooltip='User Menu'>
-          <div className={styles.avatar}>{user?.name?.charAt(0) || 'U'}</div>
-          <span className={styles.name}>{user?.name?.split(' ')[0] || 'User'}</span>
-          <span>▾</span>
-        </button>
-        {userMenuOpen && (
-          <div className={styles.userMenu}>
-            <button onClick={() => { navigate('/settings/profile'); setUserMenuOpen(false); }}>My Profile</button>
-            <button onClick={() => { navigate('/settings/security'); setUserMenuOpen(false); }}>My Security</button>
-            <hr />
-            <button onClick={logout} className={styles.logout}>Sign Out</button>
-          </div>
-        )}
+        <div className={styles.userMenuContainer} onClick={(e) => e.stopPropagation()}>
+          <button className={styles.userBtn} onClick={() => setUserMenuOpen(o => !o)} data-tooltip='User Menu'>
+            <div className={styles.avatar}>{getInitials(user?.name)}</div>
+            <span className={styles.name}>{user?.name?.split(' ')[0] || 'User'}</span>
+            <span>▾</span>
+          </button>
+          {userMenuOpen && (
+            <div className={styles.userMenu}>
+              <button onClick={() => { navigate('/settings/profile'); setUserMenuOpen(false); }}>My Profile</button>
+              <button onClick={() => { navigate('/settings/security'); setUserMenuOpen(false); }}>My Security</button>
+              <hr />
+              <button onClick={logout} className={styles.logout}>Sign Out</button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   )

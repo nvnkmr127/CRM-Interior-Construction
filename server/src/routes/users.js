@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const { success, fail } = require('../utils/response');
+const { cacheResponse } = require('../middleware/cache');
 const pool = require('../config/db');
 const crypto = require('crypto');
 const { logAction } = require('../services/auditLog');
@@ -116,7 +117,7 @@ router.get('/ai/onboarding', async (req, res, next) => {
   }
 });
 
-router.get('/', async (req, res, next) => {
+router.get('/', cacheResponse(60), async (req, res, next) => {
 
   const tenantId = req.tenantId;
   const { search, role, status, page, limit, department_id, manager_id, branch_id, joining_month, no_logins, no_projects, no_tasks, inactive_locked } = req.query;

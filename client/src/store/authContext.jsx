@@ -319,7 +319,16 @@ export function AuthProvider({ children }) {
           return { success: true, payload };
         }
         localStorage.setItem('isAuthenticated', 'true');
-        setUser(payload.user);
+        try {
+          const meResponse = await api.get('/auth/me');
+          if (meResponse.data.success) {
+            setUser(meResponse.data.data.user);
+          } else {
+            setUser(payload.user);
+          }
+        } catch (meError) {
+          setUser(payload.user);
+        }
         return { success: true, payload };
       }
       return { success: false, message: 'Unknown login error' };
@@ -384,6 +393,7 @@ export function AuthProvider({ children }) {
 
   const value = useMemo(() => ({
     user,
+    setUser,
     loading,
     isAuthenticated: !!user,
     login,

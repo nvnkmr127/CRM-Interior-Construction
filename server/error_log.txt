@@ -322,4 +322,57 @@
     at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\config\apiKeys.js:26:20\n\n2026-08-25T09:33:08.101Z\nError: INVALID_CREDENTIALS
     at loginUser (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\login.js:84:13)
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:99:25\n\n
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:99:25\n\n2026-08-31T05:29:14.263Z\nError: Validation failed
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:71:21
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at router.handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:186:3)\n\n2026-08-31T05:30:38.969Z\nError: INVALID_CREDENTIALS
+    at loginUser (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\login.js:161:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:99:25\n\n2026-08-31T05:35:28.737Z\nError: INVALID_CREDENTIALS
+    at loginUser (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\login.js:161:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:99:25\n\n2026-08-31T05:36:38.611Z\nError: INVALID_CREDENTIALS
+    at loginUser (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\login.js:161:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:99:25\n\n2026-08-31T10:10:14.117Z\nerror: column lp.carpet_area_sqft does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async findLeadById (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:145:18)
+    at async exports.getLeadByIdHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2725:18)\n\n2026-08-31T10:10:22.091Z\nerror: column lp.carpet_area_sqft does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async findLeadById (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:145:18)
+    at async exports.getLeadByIdHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2725:18)\n\n2026-08-31T10:12:08.278Z\nerror: column lp.carpet_area_sqft does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async findLeadById (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:145:18)
+    at async exports.getLeadByIdHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2725:18)\n\n2026-08-31T10:12:15.279Z\nerror: column lp.carpet_area_sqft does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async findLeadById (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:145:18)
+    at async exports.getLeadByIdHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2725:18)\n\n2026-08-31T10:15:09.263Z\nerror: column lp.carpet_area_sqft does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async findLeadById (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:145:18)
+    at async exports.getLeadByIdHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2725:18)\n\n2026-08-31T10:19:12.015Z\nerror: column ae.created_at does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async getLeadTimeline (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:805:23)
+    at async exports.getTimelineHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:1318:20)\n\n2026-08-31T10:23:52.393Z\nerror: column "carpet_area_sqft" of relation "lead_properties" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Object.updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:458:10)
+    at async updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\leads\updateLead.js:16:23)
+    at async exports.updateLeadHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2767:25)\n\n2026-08-31T10:24:09.946Z\nerror: column "carpet_area_sqft" of relation "lead_properties" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Object.updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:458:10)
+    at async updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\leads\updateLead.js:16:23)
+    at async exports.updateLeadHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2767:25)\n\n

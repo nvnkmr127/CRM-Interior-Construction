@@ -126,15 +126,15 @@ export default function CommercialApprovalTab({ projectId, projectStatus, onProj
       )}
 
       <div className={styles.grid}>
-        {/* Card 1: BOQ Acceptance */}
+        {/* Card 1: Quotation Acceptance */}
         <div className={styles.card}>
           <div className={styles.cardHeader}>
-            <h3 className={styles.cardTitle}>1. Client BOQ Acceptance</h3>
+            <h3 className={styles.cardTitle}>1. Client Quotation Acceptance</h3>
             <span style={{ fontSize: 20 }}>{boq_accepted ? '🟢' : '🔴'}</span>
           </div>
           <div className={styles.cardBody}>
             <p className={styles.cardDesc}>
-              Enforces that the final Bill of Quantities (BOQ) is formally presented to and accepted by the client.
+              Enforces that the final project quotation and budget (Estimate) is formally presented to and accepted by the client.
             </p>
             <div style={{ marginTop: 'auto', paddingTop: 16 }}>
               {boq_accepted ? (

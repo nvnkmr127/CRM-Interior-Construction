@@ -203,6 +203,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
   // Team users list state
   const [users, setUsers] = useState([]);
+  const [customFieldsConfig, setCustomFieldsConfig] = useState([]);
 
   useEffect(() => {
     if (isOpen && leadId) {
@@ -213,8 +214,77 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
       api.get('/users?limit=50')
         .then(res => { if (res.data.success) setUsers(res.data.data); })
         .catch(err => console.error('Failed to load users list:', err));
+      api.get('/config/custom-fields?entity=lead')
+        .then(res => {
+          const list = res.data?.data || res.data || [];
+          setCustomFieldsConfig(list.filter(f => f.is_active));
+        })
+        .catch(err => console.error('Failed to load custom fields config:', err));
     }
   }, [isOpen, leadId]);
+
+  const renderTabCustomFields = (tabName) => {
+    // Map tabName to match potential dropdown values (e.g. 'activity' vs 'activities')
+    const normalizedTab = tabName === 'activity' ? 'activities' : tabName;
+    const tabFields = customFieldsConfig.filter(f => 
+      normalizedTab === 'overview' 
+        ? (!f.display_tab || f.display_tab === 'overview') 
+        : f.display_tab === normalizedTab
+    );
+    if (tabFields.length === 0) return null;
+    return (
+      <div className="relative overflow-hidden p-6 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 border border-[var(--color-border)] bg-[var(--color-surface)] group mb-6">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+        <div className="relative z-10 flex justify-between items-center mb-5">
+          <h4 className="text-sm font-bold text-[var(--color-text-secondary)] uppercase tracking-wider flex items-center gap-2">
+            <svg className="w-5 h-5 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m5.231 13.481L15 17.25m-4.5-1.5l1.5 1.5-1.5 1.5m-3-1.5h.008v.008H7.5v-.008zm0-6h.008v.008H7.5v-.008zm0 3h.008v.008H7.5v-.008z" />
+            </svg>
+            Custom Fields
+          </h4>
+          <button onClick={async () => setIsLeadFormOpen('custom_fields')} className="text-sm text-violet-600 hover:text-violet-800 font-semibold flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+            Edit
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-x-6 gap-y-5 relative z-10">
+          {tabFields.map(field => {
+            let rawVal = lead.custom_fields?.[field.name];
+            if (typeof lead.custom_fields === 'string') {
+              try {
+                const parsed = JSON.parse(lead.custom_fields);
+                rawVal = parsed?.[field.name];
+              } catch {
+                rawVal = undefined;
+              }
+            }
+            let displayVal = <span className="text-gray-400 font-normal italic">Not set</span>;
+            
+            if (rawVal !== undefined && rawVal !== null && rawVal !== '') {
+              if (field.field_type === 'boolean') {
+                displayVal = rawVal ? 'Yes' : 'No';
+              } else if (field.field_type === 'date') {
+                displayVal = new Date(rawVal).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+              } else if (field.field_type === 'number') {
+                displayVal = Number(rawVal).toLocaleString();
+              } else {
+                displayVal = String(rawVal);
+              }
+            }
+            
+            return (
+              <div key={field.id}>
+                <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-secondary)] mb-1 uppercase tracking-wide">
+                  {field.label}
+                </label>
+                <span className="text-sm font-semibold text-[var(--color-text)] block mt-1">{displayVal}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   // Scroll active tab into view when activeTab changes
   useEffect(() => {
@@ -1114,6 +1184,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
           {/* TAB CONTENT */}
           <div className="p-6">
+            {activeTab !== 'overview' && renderTabCustomFields(activeTab)}
             {activeTab === 'overview' && (
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                 {/* COLUMN 1: Data Entry & Details */}
@@ -1376,6 +1447,10 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                       </div>
                     </div>
                   </div>
+
+                  {/* Custom Fields Card */}
+                  {renderTabCustomFields('overview')}
+
                   {/* Notes Card */}
                   <div className="relative overflow-hidden p-6 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 border border-[var(--color-border)] bg-[var(--color-surface)] group mt-6">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>

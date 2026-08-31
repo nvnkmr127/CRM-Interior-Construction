@@ -5,18 +5,18 @@ import styles from './PortalDocuments.module.css'
 
 import { useConfirm } from '../../store/confirmContext';
 
-const FILTERS = ['All', 'Drawings', 'BOQ', 'Renders', 'Contracts', 'Photos', 'Daily Site Reports']
+const FILTERS = ['All', 'Drawings', 'Budgets', 'Renders', 'Contracts', 'Photos', 'Daily Site Reports']
 
 const mapCategory = (type) => {
   if (type === 'drawing') return 'Drawings';
-  if (type === 'boq') return 'BOQ';
+  if (type === 'boq') return 'Budgets';
   if (type === 'render') return 'Renders';
   if (type === 'contract') return 'Contracts';
   if (type === 'photo') return 'Photos';
   if (type === 'daily_site_report') return 'Daily Site Reports';
   
   if (type === 'Drawing') return 'Drawings';
-  if (type === 'BOQ') return 'BOQ';
+  if (type === 'BOQ') return 'Budgets';
   if (type === 'Render') return 'Renders';
   if (type === 'Contract') return 'Contracts';
   if (type === 'Photo') return 'Photos';

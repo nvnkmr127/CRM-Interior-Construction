@@ -25,6 +25,12 @@
   font-size: var(--text-md); font-weight: 800; color: white;
   flex-shrink: 0;
 }
+.logoImage {
+  width: 32px; height: 32px; border-radius: var(--radius-md);
+  object-fit: contain;
+  background: white;
+  flex-shrink: 0;
+}
 .logoText { font-size: var(--text-md); font-weight: 700; color: white; white-space: nowrap; }
 .nav { 
   flex: 1; 

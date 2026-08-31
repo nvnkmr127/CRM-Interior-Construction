@@ -11,8 +11,11 @@ function authorize(requiredPermission) {
       return res.status(401).json({ success: false, error: 'UNAUTHORIZED', message: 'authorize: req.user is undefined' });
     }
 
+    // Normalize user role to handle variations like 'superadmin' or 'super admin'
+    const userRole = typeof req.user.role === 'string' ? req.user.role.toLowerCase().replace(/\s+/g, '') : '';
+
     // 2. If user is a superadmin, bypass permission checks
-    if (req.user.role === 'superadmin') {
+    if (userRole === 'superadmin') {
       return next();
     }
 
@@ -20,7 +23,11 @@ function authorize(requiredPermission) {
     const permissions = req.user.permissions || [];
 
     // 3. If the required permission is present, or wildcard '*' is present, proceed
-    if (permissions.includes(requiredPermission) || permissions.includes('*')) {
+    const hasRequired = Array.isArray(requiredPermission)
+      ? requiredPermission.some(p => permissions.includes(p))
+      : permissions.includes(requiredPermission);
+
+    if (hasRequired || permissions.includes('*')) {
       return next();
     }
 

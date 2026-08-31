@@ -3,6 +3,7 @@ const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const validate = require('../middleware/validate');
 const dataScope = require('../middleware/dataScope');
+const { cacheResponse } = require('../middleware/cache');
 const { createLeadSchema, logActivitySchema } = require('../../../shared/validators/leadSchemas');
 const leadController = require('../controllers/leadController');
 const aiRateLimiter = require('../middleware/aiRateLimiter');
@@ -11,7 +12,7 @@ const router = express.Router();
 
 router.post('/', authenticate, authorize('leads:create'), validate(createLeadSchema), leadController.createLeadHandler);
 router.get('/', authenticate, authorize('leads:read'), dataScope('leads', 'assignee_id', 'l'), leadController.getLeadsHandler);
-router.get('/stats', authenticate, authorize('leads:read'), dataScope('leads', 'assignee_id', 'l'), leadController.getLeadStatsHandler);
+router.get('/stats', authenticate, authorize('leads:read'), dataScope('leads', 'assignee_id', 'l'), cacheResponse(60), leadController.getLeadStatsHandler);
 router.post('/public', validate(createLeadSchema), leadController.createPublicLeadHandler);
 router.get('/check-duplicate', leadController.checkDuplicateHandler);
 

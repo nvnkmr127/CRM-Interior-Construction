@@ -5251,10 +5251,17 @@ export const setupMockInterceptor = (api) => {
               }
             }
           }
+          // LOGO UPLOADS
+          else if (url.includes('/upload-logo')) {
+            responseData.data = { logoUrl: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=128&h=128&fit=crop' };
+          }
           // TENANT SETTINGS
           else if (url.includes('/config/tenant-settings')) {
             if (method === 'get') {
               responseData.data = mockDatabase.tenantSettings || {
+                companyName: 'Demo Company',
+                logo_url: '',
+                accent_colour: '#4f46e5',
                 pre_conversion_checklist: [
                   { key: 'site_address_confirmed', label: 'Site address confirmed', required: false, active: true },
                   { key: 'site_visit_completed', label: 'Site visit completed', required: true, active: true },
@@ -5267,6 +5274,9 @@ export const setupMockInterceptor = (api) => {
             } else if (method === 'patch') {
               const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
               const currentSettings = mockDatabase.tenantSettings || {
+                companyName: 'Demo Company',
+                logo_url: '',
+                accent_colour: '#4f46e5',
                 pre_conversion_checklist: [
                   { key: 'site_address_confirmed', label: 'Site address confirmed', required: false, active: true },
                   { key: 'site_visit_completed', label: 'Site visit completed', required: true, active: true },

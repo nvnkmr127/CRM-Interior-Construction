@@ -136,7 +136,7 @@ export default function PortalMaterialApprovals() {
           <div className={styles.emptyState}>
             <div className={styles.emptyIcon}>💎</div>
             <div className={styles.emptyTitle}>No material changes logged.</div>
-            <div className={styles.emptyDesc}>All specifications are active under the default BOQ.</div>
+            <div className={styles.emptyDesc}>All specifications are active under the default Budget.</div>
           </div>
         ) : (
           substitutions.map(sub => (
@@ -317,7 +317,7 @@ export default function PortalMaterialApprovals() {
           {responseStatus === 'approved' ? (
             <>
               <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', margin: 0 }}>
-                By signing below, you approve the proposed brand/specification upgrade or downgrade and any associated unit cost difference. This will update your active project BOQ.
+                By signing below, you approve the proposed brand/specification upgrade or downgrade and any associated unit cost difference. This will update your active project budget & estimate.
               </p>
               <Input
                 label="Your Full Name (Type to sign)"

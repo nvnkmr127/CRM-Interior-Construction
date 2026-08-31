@@ -887,7 +887,7 @@ export default function ProjectDetail() {
     'Design Brief', 'Design Assets', 'Material Palettes', 'Substitutions', 'Design Reviews', 'Coordination', 
     
     // Financials
-    'Financial Overview', 'Budget', 'Quotations & BOQ', 'BOQ Variance', 'Commercial Approval', 'Payments', 'Change Orders', 'Purchase Requests', 'Purchase Orders', 'Vendors', 'Vendor Payments',
+    'Financial Overview', 'Budget', 'Quotations & Budget', 'Budget Variance', 'Commercial Approval', 'Payments', 'Change Orders', 'Purchase Requests', 'Purchase Orders', 'Vendors', 'Vendor Payments',
     
     // Execution & Monitoring
     'Phases', 'Gantt Chart', 'Work Activities', 'Room Progress', 'Tasks', 'Factory Production', 'Material Deliveries', 'Daily Site Reports', 'Weekly Reports', 'Site Visits', 'Meeting Notes', 'Delay Notifications', 'MEP Checklist',
@@ -957,10 +957,10 @@ export default function ProjectDetail() {
       case 'Design Assets': return <DesignAssetsTab projectId={projectId} />;
       case 'Design Reviews': return <DesignReviewsTab projectId={projectId} />;
       case 'Material Palettes': return <MaterialPalettesTab projectId={projectId} />;
-      case 'Quotations & BOQ': return <ProjectQuotationsTab projectId={projectId} />;
+      case 'Quotations & Budget': return <ProjectQuotationsTab projectId={projectId} />;
       case 'Commercial Approval': return <CommercialApprovalTab projectId={projectId} projectStatus={project?.status} onProjectUpdated={reloadProject} />;
       case 'Change Orders': return <ChangeOrdersTab projectId={projectId} />;
-      case 'BOQ Variance': return <BOQVarianceTab projectId={projectId} />;
+      case 'Budget Variance': return <BOQVarianceTab projectId={projectId} />;
       case 'Budget': return <BudgetTab projectId={projectId} />;
       case 'Purchase Requests': return <PurchaseRequestsTab projectId={projectId} />;
       case 'Purchase Orders': return <PurchaseOrdersTab projectId={projectId} />;

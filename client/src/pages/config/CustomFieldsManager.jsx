@@ -61,6 +61,7 @@ function SortableRow({ field, onEdit, onDelete, onToggleActive }) {
       <td className={styles.td}>{field.name}</td>
       <td className={styles.td}>{field.field_type}</td>
       <td className={styles.td}>{field.is_required ? 'Yes' : 'No'}</td>
+      <td className={styles.td} style={{ textTransform: 'capitalize' }}>{field.display_tab || 'Overview'}</td>
       <td className={styles.td}>
         <input 
           type="checkbox" 
@@ -91,7 +92,7 @@ export default function CustomFieldsManager() {
   
   // Form State
   const [formData, setFormData] = useState({
-    label: '', name: '', field_type: 'text', is_required: false, optionsStr: ''
+    label: '', name: '', field_type: 'text', is_required: false, optionsStr: '', display_tab: 'overview'
   });
 
   const sensors = useSensors(
@@ -155,11 +156,14 @@ export default function CustomFieldsManager() {
         name: field.name,
         field_type: field.field_type,
         is_required: field.is_required,
-        optionsStr: field.options ? field.options.join(', ') : ''
+        optionsStr: Array.isArray(field.options)
+          ? field.options.join(', ')
+          : (typeof field.options === 'string' ? field.options : ''),
+        display_tab: field.display_tab || 'overview'
       });
     } else {
       setEditingField(null);
-      setFormData({ label: '', name: '', field_type: 'text', is_required: false, optionsStr: '' });
+      setFormData({ label: '', name: '', field_type: 'text', is_required: false, optionsStr: '', display_tab: 'overview' });
     }
     setIsModalOpen(true);
   };
@@ -172,7 +176,8 @@ export default function CustomFieldsManager() {
         name: formData.name,
         field_type: formData.field_type,
         is_required: formData.is_required,
-        options: formData.optionsStr ? formData.optionsStr.split(',').map(s => s.trim()).filter(Boolean) : []
+        options: formData.optionsStr ? formData.optionsStr.split(',').map(s => s.trim()).filter(Boolean) : [],
+        display_tab: formData.display_tab || 'overview'
       };
 
       if (editingField) {
@@ -186,6 +191,45 @@ export default function CustomFieldsManager() {
     } catch (e) {
       alert('Failed to save custom field');
       console.error(e);
+    }
+  };
+
+  const getDisplayTabOptions = () => {
+    if (activeEntity === 'lead') {
+      return [
+        { value: 'overview', label: 'Overview' },
+        { value: 'activities', label: 'Activities' },
+        { value: 'tasks', label: 'Tasks' },
+        { value: 'files', label: 'Files' },
+        { value: 'measurements', label: 'Measurements' },
+        { value: 'followups', label: 'Follow-ups' },
+        { value: 'estimates', label: 'Estimates' },
+        { value: 'contacts', label: 'Contacts' },
+        { value: 'communications', label: 'Communications' },
+        { value: 'inspirations', label: 'Inspirations' },
+        { value: 'proposals', label: 'Proposals' }
+      ];
+    } else if (activeEntity === 'project') {
+      return [
+        { value: 'overview', label: 'Overview' },
+        { value: 'client_profile', label: 'Client Profile' },
+        { value: 'site_details', label: 'Site Details' },
+        { value: 'financial_overview', label: 'Financial Overview' },
+        { value: 'payments', label: 'Payments' },
+        { value: 'team_roles', label: 'Team & Roles' },
+        { value: 'tasks', label: 'Tasks' },
+        { value: 'documents', label: 'Documents' },
+        { value: 'handover_readiness', label: 'Handover Readiness' },
+        { value: 'execution_qc', label: 'Execution QC' },
+        { value: 'snags', label: 'Snags' },
+        { value: 'punch_list', label: 'Punch List' },
+        { value: 'project_closure', label: 'Project Closure' },
+        { value: 'settings', label: 'Settings' }
+      ];
+    } else {
+      return [
+        { value: 'overview', label: 'Overview' }
+      ];
     }
   };
 
@@ -236,6 +280,7 @@ export default function CustomFieldsManager() {
                   <th style={{ padding: '12px 16px', fontWeight: 500, color: 'var(--color-text-secondary)' }}>Internal Name</th>
                   <th style={{ padding: '12px 16px', fontWeight: 500, color: 'var(--color-text-secondary)' }}>Type</th>
                   <th style={{ padding: '12px 16px', fontWeight: 500, color: 'var(--color-text-secondary)' }}>Required</th>
+                  <th style={{ padding: '12px 16px', fontWeight: 500, color: 'var(--color-text-secondary)' }}>Display Tab</th>
                   <th style={{ padding: '12px 16px', fontWeight: 500, color: 'var(--color-text-secondary)' }}>Active</th>
                   <th style={{ padding: '12px 16px', fontWeight: 500, color: 'var(--color-text-secondary)' }}>Actions</th>
                 </tr>
@@ -252,7 +297,7 @@ export default function CustomFieldsManager() {
                     />
                   ))}
                   {fields.length === 0 && !loading && (
-                    <tr><td colSpan="7" style={{padding: '32px', textAlign: 'center', color: 'var(--color-text-muted)'}}>No custom fields found for this entity.</td></tr>
+                    <tr><td colSpan="8" style={{padding: '32px', textAlign: 'center', color: 'var(--color-text-muted)'}}>No custom fields found for this entity.</td></tr>
                   )}
                 </tbody>
               </SortableContext>
@@ -312,6 +357,13 @@ export default function CustomFieldsManager() {
               onChange={(e) => setFormData({...formData, optionsStr: e.target.value})} 
             />
           )}
+
+          <Select 
+            label="Display Tab"
+            value={formData.display_tab || 'overview'}
+            onChange={(v) => setFormData({...formData, display_tab: v})}
+            options={getDisplayTabOptions()}
+          />
 
           <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--text-sm)', cursor: 'pointer', marginTop: '8px' }}>
             <input 

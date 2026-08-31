@@ -5,77 +5,81 @@ import styles from './Sidebar.module.css'
 
 const NAV_ITEMS = [
   { group: 'WORKSPACE', items: [
-    { to: '/dashboard/sales', icon: '⊞', label: 'Dashboard', module: 'dashboards', permission: 'dashboards:view_sales_dashboard' },
-    { label: 'Leads', icon: '◎', module: 'leads', subItems: [
-        { to: '/leads?view=dashboard', icon: '📊', label: 'Dashboard', permission: 'leads:view_dashboard' },
-        { to: '/leads?view=list', icon: '≣', label: 'List' },
-        { to: '/leads?view=kanban', icon: '◫', label: 'Kanban', permission: 'leads:view_kanban' },
-        { to: '/leads?view=calendar', icon: '📅', label: 'Calendar', permission: 'leads:view_calendar' },
-        { to: '/leads?view=map', icon: '🗺️', label: 'Map', permission: 'leads:view_map' },
+    { id: 'dashboard', to: '/dashboard/sales', icon: '⊞', label: 'Dashboard', module: 'dashboards', permission: 'dashboards:view_sales_dashboard' },
+    { id: 'leads', label: 'Leads', icon: '◎', module: 'leads', subItems: [
+        { id: 'leads-dashboard', to: '/leads?view=dashboard', icon: '📊', label: 'Dashboard', permission: 'leads:view_dashboard' },
+        { id: 'leads-list', to: '/leads?view=list', icon: '≣', label: 'List' },
+        { id: 'leads-kanban', to: '/leads?view=kanban', icon: '◫', label: 'Kanban', permission: 'leads:view_kanban' },
+        { id: 'leads-calendar', to: '/leads?view=calendar', icon: '📅', label: 'Calendar', permission: 'leads:view_calendar' },
+        { id: 'leads-map', to: '/leads?view=map', icon: '🗺️', label: 'Map', permission: 'leads:view_map' },
     ]},
-    { to: '/projects', icon: '◈', label: 'Projects', module: 'projects' },
-    { to: '/tasks',      icon: '◻', label: 'My Tasks', module: 'tasks' },
+    { id: 'projects', to: '/projects', icon: '◈', label: 'Projects', module: 'projects' },
+    { id: 'tasks', to: '/tasks', icon: '◻', label: 'My Tasks', module: 'tasks' },
   ]},
   { group: 'ANALYTICS', items: [
-    { label: 'Analytics', icon: '📊', module: 'analytics', subItems: [
-        { to: '/analytics/leads', icon: '▲', label: 'Lead Analytics', module: 'analytics', permission: 'analytics:view_lead_analytics' },
-        { to: '/analytics/projects', icon: '◉', label: 'Project Analytics', module: 'analytics', permission: 'analytics:view_project_analytics' },
-        { to: '/analytics/csat', icon: '⭐', label: 'Client Satisfaction', module: 'analytics', permission: 'analytics:view_lead_analytics' },
-        { to: '/analytics/delay-analysis', icon: '⏱️', label: 'Delay Analysis', module: 'analytics', permission: 'analytics:view_project_analytics' },
-        { to: '/analytics/boq-variance', icon: '📊', label: 'BOQ Variance', module: 'analytics', permission: 'analytics:view_project_analytics' },
-        { to: '/analytics/resources', icon: '👤', label: 'Resource Utilisation', module: 'analytics' },
-        { to: '/analytics/resource-workload', icon: '👥', label: 'Resource Workload', module: 'analytics' }
+    { id: 'analytics', label: 'Analytics', icon: '📊', module: 'analytics', subItems: [
+        { id: 'analytics-leads', to: '/analytics/leads', icon: '▲', label: 'Lead Analytics', module: 'analytics', permission: 'analytics:view_lead_analytics' },
+        { id: 'analytics-projects', to: '/analytics/projects', icon: '◉', label: 'Project Analytics', module: 'analytics', permission: 'analytics:view_project_analytics' },
+        { id: 'analytics-csat', to: '/analytics/csat', icon: '⭐', label: 'Client Satisfaction', module: 'analytics', permission: 'analytics:view_lead_analytics' },
+        { id: 'analytics-delay', to: '/analytics/delay-analysis', icon: '⏱️', label: 'Delay Analysis', module: 'analytics', permission: 'analytics:view_project_analytics' },
+        { id: 'analytics-boq', to: '/analytics/boq-variance', icon: '📊', label: 'Budget Variance', module: 'analytics', permission: 'analytics:view_project_analytics' },
+        { id: 'analytics-resources', to: '/analytics/resources', icon: '👤', label: 'Team Capacity', module: 'analytics' },
+        { id: 'analytics-resource-workload', to: '/analytics/resource-workload', icon: '👥', label: 'Team Workload', module: 'analytics' }
     ]}
   ]},
   { group: 'SALES SETUP', adminOnly: true, items: [
-    { to: '/lead-stages', icon: '◎', label: 'Lead Stages', module: 'settings' },
-    { to: '/custom-fields', icon: '⊡', label: 'Custom Fields', module: 'settings' },
-    { to: '/leads/forms', icon: '📝', label: 'Lead Forms', module: 'leads' }
+    { id: 'lead-stages', to: '/lead-stages', icon: '◎', label: 'Lead Stages', module: 'settings' },
+    { id: 'custom-fields', to: '/custom-fields', icon: '⊡', label: 'Custom Fields', module: 'settings' },
+    { id: 'lead-forms', to: '/leads/forms', icon: '📝', label: 'Lead Forms', module: 'leads' }
   ]},
   { group: 'PROJECT SETUP', adminOnly: true, items: [
-    { to: '/templates', icon: '◈', label: 'Project Templates', module: 'settings' },
-    { to: '/trade-activities', icon: '🛠', label: 'Trade Templates', module: 'settings' },
-    { to: '/qc-checklists', icon: '☑', label: 'Trade QC Checklists', module: 'settings' },
-    { to: '/conversion-checklist', icon: '☑', label: 'Conversion Checklist', module: 'settings' },
-    { to: '/automations', icon: '⚙', label: 'Automations', module: 'settings' }
+    { id: 'templates', to: '/templates', icon: '◈', label: 'Project Templates', module: 'settings' },
+    { id: 'trade-activities', to: '/trade-activities', icon: '🛠', label: 'Trade Activities', module: 'settings' },
+    { id: 'qc-checklists', to: '/qc-checklists', icon: '☑', label: 'QC Checklists', module: 'settings' },
+    { id: 'conversion-checklist', to: '/conversion-checklist', icon: '☑', label: 'Conversion Checklist', module: 'settings' },
+    { id: 'automations', to: '/automations', icon: '⚙', label: 'Automations', module: 'settings' }
   ]},
-  { group: 'PROJECT OPERATIONS', items: [
-    { to: '/projects/coordination', icon: '🔄', label: 'Production Coordination', module: 'projects' },
-    { to: '/projects/handover-dashboard', icon: '📋', label: 'Handover Dashboard', module: 'projects' },
-    { to: '/projects/retention-dashboard', icon: '🤝', label: 'Retention Dashboard', module: 'projects' }
+  { group: 'PROJECT WORKFLOWS', items: [
+    { id: 'coordination', to: '/projects/coordination', icon: '🔄', label: 'Project Coordination', module: 'projects' },
+    { id: 'handover-dashboard', to: '/projects/handover-dashboard', icon: '📋', label: 'Handover Dashboard', module: 'projects' },
+    { id: 'retention-dashboard', to: '/projects/retention-dashboard', icon: '🤝', label: 'Client Retention', module: 'projects' }
   ]},
-  { group: 'RESOURCE OPERATIONS', items: [
-    { to: '/projects/resources', icon: '👥', label: 'Resource Capacity', module: 'projects' },
-    { to: '/projects/absences', icon: '🌴', label: 'Absence Management', module: 'projects' }
+  { group: 'TEAM MANAGEMENT', items: [
+    { id: 'resource-capacity', to: '/projects/resources', icon: '👥', label: 'Team Capacity', module: 'projects' },
+    { id: 'absences', to: '/projects/absences', icon: '🌴', label: 'Leave Management', module: 'projects' }
   ]},
   { group: 'VENDORS', items: [
-    { to: '/analytics/vendors', icon: '🤝', label: 'Vendor Performance', module: 'analytics' },
-    { to: '/analytics/vendors-capacity', icon: '⚖️', label: 'Vendor Capacity', module: 'analytics' },
-    { to: '/vendor-lead-times', icon: '⏱', label: 'Vendor Lead Times', module: 'settings', adminOnly: true }
+    { id: 'vendor-performance', to: '/analytics/vendors', icon: '🤝', label: 'Vendor Performance', module: 'analytics' },
+    { id: 'vendor-capacity', to: '/analytics/vendors-capacity', icon: '⚖️', label: 'Vendor Capacity', module: 'analytics' },
+    { id: 'vendor-lead-times', to: '/vendor-lead-times', icon: '⏱', label: 'Vendor Lead Times', module: 'settings', adminOnly: true }
   ]},
   { group: 'FINANCE', items: [
-    { to: '/finance', icon: '💰', label: 'Finance Overview', module: 'finance' },
-    { to: '/financial-approvals', icon: '📝', label: 'Financial Approvals', module: 'finance' },
-    { to: '/analytics/profitability', icon: '💎', label: 'Project Profitability', module: 'analytics', permission: 'analytics:view_finance_analytics' },
-    { to: '/analytics/collection-forecast', icon: '📈', label: 'Collection Forecast', module: 'analytics', permission: 'analytics:view_finance_analytics' },
-    { to: '/financial-settings', icon: '💰', label: 'Financial Thresholds', module: 'settings', adminOnly: true }
+    { id: 'finance-overview', to: '/finance', icon: '💰', label: 'Finance Overview', module: 'finance' },
+    { id: 'financial-approvals', to: '/financial-approvals', icon: '📝', label: 'Financial Approvals', module: 'finance' },
+    { id: 'analytics-profitability', to: '/analytics/profitability', icon: '💎', label: 'Project Profitability', module: 'analytics', permission: 'analytics:view_finance_analytics' },
+    { id: 'analytics-collection-forecast', to: '/analytics/collection-forecast', icon: '📈', label: 'Payment Forecast', module: 'analytics', permission: 'analytics:view_finance_analytics' },
+    { id: 'financial-thresholds', to: '/financial-settings', icon: '💰', label: 'Financial Thresholds', module: 'settings', adminOnly: true }
   ]},
   { group: 'TEAM & SECURITY', adminOnly: true, items: [
-    { label: 'Team Management', icon: '👥', module: 'settings', subItems: [
-        { to: '/team/members', icon: '◉', label: 'Team Members' },
-        { to: '/team/roles', icon: '🔑', label: 'Roles & Permissions' },
+    { id: 'team-management', label: 'Team Management', icon: '👥', module: 'settings', subItems: [
+        { id: 'team-members', to: '/team/members', icon: '◉', label: 'Team Members' },
+        { id: 'roles-permissions', to: '/team/roles', icon: '🔑', label: 'Roles & Permissions' },
     ]},
-    { to: '/organization', icon: '🏢', label: 'Organization', module: 'settings' },
-    { to: '/login-history', icon: '🛡️', label: 'Login History', module: 'settings' },
-    { to: '/settings/audit-trail', icon: '📜', label: 'Audit Trail', module: 'settings' }
+    { id: 'organization', to: '/organization', icon: '🏢', label: 'Organization', module: 'settings' },
+    { id: 'company-settings', to: '/settings/company', icon: '🏢', label: 'Company Settings', module: 'settings' },
+    { id: 'login-history', to: '/login-history', icon: '🛡️', label: 'Login History', module: 'settings' },
+    { id: 'audit-trail', to: '/settings/audit-trail', icon: '📜', label: 'Audit Trail', module: 'settings' }
+  ]},
+  { group: 'REPORTS', items: [
+    { id: 'reports', to: '/reports', icon: '📋', label: 'Reports Hub', module: 'analytics' }
   ]},
   { group: 'DEVELOPER TOOLS', adminOnly: true, items: [
-    { to: '/settings/superadmin', icon: '⚡', label: 'Super Admin Center', module: 'settings' },
-    { to: '/api-keys', icon: '⊙', label: 'API Keys', module: 'settings' },
-    { to: '/developer/api', icon: '🔌', label: 'API Integration', module: 'settings' },
-    { to: '/developer/webhooks', icon: '🪝', label: 'Webhooks', module: 'settings' },
-    { to: '/email-templates', icon: '📧', label: 'Email Templates', module: 'settings' },
-    { to: '/logs', icon: '≡', label: 'Logs', module: 'settings' },
+    { id: 'superadmin', to: '/settings/superadmin', icon: '⚡', label: 'Super Admin Center', module: 'settings' },
+    { id: 'api-keys', to: '/api-keys', icon: '⊙', label: 'API Keys', module: 'settings' },
+    { id: 'api-integration', to: '/developer/api', icon: '🔌', label: 'API Integration', module: 'settings' },
+    { id: 'webhooks', to: '/developer/webhooks', icon: '🪝', label: 'Webhooks', module: 'settings' },
+    { id: 'email-templates', to: '/email-templates', icon: '📧', label: 'Email Templates', module: 'settings' },
+    { id: 'logs', to: '/logs', icon: '≡', label: 'Logs', module: 'settings' },
   ]}
 ]
 
@@ -144,6 +148,13 @@ function NavItem({ item, collapsed, onClose }) {
   );
 }
 
+const getInitials = (name) => {
+  if (!name) return 'U'
+  const parts = name.split(' ').filter(Boolean)
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
+}
+
 export default function Sidebar({ collapsed, mobileOpen, onClose }) {
   const { user } = useAuth()
   const isAdmin = 
@@ -162,8 +173,14 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
     <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''} ${mobileOpen ? styles.mobileOpen : ''}`}>
       {/* Logo area */}
       <div className={styles.logo}>
-        <div className={styles.logoMark}>C</div>
-        {!collapsed && <span className={styles.logoText}>Interior CRM</span>}
+        {user?.tenant?.logoUrl ? (
+          <img src={user.tenant.logoUrl} alt="Logo" className={styles.logoImage} />
+        ) : (
+          <div className={styles.logoMark}>
+            {user?.tenant?.name ? user.tenant.name.charAt(0).toUpperCase() : 'C'}
+          </div>
+        )}
+        {!collapsed && <span className={styles.logoText}>{user?.tenant?.name || 'Interior CRM'}</span>}
       </div>
 
       {/* Nav groups */}
@@ -173,8 +190,14 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
           if (group.financeOnly && !hasFinancePermission) return null
 
           const filterItem = (item) => {
-            if (item.adminOnly && !isAdmin) return false;
             if (isAdmin) return true;
+
+            // Plan-based override check
+            if (user?.sidebarConfig?.planTabs && Array.isArray(user.sidebarConfig.planTabs)) {
+              if (item.id && !user.sidebarConfig.planTabs.includes(item.id)) return false;
+            }
+
+            if (item.adminOnly && !isAdmin) return false;
             if (item.permission) {
               const [mod] = item.permission.split(':');
               return user?.role?.permissions?.includes(item.permission) || user?.role?.permissions?.includes(`${mod}:*`);
@@ -208,9 +231,8 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
         })}
       </nav>
 
-      {/* Bottom: user card */}
       <NavLink to="/settings/profile" className={styles.userCard} style={{ textDecoration: 'none', color: 'inherit' }}>
-        <div className={styles.userAvatar}>{user?.name?.charAt(0)}</div>
+        <div className={styles.userAvatar}>{getInitials(user?.name)}</div>
         {!collapsed && (
           <div className={styles.userInfo}>
             <span className={styles.userName}>{user?.name}</span>

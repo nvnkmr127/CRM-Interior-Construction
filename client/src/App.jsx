@@ -33,6 +33,7 @@ const ProjectsPage   = lazy(() => import('./pages/projects/ProjectsPage'))
 const ProjectDetail  = lazy(() => import('./pages/projects/ProjectDetail'))
 const MyTasksPage    = lazy(() => import('./pages/tasks/MyTasksPage'))
 const LeadAnalytics  = lazy(() => import('./pages/analytics/LeadAnalyticsPage'))
+const ReportsHubPage = lazy(() => import('./pages/analytics/ReportsHubPage'))
 const ManagerDashboard = lazy(() => import('./pages/leads/ManagerDashboard'))
 const ProjectAnalytics= lazy(() => import('./pages/analytics/ProjectAnalyticsPage'))
 const BOQVarianceReportPage = lazy(() => import('./pages/analytics/BOQVarianceReportPage'))
@@ -51,6 +52,7 @@ const MySecurityPage = lazy(() => import('./pages/profile/MySecurityPage'))
 const PreferencesPage= lazy(() => import('./pages/settings/PreferencesPage'))
 const AuditTrailPage  = lazy(() => import('./pages/settings/AuditTrailPage'))
 const ApprovalMatrixPage = lazy(() => import('./pages/settings/ApprovalMatrixPage'))
+const CompanySettingsPage = lazy(() => import('./pages/settings/CompanySettingsPage'))
 const ConfigPage     = lazy(() => import('./pages/config/ConfigPage'))
 const PortalApp      = lazy(() => import('./portal/PortalApp'))
 const FinancialApprovalsPage = lazy(() => import('./pages/dashboard/FinancialApprovalsPage'))
@@ -121,6 +123,7 @@ export default function App() {
                     <Route path='/factory/production' element={<ProtectedRoute requiredModule="factory"><GlobalFactoryProductionPage /></ProtectedRoute>} />
                     <Route path='/projects/:id' element={<ProtectedRoute requiredModule="projects"><ProjectDetail /></ProtectedRoute>} />
                     <Route path='/tasks' element={<ProtectedRoute requiredModule="tasks"><MyTasksPage /></ProtectedRoute>} />
+                    <Route path='/reports' element={<ProtectedRoute requiredModule="analytics"><ReportsHubPage /></ProtectedRoute>} />
                     <Route path='/analytics/leads' element={<ProtectedRoute requiredModule="analytics"><LeadAnalytics /></ProtectedRoute>} />
                     <Route path='/analytics/projects' element={<ProtectedRoute requiredModule="analytics"><ProjectAnalytics /></ProtectedRoute>} />
                     <Route path='/analytics/boq-variance' element={<ProtectedRoute requiredModule="analytics"><BOQVarianceReportPage /></ProtectedRoute>} />
@@ -138,6 +141,7 @@ export default function App() {
                     <Route path='/settings/preferences' element={<ProtectedRoute requiredModule="settings"><PreferencesPage /></ProtectedRoute>} />
                     <Route path='/settings/audit-trail' element={<ProtectedRoute requiredModule="settings"><AuditTrailPage /></ProtectedRoute>} />
                     <Route path='/settings/approval-matrix' element={<ProtectedRoute requiredModule="settings"><ApprovalMatrixPage /></ProtectedRoute>} />
+                    <Route path='/settings/company' element={<ProtectedRoute requiredModule="settings"><CompanySettingsPage /></ProtectedRoute>} />
                     <Route path='/settings/superadmin' element={<ProtectedRoute requiredModule="settings"><SuperAdminSettings /></ProtectedRoute>} />
                     <Route path='/team/members' element={<ProtectedRoute requiredModule="settings"><UsersManager /></ProtectedRoute>} />
                     <Route path='/team/roles' element={<ProtectedRoute requiredModule="settings"><RolesManager /></ProtectedRoute>} />

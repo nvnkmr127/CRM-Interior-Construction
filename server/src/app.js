@@ -540,6 +540,7 @@ pool.query(`
   ALTER TABLE sessions ALTER COLUMN expires_at TYPE TIMESTAMPTZ USING expires_at::timestamptz;
 
   ALTER TABLE tenants ADD COLUMN IF NOT EXISTS max_users INT DEFAULT 10;
+  ALTER TABLE notifications ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT false;
 
   INSERT INTO user_security (user_id)
   SELECT id FROM users

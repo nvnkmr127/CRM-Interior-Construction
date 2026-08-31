@@ -46,7 +46,12 @@ async function authenticate(req, res, next) {
       await setCache(tenantActiveKey, isTenantActive, 300).catch(() => {});
     }
 
-    if (isTenantActive === 'false') {
+    // Bypass deactivation check if user is a superadmin/developer
+    const userRole = typeof decoded.role === 'string' ? decoded.role.toLowerCase().replace(/\s+/g, '') : '';
+    const permissions = decoded.permissions || [];
+    const isSuperAdmin = userRole === 'superadmin' || permissions.includes('*');
+
+    if (isTenantActive === 'false' && !isSuperAdmin) {
       return res.status(403).json({ success: false, error: 'TENANT_DEACTIVATED', message: 'This workspace has been deactivated.' });
     }
 

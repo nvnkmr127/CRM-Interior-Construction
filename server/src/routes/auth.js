@@ -90,7 +90,31 @@ router.post('/login', async (req, res, next) => {
     const { id: tenantId, is_active } = tenantResult.rows[0];
 
     if (!is_active) {
-      return fail(res, 'TENANT_DEACTIVATED', 'This workspace has been deactivated. Please contact support.', 403);
+      // Check if this user is a superadmin/developer to allow bypass
+      const userCheck = await pool.query(
+        `SELECT r.name as role_name, r.permissions
+         FROM users u
+         LEFT JOIN roles r ON u.role_id = r.id
+         WHERE u.tenant_id = $1 AND u.email = $2 LIMIT 1`,
+        [tenantId, email]
+      );
+      
+      const userRow = userCheck.rows[0];
+      const roleName = userRow?.role_name || '';
+      const userRole = roleName.toLowerCase().replace(/\s+/g, '');
+      let isSuperAdmin = userRole === 'superadmin';
+      
+      if (userRow?.permissions) {
+        const p = typeof userRow.permissions === 'string' ? JSON.parse(userRow.permissions) : userRow.permissions;
+        const actions = Array.isArray(p) ? p : (p.actions || []);
+        if (actions.includes('*')) {
+          isSuperAdmin = true;
+        }
+      }
+
+      if (!isSuperAdmin) {
+        return fail(res, 'TENANT_DEACTIVATED', 'This workspace has been deactivated. Please contact support.', 403);
+      }
     }
 
     // 3. Call loginUser
@@ -216,14 +240,14 @@ router.get('/me', async (req, res, next) => {
     }
 
     if (!token) {
-      return fail(res, 'UNAUTHORIZED', 'Not authenticated', 200);
+      return fail(res, 'UNAUTHORIZED', 'Not authenticated', 401);
     }
 
     let decoded;
     try {
       decoded = verifyAccessToken(token);
     } catch (e) {
-      return fail(res, 'UNAUTHORIZED', 'Not authenticated', 200);
+      return fail(res, 'UNAUTHORIZED', 'Not authenticated', 401);
     }
 
     const userId = decoded.id || decoded.userId;
@@ -231,9 +255,12 @@ router.get('/me', async (req, res, next) => {
     const query = `
       SELECT 
         u.id, u.name, u.email, u.status, u.avatar_url, u.created_at, u.profile_data,
-        r.id as role_id, r.name as role_name, r.permissions as role_permissions
+        r.id as role_id, r.name as role_name, r.permissions as role_permissions,
+        t.id as tenant_id, t.name as tenant_name, t.slug as tenant_slug, t.plan as tenant_plan,
+        t.config as tenant_config
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.id
+      LEFT JOIN tenants t ON u.tenant_id = t.id
       WHERE u.id = $1
       LIMIT 1
     `;
@@ -241,7 +268,7 @@ router.get('/me', async (req, res, next) => {
     const result = await pool.query(query, [userId]);
 
     if (result.rows.length === 0) {
-      return fail(res, 'UNAUTHORIZED', 'Not authenticated', 200);
+      return fail(res, 'UNAUTHORIZED', 'Not authenticated', 401);
     }
 
     const row = result.rows[0];
@@ -254,7 +281,15 @@ router.get('/me', async (req, res, next) => {
       enabledModules = Array.isArray(p) ? [] : (p.modules || []);
     }
 
+    // Fetch sidebar configurations if they exist
+    const planConfigRes = await pool.query('SELECT enabled_tabs FROM sidebar_tabs_plan_config WHERE plan_name = $1', [row.tenant_plan || 'starter']);
+
+    const sidebarConfig = {
+      planTabs: planConfigRes.rows.length > 0 ? JSON.parse(planConfigRes.rows[0].enabled_tabs || '[]') : null
+    };
+
     const profile = row.profile_data || {};
+    const tenantConfig = typeof row.tenant_config === 'string' ? JSON.parse(row.tenant_config || '{}') : (row.tenant_config || {});
 
     const user = {
       id: row.id,
@@ -270,7 +305,21 @@ router.get('/me', async (req, res, next) => {
         name: row.role_name,
         permissions: actions,
         enabled_modules: enabledModules
-      } : null
+      } : null,
+      tenant: {
+        id: row.tenant_id,
+        name: row.tenant_name,
+        slug: row.tenant_slug,
+        plan: row.tenant_plan || 'starter',
+        logoUrl: tenantConfig.logo_url || '',
+        accentColour: tenantConfig.accent_colour || '',
+        description: tenantConfig.description || '',
+        address: tenantConfig.address || '',
+        phone: tenantConfig.phone || '',
+        email: tenantConfig.email || '',
+        website: tenantConfig.website || ''
+      },
+      sidebarConfig
     };
 
     return success(res, { user });

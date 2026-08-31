@@ -35,7 +35,8 @@ const createSchema = z.object({
   field_type: z.enum(['text', 'number', 'date', 'dropdown', 'multi_select', 'file', 'boolean']),
   options: z.array(z.string()).optional(),
   is_required: z.boolean().optional(),
-  sort_order: z.number().optional()
+  sort_order: z.number().optional(),
+  display_tab: z.string().optional()
 });
 
 router.post('/', authorize('config:manage'), async (req, res, next) => {
@@ -63,7 +64,8 @@ const updateSchema = z.object({
   options: z.array(z.string()).optional(),
   is_required: z.boolean().optional(),
   sort_order: z.number().optional(),
-  is_active: z.boolean().optional()
+  is_active: z.boolean().optional(),
+  display_tab: z.string().optional()
 });
 
 router.put('/:id', authorize('config:manage'), async (req, res, next) => {

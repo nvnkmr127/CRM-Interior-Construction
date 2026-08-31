@@ -23,6 +23,101 @@ export default function SuperAdminSettings() {
   const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('workspaces');
+
+  // Sidebar config states
+  const [sidebarPlanConfigs, setSidebarPlanConfigs] = useState([]);
+  const [selectedPlan, setSelectedPlan] = useState('starter');
+  const [planTabs, setPlanTabs] = useState([]);
+  const [tabSearchQuery, setTabSearchQuery] = useState('');
+
+  const PLAN_DEFAULTS = {
+    starter: [
+      'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar',
+      'projects', 'tasks', 'reports', 'team-management', 'team-members', 'organization'
+    ],
+    growth: [
+      'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
+      'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
+      'analytics-delay', 'coordination', 'handover-dashboard', 'retention-dashboard', 'resource-capacity',
+      'absences', 'vendor-performance', 'vendor-capacity', 'team-management', 'team-members',
+      'roles-permissions', 'organization'
+    ],
+    enterprise: [
+      'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
+      'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
+      'analytics-delay', 'analytics-boq', 'analytics-resources', 'analytics-resource-workload',
+      'lead-stages', 'custom-fields', 'lead-forms', 'templates', 'trade-activities', 'qc-checklists',
+      'conversion-checklist', 'automations', 'coordination', 'handover-dashboard', 'retention-dashboard',
+      'resource-capacity', 'absences', 'vendor-performance', 'vendor-capacity', 'vendor-lead-times',
+      'finance-overview', 'financial-approvals', 'analytics-profitability', 'analytics-collection-forecast',
+      'financial-thresholds', 'team-management', 'team-members', 'roles-permissions', 'organization',
+      'login-history', 'audit-trail', 'superadmin', 'api-keys', 'api-integration', 'webhooks',
+      'email-templates', 'logs'
+    ]
+  };
+
+  const AVAILABLE_TABS = [
+    { id: 'dashboard', label: 'Dashboard', group: 'WORKSPACE' },
+    { id: 'leads', label: 'Leads (Main Menu & List)', group: 'WORKSPACE' },
+    { id: 'leads-dashboard', label: 'Leads: Dashboard', group: 'WORKSPACE', isSubItem: true },
+    { id: 'leads-kanban', label: 'Leads: Kanban', group: 'WORKSPACE', isSubItem: true },
+    { id: 'leads-calendar', label: 'Leads: Calendar', group: 'WORKSPACE', isSubItem: true },
+    { id: 'leads-map', label: 'Leads: Map', group: 'WORKSPACE', isSubItem: true },
+    { id: 'projects', label: 'Projects', group: 'WORKSPACE' },
+    { id: 'tasks', label: 'My Tasks', group: 'WORKSPACE' },
+    { id: 'reports', label: 'Reports Hub', group: 'WORKSPACE' },
+    
+    { id: 'analytics', label: 'Analytics (Main)', group: 'ANALYTICS' },
+    { id: 'analytics-leads', label: 'Analytics: Lead Analytics', group: 'ANALYTICS', isSubItem: true },
+    { id: 'analytics-projects', label: 'Analytics: Project Analytics', group: 'ANALYTICS', isSubItem: true },
+    { id: 'analytics-csat', label: 'Analytics: Client Satisfaction', group: 'ANALYTICS', isSubItem: true },
+    { id: 'analytics-delay', label: 'Analytics: Delay Analysis', group: 'ANALYTICS', isSubItem: true },
+    { id: 'analytics-boq', label: 'Analytics: Budget Variance', group: 'ANALYTICS', isSubItem: true },
+    { id: 'analytics-resources', label: 'Analytics: Team Capacity', group: 'ANALYTICS', isSubItem: true },
+    { id: 'analytics-resource-workload', label: 'Analytics: Team Workload', group: 'ANALYTICS', isSubItem: true },
+    
+    { id: 'lead-stages', label: 'Lead Stages', group: 'SALES SETUP' },
+    { id: 'custom-fields', label: 'Custom Fields', group: 'SALES SETUP' },
+    { id: 'lead-forms', label: 'Lead Forms', group: 'SALES SETUP' },
+    
+    { id: 'templates', label: 'Project Templates', group: 'PROJECT SETUP' },
+    { id: 'trade-activities', label: 'Work Templates', group: 'PROJECT SETUP' },
+    { id: 'qc-checklists', label: 'Quality Checklists', group: 'PROJECT SETUP' },
+    { id: 'conversion-checklist', label: 'Conversion Checklist', group: 'PROJECT SETUP' },
+    { id: 'automations', label: 'Automations', group: 'PROJECT SETUP' },
+    
+    { id: 'coordination', label: 'Project Coordination', group: 'PROJECT OPERATIONS' },
+    { id: 'handover-dashboard', label: 'Handover Dashboard', group: 'PROJECT OPERATIONS' },
+    { id: 'retention-dashboard', label: 'Client Retention', group: 'PROJECT OPERATIONS' },
+    
+    { id: 'resource-capacity', label: 'Team Capacity', group: 'RESOURCE OPERATIONS' },
+    { id: 'absences', label: 'Leave Management', group: 'RESOURCE OPERATIONS' },
+    
+    { id: 'vendor-performance', label: 'Vendor Performance', group: 'VENDORS' },
+    { id: 'vendor-capacity', label: 'Vendor Capacity', group: 'VENDORS' },
+    { id: 'vendor-lead-times', label: 'Vendor Lead Times', group: 'VENDORS' },
+    
+    { id: 'finance-overview', label: 'Finance Overview', group: 'FINANCE' },
+    { id: 'financial-approvals', label: 'Financial Approvals', group: 'FINANCE' },
+    { id: 'analytics-profitability', label: 'Project Profitability', group: 'FINANCE', isSubItem: true },
+    { id: 'analytics-collection-forecast', label: 'Collection Forecast', group: 'FINANCE', isSubItem: true },
+    { id: 'financial-thresholds', label: 'Financial Thresholds', group: 'FINANCE' },
+    
+    { id: 'team-management', label: 'Team Management (Main Group)', group: 'TEAM & SECURITY' },
+    { id: 'team-members', label: 'Team Members', group: 'TEAM & SECURITY', isSubItem: true },
+    { id: 'roles-permissions', label: 'Roles & Permissions', group: 'TEAM & SECURITY', isSubItem: true },
+    { id: 'organization', label: 'Organization', group: 'TEAM & SECURITY' },
+    { id: 'login-history', label: 'Login History', group: 'TEAM & SECURITY' },
+    { id: 'audit-trail', label: 'Audit Trail', group: 'TEAM & SECURITY' },
+    
+    { id: 'superadmin', label: 'Super Admin Center', group: 'DEVELOPER TOOLS' },
+    { id: 'api-keys', label: 'API Keys', group: 'DEVELOPER TOOLS' },
+    { id: 'api-integration', label: 'API Integration', group: 'DEVELOPER TOOLS' },
+    { id: 'webhooks', label: 'Webhooks', group: 'DEVELOPER TOOLS' },
+    { id: 'email-templates', label: 'Email Templates', group: 'DEVELOPER TOOLS' },
+    { id: 'logs', label: 'Logs', group: 'DEVELOPER TOOLS' }
+  ];
 
   // New tenant form state
   const [newTenant, setNewTenant] = useState({
@@ -53,10 +148,104 @@ export default function SuperAdminSettings() {
     allowed_countries: ''
   });
 
+  const [selectedTenantId, setSelectedTenantId] = useState('');
+  const [companyForm, setCompanyForm] = useState({
+    name: '',
+    logo_url: '',
+    accent_colour: '#4f46e5',
+    description: '',
+    address: '',
+    phone: '',
+    email: '',
+    website: ''
+  });
+
+  const selectedTenant = tenants.find(t => t.id === selectedTenantId);
+
+  useEffect(() => {
+    if (selectedTenant) {
+      const config = typeof selectedTenant.config === 'string' ? JSON.parse(selectedTenant.config || '{}') : (selectedTenant.config || {});
+      setCompanyForm({
+        name: selectedTenant.name || '',
+        logo_url: config.logo_url || '',
+        accent_colour: config.accent_colour || '#4f46e5',
+        description: config.description || '',
+        address: config.address || '',
+        phone: config.phone || '',
+        email: config.email || '',
+        website: config.website || ''
+      });
+    }
+  }, [selectedTenantId, tenants]);
+
+  useEffect(() => {
+    if (tenants.length > 0 && !selectedTenantId) {
+      setSelectedTenantId(tenants[0].id);
+    }
+  }, [tenants, selectedTenantId]);
+
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  const handleSuperAdminLogoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !selectedTenantId) return;
+
+    const formData = new FormData();
+    formData.append('logo', file);
+
+    setUploadingLogo(true);
+    try {
+      const res = await api.post(`/superadmin/tenants/${selectedTenantId}/upload-logo`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (res.data?.success) {
+        setCompanyForm(prev => ({ ...prev, logo_url: res.data.data.logoUrl }));
+        toast.success("Logo uploaded successfully!");
+      }
+    } catch (err) {
+      toast.error("Failed to upload logo.");
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleSaveCompanyDetails = async (e) => {
+    e.preventDefault();
+    if (!selectedTenantId) return;
+
+    try {
+      const res = await api.put(`/superadmin/tenants/${selectedTenantId}/settings`, {
+        name: companyForm.name,
+        logo_url: companyForm.logo_url,
+        accent_colour: companyForm.accent_colour,
+        description: companyForm.description,
+        address: companyForm.address,
+        phone: companyForm.phone,
+        email: companyForm.email,
+        website: companyForm.website
+      });
+
+      if (res.data?.success) {
+        toast.success("Company branding details saved successfully!");
+        fetchTenants(); // Reload tenants to sync local state
+      }
+    } catch (err) {
+      toast.error("Failed to save company branding.");
+    }
+  };
+
   useEffect(() => {
     fetchLicenseStats();
     fetchTenants();
+    fetchSidebarConfigs();
   }, []);
+
+
+
+  useEffect(() => {
+    const activePlanConfig = sidebarPlanConfigs.find(p => p.plan_name === selectedPlan);
+    setPlanTabs(activePlanConfig ? activePlanConfig.enabled_tabs : AVAILABLE_TABS.map(t => t.id));
+  }, [selectedPlan, sidebarPlanConfigs]);
 
   const fetchLicenseStats = () => {
     api.get('/superadmin/license')
@@ -75,6 +264,32 @@ export default function SuperAdminSettings() {
       toast.error('Failed to load workspaces');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSidebarConfigs = async () => {
+    try {
+      const res = await api.get('/superadmin/sidebar-config');
+      if (res.data?.success) {
+        setSidebarPlanConfigs(res.data.data.plans || []);
+      }
+    } catch (err) {
+      console.error('Failed to load sidebar configurations:', err);
+    }
+  };
+
+  const handleSavePlanConfig = async () => {
+    try {
+      const res = await api.post('/superadmin/sidebar-config/plan', {
+        plan_name: selectedPlan,
+        enabled_tabs: planTabs
+      });
+      if (res.data?.success) {
+        toast.success(`Plan settings for "${selectedPlan}" saved successfully!`);
+        fetchSidebarConfigs();
+      }
+    } catch (err) {
+      toast.error('Failed to save plan configuration');
     }
   };
 
@@ -181,10 +396,31 @@ export default function SuperAdminSettings() {
     <div className={styles.container}>
       <PageHeader 
         title="Super Admin Command Center" 
-        description="Organization-wide workspace provisioning, license optimization, and access controls." 
+        description="Organization-wide workspace provisioning, license optimization, access controls, and navigation settings." 
       />
 
-      <div>
+      <div className={styles.tabContainer}>
+        <button 
+          className={`${styles.tab} ${activeTab === 'workspaces' ? styles.activeTab : ''}`}
+          onClick={() => setActiveTab('workspaces')}
+        >
+          🏢 Client Workspaces
+        </button>
+        <button 
+          className={`${styles.tab} ${activeTab === 'sidebar' ? styles.activeTab : ''}`}
+          onClick={() => setActiveTab('sidebar')}
+        >
+          ⚡ Sidebar Tabs Settings
+        </button>
+        <button 
+          className={`${styles.tab} ${activeTab === 'company' ? styles.activeTab : ''}`}
+          onClick={() => setActiveTab('company')}
+        >
+          🏢 Company Settings
+        </button>
+      </div>
+
+      {activeTab === 'workspaces' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <Card padding="lg">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
@@ -265,6 +501,17 @@ export default function SuperAdminSettings() {
                               style={{ height: '30px', padding: '0 12px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}
                             >
                               Configure
+                            </Button>
+                            <Button 
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedTenantId(tenant.id);
+                                setActiveTab('company');
+                              }}
+                              style={{ height: '30px', padding: '0 12px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}
+                            >
+                              Branding
                             </Button>
                             <Button 
                               variant={tenant.is_active ? 'danger' : 'success'}
@@ -427,7 +674,389 @@ export default function SuperAdminSettings() {
             </Modal>
           )}
         </div>
-      </div>
+      )}
+
+      {activeTab === 'sidebar' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', animation: 'fadeIn 0.3s ease-out' }}>
+          {/* Plan Selection Cards Row */}
+          <div className={styles.planCardGrid}>
+            {[
+              { id: 'starter', title: 'Starter Plan', icon: '🌱', desc: 'Basic features & leads operations for early teams' },
+              { id: 'growth', title: 'Growth Plan', icon: '🚀', desc: 'Smarter pipelines, coordination & key analytics' },
+              { id: 'enterprise', title: 'Enterprise Plan', icon: '👑', desc: 'Full system control, developers APIs & financial tools' }
+            ].map(p => (
+              <div 
+                key={p.id}
+                className={`${styles.planCard} ${selectedPlan === p.id ? styles.activePlanCard : ''}`}
+                onClick={() => setSelectedPlan(p.id)}
+              >
+                <div className={styles.planTitle}>
+                  <span>{p.icon}</span> {p.title}
+                </div>
+                <div className={styles.planDesc}>{p.desc}</div>
+              </div>
+            ))}
+          </div>
+
+          <Card padding="lg">
+            {/* Header Control Row with Search and Quick Selectors */}
+            <div className={styles.tabsControlRow}>
+              <div>
+                <h2 style={{ fontSize: '18px', fontWeight: '700', color: 'var(--color-text)', margin: '0 0 4px 0' }}>
+                  Tabs Visibility Settings: {selectedPlan.toUpperCase()} PLAN
+                </h2>
+                <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: 0 }}>
+                  Enable or disable sidebar tabs visible to all workspaces subscribed to the {selectedPlan} plan.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <input 
+                  type="text" 
+                  placeholder="Search sidebar tabs..." 
+                  className={styles.tabSearchInput}
+                  value={tabSearchQuery}
+                  onChange={e => setTabSearchQuery(e.target.value)}
+                />
+                <Button size="sm" variant="secondary" onClick={() => setPlanTabs(PLAN_DEFAULTS[selectedPlan] || [])}>
+                  Reset to Defaults
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => setPlanTabs(AVAILABLE_TABS.map(t => t.id))}>
+                  Check All
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => setPlanTabs([])}>
+                  Uncheck All
+                </Button>
+              </div>
+            </div>
+
+            {/* Grouped Tabs List */}
+            <div className={styles.tabGroupsGrid} style={{ marginTop: '24px' }}>
+              {/* Group the available tabs */}
+              {(() => {
+                const filtered = AVAILABLE_TABS.filter(t => 
+                  t.label.toLowerCase().includes(tabSearchQuery.toLowerCase()) || 
+                  t.group.toLowerCase().includes(tabSearchQuery.toLowerCase())
+                );
+                
+                const groups = {};
+                filtered.forEach(tab => {
+                  if (!groups[tab.group]) {
+                    groups[tab.group] = [];
+                  }
+                  groups[tab.group].push(tab);
+                });
+
+                const GROUP_ICONS = {
+                  'WORKSPACE': '🏢',
+                  'ANALYTICS': '📊',
+                  'SALES SETUP': '◎',
+                  'PROJECT SETUP': '◈',
+                  'PROJECT OPERATIONS': '⚙',
+                  'RESOURCE OPERATIONS': '👥',
+                  'VENDORS': '🤝',
+                  'FINANCE': '💰',
+                  'TEAM & SECURITY': '🛡️',
+                  'DEVELOPER TOOLS': '🔌'
+                };
+
+                if (Object.keys(groups).length === 0) {
+                  return (
+                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: 'var(--color-text-secondary)' }}>
+                      No sidebar tabs match your search query.
+                    </div>
+                  );
+                }
+
+                return Object.entries(groups).map(([groupName, tabs]) => (
+                  <div key={groupName} className={styles.groupCard}>
+                    <div className={styles.groupHeader}>
+                      <span>{GROUP_ICONS[groupName] || '📂'}</span> {groupName}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {tabs.map(tab => (
+                        <div 
+                          key={tab.id} 
+                          className={`${styles.tabItemRow} ${tab.isSubItem ? styles.subItemIndent : ''}`}
+                        >
+                          <div className={styles.tabLabelGroup}>
+                            <span className={styles.tabLabelName}>{tab.label}</span>
+                            <span className={styles.tabLabelSub}>ID: {tab.id}</span>
+                          </div>
+                          <Toggle 
+                            checked={planTabs.includes(tab.id)}
+                            onChange={e => {
+                              if (e.target.checked) {
+                                setPlanTabs(prev => [...prev, tab.id]);
+                              } else {
+                                setPlanTabs(prev => prev.filter(id => id !== tab.id));
+                              }
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border)', paddingTop: '20px' }}>
+              <Button 
+                variant="primary" 
+                onClick={handleSavePlanConfig}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 24px' }}
+              >
+                💾 Save Configuration for {selectedPlan.toUpperCase()} Plan
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {activeTab === 'company' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', animation: 'fadeIn 0.3s ease-out' }}>
+          {/* Tenant Selector */}
+          <Card padding="lg">
+            <h2 style={{ fontSize: '18px', fontWeight: '700', color: 'var(--color-text)', margin: '0 0 16px 0' }}>Select Workspace</h2>
+            <div style={{ maxWidth: '400px' }}>
+              <Select 
+                label="Client Workspace"
+                value={selectedTenantId}
+                onChange={val => setSelectedTenantId(val)}
+                options={tenants.map(t => ({ value: t.id, label: `${t.name} (${t.slug})` }))}
+                required
+              />
+            </div>
+          </Card>
+
+          {selectedTenantId ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }} className={styles.formRow}>
+                {/* Form Card */}
+                <Card padding="lg">
+                  <h3 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--color-text)', margin: '0 0 16px 0' }}>Branding and Customization Details</h3>
+                  <form onSubmit={handleSaveCompanyDetails} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                    <Input 
+                      label="Company Name"
+                      type="text" 
+                      value={companyForm.name} 
+                      onChange={e => setCompanyForm(prev => ({ ...prev, name: e.target.value }))} 
+                      required
+                    />
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }} className={styles.formRow}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-text-secondary)' }}>Logo</label>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                          <input 
+                            type="url" 
+                            className={styles.searchInput} 
+                            value={companyForm.logo_url || ''} 
+                            placeholder="https://example.com/logo.png"
+                            onChange={e => setCompanyForm(prev => ({ ...prev, logo_url: e.target.value }))} 
+                            style={{ flex: 1, height: '36px' }}
+                          />
+                          <label style={{ 
+                            background: 'var(--color-bg-alt, #f3f4f6)',
+                            border: '1px solid var(--color-border)', 
+                            borderRadius: 'var(--radius-md)',
+                            padding: '8px 16px',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            height: '36px',
+                            boxSizing: 'border-box',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            color: 'var(--color-text)'
+                          }}>
+                            {uploadingLogo ? 'Uploading...' : 'Upload File'}
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              onChange={handleSuperAdminLogoUpload} 
+                              style={{ display: 'none' }} 
+                            />
+                          </label>
+                          {companyForm.logo_url && (
+                            <button 
+                              type="button"
+                              onClick={() => setCompanyForm(prev => ({ ...prev, logo_url: '' }))}
+                              style={{
+                                background: 'var(--color-danger-bg, #fee2e2)',
+                                border: '1px solid var(--color-danger, #ef4444)', 
+                                borderRadius: 'var(--radius-md)',
+                                padding: '8px 16px',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                                height: '36px',
+                                boxSizing: 'border-box',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                color: 'var(--color-danger, #b91c1c)'
+                              }}
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-text-secondary)' }}>Accent Colour</label>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                          <input 
+                            type="color" 
+                            value={companyForm.accent_colour || '#4f46e5'} 
+                            onChange={e => setCompanyForm(prev => ({ ...prev, accent_colour: e.target.value }))} 
+                            style={{ width: '45px', height: '36px', border: '1px solid var(--color-border)', borderRadius: '6px', cursor: 'pointer', padding: 0 }}
+                          />
+                          <input 
+                            type="text" 
+                            className={styles.searchInput} 
+                            value={companyForm.accent_colour || '#4f46e5'} 
+                            onChange={e => setCompanyForm(prev => ({ ...prev, accent_colour: e.target.value }))} 
+                            placeholder="#4f46e5"
+                            style={{ flex: 1, height: '36px' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <Input 
+                      label="Description / Tagline"
+                      type="text" 
+                      value={companyForm.description || ''} 
+                      placeholder="Brief tagline or company description"
+                      onChange={e => setCompanyForm(prev => ({ ...prev, description: e.target.value }))} 
+                    />
+
+                    <Input 
+                      label="Office Address"
+                      type="text" 
+                      value={companyForm.address || ''} 
+                      placeholder="e.g. 123 Design St"
+                      onChange={e => setCompanyForm(prev => ({ ...prev, address: e.target.value }))} 
+                    />
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }} className={styles.formRow}>
+                      <Input 
+                        label="Phone Number"
+                        type="tel" 
+                        value={companyForm.phone || ''} 
+                        placeholder="+1 (555) 123-4567"
+                        onChange={e => setCompanyForm(prev => ({ ...prev, phone: e.target.value }))} 
+                      />
+                      <Input 
+                        label="Email Address"
+                        type="email" 
+                        value={companyForm.email || ''} 
+                        placeholder="contact@company.com"
+                        onChange={e => setCompanyForm(prev => ({ ...prev, email: e.target.value }))} 
+                      />
+                    </div>
+
+                    <Input 
+                      label="Website URL"
+                      type="url" 
+                      value={companyForm.website || ''} 
+                      placeholder="https://www.company.com"
+                      onChange={e => setCompanyForm(prev => ({ ...prev, website: e.target.value }))} 
+                    />
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+                      <Button type="submit" variant="primary">
+                        Save Branding Details
+                      </Button>
+                    </div>
+                  </form>
+                </Card>
+
+                {/* Preview Card */}
+                <Card padding="lg">
+                  <h3 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--color-text)', margin: '0 0 16px 0' }}>Live Branding Preview</h3>
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center', 
+                    gap: '16px', 
+                    padding: '24px', 
+                    border: '2px dashed var(--color-border)', 
+                    borderRadius: 'var(--radius-lg)',
+                    background: 'var(--color-surface-2)',
+                    textAlign: 'center'
+                  }}>
+                    {companyForm.logo_url ? (
+                      <img src={companyForm.logo_url} alt="Logo" style={{ width: '96px', height: '96px', objectFit: 'contain', background: 'white', border: '1px solid var(--color-border)', borderRadius: '8px' }} />
+                    ) : (
+                      <div style={{ 
+                        width: '96px', 
+                        height: '96px', 
+                        borderRadius: '8px', 
+                        background: companyForm.accent_colour, 
+                        color: 'white', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justify: 'center', 
+                        fontSize: '32px', 
+                        fontWeight: '800' 
+                      }}>
+                        {companyForm.name ? companyForm.name.charAt(0).toUpperCase() : 'C'}
+                      </div>
+                    )}
+                    <div>
+                      <h4 style={{ fontWeight: 700, margin: 0, color: 'var(--color-text)' }}>{companyForm.name || 'Company Name'}</h4>
+                      <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '4px 0 0 0' }}>
+                        {companyForm.website || 'www.website.com'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: '24px', borderTop: '1px solid var(--color-border)', paddingTop: '16px' }}>
+                    <h4 style={{ fontSize: '12px', fontWeight: '600', color: 'var(--color-text-secondary)', textTransform: 'uppercase', marginBottom: '8px' }}>Sidebar Live Mockup</h4>
+                    <div style={{ 
+                      background: '#1e1e2f', 
+                      padding: '12px', 
+                      borderRadius: '8px', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '12px',
+                      color: 'white'
+                    }}>
+                      {companyForm.logo_url ? (
+                        <img src={companyForm.logo_url} alt="Logo" style={{ width: '24px', height: '24px', objectFit: 'contain', borderRadius: '4px' }} />
+                      ) : (
+                        <div style={{ 
+                          width: '24px', 
+                          height: '24px', 
+                          borderRadius: '4px', 
+                          background: companyForm.accent_colour, 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justify: 'center',
+                          fontSize: '10px',
+                          fontWeight: 800,
+                          color: 'white'
+                        }}>
+                          {companyForm.name ? companyForm.name.charAt(0).toUpperCase() : 'C'}
+                        </div>
+                      )}
+                      <span style={{ fontSize: '14px', fontWeight: 600 }}>{companyForm.name || 'Interior CRM'}</span>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            </div>
+          ) : (
+            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+              No workspace selected. Please select a workspace to edit branding.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* PROVISION WORKSPACE MODAL */}
       <Modal

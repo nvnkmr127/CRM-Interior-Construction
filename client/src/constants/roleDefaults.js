@@ -144,7 +144,7 @@ export const ROLE_DEFAULTS = {
     page_permissions: {
       projects: [
         'Overview', 'Team & Roles', 'Site Details', 'Design Brief', 'Design Assets', 
-        'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 'Coordination', 
+        'Design Reviews', 'Material Palettes', 'Quotations & Budget', 'Coordination', 
         'Room Progress', 'Tasks', 'Documents', 'Drawing Register'
       ]
     },
@@ -175,7 +175,7 @@ export const ROLE_DEFAULTS = {
     page_permissions: {
       projects: [
         'Overview', 'Team & Roles', 'Client Profile', 'Site Details', 'Design Brief', 
-        'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & BOQ', 
+        'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & Budget', 
         'Coordination', 'Room Progress', 'Tasks', 'Documents', 'Drawing Register', 
         'Activity Logs'
       ]

@@ -374,7 +374,7 @@ export default function CollectionForecastReportPage() {
                     <td className={styles.td}>
                       <button 
                         className={styles.viewDetailBtn}
-                        onClick={() => navigate(`/projects/${row.projectId}?tab=Quotations+%26+BOQ`)}
+                        onClick={() => navigate(`/projects/${row.projectId}?tab=Quotations+%26+Budget`)}
                       >
                         Project Details →
                       </button>

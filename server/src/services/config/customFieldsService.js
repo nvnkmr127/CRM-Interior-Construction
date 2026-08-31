@@ -5,7 +5,7 @@ const pool = require('../../db/pool');
  */
 async function getFields(tenantId, entity) {
   const query = `
-    SELECT id, entity, name, label, field_type, options, is_required, visible_to_roles, sort_order, is_active
+    SELECT id, entity, name, label, field_type, options, is_required, visible_to_roles, sort_order, is_active, display_tab
     FROM custom_fields_config
     WHERE tenant_id = $1 AND entity = $2 AND is_active = true
     ORDER BY sort_order ASC, created_at ASC
@@ -20,15 +20,15 @@ async function getFields(tenantId, entity) {
 async function addField(tenantId, fieldData) {
   const {
     entity, name, label, field_type, options = [], is_required = false,
-    visible_to_roles = ['all'], sort_order = 0
+    visible_to_roles = ['all'], sort_order = 0, display_tab = 'overview'
   } = fieldData;
 
   const query = `
     INSERT INTO custom_fields_config (
-      tenant_id, entity, name, label, field_type, options, is_required, visible_to_roles, sort_order
+      tenant_id, entity, name, label, field_type, options, is_required, visible_to_roles, sort_order, display_tab
     )
-    VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8::jsonb, $9)
-    RETURNING id, entity, name, label, field_type, options, is_required, visible_to_roles, sort_order, is_active
+    VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8::jsonb, $9, $10)
+    RETURNING id, entity, name, label, field_type, options, is_required, visible_to_roles, sort_order, is_active, display_tab
   `;
 
   const result = await pool.query(query, [
@@ -40,7 +40,8 @@ async function addField(tenantId, fieldData) {
     JSON.stringify(options),
     is_required,
     JSON.stringify(visible_to_roles),
-    sort_order
+    sort_order,
+    display_tab
   ]);
 
   return result.rows[0];
@@ -51,7 +52,7 @@ async function addField(tenantId, fieldData) {
  * Prevents changing the machine 'name' or 'entity' to avoid schema collisions on existing data.
  */
 async function updateField(tenantId, fieldId, updates) {
-  const allowedFields = ['label', 'options', 'is_required', 'visible_to_roles', 'sort_order', 'is_active'];
+  const allowedFields = ['label', 'options', 'is_required', 'visible_to_roles', 'sort_order', 'is_active', 'display_tab'];
   const sets = [];
   const values = [tenantId, fieldId];
   let paramIndex = 3;
@@ -73,7 +74,7 @@ async function updateField(tenantId, fieldId, updates) {
     UPDATE custom_fields_config
     SET ${sets.join(', ')}
     WHERE id = $2 AND tenant_id = $1
-    RETURNING id, entity, name, label, field_type, options, is_required, visible_to_roles, sort_order, is_active
+    RETURNING id, entity, name, label, field_type, options, is_required, visible_to_roles, sort_order, is_active, display_tab
   `;
 
   const result = await pool.query(query, values);

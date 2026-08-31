@@ -209,12 +209,12 @@ export default function PortalChangeOrders() {
                 <strong>{formatCurrency(baseContractValue + (co.status === 'approved' ? 0 : Number(co.amount)))}</strong>
               </div>
 
-              {/* BOQ Delta Items */}
+              {/* Budget Delta Items */}
               <div className={styles.deltaSection}>
-                <h5 className={styles.deltaTitle}>BOQ Scope Delta</h5>
+                <h5 className={styles.deltaTitle}>Budget Scope Changes</h5>
                 {!co.items || co.items.length === 0 ? (
                   <p className={styles.cardDescription} style={{ fontStyle: 'italic' }}>
-                    No BOQ items linked to this change order.
+                    No budget items linked to this change order.
                   </p>
                 ) : (
                   <div className={styles.deltaTableWrapper}>

@@ -1,9 +1,9 @@
 const http = require('http');
 
 const options = {
-  host: 'localhost',
-  port: 5173,
-  path: '/api/health',
+  host: '127.0.0.1',
+  port: 4000,
+  path: '/health',
   method: 'GET'
 };
 

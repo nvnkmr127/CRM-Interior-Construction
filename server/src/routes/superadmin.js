@@ -6,12 +6,33 @@ const { success, fail } = require('../utils/response');
 const pool = require('../config/db');
 const { logAction } = require('../services/auditLog');
 const crypto = require('crypto');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const dir = 'uploads/logos/';
+    if (!fs.existsSync(dir)){
+        fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+});
 
 const router = express.Router();
 
 // Strict superadmin guard
 router.use(authenticate);
-router.use(authorize(['superadmin']));
+router.use(authorize('superadmin'));
 
 /**
  * IMPERSONATION
@@ -256,27 +277,52 @@ router.put('/tenants/:id/settings', async (req, res, next) => {
     password_expiry_days,
     password_prevent_reuse,
     allowed_ips,
-    allowed_countries
+    allowed_countries,
+    logo_url,
+    accent_colour,
+    description,
+    address,
+    phone,
+    email,
+    website
   } = req.body;
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    // 1. Update tenants table
-    if (name || plan || max_users !== undefined) {
-      await client.query(
-        `UPDATE tenants 
-         SET name = COALESCE($1, name),
-             plan = COALESCE($2, plan),
-             max_users = COALESCE($3, max_users),
-             updated_at = NOW()
-         WHERE id = $4`,
-        [name, plan, max_users !== undefined ? parseInt(max_users, 10) : null, id]
-      );
+    // 1. Get current config to merge branding details
+    const tenantRes = await client.query('SELECT config FROM tenants WHERE id = $1', [id]);
+    let currentConfig = {};
+    if (tenantRes.rows.length > 0) {
+      const configStr = tenantRes.rows[0].config;
+      currentConfig = typeof configStr === 'string' ? JSON.parse(configStr || '{}') : (configStr || {});
     }
 
-    // 2. Update tenant_security_settings table
+    const updatedConfig = {
+      ...currentConfig,
+      ...(logo_url !== undefined && { logo_url }),
+      ...(accent_colour !== undefined && { accent_colour }),
+      ...(description !== undefined && { description }),
+      ...(address !== undefined && { address }),
+      ...(phone !== undefined && { phone }),
+      ...(email !== undefined && { email }),
+      ...(website !== undefined && { website })
+    };
+
+    // 2. Update tenants table
+    await client.query(
+      `UPDATE tenants 
+       SET name = COALESCE($1, name),
+           plan = COALESCE($2, plan),
+           max_users = COALESCE($3, max_users),
+           config = $4,
+           updated_at = NOW()
+       WHERE id = $5`,
+      [name, plan, max_users !== undefined ? parseInt(max_users, 10) : null, JSON.stringify(updatedConfig), id]
+    );
+
+    // 3. Update tenant_security_settings table
     const { rowCount } = await client.query(
       `UPDATE tenant_security_settings 
        SET mfa_required_all = COALESCE($1, mfa_required_all),
@@ -316,4 +362,210 @@ router.put('/tenants/:id/settings', async (req, res, next) => {
   }
 });
 
+/**
+ * GET SIDEBAR CONFIGURATIONS
+ */
+router.get('/sidebar-config', async (req, res, next) => {
+  try {
+    const planConfig = await pool.query('SELECT plan_name, enabled_tabs FROM sidebar_tabs_plan_config');
+    
+    const plans = planConfig.rows.map(p => ({
+      plan_name: p.plan_name,
+      enabled_tabs: JSON.parse(p.enabled_tabs || '[]')
+    }));
+
+    return success(res, { plans });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/**
+ * SAVE PLAN SIDEBAR CONFIG
+ */
+router.post('/sidebar-config/plan', async (req, res, next) => {
+  const { plan_name, enabled_tabs } = req.body;
+  if (!plan_name || !Array.isArray(enabled_tabs)) {
+    return fail(res, 'INVALID_PARAMS', 'plan_name and enabled_tabs array are required', 400);
+  }
+  try {
+    await pool.query(
+      `INSERT INTO sidebar_tabs_plan_config (plan_name, enabled_tabs, updated_at) 
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (plan_name) 
+       DO UPDATE SET enabled_tabs = EXCLUDED.enabled_tabs, updated_at = NOW()`,
+      [plan_name, JSON.stringify(enabled_tabs)]
+    );
+    return success(res, { message: `Sidebar configuration for plan ${plan_name} saved successfully` });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// POST /api/superadmin/tenants/:id/upload-logo
+router.post('/tenants/:id/upload-logo', upload.single('logo'), async (req, res, next) => {
+  try {
+    if (!req.file) return fail(res, 'BAD_REQUEST', 'No file uploaded', 400);
+
+    const baseUrl = process.env.API_URL || `${req.protocol}://${req.get('host')}`;
+    const logoUrl = `${baseUrl}/uploads/logos/${req.file.filename}`;
+
+    return success(res, { logoUrl });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * SWITCH TENANT
+ */
+router.post('/switch-tenant', async (req, res, next) => {
+  const { tenantId } = req.body;
+  if (!tenantId) return fail(res, 'MISSING_PARAM', 'tenantId is required', 400);
+
+  try {
+    // 1. Verify tenant exists
+    const tenantResult = await pool.query('SELECT id, name, slug FROM tenants WHERE id = $1 LIMIT 1', [tenantId]);
+    if (tenantResult.rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Tenant not found', 404);
+    }
+    const tenant = tenantResult.rows[0];
+
+    // 2. Find a superadmin user in the target tenant, or any active user if none
+    const userResult = await pool.query(`
+      SELECT u.id, u.email, r.name as role_name
+      FROM users u
+      LEFT JOIN roles r ON u.role_id = r.id
+      WHERE u.tenant_id = $1 AND u.status = 'active'
+      ORDER BY CASE WHEN r.name = 'superadmin' THEN 0 ELSE 1 END ASC, u.created_at ASC
+      LIMIT 1
+    `, [tenantId]);
+
+    if (userResult.rows.length === 0) {
+      return fail(res, 'NO_USERS', 'No active users found in the target workspace to switch to.', 400);
+    }
+
+    const targetUser = userResult.rows[0];
+
+    // 3. Create a session for this user in the target tenant
+    const sessionId = crypto.randomUUID();
+    const { signAccessToken, signRefreshToken } = require('../services/auth/tokens');
+    
+    // Fetch full user details with permissions
+    const fullQuery = await pool.query(`
+      SELECT 
+        u.id, u.name, u.email, u.status, u.avatar_url, u.created_at, u.profile_data,
+        r.id as role_id, r.name as role_name, r.permissions as role_permissions,
+        t.id as tenant_id, t.name as tenant_name, t.slug as tenant_slug, t.plan as tenant_plan,
+        t.config as tenant_config
+      FROM users u
+      LEFT JOIN roles r ON u.role_id = r.id
+      LEFT JOIN tenants t ON u.tenant_id = t.id
+      WHERE u.id = $1
+      LIMIT 1
+    `, [targetUser.id]);
+
+    const row = fullQuery.rows[0];
+    let actions = [];
+    let enabledModules = [];
+    if (row.role_permissions) {
+      const p = typeof row.role_permissions === 'string' ? JSON.parse(row.role_permissions) : row.role_permissions;
+      actions = Array.isArray(p) ? p : (p.actions || []);
+      enabledModules = Array.isArray(p) ? [] : (p.modules || []);
+    }
+
+    const payload = { 
+      userId: targetUser.id, 
+      tenantId, 
+      role: targetUser.role_name, 
+      permissions: actions, 
+      email: targetUser.email, 
+      sessionId 
+    };
+
+    const accessToken = signAccessToken(payload);
+    const refreshToken = signRefreshToken(payload);
+
+    const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    const ip = req.ip || req.connection?.remoteAddress || 'Unknown';
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
+    await pool.query(`
+      INSERT INTO sessions (id, user_id, tenant_id, token_hash, expires_at, ip_address, user_agent)
+      VALUES ($1, $2, $3, $4, NOW() + INTERVAL '7 days', $5, $6)
+    `, [sessionId, targetUser.id, tenantId, tokenHash, ip, userAgent]);
+
+    // Audit log the switch
+    await logAction(req.tenantId, req.user.id, 'SUPERADMIN_SWITCH_TENANT', `SuperAdmin switched workspace to tenant ${tenant.name} (${tenant.slug})`, { 
+      targetTenantId: tenantId, 
+      targetUserId: targetUser.id,
+      severity: 'HIGH' 
+    });
+
+    // Set cookies
+    const isProduction = process.env.NODE_ENV === 'production';
+    const cookieOptions = {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      path: '/'
+    };
+
+    res.cookie('refreshToken', refreshToken, {
+      ...cookieOptions,
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
+    res.cookie('accessToken', accessToken, {
+      ...cookieOptions,
+      maxAge: 15 * 60 * 1000
+    });
+
+    // Format safe user output
+    const planConfigRes = await pool.query('SELECT enabled_tabs FROM sidebar_tabs_plan_config WHERE plan_name = $1', [row.tenant_plan || 'starter']);
+    const sidebarConfig = {
+      planTabs: planConfigRes.rows.length > 0 ? JSON.parse(planConfigRes.rows[0].enabled_tabs || '[]') : null
+    };
+
+    const profile = row.profile_data || {};
+    const tenantConfig = typeof row.tenant_config === 'string' ? JSON.parse(row.tenant_config || '{}') : (row.tenant_config || {});
+
+    const safeUser = {
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      status: row.status,
+      avatar_url: row.avatar_url,
+      created_at: row.created_at,
+      phone: profile.phone || '',
+      designation: profile.designation || '',
+      role: row.role_id ? {
+        id: row.role_id,
+        name: row.role_name,
+        permissions: actions,
+        enabled_modules: enabledModules
+      } : null,
+      tenant: {
+        id: row.tenant_id,
+        name: row.tenant_name,
+        slug: row.tenant_slug,
+        plan: row.tenant_plan || 'starter',
+        logoUrl: tenantConfig.logo_url || '',
+        accentColour: tenantConfig.accent_colour || '',
+        description: tenantConfig.description || '',
+        address: tenantConfig.address || '',
+        phone: tenantConfig.phone || '',
+        email: tenantConfig.email || '',
+        website: tenantConfig.website || ''
+      },
+      sidebarConfig
+    };
+
+    return success(res, { user: safeUser, accessToken, refreshToken });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 module.exports = router;
+

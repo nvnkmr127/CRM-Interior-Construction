@@ -73,13 +73,26 @@ export default function LeadForm({ lead, onSave, onClose, editSection }) {
   const sectionTitles = {
     contact: 'Edit Contact Info',
     property: 'Edit Property Details',
-    preferences: 'Edit Preferences'
+    preferences: 'Edit Preferences',
+    custom_fields: 'Edit Custom Fields'
   };
+
+  // Safe parse custom fields
+  let parsedCustomFields = lead?.custom_fields || {};
+  while (typeof parsedCustomFields === 'string') {
+    try {
+      parsedCustomFields = JSON.parse(parsedCustomFields);
+    } catch {
+      parsedCustomFields = {};
+      break;
+    }
+  }
 
   // ── 1. Independent state (no circular deps) ──────────────────────────
   const [stages, setStages] = useState([]);
   const [users, setUsers] = useState([]);
   const [leads, setLeads] = useState([]);
+  const [customFieldsConfig, setCustomFieldsConfig] = useState([]);
   // Separate stageId state so `rules` can depend on it without needing `values`
   const [stageId, setStageId] = useState(lead?.stage_id || '');
 
@@ -105,8 +118,8 @@ export default function LeadForm({ lead, onSave, onClose, editSection }) {
     return baseRules;
   }, [stages, stageId]);
 
-  // ── 3. useForm is now safe — `rules` has no dep on `values` ──────────
-  const { values, errors, touched, handleChange, handleBlur, validateAll, isValid } = useForm({
+  // Create initialValues with flat custom fields keys
+  const initialValues = {
     name: lead?.name || '',
     phone: lead?.phone || '',
     email: lead?.email || '',
@@ -114,7 +127,6 @@ export default function LeadForm({ lead, onSave, onClose, editSection }) {
     stageId: lead?.stage_id || '',
     assigneeId: lead?.assignee_id || '',
     notes: lead?.notes || '',
-    custom_fields: lead?.custom_fields || {},
     builder_name: lead?.builder_name || '',
     possession_date: lead?.possession_date ? lead.possession_date.substring(0, 10) : '',
     house_status: lead?.house_status || '',
@@ -135,7 +147,14 @@ export default function LeadForm({ lead, onSave, onClose, editSection }) {
     carpet_area_sqft: lead?.carpet_area_sqft || '',
     budget_max: lead?.budget_max || '',
     possession_month: lead?.possession_month || ''
-  }, rules);
+  };
+
+  Object.keys(parsedCustomFields).forEach(k => {
+    initialValues[k] = parsedCustomFields[k];
+  });
+
+  // ── 3. useForm is now safe — `rules` has no dep on `values` ──────────
+  const { values, errors, touched, handleChange, handleBlur, validateAll, isValid } = useForm(initialValues, rules);
 
   // ── 4. isReq is safe here — declared after `values` exists ───────────
   const isReq = (field) => {
@@ -148,12 +167,22 @@ export default function LeadForm({ lead, onSave, onClose, editSection }) {
     Promise.all([
       api.get('/config/lead-stages').catch(()=>({data:{data:[]}})),
       api.get('/users').catch(()=>({data:{data:[]}})),
-      api.get('/leads?limit=1000').catch(()=>({data:{data:[]}}))
-    ]).then(([sRes, uRes, lRes]) => {
+      api.get('/leads?limit=1000').catch(()=>({data:{data:[]}})),
+      api.get('/config/custom-fields?entity=lead').catch(()=>({data:{data:[]}}))
+    ]).then(([sRes, uRes, lRes, cRes]) => {
       const fetchedStages = sRes.data?.data || [];
       setStages(fetchedStages);
       setUsers(uRes.data?.data || []);
       setLeads(lRes.data?.data || []);
+      const activeCFs = (cRes.data?.data || []).filter(f => f.is_active);
+      setCustomFieldsConfig(activeCFs);
+
+      // Make sure all active custom fields are initialized in form values
+      activeCFs.forEach(cf => {
+        if (values[cf.name] === undefined) {
+          handleChange(cf.name, parsedCustomFields[cf.name] ?? (cf.field_type === 'boolean' ? false : ''));
+        }
+      });
 
       if (!isEdit && fetchedStages.length > 0 && !values.stageId) {
         const firstId = fetchedStages[0].id;
@@ -186,6 +215,16 @@ export default function LeadForm({ lead, onSave, onClose, editSection }) {
       if (!payload.source) delete payload.source;
       if (!payload.referred_by_lead_id) payload.referred_by_lead_id = null;
       
+      // Re-assemble custom_fields
+      const updatedCustomFields = { ...parsedCustomFields };
+      customFieldsConfig.forEach(cf => {
+        if (payload[cf.name] !== undefined) {
+          updatedCustomFields[cf.name] = payload[cf.name];
+          delete payload[cf.name];
+        }
+      });
+      payload.custom_fields = updatedCustomFields;
+
       if (isEdit && lead) {
         payload.updated_at = lead.updated_at;
       }
@@ -359,6 +398,72 @@ export default function LeadForm({ lead, onSave, onClose, editSection }) {
                     WhatsApp Consent Given
                   </label>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* SECTION: Custom Fields */}
+          {(showSection('custom_fields') || (!editSection && customFieldsConfig.length > 0)) && customFieldsConfig.length > 0 && (
+            <div className={styles.section}>
+              <div className={styles.sectionTitle}>Custom Fields</div>
+              <div className={styles.grid2}>
+                {customFieldsConfig.map(field => {
+                  const val = values[field.name] ?? '';
+                  const isRequired = isReq(field.name);
+                  const label = field.label + (isRequired ? ' *' : '');
+                  
+                  if (field.field_type === 'boolean') {
+                    return (
+                      <div key={field.id} className="flex flex-col mt-4">
+                        <label className={styles.checkboxWrap}>
+                          <input 
+                            type="checkbox" 
+                            name={field.name}
+                            checked={!!val} 
+                            onChange={onChange}
+                            className={styles.checkboxInput} 
+                          />
+                          {field.label}
+                        </label>
+                      </div>
+                    );
+                  }
+
+                  if (field.field_type === 'dropdown' && field.options) {
+                    return (
+                      <div key={field.id}>
+                        <label className={styles.fieldLabel}>{label}</label>
+                        <select 
+                          name={field.name}
+                          value={val} 
+                          onChange={onChange} 
+                          className={styles.selectInput}
+                          required={isRequired}
+                        >
+                          <option value="">Select option</option>
+                          {field.options.map(opt => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={field.id}>
+                      <Input 
+                        label={label}
+                        required={isRequired}
+                        name={field.name}
+                        type={field.field_type === 'number' ? 'number' : field.field_type === 'date' ? 'date' : 'text'}
+                        value={val}
+                        onChange={onChange}
+                        onBlur={onBlur}
+                        error={touched[field.name] && errors[field.name]}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

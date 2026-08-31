@@ -87,7 +87,7 @@ async function findLeadById(tenantId, leadId, txClient = null, includeDeleted = 
     SELECT l.*,
            u.name AS assignee_name, u.avatar_url AS assignee_avatar,
            s.name AS stage_name, s.color AS stage_color,
-           lp.builder AS builder_name, lp.possession_date, lp.house_status, lp.property_type, lp.carpet_area, lp.carpet_area_sqft,
+           lp.builder AS builder_name, lp.possession_date, lp.house_status, lp.property_type, lp.carpet_area,
            lpref.interior_style, lpref.material AS material_preference,
            lpref.family_size, lpref.usage_patterns, lpref.storage_priorities,
            lpref.brand_flexibility, lpref.brand_remarks, lpref.existing_furniture,
@@ -378,7 +378,6 @@ async function updateLead(tenantId, leadId, updates) {
         if (key === 'builder_name') propUpdates['builder'] = value;
         else if (key === 'carpet_area_sqft') {
           propUpdates['carpet_area'] = value;
-          propUpdates['carpet_area_sqft'] = value;
         }
         else propUpdates[key] = value;
       } else if (preferenceFields.includes(key)) {
@@ -777,7 +776,7 @@ async function getLeadTimeline(tenantId, leadId, { type, page = 1, limit = 20 } 
   `;
   
   let automationQuery = `
-    SELECT ae.id::text, ae.id::text AS entity_id, 'automation.' || ae.workflow AS event_type, 'Executed action: ' || ae.action_type || ' (' || ae.status || ')' AS summary, ae.created_at, 'System Automation' AS user_name, NULL AS user_avatar, 'automation' AS entity
+    SELECT ae.id::text, ae.id::text AS entity_id, 'automation.' || ae.workflow AS event_type, 'Executed action: ' || ae.action_type || ' (' || ae.status || ')' AS summary, ae.executed_at AS created_at, 'System Automation' AS user_name, NULL AS user_avatar, 'automation' AS entity
     FROM automation_events ae
     WHERE ae.tenant_id = $1 AND ae.lead_id = $2
   `;
