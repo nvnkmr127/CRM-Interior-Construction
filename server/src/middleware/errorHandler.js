@@ -47,6 +47,9 @@ function errorHandler(error, req, res, next) {
     case 'ACCOUNT_INACTIVE':
       response.error = { code: 'ACCOUNT_INACTIVE', message: 'Account is inactive' };
       return res.status(403).json(response);
+    case 'ACCOUNT_LOCKED':
+      response.error = { code: 'ACCOUNT_LOCKED', message: 'Account is temporarily locked due to multiple failed login attempts. Please try again in 15 minutes.' };
+      return res.status(423).json(response);
     case 'STAGE_GATE_FAILED':
       response.error = { code: 'STAGE_GATE_FAILED', message: 'Missing mandatory fields', missing: error.missing || [] };
       return res.status(400).json(response);

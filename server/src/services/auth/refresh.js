@@ -16,6 +16,16 @@ async function refreshTokens(rawRefreshToken) {
     throw new Error('TOKEN_INVALID', { cause: error });
   }
 
+  // 1.5 Check if tenant is active
+  if (decoded && decoded.tenantId) {
+    const tenantCheck = await pool.query('SELECT is_active FROM tenants WHERE id = $1', [decoded.tenantId]);
+    if (tenantCheck.rowCount === 0 || !tenantCheck.rows[0].is_active) {
+      const err = new Error('TENANT_DEACTIVATED');
+      err.code = 'TENANT_DEACTIVATED';
+      throw err;
+    }
+  }
+
   // 2. Hash the raw token and look up in sessions
   const tokenHash = crypto.createHash('sha256').update(rawRefreshToken).digest('hex');
   

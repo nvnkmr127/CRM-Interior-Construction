@@ -498,23 +498,38 @@ export default function RolesManager() {
 
     try {
       if (editingRole) {
-        await api.patch(`/roles/${editingRole.id}`, formData)
-        setRoles(prev => prev.map(r => r.id === editingRole.id ? { ...r, ...formData } : r))
-        toast.success('Role updated successfully')
+        const patchRes = await api.patch(`/roles/${editingRole.id}`, formData);
+        const savedRole = patchRes.data?.data || patchRes.data || { ...editingRole, ...formData };
+        setRoles(prev => prev.map(r => r.id === editingRole.id ? savedRole : r));
+        
+        // Broadcast role update so active user sessions and workspace sidebar reflect changes immediately
+        window.dispatchEvent(new CustomEvent('app:role-updated', { detail: savedRole }));
+        window.dispatchEvent(new CustomEvent('app:auth-change'));
+        localStorage.setItem('last_role_update', JSON.stringify({ ...savedRole, timestamp: Date.now() }));
+        try {
+          const channel = new BroadcastChannel('crm_admin_sync');
+          channel.postMessage({ type: 'role_updated', role: savedRole });
+          channel.close();
+        } catch (e) {}
+
+        toast.success('Role updated successfully');
       } else {
         try {
-          const res = await api.post('/roles', formData)
-          const savedRole = res.data?.data || res.data
-          setRoles(prev => [...prev, savedRole])
-          toast.success('Role created successfully')
+          const res = await api.post('/roles', formData);
+          const savedRole = res.data?.data || res.data;
+          setRoles(prev => [...prev, savedRole]);
+          window.dispatchEvent(new CustomEvent('app:role-updated', { detail: savedRole }));
+          window.dispatchEvent(new CustomEvent('app:auth-change'));
+          toast.success('Role created successfully');
         } catch (e) {
-          const newRole = { ...formData, id: `role-${Date.now()}` }
-          setRoles(prev => [...prev, newRole])
-          toast.success('Role created successfully')
+          const newRole = { ...formData, id: `role-${Date.now()}` };
+          setRoles(prev => [...prev, newRole]);
+          window.dispatchEvent(new CustomEvent('app:role-updated', { detail: newRole }));
+          toast.success('Role created successfully');
         }
-        fetchRolesAndSchema()
+        fetchRolesAndSchema();
       }
-      setSearchParams({})
+      setSearchParams({});
     } catch (err) {
       toast.error('Failed to save role')
     }
@@ -577,23 +592,23 @@ export default function RolesManager() {
   const handleDeleteRole = async (id) => {
     const roleToDelete = roles.find(r => r.id === id);
     if (!roleToDelete) return;
-    if (roleToDelete.name === 'superadmin' || roleToDelete.name === 'Super Admin') {
-      const superAdminCount = roles.filter(r => r.name === 'superadmin' || r.name === 'Super Admin').length;
-      if (superAdminCount <= 1) {
-        toast.error('Cannot delete the last superadmin role');
-        return;
-      }
+    const isOnlyAdmin = (roleToDelete.permissions?.includes('*') || roleToDelete.name?.toLowerCase() === 'superadmin' || roleToDelete.name?.toLowerCase() === 'admin') && 
+      roles.filter(r => r.permissions?.includes('*') || r.name?.toLowerCase() === 'superadmin' || r.name?.toLowerCase() === 'admin').length <= 1;
+    if (isOnlyAdmin) {
+      toast.error('Cannot delete the primary workspace administrator role');
+      return;
     }
     if (!await confirm(`Are you sure you want to delete the role '${roleToDelete.name}'?`)) return;
     
     try {
-      await api.delete(`/roles/${id}`);
-      setRoles(prev => prev.filter(r => r.id !== id));
-      toast.success('Role deleted');
+      const res = await api.delete(`/roles/${id}`);
+      if (res.data?.success || res.status === 200) {
+        setRoles(prev => prev.filter(r => r.id !== id));
+        toast.success('Role deleted successfully');
+      }
     } catch (err) {
-      // Fallback for mock environment
-      setRoles(prev => prev.filter(r => r.id !== id));
-      toast.success('Role deleted');
+      const msg = err.response?.data?.message || err.response?.data?.details || 'Cannot delete role assigned to users';
+      toast.error(msg);
     }
   }
 
@@ -619,20 +634,25 @@ export default function RolesManager() {
     },
     {
       key: 'actions', label: 'Actions', align: 'right', width: '550px',
-      render: (r) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
-          <Button variant="ghost" size="sm" onClick={async () => handleOpenModal(r)}>Edit</Button>
-          <Button variant="ghost" size="sm" onClick={async () => { setCloneSource({ id: r.id, isTemplate: false, name: r.name }); setCloneName(`${r.name} - Copy`); setIsCloneModalOpen(true); }}>Duplicate</Button>
-          <Button variant="ghost" size="sm" onClick={async () => handleSaveAsTemplate(r)}>Save as Template</Button>
-          <Button variant="ghost" size="sm" onClick={async () => handleOpenVersionModal(r)}>Version History</Button>
-          <Button variant="ghost" size="sm" onClick={async () => handleOpenAuditModal(r)}>Audit History</Button>
-          {(r.name !== 'superadmin' && r.name !== 'Super Admin') || roles.filter(role => role.name === 'superadmin' || role.name === 'Super Admin').length > 1 ? (
-            <Button variant="danger" size="sm" onClick={async () => handleDeleteRole(r.id)}>Delete</Button>
-          ) : (
-            <Button variant="danger" size="sm" style={{ visibility: 'hidden', pointerEvents: 'none' }}>Delete</Button>
-          )}
-        </div>
-      )
+      render: (r) => {
+        const isOnlyAdmin = (r.permissions?.includes('*') || r.name?.toLowerCase() === 'superadmin' || r.name?.toLowerCase() === 'admin') && 
+          roles.filter(role => role.permissions?.includes('*') || role.name?.toLowerCase() === 'superadmin' || role.name?.toLowerCase() === 'admin').length <= 1;
+
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
+            <Button variant="ghost" size="sm" onClick={async () => handleOpenModal(r)}>Edit</Button>
+            <Button variant="ghost" size="sm" onClick={async () => { setCloneSource({ id: r.id, isTemplate: false, name: r.name }); setCloneName(`${r.name} - Copy`); setIsCloneModalOpen(true); }}>Duplicate</Button>
+            <Button variant="ghost" size="sm" onClick={async () => handleSaveAsTemplate(r)}>Save as Template</Button>
+            <Button variant="ghost" size="sm" onClick={async () => handleOpenVersionModal(r)}>Version History</Button>
+            <Button variant="ghost" size="sm" onClick={async () => handleOpenAuditModal(r)}>Audit History</Button>
+            {!isOnlyAdmin ? (
+              <Button variant="danger" size="sm" onClick={async () => handleDeleteRole(r.id)}>Delete</Button>
+            ) : (
+              <Button variant="danger" size="sm" style={{ visibility: 'hidden', pointerEvents: 'none' }}>Delete</Button>
+            )}
+          </div>
+        );
+      }
     }
   ]
 

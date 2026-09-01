@@ -13,11 +13,14 @@ router.post('/send-otp', async (req, res, next) => {
 
     // 1. Resolve tenantId
     const tenantResult = await pool.query(
-      'SELECT id FROM tenants WHERE slug = $1',
+      'SELECT id, is_active FROM tenants WHERE slug = $1',
       [tenantSlug]
     );
     if (tenantResult.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Tenant not found' });
+    }
+    if (!tenantResult.rows[0].is_active) {
+      return res.status(403).json({ success: false, error: 'TENANT_DEACTIVATED', message: 'This workspace has been deactivated.' });
     }
     const tenantId = tenantResult.rows[0].id;
 
@@ -62,11 +65,14 @@ router.post('/verify-otp', async (req, res, next) => {
 
     // 1. Resolve tenantId
     const tenantResult = await pool.query(
-      'SELECT id FROM tenants WHERE slug = $1',
+      'SELECT id, is_active FROM tenants WHERE slug = $1',
       [tenantSlug]
     );
     if (tenantResult.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Tenant not found' });
+    }
+    if (!tenantResult.rows[0].is_active) {
+      return res.status(403).json({ success: false, error: 'TENANT_DEACTIVATED', message: 'This workspace has been deactivated.' });
     }
     const tenantId = tenantResult.rows[0].id;
 

@@ -54,8 +54,25 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
     if (error.response.status === 403) {
-      // Permission error — show toast
-      triggerToast('error', 'You do not have permission to do that.', 6000);
+      const isTenantDeactivated = 
+        error.response?.data?.error === 'TENANT_DEACTIVATED' || 
+        error.response?.data?.code === 'TENANT_DEACTIVATED' ||
+        error.response?.data?.message?.toLowerCase().includes('deactivated');
+
+      if (isTenantDeactivated) {
+        localStorage.removeItem('mockSession');
+        localStorage.removeItem('isAuthenticated');
+        delete api.defaults.headers.common['Authorization'];
+        triggerToast('error', error.response?.data?.message || 'This workspace has been deactivated. Please contact support.', 6000);
+        window.dispatchEvent(new CustomEvent('app:logout'));
+        return Promise.reject(error);
+      }
+
+      const isAuthEndpoint = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/auth/register');
+      if (!isAuthEndpoint) {
+        // Permission error — show toast
+        triggerToast('error', 'You do not have permission to do that.', 6000);
+      }
       return Promise.reject(error);
     }
     if (error.response.status === 429) {
@@ -65,10 +82,18 @@ api.interceptors.response.use(
 
     const originalRequest = error.config;
 
+    // Check if the request is an auth endpoint (do not attempt token refresh for login, register, refresh, logout)
+    const isAuthEndpoint = originalRequest?.url?.includes('/auth/login') || 
+                           originalRequest?.url?.includes('/auth/register') || 
+                           originalRequest?.url?.includes('/auth/refresh') || 
+                           originalRequest?.url?.includes('/auth/logout');
+
     // Handle 401 Unauthorized
-    if (error.response.status === 401 && !originalRequest._retry) {
-      if (hasRefreshFailed) {
+    if (error.response.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
+      if (hasRefreshFailed || !localStorage.getItem('isAuthenticated')) {
         localStorage.removeItem('mockSession');
+        localStorage.removeItem('isAuthenticated');
+        delete api.defaults.headers.common['Authorization'];
         window.dispatchEvent(new CustomEvent('app:logout'));
         return Promise.reject(error);
       }
@@ -112,6 +137,8 @@ api.interceptors.response.use(
           onRefreshed(refreshError);
           // Refresh token failed/expired
           localStorage.removeItem('mockSession');
+          localStorage.removeItem('isAuthenticated');
+          delete api.defaults.headers.common['Authorization'];
           window.dispatchEvent(new CustomEvent('app:logout'));
           return Promise.reject(refreshError);
         }

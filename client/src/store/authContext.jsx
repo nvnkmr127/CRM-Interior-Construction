@@ -25,6 +25,19 @@ export const DEFAULT_MOCK_TEAM = {
   }
 };
 
+export const DEFAULT_ROLE_OPTIONS = [
+  { value: 'superadmin', label: 'Super Admin' },
+  { value: 'pm', label: 'Project Manager' },
+  { value: 'designer', label: 'Designer' },
+  { value: 'lead_designer', label: 'Lead Designer' },
+  { value: 'junior_designer', label: 'Junior Designer' },
+  { value: 'sales', label: 'Sales' },
+  { value: 'sales_rep', label: 'Sales Representative' },
+  { value: 'site_supervisor', label: 'Site Supervisor' },
+  { value: 'site_engineer', label: 'Site Engineer' },
+  { value: 'accountant', label: 'Accountant' }
+];
+
 export const getMockTeamCredentials = () => {
   const saved = localStorage.getItem('mock_team_credentials');
   if (saved) {
@@ -32,18 +45,19 @@ export const getMockTeamCredentials = () => {
       const parsed = JSON.parse(saved);
       if (parsed && parsed.email) {
         if (!parsed.role || typeof parsed.role !== 'object') {
+          const rKey = parsed.role || 'designer';
+          const rConfig = ROLE_DEFAULTS[rKey] || ROLE_DEFAULTS['Designer'];
           parsed.role = { 
-            id: 'pm', 
-            name: 'Project Manager', 
-            permissions: ['*'], 
-            enabled_modules: ['projects', 'tasks', 'leads', 'dashboards', 'analytics', 'settings'] 
+            id: rKey, 
+            name: rConfig?.name || 'Designer', 
+            permissions: rConfig?.permissions || ['projects:view', 'tasks:view'], 
+            enabled_modules: rConfig?.enabled_modules || ['projects', 'tasks'] 
           };
         } else {
           if (!parsed.role.enabled_modules || parsed.role.enabled_modules.length === 0) {
-            parsed.role.enabled_modules = ['projects', 'tasks', 'leads', 'dashboards', 'analytics', 'settings'];
-          }
-          if (!parsed.role.permissions) {
-            parsed.role.permissions = ['*'];
+            const rKey = Object.keys(ROLE_DEFAULTS).find(k => k.toLowerCase() === (parsed.role.id || parsed.role.name || '').toLowerCase()) || 'Designer';
+            parsed.role.enabled_modules = ROLE_DEFAULTS[rKey]?.enabled_modules || ['projects', 'tasks'];
+            parsed.role.permissions = ROLE_DEFAULTS[rKey]?.permissions || ['projects:view', 'tasks:view'];
           }
           if (!parsed.role.name && parsed.role.id) {
             const matched = DEFAULT_ROLE_OPTIONS.find(d => d.value === parsed.role.id);
@@ -158,8 +172,12 @@ export function AuthProvider({ children }) {
         const response = await api.get('/auth/me');
         if (response.data.success) {
           setUser(response.data.data.user);
+          if (response.data.data.accessToken) {
+            api.defaults.headers.common['Authorization'] = `Bearer ${response.data.data.accessToken}`;
+          }
         } else {
           localStorage.removeItem('isAuthenticated');
+          delete api.defaults.headers.common['Authorization'];
           setUser(null);
         }
       } catch (error) {
@@ -167,6 +185,7 @@ export function AuthProvider({ children }) {
         // Don't wipe session on network errors or 5xx server errors
         if (error.response && error.response.status >= 400 && error.response.status < 500) {
           localStorage.removeItem('isAuthenticated');
+          delete api.defaults.headers.common['Authorization'];
           setUser(null);
         }
       } finally {
@@ -188,6 +207,9 @@ export function AuthProvider({ children }) {
           setUser(null);
         }
       }
+      if (e.key === 'last_role_update') {
+        handleConfigUpdate();
+      }
     };
     
     const handleAppLogout = () => {
@@ -196,14 +218,89 @@ export function AuthProvider({ children }) {
       navigate('/login');
     };
 
+    const handleConfigUpdate = () => {
+      api.get('/auth/me').then(res => {
+        if (res.data?.success) {
+          setUser(res.data.data.user);
+        }
+      }).catch(() => {});
+    };
+
+    const handleRoleUpdated = (e) => {
+      const updatedRole = e.detail;
+      if (updatedRole) {
+        setUser(prev => {
+          if (!prev) return prev;
+          const userRoleId = prev.role?.id;
+          const userRoleName = prev.role?.name?.toLowerCase();
+          const targetRoleId = updatedRole.id;
+          const targetRoleName = updatedRole.name?.toLowerCase();
+
+          if (userRoleId === targetRoleId || userRoleName === targetRoleName) {
+            const rawPerms = updatedRole.permissions;
+            const newPerms = Array.isArray(rawPerms) ? rawPerms : (rawPerms?.actions || []);
+            const newMods = Array.isArray(updatedRole.enabled_modules) ? updatedRole.enabled_modules : (rawPerms?.modules || []);
+            return {
+              ...prev,
+              role: {
+                ...prev.role,
+                name: updatedRole.name || prev.role.name,
+                permissions: newPerms,
+                enabled_modules: newMods,
+                data_scopes: updatedRole.data_scopes || prev.role.data_scopes,
+                field_permissions: updatedRole.field_permissions || prev.role.field_permissions,
+                page_permissions: updatedRole.page_permissions || prev.role.page_permissions
+              }
+            };
+          }
+          return prev;
+        });
+      }
+      handleConfigUpdate();
+    };
+
+    let channel = null;
+    try {
+      channel = new BroadcastChannel('crm_admin_sync');
+      channel.onmessage = () => {
+        handleConfigUpdate();
+      };
+    } catch (e) {}
+
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('app:logout', handleAppLogout);
+    window.addEventListener('app:sidebar-config-updated', handleConfigUpdate);
+    window.addEventListener('app:tenant-updated', handleConfigUpdate);
+    window.addEventListener('app:auth-change', handleConfigUpdate);
+    window.addEventListener('app:role-updated', handleRoleUpdated);
+    window.addEventListener('focus', handleConfigUpdate);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('app:logout', handleAppLogout);
+      window.removeEventListener('app:sidebar-config-updated', handleConfigUpdate);
+      window.removeEventListener('app:tenant-updated', handleConfigUpdate);
+      window.removeEventListener('app:auth-change', handleConfigUpdate);
+      window.removeEventListener('app:role-updated', handleRoleUpdated);
+      window.removeEventListener('focus', handleConfigUpdate);
+      if (channel) {
+        try { channel.close(); } catch (e) {}
+      }
     };
   }, [navigate]);
+
+  const refreshUser = useCallback(async () => {
+    try {
+      const response = await api.get('/auth/me');
+      if (response.data.success) {
+        setUser(response.data.data.user);
+        return response.data.data.user;
+      }
+    } catch (e) {
+      console.error('Failed to refresh user session:', e);
+    }
+    return null;
+  }, []);
 
   const login = useCallback(async (email, password, tenantSlug) => {
     // Dev-only mock login bypass — disabled to enforce real-time session
@@ -312,11 +409,16 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      const response = await api.post('/auth/login', { email, password, tenantSlug });
+      const cleanEmail = (email || '').trim();
+      const cleanSlug = (tenantSlug || '').trim();
+      const response = await api.post('/auth/login', { email: cleanEmail, password, tenantSlug: cleanSlug });
       if (response.data.success) {
         const payload = response.data.data;
         if (payload.mfaRequired || payload.passwordExpired) {
           return { success: true, payload };
+        }
+        if (payload.accessToken) {
+          api.defaults.headers.common['Authorization'] = `Bearer ${payload.accessToken}`;
         }
         localStorage.setItem('isAuthenticated', 'true');
         try {
@@ -333,9 +435,13 @@ export function AuthProvider({ children }) {
       }
       return { success: false, message: 'Unknown login error' };
     } catch (error) {
+      if (error.response?.status === 502 || error.response?.status === 503 || error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+        return { success: false, message: 'Server is starting or unavailable (502 Bad Gateway). Please wait 2 seconds and try again.' };
+      }
       const message = error.response?.data?.error?.message || 
+                      error.response?.data?.message ||
                       error.response?.data?.error || 
-                      'Login failed. Please check your credentials.';
+                      'Invalid email or password. Please try again.';
       return { success: false, message };
     }
   }, []);
@@ -344,6 +450,8 @@ export function AuthProvider({ children }) {
     // Dev-only mock logout bypass — disabled to enforce real-time session
     if (false) {
       localStorage.removeItem('mockSession');
+      localStorage.removeItem('isAuthenticated');
+      delete api.defaults.headers.common['Authorization'];
       setUser(null);
       window.dispatchEvent(new Event('app:auth-change'));
       navigate('/login');
@@ -357,6 +465,8 @@ export function AuthProvider({ children }) {
     } finally {
       // Regardless of server response, terminate local session
       localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('mockSession');
+      delete api.defaults.headers.common['Authorization'];
       setUser(null);
       navigate('/login');
     }
@@ -398,8 +508,9 @@ export function AuthProvider({ children }) {
     isAuthenticated: !!user,
     login,
     logout,
-    updateUser
-  }), [user, loading, login, logout, updateUser]);
+    updateUser,
+    refreshUser
+  }), [user, loading, login, logout, updateUser, refreshUser]);
 
   return (
     <AuthContext.Provider value={value}>

@@ -149,7 +149,9 @@ export default function UsersManager() {
       .catch(() => setUsers([]))
   }
 
-  useEffect(() => {
+  const loadMetadataAndUsers = () => {
+    fetchUsers();
+
     api.get('/roles')
       .then(res => { const r = res.data?.data || res.data; setRoles(Array.isArray(r) ? r : []); })
       .catch(() => setRoles([]))
@@ -161,6 +163,24 @@ export default function UsersManager() {
     api.get('/org/branches')
       .then(res => { const r = res.data?.data || res.data; setBranches(Array.isArray(r) ? r : []); })
       .catch(() => setBranches([]))
+  }
+
+  useEffect(() => {
+    loadMetadataAndUsers();
+
+    const handleTenantChange = () => {
+      loadMetadataAndUsers();
+    };
+
+    window.addEventListener('app:tenant-updated', handleTenantChange);
+    window.addEventListener('app:auth-change', handleTenantChange);
+    window.addEventListener('app:sidebar-config-updated', handleTenantChange);
+
+    return () => {
+      window.removeEventListener('app:tenant-updated', handleTenantChange);
+      window.removeEventListener('app:auth-change', handleTenantChange);
+      window.removeEventListener('app:sidebar-config-updated', handleTenantChange);
+    };
   }, [])
 
   const handleBulkDelete = async () => {
@@ -364,17 +384,23 @@ export default function UsersManager() {
               options={roleOptions} 
               onChange={val => {
                 const roleId = val;
-                const selectedRole = roles.find(r => r.id === roleId);
+                const selectedRole = roles.find(r => r.id === roleId || r.name?.toLowerCase() === val.toLowerCase());
                 if (selectedRole) {
                   setMockConfigData({...mockConfigData, role: selectedRole});
                 } else {
-                  const fallback = DEFAULT_ROLE_OPTIONS.find(d => d.value === roleId);
+                  const fallback = DEFAULT_ROLE_OPTIONS.find(d => d.value === roleId || d.label.toLowerCase() === val.toLowerCase());
                   if (fallback) {
-                    let fallbackModules = ['projects', 'tasks', 'leads', 'dashboards', 'analytics', 'settings'];
-                    if (roleId === 'pm') fallbackModules = ['projects', 'tasks', 'dashboards'];
-                    if (roleId === 'designer') fallbackModules = ['projects', 'tasks'];
-                    if (roleId === 'sales') fallbackModules = ['leads', 'dashboards'];
-                    setMockConfigData({...mockConfigData, role: { id: fallback.value, name: fallback.label, permissions: ['*'], enabled_modules: fallbackModules }});
+                    const rKey = Object.keys(ROLE_DEFAULTS).find(k => k.toLowerCase() === fallback.value.toLowerCase() || k.toLowerCase() === fallback.label.toLowerCase()) || 'Designer';
+                    const rConfig = ROLE_DEFAULTS[rKey] || ROLE_DEFAULTS['Designer'];
+                    setMockConfigData({
+                      ...mockConfigData, 
+                      role: { 
+                        id: fallback.value, 
+                        name: fallback.label, 
+                        permissions: rConfig?.permissions || ['projects:view', 'tasks:view'], 
+                        enabled_modules: rConfig?.enabled_modules || ['projects', 'tasks'] 
+                      }
+                    });
                   }
                 }
               }} 
@@ -403,7 +429,9 @@ export default function UsersManager() {
               try {
                 if (selectedUserId) {
                   await api.patch(`/users/${selectedUserId}`, { 
+                    name: mockConfigData.name,
                     email: mockConfigData.email, 
+                    password: mockConfigData.password,
                     role_id: mockConfigData.role?.id, 
                     role_name: mockConfigData.role?.name,
                     role: mockConfigData.role?.name 
@@ -412,11 +440,12 @@ export default function UsersManager() {
                   fetchUsers(); 
                   setRefreshKey(prev => prev + 1);
                 }
+                toast.success('Dev login credentials updated! You can now log in with these credentials.');
               } catch (err) {
                 console.error("Failed to update user profile", err);
+                toast.error(err?.response?.data?.error?.message || 'Failed to update user credentials on server');
               }
               setIsMockConfigOpen(false);
-              toast.success('Dev login credentials updated! They will be used next time you log in.');
             }}>Save Configuration</Button>
           </div>
         </div>
@@ -434,11 +463,15 @@ export default function UsersManager() {
           onConfigureMock={(userToMock) => {
             const saved = getMockTeamCredentials();
             const isSameUser = saved && (saved.email === userToMock.email || saved.id === userToMock.id);
+            const userRoleId = userToMock.role_id || (typeof userToMock.role === 'string' ? userToMock.role : userToMock.role?.id);
+            const matchedRole = roles.find(r => r.id === userRoleId || r.name?.toLowerCase() === (userToMock.role_name || '').toLowerCase());
+
             setMockConfigData({
-              name: userToMock.name,
-              email: userToMock.email,
+              id: userToMock.id,
+              name: userToMock.name || '',
+              email: userToMock.email || '',
               password: isSameUser ? (saved.password || 'password') : 'password',
-              role: userToMock.role ? { id: userToMock.role, name: userToMock.role_name } : null
+              role: matchedRole ? { id: matchedRole.id, name: matchedRole.name, permissions: matchedRole.permissions, enabled_modules: matchedRole.enabled_modules } : (userRoleId ? { id: userRoleId, name: userToMock.role_name || userRoleId } : null)
             });
             setIsMockConfigOpen(true);
           }}
@@ -463,13 +496,15 @@ export default function UsersManager() {
             onCancel={() => setIsAddMemberOpen(false)} 
             onSuccess={(newUser) => {
               setIsAddMemberOpen(false);
-              setActiveTab('approvals');
+              const isPending = newUser?.status === 'pending_approval' || newUser?.status === 'changes_requested';
+              setActiveTab(isPending ? 'approvals' : 'directory');
               if (newUser) {
                 setInjectedUsers(prev => {
                   if (prev.some(u => u.id === newUser.id)) return prev;
                   return [newUser, ...prev];
                 });
               }
+              fetchUsers();
             }} 
             roleOptions={roleOptions}
           />
@@ -593,16 +628,16 @@ export default function UsersManager() {
 
         <div style={{ display: 'flex', gap: '8px', padding: '4px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', marginBottom: '16px', width: 'fit-content' }}>
           <button 
-            style={{ padding: '8px 16px', border: 'none', background: activeTab === 'directory' ? 'var(--color-bg)' : 'transparent', color: activeTab === 'directory' ? 'var(--color-accent)' : 'var(--color-text-secondary)', borderRadius: 'var(--radius-md)', fontWeight: activeTab === 'directory' ? 600 : 500, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'directory' ? 'var(--shadow-sm)' : 'none' }} 
+            style={{ padding: '8px 16px', border: 'none', background: activeTab === 'directory' ? 'var(--color-bg)' : 'transparent', color: activeTab === 'directory' ? 'var(--color-accent)' : 'var(--color-text-secondary)', borderRadius: 'var(--radius-md)', fontWeight: activeTab === 'directory' ? 600 : 500, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'directory' ? 'var(--shadow-sm)' : 'none', display: 'flex', alignItems: 'center', gap: '8px' }} 
             onClick={async () => { setActiveTab('directory'); setSelectedIds(new Set()); }}
           >
-            Active Directory
+            Active Directory <Badge variant="neutral">{allUsers.filter(u => u.status !== 'pending_approval' && u.status !== 'changes_requested').length}</Badge>
           </button>
           <button 
-            style={{ padding: '8px 16px', border: 'none', background: activeTab === 'approvals' ? 'var(--color-bg)' : 'transparent', color: activeTab === 'approvals' ? 'var(--color-accent)' : 'var(--color-text-secondary)', borderRadius: 'var(--radius-md)', fontWeight: activeTab === 'approvals' ? 600 : 500, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'approvals' ? 'var(--shadow-sm)' : 'none' }} 
+            style={{ padding: '8px 16px', border: 'none', background: activeTab === 'approvals' ? 'var(--color-bg)' : 'transparent', color: activeTab === 'approvals' ? 'var(--color-accent)' : 'var(--color-text-secondary)', borderRadius: 'var(--radius-md)', fontWeight: activeTab === 'approvals' ? 600 : 500, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'approvals' ? 'var(--shadow-sm)' : 'none', display: 'flex', alignItems: 'center', gap: '8px' }} 
             onClick={async () => { setActiveTab('approvals'); setSelectedIds(new Set()); }}
           >
-            Pending Approvals <Badge variant="neutral">{allUsers.filter(u => u.status === 'pending_approval' || u.status === 'changes_requested').length}</Badge>
+            Pending Approvals <Badge variant={allUsers.some(u => u.status === 'pending_approval' || u.status === 'changes_requested') ? 'warning' : 'neutral'}>{allUsers.filter(u => u.status === 'pending_approval' || u.status === 'changes_requested').length}</Badge>
           </button>
           <button 
             style={{ padding: '8px 16px', border: 'none', background: activeTab === 'emails' ? 'var(--color-bg)' : 'transparent', color: activeTab === 'emails' ? 'var(--color-accent)' : 'var(--color-text-secondary)', borderRadius: 'var(--radius-md)', fontWeight: activeTab === 'emails' ? 600 : 500, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'emails' ? 'var(--shadow-sm)' : 'none' }} 
@@ -694,6 +729,7 @@ export default function UsersManager() {
           onStatusChange={(userId, newStatus) => {
             setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u))
             setInjectedUsers(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u))
+            fetchUsers()
           }}
         />
 
@@ -704,6 +740,7 @@ export default function UsersManager() {
           onStatusChange={(userId, newStatus) => {
             setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u))
             setInjectedUsers(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u))
+            fetchUsers()
           }}
         />
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../store/authContext';
+import { useAuth, getMockTeamCredentials } from '../../store/authContext';
 import { useToast } from '../../store/toastContext';
 import { useForm } from '../../hooks/useForm';
 import { validators, run } from '../../utils/validators';
@@ -21,7 +21,7 @@ export default function Login() {
   }, {
     tenantSlug: run(validators.required('Tenant Slug')),
     email: run(validators.required('Email'), validators.email),
-    password: run(validators.required('Password'), validators.minLen(6, 'Password'))
+    password: run(validators.required('Password'))
   });
   
   const [showPassword, setShowPassword] = useState(false);
@@ -69,7 +69,9 @@ export default function Login() {
     setIsSubmitting(true);
 
     try {
-      const result = await login(values.email, values.password, values.tenantSlug);
+      const cleanEmail = (values.email || '').trim();
+      const cleanSlug = (values.tenantSlug || '').trim();
+      const result = await login(cleanEmail, values.password, cleanSlug);
       setIsSubmitting(false);
 
       if (result.success) {
@@ -85,9 +87,15 @@ export default function Login() {
         }
       } else {
         // Mock error handling for redesign requirements based on common messages
-        if (result.message?.toLowerCase().includes('inactive')) {
+        if (result.message?.toLowerCase().includes('deactivated')) {
+          setErrorType('inactive');
+          setApiError(result.message || 'This workspace has been deactivated. Please contact support.');
+        } else if (result.message?.toLowerCase().includes('inactive')) {
           setErrorType('inactive');
           setApiError('Your account is inactive. Contact your workspace admin.');
+        } else if (result.message?.toLowerCase().includes('locked')) {
+          setErrorType('inactive');
+          setApiError('Account temporarily locked due to failed attempts. Please try again in 15 minutes.');
         } else if (result.message?.includes('POLICY_VIOLATION')) {
           setErrorType('policy_violation');
           const reason = result.message.split(': ')[1] || 'Unknown';
@@ -114,6 +122,60 @@ export default function Login() {
         setApiError(err.message || 'Email or password is incorrect. Try again.');
         setShakeKey(k => k + 1);
       }
+    }
+  };
+
+  const handleQuickLogin = async (email, password = 'Demo@123', tenantSlug = 'demo') => {
+    setApiError('');
+    setErrorType('');
+    setIsSubmitting(true);
+    handleChange('tenantSlug', tenantSlug);
+    handleChange('email', email);
+    handleChange('password', password);
+
+    try {
+      let result = await login(email, password, tenantSlug);
+      if (!result.success && (password === 'Demo@123' || password === 'Admin@123')) {
+        const altPw = password === 'Demo@123' ? 'Admin@123' : 'Demo@123';
+        result = await login(email, altPw, tenantSlug);
+        if (result.success) {
+          handleChange('password', altPw);
+        }
+      }
+
+      setIsSubmitting(false);
+
+      if (result.success) {
+        if (result.payload?.mfaRequired) {
+          setMfaData(result.payload);
+          setShowMfa(true);
+        } else if (result.payload?.passwordExpired) {
+          setForceResetUserId(result.payload.userId);
+          setShowForceReset(true);
+        } else {
+          toast.success('Welcome back!');
+        }
+      } else {
+        if (result.message?.toLowerCase().includes('deactivated')) {
+          setErrorType('inactive');
+          setApiError(result.message || 'This workspace has been deactivated. Please contact support.');
+        } else if (result.message?.toLowerCase().includes('inactive')) {
+          setErrorType('inactive');
+          setApiError('Your account is inactive. Contact your workspace admin.');
+        } else if (result.message?.toLowerCase().includes('locked')) {
+          setErrorType('inactive');
+          setApiError('Account temporarily locked due to failed attempts. Please try again in 15 minutes.');
+        } else {
+          setErrorType('shake');
+          setApiError(result.message || 'Email or password is incorrect. Try again.');
+          setShakeKey(k => k + 1);
+        }
+      }
+    } catch (err) {
+      setIsSubmitting(false);
+      setErrorType('shake');
+      setApiError(err.message || 'Login failed. Please try again.');
+      setShakeKey(k => k + 1);
     }
   };
 
@@ -157,7 +219,7 @@ export default function Login() {
             )}
 
             <div className={styles.formGroup}>
-              <label htmlFor="tenantSlug" className={styles.label}>Tenant Slug</label>
+              <label htmlFor="tenantSlug" className={styles.label}>Workspace Slug or Name</label>
               <input
                 id="tenantSlug"
                 type="text"
@@ -166,10 +228,10 @@ export default function Login() {
                 onChange={(e) => handleChange('tenantSlug', e.target.value)}
                 onBlur={() => handleBlur('tenantSlug')}
                 className={`${styles.input} ${touched.tenantSlug && errors.tenantSlug ? styles.inputError : ''}`}
-                placeholder="yourcompany"
+                placeholder="e.g. interior-hub or Interior Hub"
                 disabled={isSubmitting}
               />
-              <div className={styles.helpText}>Get your workspace slug from your admin</div>
+              <div className={styles.helpText}>Enter your workspace slug or name (e.g. interior-hub)</div>
               {touched.tenantSlug && errors.tenantSlug && <div style={{color:'var(--color-danger)', fontSize:'12px', marginTop:'4px'}}>{errors.tenantSlug}</div>}
             </div>
 
@@ -222,29 +284,43 @@ export default function Login() {
               {touched.password && errors.password && <div style={{color:'var(--color-danger)', fontSize:'12px', marginTop:'4px'}}>{errors.password}</div>}
             </div>
 
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <Button 
-                type="submit" 
-                variant="primary"
-                size="lg"
-                className={styles.submitBtn} 
-                disabled={isSubmitting}
-                style={{ flex: 1 }}
-              >
-                {isSubmitting ? 'Signing in...' : 'Sign In'}
-              </Button>
-              {import.meta.env.DEV && (
+            <Button 
+              type="submit" 
+              variant="primary"
+              size="lg"
+              className={styles.submitBtn} 
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Signing in...' : 'Sign In'}
+            </Button>
+
+            {import.meta.env.DEV && (() => {
+              const mockTeam = getMockTeamCredentials();
+              const hasCustomTeam = mockTeam && mockTeam.email && !['admin@demo.com', 'priya@demo.com', 'rahul@demo.com', 'ananya@demo.com', 'arjun@demo.com', 'vikram@demo.com'].includes(mockTeam.email.toLowerCase());
+              return (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '16px', width: '100%' }}>
                   <div style={{ gridColumn: '1 / -1', fontSize: '11px', fontWeight: 'bold', color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '1px', textAlign: 'center', marginBottom: '4px' }}>
                     Auto Login (Dev Mode)
                   </div>
+                  {hasCustomTeam && (
+                    <Button 
+                      type="button" 
+                      variant="primary"
+                      size="sm"
+                      disabled={isSubmitting}
+                      onClick={() => handleQuickLogin(mockTeam.email, mockTeam.password || 'password', 'demo')}
+                      style={{ gridColumn: '1 / -1', fontSize: '12px', padding: '8px', fontWeight: '600', background: 'var(--color-accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                      <span>⚙</span> Configured Dev Login ({mockTeam.name || mockTeam.email})
+                    </Button>
+                  )}
                   {[
-                    { label: 'Admin', email: 'admin@demo.com' },
-                    { label: 'Project Mgr', email: 'priya@demo.com' },
-                    { label: 'Designer', email: 'rahul@demo.com' },
-                    { label: 'Sales', email: 'ananya@demo.com' },
-                    { label: 'QC Engineer', email: 'arjun@demo.com' },
-                    { label: 'Site Eng.', email: 'vikram@demo.com' }
+                    { label: 'Admin', email: 'admin@demo.com', password: 'Admin@123' },
+                    { label: 'Project Mgr', email: 'priya@demo.com', password: 'Demo@123' },
+                    { label: 'Designer', email: 'rahul@demo.com', password: 'Demo@123' },
+                    { label: 'Sales', email: 'ananya@demo.com', password: 'Demo@123' },
+                    { label: 'QC Engineer', email: 'arjun@demo.com', password: 'Demo@123' },
+                    { label: 'Site Eng.', email: 'vikram@demo.com', password: 'Demo@123' }
                   ].map((u) => (
                     <Button 
                       key={u.label}
@@ -252,20 +328,15 @@ export default function Login() {
                       variant="secondary"
                       size="sm"
                       disabled={isSubmitting}
-                      onClick={() => {
-                        handleChange('tenantSlug', 'demo');
-                        handleChange('email', u.email);
-                        handleChange('password', 'Demo@123');
-                        setTimeout(() => document.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })), 100);
-                      }}
+                      onClick={() => handleQuickLogin(u.email, u.password, 'demo')}
                       style={{ background: 'var(--color-bg-subtle)', color: 'var(--color-text)', fontSize: '12px', padding: '6px' }}
                     >
                       {u.label}
                     </Button>
                   ))}
                 </div>
-              )}
-            </div>
+              );
+            })()}
           </form>
 
           <div className={styles.footer}>

@@ -19,6 +19,7 @@ const INITIAL_DATA = {
   role: '',
   department: '', 
   designation: '', 
+  status: 'active',
   // Security
   username: '', tempPassword: '', forcePasswordReset: true, twoFactorAuth: false
 }
@@ -72,13 +73,20 @@ export default function AddTeamMemberForm({ onCancel, onSuccess, roleOptions }) 
         name: formData.firstName.trim(),
         email: formData.officialEmail,
         roleId: formData.role,
+        status: formData.status || 'active',
         ...formData
       }
       
       const res = await api.post('/users/add-member', payload)
-      toast.success('Team member added successfully and pending approval!')
+      const createdUser = res.data?.data;
+      const userStatus = createdUser?.status || formData.status || 'active';
+      if (userStatus === 'pending_approval') {
+        toast.success('Team member added successfully and pending approval!')
+      } else {
+        toast.success('Team member added and activated successfully!')
+      }
       localStorage.removeItem('onboarding_draft')
-      if (onSuccess) onSuccess(res.data?.data)
+      if (onSuccess) onSuccess(createdUser)
     } catch (err) {
       toast.error(err?.response?.data?.error?.message || 'Failed to submit form')
     } finally {
@@ -87,7 +95,17 @@ export default function AddTeamMemberForm({ onCancel, onSuccess, roleOptions }) 
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <form 
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (activeSection < SECTIONS.length - 1) {
+          handleNext();
+        } else {
+          handleSubmit();
+        }
+      }} 
+      style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+    >
       {/* Progress / Sections Header */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', overflowX: 'auto', marginBottom: '28px', gap: '16px' }}>
         {SECTIONS.map((sec, idx) => (
@@ -123,6 +141,16 @@ export default function AddTeamMemberForm({ onCancel, onSuccess, roleOptions }) 
               
               <Input label="Department" value={formData.department} onChange={e => handleInputChange('department', e.target.value)} />
               <Input label="Designation" value={formData.designation} onChange={e => handleInputChange('designation', e.target.value)} />
+
+              <Select 
+                label="Account Status" 
+                options={[
+                  { value: 'active', label: 'Active (Immediate Access)' },
+                  { value: 'pending_approval', label: 'Pending Approval (Requires Admin Review)' }
+                ]} 
+                value={formData.status || 'active'} 
+                onChange={v => handleInputChange('status', v)} 
+              />
             </div>
             
             <div style={{ width: '100%' }}>
@@ -151,18 +179,18 @@ export default function AddTeamMemberForm({ onCancel, onSuccess, roleOptions }) 
 
       {/* Footer */}
       <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--color-border)', paddingTop: '20px', marginTop: '24px', paddingBottom: '8px' }}>
-        <Button variant="ghost" onClick={onCancel} disabled={isSubmitting}>Cancel</Button>
+        <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>Cancel</Button>
         <div style={{ display: 'flex', gap: '16px' }}>
-          {activeSection > 0 && <Button variant="ghost" onClick={handleBack} disabled={isSubmitting}>Back</Button>}
+          {activeSection > 0 && <Button type="button" variant="ghost" onClick={handleBack} disabled={isSubmitting}>Back</Button>}
           {activeSection < SECTIONS.length - 1 ? (
-            <Button variant="primary" onClick={handleNext}>Next Step</Button>
+            <Button type="button" variant="primary" onClick={handleNext}>Next Step</Button>
           ) : (
-            <Button variant="primary" onClick={handleSubmit} disabled={isSubmitting}>
+            <Button type="submit" variant="primary" disabled={isSubmitting}>
               {isSubmitting ? 'Saving...' : 'Complete Onboarding'}
             </Button>
           )}
         </div>
       </div>
-    </div>
+    </form>
   )
 }

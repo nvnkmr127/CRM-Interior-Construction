@@ -20,6 +20,7 @@ import LeadQualificationScore from './LeadQualificationScore';
 import DiscoveryCallChecklist from './DiscoveryCallChecklist';
 import LeadForm from './LeadForm';
 import LeadSiteVisitsTab from './LeadSiteVisitsTab';
+import LeadScheduleHub from './LeadScheduleHub';
 
 import NegotiationDesk from './NegotiationDesk';
 import DesignPresentationModal from './DesignPresentationModal';
@@ -1486,6 +1487,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                 
                 {/* COLUMN 2: AI & Insights */}
                 <div className="space-y-6 flex flex-col md:border-l md:border-gray-100 md:pl-6 xl:border-l-0 xl:pl-0">
+                  <LeadScheduleHub leadId={leadId} onNavigateTab={setActiveTab} />
                   <LeadQualificationScore lead={lead} />
                   
                   {/* Upcoming Meeting */}

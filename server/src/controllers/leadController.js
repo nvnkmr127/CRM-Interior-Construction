@@ -755,6 +755,18 @@ exports.parseFileHandler = async function parseFileHandler(req, res, next) {
   }
 };
 
+exports.getAllFollowupsHandler = async function getAllFollowupsHandler(req, res, next) {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const { getAllFollowups } = require('../services/leads/followupService');
+    const data = await getAllFollowups({ tenantId });
+    res.json({ success: true, data });
+  } catch (error) {
+    logger.error('getAllFollowupsHandler error:', error);
+    return next(new Error('System error or unhandled exception'));
+  }
+};
+
 exports.getFollowupsHandler = async function getFollowupsHandler(req, res, next) {
   try {
     const { tenantId } = getTenantAndUser(req);
@@ -2688,7 +2700,6 @@ exports.getLeadsHandler = async function getLeadsHandler(req, res, next) {
     const { maskSensitiveFields } = require('../utils/fieldMasker');
     
     const pool = require('../db/pool');
-    await pool.query(`UPDATE leads SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL`);
     
     // Apply data scope filter
     req.query.scopeFilter = req.scopeFilter;

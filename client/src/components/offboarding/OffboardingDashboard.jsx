@@ -61,12 +61,12 @@ export default function OffboardingDashboard() {
     {
       key: 'resignation_date',
       label: 'Resignation Date',
-      render: (r) => new Date(r.resignation_date).toLocaleDateString()
+      render: (r) => r.resignation_date ? new Date(r.resignation_date).toLocaleDateString() : '-'
     },
     {
       key: 'last_working_day',
       label: 'Last Working Day',
-      render: (r) => new Date(r.last_working_day).toLocaleDateString()
+      render: (r) => r.last_working_day ? new Date(r.last_working_day).toLocaleDateString() : '-'
     },
     {
       key: 'actions',

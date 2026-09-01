@@ -193,7 +193,7 @@ const DataTable = React.memo(function DataTable({
                 <td colSpan={activeColumns.length + (selectable ? 1 : 0) + (expandable ? 1 : 0)}>
                   <div style={{ padding: '40px 0', width: '100%', display: 'flex', justifyContent: 'center' }}>
                     <EmptyState 
-                      icon={<span style={{fontSize: 32}}>S</span>}
+                      icon={<i className="ri-inbox-2-line" style={{ fontSize: '36px', color: 'var(--color-text-muted)' }}></i>}
                       title={emptyMessage || 'No data found'} 
                       action={emptyAction} 
                     />

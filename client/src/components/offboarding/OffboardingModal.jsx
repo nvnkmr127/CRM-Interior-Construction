@@ -80,10 +80,10 @@ export default function OffboardingModal({ record, onClose, onUpdated }) {
         <div className={styles.container}>
           <div className={styles.headerInfo}>
             <div>
-              <strong>Resignation Date:</strong> {new Date(record.resignation_date).toLocaleDateString()}
+              <strong>Resignation Date:</strong> {record.resignation_date ? new Date(record.resignation_date).toLocaleDateString() : '-'}
             </div>
             <div>
-              <strong>Last Working Day:</strong> {new Date(record.last_working_day).toLocaleDateString()}
+              <strong>Last Working Day:</strong> {record.last_working_day ? new Date(record.last_working_day).toLocaleDateString() : '-'}
             </div>
             <div>
               <strong>Status:</strong> <Badge variant="neutral">ARCHIVED</Badge>
@@ -142,10 +142,10 @@ export default function OffboardingModal({ record, onClose, onUpdated }) {
       <div className={styles.container}>
         <div className={styles.headerInfo}>
           <div>
-            <strong>Resignation Date:</strong> {new Date(record.resignation_date).toLocaleDateString()}
+            <strong>Resignation Date:</strong> {record.resignation_date ? new Date(record.resignation_date).toLocaleDateString() : '-'}
           </div>
           <div>
-            <strong>Last Working Day:</strong> {new Date(record.last_working_day).toLocaleDateString()}
+            <strong>Last Working Day:</strong> {record.last_working_day ? new Date(record.last_working_day).toLocaleDateString() : '-'}
           </div>
           <div>
             <strong>Status:</strong> <Badge>{record.status.replace('_', ' ').toUpperCase()}</Badge>

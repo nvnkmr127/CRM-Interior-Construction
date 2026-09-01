@@ -28,11 +28,11 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed,
     return localStorage.getItem('theme') === 'dark'
   })
 
-  const isAdmin = 
+  const isSuperAdmin = 
     user?.role === 'superadmin' || 
     user?.role?.name?.toLowerCase() === 'superadmin' || 
-    user?.role?.name?.toLowerCase() === 'super admin' || 
-    (user?.role?.permissions && user.role.permissions.includes('*'))
+    user?.role?.name?.toLowerCase() === 'super admin' ||
+    user?.is_platform_admin === true
 
   useEffect(() => {
     if (isDark) {
@@ -45,16 +45,17 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed,
   }, [isDark])
 
   useEffect(() => {
-    if (isAdmin && switcherOpen) {
+    if (isSuperAdmin && switcherOpen) {
       api.get('/superadmin/tenants')
         .then(res => {
           setTenants(res.data.data || [])
         })
         .catch(err => {
-          console.error('Failed to fetch tenants:', err)
+          console.warn('Failed to fetch tenants:', err?.response?.status)
+          setTenants([])
         })
     }
-  }, [isAdmin, switcherOpen])
+  }, [isSuperAdmin, switcherOpen])
 
   // Close menus when clicking anywhere
   useEffect(() => {
@@ -74,6 +75,9 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed,
       const res = await api.post('/superadmin/switch-tenant', { tenantId })
       if (res.data.success) {
         setUser(res.data.data.user)
+        window.dispatchEvent(new Event('app:sidebar-config-updated'))
+        window.dispatchEvent(new Event('app:tenant-updated'))
+        window.dispatchEvent(new Event('app:auth-change'))
         toast.success(`Switched to workspace: ${tenantName}`)
         setSwitcherOpen(false)
         navigate('/')
@@ -142,7 +146,7 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed,
 
       {/* Right: notifications + user */}
       <div className={styles.right}>
-        {isAdmin && (
+        {isSuperAdmin && (
           <div className={styles.switcherContainer} onClick={(e) => e.stopPropagation()}>
             <button 
               className={styles.jumpBtn} 

@@ -8,7 +8,7 @@ const authenticate = require('../middleware/authenticate');
 
 router.use(authenticate);
 
-router.get('/:module', authorize('users:manage'), async (req, res, next) => {
+router.get('/:module', async (req, res, next) => {
   const tenantId = req.tenantId;
   const userId = req.user.userId;
   const moduleName = req.params.module;
@@ -27,7 +27,7 @@ router.get('/:module', authorize('users:manage'), async (req, res, next) => {
   }
 });
 
-router.post('/', authorize('users:manage'), async (req, res, next) => {
+router.post('/', async (req, res, next) => {
   const tenantId = req.tenantId;
   const userId = req.user.userId;
   const { module, name, filter_state } = req.body;
@@ -49,7 +49,7 @@ router.post('/', authorize('users:manage'), async (req, res, next) => {
   }
 });
 
-router.delete('/:id', authorize('users:manage'), async (req, res, next) => {
+router.delete('/:id', async (req, res, next) => {
   const tenantId = req.tenantId;
   const userId = req.user.userId;
   const filterId = req.params.id;

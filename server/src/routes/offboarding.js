@@ -4,9 +4,38 @@ const authenticate = require('../middleware/authenticate');
 const { success, fail } = require('../utils/response');
 const pool = require('../config/db');
 const { queueEmail } = require('../services/emailService');
+const logger = require('../utils/logger');
 
 const router = express.Router();
 router.use(authenticate);
+
+const ensureTable = async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS employee_offboarding (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status VARCHAR(50) DEFAULT 'pending_manager',
+        resignation_date DATE,
+        last_working_day DATE,
+        manager_approved_at TIMESTAMP,
+        hr_approved_at TIMESTAMP,
+        knowledge_transfer_done BOOLEAN DEFAULT false,
+        project_transfer_done BOOLEAN DEFAULT false,
+        task_transfer_done BOOLEAN DEFAULT false,
+        assets_returned BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_employee_offboarding_tenant ON employee_offboarding(tenant_id);
+      CREATE INDEX IF NOT EXISTS idx_employee_offboarding_user ON employee_offboarding(user_id);
+    `);
+  } catch (err) {
+    logger.error('Failed to ensure employee_offboarding table exists:', err);
+  }
+};
+ensureTable();
 
 // Get all offboarding records
 router.get('/', async (req, res) => {
@@ -20,6 +49,11 @@ router.get('/', async (req, res) => {
     `, [req.tenantId]);
     return success(res, rows);
   } catch (error) {
+    logger.error('Failed to fetch offboarding records:', error);
+    if (error.code === '42P01') {
+      await ensureTable();
+      return success(res, []);
+    }
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch offboarding records', 500);
   }
 });
@@ -33,6 +67,7 @@ router.post('/initiate', async (req, res) => {
   }
 
   try {
+    await ensureTable();
     // Check if already offboarding
     const existing = await pool.query('SELECT id FROM employee_offboarding WHERE user_id = $1 AND tenant_id = $2', [user_id, req.tenantId]);
     if (existing.rows.length > 0) {
@@ -47,6 +82,7 @@ router.post('/initiate', async (req, res) => {
 
     return success(res, rows[0]);
   } catch (error) {
+    logger.error('Failed to initiate offboarding:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to initiate offboarding', 500);
   }
 });
@@ -63,6 +99,7 @@ router.put('/:id/manager-approve', async (req, res) => {
     if (!rows.length) return fail(res, 'NOT_FOUND', 'Record not found', 404);
     return success(res, rows[0]);
   } catch (error) {
+    logger.error('Failed to manager-approve offboarding:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update', 500);
   }
 });
@@ -79,6 +116,7 @@ router.put('/:id/hr-approve', async (req, res) => {
     if (!rows.length) return fail(res, 'NOT_FOUND', 'Record not found', 404);
     return success(res, rows[0]);
   } catch (error) {
+    logger.error('Failed to hr-approve offboarding:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update', 500);
   }
 });
@@ -115,6 +153,7 @@ router.put('/:id/step', async (req, res) => {
 
     return success(res, rows[0]);
   } catch (error) {
+    logger.error('Failed to update offboarding step:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update step', 500);
   }
 });
@@ -142,6 +181,7 @@ router.post('/:id/finalize', async (req, res) => {
   } catch (error) {
     await pool.query('ROLLBACK');
     if (error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Record not found', 404);
+    logger.error('Failed to finalize offboarding:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to finalize', 500);
   }
 });

@@ -29,15 +29,23 @@ const router = express.Router();
 router.use(authenticate);
 
 // Get permissions schema for frontend rendering
-router.get('/permissions-schema', authorize('users:manage'), (req, res) => {
+router.get('/permissions-schema', (req, res) => {
   return success(res, { modules: PERMISSION_MODULES, actions: PERMISSION_ACTIONS });
 });
 
 // Get all roles for the tenant
-router.get('/', authorize('users:manage'), async (req, res) => {
+router.get('/', async (req, res) => {
   const tenantId = req.tenantId;
 
   try {
+    // Automatically purge unassigned placeholder roles ('manager', 'user') with 0 users
+    await pool.query(`
+      DELETE FROM roles 
+      WHERE tenant_id = $1 
+        AND name IN ('manager', 'user') 
+        AND id NOT IN (SELECT DISTINCT role_id FROM users WHERE tenant_id = $1 AND role_id IS NOT NULL)
+    `).catch(() => {});
+
     const query = `
       SELECT id, name, permissions, is_system, created_at
       FROM roles
@@ -64,6 +72,41 @@ router.get('/', authorize('users:manage'), async (req, res) => {
   }
 });
 
+// Get single role by ID
+router.get('/:id', async (req, res, next) => {
+  const tenantId = req.tenantId;
+  const roleId = req.params.id;
+
+  if (roleId === 'permissions-schema' || roleId === 'templates') {
+    return next();
+  }
+
+  try {
+    const { rows } = await pool.query('SELECT * FROM roles WHERE id = $1 AND tenant_id = $2', [roleId, tenantId]);
+    if (rows.length === 0) return fail(res, 'NOT_FOUND', 'Role not found', 404);
+
+    let p = typeof rows[0].permissions === 'string' ? JSON.parse(rows[0].permissions || '[]') : (rows[0].permissions || []);
+    let actions = Array.isArray(p) ? p : (p.actions || []);
+    let scopes = Array.isArray(p) ? {} : (p.scopes || {});
+    let fields = Array.isArray(p) ? {} : (p.fields || {});
+    let modules = Array.isArray(p) ? [] : (p.modules || []);
+    let pages = Array.isArray(p) ? {} : (p.pages || {});
+
+    return success(res, {
+      ...rows[0],
+      permissions: actions,
+      data_scopes: scopes,
+      field_permissions: fields,
+      enabled_modules: modules,
+      page_permissions: pages,
+      security_policies: rows[0].security_policies || {}
+    });
+  } catch (error) {
+    logger.error('[Roles API] Fetch single role error:', error);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to fetch role', 500);
+  }
+});
+
 // Create a new role
 router.post('/', authorize('users:manage'), async (req, res) => {
   const tenantId = req.tenantId;
@@ -85,6 +128,16 @@ router.post('/', authorize('users:manage'), async (req, res) => {
     return fail(res, 'VALIDATION_ERROR', depError, 400);
   }
   
+  // Derive active modules from validPermissions and explicit enabled_modules
+  const autoModules = new Set(Array.isArray(enabled_modules) ? enabled_modules : []);
+  if (Array.isArray(validPermissions)) {
+    validPermissions.forEach(perm => {
+      const [mod] = perm.split(':');
+      if (mod && mod !== '*') autoModules.add(mod);
+    });
+  }
+  const resolvedModules = Array.from(autoModules);
+
   const change_summary = req.body.change_summary || 'Initial creation';
 
   try {
@@ -93,7 +146,7 @@ router.post('/', authorize('users:manage'), async (req, res) => {
       VALUES ($1, $2, $3, $4)
       RETURNING id, name, permissions, security_policies, is_system, created_at
     `;
-    const permsStr = JSON.stringify({ actions: validPermissions, scopes: data_scopes || {}, fields: field_permissions || {}, modules: enabled_modules || [], pages: page_permissions || {} });
+    const permsStr = JSON.stringify({ actions: validPermissions, scopes: data_scopes || {}, fields: field_permissions || {}, modules: resolvedModules, pages: page_permissions || {} });
     const securityPoliciesStr = JSON.stringify(req.body.security_policies || {});
     const { rows } = await pool.query(query, [tenantId, name, permsStr, securityPoliciesStr]);
 
@@ -138,7 +191,7 @@ router.post('/', authorize('users:manage'), async (req, res) => {
 });
 
 // Get all templates
-router.get('/templates', authorize('users:manage'), async (req, res) => {
+router.get('/templates', async (req, res) => {
   const tenantId = req.tenantId;
   try {
     const { rows } = await pool.query(`
@@ -252,7 +305,6 @@ router.post('/bulk-import', authorize('users:manage'), async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     logger.error('[Roles API] Bulk import error:', error);
-    // 23505 is PostgreSQL unique violation code
     if (error.code === '23505') {
        return fail(res, 'VALIDATION_ERROR', 'One of the imported roles already exists (duplicate name)', 409);
     }
@@ -261,7 +313,6 @@ router.post('/bulk-import', authorize('users:manage'), async (req, res) => {
     client.release();
   }
 });
-
 
 // Clone role or create from template
 router.post('/clone', authorize('users:manage'), async (req, res) => {
@@ -276,7 +327,6 @@ router.post('/clone', authorize('users:manage'), async (req, res) => {
     let sourcePermsStr = '{}';
 
     if (isTemplate) {
-      // First check hardcoded built-ins
       const builtinTemplates = {
         't-sales': { actions: ['leads:view', 'leads:create', 'leads:edit', 'quotations:view', 'quotations:create'] },
         't-designer': { actions: ['projects:view', 'tasks:view', 'tasks:edit', 'boq:view', 'boq:create', 'design_reviews:view', 'design_reviews:create'] },
@@ -358,7 +408,6 @@ router.patch('/:id', authorize('users:manage'), async (req, res) => {
     if (roleRows[0].is_system) return fail(res, 'VALIDATION_ERROR', 'Cannot modify system roles', 400);
 
     let permsStr = null;
-    // We update the permissions column if either permissions, data_scopes, field_permissions, enabled_modules, or page_permissions is provided
     if (permissions !== undefined || data_scopes !== undefined || field_permissions !== undefined || enabled_modules !== undefined || page_permissions !== undefined) {
       let p = typeof roleRows[0].permissions === 'string' ? JSON.parse(roleRows[0].permissions || '[]') : (roleRows[0].permissions || []);
       let existingActions = Array.isArray(p) ? p : (p.actions || []);
@@ -387,6 +436,15 @@ router.patch('/:id', authorize('users:manage'), async (req, res) => {
       let newModules = enabled_modules !== undefined ? enabled_modules : existingModules;
       let newPages = page_permissions !== undefined ? page_permissions : existingPages;
 
+      const autoModules = new Set(Array.isArray(newModules) ? newModules : []);
+      if (Array.isArray(validPermissions)) {
+        validPermissions.forEach(perm => {
+          const [mod] = perm.split(':');
+          if (mod && mod !== '*') autoModules.add(mod);
+        });
+      }
+      newModules = Array.from(autoModules);
+
       permsStr = JSON.stringify({ actions: validPermissions, scopes: newScopes, fields: newFields, modules: newModules, pages: newPages });
 
       await logActivity(req, 'role', roleId, 'Edited', JSON.stringify({
@@ -413,27 +471,27 @@ router.patch('/:id', authorize('users:manage'), async (req, res) => {
         await logAction({ tenantId, userId: req.user.userId, action: 'employee.permissions_updated', entity: 'user', entityId: u.id, newValue: { role: roleRows[0].name } });
       }
     }
-      const { rows } = await pool.query(
-        'UPDATE roles SET name=$1, permissions=$2, security_policies=$3 WHERE id=$4 AND tenant_id=$5 RETURNING *',
-        [name || roleRows[0].name, permsStr || roleRows[0].permissions, security_policies ? JSON.stringify(security_policies) : roleRows[0].security_policies, roleId, tenantId]
-      );
-      
-      let pUpdated = typeof rows[0].permissions === 'string' ? JSON.parse(rows[0].permissions || '[]') : (rows[0].permissions || []);
-      let actionsUpdated = Array.isArray(pUpdated) ? pUpdated : (pUpdated.actions || []);
-      let scopesUpdated = Array.isArray(pUpdated) ? {} : (pUpdated.scopes || {});
-      let fieldsUpdated = Array.isArray(pUpdated) ? {} : (pUpdated.fields || {});
-      let modulesUpdated = Array.isArray(pUpdated) ? [] : (pUpdated.modules || []);
-      let pagesUpdated = Array.isArray(pUpdated) ? {} : (pUpdated.pages || {});
+    const { rows } = await pool.query(
+      'UPDATE roles SET name=$1, permissions=$2, security_policies=$3 WHERE id=$4 AND tenant_id=$5 RETURNING *',
+      [name || roleRows[0].name, permsStr || roleRows[0].permissions, security_policies ? JSON.stringify(security_policies) : roleRows[0].security_policies, roleId, tenantId]
+    );
+    
+    let pUpdated = typeof rows[0].permissions === 'string' ? JSON.parse(rows[0].permissions || '[]') : (rows[0].permissions || []);
+    let actionsUpdated = Array.isArray(pUpdated) ? pUpdated : (pUpdated.actions || []);
+    let scopesUpdated = Array.isArray(pUpdated) ? {} : (pUpdated.scopes || {});
+    let fieldsUpdated = Array.isArray(pUpdated) ? {} : (pUpdated.fields || {});
+    let modulesUpdated = Array.isArray(pUpdated) ? [] : (pUpdated.modules || []);
+    let pagesUpdated = Array.isArray(pUpdated) ? {} : (pUpdated.pages || {});
 
-      const updatedRole = {
-        ...rows[0],
-        permissions: actionsUpdated,
-        data_scopes: scopesUpdated,
-        field_permissions: fieldsUpdated,
-        enabled_modules: modulesUpdated,
-        page_permissions: pagesUpdated,
-        security_policies: rows[0].security_policies || {}
-      };
+    const updatedRole = {
+      ...rows[0],
+      permissions: actionsUpdated,
+      data_scopes: scopesUpdated,
+      field_permissions: fieldsUpdated,
+      enabled_modules: modulesUpdated,
+      page_permissions: pagesUpdated,
+      security_policies: rows[0].security_policies || {}
+    };
     return success(res, updatedRole);
   } catch (error) {
     logger.error('[Roles API] Update error:', error);
@@ -449,12 +507,24 @@ router.delete('/:id', authorize('users:manage'), async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM roles WHERE id=$1 AND tenant_id=$2', [roleId, tenantId]);
     if (rows.length === 0) return fail(res, 'NOT_FOUND', 'Role not found', 404);
-    if (rows[0].is_system) return fail(res, 'VALIDATION_ERROR', 'Cannot delete system roles', 400);
 
     // Check if role is assigned to any users
     const { rows: userRows } = await pool.query('SELECT COUNT(*) FROM users WHERE role_id=$1 AND tenant_id=$2', [roleId, tenantId]);
     if (parseInt(userRows[0].count, 10) > 0) {
       return fail(res, 'VALIDATION_ERROR', 'Cannot delete role because it is assigned to one or more users', 400);
+    }
+
+    // Protect against deleting the only administrative role with full access
+    let rolePerms = typeof rows[0].permissions === 'string' ? JSON.parse(rows[0].permissions || '[]') : (rows[0].permissions || []);
+    let actions = Array.isArray(rolePerms) ? rolePerms : (rolePerms.actions || []);
+    if (actions.includes('*') || rows[0].name.toLowerCase() === 'superadmin' || rows[0].name.toLowerCase() === 'admin') {
+      const { rows: adminRoles } = await pool.query(`
+        SELECT COUNT(*) FROM roles 
+        WHERE tenant_id = $1 AND (permissions::text LIKE '%*%' OR name ILIKE 'admin%' OR name ILIKE 'superadmin%')
+      `, [tenantId]);
+      if (parseInt(adminRoles[0].count, 10) <= 1) {
+        return fail(res, 'VALIDATION_ERROR', 'Cannot delete the only administrative role for this workspace', 400);
+      }
     }
 
     await pool.query('DELETE FROM roles WHERE id=$1 AND tenant_id=$2', [roleId, tenantId]);
@@ -498,7 +568,6 @@ router.patch('/:id/rollback/:versionId', authorize('users:manage'), async (req, 
 
     const targetVersion = versionRows[0];
     
-    // We update the role with this version's data
     const newPermsObj = {
       actions: targetVersion.permissions || [],
       scopes: targetVersion.data_scopes || {},
@@ -511,7 +580,6 @@ router.patch('/:id/rollback/:versionId', authorize('users:manage'), async (req, 
       UPDATE roles SET permissions = $1 WHERE id = $2 AND tenant_id = $3 RETURNING *
     `, [JSON.stringify(newPermsObj), roleId, tenantId]);
 
-    // Insert a new version reflecting this rollback
     const { rows: maxVRows } = await pool.query(`SELECT COALESCE(MAX(version_number), 0) as max_v FROM role_versions WHERE role_id=$1`, [roleId]);
     const nextV = (parseInt(maxVRows[0].max_v, 10) || 0) + 1;
     const change_summary = `Rolled back to Version ${targetVersion.version_number}`;
@@ -521,7 +589,6 @@ router.patch('/:id/rollback/:versionId', authorize('users:manage'), async (req, 
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     `, [tenantId, roleId, nextV, req.user?.id || req.user?.userId || null, JSON.stringify(newPermsObj.actions), JSON.stringify(newPermsObj.scopes), JSON.stringify(newPermsObj.fields), JSON.stringify(newPermsObj.modules), JSON.stringify(newPermsObj.pages), change_summary]);
 
-    // Log Activity
     await logActivity(req, 'role', roleId, 'Edited', null, JSON.stringify(newPermsObj), change_summary);
 
     return success(res, updatedRole[0]);

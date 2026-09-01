@@ -33,45 +33,26 @@ async function provisionTenant() {
     );
     console.log('Default security settings initialized for tenant.');
 
-    // 3. Create Default Roles (Admin, Manager, User)
-    const defaultRoles = [
-      {
-        name: 'superadmin',
-        permissions: ['*'],
-      },
-      {
-        name: 'manager',
-        permissions: ['leads:read', 'leads:write', 'projects:read'],
-      },
-      {
-        name: 'user',
-        permissions: ['leads:read'],
-      }
-    ];
-
-    const rolesMap = {};
-    for (const r of defaultRoles) {
-      const { rows } = await client.query(
-        `INSERT INTO roles (tenant_id, name, permissions, is_system)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id`,
-        [
-          tenantId,
-          r.name,
-          JSON.stringify(r.permissions),
-          true
-        ]
-      );
-      rolesMap[r.name] = rows[0].id;
-    }
-    console.log('Roles created/retrieved successfully.');
+    // 3. Create Default Superadmin Role
+    const { rows } = await client.query(
+      `INSERT INTO roles (tenant_id, name, permissions, is_system)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id`,
+      [
+        tenantId,
+        'superadmin',
+        JSON.stringify(['*']),
+        true
+      ]
+    );
+    const adminRoleId = rows[0].id;
+    console.log('Superadmin role created successfully.');
 
     // Commit role transaction first so registerUser query can reference the role
     await client.query('COMMIT');
 
     // 4. Create Admin User belonging to the Tenant
     // Since registerUser manages its own transaction and queries inside, we call it separately.
-    const adminRoleId = rolesMap['superadmin'];
     const newUser = await registerUser({
       tenantId,
       email: adminEmail,

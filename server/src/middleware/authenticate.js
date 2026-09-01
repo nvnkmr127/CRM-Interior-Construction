@@ -2,6 +2,7 @@ const logger = require('../utils/logger');
 const { verifyAccessToken, TokenExpiredError } = require('../services/auth/tokens');
 const authenticateApiKey = require('./authenticateApiKey');
 const { getTenantPool } = require('../db/tenantResolver');
+const { ROLE_DEFAULTS, getRoleConfig } = require('../constants/roleDefaults');
 
 /**
  * Express middleware to authenticate API requests via JWT or API Key.
@@ -46,13 +47,8 @@ async function authenticate(req, res, next) {
       await setCache(tenantActiveKey, isTenantActive, 300).catch(() => {});
     }
 
-    // Bypass deactivation check if user is a superadmin/developer
-    const userRole = typeof decoded.role === 'string' ? decoded.role.toLowerCase().replace(/\s+/g, '') : '';
-    const permissions = decoded.permissions || [];
-    const isSuperAdmin = userRole === 'superadmin' || permissions.includes('*');
-
-    if (isTenantActive === 'false' && !isSuperAdmin) {
-      return res.status(403).json({ success: false, error: 'TENANT_DEACTIVATED', message: 'This workspace has been deactivated.' });
+    if (isTenantActive === 'false') {
+      return res.status(403).json({ success: false, error: { code: 'TENANT_DEACTIVATED', message: 'This workspace has been deactivated.' }, message: 'This workspace has been deactivated.' });
     }
 
     // V4: Continuous Authentication (Zero Trust) - Ensure session still exists
@@ -182,6 +178,57 @@ async function authenticate(req, res, next) {
       req.user.role = req.user.role.toLowerCase();
     }
     
+    // Normalize user ID property
+    if (!req.user.id && req.user.userId) {
+      req.user.id = req.user.userId;
+    }
+
+    // Auto-hydrate permissions and role if missing or empty in the JWT token
+    if (!req.user.permissions || req.user.permissions.length === 0 || !req.user.role || req.user.role === 'undefined') {
+      try {
+        const userQuery = await pool.query(
+          `SELECT u.role_id, r.name as role_name, r.permissions as role_permissions 
+           FROM users u 
+           LEFT JOIN roles r ON u.role_id = r.id 
+           WHERE u.id = $1 LIMIT 1`,
+          [req.user.id]
+        );
+        if (userQuery.rows.length > 0) {
+          const uRow = userQuery.rows[0];
+          const rName = uRow.role_name || (uRow.role_id ? 'Team Member' : 'Sales Executive');
+          req.user.role = rName.toLowerCase();
+          if (uRow.role_permissions) {
+            const p = typeof uRow.role_permissions === 'string' ? JSON.parse(uRow.role_permissions) : uRow.role_permissions;
+            req.user.permissions = Array.isArray(p) ? p : (p.actions || []);
+          } else {
+            const rConfig = getRoleConfig(rName) || ROLE_DEFAULTS['Sales Executive'];
+            req.user.permissions = rConfig ? rConfig.permissions : ['projects:view', 'tasks:view', 'leads:view', 'leads:read'];
+          }
+        } else {
+          const rConfig = ROLE_DEFAULTS['Sales Executive'];
+          req.user.role = 'sales executive';
+          req.user.permissions = rConfig.permissions;
+        }
+      } catch (err) {
+        const rConfig = ROLE_DEFAULTS['Sales Executive'];
+        req.user.role = 'sales executive';
+        req.user.permissions = rConfig.permissions;
+      }
+    } else if (req.user.role) {
+      // If role is present, ensure default permissions for that role are included if permissions were sparse or stale
+      const roleCfg = getRoleConfig(req.user.role);
+      if (roleCfg && Array.isArray(roleCfg.permissions)) {
+        const currentPerms = Array.isArray(req.user.permissions) 
+          ? req.user.permissions 
+          : (req.user.permissions.actions || []);
+        
+        const cleanRole = req.user.role.toLowerCase();
+        if (cleanRole.includes('sales') && !currentPerms.some(p => p.startsWith('leads:'))) {
+          req.user.permissions = [...new Set([...currentPerms, ...roleCfg.permissions])];
+        }
+      }
+    }
+
     // Normalize user permissions for the new schema (actions, scopes, fields)
     if (req.user.permissions && !Array.isArray(req.user.permissions) && req.user.permissions.actions) {
       req.user.data_scopes = req.user.permissions.scopes || {};
@@ -192,10 +239,6 @@ async function authenticate(req, res, next) {
       req.user.field_permissions = {};
     }
 
-    // Normalize user ID property
-    if (!req.user.id && req.user.userId) {
-      req.user.id = req.user.userId;
-    }
     req.tenantId = decoded.tenantId;
 
     // Attach the dynamically resolved database pool

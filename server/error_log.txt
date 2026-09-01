@@ -375,4 +375,286 @@
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
     at async Object.updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:458:10)
     at async updateLead (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\leads\updateLead.js:16:23)
-    at async exports.updateLeadHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2767:25)\n\n
+    at async exports.updateLeadHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2767:25)\n\n2026-09-01T07:44:38.435Z\nError: INVALID_CREDENTIALS
+    at loginUser (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\login.js:161:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:123:25\n\n2026-09-01T07:44:56.487Z\nError: INVALID_CREDENTIALS
+    at loginUser (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\login.js:161:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:123:25\n\n2026-09-01T07:45:05.914Z\nError: INVALID_CREDENTIALS
+    at loginUser (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\login.js:161:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:123:25\n\n2026-09-01T08:10:45.036Z\nAggregateError: 
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:95:26\n\n2026-09-01T08:10:45.064Z\nAggregateError: 
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:95:26\n\n2026-09-01T08:10:45.099Z\nError: Validation failed
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:82:21
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at router.handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:186:3)
+    at router (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:60:12)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\auditLogger.js:83:3)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\app.js:221:3)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\responseFormatter.js:80:3)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\app.js:144:5)
+    at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:63:14)
+    at run (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\app.js:143:21)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at cookieParser (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\cookie-parser\index.js:57:14)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at read (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\body-parser\lib\read.js:42:5)
+    at urlencodedParser (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\body-parser\lib\types\urlencoded.js:57:5)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\body-parser\lib\read.js:171:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:214:14)
+    at invokeCallback (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\raw-body\index.js:238:16)
+    at done (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\raw-body\index.js:287:7)
+    at IncomingMessage.emit (node:events:508:28)
+    at endReadableNT (node:internal/streams/readable:1701:12)
+    at processTicksAndRejections (node:internal/process/task_queues:89:21)\n\n2026-09-01T09:36:35.177Z\nError: INVALID_CREDENTIALS
+    at loginUser (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\login.js:196:13)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:121:25\n\n2026-09-01T09:36:35.228Z\nError: Validation failed
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:82:21
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at router.handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:186:3)
+    at router (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:60:12)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\auditLogger.js:83:3)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\app.js:221:3)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\responseFormatter.js:80:3)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\app.js:144:5)
+    at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:63:14)
+    at run (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\app.js:143:21)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at cookieParser (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\cookie-parser\index.js:57:14)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at read (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\body-parser\lib\read.js:42:5)
+    at urlencodedParser (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\body-parser\lib\types\urlencoded.js:57:5)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\body-parser\lib\read.js:171:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:214:14)
+    at invokeCallback (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\raw-body\index.js:238:16)
+    at done (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\raw-body\index.js:287:7)
+    at IncomingMessage.emit (node:events:508:28)
+    at endReadableNT (node:internal/streams/readable:1701:12)
+    at processTicksAndRejections (node:internal/process/task_queues:89:21)\n\n2026-09-01T09:37:44.443Z\nError: INVALID_CREDENTIALS
+    at loginUser (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\login.js:196:13)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:121:25\n\n2026-09-01T09:37:44.476Z\nError: Validation failed
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:82:21
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at router.handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:186:3)
+    at router (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:60:12)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\auditLogger.js:83:3)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\app.js:221:3)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\responseFormatter.js:80:3)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\app.js:144:5)
+    at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:63:14)
+    at run (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\app.js:143:21)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at cookieParser (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\cookie-parser\index.js:57:14)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at read (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\body-parser\lib\read.js:42:5)
+    at urlencodedParser (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\body-parser\lib\types\urlencoded.js:57:5)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\body-parser\lib\read.js:171:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:214:14)
+    at invokeCallback (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\raw-body\index.js:238:16)
+    at done (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\raw-body\index.js:287:7)
+    at IncomingMessage.emit (node:events:508:28)
+    at endReadableNT (node:internal/streams/readable:1701:12)
+    at processTicksAndRejections (node:internal/process/task_queues:89:21)\n\n2026-09-01T10:19:35.811Z\nError: INVALID_CREDENTIALS
+    at loginUser (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\login.js:196:13)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:121:25\n\n2026-09-01T10:19:35.860Z\nError: Validation failed
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:82:21
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at router.handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:186:3)
+    at router (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:60:12)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\auditLogger.js:83:3)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\app.js:221:3)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\responseFormatter.js:80:3)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\app.js:144:5)
+    at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:63:14)
+    at run (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\app.js:143:21)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at cookieParser (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\cookie-parser\index.js:57:14)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at read (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\body-parser\lib\read.js:42:5)
+    at urlencodedParser (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\body-parser\lib\types\urlencoded.js:57:5)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\body-parser\lib\read.js:171:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:214:14)
+    at invokeCallback (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\raw-body\index.js:238:16)
+    at done (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\raw-body\index.js:287:7)
+    at IncomingMessage.emit (node:events:508:28)
+    at endReadableNT (node:internal/streams/readable:1701:12)
+    at processTicksAndRejections (node:internal/process/task_queues:89:21)\n\n2026-09-01T11:47:39.169Z\nError: INVALID_CREDENTIALS
+    at loginUser (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\login.js:196:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:121:25\n\n2026-09-01T12:03:03.528Z\nError: INVALID_CREDENTIALS
+    at loginUser (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\login.js:196:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:121:25\n\n

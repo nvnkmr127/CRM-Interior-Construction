@@ -164,7 +164,15 @@ export default function RoleEditor({
       newPerms = newPerms.filter(p => p !== permKey);
     }
 
-    setFormData(prev => ({ ...prev, permissions: newPerms }));
+    let newMods = [...(formData.enabled_modules || [])];
+    const hasAnyInModule = newPerms.some(p => p.startsWith(`${moduleId}:`));
+    if (hasAnyInModule && !newMods.includes(moduleId)) {
+      newMods.push(moduleId);
+    } else if (!hasAnyInModule) {
+      newMods = newMods.filter(m => m !== moduleId);
+    }
+
+    setFormData(prev => ({ ...prev, permissions: newPerms, enabled_modules: newMods }));
   };
 
   const toggleModule = (moduleId, checked) => {

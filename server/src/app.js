@@ -542,6 +542,25 @@ pool.query(`
   ALTER TABLE tenants ADD COLUMN IF NOT EXISTS max_users INT DEFAULT 10;
   ALTER TABLE notifications ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT false;
 
+  CREATE TABLE IF NOT EXISTS employee_offboarding (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status VARCHAR(50) DEFAULT 'pending_manager',
+    resignation_date DATE,
+    last_working_day DATE,
+    manager_approved_at TIMESTAMP,
+    hr_approved_at TIMESTAMP,
+    knowledge_transfer_done BOOLEAN DEFAULT false,
+    project_transfer_done BOOLEAN DEFAULT false,
+    task_transfer_done BOOLEAN DEFAULT false,
+    assets_returned BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_employee_offboarding_tenant ON employee_offboarding(tenant_id);
+  CREATE INDEX IF NOT EXISTS idx_employee_offboarding_user ON employee_offboarding(user_id);
+
   INSERT INTO user_security (user_id)
   SELECT id FROM users
   ON CONFLICT (user_id) DO NOTHING;

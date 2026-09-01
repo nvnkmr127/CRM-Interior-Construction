@@ -2,14 +2,6 @@
 import React from 'react';
 
 export function RevenuePipelineWidget({ stages = [] }) {
-  const displayStages = stages.length > 0 ? stages : [
-    { name: 'Lead', count: 120, value: '₹1.2Cr' },
-    { name: 'Qualified', count: 85, value: '₹85L' },
-    { name: 'Presentation', count: 40, value: '₹50L' },
-    { name: 'Quotation', count: 15, value: '₹18L' },
-    { name: 'Booking', count: 8, value: '₹12L' }
-  ];
-
   return (
     <div style={{
       background: 'var(--color-surface)',
@@ -28,21 +20,27 @@ export function RevenuePipelineWidget({ stages = [] }) {
         Revenue Pipeline
       </div>
       <div style={{ padding: '1rem', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-        {displayStages.map((stage, idx) => (
-          <div key={idx} style={{ marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', fontSize: '0.85rem' }}>
-              <span>{stage.name} ({stage.count})</span>
-              <span style={{ fontWeight: 'bold' }}>{stage.value}</span>
-            </div>
-            <div style={{ height: '8px', background: 'var(--color-bg-alt)', borderRadius: '4px', overflow: 'hidden' }}>
-              <div style={{ 
-                height: '100%', 
-                width: `${Math.max(5, (stage.count / displayStages[0].count) * 100)}%`, 
-                background: 'var(--color-primary)' 
-              }} />
-            </div>
+        {stages.length === 0 ? (
+          <div style={{ textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '0.85rem', padding: '24px 0' }}>
+            No revenue pipeline stages recorded.
           </div>
-        ))}
+        ) : (
+          stages.map((stage, idx) => (
+            <div key={idx} style={{ marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', fontSize: '0.85rem' }}>
+                <span>{stage.name} ({stage.count})</span>
+                <span style={{ fontWeight: 'bold' }}>{stage.value}</span>
+              </div>
+              <div style={{ height: '8px', background: 'var(--color-bg-alt)', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ 
+                  height: '100%', 
+                  width: `${Math.max(5, (stage.count / (stages[0]?.count || 1)) * 100)}%`, 
+                  background: 'var(--color-primary)' 
+                }} />
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

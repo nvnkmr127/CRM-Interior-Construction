@@ -36,6 +36,8 @@ router.post('/import', authenticate, authorize('leads:import'), leadController.i
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
+router.get('/followups/all', authenticate, authorize('leads:read'), leadController.getAllFollowupsHandler);
+
 router.get('/:id', authenticate, authorize('leads:read'), leadController.getLeadByIdHandler);
 router.patch('/:id', authenticate, authorize('leads:update'), leadController.updateLeadHandler);
 router.delete('/:id', authenticate, authorize('leads:delete'), leadController.deleteLeadHandler);

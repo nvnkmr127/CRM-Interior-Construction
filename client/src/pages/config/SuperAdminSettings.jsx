@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
+import { FiEye, FiEyeOff } from 'react-icons/fi';
 import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
+import { useAuth } from '../../store/authContext';
 import styles from './SuperAdminSettings.module.css';
 import { useConfirm } from '../../store/confirmContext';
 import { usePageTitle } from '../../hooks/usePageTitle';
@@ -16,9 +18,12 @@ export default function SuperAdminSettings() {
 
   const { confirm } = useConfirm();
   const toast = useToast();
+  const { user, refreshUser } = useAuth();
 
   const [stats, setStats] = useState(null);
   const [isProvisionOpen, setIsProvisionOpen] = useState(false);
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [showEditAdminPassword, setShowEditAdminPassword] = useState(false);
   const [isSecurityOpen, setIsSecurityOpen] = useState(false);
   const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -34,7 +39,7 @@ export default function SuperAdminSettings() {
   const PLAN_DEFAULTS = {
     starter: [
       'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar',
-      'projects', 'tasks', 'reports', 'team-management', 'team-members', 'organization'
+      'projects', 'tasks', 'reports', 'team-management', 'team-members', 'roles-permissions', 'organization'
     ],
     growth: [
       'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
@@ -136,6 +141,10 @@ export default function SuperAdminSettings() {
     name: '',
     plan: '',
     max_users: 10,
+    admin_name: '',
+    admin_email: '',
+    admin_password: '',
+    admin_user_id: null,
     mfa_required_all: false,
     session_timeout_minutes: 120,
     concurrent_login_limit: 3,
@@ -228,6 +237,15 @@ export default function SuperAdminSettings() {
       if (res.data?.success) {
         toast.success("Company branding details saved successfully!");
         fetchTenants(); // Reload tenants to sync local state
+        window.dispatchEvent(new Event('app:tenant-updated'));
+        window.dispatchEvent(new Event('app:sidebar-config-updated'));
+        window.dispatchEvent(new Event('app:auth-change'));
+        try {
+          new BroadcastChannel('crm_admin_sync').postMessage({ type: 'BRANDING_UPDATED', tenantId: selectedTenantId });
+        } catch (e) {}
+        if (typeof refreshUser === 'function') {
+          refreshUser();
+        }
       }
     } catch (err) {
       toast.error("Failed to save company branding.");
@@ -243,8 +261,8 @@ export default function SuperAdminSettings() {
 
 
   useEffect(() => {
-    const activePlanConfig = sidebarPlanConfigs.find(p => p.plan_name === selectedPlan);
-    setPlanTabs(activePlanConfig ? activePlanConfig.enabled_tabs : AVAILABLE_TABS.map(t => t.id));
+    const activePlanConfig = sidebarPlanConfigs.find(p => (p.plan_name || '').toLowerCase() === selectedPlan.toLowerCase());
+    setPlanTabs(activePlanConfig ? activePlanConfig.enabled_tabs : (PLAN_DEFAULTS[selectedPlan] || AVAILABLE_TABS.map(t => t.id)));
   }, [selectedPlan, sidebarPlanConfigs]);
 
   const fetchLicenseStats = () => {
@@ -287,6 +305,14 @@ export default function SuperAdminSettings() {
       if (res.data?.success) {
         toast.success(`Plan settings for "${selectedPlan}" saved successfully!`);
         fetchSidebarConfigs();
+        window.dispatchEvent(new Event('app:sidebar-config-updated'));
+        window.dispatchEvent(new Event('app:auth-change'));
+        try {
+          new BroadcastChannel('crm_admin_sync').postMessage({ type: 'PLAN_CONFIG_UPDATED', plan: selectedPlan });
+        } catch (e) {}
+        if (typeof refreshUser === 'function') {
+          refreshUser();
+        }
       }
     } catch (err) {
       toast.error('Failed to save plan configuration');
@@ -316,6 +342,7 @@ export default function SuperAdminSettings() {
       if (res.data?.success) {
         toast.success(`Successfully provisioned workspace "${newTenant.name}"`);
         setNewTenant({ name: '', slug: '', plan: 'starter', max_users: 10, adminEmail: '', adminName: '', adminPassword: '' });
+        setShowAdminPassword(false);
         fetchTenants();
         setIsProvisionOpen(false);
       }
@@ -332,6 +359,9 @@ export default function SuperAdminSettings() {
         if (res.data?.success) {
           toast.success(`Successfully ${action}d "${tenant.name}"`);
           fetchTenants();
+          try {
+            new BroadcastChannel('crm_admin_sync').postMessage({ type: 'STATUS_UPDATED', tenantId: tenant.id });
+          } catch (e) {}
         }
       } catch (err) {
         toast.error("Failed to toggle status.");
@@ -339,12 +369,35 @@ export default function SuperAdminSettings() {
     }
   };
 
+  const handleDeleteTenant = async (tenant) => {
+    if (tenant.id === user?.tenant?.id || tenant.id === user?.tenant_id) {
+      toast.error("You cannot delete the workspace you are currently logged into.");
+      return;
+    }
+    if (await confirm(`Are you sure you want to permanently delete workspace "${tenant.name}" (${tenant.slug})? All projects, leads, team members, and data associated with this workspace will be permanently removed.`)) {
+      try {
+        const res = await api.delete(`/superadmin/tenants/${tenant.id}`);
+        if (res.data?.success) {
+          toast.success(res.data?.data?.message || `Successfully deleted workspace "${tenant.name}"`);
+          fetchTenants();
+        }
+      } catch (err) {
+        toast.error(err.response?.data?.message || "Failed to delete workspace.");
+      }
+    }
+  };
+
   const handleEditSettings = (tenant) => {
     setEditingTenant(tenant);
+    setShowEditAdminPassword(false);
     setSettings({
       name: tenant.name || '',
       plan: tenant.plan || 'starter',
       max_users: tenant.max_users || 10,
+      admin_name: tenant.admin_name || '',
+      admin_email: tenant.admin_email || '',
+      admin_password: '',
+      admin_user_id: tenant.admin_user_id || null,
       mfa_required_all: tenant.mfa_required_all || false,
       session_timeout_minutes: tenant.session_timeout_minutes || 120,
       concurrent_login_limit: tenant.concurrent_login_limit || 3,
@@ -370,11 +423,22 @@ export default function SuperAdminSettings() {
       const res = await api.put(`/superadmin/tenants/${editingTenant.id}/settings`, formattedSettings);
       if (res.data?.success) {
         toast.success("Settings updated successfully!");
+        const updatedTenantId = editingTenant.id;
         setEditingTenant(null);
+        setShowEditAdminPassword(false);
         fetchTenants();
+        window.dispatchEvent(new Event('app:tenant-updated'));
+        window.dispatchEvent(new Event('app:sidebar-config-updated'));
+        window.dispatchEvent(new Event('app:auth-change'));
+        try {
+          new BroadcastChannel('crm_admin_sync').postMessage({ type: 'SETTINGS_UPDATED', tenantId: updatedTenantId });
+        } catch (e) {}
+        if (typeof refreshUser === 'function') {
+          refreshUser();
+        }
       }
     } catch (err) {
-      toast.error("Failed to save settings.");
+      toast.error(err.response?.data?.message || "Failed to save settings.");
     }
   };
 
@@ -521,6 +585,17 @@ export default function SuperAdminSettings() {
                             >
                               {tenant.is_active ? 'Deactivate' : 'Activate'}
                             </Button>
+                            {tenant.id !== user?.tenant?.id && tenant.id !== user?.tenant_id && (
+                              <Button 
+                                variant="danger"
+                                size="sm"
+                                onClick={() => handleDeleteTenant(tenant)}
+                                style={{ height: '30px', padding: '0 10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box', opacity: 0.85 }}
+                                title="Permanently delete workspace"
+                              >
+                                Delete
+                              </Button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -535,7 +610,10 @@ export default function SuperAdminSettings() {
           {editingTenant && (
             <Modal 
               isOpen={!!editingTenant} 
-              onClose={() => setEditingTenant(null)} 
+              onClose={() => {
+                setEditingTenant(null);
+                setShowEditAdminPassword(false);
+              }} 
               title={`Configure "${editingTenant.name}"`}
               size="md"
             >
@@ -568,6 +646,57 @@ export default function SuperAdminSettings() {
                       required
                     />
                   </div>
+
+                <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '8px 0' }} />
+                <h3 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text)', margin: '0' }}>Admin Account & Password</h3>
+
+                <div className={styles.formRow}>
+                  <Input 
+                    label="Administrator Full Name"
+                    type="text" 
+                    placeholder="e.g. Sarah Jenkins" 
+                    value={settings.admin_name} 
+                    onChange={e => setSettings(prev => ({ ...prev, admin_name: e.target.value }))} 
+                  />
+                  <Input 
+                    label="Administrator Email Address"
+                    type="email" 
+                    placeholder="e.g. admin@designstudioa.com" 
+                    value={settings.admin_email} 
+                    onChange={e => setSettings(prev => ({ ...prev, admin_email: e.target.value }))} 
+                    autoComplete="username"
+                  />
+                </div>
+
+                <Input 
+                  label="Update Administrator Password"
+                  type={showEditAdminPassword ? "text" : "password"} 
+                  placeholder="Leave blank to keep current password" 
+                  value={settings.admin_password} 
+                  onChange={e => setSettings(prev => ({ ...prev, admin_password: e.target.value }))} 
+                  autoComplete="new-password"
+                  helperText="Enter a new password (min 8 characters) to reset the administrator password, or leave blank to keep unchanged."
+                  rightIcon={
+                    <button
+                      type="button"
+                      onClick={() => setShowEditAdminPassword(prev => !prev)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'inherit'
+                      }}
+                      title={showEditAdminPassword ? "Hide password" : "Show password"}
+                      aria-label={showEditAdminPassword ? "Hide password" : "Show password"}
+                    >
+                      {showEditAdminPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                    </button>
+                  }
+                />
 
                 <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '8px 0' }} />
                 <h3 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--color-text)', margin: '0' }}>Security Policies</h3>
@@ -659,7 +788,10 @@ export default function SuperAdminSettings() {
                 <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '16px' }}>
                   <Button 
                     variant="secondary"
-                    onClick={() => setEditingTenant(null)}
+                    onClick={() => {
+                      setEditingTenant(null);
+                      setShowEditAdminPassword(false);
+                    }}
                   >
                     Cancel
                   </Button>
@@ -1061,7 +1193,10 @@ export default function SuperAdminSettings() {
       {/* PROVISION WORKSPACE MODAL */}
       <Modal
         isOpen={isProvisionOpen}
-        onClose={() => setIsProvisionOpen(false)}
+        onClose={() => {
+          setIsProvisionOpen(false);
+          setShowAdminPassword(false);
+        }}
         title="Register New Client Workspace"
         size="md"
       >
@@ -1130,19 +1265,42 @@ export default function SuperAdminSettings() {
 
           <Input 
             label="Administrator Password"
-            type="password" 
+            type={showAdminPassword ? "text" : "password"} 
             placeholder="Minimum 8 characters" 
             value={newTenant.adminPassword} 
             onChange={e => setNewTenant(prev => ({ ...prev, adminPassword: e.target.value }))} 
             required
             autoComplete="new-password"
+            rightIcon={
+              <button
+                type="button"
+                onClick={() => setShowAdminPassword(prev => !prev)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'inherit'
+                }}
+                title={showAdminPassword ? "Hide password" : "Show password"}
+                aria-label={showAdminPassword ? "Hide password" : "Show password"}
+              >
+                {showAdminPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+              </button>
+            }
           />
 
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '16px' }}>
             <Button 
               type="button"
               variant="secondary"
-              onClick={() => setIsProvisionOpen(false)}
+              onClick={() => {
+                setIsProvisionOpen(false);
+                setShowAdminPassword(false);
+              }}
             >
               Cancel
             </Button>

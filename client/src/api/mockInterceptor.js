@@ -463,7 +463,24 @@ export const setupMockInterceptor = (api) => {
             const followupId = match ? match[2] : null;
 
             if (method === 'get') {
-              responseData.data = mockDatabase.followups?.filter(f => f.lead_id === leadId) || [];
+              if (url.includes('/followups/all') || leadId === 'all' || !leadId) {
+                const followups = (mockDatabase.followups || []).map(f => {
+                  const lead = (mockDatabase.leads || []).find(l => l.id === f.lead_id);
+                  const stage = lead ? (mockDatabase.lead_stages || []).find(s => s.id === lead.stage_id) : null;
+                  const user = (mockDatabase.users || []).find(u => u.id === f.assignee_id);
+                  return {
+                    ...f,
+                    lead_name: lead ? lead.name : (f.lead_name || 'Unknown Lead'),
+                    lead_phone: lead ? lead.phone : '',
+                    stage_name: stage ? stage.name : '',
+                    stage_color: stage ? stage.color : '',
+                    assignee_name: user ? user.name : (f.assignee_name || 'Unassigned')
+                  };
+                });
+                responseData.data = followups;
+              } else {
+                responseData.data = mockDatabase.followups?.filter(f => f.lead_id === leadId) || [];
+              }
             } else if (method === 'post') {
               const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
               const newFollowup = {
@@ -3402,6 +3419,16 @@ export const setupMockInterceptor = (api) => {
             if (url.includes('/approval-history')) {
               responseData.data = [];
             } else if (url.includes('/approve') || url.includes('/reject') || url.includes('/request-changes')) {
+              const parts = url.split('/');
+              const targetId = parts[parts.length - 2];
+              const newStatus = url.includes('/approve') ? 'active' : url.includes('/reject') ? 'rejected' : 'changes_requested';
+              if (mockDatabase.users) {
+                const uIdx = mockDatabase.users.findIndex(u => u.id === targetId);
+                if (uIdx !== -1) {
+                  mockDatabase.users[uIdx].status = newStatus;
+                  persistDb();
+                }
+              }
               responseData.data = { success: true };
             } else if (method === 'get') {
               const urlNoQuery = url.split('?')[0];
@@ -3459,7 +3486,7 @@ export const setupMockInterceptor = (api) => {
                 name: payload.name || 'Mock User',
                 email: payload.email,
                 role_id: payload.roleId,
-                status: 'pending_approval',
+                status: payload.status || 'active',
                 created_at: new Date().toISOString()
               };
               if (!mockDatabase.users) mockDatabase.users = [];

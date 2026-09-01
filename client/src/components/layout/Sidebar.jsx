@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../store/authContext'
+import api from '../../api/axios'
 import styles from './Sidebar.module.css'
 
 const NAV_ITEMS = [
   { group: 'WORKSPACE', items: [
-    { id: 'dashboard', to: '/dashboard/sales', icon: '⊞', label: 'Dashboard', module: 'dashboards', permission: 'dashboards:view_sales_dashboard' },
+    { id: 'dashboard', to: '/dashboard/sales', icon: '⊞', label: 'Dashboard', module: 'dashboards' },
     { id: 'leads', label: 'Leads', icon: '◎', module: 'leads', subItems: [
         { id: 'leads-dashboard', to: '/leads?view=dashboard', icon: '📊', label: 'Dashboard', permission: 'leads:view_dashboard' },
         { id: 'leads-list', to: '/leads?view=list', icon: '≣', label: 'List' },
@@ -71,7 +72,7 @@ const NAV_ITEMS = [
     { id: 'audit-trail', to: '/settings/audit-trail', icon: '📜', label: 'Audit Trail', module: 'settings' }
   ]},
   { group: 'REPORTS', items: [
-    { id: 'reports', to: '/reports', icon: '📋', label: 'Reports Hub', module: 'analytics' }
+    { id: 'reports', to: '/reports', icon: '📋', label: 'Reports Hub', module: 'reports' }
   ]},
   { group: 'DEVELOPER TOOLS', adminOnly: true, items: [
     { id: 'superadmin', to: '/settings/superadmin', icon: '⚡', label: 'Super Admin Center', module: 'settings' },
@@ -148,6 +149,32 @@ function NavItem({ item, collapsed, onClose }) {
   );
 }
 
+const PLAN_DEFAULTS = {
+  starter: [
+    'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar',
+    'projects', 'tasks', 'reports', 'team-management', 'team-members', 'roles-permissions', 'organization'
+  ],
+  growth: [
+    'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
+    'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
+    'analytics-delay', 'coordination', 'handover-dashboard', 'retention-dashboard', 'resource-capacity',
+    'absences', 'vendor-performance', 'vendor-capacity', 'team-management', 'team-members',
+    'roles-permissions', 'organization'
+  ],
+  enterprise: [
+    'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
+    'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
+    'analytics-delay', 'analytics-boq', 'analytics-resources', 'analytics-resource-workload',
+    'lead-stages', 'custom-fields', 'lead-forms', 'templates', 'trade-activities', 'qc-checklists',
+    'conversion-checklist', 'automations', 'coordination', 'handover-dashboard', 'retention-dashboard',
+    'resource-capacity', 'absences', 'vendor-performance', 'vendor-capacity', 'vendor-lead-times',
+    'finance-overview', 'financial-approvals', 'analytics-profitability', 'analytics-collection-forecast',
+    'financial-thresholds', 'team-management', 'team-members', 'roles-permissions', 'organization',
+    'login-history', 'audit-trail', 'superadmin', 'api-keys', 'api-integration', 'webhooks',
+    'email-templates', 'logs'
+  ]
+};
+
 const getInitials = (name) => {
   if (!name) return 'U'
   const parts = name.split(' ').filter(Boolean)
@@ -157,16 +184,56 @@ const getInitials = (name) => {
 
 export default function Sidebar({ collapsed, mobileOpen, onClose }) {
   const { user } = useAuth()
-  const isAdmin = 
+  const [dynamicPlanTabs, setDynamicPlanTabs] = useState(user?.sidebarConfig?.planTabs || null)
+
+  useEffect(() => {
+    let isMounted = true
+    const fetchSidebarConfig = async () => {
+      try {
+        const res = await api.get('/auth/sidebar-config')
+        if (isMounted && res.data?.success && res.data?.data?.planTabs) {
+          setDynamicPlanTabs(res.data.data.planTabs)
+        }
+      } catch (err) {
+        // Fallback gracefully to user.sidebarConfig or defaults
+      }
+    }
+
+    fetchSidebarConfig()
+
+    const handleConfigUpdated = () => {
+      fetchSidebarConfig()
+    }
+
+    window.addEventListener('app:sidebar-config-updated', handleConfigUpdated)
+    window.addEventListener('app:auth-change', handleConfigUpdated)
+
+    return () => {
+      isMounted = false
+      window.removeEventListener('app:sidebar-config-updated', handleConfigUpdated)
+      window.removeEventListener('app:auth-change', handleConfigUpdated)
+    }
+  }, [user?.tenant?.id, user?.tenant?.plan])
+  
+  const isSuperAdminUser = 
     user?.role === 'superadmin' || 
+    user?.role === 'admin' || 
     user?.role?.name?.toLowerCase() === 'superadmin' || 
     user?.role?.name?.toLowerCase() === 'super admin' || 
-    (user?.role?.permissions && user.role.permissions.includes('*'))
-  const hasFinancePermission = isAdmin || (user?.role?.permissions && (
+    user?.role?.name?.toLowerCase() === 'admin' ||
+    user?.role?.name?.toLowerCase() === 'owner' ||
+    (user?.role?.permissions && (user.role.permissions.includes('*') || user.role.permissions.includes('*:*')));
+
+  const isAdmin = isSuperAdminUser;
+
+  const hasFinancePermission = isAdmin || (Array.isArray(user?.role?.permissions) && (
     user.role.permissions.includes('finance:invoices') ||
     user.role.permissions.includes('finance:payments') ||
     user.role.permissions.includes('finance:discounts') ||
-    user.role.permissions.includes('finance:credits')
+    user.role.permissions.includes('finance:credits') ||
+    user.role.permissions.includes('finance:view') ||
+    user.role.permissions.some(p => p.startsWith('finance:')) ||
+    (user?.role?.enabled_modules && user.role.enabled_modules.includes('finance'))
   ))
 
   return (
@@ -190,21 +257,41 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
           if (group.financeOnly && !hasFinancePermission) return null
 
           const filterItem = (item) => {
+            // 1. Developer / Admin Bypass: Developers and admins see all tabs immediately
             if (isAdmin) return true;
 
-            // Plan-based override check
-            if (user?.sidebarConfig?.planTabs && Array.isArray(user.sidebarConfig.planTabs)) {
-              if (item.id && !user.sidebarConfig.planTabs.includes(item.id)) return false;
+            // 2. Client Subscription Plan filtering: In client workspaces (like "interior hub"), strictly enforce the workspace's plan
+            const tenantPlan = (user?.tenant?.plan || 'starter').toLowerCase();
+            const planTabs = (dynamicPlanTabs && Array.isArray(dynamicPlanTabs) && dynamicPlanTabs.length > 0)
+              ? dynamicPlanTabs
+              : ((user?.sidebarConfig?.planTabs && Array.isArray(user.sidebarConfig.planTabs) && user.sidebarConfig.planTabs.length > 0)
+                ? user.sidebarConfig.planTabs
+                : (PLAN_DEFAULTS[tenantPlan] || PLAN_DEFAULTS.starter));
+
+            if (planTabs && Array.isArray(planTabs)) {
+              if (item.id && !planTabs.includes(item.id)) return false;
             }
 
-            if (item.adminOnly && !isAdmin) return false;
+            // 3. For non-admin members, check adminOnly, permissions, and enabled modules
+            if (item.adminOnly) return false;
+
+            const perms = Array.isArray(user?.role?.permissions) ? user.role.permissions : [];
+            const hasWildcard = perms.includes('*') || perms.includes('*:*');
+            if (hasWildcard) return true;
+
             if (item.permission) {
               const [mod] = item.permission.split(':');
-              return user?.role?.permissions?.includes(item.permission) || user?.role?.permissions?.includes(`${mod}:*`);
+              const hasPerm = perms.includes(item.permission) || perms.includes(`${mod}:*`);
+              if (!hasPerm) return false;
             }
+
             if (item.module) {
-              return user?.role?.enabled_modules?.includes(item.module);
+              const modules = user?.role?.enabled_modules;
+              const hasModuleInPerms = perms.some(p => p.startsWith(`${item.module}:`));
+              const hasModuleInList = modules && Array.isArray(modules) && modules.includes(item.module);
+              if (!hasModuleInList && !hasModuleInPerms) return false;
             }
+
             return true;
           };
 
@@ -214,7 +301,9 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
             }
             return item;
           }).filter(item => {
-            if (item.subItems && item.subItems.length === 0) return false;
+            if (item.subItems) {
+              return item.subItems.length > 0;
+            }
             return filterItem(item);
           });
 

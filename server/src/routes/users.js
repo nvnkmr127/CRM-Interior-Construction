@@ -6,11 +6,13 @@ const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const { success, fail } = require('../utils/response');
 const { cacheResponse } = require('../middleware/cache');
+const { clearCachePrefix } = require('../utils/cache');
 const pool = require('../config/db');
 const crypto = require('crypto');
 const { logAction } = require('../services/auditLog');
 const { queueEmail } = require('../services/emailService');
 const aiEmployeeService = require('../services/aiEmployeeService');
+const { ROLE_DEFAULTS, getRoleConfig } = require('../constants/roleDefaults');
 
 const router = express.Router();
 
@@ -481,18 +483,34 @@ router.get('/:id/audit', async (req, res, next) => {
 router.patch('/:id', authenticate, async (req, res, next) => {
   const tenantId = req.tenantId;
   const userIdToUpdate = req.params.id;
-  const reviewerId = req.user.userId;
-  const { name, roleId, status, status_reason, avatar_url, weekly_capacity, departmentId } = req.body;
+  const reviewerId = req.user.userId || req.user.id;
+  const { 
+    name, 
+    roleId, 
+    role_id, 
+    role_name, 
+    role, 
+    email, 
+    password, 
+    status, 
+    status_reason, 
+    avatar_url, 
+    weekly_capacity, 
+    departmentId, 
+    department_id, 
+    profile_data 
+  } = req.body;
 
   const permissions = req.user.permissions || [];
-  const isAdmin = req.user.role === 'superadmin';
-  const hasPerm = (p) => isAdmin || permissions.includes(p) || permissions.includes('*') || permissions.includes('users:*') || permissions.includes('users:manage');
+  const isAdmin = req.user.role === 'superadmin' || permissions.includes('*') || permissions.includes('users:*') || permissions.includes('users:manage');
+  const hasPerm = (p) => isAdmin || permissions.includes(p);
 
   try {
-    const { rows: currentUserRows } = await pool.query('SELECT status FROM users WHERE id=$1 AND tenant_id=$2', [userIdToUpdate, tenantId]);
+    const { rows: currentUserRows } = await pool.query('SELECT * FROM users WHERE id=$1 AND tenant_id=$2 AND deleted_at IS NULL', [userIdToUpdate, tenantId]);
     if (currentUserRows.length === 0) return fail(res, 'NOT_FOUND', 'User not found', 404);
     
-    const oldStatus = currentUserRows[0].status;
+    const currentUser = currentUserRows[0];
+    const oldStatus = currentUser.status;
 
     if (status && status !== oldStatus) {
       if (['active', 'probation', 'onboarding'].includes(status) && !hasPerm('users:activate_user')) {
@@ -510,31 +528,106 @@ router.patch('/:id', authenticate, async (req, res, next) => {
     const updates = [];
     const params = [userIdToUpdate, tenantId];
 
-    if (name) {
-      params.push(name);
+    if (name !== undefined && name !== null) {
+      params.push(name.trim());
       updates.push(`name = $${params.length}`);
     }
-    if (roleId) {
+
+    if (email !== undefined && email !== null && email.trim() !== '') {
+      const cleanEmail = email.trim().toLowerCase();
+      const existingEmailRes = await pool.query(
+        `SELECT id FROM users WHERE tenant_id = $1 AND LOWER(email) = LOWER($2) AND id != $3 AND deleted_at IS NULL LIMIT 1`,
+        [tenantId, cleanEmail, userIdToUpdate]
+      );
+      if (existingEmailRes.rows.length > 0) {
+        return fail(res, 'VALIDATION_ERROR', 'Email is already in use by another team member in this workspace', 400);
+      }
+      params.push(cleanEmail);
+      updates.push(`email = $${params.length}`);
+    }
+
+    if (password !== undefined && password !== null && String(password).trim() !== '') {
+      const plainPassword = String(password).trim();
+      const passwordHash = await bcrypt.hash(plainPassword, 10);
+      params.push(passwordHash);
+      updates.push(`password_hash = $${params.length}`);
+
+      try {
+        await pool.query(
+          `UPDATE user_security SET failed_login_attempts = 0, lockout_until = NULL, last_password_change = NOW() WHERE user_id = $1`,
+          [userIdToUpdate]
+        );
+      } catch (e) {}
+    }
+
+    const effectiveRoleId = roleId || role_id || (typeof role === 'string' ? role : role?.id);
+    let resolvedRoleId = effectiveRoleId;
+
+    if (effectiveRoleId) {
       if (!hasPerm('users:assign_roles')) return fail(res, 'FORBIDDEN', 'Insufficient permissions to assign roles', 403);
-      params.push(roleId);
+      
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(effectiveRoleId);
+      if (!isUUID) {
+        let roleQuery = await pool.query(
+          `SELECT id FROM roles WHERE tenant_id = $1 AND (LOWER(name) = LOWER($2) OR LOWER(id::text) = LOWER($2)) LIMIT 1`,
+          [tenantId, effectiveRoleId]
+        );
+        if (roleQuery.rows.length === 0 && role_name) {
+          roleQuery = await pool.query(
+            `SELECT id FROM roles WHERE tenant_id = $1 AND LOWER(name) = LOWER($2) LIMIT 1`,
+            [tenantId, role_name]
+          );
+        }
+        if (roleQuery.rows.length > 0) {
+          resolvedRoleId = roleQuery.rows[0].id;
+        } else {
+          // Provision the role from role defaults
+          const roleConfig = getRoleConfig(role_name || effectiveRoleId) || ROLE_DEFAULTS['Designer'];
+          const roleLabel = roleConfig.name || role_name || effectiveRoleId;
+          const newRoleRes = await pool.query(
+            `INSERT INTO roles (tenant_id, name, permissions) 
+             VALUES ($1, $2, $3) 
+             RETURNING id`,
+            [tenantId, roleLabel, JSON.stringify({ actions: roleConfig.permissions, modules: roleConfig.enabled_modules })]
+          );
+          resolvedRoleId = newRoleRes.rows[0].id;
+        }
+      }
+
+      params.push(resolvedRoleId);
       updates.push(`role_id = $${params.length}`);
     }
-    if (departmentId) {
-      if (!hasPerm('users:change_department')) return fail(res, 'FORBIDDEN', 'Insufficient permissions to change department', 403);
-      params.push(departmentId);
+
+    const effectiveDeptId = departmentId || department_id;
+    if (effectiveDeptId !== undefined) {
+      if (effectiveDeptId && !hasPerm('users:change_department')) return fail(res, 'FORBIDDEN', 'Insufficient permissions to change department', 403);
+      params.push(effectiveDeptId || null);
       updates.push(`department_id = $${params.length}`);
     }
+
     if (status) {
       params.push(status);
       updates.push(`status = $${params.length}`);
     }
+
     if (avatar_url !== undefined) {
       params.push(avatar_url);
       updates.push(`avatar_url = $${params.length}`);
     }
+
     if (weekly_capacity !== undefined) {
       params.push(weekly_capacity === null ? null : Number(weekly_capacity));
       updates.push(`weekly_capacity = $${params.length}`);
+    }
+
+    if (profile_data !== undefined) {
+      let mergedProfile = profile_data;
+      if (currentUser.profile_data && typeof profile_data === 'object') {
+        const existingData = typeof currentUser.profile_data === 'string' ? JSON.parse(currentUser.profile_data) : currentUser.profile_data;
+        mergedProfile = { ...existingData, ...profile_data };
+      }
+      params.push(typeof mergedProfile === 'string' ? mergedProfile : JSON.stringify(mergedProfile));
+      updates.push(`profile_data = $${params.length}`);
     }
 
     if (updates.length === 0) {
@@ -555,7 +648,6 @@ router.patch('/:id', authenticate, async (req, res, next) => {
         [tenantId, userIdToUpdate, reviewerId, oldStatus, status, status_reason || null]
       );
       
-      // Email Triggers for Status Change
       const targetUser = rows[0];
       if (status === 'locked') {
         queueEmail(tenantId, userIdToUpdate, targetUser.email, 'Account Locked', 'account_locked', { name: targetUser.name });
@@ -566,9 +658,9 @@ router.patch('/:id', authenticate, async (req, res, next) => {
       }
     }
 
-    if (roleId) {
+    if (effectiveRoleId) {
        const targetUser = rows[0];
-       const { rows: roleRows } = await pool.query('SELECT name FROM roles WHERE id=$1', [roleId]);
+       const { rows: roleRows } = await pool.query('SELECT name FROM roles WHERE id=$1', [resolvedRoleId]);
        if (roleRows.length > 0) {
          queueEmail(tenantId, userIdToUpdate, targetUser.email, 'Role Updated', 'role_changed', { name: targetUser.name, newRole: roleRows[0].name });
          const { logAction } = require('../services/auditLog');
@@ -576,19 +668,26 @@ router.patch('/:id', authenticate, async (req, res, next) => {
        }
     }
 
+    await clearCachePrefix(`cache:${tenantId}:`).catch(() => {});
+
     const { password_hash: _password_hash, ...safeUser } = rows[0];
     return success(res, safeUser);
   } catch (error) {
+    logger.error('Failed to update user:', error);
     return fail(res, 'INTERNAL_ERROR', 'User update failed', 500);
   }
 });
 
-router.post('/add-member', authorize('users:invite_user'), async (req, res, next) => {
+router.post('/add-member', authorize(['users:invite_user', 'users:create', 'users:manage', 'users:*', '*']), async (req, res, next) => {
   const tenantId = req.tenantId;
-  const { name, email, roleId, ...profile_data } = req.body;
+  const { name, email, roleId, role_id, status: requestedStatus, password, tempPassword, ...profile_data } = req.body;
 
   try {
-    const checkRes = await pool.query(`SELECT id FROM users WHERE email=$1 AND tenant_id=$2`, [email, tenantId]);
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail) {
+      return fail(res, 'VALIDATION_ERROR', 'Email is required', 400);
+    }
+    const checkRes = await pool.query(`SELECT id FROM users WHERE LOWER(email)=$1 AND tenant_id=$2 AND deleted_at IS NULL`, [cleanEmail, tenantId]);
     if (checkRes.rows.length > 0) {
       return fail(res, 'VALIDATION_ERROR', 'Email already registered in this tenant', 400);
     }
@@ -596,39 +695,70 @@ router.post('/add-member', authorize('users:invite_user'), async (req, res, next
     const tenantRes = await pool.query('SELECT max_users FROM tenants WHERE id = $1 LIMIT 1', [tenantId]);
     const maxUsers = tenantRes.rows[0]?.max_users || 10;
 
-    const countRes = await pool.query('SELECT COUNT(*)::int as count FROM users WHERE tenant_id = $1', [tenantId]);
+    const countRes = await pool.query('SELECT COUNT(*)::int as count FROM users WHERE tenant_id = $1 AND deleted_at IS NULL', [tenantId]);
     if (countRes.rows[0].count >= maxUsers) {
       return fail(res, 'LIMIT_EXCEEDED', 'You have reached the maximum user limit for your billing plan. Please upgrade your workspace.', 400);
     }
 
+    const permissions = req.user.permissions || [];
+    const canActivate = req.user.role === 'superadmin' || req.user.role === 'admin' || permissions.includes('*') || permissions.includes('users:*') || permissions.includes('users:activate_user');
+    const userStatus = requestedStatus || (canActivate ? 'active' : 'pending_approval');
 
-    // Generate a temporary password hash to satisfy DB constraints, 
-    // but no usable credentials will be provided until approval.
-    const tempPasswordPlain = crypto.randomBytes(16).toString('hex');
+    const effectiveRoleId = roleId || role_id;
+    let resolvedRoleId = effectiveRoleId;
+    if (effectiveRoleId) {
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(effectiveRoleId);
+      if (!isUUID) {
+        let roleQuery = await pool.query(
+          `SELECT id FROM roles WHERE tenant_id = $1 AND (LOWER(name) = LOWER($2) OR LOWER(id::text) = LOWER($2)) LIMIT 1`,
+          [tenantId, effectiveRoleId]
+        );
+        if (roleQuery.rows.length > 0) {
+          resolvedRoleId = roleQuery.rows[0].id;
+        } else {
+          const roleConfig = getRoleConfig(effectiveRoleId) || ROLE_DEFAULTS['Designer'];
+          const roleLabel = roleConfig.name || effectiveRoleId;
+          const newRoleRes = await pool.query(
+            `INSERT INTO roles (tenant_id, name, permissions) 
+             VALUES ($1, $2, $3) 
+             RETURNING id`,
+            [tenantId, roleLabel, JSON.stringify({ actions: roleConfig.permissions, modules: roleConfig.enabled_modules })]
+          );
+          resolvedRoleId = newRoleRes.rows[0].id;
+        }
+      }
+    }
+
+    const tempPasswordPlain = password || tempPassword || profile_data.tempPassword || 'Demo@123';
     const tempPasswordHash = await bcrypt.hash(tempPasswordPlain, 10);
 
     const { rows } = await pool.query(`
       INSERT INTO users (tenant_id, name, email, role_id, status, password_hash, profile_data)
-      VALUES ($1, $2, $3, $4, 'pending_approval', $5, $6)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
-    `, [tenantId, name, email, roleId, tempPasswordHash, JSON.stringify(profile_data)]);
+    `, [tenantId, name ? name.trim() : 'New Employee', cleanEmail, resolvedRoleId, userStatus, tempPasswordHash, JSON.stringify(profile_data)]);
 
     const newUserId = rows[0].id;
     const { logAction } = require('../services/auditLog');
-    await logAction({ tenantId, userId: req.user.userId, action: 'employee.created', entity: 'user', entityId: newUserId });
+    await logAction({ tenantId, userId: req.user.id || req.user.userId, action: 'employee.created', entity: 'user', entityId: newUserId });
     
     // Send Member Added Email
-    queueEmail(tenantId, newUserId, email, 'Welcome to CRM', 'member_added', { name });
+    queueEmail(tenantId, newUserId, cleanEmail, 'Welcome to CRM', 'member_added', { name: name || 'Team Member' });
     
-    // Notify Admins
-    const { rows: admins } = await pool.query(`SELECT email FROM users WHERE tenant_id=$1 AND role_id=(SELECT id FROM roles WHERE name='Super Admin' LIMIT 1)`, [tenantId]);
-    admins.forEach(admin => {
-      queueEmail(tenantId, admin.id, admin.email, 'New Employee Approval Request', 'approval_request', { employeeName: name });
-    });
+    if (userStatus === 'pending_approval') {
+      // Notify Admins
+      const { rows: admins } = await pool.query(`SELECT id, email FROM users WHERE tenant_id=$1 AND role_id=(SELECT id FROM roles WHERE name='Super Admin' LIMIT 1)`, [tenantId]);
+      admins.forEach(admin => {
+        queueEmail(tenantId, admin.id, admin.email, 'New Employee Approval Request', 'approval_request', { employeeName: name || 'Team Member' });
+      });
+    }
+
+    await clearCachePrefix(`cache:${tenantId}:`).catch(() => {});
 
     const { password_hash: _password_hash, ...safeUser } = rows[0];
     return success(res, safeUser);
   } catch (error) {
+    logger.error('Failed to add team member:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to add team member', 500);
   }
 });
@@ -649,6 +779,7 @@ router.delete('/:id', authorize('users:delete_user'), async (req, res, next) => 
 
     const { logAction } = require('../services/auditLog');
     await logAction({ tenantId, userId: req.user.userId, action: 'employee.deleted', entity: 'user', entityId: userIdToDelete });
+    await clearCachePrefix(`cache:${tenantId}:`).catch(() => {});
     return success(res, { message: 'User deleted successfully' });
   } catch (error) {
     return fail(res, 'INTERNAL_ERROR', 'User deletion failed', 500);
@@ -695,6 +826,8 @@ router.post('/:id/approve', authorize('users:activate_user'), async (req, res, n
     const setupUrl = `http://localhost:5173/set-password?token=${plainPassword}`;
     queueEmail(tenantId, userId, uEmail, 'Create Your Password', 'create_password', { name: uName, email: uEmail, setupUrl });
 
+    await clearCachePrefix(`cache:${tenantId}:`).catch(() => {});
+
     return success(res, { message: 'User approved successfully' });
   } catch (error) {
     return fail(res, 'INTERNAL_ERROR', 'Failed to approve user', 500);
@@ -725,6 +858,8 @@ router.post('/:id/reject', authorize('users:activate_user'), async (req, res, ne
     logAction({ tenantId, userId: reviewerId, action: 'employee.rejected', entity: 'user', entityId: userId });
     queueEmail(tenantId, userId, rows[0].email, 'Account Application Update', 'approval_rejected', { name: rows[0].name, reason: comments });
 
+    await clearCachePrefix(`cache:${tenantId}:`).catch(() => {});
+
     return success(res, { message: 'User rejected successfully' });
   } catch (error) {
     return fail(res, 'INTERNAL_ERROR', 'Failed to reject user', 500);
@@ -753,6 +888,8 @@ router.post('/:id/request-changes', authorize('users:activate_user'), async (req
     );
 
     logAction({ tenantId, userId: reviewerId, action: 'employee.changes_requested', entity: 'user', entityId: userId });
+
+    await clearCachePrefix(`cache:${tenantId}:`).catch(() => {});
 
     return success(res, { message: 'Change request submitted' });
   } catch (error) {

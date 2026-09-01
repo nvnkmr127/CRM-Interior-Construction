@@ -15,12 +15,17 @@ exports.getGlobalStats = async (tenantId, userId, user) => {
   const [
     activeLeadsRes,
     wonThisMonthRes,
+    prevMonthWonRes,
     projectsRes,
     tasksRes,
     prevWeekLeadsRes,
     targetsRes,
     revenueTrendRes,
-    siteVisitsRes
+    siteVisitsRes,
+    leadsSparkRes,
+    revenueSparkRes,
+    projectsSparkRes,
+    tasksSparkRes
   ] = await Promise.all([
     readPool.query(`SELECT COUNT(*) FROM leads WHERE tenant_id=$1 AND (${leadsFilter}) AND deleted_at IS NULL AND (status IS NULL OR status != 'parked')`, params),
     readPool.query(`
@@ -29,6 +34,14 @@ exports.getGlobalStats = async (tenantId, userId, user) => {
       LEFT JOIN lead_stages ls ON ls.id = l.stage_id
       WHERE l.tenant_id=$1 AND (${leadsFilterL}) AND (ls.is_won=true OR l.status='converted' OR l.status='won')
       AND l.updated_at >= date_trunc('month', NOW())
+    `, params),
+    readPool.query(`
+      SELECT COUNT(*) as count, COALESCE(SUM(l.budget_max), 0) as won_value
+      FROM leads l
+      LEFT JOIN lead_stages ls ON ls.id = l.stage_id
+      WHERE l.tenant_id=$1 AND (${leadsFilterL}) AND (ls.is_won=true OR l.status='converted' OR l.status='won')
+      AND l.updated_at >= date_trunc('month', NOW() - INTERVAL '1 month')
+      AND l.updated_at < date_trunc('month', NOW())
     `, params),
     readPool.query(`
       SELECT
@@ -69,49 +82,102 @@ exports.getGlobalStats = async (tenantId, userId, user) => {
         AND sv.status = 'scheduled' 
         AND (sv.scheduled_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date
       ORDER BY sv.scheduled_at ASC
+    `, params),
+    readPool.query(`
+      SELECT date_trunc('week', created_at) as week_date, COUNT(*)::int as count
+      FROM leads
+      WHERE tenant_id = $1 AND (${leadsFilter}) AND deleted_at IS NULL
+        AND created_at >= NOW() - INTERVAL '12 weeks'
+      GROUP BY date_trunc('week', created_at)
+      ORDER BY week_date ASC
+    `, params),
+    readPool.query(`
+      SELECT date_trunc('week', pm.paid_at::timestamp) as week_date, COALESCE(SUM(pm.paid_amount), 0)::float as amt
+      FROM payment_milestones pm
+      JOIN projects p ON pm.project_id = p.id
+      WHERE p.tenant_id = $1 AND pm.status = 'paid' AND pm.paid_at IS NOT NULL AND pm.paid_at != '' AND pm.paid_at::timestamp >= NOW() - INTERVAL '12 weeks'
+      GROUP BY date_trunc('week', pm.paid_at::timestamp)
+      ORDER BY week_date ASC
+    `, [tenantId]),
+    readPool.query(`
+      SELECT date_trunc('week', created_at) as week_date, COUNT(*)::int as count
+      FROM projects
+      WHERE tenant_id = $1 AND (${projectsFilter}) AND deleted_at IS NULL
+        AND created_at >= NOW() - INTERVAL '12 weeks'
+      GROUP BY date_trunc('week', created_at)
+      ORDER BY week_date ASC
+    `, params),
+    readPool.query(`
+      SELECT date_trunc('week', created_at) as week_date, COUNT(*)::int as count
+      FROM tasks
+      WHERE tenant_id = $1 AND (${tasksFilter}) AND deleted_at IS NULL
+        AND created_at >= NOW() - INTERVAL '12 weeks'
+      GROUP BY date_trunc('week', created_at)
+      ORDER BY week_date ASC
     `, params)
   ]);
 
-  const activeCount = parseInt(activeLeadsRes.rows[0].count, 10);
-  const prevWeekCount = parseInt(prevWeekLeadsRes.rows[0].count, 10);
-  const trendDiff = activeCount - prevWeekCount;
-  const trend = trendDiff > 0 ? `+${trendDiff}` : `${trendDiff}`;
+  const activeCount = parseInt(activeLeadsRes.rows[0]?.count, 10) || 0;
+  const prevWeekCount = parseInt(prevWeekLeadsRes.rows[0]?.count, 10) || 0;
+  let leadsTrend = null;
+  if (prevWeekCount > 0) {
+    leadsTrend = Math.round(((activeCount - prevWeekCount) / prevWeekCount) * 100);
+  } else if (activeCount > 0) {
+    leadsTrend = 100;
+  }
+
+  const currentWon = parseFloat(wonThisMonthRes.rows[0]?.won_value) || 0;
+  const prevWon = parseFloat(prevMonthWonRes.rows[0]?.won_value) || 0;
+  let wonTrend = null;
+  if (prevWon > 0) {
+    wonTrend = Math.round(((currentWon - prevWon) / prevWon) * 100);
+  } else if (currentWon > 0) {
+    wonTrend = 100;
+  }
   
   const targets = targetsRes && targetsRes.rows.length > 0 ? targetsRes.rows[0] : { target_revenue: 0, target_leads: 0 };
 
-  let trendData = revenueTrendRes.rows.map((r, i) => ({
-    week: `W${i + 1}`,
-    amt: parseFloat((r.amt / 100000).toFixed(1))
-  }));
-  
-  if (trendData.length === 0) {
-    trendData = [
-      { week: 'W1',  amt: 8.2 },  { week: 'W2',  amt: 9.1 },
-      { week: 'W3',  amt: 7.8 },  { week: 'W4',  amt: 10.4 },
-      { week: 'W5',  amt: 11.2 }, { week: 'W6',  amt: 10.0 },
-      { week: 'W7',  amt: 12.1 }, { week: 'W8',  amt: 11.5 },
-      { week: 'W9',  amt: 13.2 }, { week: 'W10', amt: 12.8 },
-      { week: 'W11', amt: 13.9 }, { week: 'W12', amt: 14.2 },
-    ];
-  }
+  const mapTo12Points = (rows, valKey = 'count') => {
+    const points = Array(12).fill(0);
+    if (rows && rows.length > 0) {
+      const len = rows.length;
+      rows.forEach((r, idx) => {
+        const slot = 12 - len + idx;
+        if (slot >= 0 && slot < 12) {
+          points[slot] = Number(r[valKey] || 0);
+        }
+      });
+    }
+    return points.map((v, i) => ({ i, v }));
+  };
+
+  const trendData = Array.from({ length: 12 }, (_, i) => {
+    const weekLabel = `W${i + 1}`;
+    const row = revenueTrendRes.rows[i];
+    return {
+      week: weekLabel,
+      amt: row ? parseFloat((row.amt / 100000).toFixed(1)) : 0
+    };
+  });
 
   return {
     activeLeads: {
       count: activeCount,
       prevWeekCount,
-      trend
+      trend: leadsTrend
     },
     wonThisMonth: {
-      count: parseInt(wonThisMonthRes.rows[0].count, 10),
-      value: parseFloat(wonThisMonthRes.rows[0].won_value)
+      count: parseInt(wonThisMonthRes.rows[0]?.count, 10) || 0,
+      value: currentWon,
+      trend: wonTrend
     },
     activeProjects: {
-      count: parseInt(projectsRes.rows[0].active, 10) || 0,
-      overdueCount: parseInt(projectsRes.rows[0].overdue, 10) || 0
+      count: parseInt(projectsRes.rows[0]?.active, 10) || 0,
+      overdueCount: parseInt(projectsRes.rows[0]?.overdue, 10) || 0
     },
     tasksDueToday: {
-      count: parseInt(tasksRes.rows[0].due_today, 10) || 0,
-      overdueCount: parseInt(tasksRes.rows[0].overdue, 10) || 0
+      count: parseInt(tasksRes.rows[0]?.due_today, 10) || 0,
+      overdueCount: parseInt(tasksRes.rows[0]?.overdue, 10) || 0
     },
     siteVisits: {
       count: siteVisitsRes.rows.length,
@@ -121,7 +187,13 @@ exports.getGlobalStats = async (tenantId, userId, user) => {
       targetRevenue: parseFloat(targets.target_revenue) || 0,
       targetLeads: parseInt(targets.target_leads, 10) || 0
     },
-    revenueTrend: trendData
+    revenueTrend: trendData,
+    sparks: {
+      leads: mapTo12Points(leadsSparkRes.rows, 'count'),
+      revenue: mapTo12Points(revenueSparkRes.rows, 'amt'),
+      projects: mapTo12Points(projectsSparkRes.rows, 'count'),
+      tasks: mapTo12Points(tasksSparkRes.rows, 'count')
+    }
   };
 };
 

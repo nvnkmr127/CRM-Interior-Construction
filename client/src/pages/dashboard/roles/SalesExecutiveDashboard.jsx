@@ -16,11 +16,8 @@ import { AIPriorityLeadsWidget } from '../../../components/dashboard/widgets/AIP
 import { OverdueFollowUpWidget } from '../../../components/dashboard/widgets/OverdueFollowUpWidget';
 import { RevenuePipelineWidget } from '../../../components/dashboard/widgets/RevenuePipelineWidget';
 
-/* ── Static sparkline data (one series per KPI) ───────────────────────── */
-const sparkLeads   = [22,28,31,35,38,36,40,39,41,40,42,42].map((v,i) => ({ i, v }));
-const sparkRevenue = [8,9,10,11,10,12,11,13,12,13,14,14].map((v,i) => ({ i, v }));
-const sparkProjects= [7,8,8,9,10,10,11,11,12,11,12,12].map((v,i) => ({ i, v }));
-const sparkTasks   = [6,8,10,12,9,11,14,13,15,14,15,15].map((v,i) => ({ i, v }));
+/* ── Default sparkline baseline ───────────────────────────────────────── */
+const defaultSpark = Array.from({ length: 12 }, (_, i) => ({ i, v: 0 }));
 
 // Revenue trend is now loaded dynamically from API
 
@@ -269,6 +266,12 @@ export default function SalesExecutiveDashboard() {
   const [tasks,   setTasks]     = useState(null);
   const [payments,setPayments]  = useState(null);
   const [revenueTrend, setRevenueTrend] = useState([]);
+  const [sparks, setSparks] = useState({
+    leads: defaultSpark,
+    revenue: defaultSpark,
+    projects: defaultSpark,
+    tasks: defaultSpark
+  });
   const [handovers, setHandovers] = useState([]);
   const [syncCounter, setSyncCounter] = useState(0);
   const [selectedActivity, setSelectedActivity] = useState(null);
@@ -305,8 +308,8 @@ export default function SalesExecutiveDashboard() {
       if (statsR.status === 'fulfilled') {
         const s = statsR.value.data?.data || {};
         setStats({
-          activeLeads:    { val: s.activeLeads?.count  ?? 0, trend: s.activeLeads?.trend    ?? 0 },
-          wonMonth:       { val: formatRevenue(s.wonThisMonth?.value), trend: s.wonThisMonth?.trend ?? 15 },
+          activeLeads:    { val: s.activeLeads?.count  ?? 0, trend: s.activeLeads?.trend ?? null },
+          wonMonth:       { val: formatRevenue(s.wonThisMonth?.value), trend: s.wonThisMonth?.trend ?? null },
           activeProjects: { val: s.activeProjects?.count ?? 0, overdue: s.activeProjects?.overdueCount ?? 0 },
           tasksDueToday:  { val: s.tasksDueToday?.count  ?? 0, overdue: s.tasksDueToday?.overdueCount  ?? 0 },
           targets:        { 
@@ -316,16 +319,30 @@ export default function SalesExecutiveDashboard() {
             actualLeads: s.activeLeads?.count ?? 0
           }
         });
-        setRevenueTrend(s.revenueTrend || []);
+        setRevenueTrend(s.revenueTrend || Array.from({ length: 12 }, (_, i) => ({ week: `W${i + 1}`, amt: 0 })));
+        if (s.sparks) {
+          setSparks({
+            leads: s.sparks.leads || defaultSpark,
+            revenue: s.sparks.revenue || defaultSpark,
+            projects: s.sparks.projects || defaultSpark,
+            tasks: s.sparks.tasks || defaultSpark
+          });
+        }
       } else {
         setStats({
-          activeLeads:    { val: 0, trend: 0 },
-          wonMonth:       { val: '₹0', trend: 0 },
+          activeLeads:    { val: 0, trend: null },
+          wonMonth:       { val: '₹0', trend: null },
           activeProjects: { val: 0, overdue: 0 },
           tasksDueToday:  { val: 0, overdue: 0 },
           targets:        { targetRevenue: 0, targetLeads: 0, actualRevenue: 0, actualLeads: 0 }
         });
-        setRevenueTrend([]);
+        setRevenueTrend(Array.from({ length: 12 }, (_, i) => ({ week: `W${i + 1}`, amt: 0 })));
+        setSparks({
+          leads: defaultSpark,
+          revenue: defaultSpark,
+          projects: defaultSpark,
+          tasks: defaultSpark
+        });
       }
 
       // Activity
@@ -466,7 +483,7 @@ export default function SalesExecutiveDashboard() {
       label:   'Active Leads',
       value:   stats.activeLeads.val,
       trend:   stats.activeLeads.trend,
-      spark:   sparkLeads,
+      spark:   sparks.leads,
       color:   '#3B82F6',
       suffix:  null,
       sub:     null,
@@ -475,7 +492,7 @@ export default function SalesExecutiveDashboard() {
       label:   'Revenue This Month',
       value:   stats.wonMonth.val,
       trend:   stats.wonMonth.trend,
-      spark:   sparkRevenue,
+      spark:   sparks.revenue,
       color:   '#E8935A',
       suffix:  null,
       sub:     null,
@@ -484,7 +501,7 @@ export default function SalesExecutiveDashboard() {
       label:   'Active Projects',
       value:   stats.activeProjects.val,
       trend:   null,
-      spark:   sparkProjects,
+      spark:   sparks.projects,
       color:   '#8B5CF6',
       suffix:  null,
       sub:     stats.activeProjects.overdue > 0 ? `${stats.activeProjects.overdue} overdue` : null,
@@ -494,7 +511,7 @@ export default function SalesExecutiveDashboard() {
       label:   'Tasks Due',
       value:   stats.tasksDueToday.val,
       trend:   null,
-      spark:   sparkTasks,
+      spark:   sparks.tasks,
       color:   '#F59E0B',
       suffix:  null,
       sub:     stats.tasksDueToday.overdue > 0 ? `${stats.tasksDueToday.overdue} overdue` : null,

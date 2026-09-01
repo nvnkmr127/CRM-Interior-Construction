@@ -28,6 +28,13 @@ async function authenticateApiKey(req, res, next) {
       }
     }
 
+    // 2.5 Check if tenant is active
+    const pool = require('../db/pool');
+    const tenantCheck = await pool.query('SELECT is_active FROM tenants WHERE id = $1', [apiKeyRecord.tenant_id]);
+    if (tenantCheck.rowCount === 0 || !tenantCheck.rows[0].is_active) {
+      return res.status(403).json({ success: false, error: 'TENANT_DEACTIVATED', message: 'This workspace has been deactivated.' });
+    }
+
     // 3. Set request context
     req.tenantId = apiKeyRecord.tenant_id;
     req.apiKey = apiKeyRecord;

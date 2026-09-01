@@ -36,6 +36,11 @@ async function authenticatePortal(req, res, next) {
       return res.status(401).json({ success: false, message: 'Portal token expired' });
     }
 
+    const tenantCheck = await pool.query('SELECT is_active FROM tenants WHERE id = $1', [user.tenant_id]);
+    if (tenantCheck.rowCount === 0 || !tenantCheck.rows[0].is_active) {
+      return res.status(403).json({ success: false, error: 'TENANT_DEACTIVATED', message: 'This workspace has been deactivated.' });
+    }
+
     req.portalUser = {
       id: user.id,
       tenantId: user.tenant_id,

@@ -19,22 +19,39 @@ export default function ProtectedRoute({ children, requiredPermission, requiredM
     return <Navigate to='/login' replace />
   }
 
+  const roleName = (typeof user?.role === 'string' ? user.role : user?.role?.name || user?.role_name || '').toLowerCase().replace(/[\s_-]+/g, '');
+  const perms = Array.isArray(user?.role?.permissions) 
+    ? user.role.permissions 
+    : (Array.isArray(user?.permissions) ? user.permissions : []);
+
   const isAdmin = 
-    user?.role === 'superadmin' || 
-    user?.role?.name?.toLowerCase() === 'superadmin' || 
-    user?.role?.name?.toLowerCase() === 'super admin' || 
-    (user?.role?.permissions && user.role.permissions.includes('*'));
+    roleName === 'superadmin' || 
+    roleName === 'admin' || 
+    roleName.includes('admin') ||
+    perms.includes('*') ||
+    perms.includes('*:*') ||
+    perms.includes('all');
+
+  if (isAdmin) {
+    return children;
+  }
 
   if (requiredPermission) {
-    const perms = user?.role?.permissions || []
-    if (!isAdmin && !perms.includes(requiredPermission)) {
+    const [mod] = requiredPermission.split(':');
+    const hasPerm = perms.includes(requiredPermission) || perms.includes(`${mod}:*`) || perms.includes('*');
+    if (!hasPerm) {
       return <Navigate to='/forbidden' replace />
     }
   }
 
   if (requiredModule) {
-    const enabledModules = user?.role?.enabled_modules || []
-    if (!isAdmin && !enabledModules.includes(requiredModule)) {
+    const enabledModules = user?.role?.enabled_modules || [];
+    const hasModulePerm = perms.some(p => p.startsWith(`${requiredModule}:`) || p === '*' || p === `${requiredModule}`);
+    const isModuleAllowed = enabledModules.length === 0 
+      ? (hasModulePerm || ['dashboards', 'settings', 'tasks'].includes(requiredModule)) 
+      : (enabledModules.includes(requiredModule) || hasModulePerm || ['dashboards', 'settings', 'tasks'].includes(requiredModule));
+
+    if (!isModuleAllowed) {
       return <Navigate to='/forbidden' replace />
     }
   }

@@ -7,8 +7,8 @@ const { loginUser } = require('../services/auth/login');
 const { refreshTokens } = require('../services/auth/refresh');
 const { logoutUser } = require('../services/auth/logout');
 const authenticate = require('../middleware/authenticate');
-const { queueEmail } = require('../services/emailService');
 const { success, fail } = require('../utils/response');
+const { ROLE_DEFAULTS, getRoleConfig } = require('../constants/roleDefaults');
 
 const router = express.Router();
 
@@ -31,11 +31,22 @@ router.post('/register', async (req, res, next) => {
     }
 
     const { name, email, password, tenantSlug } = parsed.data;
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const rawSlug = (tenantSlug || '').trim();
+    const normalizedSlug = rawSlug.toLowerCase().replace(/[\s_]+/g, '-');
+    const noHyphenSlug = rawSlug.toLowerCase().replace(/[\s_-]+/g, '');
 
-    // 2. Lookup tenant by slug
+    // 2. Lookup tenant by slug or name
     const tenantResult = await pool.query(
-      'SELECT id FROM tenants WHERE slug = $1 LIMIT 1',
-      [tenantSlug]
+      `SELECT id FROM tenants 
+       WHERE LOWER(slug) = LOWER($1) 
+          OR LOWER(slug) = LOWER($2) 
+          OR LOWER(slug) = LOWER($3)
+          OR LOWER(REPLACE(slug, '-', '')) = LOWER($3)
+          OR LOWER(name) = LOWER($1)
+          OR LOWER(REPLACE(name, ' ', '-')) = LOWER($2)
+       LIMIT 1`,
+      [rawSlug, normalizedSlug, noHyphenSlug]
     );
 
     if (tenantResult.rows.length === 0) {
@@ -48,7 +59,7 @@ router.post('/register', async (req, res, next) => {
     const defaultRoleId = null;
 
     // 3. Call registerUser
-    const user = await registerUser({ tenantId, email, name, password, roleId: defaultRoleId });
+    const user = await registerUser({ tenantId, email: cleanEmail, name: name.trim(), password, roleId: defaultRoleId });
 
     // 4. Return 201
     return success(res, { user }, {}, 201);
@@ -75,11 +86,22 @@ router.post('/login', async (req, res, next) => {
     }
 
     const { email, password, tenantSlug } = parsed.data;
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const rawSlug = (tenantSlug || '').trim();
+    const normalizedSlug = rawSlug.toLowerCase().replace(/[\s_]+/g, '-');
+    const noHyphenSlug = rawSlug.toLowerCase().replace(/[\s_-]+/g, '');
 
-    // 2. Lookup tenant by slug -> tenantId
+    // 2. Lookup tenant by slug or name
     const tenantResult = await pool.query(
-      'SELECT id, is_active FROM tenants WHERE slug = $1 LIMIT 1',
-      [tenantSlug]
+      `SELECT id, is_active FROM tenants 
+       WHERE LOWER(slug) = LOWER($1) 
+          OR LOWER(slug) = LOWER($2) 
+          OR LOWER(slug) = LOWER($3)
+          OR LOWER(REPLACE(slug, '-', '')) = LOWER($3)
+          OR LOWER(name) = LOWER($1)
+          OR LOWER(REPLACE(name, ' ', '-')) = LOWER($2)
+       LIMIT 1`,
+      [rawSlug, normalizedSlug, noHyphenSlug]
     );
 
     if (tenantResult.rows.length === 0) {
@@ -90,38 +112,14 @@ router.post('/login', async (req, res, next) => {
     const { id: tenantId, is_active } = tenantResult.rows[0];
 
     if (!is_active) {
-      // Check if this user is a superadmin/developer to allow bypass
-      const userCheck = await pool.query(
-        `SELECT r.name as role_name, r.permissions
-         FROM users u
-         LEFT JOIN roles r ON u.role_id = r.id
-         WHERE u.tenant_id = $1 AND u.email = $2 LIMIT 1`,
-        [tenantId, email]
-      );
-      
-      const userRow = userCheck.rows[0];
-      const roleName = userRow?.role_name || '';
-      const userRole = roleName.toLowerCase().replace(/\s+/g, '');
-      let isSuperAdmin = userRole === 'superadmin';
-      
-      if (userRow?.permissions) {
-        const p = typeof userRow.permissions === 'string' ? JSON.parse(userRow.permissions) : userRow.permissions;
-        const actions = Array.isArray(p) ? p : (p.actions || []);
-        if (actions.includes('*')) {
-          isSuperAdmin = true;
-        }
-      }
-
-      if (!isSuperAdmin) {
-        return fail(res, 'TENANT_DEACTIVATED', 'This workspace has been deactivated. Please contact support.', 403);
-      }
+      return fail(res, 'TENANT_DEACTIVATED', 'This workspace has been deactivated. Please contact support.', 403);
     }
 
     // 3. Call loginUser
     const ip = req.ip || req.connection?.remoteAddress || 'Unknown';
     const userAgent = req.headers['user-agent'] || 'Unknown';
     const loginResult = await loginUser({
-      email,
+      email: cleanEmail,
       password,
       tenantId,
       ip,
@@ -200,12 +198,11 @@ router.post('/refresh', async (req, res, next) => {
     // 4. Return 200
     return success(res, { accessToken, refreshToken });
   } catch (error) {
-    // If the refresh service throws an error (error.g., TOKEN_INVALID), we can treat it as UNAUTHORIZED
-    // Alternatively, let the global handler catch named errors. The global handler will throw 500
-    // for unknown ones, but the user requested: 401 { error: 'Session expired. Please login again.' }
-    // Let's explicitly format it here to fulfill that specific prompt requirement.
     res.clearCookie('refreshToken');
     res.clearCookie('accessToken');
+    if (error.message === 'TENANT_DEACTIVATED' || error.code === 'TENANT_DEACTIVATED') {
+      return fail(res, 'TENANT_DEACTIVATED', 'This workspace has been deactivated. Please contact support.', 403);
+    }
     return fail(res, 'UNAUTHORIZED', 'Session expired. Please login again.', 401);
   }
 });
@@ -257,7 +254,7 @@ router.get('/me', async (req, res, next) => {
         u.id, u.name, u.email, u.status, u.avatar_url, u.created_at, u.profile_data,
         r.id as role_id, r.name as role_name, r.permissions as role_permissions,
         t.id as tenant_id, t.name as tenant_name, t.slug as tenant_slug, t.plan as tenant_plan,
-        t.config as tenant_config
+        t.config as tenant_config, t.is_active as tenant_is_active
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.id
       LEFT JOIN tenants t ON u.tenant_id = t.id
@@ -273,19 +270,70 @@ router.get('/me', async (req, res, next) => {
 
     const row = result.rows[0];
 
+    if (row.tenant_is_active === false) {
+      return fail(res, 'TENANT_DEACTIVATED', 'This workspace has been deactivated. Please contact support.', 403);
+    }
+
     let actions = [];
     let enabledModules = [];
+    let roleName = row.role_name || (row.role_id ? 'Team Member' : 'Designer');
     if (row.role_permissions) {
       const p = typeof row.role_permissions === 'string' ? JSON.parse(row.role_permissions) : row.role_permissions;
       actions = Array.isArray(p) ? p : (p.actions || []);
       enabledModules = Array.isArray(p) ? [] : (p.modules || []);
     }
 
+    if (actions.length === 0 || enabledModules.length === 0) {
+      const roleConfig = getRoleConfig(roleName) || ROLE_DEFAULTS['Designer'];
+      if (roleConfig) {
+        if (actions.length === 0) actions = roleConfig.permissions;
+        if (enabledModules.length === 0) enabledModules = roleConfig.enabled_modules;
+      }
+    }
+
     // Fetch sidebar configurations if they exist
-    const planConfigRes = await pool.query('SELECT enabled_tabs FROM sidebar_tabs_plan_config WHERE plan_name = $1', [row.tenant_plan || 'starter']);
+    const PLAN_DEFAULTS = {
+      starter: [
+        'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar',
+        'projects', 'tasks', 'reports', 'team-management', 'team-members', 'roles-permissions', 'organization'
+      ],
+      growth: [
+        'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
+        'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
+        'analytics-delay', 'coordination', 'handover-dashboard', 'retention-dashboard', 'resource-capacity',
+        'absences', 'vendor-performance', 'vendor-capacity', 'team-management', 'team-members',
+        'roles-permissions', 'organization'
+      ],
+      enterprise: [
+        'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
+        'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
+        'analytics-delay', 'analytics-boq', 'analytics-resources', 'analytics-resource-workload',
+        'lead-stages', 'custom-fields', 'lead-forms', 'templates', 'trade-activities', 'qc-checklists',
+        'conversion-checklist', 'automations', 'coordination', 'handover-dashboard', 'retention-dashboard',
+        'resource-capacity', 'absences', 'vendor-performance', 'vendor-capacity', 'vendor-lead-times',
+        'finance-overview', 'financial-approvals', 'analytics-profitability', 'analytics-collection-forecast',
+        'financial-thresholds', 'team-management', 'team-members', 'roles-permissions', 'organization',
+        'login-history', 'audit-trail', 'superadmin', 'api-keys', 'api-integration', 'webhooks',
+        'email-templates', 'logs'
+      ]
+    };
+
+    const planName = (row.tenant_plan || 'starter').toLowerCase();
+    let enabledTabs = null;
+    try {
+      const planConfigRes = await pool.query('SELECT enabled_tabs FROM sidebar_tabs_plan_config WHERE LOWER(plan_name) = LOWER($1)', [planName]);
+      if (planConfigRes.rows.length > 0 && planConfigRes.rows[0].enabled_tabs) {
+        const raw = planConfigRes.rows[0].enabled_tabs;
+        enabledTabs = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      }
+    } catch (e) {}
+
+    if (!enabledTabs || !Array.isArray(enabledTabs) || enabledTabs.length === 0) {
+      enabledTabs = PLAN_DEFAULTS[planName] || PLAN_DEFAULTS.starter;
+    }
 
     const sidebarConfig = {
-      planTabs: planConfigRes.rows.length > 0 ? JSON.parse(planConfigRes.rows[0].enabled_tabs || '[]') : null
+      planTabs: enabledTabs
     };
 
     const profile = row.profile_data || {};
@@ -300,12 +348,12 @@ router.get('/me', async (req, res, next) => {
       created_at: row.created_at,
       phone: profile.phone || '',
       designation: profile.designation || '',
-      role: row.role_id ? {
-        id: row.role_id,
-        name: row.role_name,
+      role: {
+        id: row.role_id || 'superadmin',
+        name: roleName,
         permissions: actions,
         enabled_modules: enabledModules
-      } : null,
+      },
       tenant: {
         id: row.tenant_id,
         name: row.tenant_name,
@@ -326,6 +374,54 @@ router.get('/me', async (req, res, next) => {
   } catch (error) {
     logger.error('[AUTH_LOGIN_ERROR]', error);
     next(error);
+  }
+});
+
+router.get('/sidebar-config', authenticate, async (req, res, next) => {
+  try {
+    const PLAN_DEFAULTS = {
+      starter: [
+        'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar',
+        'projects', 'tasks', 'reports', 'team-management', 'team-members', 'roles-permissions', 'organization'
+      ],
+      growth: [
+        'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
+        'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
+        'analytics-delay', 'coordination', 'handover-dashboard', 'retention-dashboard', 'resource-capacity',
+        'absences', 'vendor-performance', 'vendor-capacity', 'team-management', 'team-members',
+        'roles-permissions', 'organization'
+      ],
+      enterprise: [
+        'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
+        'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
+        'analytics-delay', 'analytics-boq', 'analytics-resources', 'analytics-resource-workload',
+        'lead-stages', 'custom-fields', 'lead-forms', 'templates', 'trade-activities', 'qc-checklists',
+        'conversion-checklist', 'automations', 'coordination', 'handover-dashboard', 'retention-dashboard',
+        'resource-capacity', 'absences', 'vendor-performance', 'vendor-capacity', 'vendor-lead-times',
+        'finance-overview', 'financial-approvals', 'analytics-profitability', 'analytics-collection-forecast',
+        'financial-thresholds', 'team-management', 'team-members', 'roles-permissions', 'organization',
+        'login-history', 'audit-trail', 'superadmin', 'api-keys', 'api-integration', 'webhooks',
+        'email-templates', 'logs'
+      ]
+    };
+
+    const tenantRes = await pool.query('SELECT plan FROM tenants WHERE id = $1', [req.tenantId]);
+    const tenantPlan = (tenantRes.rows[0]?.plan || 'starter').toLowerCase();
+
+    const planConfigRes = await pool.query('SELECT enabled_tabs FROM sidebar_tabs_plan_config WHERE LOWER(plan_name) = LOWER($1)', [tenantPlan]);
+    let enabledTabs = null;
+    if (planConfigRes.rows.length > 0 && planConfigRes.rows[0].enabled_tabs) {
+      const raw = planConfigRes.rows[0].enabled_tabs;
+      enabledTabs = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    }
+
+    if (!enabledTabs || !Array.isArray(enabledTabs) || enabledTabs.length === 0) {
+      enabledTabs = PLAN_DEFAULTS[tenantPlan] || PLAN_DEFAULTS.starter;
+    }
+
+    return success(res, { planTabs: enabledTabs, plan: tenantPlan });
+  } catch (error) {
+    return next(error);
   }
 });
 

@@ -7,10 +7,13 @@ const { hashPassword, validatePasswordPolicy, recordPasswordChange } = require('
  * @returns {Promise<Object>} The created user (without password_hash)
  */
 async function registerUser({ tenantId, email, name, password, roleId }) {
+  const cleanEmail = (email || '').trim().toLowerCase();
+  const cleanName = (name || '').trim();
+
   // 1. Check if email already exists for this tenant
   const existingUserResult = await pool.query(
-    'SELECT id FROM users WHERE tenant_id = $1 AND email = $2 LIMIT 1',
-    [tenantId, email]
+    'SELECT id FROM users WHERE tenant_id = $1 AND LOWER(email) = LOWER($2) LIMIT 1',
+    [tenantId, cleanEmail]
   );
 
   if (existingUserResult.rows.length > 0) {
@@ -42,8 +45,8 @@ async function registerUser({ tenantId, email, name, password, roleId }) {
   const result = await pool.query(insertQuery, [
     tenantId,
     roleId,
-    name,
-    email,
+    cleanName,
+    cleanEmail,
     hashedPassword,
   ]);
 

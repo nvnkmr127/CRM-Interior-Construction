@@ -12,6 +12,7 @@ const starterTabs = [
   'reports',
   'team-management',
   'team-members',
+  'roles-permissions',
   'organization'
 ];
 

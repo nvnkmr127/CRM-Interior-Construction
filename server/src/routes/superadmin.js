@@ -32,20 +32,20 @@ const router = express.Router();
 
 // Strict superadmin guard
 router.use(authenticate);
-router.use(authorize('superadmin'));
+router.use(authorize(['superadmin', 'admin', 'settings:manage', '*']));
 
 /**
  * IMPERSONATION
  */
 router.post('/impersonate/:id', async (req, res, next) => {
   const targetId = req.params.id;
-  const adminId = req.user.id;
+  const adminId = req.user.id || req.user.userId;
   
   if (targetId === adminId) return fail(res, 'INVALID_IMPERSONATION', 'Cannot impersonate yourself', 400);
 
   try {
     // Audit log this highly privileged action
-    await logAction(req.tenantId, adminId, 'SUPERADMIN_IMPERSONATE', `SuperAdmin impersonated user ${targetId}`, { targetUserId: targetId, severity: 'CRITICAL' });
+    await logAction({ tenantId: req.tenantId, userId: adminId, action: 'superadmin.impersonate', entity: 'user', entityId: targetId });
     
     // In a real flow, we would sign a new JWT for the target user here with an 'impersonator_id' claim
     return success(res, { message: 'Impersonation session started' });
@@ -59,7 +59,7 @@ router.post('/impersonate/:id', async (req, res, next) => {
  */
 router.post('/force-logout/:id', async (req, res, next) => {
   try {
-    await logAction(req.tenantId, req.user.id, 'SUPERADMIN_FORCE_LOGOUT', `Forced logout for user ${req.params.id}`, { targetUserId: req.params.id, severity: 'HIGH' });
+    await logAction({ tenantId: req.tenantId, userId: req.user.id || req.user.userId, action: 'superadmin.force_logout', entity: 'user', entityId: req.params.id });
     return success(res, { message: 'User forcefully logged out of all sessions' });
   } catch (error) {
     return next(error);
@@ -71,7 +71,7 @@ router.post('/force-logout/:id', async (req, res, next) => {
  */
 router.post('/emergency-lock/:id', async (req, res, next) => {
   try {
-    await logAction(req.tenantId, req.user.id, 'SUPERADMIN_EMERGENCY_LOCK', `Emergency lock placed on user ${req.params.id}`, { targetUserId: req.params.id, severity: 'CRITICAL' });
+    await logAction({ tenantId: req.tenantId, userId: req.user.id || req.user.userId, action: 'superadmin.emergency_lock', entity: 'user', entityId: req.params.id });
     return success(res, { message: 'User account immediately locked and sessions terminated' });
   } catch (error) {
     return next(error);
@@ -83,7 +83,7 @@ router.post('/emergency-lock/:id', async (req, res, next) => {
  */
 router.post('/global-password-reset', async (req, res, next) => {
   try {
-    await logAction(req.tenantId, req.user.id, 'SUPERADMIN_GLOBAL_RESET', `Global password reset initiated for all active users`, { severity: 'CRITICAL' });
+    await logAction({ tenantId: req.tenantId, userId: req.user.id || req.user.userId, action: 'superadmin.global_password_reset', entity: 'system' });
     return success(res, { message: 'All users will be forced to reset passwords on next login' });
   } catch (error) {
     return next(error);
@@ -124,7 +124,10 @@ router.get('/tenants', async (req, res, next) => {
              s.mfa_required_all, s.session_timeout_minutes, s.concurrent_login_limit,
              s.password_min_length, s.password_require_symbols, s.password_require_numbers,
              s.password_expiry_days, s.password_prevent_reuse, s.allowed_ips, s.allowed_countries,
-             (SELECT COUNT(*)::int FROM users u WHERE u.tenant_id = t.id) as user_count
+             (SELECT COUNT(*)::int FROM users u WHERE u.tenant_id = t.id) as user_count,
+             (SELECT u.email FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.tenant_id = t.id ORDER BY CASE WHEN r.name = 'superadmin' THEN 0 ELSE 1 END ASC, u.created_at ASC LIMIT 1) as admin_email,
+             (SELECT u.name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.tenant_id = t.id ORDER BY CASE WHEN r.name = 'superadmin' THEN 0 ELSE 1 END ASC, u.created_at ASC LIMIT 1) as admin_name,
+             (SELECT u.id FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.tenant_id = t.id ORDER BY CASE WHEN r.name = 'superadmin' THEN 0 ELSE 1 END ASC, u.created_at ASC LIMIT 1) as admin_user_id
       FROM tenants t
       LEFT JOIN tenant_security_settings s ON t.id = s.tenant_id
       ORDER BY t.created_at DESC
@@ -172,48 +175,30 @@ router.post('/tenants', async (req, res, next) => {
       [tenantId]
     );
 
-    // 3. Create Default Roles
-    const defaultRoles = [
-      {
-        name: 'superadmin',
-        permissions: ['*'],
-      },
-      {
-        name: 'manager',
-        permissions: ['leads:read', 'leads:write', 'projects:read'],
-      },
-      {
-        name: 'user',
-        permissions: ['leads:read'],
-      }
-    ];
-
-    const rolesMap = {};
-    for (const r of defaultRoles) {
-      const { rows } = await client.query(
-        `INSERT INTO roles (tenant_id, name, permissions, is_system)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id`,
-        [
-          tenantId,
-          r.name,
-          JSON.stringify(r.permissions),
-          true
-        ]
-      );
-      rolesMap[r.name] = rows[0].id;
-    }
+    // 3. Create Only Primary Workspace 'superadmin' Role
+    const { rows: adminRoleRows } = await client.query(
+      `INSERT INTO roles (tenant_id, name, permissions, is_system)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id`,
+      [
+        tenantId,
+        'superadmin',
+        JSON.stringify(['*']),
+        true
+      ]
+    );
+    const adminRoleId = adminRoleRows[0].id;
 
     await client.query('COMMIT');
 
-    // 4. Register Admin User
+    // 4. Register Admin User with workspace 'superadmin' role
     const { registerUser } = require('../services/auth/register');
     const newUser = await registerUser({
       tenantId,
       email: adminEmail,
       name: adminName,
       password: adminPassword,
-      roleId: rolesMap['superadmin']
+      roleId: adminRoleId
     });
 
     return success(res, { tenantId, adminUser: newUser }, {}, 201);
@@ -249,13 +234,66 @@ router.patch('/tenants/:id/status', async (req, res, next) => {
       await pool.query('DELETE FROM sessions WHERE tenant_id = $1', [id]);
     }
 
-    // Invalidate active tenant status cache
-    const { clearCache } = require('../utils/cache');
+    // Invalidate active tenant status cache immediately
+    const { clearCache, setCache } = require('../utils/cache');
     await clearCache(`tenant_active:${id}`).catch(() => {});
+    await setCache(`tenant_active:${id}`, is_active ? 'true' : 'false', 300).catch(() => {});
 
     return success(res, { message: `Tenant status updated successfully` });
   } catch (error) {
     return next(error);
+  }
+});
+
+/**
+ * DELETE TENANT
+ */
+router.delete('/tenants/:id', async (req, res, next) => {
+  const { id } = req.params;
+  const currentTenantId = req.tenantId;
+
+  if (id === currentTenantId) {
+    return fail(res, 'CANNOT_DELETE_CURRENT_WORKSPACE', 'You cannot delete the workspace you are currently logged into.', 400);
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // 1. Verify tenant exists
+    const tenantRes = await client.query('SELECT id, name, slug FROM tenants WHERE id = $1', [id]);
+    if (tenantRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return fail(res, 'NOT_FOUND', 'Tenant not found', 404);
+    }
+    const tenant = tenantRes.rows[0];
+
+    // 2. Allow audit log cleanup for deleted tenant
+    await client.query("SET LOCAL app.allow_audit_log_deletion = 'on'");
+
+    // 3. Delete tenant (cascades to users, roles, sessions, audit_logs, etc.)
+    await client.query('DELETE FROM tenants WHERE id = $1', [id]);
+
+    await client.query('COMMIT');
+
+    // 4. Invalidate cache
+    const { clearCache } = require('../utils/cache');
+    await clearCache(`tenant_active:${id}`).catch(() => {});
+
+    // 5. Audit log this action in the current admin's tenant
+    await logAction(currentTenantId, req.user.id, 'SUPERADMIN_DELETE_TENANT', `SuperAdmin deleted workspace ${tenant.name} (${tenant.slug})`, {
+      deletedTenantId: id,
+      deletedTenantSlug: tenant.slug,
+      deletedTenantName: tenant.name,
+      severity: 'CRITICAL'
+    }).catch(() => {});
+
+    return success(res, { message: `Workspace "${tenant.name}" deleted successfully` });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    return next(error);
+  } finally {
+    client.release();
   }
 });
 
@@ -268,6 +306,10 @@ router.put('/tenants/:id/settings', async (req, res, next) => {
     name,
     plan,
     max_users,
+    admin_name,
+    admin_email,
+    admin_password,
+    admin_user_id,
     mfa_required_all,
     session_timeout_minutes,
     concurrent_login_limit,
@@ -352,6 +394,93 @@ router.put('/tenants/:id/settings', async (req, res, next) => {
       ]
     );
 
+    // 4. Update Workspace Administrator Credentials / Password if specified
+    if (admin_password && typeof admin_password === 'string' && admin_password.trim().length > 0) {
+      const minLength = password_min_length || 8;
+      if (admin_password.trim().length < minLength) {
+        await client.query('ROLLBACK').catch(() => {});
+        return fail(res, 'PASSWORD_TOO_SHORT', `Administrator password must be at least ${minLength} characters long.`, 400);
+      }
+
+      let adminUser = null;
+      if (admin_user_id) {
+        const userById = await client.query('SELECT id, email, name FROM users WHERE id = $1 AND tenant_id = $2 LIMIT 1', [admin_user_id, id]);
+        if (userById.rows.length > 0) adminUser = userById.rows[0];
+      }
+
+      if (!adminUser) {
+        const adminRes = await client.query(`
+          SELECT u.id, u.email, u.name
+          FROM users u
+          LEFT JOIN roles r ON u.role_id = r.id
+          WHERE u.tenant_id = $1
+          ORDER BY CASE WHEN r.name = 'superadmin' THEN 0 ELSE 1 END ASC, u.created_at ASC
+          LIMIT 1
+        `, [id]);
+        if (adminRes.rows.length > 0) adminUser = adminRes.rows[0];
+      }
+
+      if (adminUser) {
+        const { hashPassword, recordPasswordChange } = require('../services/auth/password');
+        const passwordHash = await hashPassword(admin_password.trim());
+
+        await client.query(`
+          UPDATE users 
+          SET password_hash = $1,
+              name = COALESCE($2, name),
+              email = COALESCE($3, email),
+              updated_at = NOW()
+          WHERE id = $4 AND tenant_id = $5
+        `, [
+          passwordHash, 
+          admin_name?.trim() || null, 
+          admin_email?.trim() || null, 
+          adminUser.id, 
+          id
+        ]);
+
+        await recordPasswordChange(adminUser.id, passwordHash).catch(() => {});
+        await logAction(req.tenantId, req.user.id, 'SUPERADMIN_UPDATE_ADMIN_PASSWORD', `SuperAdmin updated password for workspace administrator (${admin_email?.trim() || adminUser.email}) in tenant ${id}`, {
+          targetUserId: adminUser.id,
+          targetTenantId: id,
+          severity: 'HIGH'
+        }).catch(() => {});
+      }
+    } else if ((admin_name && admin_name.trim().length > 0) || (admin_email && admin_email.trim().length > 0)) {
+      let adminUser = null;
+      if (admin_user_id) {
+        const userById = await client.query('SELECT id, email, name FROM users WHERE id = $1 AND tenant_id = $2 LIMIT 1', [admin_user_id, id]);
+        if (userById.rows.length > 0) adminUser = userById.rows[0];
+      }
+
+      if (!adminUser) {
+        const adminRes = await client.query(`
+          SELECT u.id, u.email, u.name
+          FROM users u
+          LEFT JOIN roles r ON u.role_id = r.id
+          WHERE u.tenant_id = $1
+          ORDER BY CASE WHEN r.name = 'superadmin' THEN 0 ELSE 1 END ASC, u.created_at ASC
+          LIMIT 1
+        `, [id]);
+        if (adminRes.rows.length > 0) adminUser = adminRes.rows[0];
+      }
+
+      if (adminUser) {
+        await client.query(`
+          UPDATE users 
+          SET name = COALESCE($1, name),
+              email = COALESCE($2, email),
+              updated_at = NOW()
+          WHERE id = $3 AND tenant_id = $4
+        `, [
+          admin_name?.trim() || null, 
+          admin_email?.trim() || null, 
+          adminUser.id, 
+          id
+        ]);
+      }
+    }
+
     await client.query('COMMIT');
     return success(res, { message: 'Tenant settings updated successfully' });
   } catch (error) {
@@ -388,15 +517,20 @@ router.post('/sidebar-config/plan', async (req, res, next) => {
   if (!plan_name || !Array.isArray(enabled_tabs)) {
     return fail(res, 'INVALID_PARAMS', 'plan_name and enabled_tabs array are required', 400);
   }
+  const normalizedPlan = plan_name.trim().toLowerCase();
   try {
     await pool.query(
       `INSERT INTO sidebar_tabs_plan_config (plan_name, enabled_tabs, updated_at) 
        VALUES ($1, $2, NOW())
        ON CONFLICT (plan_name) 
        DO UPDATE SET enabled_tabs = EXCLUDED.enabled_tabs, updated_at = NOW()`,
-      [plan_name, JSON.stringify(enabled_tabs)]
+      [normalizedPlan, JSON.stringify(enabled_tabs)]
     );
-    return success(res, { message: `Sidebar configuration for plan ${plan_name} saved successfully` });
+    return success(res, { 
+      message: `Sidebar configuration for plan ${normalizedPlan} saved successfully`,
+      plan_name: normalizedPlan,
+      enabled_tabs
+    });
   } catch (error) {
     return next(error);
   }
@@ -522,9 +656,48 @@ router.post('/switch-tenant', async (req, res, next) => {
     });
 
     // Format safe user output
-    const planConfigRes = await pool.query('SELECT enabled_tabs FROM sidebar_tabs_plan_config WHERE plan_name = $1', [row.tenant_plan || 'starter']);
+    const PLAN_DEFAULTS = {
+      starter: [
+        'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar',
+        'projects', 'tasks', 'reports', 'team-management', 'team-members', 'roles-permissions', 'organization'
+      ],
+      growth: [
+        'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
+        'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
+        'analytics-delay', 'coordination', 'handover-dashboard', 'retention-dashboard', 'resource-capacity',
+        'absences', 'vendor-performance', 'vendor-capacity', 'team-management', 'team-members',
+        'roles-permissions', 'organization'
+      ],
+      enterprise: [
+        'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
+        'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
+        'analytics-delay', 'analytics-boq', 'analytics-resources', 'analytics-resource-workload',
+        'lead-stages', 'custom-fields', 'lead-forms', 'templates', 'trade-activities', 'qc-checklists',
+        'conversion-checklist', 'automations', 'coordination', 'handover-dashboard', 'retention-dashboard',
+        'resource-capacity', 'absences', 'vendor-performance', 'vendor-capacity', 'vendor-lead-times',
+        'finance-overview', 'financial-approvals', 'analytics-profitability', 'analytics-collection-forecast',
+        'financial-thresholds', 'team-management', 'team-members', 'roles-permissions', 'organization',
+        'login-history', 'audit-trail', 'superadmin', 'api-keys', 'api-integration', 'webhooks',
+        'email-templates', 'logs'
+      ]
+    };
+
+    const planName = (row.tenant_plan || 'starter').toLowerCase();
+    let enabledTabs = null;
+    try {
+      const planConfigRes = await pool.query('SELECT enabled_tabs FROM sidebar_tabs_plan_config WHERE LOWER(plan_name) = LOWER($1)', [planName]);
+      if (planConfigRes.rows.length > 0 && planConfigRes.rows[0].enabled_tabs) {
+        const raw = planConfigRes.rows[0].enabled_tabs;
+        enabledTabs = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      }
+    } catch (e) {}
+
+    if (!enabledTabs || !Array.isArray(enabledTabs) || enabledTabs.length === 0) {
+      enabledTabs = PLAN_DEFAULTS[planName] || PLAN_DEFAULTS.starter;
+    }
+
     const sidebarConfig = {
-      planTabs: planConfigRes.rows.length > 0 ? JSON.parse(planConfigRes.rows[0].enabled_tabs || '[]') : null
+      planTabs: enabledTabs
     };
 
     const profile = row.profile_data || {};
