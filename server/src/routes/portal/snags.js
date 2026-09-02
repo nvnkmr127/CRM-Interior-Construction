@@ -49,6 +49,15 @@ router.post('/', async (req, res, next) => {
       category
     });
 
+    // Notify staff members in CRM
+    const pool = require('../../config/db');
+    await pool.query(
+      `INSERT INTO notifications (tenant_id, user_id, title, message, type, link)
+       SELECT $1, id, 'New Snag Reported by Client', $2, 'snag', $3
+       FROM users WHERE tenant_id = $1 AND status = 'active'`,
+      [tenantId, `Client reported a new ${category || 'site'} snag: ${title}`, `/projects/${projectId}/snags`]
+    ).catch(err => console.error('Notification error:', err));
+
     res.status(201).json({ success: true, data: snag });
   } catch (error) {
     next(error);

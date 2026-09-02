@@ -17,7 +17,12 @@ class StandardProvider extends BaseProvider {
     };
 
     if (webhook.custom_headers) {
-      Object.assign(headers, webhook.custom_headers);
+      const customHeaders = typeof webhook.custom_headers === 'string'
+        ? (() => { try { return JSON.parse(webhook.custom_headers); } catch (e) { return {}; } })()
+        : webhook.custom_headers;
+      if (customHeaders && typeof customHeaders === 'object') {
+        Object.assign(headers, customHeaders);
+      }
     }
 
     if (webhook.secret) {

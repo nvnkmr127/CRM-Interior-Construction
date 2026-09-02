@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../store/authContext'
+import { PLAN_DEFAULTS } from '../../constants/permissions'
 import api from '../../api/axios'
 import styles from './Sidebar.module.css'
 
@@ -149,31 +150,7 @@ function NavItem({ item, collapsed, onClose }) {
   );
 }
 
-const PLAN_DEFAULTS = {
-  starter: [
-    'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar',
-    'projects', 'tasks', 'reports', 'team-management', 'team-members', 'roles-permissions', 'organization'
-  ],
-  growth: [
-    'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
-    'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
-    'analytics-delay', 'coordination', 'handover-dashboard', 'retention-dashboard', 'resource-capacity',
-    'absences', 'vendor-performance', 'vendor-capacity', 'team-management', 'team-members',
-    'roles-permissions', 'organization'
-  ],
-  enterprise: [
-    'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
-    'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
-    'analytics-delay', 'analytics-boq', 'analytics-resources', 'analytics-resource-workload',
-    'lead-stages', 'custom-fields', 'lead-forms', 'templates', 'trade-activities', 'qc-checklists',
-    'conversion-checklist', 'automations', 'coordination', 'handover-dashboard', 'retention-dashboard',
-    'resource-capacity', 'absences', 'vendor-performance', 'vendor-capacity', 'vendor-lead-times',
-    'finance-overview', 'financial-approvals', 'analytics-profitability', 'analytics-collection-forecast',
-    'financial-thresholds', 'team-management', 'team-members', 'roles-permissions', 'organization',
-    'login-history', 'audit-trail', 'superadmin', 'api-keys', 'api-integration', 'webhooks',
-    'email-templates', 'logs'
-  ]
-};
+
 
 const getInitials = (name) => {
   if (!name) return 'U'
@@ -215,7 +192,13 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
     }
   }, [user?.tenant?.id, user?.tenant?.plan])
   
-  const isSuperAdminUser = 
+  const isPlatformDeveloperAdmin = (user?.tenant?.slug === 'demo' || user?.email === 'admin@demo.com') && 
+    (user?.role === 'superadmin' || user?.role?.name?.toLowerCase() === 'superadmin' || user?.role === 'admin' || user?.role?.name?.toLowerCase() === 'admin');
+
+  const isAdmin = isPlatformDeveloperAdmin;
+
+  const isWorkspaceAdmin = 
+    isAdmin ||
     user?.role === 'superadmin' || 
     user?.role === 'admin' || 
     user?.role?.name?.toLowerCase() === 'superadmin' || 
@@ -223,8 +206,6 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
     user?.role?.name?.toLowerCase() === 'admin' ||
     user?.role?.name?.toLowerCase() === 'owner' ||
     (user?.role?.permissions && (user.role.permissions.includes('*') || user.role.permissions.includes('*:*')));
-
-  const isAdmin = isSuperAdminUser;
 
   const hasFinancePermission = isAdmin || (Array.isArray(user?.role?.permissions) && (
     user.role.permissions.includes('finance:invoices') ||
@@ -234,7 +215,7 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
     user.role.permissions.includes('finance:view') ||
     user.role.permissions.some(p => p.startsWith('finance:')) ||
     (user?.role?.enabled_modules && user.role.enabled_modules.includes('finance'))
-  ))
+  )) || isWorkspaceAdmin;
 
   return (
     <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''} ${mobileOpen ? styles.mobileOpen : ''}`}>
@@ -253,11 +234,11 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
       {/* Nav groups */}
       <nav className={styles.nav}>
         {NAV_ITEMS.map(group => {
-          if (group.adminOnly && !isAdmin) return null
+          if (group.adminOnly && !isAdmin && !isWorkspaceAdmin) return null
           if (group.financeOnly && !hasFinancePermission) return null
 
           const filterItem = (item) => {
-            // 1. Developer / Admin Bypass: Developers and admins see all tabs immediately
+            // 1. Developer / Admin Bypass: Developers in the demo root workspace see all tabs immediately
             if (isAdmin) return true;
 
             // 2. Client Subscription Plan filtering: In client workspaces (like "interior hub"), strictly enforce the workspace's plan
@@ -272,7 +253,10 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
               if (item.id && !planTabs.includes(item.id)) return false;
             }
 
-            // 3. For non-admin members, check adminOnly, permissions, and enabled modules
+            // 3. Workspace administrator has access to all enabled tabs in this workspace
+            if (isWorkspaceAdmin) return true;
+
+            // 4. For non-admin members, check adminOnly, permissions, and enabled modules
             if (item.adminOnly) return false;
 
             const perms = Array.isArray(user?.role?.permissions) ? user.role.permissions : [];

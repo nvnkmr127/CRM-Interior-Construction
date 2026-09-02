@@ -9,11 +9,12 @@ router.use(authenticate);
 // Get all approval matrix rules
 router.get('/', async (req, res) => {
   try {
+    const tenantId = req.tenantId || (req.user && (req.user.tenantId || req.user.tenant_id));
     const result = await pool.query(
       `SELECT * FROM approval_matrix 
        WHERE tenant_id = $1 
        ORDER BY transaction_type ASC, min_amount ASC`,
-      [req.user.tenant_id]
+      [tenantId]
     );
     success(res, 'Rules fetched successfully', result.rows);
   } catch (error) {
@@ -24,6 +25,7 @@ router.get('/', async (req, res) => {
 
 // Create a new rule
 router.post('/', async (req, res) => {
+  const tenantId = req.tenantId || (req.user && (req.user.tenantId || req.user.tenant_id));
   const {
     transaction_type,
     min_amount,
@@ -47,7 +49,7 @@ router.post('/', async (req, res) => {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING *`,
       [
-        req.user.tenant_id,
+        tenantId,
         transaction_type,
         min_amount || 0,
         max_amount || null,
@@ -73,6 +75,7 @@ router.post('/', async (req, res) => {
 
 // Update an existing rule
 router.put('/:id', async (req, res) => {
+  const tenantId = req.tenantId || (req.user && (req.user.tenantId || req.user.tenant_id));
   const { id } = req.params;
   const {
     transaction_type,
@@ -120,7 +123,7 @@ router.put('/:id', async (req, res) => {
         is_active,
         required_roles ? required_roles.length : null,
         id,
-        req.user.tenant_id
+        tenantId
       ]
     );
 
@@ -137,11 +140,12 @@ router.put('/:id', async (req, res) => {
 
 // Delete a rule
 router.delete('/:id', async (req, res) => {
+  const tenantId = req.tenantId || (req.user && (req.user.tenantId || req.user.tenant_id));
   const { id } = req.params;
   try {
     const result = await pool.query(
       `DELETE FROM approval_matrix WHERE id = $1 AND tenant_id = $2 RETURNING id`,
-      [id, req.user.tenant_id]
+      [id, tenantId]
     );
 
     if (result.rows.length === 0) {

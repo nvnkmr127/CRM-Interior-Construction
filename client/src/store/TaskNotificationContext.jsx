@@ -24,16 +24,39 @@ function getActiveTenantId() {
   return 'current_workspace';
 }
 
+function getActiveUserId() {
+  try {
+    const activeSession = localStorage.getItem('mockSession');
+    if (activeSession) {
+      const session = JSON.parse(activeSession);
+      if (session?.user?.id) return session.user.id;
+      if (session?.userId) return session.userId;
+      if (session?.id) return session.id;
+    }
+  } catch (e) {}
+
+  try {
+    const cookies = document.cookie.split(';');
+    for (const c of cookies) {
+      const [name, val] = c.trim().split('=');
+      if (name === 'userId' || name === 'user_id') return val;
+    }
+  } catch (e) {}
+
+  return 'current_user';
+}
+
 function getStorageKey() {
   const tid = getActiveTenantId();
-  return `myTaskNotifications_${tid}`;
+  const uid = getActiveUserId();
+  return `myTaskNotifications_${tid}_${uid}`;
 }
 
 export const useTaskNotificationStore = create((set, get) => ({
   notifications: [],
 
   init: () => {
-    // Clean up legacy unscoped global key to prevent cross-workspace notification bleed
+    // Clean up legacy unscoped global keys to prevent cross-workspace notification bleed
     try {
       if (localStorage.getItem('myTaskNotifications')) {
         localStorage.removeItem('myTaskNotifications');
@@ -44,16 +67,22 @@ export const useTaskNotificationStore = create((set, get) => ({
       const activeSession = localStorage.getItem('mockSession');
       let isSales = false;
       let tenantId = getActiveTenantId();
+      let currentUserId = getActiveUserId();
       if (activeSession) {
         try {
           const session = JSON.parse(activeSession);
           isSales = session?.role?.id === 'sales_rep' || session?.role?.name?.toLowerCase().includes('sales');
           tenantId = session?.tenant_id || session?.tenantId || tenantId;
+          currentUserId = session?.user?.id || session?.userId || session?.id || currentUserId;
         } catch(e) {}
       }
       return (notifs || []).filter(n => {
         // If notification has a tenantId, it must match current workspace
         if (n.tenantId && n.tenantId !== tenantId) return false;
+        // If notification is targeted to a specific user, it must match current user
+        if (n.userId && n.userId !== currentUserId) return false;
+        if (n.targetUserId && n.targetUserId !== currentUserId) return false;
+        if (n.assigneeId && n.assigneeId !== currentUserId) return false;
         // Filter targetRole
         return !n.targetRole || (n.targetRole === 'sales_rep' && isSales);
       });
@@ -112,9 +141,10 @@ export const useTaskNotificationStore = create((set, get) => ({
         bc.onmessage = (event) => {
           if (event.data && event.data.type === 'SYNC_NOTIFICATIONS') {
             const currentTenant = getActiveTenantId();
-            if (!event.data.tenantId || event.data.tenantId === currentTenant) {
-              syncNotifications();
-            }
+            const currentUserId = getActiveUserId();
+            if (event.data.tenantId && event.data.tenantId !== currentTenant) return;
+            if (event.data.userId && event.data.userId !== currentUserId) return;
+            syncNotifications();
           }
         };
         window._notificationChannel = bc;
@@ -124,6 +154,7 @@ export const useTaskNotificationStore = create((set, get) => ({
 
   addNotification: (type, title, message, taskId, meta = {}) => {
     const currentTenant = getActiveTenantId();
+    const currentUserId = meta.userId || meta.targetUserId || meta.assigneeId || getActiveUserId();
     const newNotif = {
       id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       type,
@@ -131,6 +162,7 @@ export const useTaskNotificationStore = create((set, get) => ({
       message,
       taskId,
       tenantId: currentTenant,
+      userId: currentUserId,
       isRead: false,
       createdAt: new Date().toISOString(),
       ...meta
@@ -145,12 +177,14 @@ export const useTaskNotificationStore = create((set, get) => ({
     // Broadcast notification sync to other tabs
     try {
       const bc = new BroadcastChannel('crm_notifications');
-      bc.postMessage({ type: 'SYNC_NOTIFICATIONS', tenantId: currentTenant, notification: newNotif });
+      bc.postMessage({ type: 'SYNC_NOTIFICATIONS', tenantId: currentTenant, userId: currentUserId, notification: newNotif });
       bc.close();
     } catch (e) {}
 
-    // Trigger toast only for this newly added live notification
-    useToastStore.getState().show('info', `🔔 ${title}: ${message}`, 4000);
+    // Trigger toast only if notification is for current user
+    if (!meta.userId || meta.userId === getActiveUserId()) {
+      useToastStore.getState().show('info', `🔔 ${title}: ${message}`, 4000);
+    }
   },
 
   markAsRead: (id) => {

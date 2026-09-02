@@ -16,7 +16,7 @@ router.get('/', async (req, res, next) => {
     if (!tenantId) return fail(res, 'UNAUTHORIZED', 'Tenant context missing', 401);
 
     const query = `
-      SELECT id, name, source_key, dedup_field, default_stage_id, default_assignee_id, provider_name, is_active, created_at, updated_at, field_mapping
+      SELECT id, name, source_key, secret, dedup_field, default_stage_id, default_assignee_id, provider_name, is_active, created_at, updated_at, field_mapping
       FROM webhook_sources
       WHERE tenant_id = $1
       ORDER BY created_at DESC
@@ -30,15 +30,17 @@ router.get('/', async (req, res, next) => {
 
 const createSourceSchema = z.object({
   name: z.string().min(1),
+  source_key: z.string().optional(),
+  secret: z.string().optional().nullable(),
   field_mapping: z.array(z.object({
     sourceField: z.string(),
     targetField: z.string(),
     transform: z.string().optional()
   })).optional(),
-  dedup_field: z.string().optional(),
-  default_stage_id: z.string().uuid().optional(),
-  default_assignee_id: z.string().uuid().optional(),
-  provider_name: z.string().optional()
+  dedup_field: z.string().optional().nullable(),
+  default_stage_id: z.string().uuid().optional().nullable(),
+  default_assignee_id: z.string().uuid().optional().nullable(),
+  provider_name: z.string().optional().nullable()
 });
 
 router.post('/', async (req, res, next) => {
@@ -51,10 +53,10 @@ router.post('/', async (req, res, next) => {
       return fail(res, 'VALIDATION_ERROR', 'Validation failed', 400, parsed.error.issues);
     }
 
-    const { name, field_mapping, dedup_field, default_stage_id, default_assignee_id, provider_name } = parsed.data;
+    const { name, source_key: customKey, secret: customSecret, field_mapping, dedup_field, default_stage_id, default_assignee_id, provider_name } = parsed.data;
 
-    const source_key = crypto.randomBytes(16).toString('hex');
-    const secret = crypto.randomBytes(32).toString('hex');
+    const source_key = customKey && customKey.trim() ? customKey.trim() : crypto.randomBytes(16).toString('hex');
+    const secret = customSecret !== undefined ? customSecret : crypto.randomBytes(32).toString('hex');
 
     const query = `
       INSERT INTO webhook_sources (
@@ -77,8 +79,6 @@ router.post('/', async (req, res, next) => {
     ];
 
     const result = await pool.query(query, values);
-    
-    // Return source with source_key and secret just this once
     return success(res, result.rows[0], {}, 201);
   } catch (error) {
     next(error);
@@ -87,6 +87,8 @@ router.post('/', async (req, res, next) => {
 
 const updateSourceSchema = z.object({
   name: z.string().min(1).optional(),
+  source_key: z.string().optional(),
+  secret: z.string().optional().nullable(),
   field_mapping: z.array(z.object({
     sourceField: z.string(),
     targetField: z.string(),
@@ -122,6 +124,14 @@ router.put('/:id', async (req, res, next) => {
       fields.push(`name = $${paramIndex++}`);
       values.push(data.name);
     }
+    if (data.source_key !== undefined) {
+      fields.push(`source_key = $${paramIndex++}`);
+      values.push(data.source_key);
+    }
+    if (data.secret !== undefined) {
+      fields.push(`secret = $${paramIndex++}`);
+      values.push(data.secret);
+    }
     if (data.field_mapping !== undefined) {
       fields.push(`field_mapping = $${paramIndex++}`);
       values.push(JSON.stringify(data.field_mapping));
@@ -148,18 +158,39 @@ router.put('/:id', async (req, res, next) => {
     }
 
     if (fields.length === 0) {
-      const existing = await pool.query('SELECT id, name, source_key, dedup_field, default_stage_id, default_assignee_id, provider_name, is_active FROM webhook_sources WHERE tenant_id = $1 AND id = $2', [tenantId, sourceId]);
+      const existing = await pool.query('SELECT id, name, source_key, secret, dedup_field, default_stage_id, default_assignee_id, provider_name, is_active, field_mapping FROM webhook_sources WHERE tenant_id = $1 AND id = $2', [tenantId, sourceId]);
       if (existing.rows.length === 0) return fail(res, 'NOT_FOUND', 'Source not found', 404);
       return success(res, existing.rows[0]);
     }
 
     query += fields.join(', ');
-    query += ` WHERE tenant_id = $1 AND id = $2 RETURNING id, name, source_key, dedup_field, default_stage_id, default_assignee_id, provider_name, is_active, field_mapping`;
+    query += ` WHERE tenant_id = $1 AND id = $2 RETURNING id, name, source_key, secret, dedup_field, default_stage_id, default_assignee_id, provider_name, is_active, field_mapping`;
 
     const result = await pool.query(query, values);
     if (result.rows.length === 0) {
       return fail(res, 'NOT_FOUND', 'Source not found', 404);
     }
+
+    return success(res, result.rows[0]);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch('/:id/toggle', async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId || (req.user && req.user.tenantId);
+    if (!tenantId) return fail(res, 'UNAUTHORIZED', 'Tenant context missing', 401);
+
+    const sourceId = req.params.id;
+    const query = `
+      UPDATE webhook_sources 
+      SET is_active = NOT is_active, updated_at = NOW() 
+      WHERE id = $1 AND tenant_id = $2 
+      RETURNING id, name, source_key, secret, is_active
+    `;
+    const result = await pool.query(query, [sourceId, tenantId]);
+    if (result.rows.length === 0) return fail(res, 'NOT_FOUND', 'Source not found', 404);
 
     return success(res, result.rows[0]);
   } catch (error) {

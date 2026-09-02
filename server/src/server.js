@@ -25,7 +25,8 @@ const sql = readMig('006_financial_approval_attachments.sql') + ';' +
             readMig('009_sla_tracking.sql') + ';' + 
             readMig('010_approval_priority.sql') + ';' + 
             readMig('027_task_attachments.sql') + ';' +
-            readMig('028_resource_allocations.sql');
+            readMig('028_resource_allocations.sql') + ';' +
+            readMig('030_webhook_logs_enhancements.sql');
 pool.query(sql).then(() => console.log('Migrations OK')).catch(error => console.log(error));
 
 app.listen(PORT, '0.0.0.0', () => {
@@ -37,4 +38,4 @@ app.listen(PORT, '0.0.0.0', () => {
   startCronJobs();
 });
 
-// touch for nodemon restart 10
+// touch for nodemon restart 14

@@ -4,13 +4,12 @@ const pool = require('../../db/pool');
 const authenticate = require('../../middleware/authenticate');
 const authorize = require('../../middleware/authorize');
 const { success, fail } = require('../../utils/response');
-const { cacheResponse } = require('../../middleware/cache');
 
 const router = express.Router();
 
 router.use(authenticate);
 
-router.get('/', cacheResponse(300), async (req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
     if (!tenantId) return fail(res, 'UNAUTHORIZED', 'Tenant context missing', 401);

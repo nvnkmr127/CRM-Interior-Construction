@@ -50,9 +50,12 @@ async function authenticateApiKey(req, res, next) {
     }
 
     req.user = { 
+      id: null,
       userId: null, 
       role: 'api', 
-      permissions: scopes 
+      permissions: scopes,
+      tenantId: apiKeyRecord.tenant_id,
+      tenant_id: apiKeyRecord.tenant_id
     };
 
     // 4. Pass to next middleware

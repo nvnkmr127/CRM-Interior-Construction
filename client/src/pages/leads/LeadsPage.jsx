@@ -18,6 +18,7 @@ import LeadImportModal from '../../components/leads/LeadImportModal';
 import MarkLostModal from '../../components/leads/MarkLostModal';
 import { useLeads } from '../../hooks/useLeads';
 import { useAuth } from '../../store/authContext';
+import { PLAN_DEFAULTS } from '../../constants/permissions';
 import styles from './LeadsPage.module.css';
 
 export default function LeadsPage() {
@@ -25,7 +26,15 @@ export default function LeadsPage() {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const isPlatformDeveloperAdmin = (user?.tenant?.slug === 'demo' || user?.email === 'admin@demo.com') && 
+    (user?.role === 'superadmin' || user?.role?.name?.toLowerCase() === 'superadmin' || user?.role === 'admin');
+
+  const tenantPlan = (user?.tenant?.plan || 'starter').toLowerCase();
+  const planTabs = user?.sidebarConfig?.planTabs || PLAN_DEFAULTS[tenantPlan] || PLAN_DEFAULTS.starter;
+
   const isAdmin = 
+    isPlatformDeveloperAdmin ||
     user?.role === 'admin' || 
     user?.role?.name?.toLowerCase() === 'admin' || 
     user?.role === 'superadmin' || 
@@ -69,7 +78,7 @@ export default function LeadsPage() {
     }
   }, [location.search, navigate]);
 
-  const [assigneeFilter, setAssigneeFilter] = useState(params.get('assigneeId') || '');
+  const [assigneeFilter, setAssigneeFilter] = useState(params.get('assigneeId') || 'assigned');
   const [sourceFilter, setSourceFilter] = useState(params.get('source') || 'All Sources');
   const [scoreRange, setScoreRange] = useState(params.get('scoreRange') || 'all');
   const [intentFilter, setIntentFilter] = useState(params.get('intent') || 'all');
@@ -126,18 +135,31 @@ export default function LeadsPage() {
     localStorage.setItem('crm_leads_sortBy', sortBy);
   }, [sortBy]);
   
-  const initialView = params.get('view') || 'dashboard';
+  const initialView = params.get('view') || (planTabs && !planTabs.includes('leads-dashboard') ? 'list' : 'dashboard');
   const [view, setView] = useState(initialView);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const urlView = params.get('view');
-    if (urlView && urlView !== view) {
+    let urlView = params.get('view') || 'dashboard';
+
+    if (!isPlatformDeveloperAdmin && planTabs && Array.isArray(planTabs)) {
+      if (urlView === 'map' && !planTabs.includes('leads-map')) {
+        urlView = 'list';
+      } else if (urlView === 'dashboard' && !planTabs.includes('leads-dashboard')) {
+        urlView = 'list';
+      } else if (urlView === 'kanban' && !planTabs.includes('leads-kanban')) {
+        urlView = 'list';
+      } else if (urlView === 'calendar' && !planTabs.includes('leads-calendar')) {
+        urlView = 'list';
+      }
+    }
+
+    if (urlView !== view) {
       setView(urlView);
       setSelectedLeadId(null);
       setIsFormOpen(false);
     }
-  }, [location.search, view]);
+  }, [location.search, view, planTabs, isPlatformDeveloperAdmin]);
 
   // Close modals when a sidebar link is clicked (detecting the state timestamp we pass)
   useEffect(() => {
@@ -151,6 +173,9 @@ export default function LeadsPage() {
     setView(newView);
     setSelectedLeadId(null);
     setIsFormOpen(false);
+    if (newView !== 'list') {
+      setStatusFilter('active');
+    }
     const params = new URLSearchParams(location.search);
     params.set('view', newView);
     params.delete('id');
@@ -369,56 +394,58 @@ export default function LeadsPage() {
               )}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--color-border)', marginBottom: '16px' }}>
-            <button
-              onClick={() => { setStatusFilter('active'); setPage(1); }}
-              style={{
-                padding: '8px 16px',
-                border: 'none',
-                borderBottom: statusFilter === 'active' ? '2px solid var(--color-primary)' : '2px solid transparent',
-                background: 'transparent',
-                color: statusFilter === 'active' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-                fontWeight: 600,
-                cursor: 'pointer',
-                fontSize: '14px',
-                transition: 'all 0.2s'
-              }}
-            >
-              Active Leads
-            </button>
-            <button
-              onClick={() => { setStatusFilter('parked'); setPage(1); }}
-              style={{
-                padding: '8px 16px',
-                border: 'none',
-                borderBottom: statusFilter === 'parked' ? '2px solid var(--color-warning)' : '2px solid transparent',
-                background: 'transparent',
-                color: statusFilter === 'parked' ? 'var(--color-warning)' : 'var(--color-text-secondary)',
-                fontWeight: 600,
-                cursor: 'pointer',
-                fontSize: '14px',
-                transition: 'all 0.2s'
-              }}
-            >
-              Parked Leads
-            </button>
-            <button
-              onClick={() => { setStatusFilter('deleted'); setPage(1); }}
-              style={{
-                padding: '8px 16px',
-                border: 'none',
-                borderBottom: statusFilter === 'deleted' ? '2px solid var(--color-danger)' : '2px solid transparent',
-                background: 'transparent',
-                color: statusFilter === 'deleted' ? 'var(--color-danger)' : 'var(--color-text-secondary)',
-                fontWeight: 600,
-                cursor: 'pointer',
-                fontSize: '14px',
-                transition: 'all 0.2s'
-              }}
-            >
-              Deleted Leads
-            </button>
-          </div>
+          {!(view === 'dashboard' || view === 'kanban' || view === 'calendar' || view === 'map') && (
+            <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--color-border)', marginBottom: '16px' }}>
+              <button
+                onClick={() => { setStatusFilter('active'); setPage(1); }}
+                style={{
+                  padding: '8px 16px',
+                  border: 'none',
+                  borderBottom: statusFilter === 'active' ? '2px solid var(--color-primary)' : '2px solid transparent',
+                  background: 'transparent',
+                  color: statusFilter === 'active' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Active Leads
+              </button>
+              <button
+                onClick={() => { setStatusFilter('parked'); setPage(1); }}
+                style={{
+                  padding: '8px 16px',
+                  border: 'none',
+                  borderBottom: statusFilter === 'parked' ? '2px solid var(--color-warning)' : '2px solid transparent',
+                  background: 'transparent',
+                  color: statusFilter === 'parked' ? 'var(--color-warning)' : 'var(--color-text-secondary)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Parked Leads
+              </button>
+              <button
+                onClick={() => { setStatusFilter('deleted'); setPage(1); }}
+                style={{
+                  padding: '8px 16px',
+                  border: 'none',
+                  borderBottom: statusFilter === 'deleted' ? '2px solid var(--color-danger)' : '2px solid transparent',
+                  background: 'transparent',
+                  color: statusFilter === 'deleted' ? 'var(--color-danger)' : 'var(--color-text-secondary)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Deleted Leads
+              </button>
+            </div>
+          )}
         </>
       )}
 
@@ -455,6 +482,7 @@ export default function LeadsPage() {
               leads={filteredLeads} 
               stages={stages}
               loading={loading} 
+              statusFilter={statusFilter}
               onLeadClick={setSelectedLeadId} 
               onViewChange={handleViewChange}
               onSiteVisitsTodayClick={(leadId) => {

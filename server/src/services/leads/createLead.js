@@ -179,6 +179,36 @@ async function createLead({ tenantId, userId, data, txClient = null, skipSideEff
     throw dbErr;
   }
 
+  // Dispatch notification to the assigned team member
+  if (finalAssigneeId) {
+    try {
+      const { notifyUser } = require('../../integrations/notificationService');
+      let creatorName = 'Admin / Manager';
+      if (userId) {
+        try {
+          const uRes = await queryFn('SELECT name FROM users WHERE id = $1', [userId]);
+          if (uRes.rows.length > 0 && uRes.rows[0].name) {
+            creatorName = uRes.rows[0].name;
+          }
+        } catch (e) {}
+      }
+
+      await notifyUser(tenantId, finalAssigneeId, {
+        title: 'New Lead Assigned',
+        body: `You have been assigned to new lead: "${name}".`,
+        message: `You have been assigned to new lead: "${name}".`,
+        type: 'lead_assigned',
+        lead_id: lead.id,
+        actor_id: userId || null,
+        actor_name: creatorName,
+        reference_url: `/leads?id=${lead.id}`
+      });
+      logger.info('[createLead] Assigned notification dispatched to team member:', finalAssigneeId);
+    } catch (notifErr) {
+      logger.error('[createLead] Failed to dispatch assigned lead notification (non-fatal):', notifErr.message);
+    }
+  }
+
   if (!skipSideEffects) {
     // 5. logAction
     logger.info('[createLead] Logging audit action...');
@@ -193,6 +223,21 @@ async function createLead({ tenantId, userId, data, txClient = null, skipSideEff
       });
     } catch (auditErr) {
       logger.error('[createLead] WARN audit log failed (non-fatal):', auditErr.message);
+    }
+
+    const eventBus = require('../../utils/eventBus');
+    eventBus.emit('lead.created', {
+      eventName: 'lead.created',
+      payload: { lead },
+      context: { tenantId, userId }
+    });
+
+    if (finalAssigneeId) {
+      eventBus.emit('lead.assigned', {
+        eventName: 'lead.assigned',
+        payload: { lead, assigneeId: finalAssigneeId },
+        context: { tenantId, userId }
+      });
     }
 
     // 6. enqueueAutomation

@@ -75,6 +75,14 @@ router.post('/:id/approve', async (req, res, next) => {
       await quotationService.updateQuotationTotals(tenantId, quoteRes.rows[0].id);
     }
 
+    // Notify staff members in CRM
+    await pool.query(
+      `INSERT INTO notifications (tenant_id, user_id, title, message, type, link)
+       SELECT $1, id, 'Change Order Approved by Client', $2, 'change_order', $3
+       FROM users WHERE tenant_id = $1 AND status = 'active'`,
+      [tenantId, `Client approved change order "${rows[0].title}" (Signed by: ${signature.trim()})`, `/projects/${projectId}/change-orders`]
+    ).catch(err => console.error('Notification error:', err));
+
     res.json({ success: true, data: rows[0], message: 'Change order approved successfully.' });
   } catch (error) {
     next(error);
@@ -98,6 +106,14 @@ router.post('/:id/reject', async (req, res, next) => {
     if (rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Change order not found' });
     }
+
+    // Notify staff members in CRM
+    await pool.query(
+      `INSERT INTO notifications (tenant_id, user_id, title, message, type, link)
+       SELECT $1, id, 'Change Order Rejected by Client', $2, 'change_order', $3
+       FROM users WHERE tenant_id = $1 AND status = 'active'`,
+      [tenantId, `Client rejected change order "${rows[0].title}"`, `/projects/${projectId}/change-orders`]
+    ).catch(err => console.error('Notification error:', err));
 
     // Trigger update of quotation totals to revert any previously approved items if they exist
     const quoteRes = await pool.query(

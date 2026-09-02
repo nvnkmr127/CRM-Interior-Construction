@@ -5,6 +5,7 @@ const authorize = require('../middleware/authorize');
 const { success, fail } = require('../utils/response');
 const pool = require('../config/db');
 const { logAction } = require('../services/auditLog');
+const { PLAN_DEFAULTS, getModulesForTabs } = require('../constants/permissions');
 const crypto = require('crypto');
 const multer = require('multer');
 const path = require('path');
@@ -175,7 +176,21 @@ router.post('/tenants', async (req, res, next) => {
       [tenantId]
     );
 
-    // 3. Create Only Primary Workspace 'superadmin' Role
+    // 3. Create Only Primary Workspace 'superadmin' Role scoped to the tenant plan's modules
+    const tenantPlan = (plan || 'starter').toLowerCase();
+    let planTabs = null;
+    try {
+      const planConfigRes = await client.query('SELECT enabled_tabs FROM sidebar_tabs_plan_config WHERE LOWER(plan_name) = LOWER($1)', [tenantPlan]);
+      if (planConfigRes.rows.length > 0 && planConfigRes.rows[0].enabled_tabs) {
+        const raw = planConfigRes.rows[0].enabled_tabs;
+        planTabs = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      }
+    } catch (e) {}
+    if (!planTabs || !Array.isArray(planTabs) || planTabs.length === 0) {
+      planTabs = PLAN_DEFAULTS[tenantPlan] || PLAN_DEFAULTS.starter;
+    }
+    const allowedModules = getModulesForTabs(planTabs).map(m => m.id);
+
     const { rows: adminRoleRows } = await client.query(
       `INSERT INTO roles (tenant_id, name, permissions, is_system)
        VALUES ($1, $2, $3, $4)
@@ -183,7 +198,13 @@ router.post('/tenants', async (req, res, next) => {
       [
         tenantId,
         'superadmin',
-        JSON.stringify(['*']),
+        JSON.stringify({
+          actions: ['*'],
+          modules: allowedModules,
+          scopes: {},
+          fields: {},
+          pages: {}
+        }),
         true
       ]
     );
@@ -654,33 +675,6 @@ router.post('/switch-tenant', async (req, res, next) => {
       ...cookieOptions,
       maxAge: 15 * 60 * 1000
     });
-
-    // Format safe user output
-    const PLAN_DEFAULTS = {
-      starter: [
-        'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar',
-        'projects', 'tasks', 'reports', 'team-management', 'team-members', 'roles-permissions', 'organization'
-      ],
-      growth: [
-        'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
-        'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
-        'analytics-delay', 'coordination', 'handover-dashboard', 'retention-dashboard', 'resource-capacity',
-        'absences', 'vendor-performance', 'vendor-capacity', 'team-management', 'team-members',
-        'roles-permissions', 'organization'
-      ],
-      enterprise: [
-        'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
-        'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
-        'analytics-delay', 'analytics-boq', 'analytics-resources', 'analytics-resource-workload',
-        'lead-stages', 'custom-fields', 'lead-forms', 'templates', 'trade-activities', 'qc-checklists',
-        'conversion-checklist', 'automations', 'coordination', 'handover-dashboard', 'retention-dashboard',
-        'resource-capacity', 'absences', 'vendor-performance', 'vendor-capacity', 'vendor-lead-times',
-        'finance-overview', 'financial-approvals', 'analytics-profitability', 'analytics-collection-forecast',
-        'financial-thresholds', 'team-management', 'team-members', 'roles-permissions', 'organization',
-        'login-history', 'audit-trail', 'superadmin', 'api-keys', 'api-integration', 'webhooks',
-        'email-templates', 'logs'
-      ]
-    };
 
     const planName = (row.tenant_plan || 'starter').toLowerCase();
     let enabledTabs = null;

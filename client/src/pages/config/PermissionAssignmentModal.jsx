@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Badge, Input } from '../../components/ui';
+import { useAuth } from '../../store/authContext';
+import { PLAN_DEFAULTS, getModulesForTabs, PERMISSION_ACTIONS } from '../../constants/permissions';
 import api from '../../api/axios';
 import styles from './RolesManager.module.css'; // For common UI styling
 
 export default function PermissionAssignmentModal({ user, isOpen, onClose }) {
+  const { user: authUser } = useAuth();
   const [schemaModules, setSchemaModules] = useState([]);
   const [schemaActions, setSchemaActions] = useState([]);
   const [directPerms, setDirectPerms] = useState(new Set());
@@ -40,15 +43,23 @@ export default function PermissionAssignmentModal({ user, isOpen, onClose }) {
 
   const fetchSchema = async () => {
     setSchemaLoading(true);
+    const tenantPlan = (authUser?.tenant?.plan || 'starter').toLowerCase();
+    const planTabs = authUser?.sidebarConfig?.planTabs || PLAN_DEFAULTS[tenantPlan] || PLAN_DEFAULTS.starter;
+    const defaultModules = getModulesForTabs(planTabs);
+
     try {
       const res = await api.get('/roles/permissions-schema');
       const data = res.data?.data || res.data;
-      if (data) {
+      if (data && data.modules && data.modules.length > 0) {
         setSchemaModules(data.modules || []);
-        setSchemaActions(data.actions || []);
+        setSchemaActions(data.actions || PERMISSION_ACTIONS);
+      } else {
+        setSchemaModules(defaultModules);
+        setSchemaActions(PERMISSION_ACTIONS);
       }
     } catch (e) {
-      console.error(e);
+      setSchemaModules(defaultModules);
+      setSchemaActions(PERMISSION_ACTIONS);
     } finally {
       setSchemaLoading(false);
     }

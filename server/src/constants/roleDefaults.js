@@ -271,6 +271,26 @@ const ROLE_DEFAULTS = {
       'tasks:view', 'tasks:read', 'tasks:create', 'tasks:edit'
     ],
     enabled_modules: ['clients', 'tasks']
+  },
+  'Customer Support Rep': {
+    name: 'Customer Support Rep',
+    description: 'Log and track customer complaints, support requests and tickets',
+    permissions: [
+      'clients:view',
+      'tasks:view', 'tasks:read', 'tasks:create', 'tasks:edit'
+    ],
+    enabled_modules: ['clients', 'tasks']
+  },
+  'Team Member': {
+    name: 'Team Member',
+    description: 'Team member access to view and manage assigned leads, projects, and tasks',
+    permissions: [
+      'dashboards:view_sales_dashboard', 'dashboards:view_project_dashboard',
+      'leads:view', 'leads:read', 'leads:create', 'leads:edit', 'leads:assign', 'leads:display', 'leads:show',
+      'projects:view', 'projects:read', 'projects:edit',
+      'tasks:view', 'tasks:read', 'tasks:create', 'tasks:edit'
+    ],
+    enabled_modules: ['dashboards', 'leads', 'projects', 'tasks']
   }
 };
 
@@ -287,6 +307,9 @@ const getRoleConfig = (roleKeyOrName) => {
   if (exactKey) return ROLE_DEFAULTS[exactKey];
 
   // 2. Comprehensive role fuzzy/alias matching
+  if (clean.includes('team') || clean.includes('member') || clean === 'user' || clean === 'pk') {
+    return ROLE_DEFAULTS['Team Member'];
+  }
   if (clean.includes('sales') || (clean.includes('lead') && !clean.includes('design'))) {
     if (clean.includes('rep') || clean.includes('representative')) {
       return ROLE_DEFAULTS['Sales Representative'];
@@ -345,7 +368,7 @@ const getRoleConfig = (roleKeyOrName) => {
     return ROLE_DEFAULTS['Customer Support Rep'];
   }
 
-  return null;
+  return ROLE_DEFAULTS['Team Member'];
 };
 
 module.exports = {

@@ -97,7 +97,9 @@ export default function LeadFilterRow({
         value={assigneeFilter}
         onChange={e => setAssigneeFilter(e.target.value)}
       >
-        <option value="">All Assignees</option>
+        <option value="assigned">Assigned Leads Only</option>
+        <option value="">All Leads (Inc. Unassigned)</option>
+        <option value="unassigned">Unassigned Leads</option>
         {assignees.map(([id, name]) => (
           <option key={id} value={id}>{name}</option>
         ))}

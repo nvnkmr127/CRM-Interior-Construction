@@ -6,7 +6,7 @@ import { Card, Button, Modal } from '../ui';
 import { useAuth } from '../../store/authContext';
 import styles from './LeadDashboard.module.css';
 
-export default function LeadDashboard({ leads, stages = [], loading, onLeadClick, onViewChange, onSiteVisitsTodayClick }) {
+export default function LeadDashboard({ leads, stages = [], loading, statusFilter = 'active', onLeadClick, onViewChange, onSiteVisitsTodayClick }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
@@ -47,7 +47,29 @@ export default function LeadDashboard({ leads, stages = [], loading, onLeadClick
   }
 
   const todayRevenueStr = stats?.wonThisMonth?.value ? `₹ ${(stats.wonThisMonth.value / 100000).toFixed(2)} L` : '₹ 0.00 L';
-  const criticalLeadsCount = stats?.activeLeads?.count || 0;
+
+  const leadsLabel = statusFilter === 'parked'
+    ? 'Parked Leads'
+    : statusFilter === 'deleted'
+      ? 'Deleted Leads'
+      : 'Active Leads';
+
+  const leadsCount = statusFilter === 'parked' || statusFilter === 'deleted'
+    ? (leads || []).length
+    : (stats?.activeLeads?.count !== undefined ? stats.activeLeads.count : (leads || []).length);
+
+  const statusBadgeText = statusFilter === 'parked'
+    ? 'Parked'
+    : statusFilter === 'deleted'
+      ? 'Deleted'
+      : 'Active';
+
+  const statusBadgeBg = statusFilter === 'parked'
+    ? 'var(--color-warning)'
+    : statusFilter === 'deleted'
+      ? 'var(--color-danger)'
+      : 'var(--color-accent)';
+
   const overdueCount = stats?.activeProjects?.overdueCount || 0;
   const meetingsCount = stats?.tasksDueToday?.count || 0;
   const visitsCount = stats?.siteVisits?.count || 0;
@@ -125,8 +147,8 @@ export default function LeadDashboard({ leads, stages = [], loading, onLeadClick
           <div className={styles.metricValue}>{todayRevenueStr}</div>
         </div>
         <div className={styles.metricCard} onClick={() => onViewChange && onViewChange('list')}>
-          <div className={styles.metricLabel}>Active Leads</div>
-          <div className={styles.metricValue}>{criticalLeadsCount}</div>
+          <div className={styles.metricLabel}>{leadsLabel}</div>
+          <div className={styles.metricValue}>{leadsCount}</div>
         </div>
         <div className={styles.metricCard} onClick={() => navigate('/projects')}>
           <div className={styles.metricLabel}>Overdue Projects</div>
@@ -174,7 +196,7 @@ export default function LeadDashboard({ leads, stages = [], loading, onLeadClick
           <Card className={styles.pipelineCard}>
             <div className={styles.cardHeader}>
               <h3>📊 Pipeline Stage Distribution</h3>
-              <span className={styles.riskBadge} style={{ background: 'var(--color-accent)' }}>{totalActive} Active</span>
+              <span className={styles.riskBadge} style={{ background: statusBadgeBg }}>{totalActive} {statusBadgeText}</span>
             </div>
             <div className={styles.pipelineProgressList}>
               {stageBreakdown.map((item, idx) => (

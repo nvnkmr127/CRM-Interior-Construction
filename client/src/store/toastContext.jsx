@@ -17,12 +17,16 @@ export const useToastStore = create((set, get) => ({
 
 export const useToast = () => {
   const show = useToastStore(state => state.show);
-  return useMemo(() => ({
-    success: (msg, d) => show('success', msg, d),
-    error:   (msg, d) => show('error',   msg, d),
-    warning: (msg, d) => show('warning', msg, d),
-    info:    (msg, d) => show('info',    msg, d),
-  }), [show]);
+  return useMemo(() => {
+    const toastObj = {
+      success: (msg, d) => show('success', msg, d),
+      error:   (msg, d) => show('error',   msg, d),
+      warning: (msg, d) => show('warning', msg, d),
+      info:    (msg, d) => show('info',    msg, d),
+    };
+    toastObj.toast = toastObj;
+    return toastObj;
+  }, [show]);
 };
 
 export function GlobalToast() {

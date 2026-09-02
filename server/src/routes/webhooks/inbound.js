@@ -95,9 +95,17 @@ router.post('/:sourceKey', async (req, res, next) => {
       leadData.custom_fields = customFields;
     }
 
+    // Assign default stage and assignee if configured on source
+    if (!leadData.stageId && source.default_stage_id) {
+      leadData.stageId = source.default_stage_id;
+    }
+    if (!leadData.assigneeId && source.default_assignee_id) {
+      leadData.assigneeId = source.default_assignee_id;
+    }
+
     // Assign source string if specified
     if (!leadData.source) {
-      leadData.source = source.provider_name || 'webhook';
+      leadData.source = source.provider_name || 'Website';
     }
 
     let leadId = null;
@@ -143,27 +151,27 @@ router.post('/:sourceKey', async (req, res, next) => {
     // 7. Log to inbound_webhook_logs
     await pool.query(
       `INSERT INTO inbound_webhook_logs (
-        tenant_id, source_id, payload, matched_lead_id, status, error_message
-      ) VALUES ($1, $2, $3, $4, $5, $6)`,
-      [tenantId, source.id, JSON.stringify(rawData), leadId, 'success', null]
+        tenant_id, source_id, payload, matched_lead_id, status, error_message, source_key, provider_name
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [tenantId, source.id, JSON.stringify(rawData), leadId, 'success', null, sourceKey, source.provider_name]
     );
 
     // 8. Return 200
-    return res.status(200).json({ received: true, leadId });
+    return res.status(200).json({ success: true, received: true, leadId, source: leadData.source });
 
   } catch (error) {
     logger.error('Webhook Error:', error);
     
     try {
       const { sourceKey } = req.params;
-      const sourceResult = await pool.query('SELECT id, tenant_id FROM webhook_sources WHERE source_key = $1', [sourceKey]);
+      const sourceResult = await pool.query('SELECT id, tenant_id, provider_name FROM webhook_sources WHERE source_key = $1', [sourceKey]);
       if (sourceResult.rows.length > 0) {
-        const { id: sourceId, tenant_id: tenantId } = sourceResult.rows[0];
+        const { id: sourceId, tenant_id: tenantId, provider_name } = sourceResult.rows[0];
         await pool.query(
           `INSERT INTO inbound_webhook_logs (
-            tenant_id, source_id, payload, matched_lead_id, status, error_message
-          ) VALUES ($1, $2, $3, $4, $5, $6)`,
-          [tenantId, sourceId, JSON.stringify(req.body), null, 'error', error.message]
+            tenant_id, source_id, payload, matched_lead_id, status, error_message, source_key, provider_name
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [tenantId, sourceId, JSON.stringify(req.body), null, 'error', error.message, sourceKey, provider_name]
         );
       }
     } catch (logErr) {

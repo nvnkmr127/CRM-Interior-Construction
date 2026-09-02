@@ -110,6 +110,15 @@ router.post('/:id/accept', async (req, res, next) => {
     }
 
     const accepted = await quotationService.acceptQuotation(tenantId, id);
+
+    // Notify staff members in CRM
+    await pool.query(
+      `INSERT INTO notifications (tenant_id, user_id, title, message, type, link)
+       SELECT $1, id, 'Quotation Accepted by Client', $2, 'quotation', $3
+       FROM users WHERE tenant_id = $1 AND status = 'active'`,
+      [tenantId, `Client accepted quotation version ${checkRes.rows[0].version || ''}`, `/projects/${projectId}/quotations`]
+    ).catch(err => console.error('Notification error:', err));
+
     res.json({ success: true, data: accepted, message: 'Quotation accepted successfully' });
   } catch (error) {
     next(error);
@@ -124,7 +133,7 @@ router.post('/:id/reject', async (req, res, next) => {
 
     // Validate that the quotation belongs to the client's project and is in 'sent' status
     const checkRes = await pool.query(
-      `SELECT id, status 
+      `SELECT id, status, version 
        FROM quotations 
        WHERE id = $1 AND project_id = $2 AND tenant_id = $3`,
       [id, projectId, tenantId]
@@ -139,6 +148,15 @@ router.post('/:id/reject', async (req, res, next) => {
     }
 
     const rejected = await quotationService.rejectQuotation(tenantId, id);
+
+    // Notify staff members in CRM
+    await pool.query(
+      `INSERT INTO notifications (tenant_id, user_id, title, message, type, link)
+       SELECT $1, id, 'Quotation Rejected by Client', $2, 'quotation', $3
+       FROM users WHERE tenant_id = $1 AND status = 'active'`,
+      [tenantId, `Client rejected quotation version ${checkRes.rows[0].version || ''}`, `/projects/${projectId}/quotations`]
+    ).catch(err => console.error('Notification error:', err));
+
     res.json({ success: true, data: rejected, message: 'Quotation rejected successfully' });
   } catch (error) {
     next(error);

@@ -1406,13 +1406,14 @@ exports.getLeadStatsHandler = async (req, res, next) => {
   try {
     const { tenantId, userId } = getTenantAndUser(req);
     const { getLeadStats } = require('../repositories/leadRepository');
-    const { status, assigneeId, source, search, stageId, deletedOnly } = req.query;
+    const { status, assigneeId, assignedOnly, source, search, stageId, deletedOnly } = req.query;
     
     const scopeFilter = req.scopeFilter || '1=1';
     const stats = await getLeadStats(tenantId, { 
       scopeFilter, 
       status, 
       assigneeId, 
+      assignedOnly,
       source, 
       search, 
       stageId,
@@ -2183,6 +2184,33 @@ exports.bulkAssignLeadsHandler = async (req, res, next) => {
     // Log timeline for bulk assignment (only for successfully updated leads)
     for (const row of result.rows) {
        await pool.query(`INSERT INTO lead_timeline (tenant_id, lead_id, event_type, summary) VALUES ($1, $2, 'lead.assigned', $3)`, [tenantId, row.id, `Bulk assigned to user ${assigneeId}`]);
+    }
+
+    if (result.rowCount > 0 && assigneeId) {
+      try {
+        const { notifyUser } = require('../integrations/notificationService');
+        let actorName = 'Admin / Manager';
+        if (userId) {
+          try {
+            const uRes = await pool.query('SELECT name FROM users WHERE id = $1', [userId]);
+            if (uRes.rows.length > 0 && uRes.rows[0].name) {
+              actorName = uRes.rows[0].name;
+            }
+          } catch (e) {}
+        }
+
+        notifyUser(tenantId, assigneeId, {
+          title: 'Leads Assigned',
+          body: `You have been assigned ${result.rowCount} lead(s) in bulk by ${actorName}.`,
+          message: `You have been assigned ${result.rowCount} lead(s) in bulk by ${actorName}.`,
+          type: 'lead_assigned',
+          actor_id: userId || null,
+          actor_name: actorName,
+          reference_url: '/leads'
+        }).catch(err => logger.error('[bulkAssignLeadsHandler] notification error:', err.message));
+      } catch (notifErr) {
+        logger.error('[bulkAssignLeadsHandler] Failed to dispatch bulk assign notification:', notifErr.message);
+      }
     }
     
     res.json({ success: true, data: { updatedCount: result.rowCount, leadIds: result.rows.map(r => r.id) } });

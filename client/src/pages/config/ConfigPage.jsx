@@ -2,6 +2,7 @@ import { NavLink, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../store/authContext'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { useBreadcrumbs } from '../../hooks/useBreadcrumbs'
+import { PLAN_DEFAULTS } from '../../constants/permissions'
 // Sub-page imports (all lazy-loaded):
 import { lazy, Suspense } from 'react'
 import styles from './ConfigPage.module.css'
@@ -26,6 +27,27 @@ const AuditTrail = lazy(() => import('./AuditTrail'))
 const RolesManager = lazy(() => import('./RolesManager'))
 const LoginHistoryPage = lazy(() => import('./LoginHistoryPage'))
 
+const PATH_TAB_MAP = {
+  '/config/lead-stages': 'lead-stages',
+  '/config/team-members': 'team-members',
+  '/config/roles-permissions': 'roles-permissions',
+  '/config/organization': 'organization',
+  '/config/login-history': 'login-history',
+  '/config/audit-logs': 'audit-trail',
+  '/config/custom-fields': 'custom-fields',
+  '/config/templates': 'templates',
+  '/config/automations': 'automations',
+  '/config/conversion-checklist': 'conversion-checklist',
+  '/config/qc-checklists': 'qc-checklists',
+  '/config/trade-activities': 'trade-activities',
+  '/config/api-keys': 'api-keys',
+  '/config/webhooks': 'webhooks',
+  '/config/email-templates': 'email-templates',
+  '/config/logs': 'logs',
+  '/config/financial-settings': 'financial-thresholds',
+  '/config/vendor-lead-times': 'vendor-lead-times'
+};
+
 export default function ConfigPage() {
   const { user } = useAuth()
   const location = useLocation()
@@ -44,6 +66,7 @@ export default function ConfigPage() {
     '/config/qc-checklists': 'Quality Checklists',
     '/config/trade-activities': 'Work Templates',
     '/config/api-keys': 'API Keys',
+    '/config/webhooks': 'Webhooks',
     '/config/email-templates': 'Email Templates',
     '/config/logs': 'Logs',
     '/config/financial-settings': 'Financial Thresholds',
@@ -55,14 +78,29 @@ export default function ConfigPage() {
   usePageTitle(currentTitle)
   useBreadcrumbs([{ label: currentTitle }])
 
-  // Guard: only superadmin can access config
+  const isPlatformDeveloperAdmin = (user?.tenant?.slug === 'demo' || user?.email === 'admin@demo.com') && 
+    (user?.role === 'superadmin' || user?.role?.name?.toLowerCase() === 'superadmin' || user?.role === 'admin' || user?.role?.name?.toLowerCase() === 'admin');
+
+  const tenantPlan = (user?.tenant?.plan || 'starter').toLowerCase();
+  const planTabs = user?.sidebarConfig?.planTabs || PLAN_DEFAULTS[tenantPlan] || PLAN_DEFAULTS.starter;
+
+  // Guard: only superadmin or workspace admin can access config
   const isSuperAdmin = 
+    isPlatformDeveloperAdmin ||
     user?.role === 'superadmin' || 
     user?.role?.name?.toLowerCase() === 'superadmin' || 
     user?.role?.name?.toLowerCase() === 'super admin' || 
+    user?.role === 'admin' ||
+    user?.role?.name?.toLowerCase() === 'admin' ||
     (user?.role?.permissions && user.role.permissions.includes('*'));
 
   if (!isSuperAdmin) {
+    return <Navigate to='/forbidden' replace />
+  }
+
+  // Workspace plan verification
+  const currentTab = PATH_TAB_MAP[location.pathname];
+  if (!isPlatformDeveloperAdmin && currentTab && planTabs && Array.isArray(planTabs) && !planTabs.includes(currentTab)) {
     return <Navigate to='/forbidden' replace />
   }
 
@@ -84,6 +122,7 @@ export default function ConfigPage() {
         <Route path='qc-checklists' element={<QcChecklistsManager />} />
         <Route path='trade-activities' element={<TradeActivityTemplatesManager />} />
         <Route path='api-keys'      element={<ApiKeysManager />} />
+        <Route path='webhooks'      element={<WebhooksManager />} />
         <Route path='email-templates' element={<EmailTemplateBuilder />} />
         <Route path='logs'          element={<LogsViewer />} />
 

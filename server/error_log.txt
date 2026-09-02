@@ -657,4 +657,77 @@
     at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:121:25\n\n2026-09-01T12:03:03.528Z\nError: INVALID_CREDENTIALS
     at loginUser (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\auth\login.js:196:13)
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:121:25\n\n
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:121:25\n\n2026-09-02T05:16:10.153Z\nerror: column "is_debug_mode" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\config\webhooks.js:24:20\n\n2026-09-02T05:22:36.970Z\nerror: column "is_debug_mode" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\config\webhooks.js:24:20\n\n2026-09-02T05:22:39.554Z\nerror: column "is_debug_mode" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\config\webhooks.js:24:20\n\n2026-09-02T05:25:44.685Z\nerror: column "description" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Object.getKeys (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\apiKeyRepository.js:14:15)
+    at async exports.getTokens (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\apiTokenController.js:20:20)\n\n2026-09-02T05:25:46.742Z\nerror: column "is_debug_mode" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\config\webhooks.js:24:20\n\n2026-09-02T10:17:53.577Z\nerror: column pm_user.phone does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\portal\project.js:75:20\n\n2026-09-02T10:18:19.568Z\nerror: column pm_user.phone does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\portal\project.js:75:20\n\n2026-09-02T10:19:11.766Z\nerror: column pm_user.phone does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\portal\project.js:75:20\n\n2026-09-02T10:19:16.234Z\nerror: column pm_user.phone does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\portal\project.js:75:20\n\n2026-09-02T10:19:18.448Z\nerror: column pm_user.phone does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\portal\project.js:75:20\n\n2026-09-02T10:19:22.475Z\nerror: column pm_user.phone does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\portal\project.js:75:20\n\n2026-09-02T10:19:24.827Z\nerror: column pm_user.phone does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\portal\project.js:75:20\n\n2026-09-02T10:21:49.366Z\nerror: column pm_user.phone does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\portal\project.js:75:20\n\n2026-09-02T10:21:52.761Z\nerror: column pm_user.phone does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\portal\project.js:75:20\n\n2026-09-02T10:22:11.581Z\nerror: column pm_user.phone does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\portal\project.js:75:20\n\n2026-09-02T10:23:02.672Z\nerror: column pm_user.phone does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\portal\project.js:75:20\n\n2026-09-02T10:23:06.015Z\nerror: column pm_user.phone does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\portal\project.js:75:20\n\n2026-09-02T10:58:53.648Z\nerror: column mn.is_signed_off does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\portal\project.js:374:20\n\n2026-09-02T10:59:05.409Z\nerror: column mn.is_signed_off does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\portal\project.js:374:20\n\n2026-09-02T11:01:15.859Z\nerror: COALESCE types text and timestamp without time zone cannot be matched
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\portal\project.js:373:20\n\n2026-09-02T12:55:21.906Z\nerror: invalid input syntax for type uuid: "assigned"
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async getLeadStats (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:758:18)
+    at async exports.getLeadStatsHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:1412:19)\n\n2026-09-02T12:57:25.603Z\nerror: invalid input syntax for type uuid: "assigned"
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async getLeadStats (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:758:18)
+    at async exports.getLeadStatsHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:1412:19)\n\n2026-09-02T13:02:22.249Z\nerror: invalid input syntax for type uuid: "assigned"
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async getLeadStats (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:758:18)
+    at async exports.getLeadStatsHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:1412:19)\n\n

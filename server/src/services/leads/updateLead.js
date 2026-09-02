@@ -41,6 +41,33 @@ async function updateLead({ tenantId, userId, leadId, data, txClient = null, ski
          payload: { lead: updatedLead, assigneeId: data.assignee_id, previousAssigneeId: existingLead.assignee_id },
          context: { tenantId, userId }
        });
+
+       try {
+         const { notifyUser } = require('../../integrations/notificationService');
+         const pool = require('../../db/pool');
+         let actorName = 'Admin / Manager';
+         if (userId) {
+           try {
+             const uRes = await pool.query('SELECT name FROM users WHERE id = $1', [userId]);
+             if (uRes.rows.length > 0 && uRes.rows[0].name) {
+               actorName = uRes.rows[0].name;
+             }
+           } catch (e) {}
+         }
+
+         notifyUser(tenantId, data.assignee_id, {
+           title: 'Lead Assigned',
+           body: `Lead "${updatedLead.name}" has been assigned to you by ${actorName}.`,
+           message: `Lead "${updatedLead.name}" has been assigned to you by ${actorName}.`,
+           type: 'lead_assigned',
+           lead_id: updatedLead.id,
+           actor_id: userId || null,
+           actor_name: actorName,
+           reference_url: `/leads?id=${updatedLead.id}`
+         }).catch(err => logger.error('[updateLead] Reassignment notification error:', err.message));
+       } catch (notifErr) {
+         logger.error('[updateLead] Failed to notify new assignee:', notifErr.message);
+       }
     }
 
     try {

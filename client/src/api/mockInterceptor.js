@@ -5695,10 +5695,19 @@ export const setupMockInterceptor = (api) => {
               ];
             }
             if (url.includes('/dashboard')) {
-              responseData.data = { stats: { total_requests: 12450, successful_requests: 12400, failed_requests: 50, last_request_at: new Date().toISOString() } };
+              responseData.data = {
+                stats: { total_requests: 12450, successful_requests: 12400, failed_requests: 50, last_request_at: new Date().toISOString() },
+                recentLogs: [
+                  { id: 'log-1', key_name: 'Zapier Integration', endpoint: '/api/v1/leads', method: 'GET', status_code: 200, ip_address: '192.168.1.14', execution_time_ms: 38, created_at: new Date().toISOString() },
+                  { id: 'log-2', key_name: 'Zapier Integration', endpoint: '/api/v1/leads', method: 'POST', status_code: 201, ip_address: '192.168.1.14', execution_time_ms: 65, created_at: new Date(Date.now() - 120000).toISOString() },
+                  { id: 'log-3', key_name: 'Mobile App Client', endpoint: '/api/v1/projects', method: 'GET', status_code: 200, ip_address: '10.0.0.8', execution_time_ms: 54, created_at: new Date(Date.now() - 360000).toISOString() },
+                  { id: 'log-4', key_name: 'Zapier Integration', endpoint: '/api/v1/leads/invalid-id', method: 'GET', status_code: 404, ip_address: '192.168.1.14', execution_time_ms: 19, created_at: new Date(Date.now() - 720000).toISOString() },
+                  { id: 'log-5', key_name: 'Analytics Pipeline', endpoint: '/api/v1/tasks', method: 'GET', status_code: 200, ip_address: '172.16.0.4', execution_time_ms: 92, created_at: new Date(Date.now() - 1800000).toISOString() }
+                ]
+              };
             } else if (url.includes('/logs')) {
               responseData.data = { rows: [
-                { id: 'log-1', endpoint: '/api/v1/leads', method: 'GET', status_code: 200, ip_address: '192.168.1.1', execution_time_ms: 45, created_at: new Date().toISOString() }
+                { id: 'log-1', key_name: 'Zapier Integration', endpoint: '/api/v1/leads', method: 'GET', status_code: 200, ip_address: '192.168.1.14', execution_time_ms: 38, created_at: new Date().toISOString() }
               ]};
             } else if (method === 'get') {
               responseData.data = mockDatabase.apiTokens;
@@ -5735,6 +5744,38 @@ export const setupMockInterceptor = (api) => {
               mockDatabase.apiTokens = mockDatabase.apiTokens.filter(t => t.id !== id);
               persistDb();
               responseData.data = { success: true };
+            }
+          }
+          // VERSIONED PUBLIC API MOCK (v1)
+          else if (url.includes('/api/v1/')) {
+            if (url.includes('/leads')) {
+              if (method === 'get') {
+                responseData.data = (mockDatabase.leads || []).slice(0, 10);
+              } else if (method === 'post') {
+                const payload = typeof config.data === 'string' ? JSON.parse(config.data) : (config.data || {});
+                const newLead = { id: `lead_${Date.now()}`, ...payload, created_at: new Date().toISOString() };
+                if (!mockDatabase.leads) mockDatabase.leads = [];
+                mockDatabase.leads.unshift(newLead);
+                persistDb();
+                responseData.data = newLead;
+                responseStatus = 201;
+              }
+            } else if (url.includes('/projects')) {
+              responseData.data = (mockDatabase.projects || []).slice(0, 10);
+            } else if (url.includes('/tasks')) {
+              if (method === 'get') {
+                responseData.data = (mockDatabase.tasks || []).slice(0, 10);
+              } else if (method === 'post') {
+                const payload = typeof config.data === 'string' ? JSON.parse(config.data) : (config.data || {});
+                const newTask = { id: `task_${Date.now()}`, ...payload, created_at: new Date().toISOString() };
+                if (!mockDatabase.tasks) mockDatabase.tasks = [];
+                mockDatabase.tasks.unshift(newTask);
+                persistDb();
+                responseData.data = newTask;
+                responseStatus = 201;
+              }
+            } else {
+              responseData.data = { success: true, message: 'Request processed successfully via v1 API' };
             }
           }
           else if (url.includes('/config/webhooks')) {

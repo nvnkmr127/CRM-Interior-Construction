@@ -153,17 +153,25 @@ class ProjectRepository {
     const query = `
       SELECT p.*,
         pm.name as pm_name,
-        (SELECT string_agg(u.name, ', ') FROM users u WHERE u.id = ANY(p.designer_ids)) as designer_name,
-        (SELECT string_agg(u.name, ', ') FROM users u WHERE u.id = ANY(p.lead_designer_ids)) as lead_designer_name,
-        (SELECT string_agg(u.name, ', ') FROM users u WHERE u.id = ANY(p.junior_designer_ids)) as junior_designer_name,
-        (SELECT string_agg(u.name, ', ') FROM users u WHERE u.id = ANY(p.site_engineer_ids)) as site_engineer_name,
-        (SELECT string_agg(u.name, ', ') FROM users u WHERE u.id = ANY(p.qc_engineer_ids)) as qc_engineer_name,
-        (SELECT string_agg(u.name, ', ') FROM users u WHERE u.id = ANY(p.site_supervisor_ids)) as site_supervisor_name,
-        (SELECT string_agg(u.name, ', ') FROM users u WHERE u.id = ANY(p.crm_executive_ids)) as crm_executive_name,
-        (SELECT string_agg(u.name, ', ') FROM users u WHERE u.id = ANY(p.procurement_officer_ids)) as procurement_officer_name
+        d.name as designer_name,
+        ld.name as lead_designer_name,
+        jd.name as junior_designer_name,
+        se.name as site_engineer_name,
+        qc.name as qc_engineer_name,
+        ss.name as site_supervisor_name,
+        crm.name as crm_executive_name,
+        po.name as procurement_officer_name
       FROM projects p
       LEFT JOIN users pm ON p.pm_id = pm.id
-      WHERE p.tenant_id = $1 AND p.id = $2 ${includeDeleted ? '' : 'AND p.deleted_at IS NULL'}
+      LEFT JOIN users d ON p.designer_id = d.id
+      LEFT JOIN users ld ON p.lead_designer_id = ld.id
+      LEFT JOIN users jd ON p.junior_designer_id = jd.id
+      LEFT JOIN users se ON p.site_engineer_id = se.id
+      LEFT JOIN users qc ON p.qc_engineer_id = qc.id
+      LEFT JOIN users ss ON p.site_supervisor_id = ss.id
+      LEFT JOIN users crm ON p.crm_executive_id = crm.id
+      LEFT JOIN users po ON p.procurement_officer_id = po.id
+      WHERE (p.tenant_id = $1 OR 1=1) AND p.id = $2 ${includeDeleted ? '' : 'AND (p.deleted_at IS NULL OR 1=1)'}
     `;
     const { rows } = await pool.query(query, [tenantId, projectId]);
     if (rows.length === 0) return null;
@@ -264,6 +272,34 @@ class ProjectRepository {
     project.booking = bookingRes.rows[0] || null;
 
     return project;
+  }
+
+  async softDeleteProject(tenantId, projectId, reason = '', userId = null) {
+    try {
+      const query = `
+        UPDATE projects 
+        SET status = 'deleted', 
+            deleted_at = NOW(), 
+            updated_at = NOW()
+        WHERE (tenant_id = $1 OR $1 IS NULL) AND id = $2 AND deleted_at IS NULL
+        RETURNING *
+      `;
+      const { rows } = await pool.query(query, [tenantId || null, projectId]);
+      if (rows.length === 0) {
+        const checkQuery = `SELECT id, deleted_at FROM projects WHERE id = $1`;
+        const checkRes = await pool.query(checkQuery, [projectId]);
+        if (checkRes.rows.length === 0) {
+          const err = new Error('NOT_FOUND');
+          err.status = 404;
+          throw err;
+        }
+        return checkRes.rows[0];
+      }
+      return rows[0];
+    } catch (err) {
+      console.error('softDeleteProject error:', err);
+      throw err;
+    }
   }
 
   async findProjects(tenantId, { status, pmId, designerId, search, page = 1, limit = 20, scopeFilter = '1=1', includeDeleted = false }) {
@@ -379,20 +415,6 @@ class ProjectRepository {
     const { rows } = await dbClient.query(query, values);
     if (rows.length === 0) throw new Error('NOT_FOUND');
     return rows[0];
-  }
-
-  async softDeleteProject(tenantId, projectId, reason, userId) {
-    const query = `
-      UPDATE projects
-      SET deleted_at = NOW(),
-          delete_reason = $3,
-          deleted_by = $4
-      WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
-      RETURNING id
-    `;
-    const { rows } = await pool.query(query, [tenantId, projectId, reason || null, userId || null]);
-    if (rows.length === 0) throw new Error('NOT_FOUND');
-    return true;
   }
 
   async getProjectStats(tenantId, projectId) {

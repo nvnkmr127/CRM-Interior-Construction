@@ -12,49 +12,55 @@ router.use(authenticate);
 // GET /api/logs/webhook-events
 router.get('/webhook-events', authorize('logs:read'), async (req, res) => {
   try {
-    const { webhookId, status, event, from, to, page = 1, limit = 20 } = req.query;
+    const targetWebhookId = req.query.webhookId || req.query.webhook_id;
+    const { status, event, from, to, page = 1, limit = 50 } = req.query;
     const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     
-    let query = `SELECT * FROM webhook_logs WHERE tenant_id = $1`;
+    let query = `
+      SELECT wl.*, ow.name as webhook_name, ow.url as webhook_url
+      FROM webhook_logs wl
+      LEFT JOIN outbound_webhooks ow ON wl.webhook_id = ow.id
+      WHERE wl.tenant_id = $1
+    `;
     const values = [req.tenantId];
-    let countQuery = `SELECT COUNT(*) FROM webhook_logs WHERE tenant_id = $1`;
+    let countQuery = `SELECT COUNT(*) FROM webhook_logs wl WHERE wl.tenant_id = $1`;
     let idx = 2;
 
-    if (webhookId) {
-      query += ` AND webhook_id = $${idx}`;
-      countQuery += ` AND webhook_id = $${idx}`;
-      values.push(webhookId);
+    if (targetWebhookId) {
+      query += ` AND wl.webhook_id = $${idx}`;
+      countQuery += ` AND wl.webhook_id = $${idx}`;
+      values.push(targetWebhookId);
       idx++;
     }
     if (status) {
       if (status === 'success') {
-        query += ` AND status_code >= 200 AND status_code < 300`;
-        countQuery += ` AND status_code >= 200 AND status_code < 300`;
+        query += ` AND wl.status_code >= 200 AND wl.status_code < 300`;
+        countQuery += ` AND wl.status_code >= 200 AND wl.status_code < 300`;
       } else if (status === 'error') {
-        query += ` AND (status_code < 200 OR status_code >= 300)`;
-        countQuery += ` AND (status_code < 200 OR status_code >= 300)`;
+        query += ` AND (wl.status_code < 200 OR wl.status_code >= 300)`;
+        countQuery += ` AND (wl.status_code < 200 OR wl.status_code >= 300)`;
       }
     }
     if (event) {
-      query += ` AND event = $${idx}`;
-      countQuery += ` AND event = $${idx}`;
+      query += ` AND wl.event = $${idx}`;
+      countQuery += ` AND wl.event = $${idx}`;
       values.push(event);
       idx++;
     }
     if (from) {
-      query += ` AND created_at >= $${idx}`;
-      countQuery += ` AND created_at >= $${idx}`;
+      query += ` AND wl.created_at >= $${idx}`;
+      countQuery += ` AND wl.created_at >= $${idx}`;
       values.push(from);
       idx++;
     }
     if (to) {
-      query += ` AND created_at <= $${idx}`;
-      countQuery += ` AND created_at <= $${idx}`;
+      query += ` AND wl.created_at <= $${idx}`;
+      countQuery += ` AND wl.created_at <= $${idx}`;
       values.push(to);
       idx++;
     }
 
-    query += ` ORDER BY created_at DESC LIMIT $${idx} OFFSET $${idx + 1}`;
+    query += ` ORDER BY wl.created_at DESC LIMIT $${idx} OFFSET $${idx + 1}`;
     const result = await pool.query(query, [...values, parseInt(limit, 10), offset]);
     const countResult = await pool.query(countQuery, values);
     

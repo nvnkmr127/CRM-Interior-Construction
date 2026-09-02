@@ -105,8 +105,11 @@ export default function NotificationsPanel() {
         await fetchUnreadCount()
       } catch (e) { console.error(e) }
     }
-    if (n.lead_id) {
-      setIsOpen(false)
+    setIsOpen(false)
+    if (n.reference_url) {
+      navigate(n.reference_url)
+    } else if (n.lead_id) {
+      navigate(`/leads?id=${n.lead_id}`)
     }
   }
 

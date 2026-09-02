@@ -29,6 +29,8 @@ import AssignDesignerModal from './AssignDesignerModal';
 import MarkLostModal from './MarkLostModal';
 import { getLead, changeLeadStage, deleteLead, updateActivity, logActivity, getActivities, deleteActivity, restoreLead, permanentlyDeleteLead } from '../../api/leads';
 import api from '../../api/axios';
+import { useAuth } from '../../store/authContext';
+import { PLAN_DEFAULTS } from '../../constants/permissions';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
@@ -91,9 +93,14 @@ const getMeetingCountdown = (dateStr) => {
 
 export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, stages = [], initialTab = 'overview' }) {
   const { confirm } = useConfirm();
+  const { user } = useAuth();
 
   const navigate = useNavigate();
   const toast = useToast();
+
+  const isPlatformDeveloperAdmin = (user?.tenant?.slug === 'demo' || user?.email === 'admin@demo.com') && 
+    (user?.role === 'superadmin' || user?.role?.name?.toLowerCase() === 'superadmin' || user?.role === 'admin' || user?.role?.name?.toLowerCase() === 'admin');
+
   const [lead, setLead] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState(initialTab); // overview, activity, tasks, followups, files
@@ -1156,28 +1163,45 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               ref={tabsRef}
               className="flex gap-4 overflow-x-auto custom-scrollbar p-2 bg-white border border-gray-200 rounded-xl shadow-sm"
             >
-              {['overview', 'activity', 'communications', 'tasks', 'followups', 'meeting-schedule', 'site-visits', 'stakeholders', 'preferences', 'inspirations', 'estimates', 'negotiation', 'files', 'ai-copilot', 'knowledge-base', 'twin', 'automations'].map(tab => (
+              {[
+                { id: 'overview', label: 'Overview' },
+                { id: 'activity', label: 'Activity' },
+                { id: 'communications', label: 'Communications' },
+                { id: 'tasks', label: 'Tasks' },
+                { id: 'followups', label: 'Followups' },
+                { id: 'meeting-schedule', label: 'Meeting Schedule' },
+                { id: 'site-visits', label: 'Site Visits' },
+                { id: 'stakeholders', label: 'Stakeholders' },
+                { id: 'preferences', label: 'Preferences' },
+                { id: 'inspirations', label: 'Inspirations' },
+                { id: 'estimates', label: 'Estimates' },
+                { id: 'negotiation', label: 'Negotiation' },
+                { id: 'files', label: 'Files' },
+                { id: 'ai-copilot', label: 'AI Copilot' },
+                { id: 'knowledge-base', label: 'AI Knowledge Base' },
+                { id: 'twin', label: 'Twin' },
+                { id: 'automations', label: 'Automation History', requiredTab: 'automations' }
+              ].filter(tabObj => {
+                if (isPlatformDeveloperAdmin) return true;
+                const tenantPlan = (user?.tenant?.plan || 'starter').toLowerCase();
+                const planTabs = user?.sidebarConfig?.planTabs || PLAN_DEFAULTS[tenantPlan] || PLAN_DEFAULTS.starter;
+                if (tabObj.requiredTab && planTabs && Array.isArray(planTabs) && !planTabs.includes(tabObj.requiredTab)) {
+                  return false;
+                }
+                return true;
+              }).map(tabObj => (
                 <button
-                  key={tab}
+                  key={tabObj.id}
                   onClick={(e) => {
-                    setActiveTab(tab);
+                    setActiveTab(tabObj.id);
                   }}
                   className={`whitespace-nowrap py-2 px-4 rounded-lg font-medium text-base transition-all ${
-                    activeTab === tab
+                    activeTab === tabObj.id
                       ? 'bg-blue-50 text-blue-700'
                       : 'bg-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
-                  {(() => {
-                    if (tab === 'knowledge-base') return 'AI Knowledge Base';
-                    if (tab === 'automations') return 'Automation History';
-                    if (tab === 'meeting-schedule') return 'Meeting Schedule';
-                    if (tab === 'site-visits') return 'Site Visits';
-                    if (tab === 'ai-copilot') return 'AI Copilot';
-                    
-                    const label = tab.replace('-', ' ');
-                    return label.charAt(0).toUpperCase() + label.slice(1);
-                  })()}
+                  {tabObj.label}
                 </button>
               ))}
             </nav>

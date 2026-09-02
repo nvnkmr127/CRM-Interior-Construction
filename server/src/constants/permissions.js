@@ -155,11 +155,76 @@ const ACTION_DEPENDENCIES = {
   'bulk_delete': ['view', 'delete']
 };
 
+const PLAN_DEFAULTS = {
+  starter: [
+    'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar',
+    'projects', 'tasks', 'reports', 'team-management', 'team-members', 'roles-permissions', 'organization'
+  ],
+  growth: [
+    'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
+    'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
+    'analytics-delay', 'coordination', 'handover-dashboard', 'retention-dashboard', 'resource-capacity',
+    'absences', 'vendor-performance', 'vendor-capacity', 'team-management', 'team-members',
+    'roles-permissions', 'organization'
+  ],
+  enterprise: [
+    'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
+    'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
+    'analytics-delay', 'analytics-boq', 'analytics-resources', 'analytics-resource-workload',
+    'lead-stages', 'custom-fields', 'lead-forms', 'templates', 'trade-activities', 'qc-checklists',
+    'conversion-checklist', 'automations', 'coordination', 'handover-dashboard', 'retention-dashboard',
+    'resource-capacity', 'absences', 'vendor-performance', 'vendor-capacity', 'vendor-lead-times',
+    'finance-overview', 'financial-approvals', 'analytics-profitability', 'analytics-collection-forecast',
+    'financial-thresholds', 'team-management', 'team-members', 'roles-permissions', 'organization',
+    'login-history', 'audit-trail', 'superadmin', 'api-keys', 'api-integration', 'webhooks',
+    'email-templates', 'logs'
+  ]
+};
+
+const MODULE_TAB_MAPPING = {
+  dashboards: ['dashboard'],
+  leads: ['leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map', 'lead-stages', 'custom-fields', 'lead-forms'],
+  projects: ['projects', 'templates', 'trade-activities', 'qc-checklists', 'conversion-checklist', 'automations', 'coordination', 'handover-dashboard', 'retention-dashboard', 'resource-capacity', 'absences'],
+  tasks: ['tasks'],
+  clients: ['leads', 'projects', 'retention-dashboard'],
+  quotations: ['projects', 'leads'],
+  reports: ['reports'],
+  users: ['team-management', 'team-members', 'roles-permissions'],
+  settings: ['organization', 'company-settings', 'login-history', 'audit-trail', 'superadmin', 'api-keys', 'api-integration', 'webhooks', 'email-templates', 'logs', 'lead-stages', 'custom-fields', 'templates', 'trade-activities', 'qc-checklists', 'conversion-checklist', 'automations', 'vendor-lead-times', 'financial-thresholds', 'roles-permissions', 'team-management'],
+  analytics: ['analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat', 'analytics-delay', 'analytics-boq', 'analytics-resources', 'analytics-resource-workload', 'analytics-profitability', 'analytics-collection-forecast', 'vendor-performance', 'vendor-capacity'],
+  finance: ['finance-overview', 'financial-approvals', 'analytics-profitability', 'analytics-collection-forecast', 'financial-thresholds'],
+  invoices: ['finance-overview', 'financial-approvals'],
+  payments: ['finance-overview', 'financial-approvals', 'analytics-collection-forecast'],
+  discounts: ['financial-approvals', 'finance-overview'],
+  vendors: ['vendor-performance', 'vendor-capacity', 'vendor-lead-times'],
+  purchase_orders: ['vendor-performance', 'vendor-capacity', 'vendor-lead-times', 'finance-overview'],
+  inventory: ['vendor-capacity', 'resource-capacity', 'coordination'],
+  warehouse: ['vendor-capacity', 'coordination'],
+  factory: ['coordination', 'projects'],
+  boq: ['projects', 'analytics-boq'],
+  material_requests: ['coordination', 'projects'],
+  change_orders: ['projects', 'financial-approvals'],
+  design_reviews: ['projects', 'coordination']
+};
+
+const getModulesForTabs = (enabledTabs = []) => {
+  if (!Array.isArray(enabledTabs) || enabledTabs.length === 0) return PERMISSION_MODULES;
+  return PERMISSION_MODULES.filter(mod => {
+    const requiredTabs = MODULE_TAB_MAPPING[mod.id];
+    if (!requiredTabs) return true;
+    return requiredTabs.some(t => enabledTabs.includes(t));
+  });
+};
+
 module.exports = {
   PERMISSION_MODULES,
   PERMISSION_ACTIONS,
   DATA_SCOPES,
+  PLAN_DEFAULTS,
+  MODULE_TAB_MAPPING,
+  getModulesForTabs,
   getAllAvailablePermissions,
   isValidPermission,
   ACTION_DEPENDENCIES
 };
+

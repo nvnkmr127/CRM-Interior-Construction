@@ -8,7 +8,8 @@
  */
 const buildScopeFilter = (user, moduleName, ownerField = 'owner_id', tableAlias = '') => {
   if (!user) return '1=0';
-  if (user.role === 'superadmin' || user.role === 'admin') return '1=1';
+  const normRole = typeof user.role === 'string' ? user.role.toLowerCase().replace(/[\s_-]+/g, '') : '';
+  if (normRole === 'superadmin' || normRole === 'admin' || normRole === 'administrator' || normRole === 'owner' || normRole.includes('admin')) return '1=1';
 
   const scopes = user.data_scopes || {};
   const rawScope = scopes[moduleName] || 'assigned'; // Default to assigned if no scope is defined
@@ -72,6 +73,8 @@ const buildScopeFilter = (user, moduleName, ownerField = 'owner_id', tableAlias 
         const table = tableAlias ? tableAlias + '.id' : 'id';
         const createdByCol = tableAlias ? `${tableAlias}.created_by` : 'created_by';
         filter = `(${column} = '${userId}' OR ${createdByCol} = '${userId}' OR ${table} IN (SELECT project_id FROM project_members WHERE user_id = '${userId}'))`;
+      } else if (moduleName === 'leads') {
+        filter = `${column} IS NOT NULL AND ${column} = '${userId}'`;
       } else {
         filter = `${column} = '${userId}'`;
       }

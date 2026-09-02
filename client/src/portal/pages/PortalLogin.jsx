@@ -10,7 +10,7 @@ export default function PortalLogin() {
   const navigate = useNavigate()
   const [step, setStep]         = useState(1)   // 1=phone, 2=otp
   const [phone, setPhone]       = useState('')
-  const [tenantSlug, setSlug]   = useState(new URLSearchParams(window.location.search).get('tenant') || '')
+  const [tenantSlug, setSlug]   = useState(new URLSearchParams(window.location.search).get('tenant') || 'demo')
   const [otp, setOtp]           = useState(['','','','','',''])
   const [loading, setLoading]   = useState(false)
   const [error, setError]       = useState('')
@@ -75,11 +75,27 @@ export default function PortalLogin() {
     } finally { setLoading(false) }
   }
 
+  const handleQuickDemoLogin = async (demoPhone = '9876543210', demoSlug = 'demo') => {
+    setError('');
+    setLoading(true);
+    setPhone(demoPhone);
+    setSlug(demoSlug);
+    try {
+      await api.post('/portal/auth/send-otp', { phone: demoPhone, tenantSlug: demoSlug });
+      await login(demoPhone, '123456', demoSlug);
+      navigate('/portal/overview');
+    } catch (e) {
+      setError(e.response?.data?.message || 'Failed to initiate demo login. Please try manually.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className={styles.page}>
       <div className={styles.card}>
         <div className={styles.logo}>
-          <div className={styles.logoMark}>C</div>
+          <div className={styles.logoMark}>✦</div>
           <span className={styles.logoText}>Your Project Portal</span>
         </div>
 
@@ -104,10 +120,10 @@ export default function PortalLogin() {
               Workspace
               <input
                 className={styles.input}
-                type='text' placeholder='yourcompany'
+                type='text' placeholder='demo'
                 value={tenantSlug} onChange={e => setSlug(e.target.value)}
               />
-              <span className={styles.hint}>Ask your project manager for this</span>
+              <span className={styles.hint}>Enter your workspace slug (e.g. demo)</span>
             </label>
             {error && <p className={styles.error}>{error}</p>}
             <button
@@ -117,6 +133,35 @@ export default function PortalLogin() {
             >
               {loading ? 'Sending...' : 'Send OTP →'}
             </button>
+
+            {import.meta.env.DEV && (
+              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'center' }}>
+                  Auto Login (Dev Mode)
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleQuickDemoLogin('9876543210', 'demo')}
+                  disabled={loading}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--color-border)',
+                    background: 'var(--color-surface)',
+                    color: 'var(--color-text)',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <span>⚡</span> 1-Click Demo Client (Rajesh Sharma)
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -146,6 +191,27 @@ export default function PortalLogin() {
             >
               {loading ? 'Verifying...' : 'Verify OTP'}
             </button>
+
+            {import.meta.env.DEV && (
+              <button
+                type="button"
+                onClick={() => submitOtp(['1','2','3','4','5','6'])}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: '1px dashed var(--color-accent)',
+                  background: 'transparent',
+                  color: 'var(--color-accent)',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  marginTop: '4px'
+                }}
+              >
+                ⚡ Quick Fill Demo OTP (123456)
+              </button>
+            )}
+
             <div className={styles.resend}>
               {resendSecs > 0
                 ? <span>Resend in 0:{String(resendSecs).padStart(2,'0')}</span>
@@ -157,6 +223,10 @@ export default function PortalLogin() {
             </div>
           </div>
         )}
+
+        <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--color-border)', textAlign: 'center', fontSize: '13px', color: 'var(--color-text-light)' }}>
+          Staff or Admin? <a href="/login" style={{ color: 'var(--color-accent)', fontWeight: 600, textDecoration: 'none' }}>Sign in to Admin / Team Portal →</a>
+        </div>
       </div>
     </div>
   )

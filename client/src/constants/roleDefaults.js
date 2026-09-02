@@ -552,5 +552,24 @@ export const ROLE_DEFAULTS = {
       allowed_days: [1, 2, 3, 4, 5, 6],
       allowed_login_times: { start: '08:00', end: '20:00' }
     }
+  },
+  'Team Member': {
+    description: 'Team member access to view and manage assigned leads, projects, and tasks',
+    permissions: [
+      'dashboards:view_sales_dashboard', 'dashboards:view_project_dashboard',
+      'leads:view', 'leads:read', 'leads:create', 'leads:edit', 'leads:assign', 'leads:display', 'leads:show',
+      'projects:view', 'projects:read', 'projects:edit',
+      'tasks:view', 'tasks:read', 'tasks:create', 'tasks:edit'
+    ],
+    enabled_modules: ['dashboards', 'leads', 'projects', 'tasks'],
+    data_scopes: {
+      leads: 'assigned', projects: 'assigned', tasks: 'assigned'
+    },
+    field_permissions: {},
+    page_permissions: {},
+    security_policies: {
+      allowed_days: [0, 1, 2, 3, 4, 5, 6],
+      allowed_login_times: { start: '00:00', end: '23:59' }
+    }
   }
 };

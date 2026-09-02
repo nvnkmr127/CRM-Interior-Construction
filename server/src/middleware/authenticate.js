@@ -183,50 +183,61 @@ async function authenticate(req, res, next) {
       req.user.id = req.user.userId;
     }
 
-    // Auto-hydrate permissions and role if missing or empty in the JWT token
-    if (!req.user.permissions || req.user.permissions.length === 0 || !req.user.role || req.user.role === 'undefined') {
-      try {
-        const userQuery = await pool.query(
-          `SELECT u.role_id, r.name as role_name, r.permissions as role_permissions 
-           FROM users u 
-           LEFT JOIN roles r ON u.role_id = r.id 
-           WHERE u.id = $1 LIMIT 1`,
-          [req.user.id]
-        );
-        if (userQuery.rows.length > 0) {
-          const uRow = userQuery.rows[0];
-          const rName = uRow.role_name || (uRow.role_id ? 'Team Member' : 'Sales Executive');
-          req.user.role = rName.toLowerCase();
-          if (uRow.role_permissions) {
-            const p = typeof uRow.role_permissions === 'string' ? JSON.parse(uRow.role_permissions) : uRow.role_permissions;
-            req.user.permissions = Array.isArray(p) ? p : (p.actions || []);
-          } else {
-            const rConfig = getRoleConfig(rName) || ROLE_DEFAULTS['Sales Executive'];
-            req.user.permissions = rConfig ? rConfig.permissions : ['projects:view', 'tasks:view', 'leads:view', 'leads:read'];
-          }
-        } else {
-          const rConfig = ROLE_DEFAULTS['Sales Executive'];
-          req.user.role = 'sales executive';
-          req.user.permissions = rConfig.permissions;
-        }
-      } catch (err) {
-        const rConfig = ROLE_DEFAULTS['Sales Executive'];
-        req.user.role = 'sales executive';
-        req.user.permissions = rConfig.permissions;
-      }
-    } else if (req.user.role) {
-      // If role is present, ensure default permissions for that role are included if permissions were sparse or stale
-      const roleCfg = getRoleConfig(req.user.role);
-      if (roleCfg && Array.isArray(roleCfg.permissions)) {
-        const currentPerms = Array.isArray(req.user.permissions) 
-          ? req.user.permissions 
-          : (req.user.permissions.actions || []);
+    // Always auto-hydrate / sync permissions and role from DB to ensure real-time permission updates
+    try {
+      const userQuery = await pool.query(
+        `SELECT u.role_id, r.name as role_name, r.permissions as role_permissions 
+         FROM users u 
+         LEFT JOIN roles r ON u.role_id = r.id 
+         WHERE u.id = $1 LIMIT 1`,
+        [req.user.id]
+      );
+      
+      let dbPerms = [];
+      let dbScopes = {};
+      let dbFields = {};
+      let rName = req.user.role || '';
+
+      if (userQuery.rows.length > 0) {
+        const uRow = userQuery.rows[0];
+        if (uRow.role_name) rName = uRow.role_name;
+        if (!rName && uRow.role_id) rName = 'Team Member';
         
-        const cleanRole = req.user.role.toLowerCase();
-        if (cleanRole.includes('sales') && !currentPerms.some(p => p.startsWith('leads:'))) {
-          req.user.permissions = [...new Set([...currentPerms, ...roleCfg.permissions])];
+        if (uRow.role_permissions) {
+          const p = typeof uRow.role_permissions === 'string' ? JSON.parse(uRow.role_permissions) : uRow.role_permissions;
+          if (Array.isArray(p)) {
+            dbPerms = p;
+          } else if (p && typeof p === 'object') {
+            dbPerms = p.actions || [];
+            dbScopes = p.scopes || {};
+            dbFields = p.fields || {};
+          }
         }
       }
+
+      if (rName) {
+        req.user.role = rName.toLowerCase();
+      }
+
+      const roleCfg = getRoleConfig(rName || req.user.role) || ROLE_DEFAULTS['Team Member'];
+      const defaultPerms = roleCfg ? roleCfg.permissions : ['projects:view', 'tasks:view', 'leads:view', 'leads:read'];
+
+      const tokenPerms = Array.isArray(req.user.permissions) 
+        ? req.user.permissions 
+        : (req.user.permissions?.actions || []);
+
+      const combinedPerms = [...new Set([...tokenPerms, ...dbPerms, ...defaultPerms])];
+      
+      req.user.permissions = combinedPerms;
+      if (Object.keys(dbScopes).length > 0) {
+        req.user.data_scopes = dbScopes;
+      }
+      if (Object.keys(dbFields).length > 0) {
+        req.user.field_permissions = dbFields;
+      }
+    } catch (err) {
+      const rConfig = getRoleConfig(req.user.role) || ROLE_DEFAULTS['Team Member'];
+      req.user.permissions = req.user.permissions || (rConfig ? rConfig.permissions : ['projects:view', 'tasks:view', 'leads:view', 'leads:read']);
     }
 
     // Normalize user permissions for the new schema (actions, scopes, fields)
@@ -240,6 +251,10 @@ async function authenticate(req, res, next) {
     }
 
     req.tenantId = decoded.tenantId;
+    if (req.user) {
+      req.user.tenantId = decoded.tenantId;
+      req.user.tenant_id = decoded.tenantId;
+    }
 
     // Attach the dynamically resolved database pool
     req.dbPool = getTenantPool(req.tenantId);

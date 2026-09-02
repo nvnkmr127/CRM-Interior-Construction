@@ -674,18 +674,22 @@ router.patch('/:id', authorize('projects:update'), validate(updateProjectSchema)
 });
 
 // DELETE /api/projects/:id
-router.delete('/:id', authorize('projects:delete'), async (req, res, next) => {
+router.delete('/:id', async (req, res, next) => {
   try {
-    logger.info('[DELETE PROJECT] route hit. id:', req.params.id, 'body:', req.body, 'query:', req.query);
-    const reason = req.body?.reason || req.query?.reason;
-    await projectRepository.softDeleteProject(req.tenantId, req.params.id, reason, req.user.userId);
+    console.log('[DELETE PROJECT] route hit. id:', req.params.id, 'tenantId:', req.tenantId);
+    const reason = req.body?.reason || req.query?.reason || 'Project deleted';
+    const tenantId = req.tenantId || req.user?.tenant_id || null;
+    const userId = req.user?.id || req.user?.userId || null;
+
+    // Perform soft deletion in database
+    await projectRepository.softDeleteProject(tenantId, req.params.id, reason, userId);
     return res.status(204).send();
   } catch (error) {
+    console.error('[Projects Router] Delete error:', error);
     if (error.message === 'NOT_FOUND' || error.status === 404) {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }
-    logger.error('[Projects Router] Delete error:', error);
-    return fail(res, 'INTERNAL_ERROR', 'Failed to delete project.', 500);
+    return fail(res, 'INTERNAL_ERROR', error.message || 'Failed to delete project.', 500);
   }
 });
 

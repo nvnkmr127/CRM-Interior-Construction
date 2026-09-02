@@ -26,7 +26,17 @@ export const PreferencesProvider = ({ children }) => {
     localStorage.setItem('crm_local_prefs', JSON.stringify(localPrefs));
     
     // Apply theme
-    if (localPrefs.theme === 'dark' || (localPrefs.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    const explicitTheme = localStorage.getItem('theme');
+    let shouldBeDark = false;
+    if (explicitTheme === 'dark') {
+      shouldBeDark = true;
+    } else if (explicitTheme === 'light') {
+      shouldBeDark = false;
+    } else {
+      shouldBeDark = localPrefs.theme === 'dark' || (localPrefs.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+
+    if (shouldBeDark) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');

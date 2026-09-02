@@ -5,8 +5,9 @@ import layoutStyles from './ConfigLayout.module.css'
 import styles from './RolesManager.module.css'
 import { Button, Modal, DataTable, Input, Select } from '../../components/ui'
 import { useToast } from '../../store/toastContext'
+import { useAuth } from '../../store/authContext'
 import api from '../../api/axios'
-import { DATA_SCOPES, ACTION_DEPENDENCIES, PERMISSION_MODULES, PERMISSION_ACTIONS } from '../../constants/permissions'
+import { DATA_SCOPES, ACTION_DEPENDENCIES, PERMISSION_MODULES, PERMISSION_ACTIONS, PLAN_DEFAULTS, getModulesForTabs } from '../../constants/permissions'
 import { FIELD_PERMISSIONS_SCHEMA } from '../../constants/fieldPermissions'
 import { PAGE_PERMISSIONS_SCHEMA } from '../../constants/pagePermissions'
 import { ROLE_DEFAULTS } from '../../constants/roleDefaults'
@@ -118,6 +119,7 @@ const TimeSelect = ({ value, onChange }) => {
 
 export default function RolesManager() {
   const { confirm } = useConfirm();
+  const { user } = useAuth();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [roles, setRoles] = useState([])
@@ -197,10 +199,28 @@ export default function RolesManager() {
   }, [isModalOpen]);
 
   useEffect(() => {
-    fetchRolesAndSchema()
-  }, [])
+    fetchRolesAndSchema();
+
+    const handleSync = () => {
+      fetchRolesAndSchema();
+    };
+
+    window.addEventListener('app:tenant-updated', handleSync);
+    window.addEventListener('app:sidebar-config-updated', handleSync);
+    window.addEventListener('app:auth-change', handleSync);
+
+    return () => {
+      window.removeEventListener('app:tenant-updated', handleSync);
+      window.removeEventListener('app:sidebar-config-updated', handleSync);
+      window.removeEventListener('app:auth-change', handleSync);
+    };
+  }, [user?.tenant?.id, user?.tenant?.plan]);
 
   const fetchRolesAndSchema = async () => {
+    const tenantPlan = (user?.tenant?.plan || 'starter').toLowerCase();
+    const planTabs = user?.sidebarConfig?.planTabs || PLAN_DEFAULTS[tenantPlan] || PLAN_DEFAULTS.starter;
+    const defaultScopedModules = getModulesForTabs(planTabs);
+
     try {
       const [rolesRes, schemaRes, usersRes, branchesRes, deptsRes] = await Promise.all([
         api.get('/roles'),
@@ -215,9 +235,9 @@ export default function RolesManager() {
       const schemaData = schemaRes.data?.data || schemaRes.data;
       if (schemaData && schemaData.modules && schemaData.modules.length > 0) {
         setSchemaModules(schemaData.modules);
-        setSchemaActions(schemaData.actions || []);
+        setSchemaActions(schemaData.actions || PERMISSION_ACTIONS);
       } else {
-        setSchemaModules(PERMISSION_MODULES);
+        setSchemaModules(defaultScopedModules);
         setSchemaActions(PERMISSION_ACTIONS);
       }
 
@@ -225,14 +245,14 @@ export default function RolesManager() {
       setBranches(branchesRes.data?.data || branchesRes.data || []);
       setDepartments(deptsRes.data?.data || deptsRes.data || []);
     } catch (err) {
-      // Fallback if no endpoint exists yet
+      // Fallback scoped to workspace plan
       setRoles([
         { id: 'role-superadmin', name: 'superadmin', description: 'Full access', permissions: ['*'] }
-      ])
-      setSchemaModules(PERMISSION_MODULES);
+      ]);
+      setSchemaModules(defaultScopedModules);
       setSchemaActions(PERMISSION_ACTIONS);
     }
-  }
+  };
 
   const fetchRoleAuditLogs = async (roleId, filters) => {
     setAuditLoading(true);

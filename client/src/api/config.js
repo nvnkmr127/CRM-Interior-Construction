@@ -33,13 +33,22 @@ export const configApi = {
   createApiKey:  (data)   => api.post('/config/api-keys', data).then(r=>r.data.data),
   revokeApiKey:  (id)     => api.delete(`/config/api-keys/${id}`),
 
-  // Webhooks
+  // Outbound Webhooks
   getWebhooks:    ()       => api.get('/config/webhooks').then(r=>r.data.data),
   createWebhook:  (data)   => api.post('/config/webhooks', data).then(r=>r.data.data),
   updateWebhook:  (id,d)   => api.put(`/config/webhooks/${id}`, d).then(r=>r.data.data),
   deleteWebhook:  (id)     => api.delete(`/config/webhooks/${id}`),
   testWebhook:    (id)     => api.post(`/config/webhooks/${id}/test`).then(r=>r.data.data),
   toggleWebhook:  (id)     => api.patch(`/config/webhooks/${id}/toggle`).then(r=>r.data.data),
+
+  // Inbound Webhook Sources (Lead Ingest)
+  getWebhookSources:      ()           => api.get('/config/webhook-sources').then(r=>r.data.data),
+  createWebhookSource:    (data)       => api.post('/config/webhook-sources', data).then(r=>r.data.data),
+  updateWebhookSource:    (id, data)   => api.put(`/config/webhook-sources/${id}`, data).then(r=>r.data.data),
+  deleteWebhookSource:    (id)         => api.delete(`/config/webhook-sources/${id}`),
+  toggleWebhookSource:    (id)         => api.patch(`/config/webhook-sources/${id}/toggle`).then(r=>r.data.data),
+  testWebhookSourceMapping: (id, payload) => api.post(`/config/webhook-sources/${id}/test`, { samplePayload: payload }).then(r=>r.data.data),
+  sendInboundWebhook:     (sourceKey, payload, headers = {}) => api.post(`/webhooks/inbound/${sourceKey}`, payload, { headers }).then(r=>r.data),
 
   // Logs
   getWebhookLogs: (params) => api.get('/logs/webhook-events', {params}).then(r=>r.data),

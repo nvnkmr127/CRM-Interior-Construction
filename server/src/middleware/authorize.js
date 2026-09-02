@@ -1,17 +1,19 @@
 const ACTION_ALIASES = {
-  read: ['view', 'read', 'list', 'get'],
-  view: ['view', 'read', 'list', 'get'],
-  list: ['view', 'read', 'list', 'get'],
-  get: ['view', 'read', 'list', 'get'],
+  read: ['view', 'read', 'list', 'get', 'display', 'show', 'details', 'see'],
+  view: ['view', 'read', 'list', 'get', 'display', 'show', 'details', 'see'],
+  list: ['view', 'read', 'list', 'get', 'display', 'show', 'details', 'see'],
+  get: ['view', 'read', 'list', 'get', 'display', 'show', 'details', 'see'],
+  display: ['view', 'read', 'list', 'get', 'display', 'show', 'details', 'see'],
+  show: ['view', 'read', 'list', 'get', 'display', 'show', 'details', 'see'],
 
-  update: ['edit', 'update', 'modify', 'patch', 'put', 'manage'],
-  edit: ['edit', 'update', 'modify', 'patch', 'put', 'manage'],
-  modify: ['edit', 'update', 'modify', 'patch', 'put', 'manage'],
-  manage: ['manage', 'edit', 'update', 'modify', 'patch', 'put', 'create', 'delete', 'view', 'read', 'invite_user', 'deactivate_user', 'activate_user'],
+  update: ['edit', 'update', 'modify', 'patch', 'put', 'manage', 'write'],
+  edit: ['edit', 'update', 'modify', 'patch', 'put', 'manage', 'write'],
+  modify: ['edit', 'update', 'modify', 'patch', 'put', 'manage', 'write'],
+  manage: ['manage', 'edit', 'update', 'modify', 'patch', 'put', 'create', 'delete', 'view', 'read', 'invite_user', 'deactivate_user', 'activate_user', 'display', 'show', 'write'],
 
   create: ['create', 'add', 'insert', 'write', 'post', 'manage', 'invite_user'],
   add: ['create', 'add', 'insert', 'write', 'post', 'manage', 'invite_user'],
-  write: ['create', 'add', 'insert', 'write', 'post', 'manage'],
+  write: ['create', 'add', 'insert', 'write', 'post', 'manage', 'edit', 'update', 'modify'],
 
   delete: ['delete', 'remove', 'destroy', 'manage', 'delete_user'],
   remove: ['delete', 'remove', 'destroy', 'manage'],
@@ -101,6 +103,7 @@ function authorize(requiredPermission) {
     }
 
     // Otherwise, return 403 Forbidden with details
+    console.warn(`[authorize] 403 FORBIDDEN on path ${req.originalUrl || req.path}. Required: ${JSON.stringify(requiredPermission)}. User Role: '${userRole}'. User Permissions: ${JSON.stringify(permissions)}`);
     return res.status(403).json({
       success: false,
       error: 'FORBIDDEN',

@@ -80,6 +80,15 @@ router.post('/drawings/:documentId/approve', async (req, res, next) => {
     `;
 
     const { rows } = await pool.query(query, [documentId, projectId, tenantId]);
+
+    // Notify staff members in CRM
+    await pool.query(
+      `INSERT INTO notifications (tenant_id, user_id, title, message, type, link)
+       SELECT $1, id, 'Drawing Approved by Client', $2, 'design', $3
+       FROM users WHERE tenant_id = $1 AND status = 'active'`,
+      [tenantId, `Client approved drawing: ${rows[0]?.name || 'Drawing'}`, `/projects/${projectId}/design-reviews`]
+    ).catch(err => console.error('Notification error:', err));
+
     res.json({ success: true, data: rows[0], message: 'Drawing approved successfully.' });
   } catch (error) {
     next(error);

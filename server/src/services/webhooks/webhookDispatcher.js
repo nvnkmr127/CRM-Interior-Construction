@@ -34,7 +34,6 @@ class WebhookDeliveryService {
    */
   async _logResponse(webhookId, tenantId, eventType, bodyString, statusCode, responseBodyText, latencyMs, attempt, debugData = null) {
     try {
-      // Assuming a DB migration has added request_headers and response_headers columns
       const logQuery = `
         INSERT INTO webhook_logs (webhook_id, tenant_id, event, payload, status_code, response_body, latency_ms, attempt_number, request_headers, response_headers)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -47,12 +46,29 @@ class WebhookDeliveryService {
         statusCode,
         (responseBodyText || '').substring(0, 5000),
         latencyMs,
-        attempt,
+        typeof attempt === 'number' ? attempt : 1,
         debugData ? debugData.reqHeaders : null,
         debugData ? debugData.resHeaders : null
       ]);
     } catch (logErr) {
-      logger.error('[WebhookDeliveryService] Failed to log webhook attempt:', logErr);
+      logger.error('[WebhookDeliveryService] Failed primary log attempt, trying fallback without extra headers:', logErr.message);
+      try {
+        const fallbackQuery = `
+          INSERT INTO webhook_logs (webhook_id, tenant_id, event, payload, status_code, response_body, latency_ms)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `;
+        await pool.query(fallbackQuery, [
+          webhookId,
+          tenantId,
+          eventType,
+          bodyString,
+          statusCode,
+          (responseBodyText || '').substring(0, 5000),
+          latencyMs
+        ]);
+      } catch (fallbackErr) {
+        logger.error('[WebhookDeliveryService] Fallback webhook log insert also failed:', fallbackErr.message);
+      }
     }
   }
 

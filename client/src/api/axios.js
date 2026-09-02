@@ -69,7 +69,8 @@ api.interceptors.response.use(
       }
 
       const isAuthEndpoint = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/auth/register');
-      if (!isAuthEndpoint) {
+      const isPortalEndpoint = error.config?.url?.includes('/portal');
+      if (!isAuthEndpoint && !isPortalEndpoint) {
         // Permission error — show toast
         triggerToast('error', 'You do not have permission to do that.', 6000);
       }
@@ -82,13 +83,18 @@ api.interceptors.response.use(
 
     const originalRequest = error.config;
 
-    // Check if the request is an auth endpoint (do not attempt token refresh for login, register, refresh, logout)
+    // Check if the request is an auth endpoint or portal endpoint (do not attempt token refresh or staff logout for portal endpoints)
     const isAuthEndpoint = originalRequest?.url?.includes('/auth/login') || 
                            originalRequest?.url?.includes('/auth/register') || 
                            originalRequest?.url?.includes('/auth/refresh') || 
                            originalRequest?.url?.includes('/auth/logout');
+    const isPortalEndpoint = originalRequest?.url?.includes('/portal');
 
-    // Handle 401 Unauthorized
+    if (isPortalEndpoint) {
+      return Promise.reject(error);
+    }
+
+    // Handle 401 Unauthorized for Staff / Admin CRM
     if (error.response.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (hasRefreshFailed || !localStorage.getItem('isAuthenticated')) {
         localStorage.removeItem('mockSession');

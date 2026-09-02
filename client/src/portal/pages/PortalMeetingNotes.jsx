@@ -95,7 +95,7 @@ export default function PortalMeetingNotes() {
                     </span>
                   </div>
                   <div>
-                    {note.client_sign_off_status === 'signed_off' ? (
+                    {(note.client_sign_off_status === 'signed_off' || note.is_signed_off) ? (
                       <span className={`${styles.badge} ${styles.signed_off}`}>
                         ✓ Signed off
                       </span>

@@ -158,7 +158,7 @@ async function findLeadById(tenantId, leadId, txClient = null, includeDeleted = 
   return lead;
 }
 
-async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy, sortDesc, page = 1, limit = 20, createdFrom, createdTo, scoreMin, scoreMax, intent, cursor, scopeFilter = '1=1', deletedOnly = false, status }) {
+async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy, sortDesc, page = 1, limit = 20, createdFrom, createdTo, scoreMin, scoreMax, intent, cursor, scopeFilter = '1=1', deletedOnly = false, status, assignedOnly }) {
   const isDeletedOnly = deletedOnly === 'true' || deletedOnly === true;
   const deletedCondition = isDeletedOnly ? 'l.deleted_at IS NOT NULL' : 'l.deleted_at IS NULL';
   let query = `
@@ -240,7 +240,11 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
     values.push(status);
   }
   
-  if (assigneeId) {
+  if (assigneeId === 'assigned' || assignedOnly === 'true' || assignedOnly === true) {
+    query += ` AND l.assignee_id IS NOT NULL`;
+  } else if (assigneeId === 'unassigned') {
+    query += ` AND l.assignee_id IS NULL`;
+  } else if (assigneeId) {
     query += ` AND l.assignee_id = $${paramIndex++}`;
     values.push(assigneeId);
   }
@@ -701,6 +705,7 @@ async function getLeadStats(tenantId, options = {}) {
     deletedOnly = options.deletedOnly || false;
   }
 
+  const assignedOnly = options.assignedOnly || false;
   const isDeletedOnly = deletedOnly === 'true' || deletedOnly === true;
   const deletedCondition = isDeletedOnly ? 'l.deleted_at IS NOT NULL' : 'l.deleted_at IS NULL';
 
@@ -735,7 +740,11 @@ async function getLeadStats(tenantId, options = {}) {
     values.push(status);
   }
 
-  if (assigneeId) {
+  if (assigneeId === 'assigned' || assignedOnly === 'true' || assignedOnly === true) {
+    query += ` AND l.assignee_id IS NOT NULL`;
+  } else if (assigneeId === 'unassigned') {
+    query += ` AND l.assignee_id IS NULL`;
+  } else if (assigneeId) {
     query += ` AND l.assignee_id = $${paramIndex++}`;
     values.push(assigneeId);
   }

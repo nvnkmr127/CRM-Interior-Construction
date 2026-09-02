@@ -228,10 +228,10 @@ export default function Login() {
                 onChange={(e) => handleChange('tenantSlug', e.target.value)}
                 onBlur={() => handleBlur('tenantSlug')}
                 className={`${styles.input} ${touched.tenantSlug && errors.tenantSlug ? styles.inputError : ''}`}
-                placeholder="e.g. interior-hub or Interior Hub"
+                placeholder="slug name"
                 disabled={isSubmitting}
               />
-              <div className={styles.helpText}>Enter your workspace slug or name (e.g. interior-hub)</div>
+              <div className={styles.helpText}>Enter your workspace slug or name</div>
               {touched.tenantSlug && errors.tenantSlug && <div style={{color:'var(--color-danger)', fontSize:'12px', marginTop:'4px'}}>{errors.tenantSlug}</div>}
             </div>
 
@@ -334,13 +334,28 @@ export default function Login() {
                       {u.label}
                     </Button>
                   ))}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={isSubmitting}
+                    onClick={() => navigate('/portal/login')}
+                    style={{ gridColumn: '1 / -1', background: 'rgba(232, 147, 90, 0.12)', color: 'var(--color-accent)', border: '1px dashed var(--color-accent)', fontSize: '12px', padding: '6px', fontWeight: '600' }}
+                  >
+                    📱 Switch to Client Portal Login (/portal/login)
+                  </Button>
                 </div>
               );
             })()}
           </form>
 
-          <div className={styles.footer}>
-            Don't have an account? <a href="#" className={styles.link}>Contact your admin</a>
+          <div className={styles.footer} style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+            <div>
+              Are you a client? <a href="/portal/login" className={styles.link} style={{ fontWeight: '600', color: 'var(--color-accent)' }}>Sign in to Client Portal →</a>
+            </div>
+            <div>
+              Don't have an account? <a href="#" className={styles.link}>Contact your admin</a>
+            </div>
           </div>
 
           <div className={styles.bottomFooter}>

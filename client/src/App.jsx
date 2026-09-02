@@ -106,68 +106,68 @@ export default function App() {
                   <Route path='/portal/*' element={<PortalApp />} />
                   <Route element={<ProtectedRoute><Shell /></ProtectedRoute>}>
                     <Route index element={<Navigate to='/dashboard/sales' replace />} />
-                    <Route path='/dashboard/:tab' element={<ProtectedRoute requiredModule="dashboards"><Dashboard /></ProtectedRoute>} />
+                    <Route path='/dashboard/:tab' element={<ProtectedRoute requiredModule="dashboards" requiredTab="dashboard"><Dashboard /></ProtectedRoute>} />
                     <Route path='/dashboard' element={<Navigate to='/dashboard/sales' replace />} />
-                    <Route path='/leads' element={<ProtectedRoute requiredModule="leads"><LeadsPage /></ProtectedRoute>} />
-                    <Route path='/leads/forms' element={<ProtectedRoute requiredModule="leads"><LeadFormsListPage /></ProtectedRoute>} />
-                    <Route path='/leads/forms/new' element={<ProtectedRoute requiredModule="leads"><LeadFormBuilderPage /></ProtectedRoute>} />
-                    <Route path='/leads/forms/:id/edit' element={<ProtectedRoute requiredModule="leads"><LeadFormBuilderPage /></ProtectedRoute>} />
-                    <Route path='/leads/forms/:id/submissions' element={<ProtectedRoute requiredModule="leads"><LeadFormSubmissionsPage /></ProtectedRoute>} />
-                    <Route path='/leads/manager' element={<ProtectedRoute requiredModule="leads"><ManagerDashboard /></ProtectedRoute>} />
-                    <Route path='/projects' element={<ProtectedRoute requiredModule="projects"><ProjectsPage /></ProtectedRoute>} />
-                    <Route path='/projects/resources' element={<ProtectedRoute requiredModule="projects"><ResourceCapacityPage /></ProtectedRoute>} />
-                    <Route path='/projects/coordination' element={<ProtectedRoute requiredModule="projects"><GlobalCoordinationPage /></ProtectedRoute>} />
-                    <Route path='/projects/handover-dashboard' element={<ProtectedRoute requiredModule="projects"><GlobalHandoverDashboard /></ProtectedRoute>} />
-                    <Route path='/projects/retention-dashboard' element={<ProtectedRoute requiredModule="projects"><GlobalRetentionDashboard /></ProtectedRoute>} />
-                    <Route path='/projects/absences' element={<ProtectedRoute requiredModule="projects"><ResourceAbsencePage /></ProtectedRoute>} />
-                    <Route path='/factory/production' element={<ProtectedRoute requiredModule="factory"><GlobalFactoryProductionPage /></ProtectedRoute>} />
-                    <Route path='/projects/:id' element={<ProtectedRoute requiredModule="projects"><ProjectDetail /></ProtectedRoute>} />
-                    <Route path='/tasks' element={<ProtectedRoute requiredModule="tasks"><MyTasksPage /></ProtectedRoute>} />
-                    <Route path='/reports' element={<ProtectedRoute requiredModule="analytics"><ReportsHubPage /></ProtectedRoute>} />
-                    <Route path='/analytics/leads' element={<ProtectedRoute requiredModule="analytics"><LeadAnalytics /></ProtectedRoute>} />
-                    <Route path='/analytics/projects' element={<ProtectedRoute requiredModule="analytics"><ProjectAnalytics /></ProtectedRoute>} />
-                    <Route path='/analytics/boq-variance' element={<ProtectedRoute requiredModule="analytics"><BOQVarianceReportPage /></ProtectedRoute>} />
-                    <Route path='/analytics/vendors' element={<ProtectedRoute requiredModule="analytics"><VendorPerformanceReportPage /></ProtectedRoute>} />
-                    <Route path='/analytics/vendors/:vendorName' element={<ProtectedRoute requiredModule="analytics"><VendorPerformanceDetailPage /></ProtectedRoute>} />
-                    <Route path='/analytics/vendors-capacity' element={<ProtectedRoute requiredModule="analytics"><VendorCapacityPage /></ProtectedRoute>} />
-                    <Route path='/analytics/collection-forecast' element={<ProtectedRoute requiredModule="analytics"><CollectionForecastReportPage /></ProtectedRoute>} />
-                    <Route path='/analytics/profitability' element={<ProtectedRoute requiredModule="analytics"><ProjectProfitabilityReportPage /></ProtectedRoute>} />
-                    <Route path='/analytics/resources' element={<ProtectedRoute requiredModule="analytics"><ResourceUtilisationReportPage /></ProtectedRoute>} />
-                    <Route path='/analytics/resource-workload' element={<ProtectedRoute requiredModule="analytics"><ResourceWorkloadDashboard /></ProtectedRoute>} />
-                    <Route path='/analytics/csat' element={<ProtectedRoute requiredModule="analytics"><CSATReportPage /></ProtectedRoute>} />
-                    <Route path='/analytics/delay-analysis' element={<ProtectedRoute requiredModule="analytics"><DelayAnalysisReportPage /></ProtectedRoute>} />
+                    <Route path='/leads' element={<ProtectedRoute requiredModule="leads" requiredTab="leads"><LeadsPage /></ProtectedRoute>} />
+                    <Route path='/leads/forms' element={<ProtectedRoute requiredModule="leads" requiredTab="lead-forms"><LeadFormsListPage /></ProtectedRoute>} />
+                    <Route path='/leads/forms/new' element={<ProtectedRoute requiredModule="leads" requiredTab="lead-forms"><LeadFormBuilderPage /></ProtectedRoute>} />
+                    <Route path='/leads/forms/:id/edit' element={<ProtectedRoute requiredModule="leads" requiredTab="lead-forms"><LeadFormBuilderPage /></ProtectedRoute>} />
+                    <Route path='/leads/forms/:id/submissions' element={<ProtectedRoute requiredModule="leads" requiredTab="lead-forms"><LeadFormSubmissionsPage /></ProtectedRoute>} />
+                    <Route path='/leads/manager' element={<ProtectedRoute requiredModule="leads" requiredTab="leads-dashboard"><ManagerDashboard /></ProtectedRoute>} />
+                    <Route path='/projects' element={<ProtectedRoute requiredModule="projects" requiredTab="projects"><ProjectsPage /></ProtectedRoute>} />
+                    <Route path='/projects/resources' element={<ProtectedRoute requiredModule="projects" requiredTab="resource-capacity"><ResourceCapacityPage /></ProtectedRoute>} />
+                    <Route path='/projects/coordination' element={<ProtectedRoute requiredModule="projects" requiredTab="coordination"><GlobalCoordinationPage /></ProtectedRoute>} />
+                    <Route path='/projects/handover-dashboard' element={<ProtectedRoute requiredModule="projects" requiredTab="handover-dashboard"><GlobalHandoverDashboard /></ProtectedRoute>} />
+                    <Route path='/projects/retention-dashboard' element={<ProtectedRoute requiredModule="projects" requiredTab="retention-dashboard"><GlobalRetentionDashboard /></ProtectedRoute>} />
+                    <Route path='/projects/absences' element={<ProtectedRoute requiredModule="projects" requiredTab="absences"><ResourceAbsencePage /></ProtectedRoute>} />
+                    <Route path='/factory/production' element={<ProtectedRoute requiredModule="factory" requiredTab="coordination"><GlobalFactoryProductionPage /></ProtectedRoute>} />
+                    <Route path='/projects/:id' element={<ProtectedRoute requiredModule="projects" requiredTab="projects"><ProjectDetail /></ProtectedRoute>} />
+                    <Route path='/tasks' element={<ProtectedRoute requiredModule="tasks" requiredTab="tasks"><MyTasksPage /></ProtectedRoute>} />
+                    <Route path='/reports' element={<ProtectedRoute requiredModule="analytics" requiredTab="reports"><ReportsHubPage /></ProtectedRoute>} />
+                    <Route path='/analytics/leads' element={<ProtectedRoute requiredModule="analytics" requiredTab="analytics-leads"><LeadAnalytics /></ProtectedRoute>} />
+                    <Route path='/analytics/projects' element={<ProtectedRoute requiredModule="analytics" requiredTab="analytics-projects"><ProjectAnalytics /></ProtectedRoute>} />
+                    <Route path='/analytics/boq-variance' element={<ProtectedRoute requiredModule="analytics" requiredTab="analytics-boq"><BOQVarianceReportPage /></ProtectedRoute>} />
+                    <Route path='/analytics/vendors' element={<ProtectedRoute requiredModule="analytics" requiredTab="vendor-performance"><VendorPerformanceReportPage /></ProtectedRoute>} />
+                    <Route path='/analytics/vendors/:vendorName' element={<ProtectedRoute requiredModule="analytics" requiredTab="vendor-performance"><VendorPerformanceDetailPage /></ProtectedRoute>} />
+                    <Route path='/analytics/vendors-capacity' element={<ProtectedRoute requiredModule="analytics" requiredTab="vendor-capacity"><VendorCapacityPage /></ProtectedRoute>} />
+                    <Route path='/analytics/collection-forecast' element={<ProtectedRoute requiredModule="analytics" requiredTab="analytics-collection-forecast"><CollectionForecastReportPage /></ProtectedRoute>} />
+                    <Route path='/analytics/profitability' element={<ProtectedRoute requiredModule="analytics" requiredTab="analytics-profitability"><ProjectProfitabilityReportPage /></ProtectedRoute>} />
+                    <Route path='/analytics/resources' element={<ProtectedRoute requiredModule="analytics" requiredTab="analytics-resources"><ResourceUtilisationReportPage /></ProtectedRoute>} />
+                    <Route path='/analytics/resource-workload' element={<ProtectedRoute requiredModule="analytics" requiredTab="analytics-resource-workload"><ResourceWorkloadDashboard /></ProtectedRoute>} />
+                    <Route path='/analytics/csat' element={<ProtectedRoute requiredModule="analytics" requiredTab="analytics-csat"><CSATReportPage /></ProtectedRoute>} />
+                    <Route path='/analytics/delay-analysis' element={<ProtectedRoute requiredModule="analytics" requiredTab="analytics-delay"><DelayAnalysisReportPage /></ProtectedRoute>} />
                     <Route path='/settings/profile' element={<ProtectedRoute requiredModule="settings"><ProfilePage /></ProtectedRoute>} />
                     <Route path='/settings/security' element={<ProtectedRoute requiredModule="settings"><MySecurityPage /></ProtectedRoute>} />
                     <Route path='/settings/preferences' element={<ProtectedRoute requiredModule="settings"><PreferencesPage /></ProtectedRoute>} />
-                    <Route path='/settings/audit-trail' element={<ProtectedRoute requiredModule="settings"><AuditTrailPage /></ProtectedRoute>} />
-                    <Route path='/settings/approval-matrix' element={<ProtectedRoute requiredModule="settings"><ApprovalMatrixPage /></ProtectedRoute>} />
-                    <Route path='/settings/company' element={<ProtectedRoute requiredModule="settings"><CompanySettingsPage /></ProtectedRoute>} />
-                    <Route path='/settings/superadmin' element={<ProtectedRoute requiredModule="settings"><SuperAdminSettings /></ProtectedRoute>} />
-                    <Route path='/team/members' element={<ProtectedRoute requiredModule="settings"><UsersManager /></ProtectedRoute>} />
-                    <Route path='/team/roles' element={<ProtectedRoute requiredModule="settings"><RolesManager /></ProtectedRoute>} />
+                    <Route path='/settings/audit-trail' element={<ProtectedRoute requiredModule="settings" requiredTab="audit-trail"><AuditTrailPage /></ProtectedRoute>} />
+                    <Route path='/settings/approval-matrix' element={<ProtectedRoute requiredModule="settings" requiredTab="financial-thresholds"><ApprovalMatrixPage /></ProtectedRoute>} />
+                    <Route path='/settings/company' element={<ProtectedRoute requiredModule="settings" requiredTab="company-settings"><CompanySettingsPage /></ProtectedRoute>} />
+                    <Route path='/settings/superadmin' element={<ProtectedRoute requiredModule="settings" requiredTab="superadmin"><SuperAdminSettings /></ProtectedRoute>} />
+                    <Route path='/team/members' element={<ProtectedRoute requiredModule="settings" requiredTab="team-members"><UsersManager /></ProtectedRoute>} />
+                    <Route path='/team/roles' element={<ProtectedRoute requiredModule="settings" requiredTab="roles-permissions"><RolesManager /></ProtectedRoute>} />
                     
                     {/* Flattened Config Routes */}
-                    <Route path='/financial-settings' element={<ProtectedRoute requiredModule="settings"><FinancialSettings /></ProtectedRoute>} />
-                    <Route path='/lead-stages' element={<ProtectedRoute requiredModule="settings"><LeadStagesManager /></ProtectedRoute>} />
-                    <Route path='/custom-fields' element={<ProtectedRoute requiredModule="settings"><CustomFieldsManager /></ProtectedRoute>} />
-                    <Route path='/templates' element={<ProtectedRoute requiredModule="settings"><TemplateBuilder /></ProtectedRoute>} />
-                    <Route path='/trade-activities' element={<ProtectedRoute requiredModule="settings"><TradeActivityTemplatesManager /></ProtectedRoute>} />
-                    <Route path='/qc-checklists' element={<ProtectedRoute requiredModule="settings"><QcChecklistsManager /></ProtectedRoute>} />
-                    <Route path='/conversion-checklist' element={<ProtectedRoute requiredModule="settings"><ConversionChecklistManager /></ProtectedRoute>} />
-                    <Route path='/automations' element={<ProtectedRoute requiredModule="settings"><AutomationBuilder /></ProtectedRoute>} />
-                    <Route path='/vendor-lead-times' element={<ProtectedRoute requiredModule="settings"><LeadTimesManager /></ProtectedRoute>} />
-                    <Route path='/organization' element={<ProtectedRoute requiredModule="settings"><OrganizationManager /></ProtectedRoute>} />
-                    <Route path='/login-history' element={<ProtectedRoute requiredModule="settings"><LoginHistoryPage /></ProtectedRoute>} />
-                    <Route path='/api-keys' element={<ProtectedRoute requiredModule="settings"><ApiKeysManager /></ProtectedRoute>} />
-                    <Route path='/email-templates' element={<ProtectedRoute requiredModule="settings"><EmailTemplateBuilder /></ProtectedRoute>} />
-                    <Route path='/logs' element={<ProtectedRoute requiredModule="settings"><LogsViewer /></ProtectedRoute>} />
+                    <Route path='/financial-settings' element={<ProtectedRoute requiredModule="settings" requiredTab="financial-thresholds"><FinancialSettings /></ProtectedRoute>} />
+                    <Route path='/lead-stages' element={<ProtectedRoute requiredModule="settings" requiredTab="lead-stages"><LeadStagesManager /></ProtectedRoute>} />
+                    <Route path='/custom-fields' element={<ProtectedRoute requiredModule="settings" requiredTab="custom-fields"><CustomFieldsManager /></ProtectedRoute>} />
+                    <Route path='/templates' element={<ProtectedRoute requiredModule="settings" requiredTab="templates"><TemplateBuilder /></ProtectedRoute>} />
+                    <Route path='/trade-activities' element={<ProtectedRoute requiredModule="settings" requiredTab="trade-activities"><TradeActivityTemplatesManager /></ProtectedRoute>} />
+                    <Route path='/qc-checklists' element={<ProtectedRoute requiredModule="settings" requiredTab="qc-checklists"><QcChecklistsManager /></ProtectedRoute>} />
+                    <Route path='/conversion-checklist' element={<ProtectedRoute requiredModule="settings" requiredTab="conversion-checklist"><ConversionChecklistManager /></ProtectedRoute>} />
+                    <Route path='/automations' element={<ProtectedRoute requiredModule="settings" requiredTab="automations"><AutomationBuilder /></ProtectedRoute>} />
+                    <Route path='/vendor-lead-times' element={<ProtectedRoute requiredModule="settings" requiredTab="vendor-lead-times"><LeadTimesManager /></ProtectedRoute>} />
+                    <Route path='/organization' element={<ProtectedRoute requiredModule="settings" requiredTab="organization"><OrganizationManager /></ProtectedRoute>} />
+                    <Route path='/login-history' element={<ProtectedRoute requiredModule="settings" requiredTab="login-history"><LoginHistoryPage /></ProtectedRoute>} />
+                    <Route path='/api-keys' element={<ProtectedRoute requiredModule="settings" requiredTab="api-keys"><ApiKeysManager /></ProtectedRoute>} />
+                    <Route path='/email-templates' element={<ProtectedRoute requiredModule="settings" requiredTab="email-templates"><EmailTemplateBuilder /></ProtectedRoute>} />
+                    <Route path='/logs' element={<ProtectedRoute requiredModule="settings" requiredTab="logs"><LogsViewer /></ProtectedRoute>} />
                     {/* End Flattened Config Routes */}
 
-                    <Route path='/financial-approvals' element={<ProtectedRoute requiredModule="finance"><FinancialApprovalsPage /></ProtectedRoute>} />
-                    <Route path='/finance' element={<ProtectedRoute requiredModule="finance"><FinanceDashboardPage /></ProtectedRoute>} />
-                    <Route path='/warehouse' element={<ProtectedRoute requiredModule="warehouse"><WarehousePage /></ProtectedRoute>} />
-                    <Route path="developer/api" element={<ProtectedRoute requiredModule="settings"><ApiIntegrationPage /></ProtectedRoute>} />
-                    <Route path="developer/webhooks" element={<ProtectedRoute requiredModule="settings"><WebhooksManager /></ProtectedRoute>} />
+                    <Route path='/financial-approvals' element={<ProtectedRoute requiredModule="finance" requiredTab="financial-approvals"><FinancialApprovalsPage /></ProtectedRoute>} />
+                    <Route path='/finance' element={<ProtectedRoute requiredModule="finance" requiredTab="finance-overview"><FinanceDashboardPage /></ProtectedRoute>} />
+                    <Route path='/warehouse' element={<ProtectedRoute requiredModule="warehouse" requiredTab="coordination"><WarehousePage /></ProtectedRoute>} />
+                    <Route path="developer/api" element={<ProtectedRoute requiredModule="settings" requiredTab="api-integration"><ApiIntegrationPage /></ProtectedRoute>} />
+                    <Route path="developer/webhooks" element={<ProtectedRoute requiredModule="settings" requiredTab="webhooks"><WebhooksManager /></ProtectedRoute>} />
                   </Route>
                   <Route path='*' element={<NotFound />} />
                 </Routes>

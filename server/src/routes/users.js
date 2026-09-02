@@ -11,8 +11,8 @@ const pool = require('../config/db');
 const crypto = require('crypto');
 const { logAction } = require('../services/auditLog');
 const { queueEmail } = require('../services/emailService');
-const aiEmployeeService = require('../services/aiEmployeeService');
 const { ROLE_DEFAULTS, getRoleConfig } = require('../constants/roleDefaults');
+const { PLAN_DEFAULTS, getModulesForTabs } = require('../constants/permissions');
 
 const router = express.Router();
 
@@ -1013,7 +1013,45 @@ router.get('/:id/effective-permissions', authorize('users:manage'), async (req, 
       }
     });
 
-    return success(res, effectiveMap);
+    // Filter actions to workspace plan allowed modules
+    let tenantPlan = 'starter';
+    let isRootPlatformAdmin = false;
+    if (req.tenantId) {
+      const tenantRes = await pool.query('SELECT plan, slug FROM tenants WHERE id = $1', [req.tenantId]);
+      if (tenantRes.rows.length > 0) {
+        tenantPlan = (tenantRes.rows[0].plan || 'starter').toLowerCase();
+        isRootPlatformAdmin = (tenantRes.rows[0].slug === 'demo') && (req.user?.role === 'superadmin');
+      }
+    }
+
+    let enabledTabs = null;
+    try {
+      const planConfigRes = await pool.query('SELECT enabled_tabs FROM sidebar_tabs_plan_config WHERE LOWER(plan_name) = LOWER($1)', [tenantPlan]);
+      if (planConfigRes.rows.length > 0 && planConfigRes.rows[0].enabled_tabs) {
+        const raw = planConfigRes.rows[0].enabled_tabs;
+        enabledTabs = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      }
+    } catch (e) {}
+
+    if (!enabledTabs || !Array.isArray(enabledTabs) || enabledTabs.length === 0) {
+      enabledTabs = PLAN_DEFAULTS[tenantPlan] || PLAN_DEFAULTS.starter;
+    }
+
+    const allowedModules = new Set(getModulesForTabs(enabledTabs).map(m => m.id));
+
+    const finalEffectiveMap = {};
+    Object.entries(effectiveMap).forEach(([action, sources]) => {
+      if (isRootPlatformAdmin || action === '*') {
+        finalEffectiveMap[action] = sources;
+        return;
+      }
+      const [mod] = action.split(':');
+      if (allowedModules.has(mod)) {
+        finalEffectiveMap[action] = sources;
+      }
+    });
+
+    return success(res, finalEffectiveMap);
   } catch (error) {
     logger.error('[Users API] Get effective permissions error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to calculate effective permissions', 500);

@@ -36,7 +36,9 @@ const pushToUser = (userId, payload) => {
 };
 
 const notifyUser = async (tenantId, userId, notification) => {
-  const { title, body, type, lead_id, actor_id } = notification;
+  if (!userId) return null;
+  const { title, body, message, type = 'notification', lead_id, actor_id, actor_name, reference_url } = notification;
+  const msgText = message || body || '';
   const id = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
 
   try {
@@ -58,25 +60,28 @@ const notifyUser = async (tenantId, userId, notification) => {
     }
 
     await pool.query(`
-      INSERT INTO notifications (id, tenant_id, user_id, title, message, type, lead_id, actor_id, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
-    `, [id, tenantId, userId, title, body, type, lead_id, actor_id]);
+      INSERT INTO notifications (id, tenant_id, user_id, title, message, type, lead_id, actor_id, actor_name, reference_url, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
+    `, [id, tenantId, userId, title || 'Notification', msgText, type, lead_id || null, actor_id || null, actor_name || null, reference_url || null]);
 
     const newNotification = {
       id,
       tenant_id: tenantId,
       user_id: userId,
-      title,
-      body,
+      title: title || 'Notification',
+      body: msgText,
+      message: msgText,
       type,
-      lead_id,
-      actor_id,
+      lead_id: lead_id || null,
+      actor_id: actor_id || null,
+      actor_name: actor_name || null,
+      reference_url: reference_url || null,
       is_read: false,
       created_at: new Date().toISOString(),
       suppress_push: inDnd || prefs.push_score_changes === false
     };
 
-    // Push to SSE
+    // Push to SSE (strictly isolated to this user)
     pushToUser(userId, newNotification);
 
     // Dispatch Email if not explicitly disabled AND not in DND
@@ -87,10 +92,10 @@ const notifyUser = async (tenantId, userId, notification) => {
           tenantId,
           userId,
           userRes.rows[0].email,
-          title,
+          title || 'New Notification',
           'test_override',
-          { htmlOverride: body }
-        );
+          { htmlOverride: msgText }
+        ).catch(err => logger.error('[notifyUser] queueEmail error:', err.message));
       }
     }
 

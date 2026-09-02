@@ -264,7 +264,7 @@ export default function PortalChangeOrders() {
                 </div>
               )}
 
-              {co.status === 'submitted' && (
+              {['pending', 'submitted', 'pending_approval'].includes(co.status) && (
                 <div className={styles.cardActions}>
                   <button
                     className={`${styles.btn} ${styles.btnReject}`}

@@ -33,15 +33,15 @@ export default function LogsViewer() {
           id: l.id, 
           timestamp: l.created_at, 
           event: l.event, 
-          webhook: l.webhook_id || l.webhook?.name || 'Unknown', 
+          webhook: l.webhook_name || l.webhook_id || l.webhook?.name || 'Unknown', 
           status: l.status_code, 
           latency: l.latency_ms, 
-          attempt: l.attempt_number || l.attempt_count, 
+          attempt: l.attempt_number || l.attempt_count || 1, 
           payload: l.payload,
           reqHeaders: l.request_headers,
           resHeaders: l.response_headers,
           responseBody: l.response_body,
-          error: l.error || null,
+          error: l.error || (l.status_code >= 400 ? l.response_body : null),
           debugMode: !!l.request_headers
         })))
       }).catch(() => toast.error('Failed to load webhook logs'))
@@ -126,6 +126,62 @@ export default function LogsViewer() {
     },
     { key: 'actionsExecuted', label: 'Actions Executed', render: (r) => r.actions.join(', ') || '-' },
     { key: 'duration', label: 'Duration', render: (r) => `${r.duration}ms` }
+  ]
+
+  const inboundColumns = [
+    { 
+      key: 'source', label: 'Source / Provider', 
+      render: (r) => <div style={{ fontWeight: 500 }}>{r.provider_name || r.source_key || 'Website'}</div> 
+    },
+    { 
+      key: 'timestamp', label: 'Received At', 
+      render: (r) => <div style={{ fontSize: 'var(--text-sm)' }}>{new Date(r.created_at).toLocaleString()}</div> 
+    },
+    { 
+      key: 'status', label: 'Ingest Status', 
+      render: (r) => (
+        <Badge variant={r.status === 'success' ? 'success' : 'danger'}>
+          {r.status === 'success' ? '✓ Processed' : '✕ Error'}
+        </Badge>
+      )
+    },
+    { 
+      key: 'lead', label: 'Matched Lead', 
+      render: (r) => (
+        r.matched_lead_id ? (
+          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary)', fontWeight: 600 }}>
+            Lead #{r.matched_lead_id.slice(0, 8)}
+          </span>
+        ) : (
+          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>None</span>
+        )
+      )
+    },
+    { 
+      key: 'error', label: 'Error Message', 
+      render: (r) => r.error_message ? <span style={{ color: 'var(--color-danger)', fontSize: 'var(--text-xs)' }}>{r.error_message}</span> : <span style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-xs)' }}>-</span>
+    },
+    { 
+      key: 'actions', label: 'Actions', align: 'right',
+      render: (r) => (
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => setSelectedLog({
+            webhook: r.provider_name || 'Inbound Webhook',
+            event: 'lead.inbound_ingest',
+            timestamp: r.created_at,
+            latency: 0,
+            attempt: 1,
+            payload: r.payload || r.raw_payload,
+            status: r.status === 'success' ? 200 : 400,
+            error: r.error_message
+          })}
+        >
+          Inspect Payload
+        </Button>
+      )
+    }
   ]
 
   const filteredDeliveries = deliveries.filter(d => {
@@ -240,11 +296,17 @@ export default function LogsViewer() {
           </div>
         )}
 
-      {activeTab === 'inbound' && (
-        <div style={{padding:'32px', textAlign:'center', color:'var(--color-text-muted)'}}>
-          Inbound Webhook logs are currently empty.
-        </div>
-      )}
+        {activeTab === 'inbound' && (
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <div className={layoutStyles.tableCard} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, padding: 0 }}>
+              <DataTable 
+                columns={inboundColumns} 
+                data={inbounds} 
+                emptyMessage="No inbound lead webhook logs found."
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Log Inspector Modal */}

@@ -540,6 +540,13 @@ pool.query(`
   ALTER TABLE sessions ALTER COLUMN expires_at TYPE TIMESTAMPTZ USING expires_at::timestamptz;
 
   ALTER TABLE tenants ADD COLUMN IF NOT EXISTS max_users INT DEFAULT 10;
+  ALTER TABLE notifications ADD COLUMN IF NOT EXISTS title TEXT;
+  ALTER TABLE notifications ADD COLUMN IF NOT EXISTS lead_id UUID;
+  ALTER TABLE notifications ADD COLUMN IF NOT EXISTS reference_url VARCHAR(500);
+  ALTER TABLE notifications ADD COLUMN IF NOT EXISTS reference_id UUID;
+  ALTER TABLE notifications ADD COLUMN IF NOT EXISTS reference_type VARCHAR(100);
+  ALTER TABLE notifications ADD COLUMN IF NOT EXISTS actor_id UUID;
+  ALTER TABLE notifications ADD COLUMN IF NOT EXISTS actor_name VARCHAR(255);
   ALTER TABLE notifications ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT false;
 
   CREATE TABLE IF NOT EXISTS employee_offboarding (

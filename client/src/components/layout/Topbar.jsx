@@ -74,7 +74,11 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed,
     try {
       const res = await api.post('/superadmin/switch-tenant', { tenantId })
       if (res.data.success) {
-        setUser(res.data.data.user)
+        const payload = res.data.data;
+        if (payload.accessToken) {
+          api.defaults.headers.common['Authorization'] = `Bearer ${payload.accessToken}`;
+        }
+        setUser(payload.user)
         window.dispatchEvent(new Event('app:sidebar-config-updated'))
         window.dispatchEvent(new Event('app:tenant-updated'))
         window.dispatchEvent(new Event('app:auth-change'))

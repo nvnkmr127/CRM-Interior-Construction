@@ -6,7 +6,7 @@ const { success, fail } = require('../utils/response');
 const pool = require('../config/db');
 const { queueEmail } = require('../services/emailService');
 const { logActivity } = require('../utils/activityLogger');
-const { PERMISSION_MODULES, PERMISSION_ACTIONS, isValidPermission, ACTION_DEPENDENCIES } = require('../constants/permissions');
+const { PERMISSION_MODULES, PERMISSION_ACTIONS, isValidPermission, ACTION_DEPENDENCIES, PLAN_DEFAULTS, getModulesForTabs } = require('../constants/permissions');
 
 const validateDependencies = (permsArray) => {
   if (permsArray.includes('*')) return null;
@@ -28,9 +28,47 @@ const router = express.Router();
 
 router.use(authenticate);
 
-// Get permissions schema for frontend rendering
-router.get('/permissions-schema', (req, res) => {
-  return success(res, { modules: PERMISSION_MODULES, actions: PERMISSION_ACTIONS });
+// Get permissions schema for frontend rendering (scoped to current workspace plan)
+router.get('/permissions-schema', async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId;
+    let tenantPlan = 'starter';
+    let isRootPlatformAdmin = false;
+
+    if (tenantId) {
+      const tenantRes = await pool.query('SELECT plan, slug FROM tenants WHERE id = $1', [tenantId]);
+      if (tenantRes.rows.length > 0) {
+        tenantPlan = (tenantRes.rows[0].plan || 'starter').toLowerCase();
+        isRootPlatformAdmin = (tenantRes.rows[0].slug === 'demo') && (req.user?.role === 'superadmin');
+      }
+    }
+
+    let enabledTabs = null;
+    try {
+      const planConfigRes = await pool.query('SELECT enabled_tabs FROM sidebar_tabs_plan_config WHERE LOWER(plan_name) = LOWER($1)', [tenantPlan]);
+      if (planConfigRes.rows.length > 0 && planConfigRes.rows[0].enabled_tabs) {
+        const raw = planConfigRes.rows[0].enabled_tabs;
+        enabledTabs = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      }
+    } catch (e) {}
+
+    if (!enabledTabs || !Array.isArray(enabledTabs) || enabledTabs.length === 0) {
+      enabledTabs = PLAN_DEFAULTS[tenantPlan] || PLAN_DEFAULTS.starter;
+    }
+
+    const filteredModules = isRootPlatformAdmin 
+      ? PERMISSION_MODULES 
+      : getModulesForTabs(enabledTabs);
+
+    return success(res, { 
+      modules: filteredModules, 
+      actions: PERMISSION_ACTIONS, 
+      enabledTabs, 
+      plan: tenantPlan 
+    });
+  } catch (error) {
+    return next(error);
+  }
 });
 
 // Get all roles for the tenant
@@ -190,10 +228,36 @@ router.post('/', authorize('users:manage'), async (req, res) => {
   }
 });
 
-// Get all templates
+// Get all templates (filtered by workspace plan)
 router.get('/templates', async (req, res) => {
   const tenantId = req.tenantId;
   try {
+    let tenantPlan = 'starter';
+    let isRootPlatformAdmin = false;
+
+    if (tenantId) {
+      const tenantRes = await pool.query('SELECT plan, slug FROM tenants WHERE id = $1', [tenantId]);
+      if (tenantRes.rows.length > 0) {
+        tenantPlan = (tenantRes.rows[0].plan || 'starter').toLowerCase();
+        isRootPlatformAdmin = (tenantRes.rows[0].slug === 'demo') && (req.user?.role === 'superadmin');
+      }
+    }
+
+    let enabledTabs = null;
+    try {
+      const planConfigRes = await pool.query('SELECT enabled_tabs FROM sidebar_tabs_plan_config WHERE LOWER(plan_name) = LOWER($1)', [tenantPlan]);
+      if (planConfigRes.rows.length > 0 && planConfigRes.rows[0].enabled_tabs) {
+        const raw = planConfigRes.rows[0].enabled_tabs;
+        enabledTabs = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      }
+    } catch (e) {}
+
+    if (!enabledTabs || !Array.isArray(enabledTabs) || enabledTabs.length === 0) {
+      enabledTabs = PLAN_DEFAULTS[tenantPlan] || PLAN_DEFAULTS.starter;
+    }
+
+    const allowedModules = new Set(getModulesForTabs(enabledTabs).map(m => m.id));
+
     const { rows } = await pool.query(`
       SELECT id, name, description, category, permissions, created_at 
       FROM role_templates 
@@ -217,8 +281,26 @@ router.get('/templates', async (req, res) => {
       permissions: typeof r.permissions === 'string' ? JSON.parse(r.permissions) : r.permissions
     }));
 
+    // Filter builtins if not platform superadmin
+    const filteredBuiltins = isRootPlatformAdmin ? builtinTemplates : builtinTemplates.filter(t => {
+      if (t.id === 't-admin') return true;
+      const actions = t.permissions?.actions || [];
+      return actions.some(act => {
+        const [mod] = act.split(':');
+        return allowedModules.has(mod);
+      });
+    }).map(t => {
+      if (t.id === 't-admin' || isRootPlatformAdmin) return t;
+      const filteredActions = (t.permissions?.actions || []).filter(act => {
+        if (act === '*') return true;
+        const [mod] = act.split(':');
+        return allowedModules.has(mod);
+      });
+      return { ...t, permissions: { ...t.permissions, actions: filteredActions } };
+    });
+
     // Merge builtins if not present in DB
-    const allTemplates = [...builtinTemplates, ...dbTemplates.filter(db => db.category !== 'built-in')];
+    const allTemplates = [...filteredBuiltins, ...dbTemplates.filter(db => db.category !== 'built-in')];
     
     return success(res, allTemplates);
   } catch (error) {

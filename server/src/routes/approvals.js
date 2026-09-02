@@ -27,8 +27,8 @@ const getTableForModule = (module) => {
 router.post('/:module/:id/:action', async (req, res, next) => {
   const { module, id, action } = req.params;
   const { comments } = req.body;
-  const tenantId = req.user.tenant_id;
-  const userId = req.user.id;
+  const tenantId = req.tenantId || (req.user && (req.user.tenantId || req.user.tenant_id));
+  const userId = req.user.id || req.user.userId;
 
   // action can be 'approve' or 'reject'
   if (!['approve', 'reject', 'request'].includes(action)) {
@@ -49,8 +49,6 @@ router.post('/:module/:id/:action', async (req, res, next) => {
 
   try {
     // 1. Manually check permission since authorize middleware might be tricky with dynamic route param
-    // Wait, we can just check req.user.permissions here or use the middleware in the app.js.
-    // For safety, we verify here:
     const hasPermission = req.user.role?.name === 'superadmin' || 
                           (req.user.permissions && (req.user.permissions.includes('*') || req.user.permissions.includes(`${module}:approve`)));
     
@@ -94,7 +92,7 @@ router.post('/:module/:id/:action', async (req, res, next) => {
 // Get Approval History for an Entity
 router.get('/:module/:id/history', async (req, res, next) => {
   const { module, id } = req.params;
-  const tenantId = req.user.tenant_id;
+  const tenantId = req.tenantId || (req.user && (req.user.tenantId || req.user.tenant_id));
 
   try {
     const query = `

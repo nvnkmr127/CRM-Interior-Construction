@@ -1,15 +1,19 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 const pool = require('../src/db/pool');
 const { registerUser } = require('../src/services/auth/register');
+const { PLAN_DEFAULTS, getModulesForTabs } = require('../src/constants/permissions');
 
 async function provisionTenant() {
   const args = process.argv.slice(2);
   if (args.length < 5) {
-    console.error('Usage: node server/scripts/provisionTenant.js <name> <slug> <adminEmail> <adminName> <adminPassword>');
+    console.error('Usage: node server/scripts/provisionTenant.js <name> <slug> <adminEmail> <adminName> <adminPassword> [plan]');
     process.exit(1);
   }
 
-  const [name, slug, adminEmail, adminName, adminPassword] = args;
+  const [name, slug, adminEmail, adminName, adminPassword, planArg] = args;
+  const plan = (planArg || 'starter').toLowerCase();
+  const planTabs = PLAN_DEFAULTS[plan] || PLAN_DEFAULTS.starter;
+  const allowedModules = getModulesForTabs(planTabs).map(m => m.id);
 
   const client = await pool.connect();
   try {
@@ -17,9 +21,9 @@ async function provisionTenant() {
 
     // 1. Create Tenant (Organization)
     const tenantRes = await client.query(
-      `INSERT INTO tenants (name, slug) VALUES ($1, $2) 
-       ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
-      [name, slug]
+      `INSERT INTO tenants (name, slug, plan) VALUES ($1, $2, $3) 
+       ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, plan = EXCLUDED.plan RETURNING id`,
+      [name, slug, plan]
     );
     const tenantId = tenantRes.rows[0].id;
     console.log(`Tenant created/retrieved: "${name}" with slug "${slug}". ID: ${tenantId}`);
@@ -33,7 +37,7 @@ async function provisionTenant() {
     );
     console.log('Default security settings initialized for tenant.');
 
-    // 3. Create Default Superadmin Role
+    // 3. Create Default Superadmin Role scoped to plan
     const { rows } = await client.query(
       `INSERT INTO roles (tenant_id, name, permissions, is_system)
        VALUES ($1, $2, $3, $4)
@@ -41,7 +45,13 @@ async function provisionTenant() {
       [
         tenantId,
         'superadmin',
-        JSON.stringify(['*']),
+        JSON.stringify({
+          actions: ['*'],
+          modules: allowedModules,
+          scopes: {},
+          fields: {},
+          pages: {}
+        }),
         true
       ]
     );

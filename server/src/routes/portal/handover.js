@@ -18,7 +18,7 @@ router.get('/', async (req, res, next) => {
     const { projectId, tenantId } = req.portalUser;
     const checklist = await getChecklistByProjectId(projectId, tenantId);
     if (!checklist) {
-      return fail(res, 'NOT_FOUND', 'Handover checklist not found', 404);
+      return success(res, null);
     }
 
     const downloadUrl = checklist.pdf_key ? await storage.getDownloadUrl(checklist.pdf_key) : null;

@@ -213,12 +213,15 @@ export function AuthProvider({ children }) {
     };
     
     const handleAppLogout = () => {
-      localStorage.removeItem('isAuthenticated');
-      setUser(null);
-      navigate('/login');
+      if (!window.location.pathname.startsWith('/portal')) {
+        localStorage.removeItem('isAuthenticated');
+        setUser(null);
+        navigate('/login');
+      }
     };
 
     const handleConfigUpdate = () => {
+      if (window.location.pathname.startsWith('/portal')) return;
       api.get('/auth/me').then(res => {
         if (res.data?.success) {
           setUser(res.data.data.user);

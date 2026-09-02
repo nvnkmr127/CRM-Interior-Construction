@@ -9,6 +9,7 @@ const { logoutUser } = require('../services/auth/logout');
 const authenticate = require('../middleware/authenticate');
 const { success, fail } = require('../utils/response');
 const { ROLE_DEFAULTS, getRoleConfig } = require('../constants/roleDefaults');
+const { PLAN_DEFAULTS } = require('../constants/permissions');
 
 const router = express.Router();
 
@@ -291,33 +292,6 @@ router.get('/me', async (req, res, next) => {
       }
     }
 
-    // Fetch sidebar configurations if they exist
-    const PLAN_DEFAULTS = {
-      starter: [
-        'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar',
-        'projects', 'tasks', 'reports', 'team-management', 'team-members', 'roles-permissions', 'organization'
-      ],
-      growth: [
-        'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
-        'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
-        'analytics-delay', 'coordination', 'handover-dashboard', 'retention-dashboard', 'resource-capacity',
-        'absences', 'vendor-performance', 'vendor-capacity', 'team-management', 'team-members',
-        'roles-permissions', 'organization'
-      ],
-      enterprise: [
-        'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
-        'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
-        'analytics-delay', 'analytics-boq', 'analytics-resources', 'analytics-resource-workload',
-        'lead-stages', 'custom-fields', 'lead-forms', 'templates', 'trade-activities', 'qc-checklists',
-        'conversion-checklist', 'automations', 'coordination', 'handover-dashboard', 'retention-dashboard',
-        'resource-capacity', 'absences', 'vendor-performance', 'vendor-capacity', 'vendor-lead-times',
-        'finance-overview', 'financial-approvals', 'analytics-profitability', 'analytics-collection-forecast',
-        'financial-thresholds', 'team-management', 'team-members', 'roles-permissions', 'organization',
-        'login-history', 'audit-trail', 'superadmin', 'api-keys', 'api-integration', 'webhooks',
-        'email-templates', 'logs'
-      ]
-    };
-
     const planName = (row.tenant_plan || 'starter').toLowerCase();
     let enabledTabs = null;
     try {
@@ -379,32 +353,6 @@ router.get('/me', async (req, res, next) => {
 
 router.get('/sidebar-config', authenticate, async (req, res, next) => {
   try {
-    const PLAN_DEFAULTS = {
-      starter: [
-        'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar',
-        'projects', 'tasks', 'reports', 'team-management', 'team-members', 'roles-permissions', 'organization'
-      ],
-      growth: [
-        'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
-        'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
-        'analytics-delay', 'coordination', 'handover-dashboard', 'retention-dashboard', 'resource-capacity',
-        'absences', 'vendor-performance', 'vendor-capacity', 'team-management', 'team-members',
-        'roles-permissions', 'organization'
-      ],
-      enterprise: [
-        'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
-        'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
-        'analytics-delay', 'analytics-boq', 'analytics-resources', 'analytics-resource-workload',
-        'lead-stages', 'custom-fields', 'lead-forms', 'templates', 'trade-activities', 'qc-checklists',
-        'conversion-checklist', 'automations', 'coordination', 'handover-dashboard', 'retention-dashboard',
-        'resource-capacity', 'absences', 'vendor-performance', 'vendor-capacity', 'vendor-lead-times',
-        'finance-overview', 'financial-approvals', 'analytics-profitability', 'analytics-collection-forecast',
-        'financial-thresholds', 'team-management', 'team-members', 'roles-permissions', 'organization',
-        'login-history', 'audit-trail', 'superadmin', 'api-keys', 'api-integration', 'webhooks',
-        'email-templates', 'logs'
-      ]
-    };
-
     const tenantRes = await pool.query('SELECT plan FROM tenants WHERE id = $1', [req.tenantId]);
     const tenantPlan = (tenantRes.rows[0]?.plan || 'starter').toLowerCase();
 

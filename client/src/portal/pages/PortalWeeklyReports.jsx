@@ -1,8 +1,7 @@
 /* eslint-disable no-unused-vars, react-hooks/immutability */
 import React, { useState, useEffect } from 'react'
-import { Card } from '../../components/ui'
 import api from '../../api/axios'
-import styles from './PortalProject.module.css' // We can reuse standard styling, or use inline/tailwind if available
+import styles from './PortalWeeklyReports.module.css'
 
 export default function PortalWeeklyReports() {
   const [reports, setReports] = useState([])
@@ -17,7 +16,7 @@ export default function PortalWeeklyReports() {
     try {
       setLoading(true)
       const res = await api.get('/portal/project/weekly-reports')
-      setReports(res.data)
+      setReports(res.data?.data || res.data || [])
     } catch (err) {
       setError('Failed to load weekly reports.')
       console.error(err)
@@ -26,91 +25,99 @@ export default function PortalWeeklyReports() {
     }
   }
 
-  if (loading) return <div className={styles.loading}>Loading reports...</div>
-  if (error) return <div className={styles.error}>{error}</div>
-
-  if (reports.length === 0) {
-    return (
-      <div className={styles.container}>
-        <h1 className={styles.title}>Weekly Progress Reports</h1>
-        <Card>
-          <div style={{ padding: '2rem', textAlign: 'center' }}>
-            <p style={{ color: 'var(--color-text-secondary)' }}>No weekly reports have been generated yet.</p>
-          </div>
-        </Card>
-      </div>
-    )
+  if (loading) {
+    return <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-secondary)' }}>Loading reports...</div>
+  }
+  
+  if (error) {
+    return <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-danger)' }}>{error}</div>
   }
 
   return (
-    <div className={styles.container} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '1rem' }}>
-      <h1 className={styles.title} style={{ fontSize: '1.5rem', fontWeight: 600 }}>Weekly Progress Reports</h1>
-      
-      {reports.map(report => (
-        <Card key={report.id} style={{ marginBottom: '1rem', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
-          <div style={{ backgroundColor: 'var(--color-bg-secondary)', borderBottom: '1px solid var(--color-border)', padding: '1rem' }}>
-            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Report for week ending: {new Date(report.report_date).toLocaleDateString()}</h2>
-          </div>
-          <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            
-            <section>
-              <h3 style={{ fontWeight: 600, marginBottom: '0.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.25rem' }}>Tasks Completed</h3>
-              {(!report.tasks_completed_json || report.tasks_completed_json.length === 0) ? (
-                <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>No tasks completed this week.</p>
-              ) : (
-                <ul style={{ listStyleType: 'disc', paddingLeft: '1.5rem', fontSize: '0.9rem' }}>
-                  {report.tasks_completed_json.map((task, i) => (
-                    <li key={i}>{task.title}</li>
-                  ))}
-                </ul>
-              )}
-            </section>
+    <div className={styles.page}>
+      <div className={styles.header}>
+        <h1 className={styles.pageTitle}>Weekly Progress Reports</h1>
+        <div className={styles.pageSub}>Detailed weekly construction updates, milestone achievements, and site logs.</div>
+      </div>
 
-            <section>
-              <h3 style={{ fontWeight: 600, marginBottom: '0.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.25rem' }}>Milestones Reached</h3>
-              {(!report.milestones_reached_json || report.milestones_reached_json.length === 0) ? (
-                <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>No milestones reached this week.</p>
-              ) : (
-                <ul style={{ listStyleType: 'disc', paddingLeft: '1.5rem', fontSize: '0.9rem' }}>
-                  {report.milestones_reached_json.map((m, i) => (
-                    <li key={i}>{m.name}</li>
-                  ))}
-                </ul>
-              )}
-            </section>
+      {reports.length === 0 ? (
+        <div className={styles.emptyState}>
+          <div style={{ fontSize: '40px', marginBottom: '12px' }}>📊</div>
+          <div style={{ fontWeight: 600, fontSize: 'var(--text-md)', color: 'var(--color-text)' }}>No weekly reports published yet</div>
+          <div style={{ fontSize: 'var(--text-xs)', marginTop: '4px' }}>Your site supervisor will publish weekly logs as construction progresses.</div>
+        </div>
+      ) : (
+        <div className={styles.reportList}>
+          {reports.map(report => (
+            <div key={report.id} className={styles.reportCard}>
+              <div className={styles.reportHeader}>
+                <h2 className={styles.reportDateTitle}>
+                  Report for week ending: {new Date(report.report_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </h2>
+              </div>
+              
+              <div className={styles.reportBody}>
+                
+                <section className={styles.section}>
+                  <h3 className={styles.sectionTitle}>Tasks Completed</h3>
+                  {(!report.tasks_completed_json || report.tasks_completed_json.length === 0) ? (
+                    <p className={styles.emptyText}>No tasks completed this week.</p>
+                  ) : (
+                    <ul className={styles.list}>
+                      {report.tasks_completed_json.map((task, i) => (
+                        <li key={i}>{task.title || task}</li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
 
-            <section>
-              <h3 style={{ fontWeight: 600, marginBottom: '0.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.25rem' }}>Site Photos (from DSRs)</h3>
-              {(!report.photos_json || report.photos_json.length === 0) ? (
-                <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>No photos reported this week.</p>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1rem', marginTop: '0.5rem' }}>
-                  {report.photos_json.map((photo, i) => (
-                    <div key={i} style={{ border: '1px solid var(--color-border)', borderRadius: '4px', overflow: 'hidden' }}>
-                      <img src={photo.url} alt={photo.caption || 'Site photo'} style={{ width: '100%', height: '100px', objectFit: 'cover' }} />
-                      {photo.caption && <p style={{ fontSize: '0.8rem', padding: '0.25rem', margin: 0, backgroundColor: 'var(--color-bg-secondary)', textAlign: 'center' }}>{photo.caption}</p>}
+                <section className={styles.section}>
+                  <h3 className={styles.sectionTitle}>Milestones Reached</h3>
+                  {(!report.milestones_reached_json || report.milestones_reached_json.length === 0) ? (
+                    <p className={styles.emptyText}>No milestones reached this week.</p>
+                  ) : (
+                    <ul className={styles.list}>
+                      {report.milestones_reached_json.map((m, i) => (
+                        <li key={i}>{m.name || m}</li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+
+                <section className={styles.section}>
+                  <h3 className={styles.sectionTitle}>Site Photos (from DSRs)</h3>
+                  {(!report.photos_json || report.photos_json.length === 0) ? (
+                    <p className={styles.emptyText}>No photos reported this week.</p>
+                  ) : (
+                    <div className={styles.photoGrid}>
+                      {report.photos_json.map((photo, i) => (
+                        <div key={i} className={styles.photoItem}>
+                          <img src={photo.url} alt={photo.caption || 'Site photo'} className={styles.photoImg} />
+                          {photo.caption && <p className={styles.photoCaption}>{photo.caption}</p>}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
-            </section>
+                  )}
+                </section>
 
-            <section>
-              <h3 style={{ fontWeight: 600, marginBottom: '0.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.25rem' }}>Next Week's Plan</h3>
-              {(!report.next_week_plan_json || report.next_week_plan_json.length === 0) ? (
-                <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>No tasks scheduled for next week.</p>
-              ) : (
-                <ul style={{ listStyleType: 'disc', paddingLeft: '1.5rem', fontSize: '0.9rem' }}>
-                  {report.next_week_plan_json.map((task, i) => (
-                    <li key={i}>{task.title} (Due: {new Date(task.due_date).toLocaleDateString()})</li>
-                  ))}
-                </ul>
-              )}
-            </section>
+                <section className={styles.section}>
+                  <h3 className={styles.sectionTitle}>Next Week's Plan</h3>
+                  {(!report.next_week_plan_json || report.next_week_plan_json.length === 0) ? (
+                    <p className={styles.emptyText}>No plan reported for next week.</p>
+                  ) : (
+                    <ul className={styles.list}>
+                      {report.next_week_plan_json.map((item, i) => (
+                        <li key={i}>{item.title || item}</li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
 
-          </div>
-        </Card>
-      ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
