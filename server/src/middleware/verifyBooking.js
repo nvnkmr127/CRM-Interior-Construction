@@ -3,8 +3,8 @@ const pool = require('../config/db');
 const { fail } = require('../utils/response');
 async function verifyProjectBooked(req, res, next) {
   try {
-    // Allow read-only (GET) requests to view information
-    if (req.method === 'GET') {
+    // Allow read-only (GET) requests or admin users to view/manage information
+    if (req.method === 'GET' || req.user?.isAdmin || req.user?.role === 'admin' || req.user?.role === 'superadmin') {
       return next();
     }
 

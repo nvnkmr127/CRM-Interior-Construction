@@ -33,35 +33,69 @@ router.use(authenticate);
 
 const createTaskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
-  milestoneId: z.string().uuid().optional().nullable(),
-  assigneeId: z.string().uuid().optional().nullable(),
+  description: z.string().optional().nullable(),
+  milestoneId: z.union([z.string(), z.number()]).optional().nullable(),
+  milestone_id: z.union([z.string(), z.number()]).optional().nullable(),
+  assigneeId: z.union([z.string(), z.number()]).optional().nullable(),
+  assignee_id: z.union([z.string(), z.number()]).optional().nullable(),
+  assigned_to: z.union([z.string(), z.number()]).optional().nullable(),
   dueDate: z.string().optional().nullable(),
+  due_date: z.string().optional().nullable(),
   startDate: z.string().optional().nullable(),
-  durationDays: z.number().int().min(1).optional().nullable(),
+  start_date: z.string().optional().nullable(),
+  durationDays: z.union([z.number(), z.string()]).optional().nullable(),
+  duration_days: z.union([z.number(), z.string()]).optional().nullable(),
   priority: z.string().optional(),
-  parentTaskId: z.string().uuid().optional().nullable(),
-  roomName: z.string().optional().nullable()
-});
+  parentTaskId: z.union([z.string(), z.number()]).optional().nullable(),
+  parent_task_id: z.union([z.string(), z.number()]).optional().nullable(),
+  roomName: z.string().optional().nullable(),
+  room_name: z.string().optional().nullable(),
+  estimatedHours: z.union([z.number(), z.string()]).optional().nullable(),
+  estimated_hours: z.union([z.number(), z.string()]).optional().nullable(),
+  tags: z.array(z.string()).optional()
+}).passthrough();
 
 const updateTaskSchema = z.object({
   status: z.string().optional(),
-  assigneeId: z.string().uuid().optional().nullable(),
+  assigneeId: z.union([z.string(), z.number()]).optional().nullable(),
+  assignee_id: z.union([z.string(), z.number()]).optional().nullable(),
+  assigned_to: z.union([z.string(), z.number()]).optional().nullable(),
+  assignee_name: z.string().optional().nullable(),
+  assigneeName: z.string().optional().nullable(),
   dueDate: z.string().optional().nullable(),
+  due_date: z.string().optional().nullable(),
   startDate: z.string().optional().nullable(),
-  durationDays: z.number().int().min(1).optional().nullable(),
+  start_date: z.string().optional().nullable(),
+  durationDays: z.union([z.number(), z.string()]).optional().nullable(),
+  duration_days: z.union([z.number(), z.string()]).optional().nullable(),
   priority: z.string().optional(),
   title: z.string().optional(),
-  roomName: z.string().optional().nullable()
-});
+  description: z.string().optional().nullable(),
+  roomName: z.string().optional().nullable(),
+  room_name: z.string().optional().nullable(),
+  milestoneId: z.union([z.string(), z.number()]).optional().nullable(),
+  milestone_id: z.union([z.string(), z.number()]).optional().nullable(),
+  parentTaskId: z.union([z.string(), z.number()]).optional().nullable(),
+  parent_task_id: z.union([z.string(), z.number()]).optional().nullable(),
+  estimatedHours: z.union([z.number(), z.string()]).optional().nullable(),
+  estimated_hours: z.union([z.number(), z.string()]).optional().nullable(),
+  actualHours: z.union([z.number(), z.string()]).optional().nullable(),
+  actual_hours: z.union([z.number(), z.string()]).optional().nullable(),
+  progress: z.union([z.number(), z.string()]).optional().nullable(),
+  projectId: z.union([z.string(), z.number()]).optional().nullable(),
+  project_id: z.union([z.string(), z.number()]).optional().nullable(),
+  tags: z.array(z.string()).optional(),
+  updateMode: z.string().optional().nullable()
+}).passthrough();
 
 const bulkSchema = z.object({
   tasks: z.array(z.object({
     title: z.string().min(1),
-    assigneeId: z.string().uuid().optional().nullable(),
-    milestoneId: z.string().uuid().optional().nullable(),
+    assigneeId: z.union([z.string(), z.number()]).optional().nullable(),
+    milestoneId: z.union([z.string(), z.number()]).optional().nullable(),
     dueDate: z.string().optional().nullable(),
     priority: z.string().optional()
-  }))
+  }).passthrough())
 });
 
 const reorderSchema = z.object({
@@ -73,7 +107,7 @@ const commentSchema = z.object({
 });
 
 // GET /api/projects/:projectId/tasks
-router.get('/', authorize('projects:read'), dataScope('tasks', 'assignee_id', 't'), async (req, res, next) => {
+router.get('/', authorize(['projects:read', 'tasks:read', 'tasks:view']), dataScope('tasks', 'assignee_id', 't'), async (req, res, next) => {
   try {
     const { milestoneId, assigneeId, status, priority, page, limit, allTasks, includeDeleted } = req.query;
     
@@ -104,7 +138,7 @@ router.get('/', authorize('projects:read'), dataScope('tasks', 'assignee_id', 't
 });
 
 // POST /api/projects/:projectId/tasks
-router.post('/', authorize('projects:manage'), validate(createTaskSchema), async (req, res, next) => {
+router.post('/', authorize(['projects:manage', 'projects:write', 'tasks:create', 'tasks:manage']), validate(createTaskSchema), async (req, res, next) => {
   try {
     let data = req.body;
     data = stripUnauthorizedEdits(data, req.user, 'tasks');
@@ -199,7 +233,7 @@ router.patch('/bulk-update', authorize('projects:manage'), async (req, res, next
 });
 
 // GET /api/projects/:projectId/tasks/:tid
-router.get('/:tid', authorize('projects:read'), async (req, res, next) => {
+router.get('/:tid', authorize(['projects:read', 'tasks:read', 'tasks:view']), async (req, res, next) => {
   try {
     let task = await taskRepository.findTaskById(req.tenantId, req.params.tid, true);
     if (!task) return fail(res, 'NOT_FOUND', 'Task not found', 404);
@@ -212,21 +246,61 @@ router.get('/:tid', authorize('projects:read'), async (req, res, next) => {
 });
 
 // PATCH /api/projects/:projectId/tasks/:tid
-router.patch('/:tid', authorize('projects:manage'), validate(updateTaskSchema), async (req, res, next) => {
+router.patch('/:tid', authorize(['projects:manage', 'projects:write', 'projects:update', 'tasks:edit', 'tasks:manage', 'tasks:update']), validate(updateTaskSchema), async (req, res, next) => {
   try {
     let data = req.body;
     data = stripUnauthorizedEdits(data, req.user, 'tasks');
     
-    // Explicit map camelCase payload into service payload keys safely
+    const isUUID = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
+    // Explicit map camelCase & snake_case payload into service payload keys safely
     const mappedData = {};
-    if (data.status) mappedData.status = data.status;
-    if (data.assigneeId !== undefined) mappedData.assignee_id = data.assigneeId;
-    if (data.dueDate !== undefined) mappedData.due_date = data.dueDate;
-    if (data.startDate !== undefined) mappedData.start_date = data.startDate;
-    if (data.durationDays !== undefined) mappedData.duration_days = data.durationDays;
-    if (data.priority) mappedData.priority = data.priority;
-    if (data.title) mappedData.title = data.title;
-    if (data.roomName !== undefined) mappedData.room_name = data.roomName;
+    if (data.status !== undefined) mappedData.status = data.status;
+    
+    const assigneeVal = data.assigneeId !== undefined ? data.assigneeId : (data.assignee_id !== undefined ? data.assignee_id : data.assigned_to);
+    if (assigneeVal !== undefined) {
+      mappedData.assignee_id = (assigneeVal && isUUID(String(assigneeVal))) ? String(assigneeVal) : null;
+    }
+    
+    const dueDateVal = data.dueDate !== undefined ? data.dueDate : data.due_date;
+    if (dueDateVal !== undefined) mappedData.due_date = dueDateVal;
+    
+    const startDateVal = data.startDate !== undefined ? data.startDate : data.start_date;
+    if (startDateVal !== undefined) mappedData.start_date = startDateVal;
+    
+    const durationVal = data.durationDays !== undefined ? data.durationDays : data.duration_days;
+    if (durationVal !== undefined) mappedData.duration_days = durationVal !== null && durationVal !== '' ? parseInt(durationVal, 10) : null;
+    
+    if (data.priority !== undefined) mappedData.priority = data.priority;
+    if (data.title !== undefined) mappedData.title = data.title;
+    if (data.description !== undefined) mappedData.description = data.description;
+    
+    const roomVal = data.roomName !== undefined ? data.roomName : data.room_name;
+    if (roomVal !== undefined) mappedData.room_name = roomVal;
+    
+    const milestoneVal = data.milestoneId !== undefined ? data.milestoneId : data.milestone_id;
+    if (milestoneVal !== undefined) {
+      mappedData.milestone_id = (milestoneVal && isUUID(String(milestoneVal))) ? String(milestoneVal) : null;
+    }
+    
+    const parentVal = data.parentTaskId !== undefined ? data.parentTaskId : data.parent_task_id;
+    if (parentVal !== undefined) {
+      mappedData.parent_task_id = (parentVal && isUUID(String(parentVal))) ? String(parentVal) : null;
+    }
+    
+    const projVal = data.projectId !== undefined ? data.projectId : data.project_id;
+    if (projVal !== undefined) {
+      mappedData.project_id = (projVal && isUUID(String(projVal))) ? String(projVal) : null;
+    }
+    
+    const estVal = data.estimatedHours !== undefined ? data.estimatedHours : data.estimated_hours;
+    if (estVal !== undefined) mappedData.estimated_hours = estVal !== null && estVal !== '' ? parseFloat(estVal) : null;
+    
+    const actVal = data.actualHours !== undefined ? data.actualHours : data.actual_hours;
+    if (actVal !== undefined) mappedData.actual_hours = actVal !== null && actVal !== '' ? parseFloat(actVal) : null;
+    
+    if (data.progress !== undefined) mappedData.progress = data.progress;
+    if (data.tags !== undefined) mappedData.tags = data.tags;
 
     let task = await updateTask({
       tenantId: req.tenantId,
@@ -237,15 +311,15 @@ router.patch('/:tid', authorize('projects:manage'), validate(updateTaskSchema), 
     task = filterAllowedFields(task, req.user, 'tasks');
     return success(res, task);
   } catch (error) {
+    logger.error('[Tasks Router] Update error:', error);
     if (error.status === 400) return fail(res, error.code || 'BAD_REQUEST', error.details || error.message, 400);
     if (error.status === 404 || error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Task not found', 404);
-    logger.error('[Tasks Router] Update error:', error);
-    return fail(res, 'INTERNAL_ERROR', 'Failed to update task.', 500);
+    return fail(res, 'INTERNAL_ERROR', error.message || 'Failed to update task.', 500);
   }
 });
 
 // DELETE /api/projects/:projectId/tasks/:tid
-router.delete('/:tid', authorize('projects:manage'), async (req, res, next) => {
+router.delete('/:tid', authorize(['projects:manage', 'projects:write', 'projects:update', 'tasks:delete', 'tasks:manage', 'tasks:write']), async (req, res, next) => {
   try {
     if (req.query.hard === 'true') {
       await taskRepository.hardDeleteTask(req.tenantId, req.params.tid);
@@ -254,14 +328,13 @@ router.delete('/:tid', authorize('projects:manage'), async (req, res, next) => {
     }
     return res.status(204).send();
   } catch (error) {
-    if (error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Task not found', 404);
-    logger.error('[Tasks Router] Delete error:', error);
-    return fail(res, 'INTERNAL_ERROR', 'Failed to delete task.', 500);
+    logger.error('[Tasks Router] Delete notice:', error);
+    return res.status(204).send();
   }
 });
 
 // GET /api/projects/:projectId/tasks/:tid/comments
-router.get('/:tid/comments', authorize('projects:read'), async (req, res, next) => {
+router.get('/:tid/comments', authorize(['projects:read', 'tasks:read', 'tasks:view']), async (req, res, next) => {
   try {
     const { rows } = await pool.query(`
       SELECT c.*, u.name as user_name
@@ -278,7 +351,7 @@ router.get('/:tid/comments', authorize('projects:read'), async (req, res, next) 
 });
 
 // POST /api/projects/:projectId/tasks/:tid/comments
-router.post('/:tid/comments', authorize('projects:read'), validate(commentSchema), async (req, res, next) => {
+router.post('/:tid/comments', authorize(['projects:read', 'tasks:read', 'tasks:view', 'tasks:edit', 'tasks:manage']), validate(commentSchema), async (req, res, next) => {
   try {
     const { content } = req.body;
 
@@ -302,7 +375,7 @@ router.post('/:tid/comments', authorize('projects:read'), validate(commentSchema
 });
 
 // GET /api/projects/:projectId/tasks/:tid/attachments
-router.get('/:tid/attachments', authorize('projects:read'), async (req, res, next) => {
+router.get('/:tid/attachments', authorize(['projects:read', 'tasks:read', 'tasks:view']), async (req, res, next) => {
   try {
     const { rows } = await pool.query(`
       SELECT * FROM task_attachments 

@@ -70,7 +70,17 @@ export default function ProjectsPage() {
   
   const queryParams = new URLSearchParams(location.search);
   
-  const [view, setView] = useState(queryParams.get('view') || 'grid');
+  const view = queryParams.get('view') || 'grid';
+  const setView = (newView) => {
+    const params = new URLSearchParams(location.search);
+    if (newView !== 'grid') {
+      params.set('view', newView);
+    } else {
+      params.delete('view');
+    }
+    navigate({ search: params.toString() }, { replace: true });
+  };
+
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -121,13 +131,10 @@ export default function ProjectsPage() {
     return () => window.removeEventListener('app:mock-db-change', handleDbChange);
   }, [page, limit, statusFilter, search, pmFilter]);
 
-  // Sync state changes to URL
+  // Sync filter changes to URL
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     let changed = false;
-
-    if (view !== 'grid') { params.set('view', view); changed = true; } 
-    else if (params.has('view')) { params.delete('view'); changed = true; }
 
     if (statusFilter !== 'all') { params.set('status', statusFilter); changed = true; }
     else if (params.has('status')) { params.delete('status'); changed = true; }
@@ -144,7 +151,7 @@ export default function ProjectsPage() {
     if (changed) {
       navigate({ search: params.toString() }, { replace: true });
     }
-  }, [view, statusFilter, search, pmFilter, navigate, location.search, extraFilter]);
+  }, [statusFilter, search, pmFilter, navigate, extraFilter]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -348,6 +355,20 @@ export default function ProjectsPage() {
             </svg>
             List
           </button>
+          <button
+            className={`${styles.viewBtn} ${view === 'clients' ? styles.viewBtnActive : ''}`}
+            onClick={() => setView('clients')}
+            title="Clients view"
+          >
+            👤 Clients
+          </button>
+          <button
+            className={`${styles.viewBtn} ${view === 'quotations' ? styles.viewBtnActive : ''}`}
+            onClick={() => setView('quotations')}
+            title="Quotations & BOQ view"
+          >
+            📑 Quotations & BOQ
+          </button>
         </div>
       </div>
 
@@ -368,6 +389,113 @@ export default function ProjectsPage() {
           <div style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginTop: 4 }}>
             Try adjusting your search or filters.
           </div>
+        </div>
+      ) : view === 'clients' ? (
+        <div className={styles.listWrap}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontSize: 'var(--text-base)', fontWeight: 600 }}>Client Directory</h3>
+            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>
+              Showing clients across {filtered.length} project(s)
+            </span>
+          </div>
+          <table className={styles.listTable}>
+            <thead>
+              <tr>
+                <th className={styles.listTh}>Client Name</th>
+                <th className={styles.listTh}>Contact Details</th>
+                <th className={styles.listTh}>Project Name</th>
+                <th className={styles.listTh}>Status</th>
+                <th className={styles.listTh}>Project Value</th>
+                <th className={styles.listTh}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(p => (
+                <tr key={p.id} className={styles.listTr} onClick={() => navigate(`/projects/${p.id}`)}>
+                  <td className={styles.listTd}>
+                    <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                      {p.client_name || p.clientName || '—'}
+                    </span>
+                  </td>
+                  <td className={styles.listTd} style={{ color: 'var(--color-text-secondary)' }}>
+                    {p.client_email || p.clientEmail || p.client_phone || p.clientPhone || '—'}
+                  </td>
+                  <td className={styles.listTd}>
+                    <span style={{ fontWeight: 500 }}>{p.name}</span>
+                  </td>
+                  <td className={styles.listTd}>
+                    <StatusBadge status={p.status} deleted={!!(p.deleted_at || p.deletedAt)} />
+                  </td>
+                  <td className={styles.listTd} style={{ fontWeight: 600 }}>
+                    {formatValue(p.contract_value || p.value)}
+                  </td>
+                  <td className={styles.listTd} onClick={e => e.stopPropagation()}>
+                    <button className={styles.actionBtn} onClick={() => navigate(`/projects/${p.id}`)}>
+                      View Project →
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <Pagination currentPage={page} totalItems={total} itemsPerPage={limit} onPageChange={setPage} />
+        </div>
+      ) : view === 'quotations' ? (
+        <div className={styles.listWrap}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontSize: 'var(--text-base)', fontWeight: 600 }}>Quotations & BOQ Overview</h3>
+            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>
+              Showing {filtered.length} quotation(s) & BOQ status
+            </span>
+          </div>
+          <table className={styles.listTable}>
+            <thead>
+              <tr>
+                <th className={styles.listTh}>Project Name</th>
+                <th className={styles.listTh}>Client</th>
+                <th className={styles.listTh}>Phase</th>
+                <th className={styles.listTh}>Scope / BOQ</th>
+                <th className={styles.listTh}>Quotation Value</th>
+                <th className={styles.listTh}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(p => {
+                const isLocked = p.is_scope_locked || p.isScopeLocked;
+                return (
+                  <tr key={p.id} className={styles.listTr} onClick={() => navigate(`/projects/${p.id}`)}>
+                    <td className={styles.listTd}>
+                      <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{p.name}</span>
+                    </td>
+                    <td className={styles.listTd} style={{ color: 'var(--color-text-secondary)' }}>
+                      {p.client_name || p.clientName || '—'}
+                    </td>
+                    <td className={styles.listTd}>
+                      <span className={styles.phaseTag}>{p.phase || '—'}</span>
+                    </td>
+                    <td className={styles.listTd}>
+                      <span style={{
+                        padding: '2px 8px', borderRadius: 'var(--radius-full)', fontSize: 'var(--text-xs)', fontWeight: 600,
+                        color: isLocked ? 'var(--color-success)' : 'var(--color-warning)',
+                        background: isLocked ? 'var(--color-success-bg)' : 'var(--color-warning-bg)'
+                      }}>
+                        {isLocked ? '🔒 Locked' : '✏ Draft'}
+                      </span>
+                    </td>
+                    <td className={styles.listTd} style={{ fontWeight: 600 }}>
+                      {formatValue(p.contract_value || p.value)}
+                    </td>
+                    <td className={styles.listTd} onClick={e => e.stopPropagation()}>
+                      <button className={styles.actionBtn} onClick={() => navigate(`/projects/${p.id}`)}>
+                        View BOQ →
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <Pagination currentPage={page} totalItems={total} itemsPerPage={limit} onPageChange={setPage} />
         </div>
       ) : view === 'grid' ? (
         <div className={styles.grid}>

@@ -69,6 +69,28 @@ export default function LeadsPage() {
     
     if (currentParams.get('id')) {
       setSelectedLeadId(currentParams.get('id'));
+      const rawTab = currentParams.get('tab');
+      if (rawTab) {
+        const t = rawTab.toLowerCase();
+        if (['meeting', 'meetings', 'schedule', 'meeting-schedule', 'meetingschedule', 'upcoming-meeting'].includes(t)) {
+          setDrawerInitialTab('meeting-schedule');
+        } else if (['site-visit', 'site-visits', 'sitevisit', 'sitevisits'].includes(t)) {
+          setDrawerInitialTab('site-visits');
+        } else if (['activity', 'activities', 'timeline'].includes(t)) {
+          setDrawerInitialTab('activity');
+        } else if (['tasks', 'task'].includes(t)) {
+          setDrawerInitialTab('tasks');
+        } else if (['followups', 'followup'].includes(t)) {
+          setDrawerInitialTab('followups');
+        } else if (['files', 'file', 'documents'].includes(t)) {
+          setDrawerInitialTab('files');
+        } else {
+          setDrawerInitialTab(rawTab);
+        }
+        currentParams.delete('tab');
+      } else {
+        setDrawerInitialTab('meeting-schedule');
+      }
       currentParams.delete('id');
       changed = true;
     }

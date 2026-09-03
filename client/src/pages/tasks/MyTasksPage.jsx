@@ -193,8 +193,9 @@ export default function MyTasksPage() {
     
     // Roles that can see all tasks across the company/projects
     const globalViewRoles = ['superadmin', 'admin', 'director', 'manager', 'finance_head', 'finance_manager']
+    const currentRoleStr = (typeof role === 'string' ? role : (role?.id || role?.name || '')).toLowerCase().replace(/[\s_-]+/g, '')
     
-    if (!globalViewRoles.includes(role)) {
+    if (!globalViewRoles.some(r => currentRoleStr.includes(r))) {
       taskParams.assigneeId = 'me'
     }
 

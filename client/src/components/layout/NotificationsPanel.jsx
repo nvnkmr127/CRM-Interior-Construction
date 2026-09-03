@@ -106,10 +106,21 @@ export default function NotificationsPanel() {
       } catch (e) { console.error(e) }
     }
     setIsOpen(false)
-    if (n.reference_url) {
-      navigate(n.reference_url)
-    } else if (n.lead_id) {
-      navigate(`/leads?id=${n.lead_id}`)
+    let targetUrl = n.reference_url || (n.lead_id ? `/leads?id=${n.lead_id}&tab=meeting-schedule` : null);
+    if (targetUrl && targetUrl.includes('/leads?id=')) {
+      const isMeetingNotif = n.type === 'meeting' || 
+                             (n.title && n.title.toLowerCase().includes('meeting')) || 
+                             (n.message && n.message.toLowerCase().includes('meeting'));
+      if (isMeetingNotif) {
+        if (targetUrl.includes('tab=')) {
+          targetUrl = targetUrl.replace(/tab=[^&]+/, 'tab=meeting-schedule');
+        } else {
+          targetUrl += '&tab=meeting-schedule';
+        }
+      }
+    }
+    if (targetUrl) {
+      navigate(targetUrl);
     }
   }
 

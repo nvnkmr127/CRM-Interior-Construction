@@ -4,10 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { dashboardApi } from '../../api/dashboard';
 import { Card, Button, Modal } from '../ui';
 import { useAuth } from '../../store/authContext';
+import { usePermissions } from '../../hooks/usePermissions';
 import styles from './LeadDashboard.module.css';
 
 export default function LeadDashboard({ leads, stages = [], loading, statusFilter = 'active', onLeadClick, onViewChange, onSiteVisitsTodayClick }) {
   const { user } = useAuth();
+  const { hasPermission, isModuleEnabled, allowedModules } = usePermissions();
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -134,6 +136,50 @@ export default function LeadDashboard({ leads, stages = [], loading, statusFilte
     return 'Good Evening';
   };
 
+  // Role and Permission checks
+  const roleName = (typeof user?.role === 'string' ? user.role : user?.role?.name || '').toLowerCase();
+  const permissions = Array.isArray(user?.role?.permissions) ? user.role.permissions : [];
+
+  const isPlatformDeveloperAdmin = (user?.tenant?.slug === 'demo' || user?.email === 'admin@demo.com') && 
+    (roleName === 'superadmin' || roleName === 'admin');
+
+  const isAdmin = isPlatformDeveloperAdmin || 
+    roleName === 'superadmin' || 
+    roleName === 'super admin' || 
+    roleName === 'admin' || 
+    roleName === 'owner' ||
+    permissions.includes('*') || 
+    permissions.includes('*:*');
+
+  const isWorkspaceAdmin = isAdmin;
+
+  const canAccessModule = (moduleName) => {
+    if (isAdmin || isWorkspaceAdmin) return true;
+    if (allowedModules && allowedModules.size > 0 && !allowedModules.has(moduleName)) {
+      return false;
+    }
+    if (isModuleEnabled(moduleName)) return true;
+    if (hasPermission(moduleName, 'read') || hasPermission(moduleName, 'view')) return true;
+    return permissions.some(p => p === '*' || p === '*:*' || p.startsWith(`${moduleName}:`));
+  };
+
+  const isFinanceOrProjectManager = 
+    roleName.includes('finance') || 
+    roleName.includes('project manager') || 
+    roleName.includes('project_manager') ||
+    roleName.includes('sales manager') ||
+    roleName.includes('sales_manager');
+
+  const hasFinancialPermission = 
+    permissions.includes('finance:read') || 
+    permissions.includes('dashboards:view_sales_dashboard') || 
+    permissions.includes('leads:view_financial_kpis');
+
+  const canViewFinancialKPIs = isAdmin || isFinanceOrProjectManager || hasFinancialPermission;
+  const canViewProjects = canAccessModule('projects');
+  const canViewTasks = canAccessModule('tasks');
+  const canViewLeads = canAccessModule('leads');
+
   return (
     <div className={styles.dashboardContainer}>
       <header className={styles.greetingHeader}>
@@ -142,30 +188,42 @@ export default function LeadDashboard({ leads, stages = [], loading, statusFilte
       </header>
 
       <section className={styles.metricsGrid}>
-        <div className={styles.metricCard} onClick={() => navigate('/projects')}>
-          <div className={styles.metricLabel}>Won This Month</div>
-          <div className={styles.metricValue}>{todayRevenueStr}</div>
-        </div>
-        <div className={styles.metricCard} onClick={() => onViewChange && onViewChange('list')}>
-          <div className={styles.metricLabel}>{leadsLabel}</div>
-          <div className={styles.metricValue}>{leadsCount}</div>
-        </div>
-        <div className={styles.metricCard} onClick={() => navigate('/projects')}>
-          <div className={styles.metricLabel}>Overdue Projects</div>
-          <div className={`${styles.metricValue} ${styles.danger}`}>{overdueCount}</div>
-        </div>
-        <div className={styles.metricCard} onClick={() => navigate('/tasks')}>
-          <div className={styles.metricLabel}>Tasks Due Today</div>
-          <div className={styles.metricValue}>{meetingsCount}</div>
-        </div>
-        <div className={styles.metricCard} onClick={handleSiteVisitsTodayClick} style={{ cursor: stats?.siteVisits?.count > 0 ? 'pointer' : 'default' }}>
-          <div className={styles.metricLabel}>Site Visits Today</div>
-          <div className={styles.metricValue}>{visitsCount}</div>
-        </div>
-        <div className={styles.metricCard} onClick={() => navigate('/analytics/leads')}>
-          <div className={styles.metricLabel}>Target Revenue</div>
-          <div className={styles.metricValue}>{expectedClosures}</div>
-        </div>
+        {canViewFinancialKPIs && canViewProjects && (
+          <div className={styles.metricCard} onClick={() => navigate('/projects')}>
+            <div className={styles.metricLabel}>Won This Month</div>
+            <div className={styles.metricValue}>{todayRevenueStr}</div>
+          </div>
+        )}
+        {canViewLeads && (
+          <div className={styles.metricCard} onClick={() => onViewChange && onViewChange('list')}>
+            <div className={styles.metricLabel}>{leadsLabel}</div>
+            <div className={styles.metricValue}>{leadsCount}</div>
+          </div>
+        )}
+        {canViewProjects && (
+          <div className={styles.metricCard} onClick={() => navigate('/projects')}>
+            <div className={styles.metricLabel}>Overdue Projects</div>
+            <div className={`${styles.metricValue} ${styles.danger}`}>{overdueCount}</div>
+          </div>
+        )}
+        {canViewTasks && (
+          <div className={styles.metricCard} onClick={() => navigate('/tasks')}>
+            <div className={styles.metricLabel}>Tasks Due Today</div>
+            <div className={styles.metricValue}>{meetingsCount}</div>
+          </div>
+        )}
+        {canViewLeads && (
+          <div className={styles.metricCard} onClick={handleSiteVisitsTodayClick} style={{ cursor: stats?.siteVisits?.count > 0 ? 'pointer' : 'default' }}>
+            <div className={styles.metricLabel}>Site Visits Today</div>
+            <div className={styles.metricValue}>{visitsCount}</div>
+          </div>
+        )}
+        {canViewFinancialKPIs && (
+          <div className={styles.metricCard} onClick={() => navigate('/analytics/leads')}>
+            <div className={styles.metricLabel}>Target Revenue</div>
+            <div className={styles.metricValue}>{expectedClosures}</div>
+          </div>
+        )}
       </section>
 
       <div className={styles.mainLayout}>
@@ -267,7 +325,7 @@ export default function LeadDashboard({ leads, stages = [], loading, statusFilte
                     {ev.leadName && (
                       <span className={styles.timelineMeta}>Lead: {ev.leadName}</span>
                     )}
-                    {ev.projectName && (
+                    {ev.projectName && canViewProjects && (
                       <span className={styles.timelineMeta}>Project: {ev.projectName}</span>
                     )}
                   </div>

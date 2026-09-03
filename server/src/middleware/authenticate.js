@@ -105,34 +105,26 @@ async function authenticate(req, res, next) {
 
       const timeoutMinutes = securitySettings.session_timeout_minutes || 120;
       
-      let lastActive;
+      let lastActiveMs = Date.now();
       if (session.last_active_at) {
-        if (typeof session.last_active_at === 'string' && !session.last_active_at.endsWith('Z')) {
-          lastActive = new Date(session.last_active_at + 'Z');
-        } else {
-          lastActive = new Date(session.last_active_at);
+        const parsed = new Date(session.last_active_at).getTime();
+        if (!isNaN(parsed) && parsed > 0) {
+          lastActiveMs = parsed;
         }
-      } else {
-        lastActive = new Date();
       }
       
-      let diffMinutes = (Date.now() - lastActive.getTime()) / 60000;
+      const rawDiffMinutes = (Date.now() - lastActiveMs) / 60000;
+      const diffMinutes = Math.max(0, rawDiffMinutes);
       
-      // If diff is falsely inflated due to missing timezone offset, adjust it
-      if (diffMinutes > timeoutMinutes && diffMinutes < (timeoutMinutes + Math.abs(new Date().getTimezoneOffset()) + 60)) {
-         const offsetMinutes = new Date().getTimezoneOffset();
-         diffMinutes = diffMinutes + offsetMinutes; 
-      }
-
-      if (diffMinutes > timeoutMinutes && diffMinutes > 0) {
+      if (diffMinutes > timeoutMinutes) {
         await pool.query('DELETE FROM sessions WHERE id = $1', [decoded.sessionId]);
         const { clearCache } = require('../utils/cache');
         await clearCache(cacheKey).catch(() => {});
         return res.status(401).json({ success: false, error: 'SESSION_TIMEOUT', message: 'Session expired due to inactivity.' });
       }
 
-      // Update last_active_at if more than 5 minutes have passed to avoid spamming the DB
-      if (diffMinutes > 5) {
+      // Update last_active_at every 1 minute of activity to keep session active
+      if (diffMinutes >= 1) {
         try {
           await pool.query('UPDATE sessions SET last_active_at = NOW() WHERE id = $1', [decoded.sessionId]);
           session.last_active_at = new Date().toISOString();

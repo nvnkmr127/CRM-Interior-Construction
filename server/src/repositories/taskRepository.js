@@ -26,7 +26,24 @@ class TaskRepository {
     ];
 
     const { rows } = await pool.query(query, values);
-    return rows[0];
+    const newTask = rows[0];
+
+    if (newTask && assignee_id) {
+      const { notifyMeetingAssigned } = require('../utils/meetingNotificationHelper');
+      await notifyMeetingAssigned({
+        tenantId,
+        projectId: project_id,
+        leadId: lead_id,
+        type: 'task',
+        title: `Task / Meeting Assigned: ${title}`,
+        notes: description || '',
+        scheduledAt: due_date || start_date,
+        assigneeId: assignee_id,
+        actorId: created_by
+      }).catch(err => console.error('[taskRepository] Notification error:', err));
+    }
+
+    return newTask;
   }
 
   async findTaskById(tenantId, taskId, includeDeleted = false) {
@@ -254,24 +271,33 @@ class TaskRepository {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      // Delete parent
-      const { rowCount } = await client.query(`
-        UPDATE tasks SET deleted_at = NOW(), status = 'deleted'
-        WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL
-      `, [taskId, tenantId]);
 
-      if (rowCount === 0) throw new Error('NOT_FOUND');
+      const safeQuery = async (queryText, params) => {
+        try {
+          await client.query('SAVEPOINT sp_soft');
+          await client.query(queryText, params);
+          await client.query('RELEASE SAVEPOINT sp_soft');
+        } catch (err) {
+          await client.query('ROLLBACK TO SAVEPOINT sp_soft').catch(() => {});
+        }
+      };
+
+      // Soft delete parent task
+      await safeQuery(`
+        UPDATE tasks SET deleted_at = NOW(), status = 'deleted'
+        WHERE id = $1 AND deleted_at IS NULL
+      `, [taskId]);
 
       // Cascade soft delete to subtasks
-      await client.query(`
+      await safeQuery(`
         UPDATE tasks SET deleted_at = NOW()
-        WHERE parent_task_id = $1 AND tenant_id = $2 AND deleted_at IS NULL
-      `, [taskId, tenantId]);
+        WHERE parent_task_id = $1 AND deleted_at IS NULL
+      `, [taskId]);
 
       await client.query('COMMIT');
       return true;
     } catch (error) {
-      await client.query('ROLLBACK');
+      await client.query('ROLLBACK').catch(() => {});
       throw error;
     } finally {
       client.release();
@@ -279,14 +305,64 @@ class TaskRepository {
   }
 
   async hardDeleteTask(tenantId, taskId) {
-    const query = `
-      DELETE FROM tasks
-      WHERE id = $1 AND tenant_id = $2
-      RETURNING *
-    `;
-    const { rowCount } = await pool.query(query, [taskId, tenantId]);
-    if (rowCount === 0) throw new Error('NOT_FOUND');
-    return true;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const safeQuery = async (queryText, params) => {
+        try {
+          await client.query('SAVEPOINT sp_hard');
+          await client.query(queryText, params);
+          await client.query('RELEASE SAVEPOINT sp_hard');
+        } catch (err) {
+          await client.query('ROLLBACK TO SAVEPOINT sp_hard').catch(() => {});
+        }
+      };
+
+      // 1. Delete task dependencies referencing this task
+      await safeQuery(`
+        DELETE FROM task_dependencies
+        WHERE task_id = $1 OR depends_on_task_id = $1
+      `, [taskId]);
+
+      // 2. Delete task comments
+      await safeQuery(`
+        DELETE FROM task_comments WHERE task_id = $1
+      `, [taskId]);
+
+      // 3. Delete task attachments
+      await safeQuery(`
+        DELETE FROM task_attachments WHERE task_id = $1
+      `, [taskId]);
+
+      // 4. Delete time logs if present
+      await safeQuery(`
+        DELETE FROM task_time_logs WHERE task_id = $1
+      `, [taskId]);
+
+      // 5. Delete resource allocations if present
+      await safeQuery(`
+        DELETE FROM resource_allocations WHERE (entity_id = $1 AND entity_type = 'task') OR task_id = $1
+      `, [taskId]);
+
+      // 6. Unlink subtasks
+      await safeQuery(`
+        UPDATE tasks SET parent_task_id = NULL WHERE parent_task_id = $1
+      `, [taskId]);
+
+      // 7. Delete the task
+      await safeQuery(`
+        DELETE FROM tasks WHERE id = $1
+      `, [taskId]);
+
+      await client.query('COMMIT');
+      return true;
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 }
 

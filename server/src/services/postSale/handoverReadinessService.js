@@ -219,7 +219,18 @@ async function scheduleAppointment(projectId, tenantId, appointmentDate, notes, 
     );
 
     await client.query('COMMIT');
-    return insertRes.rows[0];
+    const newAppt = insertRes.rows[0];
+    const { notifyMeetingAssigned } = require('../../utils/meetingNotificationHelper');
+    await notifyMeetingAssigned({
+      tenantId,
+      projectId,
+      type: 'meeting',
+      title: 'Scheduled Handover Meeting',
+      notes: notes || '',
+      scheduledAt: appointmentDate,
+      actorId: userId
+    }).catch(err => console.error('[handoverReadiness] Notification error:', err));
+    return newAppt;
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;

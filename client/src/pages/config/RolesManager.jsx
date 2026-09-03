@@ -7,9 +7,9 @@ import { Button, Modal, DataTable, Input, Select } from '../../components/ui'
 import { useToast } from '../../store/toastContext'
 import { useAuth } from '../../store/authContext'
 import api from '../../api/axios'
-import { DATA_SCOPES, ACTION_DEPENDENCIES, PERMISSION_MODULES, PERMISSION_ACTIONS, PLAN_DEFAULTS, getModulesForTabs } from '../../constants/permissions'
+import { DATA_SCOPES, ACTION_DEPENDENCIES, PERMISSION_MODULES, getDynamicPermissionModules, PERMISSION_ACTIONS, PLAN_DEFAULTS, getModulesForTabs } from '../../constants/permissions'
 import { FIELD_PERMISSIONS_SCHEMA } from '../../constants/fieldPermissions'
-import { PAGE_PERMISSIONS_SCHEMA } from '../../constants/pagePermissions'
+import { PAGE_PERMISSIONS_SCHEMA, getDynamicPagePermissionsSchema } from '../../constants/pagePermissions'
 import { ROLE_DEFAULTS } from '../../constants/roleDefaults'
 
 import { useConfirm } from '../../store/confirmContext';
@@ -163,6 +163,7 @@ export default function RolesManager() {
   const [isDependencyRefOpen, setIsDependencyRefOpen] = useState(false)
 
   const searchInputRef = useRef(null)
+  const dynamicPageSchema = useMemo(() => getDynamicPagePermissionsSchema(), [])
 
   const toast = useToast()
 
@@ -233,11 +234,17 @@ export default function RolesManager() {
       setRoles(Array.isArray(r) ? r : []);
 
       const schemaData = schemaRes.data?.data || schemaRes.data;
+      const dynamicMods = getDynamicPermissionModules();
       if (schemaData && schemaData.modules && schemaData.modules.length > 0) {
-        setSchemaModules(schemaData.modules);
+        const existingIds = new Set(schemaData.modules.map(m => m.id));
+        const combined = [...schemaData.modules];
+        dynamicMods.forEach(dm => {
+          if (!existingIds.has(dm.id)) combined.push(dm);
+        });
+        setSchemaModules(combined);
         setSchemaActions(schemaData.actions || PERMISSION_ACTIONS);
       } else {
-        setSchemaModules(defaultScopedModules);
+        setSchemaModules(dynamicMods);
         setSchemaActions(PERMISSION_ACTIONS);
       }
 
@@ -249,7 +256,7 @@ export default function RolesManager() {
       setRoles([
         { id: 'role-superadmin', name: 'superadmin', description: 'Full access', permissions: ['*'] }
       ]);
-      setSchemaModules(defaultScopedModules);
+      setSchemaModules(PERMISSION_MODULES);
       setSchemaActions(PERMISSION_ACTIONS);
     }
   };
@@ -456,6 +463,16 @@ export default function RolesManager() {
       }
       return { ...prev, enabled_modules: Array.from(em) };
     });
+  }
+
+  const handleSelectAllModulesVisibility = () => {
+    if (formData.permissions.includes('*')) return;
+    setFormData(prev => ({ ...prev, enabled_modules: schemaModules.map(m => m.id) }));
+  }
+
+  const handleClearAllModulesVisibility = () => {
+    if (formData.permissions.includes('*')) return;
+    setFormData(prev => ({ ...prev, enabled_modules: [] }));
   }
 
   const handleDataScopeChange = (moduleId, value) => {
@@ -800,27 +817,60 @@ export default function RolesManager() {
                 </div>
 
                 {/* Card: Module Visibility */}
-                <div style={{ background: 'var(--color-surface)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-                  <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', color: 'var(--color-text)' }}>Module Visibility</h3>
-                  <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
+                <div style={{ background: 'var(--color-surface)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', borderTop: '3px solid var(--color-info)', boxShadow: 'var(--shadow-sm)', transition: 'transform var(--transition-fast), box-shadow var(--transition-fast)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <h3 style={{ fontSize: '16px', fontWeight: 600, margin: 0, color: 'var(--color-text)' }}>Module Visibility</h3>
+                      <span style={{ fontSize: '12px', padding: '2px 8px', borderRadius: '12px', background: 'var(--color-surface-2)', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
+                        {formData.enabled_modules?.length || 0} / {schemaModules.length} Enabled
+                      </span>
+                    </div>
+                    {!formData.permissions.includes('*') && (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <Button variant="ghost" size="sm" onClick={handleSelectAllModulesVisibility}>Select All</Button>
+                        <Button variant="ghost" size="sm" onClick={handleClearAllModulesVisibility}>Clear</Button>
+                      </div>
+                    )}
+                  </div>
+                  <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '16px' }}>
                     Enable or disable entire modules for this role. Disabled modules will be hidden from navigation.
                   </p>
                   {formData.permissions.includes('*') ? (
-                    <div style={{ padding: '12px', background: 'var(--color-accent-light)', color: 'var(--color-accent-dark)', borderRadius: 'var(--radius-md)' }}>
-                      Superadmins implicitly have all modules enabled.
+                    <div style={{ padding: '12px 16px', background: 'var(--color-accent-light, #eef2ff)', color: 'var(--color-accent, #4f46e5)', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 500 }}>
+                      ✓ Superadmins implicitly have all modules enabled.
                     </div>
                   ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
-                      {schemaModules.map(mod => (
-                        <label key={mod.id} className={styles.checkboxContainer}>
-                          <input
-                            type="checkbox"
-                            checked={(formData.enabled_modules || []).includes(mod.id)}
-                            onChange={() => handleToggleModuleVisibility(mod.id)}
-                          />
-                          {mod.label}
-                        </label>
-                      ))}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px' }}>
+                      {schemaModules.map(mod => {
+                        const isChecked = (formData.enabled_modules || []).includes(mod.id);
+                        return (
+                          <label 
+                            key={mod.id} 
+                            style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '10px', 
+                              padding: '10px 12px', 
+                              borderRadius: 'var(--radius-md)', 
+                              border: isChecked ? '1px solid var(--color-accent, #4f46e5)' : '1px solid var(--color-border)', 
+                              background: isChecked ? 'var(--color-surface-2, #f8fafc)' : 'var(--color-surface)', 
+                              cursor: 'pointer', 
+                              fontSize: '13px', 
+                              fontWeight: isChecked ? 600 : 400, 
+                              color: 'var(--color-text)',
+                              transition: 'all 0.15s ease' 
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleModuleVisibility(mod.id)}
+                              style={{ width: '15px', height: '15px', accentColor: 'var(--color-accent, #4f46e5)' }}
+                            />
+                            {mod.label}
+                          </label>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1104,17 +1154,22 @@ export default function RolesManager() {
                                 </div>
                               )}
 
-                              {PAGE_PERMISSIONS_SCHEMA[module.id] && (
+                              {dynamicPageSchema[module.id] && (
                                 <div>
                                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                    <label className={styles.label} style={{ fontSize: '14px', margin: 0 }}>Page / Tab Access</label>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <label className={styles.label} style={{ fontSize: '14px', margin: 0 }}>Page / Tab Access</label>
+                                      <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '12px', background: 'var(--color-surface-2)', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
+                                        {formData.page_permissions?.[module.id]?.length || 0} / {dynamicPageSchema[module.id].length} Selected
+                                      </span>
+                                    </div>
                                     <div style={{ display: 'flex', gap: '8px' }}>
                                       <Button variant="ghost" size="sm" onClick={async () => {
                                         setFormData(prev => ({
                                           ...prev,
                                           page_permissions: {
                                             ...prev.page_permissions,
-                                            [module.id]: PAGE_PERMISSIONS_SCHEMA[module.id].map(p => p.id)
+                                            [module.id]: dynamicPageSchema[module.id].map(p => p.id)
                                           }
                                         }));
                                       }}>Select All</Button>
@@ -1132,11 +1187,27 @@ export default function RolesManager() {
                                   <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
                                     Select which tabs should be visible. If none are selected, all tabs are visible by default.
                                   </p>
-                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-                                    {PAGE_PERMISSIONS_SCHEMA[module.id].map(page => {
+                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px', background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                                    {dynamicPageSchema[module.id].map(page => {
                                       const isChecked = formData.page_permissions?.[module.id]?.includes(page.id) || false;
                                       return (
-                                        <label key={page.id} className={styles.checkboxContainer}>
+                                        <label 
+                                          key={page.id} 
+                                          style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '10px', 
+                                            padding: '8px 12px', 
+                                            borderRadius: 'var(--radius-md)', 
+                                            border: isChecked ? '1px solid var(--color-accent, #4f46e5)' : '1px solid var(--color-border)', 
+                                            background: isChecked ? 'var(--color-surface-2, #f8fafc)' : 'var(--color-bg)', 
+                                            cursor: 'pointer', 
+                                            fontSize: '13px', 
+                                            fontWeight: isChecked ? 600 : 400, 
+                                            color: 'var(--color-text)',
+                                            transition: 'all 0.15s ease' 
+                                          }}
+                                        >
                                           <input
                                             type="checkbox"
                                             checked={isChecked}
@@ -1159,6 +1230,7 @@ export default function RolesManager() {
                                                 };
                                               });
                                             }}
+                                            style={{ width: '15px', height: '15px', accentColor: 'var(--color-accent, #4f46e5)' }}
                                           />
                                           {page.label}
                                         </label>

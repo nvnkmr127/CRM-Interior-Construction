@@ -65,7 +65,20 @@ router.post('/lead/:leadId', authenticate, async (req, res, next) => {
       tenantId, leadId, assignee_id || req.user.userId, scheduled_at, notes, JSON.stringify(checklist || []), client_invited || false
     ]);
 
-    return success(res, result.rows[0], {}, 201);
+    const newVisit = result.rows[0];
+    const { notifyMeetingAssigned } = require('../utils/meetingNotificationHelper');
+    await notifyMeetingAssigned({
+      tenantId,
+      leadId,
+      type: 'site_visit',
+      title: 'Scheduled Site Visit Meeting',
+      notes: notes || '',
+      scheduledAt: scheduled_at,
+      assigneeId: assignee_id || req.user.userId,
+      actorId: req.user?.id || req.user?.userId
+    }).catch(err => console.error('[siteVisits] Notification error:', err));
+
+    return success(res, newVisit, {}, 201);
   } catch (error) {
     next(error);
   }
@@ -87,7 +100,20 @@ router.post('/project/:projectId', authenticate, async (req, res, next) => {
       tenantId, projectId, assignee_id || req.user.userId, scheduled_at, notes, JSON.stringify(checklist || []), client_invited || false, agenda, next_steps
     ]);
 
-    return success(res, result.rows[0], {}, 201);
+    const newVisit = result.rows[0];
+    const { notifyMeetingAssigned } = require('../utils/meetingNotificationHelper');
+    await notifyMeetingAssigned({
+      tenantId,
+      projectId,
+      type: 'site_visit',
+      title: agenda || 'Scheduled Site Visit Meeting',
+      notes: notes || next_steps || '',
+      scheduledAt: scheduled_at,
+      assigneeId: assignee_id || req.user.userId,
+      actorId: req.user?.id || req.user?.userId
+    }).catch(err => console.error('[siteVisits] Notification error:', err));
+
+    return success(res, newVisit, {}, 201);
   } catch (error) {
     next(error);
   }

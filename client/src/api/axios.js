@@ -9,6 +9,20 @@ const api = axios.create({
 
 setupMockInterceptor(api);
 
+// REQUEST interceptor: ensure Bearer token is attached if available in localStorage
+api.interceptors.request.use(
+  (config) => {
+    if (!config.headers['Authorization']) {
+      const storedToken = localStorage.getItem('accessToken');
+      if (storedToken) {
+        config.headers['Authorization'] = `Bearer ${storedToken}`;
+      }
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 // Helper for triggering global toasts from outside React
 const triggerToast = (type, message, duration = 4000) => {
   window.dispatchEvent(new CustomEvent('app:toast', { detail: { type, message, duration } }));
@@ -60,6 +74,8 @@ api.interceptors.response.use(
         error.response?.data?.message?.toLowerCase().includes('deactivated');
 
       if (isTenantDeactivated) {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
         localStorage.removeItem('mockSession');
         localStorage.removeItem('isAuthenticated');
         delete api.defaults.headers.common['Authorization'];
@@ -97,6 +113,8 @@ api.interceptors.response.use(
     // Handle 401 Unauthorized for Staff / Admin CRM
     if (error.response.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (hasRefreshFailed || !localStorage.getItem('isAuthenticated')) {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
         localStorage.removeItem('mockSession');
         localStorage.removeItem('isAuthenticated');
         delete api.defaults.headers.common['Authorization'];
@@ -110,28 +128,28 @@ api.interceptors.response.use(
         isRefreshing = true;
 
         try {
-          // POST /auth/refresh (no auth header, relying on httpOnly cookie)
+          // POST /auth/refresh (sending body fallback + httpOnly cookie)
+          const storedRefreshToken = localStorage.getItem('refreshToken');
           const refreshResponse = await axios.post(
             `${api.defaults.baseURL}/auth/refresh`,
-            {},
+            { refreshToken: storedRefreshToken || undefined },
             { withCredentials: true }
           );
 
           if (refreshResponse.status === 200) {
             isRefreshing = false;
             
-            // Extract new access token from response (handle wrapped `success(res, data)`)
-            const newAccessToken = refreshResponse.data?.data?.accessToken || refreshResponse.data?.accessToken;
-            
+            const resData = refreshResponse.data?.data || refreshResponse.data || {};
+            const newAccessToken = resData.accessToken;
+            const newRefreshToken = resData.refreshToken;
+
             if (newAccessToken) {
-              // Update global defaults for future requests
+              localStorage.setItem('accessToken', newAccessToken);
               api.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
-              // Update the original failed request
               originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
-            } else {
-              // Fallback: Remove the old expired token so it doesn't take precedence over the new cookie
-              delete api.defaults.headers.common['Authorization'];
-              delete originalRequest.headers['Authorization'];
+            }
+            if (newRefreshToken) {
+              localStorage.setItem('refreshToken', newRefreshToken);
             }
 
             onRefreshed(null, newAccessToken);
@@ -142,6 +160,8 @@ api.interceptors.response.use(
           hasRefreshFailed = true;
           onRefreshed(refreshError);
           // Refresh token failed/expired
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
           localStorage.removeItem('mockSession');
           localStorage.removeItem('isAuthenticated');
           delete api.defaults.headers.common['Authorization'];
@@ -168,7 +188,11 @@ api.interceptors.response.use(
 
     // If _retry is true and we still got 401 -> redirect to login (prevent infinite loop)
     if (error.response?.status === 401 && originalRequest._retry) {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
       localStorage.removeItem('mockSession');
+      localStorage.removeItem('isAuthenticated');
+      delete api.defaults.headers.common['Authorization'];
       window.dispatchEvent(new CustomEvent('app:logout'));
     }
 

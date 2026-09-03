@@ -157,7 +157,7 @@ const ACTION_DEPENDENCIES = {
 
 const PLAN_DEFAULTS = {
   starter: [
-    'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar',
+    'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
     'projects', 'tasks', 'reports', 'team-management', 'team-members', 'roles-permissions', 'organization'
   ],
   growth: [
@@ -186,25 +186,25 @@ const MODULE_TAB_MAPPING = {
   leads: ['leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map', 'lead-stages', 'custom-fields', 'lead-forms'],
   projects: ['projects', 'templates', 'trade-activities', 'qc-checklists', 'conversion-checklist', 'automations', 'coordination', 'handover-dashboard', 'retention-dashboard', 'resource-capacity', 'absences'],
   tasks: ['tasks'],
-  clients: ['leads', 'projects', 'retention-dashboard'],
-  quotations: ['projects', 'leads'],
+  clients: ['clients', 'leads', 'projects', 'retention-dashboard'],
+  quotations: ['quotations', 'projects', 'leads'],
   reports: ['reports'],
-  users: ['team-management', 'team-members', 'roles-permissions'],
-  settings: ['organization', 'company-settings', 'login-history', 'audit-trail', 'superadmin', 'api-keys', 'api-integration', 'webhooks', 'email-templates', 'logs', 'lead-stages', 'custom-fields', 'templates', 'trade-activities', 'qc-checklists', 'conversion-checklist', 'automations', 'vendor-lead-times', 'financial-thresholds', 'roles-permissions', 'team-management'],
+  users: ['users', 'team-management', 'team-members', 'roles-permissions'],
+  settings: ['organization', 'company-settings', 'login-history', 'audit-trail', 'superadmin', 'api-keys', 'api-integration', 'webhooks', 'email-templates', 'logs', 'lead-stages', 'custom-fields', 'templates', 'trade-activities', 'qc-checklists', 'conversion-checklist', 'automations', 'vendor-lead-times', 'financial-thresholds', 'roles-permissions', 'team-management', 'team-members'],
   analytics: ['analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat', 'analytics-delay', 'analytics-boq', 'analytics-resources', 'analytics-resource-workload', 'analytics-profitability', 'analytics-collection-forecast', 'vendor-performance', 'vendor-capacity'],
-  finance: ['finance-overview', 'financial-approvals', 'analytics-profitability', 'analytics-collection-forecast', 'financial-thresholds'],
+  finance: ['finance', 'finance-overview', 'financial-approvals', 'analytics-profitability', 'analytics-collection-forecast', 'financial-thresholds'],
   invoices: ['finance-overview', 'financial-approvals'],
-  payments: ['finance-overview', 'financial-approvals', 'analytics-collection-forecast'],
-  discounts: ['financial-approvals', 'finance-overview'],
-  vendors: ['vendor-performance', 'vendor-capacity', 'vendor-lead-times'],
-  purchase_orders: ['vendor-performance', 'vendor-capacity', 'vendor-lead-times', 'finance-overview'],
-  inventory: ['vendor-capacity', 'resource-capacity', 'coordination'],
-  warehouse: ['vendor-capacity', 'coordination'],
-  factory: ['coordination', 'projects'],
-  boq: ['projects', 'analytics-boq'],
-  material_requests: ['coordination', 'projects'],
-  change_orders: ['projects', 'financial-approvals'],
-  design_reviews: ['projects', 'coordination']
+  payments: ['payments', 'finance-overview', 'financial-approvals', 'analytics-collection-forecast'],
+  discounts: ['discounts', 'financial-approvals', 'finance-overview'],
+  vendors: ['vendors', 'vendor-performance', 'vendor-capacity', 'vendor-lead-times'],
+  purchase_orders: ['purchase_orders', 'vendor-performance', 'vendor-capacity', 'vendor-lead-times', 'finance-overview'],
+  inventory: ['inventory', 'vendor-capacity', 'resource-capacity', 'coordination'],
+  warehouse: ['warehouse', 'inventory', 'vendor-capacity', 'coordination'],
+  factory: ['factory', 'factory-production', 'coordination', 'projects'],
+  boq: ['boq', 'projects', 'analytics-boq'],
+  material_requests: ['material_requests', 'coordination', 'projects'],
+  change_orders: ['change_orders', 'projects', 'financial-approvals'],
+  design_reviews: ['design_reviews', 'projects', 'coordination']
 };
 
 const getModulesForTabs = (enabledTabs = []) => {

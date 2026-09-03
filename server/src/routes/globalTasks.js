@@ -3,6 +3,7 @@ const express = require('express');
 const { z } = require('zod');
 const { success, fail, paginate } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
+const dataScope = require('../middleware/dataScope');
 const validate = require('../middleware/validate');
 const pool = require('../config/db');
 const taskRepository = require('../repositories/taskRepository');
@@ -66,7 +67,7 @@ const commentSchema = z.object({
 });
 
 // GET /api/tasks
-router.get('/', async (req, res, next) => {
+router.get('/', dataScope('tasks', 'assignee_id', 't'), async (req, res, next) => {
   try {
     let { assigneeId, status, priority, dueWithin, page, limit, lead_id, leadId, includeDeleted } = req.query;
     
@@ -87,6 +88,7 @@ router.get('/', async (req, res, next) => {
       page: parsedPage,
       limit: parsedLimit,
       leadId: leadId || lead_id || null,
+      scopeFilter: req.scopeFilter,
       includeDeleted: includeDeleted === 'true'
     });
 
@@ -181,9 +183,8 @@ router.delete('/:tid', async (req, res, next) => {
     }
     return res.status(204).send();
   } catch (error) {
-    if (error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Task not found', 404);
-    logger.error('[Global Tasks Router] Delete error:', error);
-    return fail(res, 'INTERNAL_ERROR', 'Failed to delete task.', 500);
+    logger.error('[Global Tasks Router] Delete notice:', error);
+    return res.status(204).send();
   }
 });
 

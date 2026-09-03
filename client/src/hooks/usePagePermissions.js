@@ -1,5 +1,5 @@
 import { useAuth } from '../store/authContext';
-import { PAGE_PERMISSIONS_SCHEMA } from '../constants/pagePermissions';
+import { PAGE_PERMISSIONS_SCHEMA, getDynamicPagePermissionsSchema } from '../constants/pagePermissions';
 import { PLAN_DEFAULTS, getModulesForTabs } from '../constants/permissions';
 
 const PAGE_MODULE_MAPPING = {
@@ -63,9 +63,11 @@ export const usePagePermissions = (moduleName) => {
   };
   
   const getAllowedPages = () => {
-    if (!PAGE_PERMISSIONS_SCHEMA[moduleName]) return [];
+    const dynamicSchema = getDynamicPagePermissionsSchema();
+    const moduleSchema = dynamicSchema[moduleName] || PAGE_PERMISSIONS_SCHEMA[moduleName];
+    if (!moduleSchema) return [];
     
-    return PAGE_PERMISSIONS_SCHEMA[moduleName].filter(page => canAccessPage(page.id));
+    return moduleSchema.filter(page => canAccessPage(page.id));
   };
   
   return { canAccessPage, getAllowedPages };

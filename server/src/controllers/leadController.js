@@ -362,7 +362,9 @@ exports.checkDuplicateHandler = async (req, res, next) => {
 
     if (result.rows.length > 0) {
       const { maskSensitiveFields } = require('../utils/fieldMasker');
-      const userPermissions = req.user && req.user.role === 'superadmin' ? ['*'] : (req.user && req.user.permissions ? req.user.permissions : []);
+      const userPermissions = (req.user && (req.user.role === 'superadmin' || req.user.role === 'admin' || req.user.role?.name?.toLowerCase() === 'admin' || req.user.role?.name?.toLowerCase() === 'superadmin'))
+        ? ['*'] 
+        : (req.user && req.user.permissions ? (Array.isArray(req.user.permissions) ? req.user.permissions : req.user.permissions.actions || []) : ['leads:read', 'leads:view']);
       const LEAD_FIELD_PERMISSIONS = {
         phone: 'leads:read_sensitive',
         email: 'leads:read_sensitive',
@@ -420,7 +422,7 @@ exports.createPublicLeadHandler = async (req, res, next) => {
 exports.exportLeadsHandler = async function exportLeadsHandler(req, res, next) {
   try {
     const { tenantId } = getTenantAndUser(req);
-    const params = { ...req.query, limit: 10000, page: 1 };
+    const params = { ...req.query, limit: 10000, page: 1, scopeFilter: req.scopeFilter || '1=1' };
     const result = await findLeads(tenantId, params);
 
     const _allowedFields = [
@@ -758,8 +760,9 @@ exports.parseFileHandler = async function parseFileHandler(req, res, next) {
 exports.getAllFollowupsHandler = async function getAllFollowupsHandler(req, res, next) {
   try {
     const { tenantId } = getTenantAndUser(req);
+    const scopeFilter = req.scopeFilter || '1=1';
     const { getAllFollowups } = require('../services/leads/followupService');
-    const data = await getAllFollowups({ tenantId });
+    const data = await getAllFollowups({ tenantId, scopeFilter });
     res.json({ success: true, data });
   } catch (error) {
     logger.error('getAllFollowupsHandler error:', error);
@@ -2734,7 +2737,9 @@ exports.getLeadsHandler = async function getLeadsHandler(req, res, next) {
 
     const result = await findLeads(tenantId, req.query);
 
-    const userPermissions = req.user && req.user.role === 'superadmin' ? ['*'] : (req.user && req.user.permissions ? req.user.permissions : []);
+    const userPermissions = (req.user && (req.user.role === 'superadmin' || req.user.role === 'admin' || req.user.role?.name?.toLowerCase() === 'admin' || req.user.role?.name?.toLowerCase() === 'superadmin'))
+      ? ['*']
+      : (req.user && req.user.permissions ? (Array.isArray(req.user.permissions) ? req.user.permissions : req.user.permissions.actions || []) : ['leads:read', 'leads:view']);
     const LEAD_FIELD_PERMISSIONS = {
       phone: 'leads:read_sensitive',
       email: 'leads:read_sensitive',
@@ -2742,7 +2747,7 @@ exports.getLeadsHandler = async function getLeadsHandler(req, res, next) {
       budget_max: 'leads:read_sensitive'
     };
 
-    let maskedData = result.data;
+    let maskedData = maskSensitiveFields(result.data, userPermissions, LEAD_FIELD_PERMISSIONS);
     const { filterAllowedFields } = require('../utils/fieldMasker');
     if (req.user && req.user.field_permissions) {
       maskedData = filterAllowedFields(maskedData, 'leads', req.user.field_permissions);
@@ -2776,7 +2781,9 @@ exports.getLeadByIdHandler = async (req, res, next) => {
       }
     }
 
-    const userPermissions = req.user && req.user.role === 'superadmin' ? ['*'] : (req.user && req.user.permissions ? req.user.permissions : []);
+    const userPermissions = (req.user && (req.user.role === 'superadmin' || req.user.role === 'admin' || req.user.role?.name?.toLowerCase() === 'admin' || req.user.role?.name?.toLowerCase() === 'superadmin'))
+      ? ['*']
+      : (req.user && req.user.permissions ? (Array.isArray(req.user.permissions) ? req.user.permissions : req.user.permissions.actions || []) : ['leads:read', 'leads:view']);
     const LEAD_FIELD_PERMISSIONS = {
       phone: 'leads:read_sensitive',
       email: 'leads:read_sensitive',

@@ -19,6 +19,40 @@ router.get('/stats', cacheResponse(300), async (req, res) => {
   try {
     const data = await analyticsService.getGlobalStats(tenantId, userId, req.user);
 
+    // Filter financial KPI metrics for unauthorized roles
+    const rName = (typeof req.user?.role === 'string' ? req.user.role : req.user?.role?.name || '').toLowerCase();
+    const permissions = Array.isArray(req.user?.permissions) 
+      ? req.user.permissions 
+      : (Array.isArray(req.user?.role?.permissions) ? req.user.role.permissions : []);
+
+    const isPlatformDev = (req.tenantSlug === 'demo' || req.user?.email === 'admin@demo.com') && 
+      (rName === 'superadmin' || rName === 'admin');
+    const isAdmin = isPlatformDev || 
+      rName === 'superadmin' || 
+      rName === 'super admin' || 
+      rName === 'admin' || 
+      rName === 'owner' || 
+      permissions.includes('*') || 
+      permissions.includes('*:*');
+    const canSeeFinancials = isAdmin || 
+      rName.includes('finance') || 
+      rName.includes('project manager') || 
+      rName.includes('project_manager') || 
+      rName.includes('sales manager') || 
+      rName.includes('sales_manager') ||
+      permissions.includes('finance:read') || 
+      permissions.includes('dashboards:view_sales_dashboard') || 
+      permissions.includes('leads:view_financial_kpis');
+
+    if (!canSeeFinancials && data) {
+      if (data.wonThisMonth) {
+        data.wonThisMonth = { count: data.wonThisMonth.count || 0, value: 0, trend: [] };
+      }
+      if (data.salesTargets) {
+        data.salesTargets = { targetRevenue: 0, targetLeads: data.salesTargets.targetLeads || 0 };
+      }
+    }
+
     return success(res, data);
   } catch (error) {
     logger.error('Dashboard stats error:', error);

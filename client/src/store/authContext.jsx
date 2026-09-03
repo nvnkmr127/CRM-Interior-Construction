@@ -221,12 +221,17 @@ export function AuthProvider({ children }) {
     };
 
     const handleConfigUpdate = () => {
-      if (window.location.pathname.startsWith('/portal')) return;
+      if (window.location.pathname.startsWith('/portal') || !localStorage.getItem('isAuthenticated') || document.hidden) return;
       api.get('/auth/me').then(res => {
         if (res.data?.success) {
           setUser(res.data.data.user);
         }
-      }).catch(() => {});
+      }).catch(err => {
+        if (err.response?.status === 401) {
+          localStorage.removeItem('isAuthenticated');
+          setUser(null);
+        }
+      });
     };
 
     const handleRoleUpdated = (e) => {
@@ -270,6 +275,19 @@ export function AuthProvider({ children }) {
       };
     } catch (e) {}
 
+    // Smart multi-browser/platform sync: sync on tab focus/visibility, with a gentle background heartbeat
+    const pollInterval = setInterval(() => {
+      if (localStorage.getItem('isAuthenticated') && !document.hidden && !window.location.pathname.startsWith('/portal')) {
+        handleConfigUpdate();
+      }
+    }, 15000);
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        handleConfigUpdate();
+      }
+    };
+
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('app:logout', handleAppLogout);
     window.addEventListener('app:sidebar-config-updated', handleConfigUpdate);
@@ -277,8 +295,10 @@ export function AuthProvider({ children }) {
     window.addEventListener('app:auth-change', handleConfigUpdate);
     window.addEventListener('app:role-updated', handleRoleUpdated);
     window.addEventListener('focus', handleConfigUpdate);
+    window.addEventListener('visibilitychange', handleVisibilityChange);
     
     return () => {
+      clearInterval(pollInterval);
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('app:logout', handleAppLogout);
       window.removeEventListener('app:sidebar-config-updated', handleConfigUpdate);
@@ -286,6 +306,7 @@ export function AuthProvider({ children }) {
       window.removeEventListener('app:auth-change', handleConfigUpdate);
       window.removeEventListener('app:role-updated', handleRoleUpdated);
       window.removeEventListener('focus', handleConfigUpdate);
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
       if (channel) {
         try { channel.close(); } catch (e) {}
       }
@@ -421,7 +442,11 @@ export function AuthProvider({ children }) {
           return { success: true, payload };
         }
         if (payload.accessToken) {
+          localStorage.setItem('accessToken', payload.accessToken);
           api.defaults.headers.common['Authorization'] = `Bearer ${payload.accessToken}`;
+        }
+        if (payload.refreshToken) {
+          localStorage.setItem('refreshToken', payload.refreshToken);
         }
         localStorage.setItem('isAuthenticated', 'true');
         try {
@@ -467,6 +492,8 @@ export function AuthProvider({ children }) {
       console.error('Server-side logout failed:', error);
     } finally {
       // Regardless of server response, terminate local session
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
       localStorage.removeItem('isAuthenticated');
       localStorage.removeItem('mockSession');
       delete api.defaults.headers.common['Authorization'];

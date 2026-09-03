@@ -12,8 +12,9 @@ async function enforceProjectAccess(req, res, next, id) {
       return res.status(401).json({ success: false, error: 'UNAUTHORIZED', message: 'enforceProjectAccess: req.user is undefined' });
     }
     
-    // Superadmin override
-    if (req.user.role === 'superadmin') {
+    // Admin / Superadmin / Owner override
+    const userRole = typeof req.user.role === 'string' ? req.user.role.toLowerCase().replace(/[\s_-]+/g, '') : (req.user.role?.name ? req.user.role.name.toLowerCase() : '');
+    if (userRole === 'superadmin' || userRole === 'admin' || userRole === 'owner' || userRole === 'administrator' || userRole.includes('admin')) {
       return next();
     }
 
@@ -45,7 +46,11 @@ async function enforceProjectAccess(req, res, next, id) {
         'SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2 AND tenant_id = $3',
         [id, req.user.userId, req.tenantId]
       );
-      if (pmCheck.rows.length === 0) {
+      const taskCheck = await pool.query(
+        'SELECT 1 FROM tasks WHERE project_id = $1 AND assignee_id = $2 AND tenant_id = $3 AND deleted_at IS NULL LIMIT 1',
+        [id, req.user.userId, req.tenantId]
+      );
+      if (pmCheck.rows.length === 0 && taskCheck.rows.length === 0) {
         return res.status(403).json({ success: false, error: 'Access denied. You are not assigned to this project.' });
       }
     }

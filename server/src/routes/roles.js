@@ -56,9 +56,7 @@ router.get('/permissions-schema', async (req, res, next) => {
       enabledTabs = PLAN_DEFAULTS[tenantPlan] || PLAN_DEFAULTS.starter;
     }
 
-    const filteredModules = isRootPlatformAdmin 
-      ? PERMISSION_MODULES 
-      : getModulesForTabs(enabledTabs);
+    const filteredModules = PERMISSION_MODULES;
 
     return success(res, { 
       modules: filteredModules, 

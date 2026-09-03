@@ -161,19 +161,35 @@ export default function TaskDetail({ isOpen, onClose, taskId, projectId, initial
 
   const handleDelete = async () => {
     if (await confirm('Are you sure you want to permanently delete this task?')) {
-      try {
-        if (projectId && projectId !== 'general-tasks' && projectId !== 'lead-tasks') {
-          await deleteTask(projectId, task.id, { params: { hard: true } })
-        } else {
-          await deleteGlobalTask(task.id, { params: { hard: true } })
+      const pId = projectId || task?.project_id || task?.projectId;
+      let isDeleted = false;
+
+      if (pId && pId !== 'general-tasks' && pId !== 'lead-tasks') {
+        try {
+          await deleteTask(pId, task.id, { params: { hard: true } });
+          isDeleted = true;
+        } catch (e) {
+          console.warn('[TaskDetail] Project task delete failed, trying global delete fallback:', e);
         }
-        logAuditActivity(task.id, 'HARD_DELETE', 'active', 'deleted')
+      }
+
+      if (!isDeleted) {
+        try {
+          await deleteGlobalTask(task.id, { params: { hard: true } });
+          isDeleted = true;
+        } catch (e) {
+          console.error('[TaskDetail] Global task delete failed:', e);
+          toast.error(e.response?.data?.message || 'Failed to delete task');
+          return;
+        }
+      }
+
+      if (isDeleted) {
+        logAuditActivity(task.id, 'HARD_DELETE', 'active', 'deleted');
         onClose();
-        window.dispatchEvent(new CustomEvent('taskUpdated', { detail: { id: task.id, status: 'deleted' } }))
-        window.dispatchEvent(new CustomEvent('globalTimeLogged'))
-        toast.success('Task permanently deleted')
-      } catch (e) {
-        toast.error('Failed to delete task');
+        window.dispatchEvent(new CustomEvent('taskUpdated', { detail: { id: task.id, status: 'deleted' } }));
+        window.dispatchEvent(new CustomEvent('globalTimeLogged'));
+        toast.success('Task permanently deleted');
       }
     }
   };

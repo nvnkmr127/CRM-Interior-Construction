@@ -30,13 +30,17 @@ router.get('/manager/predictive-revenue', authenticate, requireRole(['manager', 
 router.get('/manager/heat-map', authenticate, requireRole(['manager', 'gm']), managerController.getHeatMapData);
 router.post('/manager/approvals/:id/decide', authenticate, requireRole(['manager', 'gm']), managerController.decideApproval);
 
-router.get('/export', authenticate, authorize('leads:export_csv'), leadController.exportLeadsHandler);
+const enforceLeadAccess = require('../middleware/enforceLeadAccess');
+
+router.get('/export', authenticate, authorize('leads:export_csv'), dataScope('leads', 'assignee_id', 'l'), leadController.exportLeadsHandler);
 router.post('/import', authenticate, authorize('leads:import'), leadController.importLeadsHandler);
 
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-router.get('/followups/all', authenticate, authorize('leads:read'), leadController.getAllFollowupsHandler);
+router.get('/followups/all', authenticate, authorize('leads:read'), dataScope('leads', 'assignee_id', 'l'), leadController.getAllFollowupsHandler);
+
+router.param('id', enforceLeadAccess);
 
 router.get('/:id', authenticate, authorize('leads:read'), leadController.getLeadByIdHandler);
 router.patch('/:id', authenticate, authorize('leads:update'), leadController.updateLeadHandler);

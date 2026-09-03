@@ -93,6 +93,10 @@ router.param('projectId', (req, res, next, id) => {
   }
 });
 
+// Mount sub-routers
+router.use('/:projectId/tasks', tasksRoutes);
+router.use('/:id/tasks', tasksRoutes);
+
 // Get Project Activities
 router.get('/:id/activities', authorize('projects:read'), async (req, res, next) => {
   try {
@@ -128,6 +132,22 @@ router.post('/:id/activities', authorize('projects:write'), async (req, res, nex
       if (userRes.rows.length > 0) {
         newActivity.user_name = userRes.rows[0].name;
       }
+    }
+
+    if (type === 'meeting' || type === 'appointment' || type === 'call' || type === 'site_visit' || scheduledAt || (metadata && (metadata.meeting_host || metadata.assignee_id))) {
+      const { notifyMeetingAssigned } = require('../utils/meetingNotificationHelper');
+      await notifyMeetingAssigned({
+        tenantId: req.tenantId,
+        projectId: req.params.id,
+        type: type || 'meeting',
+        title: title || (metadata && metadata.meeting_title) || 'Project Meeting',
+        notes: notes || '',
+        scheduledAt: scheduledAt || (metadata && metadata.meeting_date),
+        assigneeName: metadata && metadata.meeting_host,
+        assigneeId: metadata && metadata.assignee_id,
+        actorId: req.user?.id,
+        actorName: req.user?.name || req.user?.email
+      }).catch(err => console.error('[projects.js] Notification error:', err));
     }
 
     return success(res, newActivity);

@@ -116,6 +116,20 @@ router.post('/', authorize('projects:manage'), validate(meetingNoteSchema), asyn
 
     await client.query('COMMIT');
     newNote.action_items = insertedActionItems;
+
+    const { notifyMeetingAssigned } = require('../utils/meetingNotificationHelper');
+    await notifyMeetingAssigned({
+      tenantId,
+      projectId,
+      type: 'meeting',
+      title: body.title || 'Project Meeting Notes',
+      notes: body.agenda || body.discussion_points || '',
+      scheduledAt: body.meeting_date,
+      attendees: body.attendees,
+      actorId: req.user?.id,
+      actorName: req.user?.name || req.user?.email
+    }).catch(err => console.error('[meetingNotes] Notification error:', err));
+
     return success(res, newNote, 201);
   } catch (error) {
     await client.query('ROLLBACK');

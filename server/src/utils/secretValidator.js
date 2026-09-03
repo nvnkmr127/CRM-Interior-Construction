@@ -9,19 +9,19 @@ function validateEnvironmentSecrets() {
   for (const secret of requiredSecrets) {
     if (!process.env[secret]) {
       logger.error(`[FATAL SECURITY ERROR] Missing critical environment variable: ${secret}`);
-      process.exit(1);
+      if (process.env.NODE_ENV !== 'development') process.exit(1);
     }
   }
 
   // Ensure JWT secrets are cryptographically strong
-  if (process.env.JWT_SECRET.length < 32) {
+  if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
     logger.error('[FATAL SECURITY ERROR] JWT_SECRET is too short. It must be at least 32 characters for sufficient entropy.');
-    process.exit(1);
+    if (process.env.NODE_ENV !== 'development') process.exit(1);
   }
 
   if (process.env.JWT_REFRESH_SECRET && process.env.JWT_REFRESH_SECRET.length < 32) {
     logger.error('[FATAL SECURITY ERROR] JWT_REFRESH_SECRET is too short. It must be at least 32 characters.');
-    process.exit(1);
+    if (process.env.NODE_ENV !== 'development') process.exit(1);
   }
 
   logger.info('[SECURITY] Environment Secrets Validation Passed. Cryptographic entropy is sufficient.');

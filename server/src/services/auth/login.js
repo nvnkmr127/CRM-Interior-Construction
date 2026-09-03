@@ -321,7 +321,7 @@ async function loginUser({ email, password, tenantId, ip, userAgent, trustedDevi
     }
 
     const sessionId = crypto.randomUUID();
-    const payload = { userId: user.id, tenantId, role: roleName, permissions: rolePermissions, email: user.email, sessionId };
+    const payload = { userId: user.id, tenantId, role: roleName, email: user.email, sessionId };
     const accessToken = signAccessToken(payload);
     const refreshToken = signRefreshToken(payload);
 

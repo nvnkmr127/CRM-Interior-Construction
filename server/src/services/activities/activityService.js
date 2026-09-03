@@ -1,5 +1,6 @@
 const pool = require('../../db/pool');
 const eventBus = require('../../utils/eventBus');
+const { notifyMeetingAssigned } = require('../../utils/meetingNotificationHelper');
 
 exports.logActivity = async (data) => {
   const { tenantId, leadId, userId, type, title, notes, scheduledAt, outcome, metadata } = data;
@@ -15,6 +16,20 @@ exports.logActivity = async (data) => {
     payload: activity,
     context: { tenantId, userId }
   });
+
+  if (type === 'meeting' || type === 'appointment' || type === 'call' || type === 'site_visit' || scheduledAt || (metadata && (metadata.meeting_host || metadata.assignee_id))) {
+    await notifyMeetingAssigned({
+      tenantId,
+      leadId,
+      type: type || 'meeting',
+      title: title || (metadata && metadata.meeting_title) || 'Scheduled Meeting',
+      notes: notes || (metadata && metadata.notes) || '',
+      scheduledAt: scheduledAt || (metadata && metadata.meeting_date),
+      assigneeName: metadata && metadata.meeting_host,
+      assigneeId: metadata && metadata.assignee_id,
+      actorId: userId
+    }).catch(err => console.error('[activityService] Notification error:', err));
+  }
 
   return activity;
 };

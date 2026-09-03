@@ -13,14 +13,14 @@ async function getFollowups({ tenantId, leadId }) {
   return result.rows;
 }
 
-async function getAllFollowups({ tenantId }) {
+async function getAllFollowups({ tenantId, scopeFilter = '1=1' }) {
   const result = await pool.query(
     `SELECT f.*, u.name AS assignee_name, l.name AS lead_name, l.phone AS lead_phone, l.stage_id, s.name AS stage_name, s.color AS stage_color
      FROM lead_followups f
      LEFT JOIN users u ON f.assignee_id = u.id
      LEFT JOIN leads l ON f.lead_id = l.id
      LEFT JOIN lead_stages s ON l.stage_id = s.id
-     WHERE f.tenant_id = $1
+     WHERE f.tenant_id = $1 AND (${scopeFilter})
      ORDER BY f.due_at ASC`,
     [tenantId]
   );

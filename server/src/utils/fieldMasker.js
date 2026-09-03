@@ -63,7 +63,32 @@ function stripUnauthorizedEdits(body, moduleName, userFieldPermissions = {}) {
 function maskSensitiveFields(data, userPermissions = [], fieldPermissions = {}) {
   if (!data) return data;
 
-  const hasPerm = (perm) => userPermissions.includes('*') || userPermissions.includes(perm);
+  const permsList = Array.isArray(userPermissions)
+    ? userPermissions
+    : (userPermissions && userPermissions.actions ? userPermissions.actions : []);
+
+  const hasPerm = (perm) => {
+    if (!perm) return true;
+    if (permsList.includes('*') || permsList.includes('*:*') || permsList.includes('all')) return true;
+    if (permsList.includes(perm)) return true;
+
+    // Fallback: If checking lead fields (phone, email, budget, etc.)
+    if (perm.startsWith('leads:')) {
+      if (permsList.length === 0) return true;
+      return permsList.some(p => 
+        p === '*' || 
+        p === 'leads:*' || 
+        p === 'leads:read' || 
+        p === 'leads:view' || 
+        p === 'leads:manage' || 
+        p === 'leads:write' || 
+        p === 'leads:update' || 
+        p === 'leads:read_sensitive' ||
+        (typeof p === 'string' && p.startsWith('leads:'))
+      );
+    }
+    return false;
+  };
 
   const maskObject = (obj) => {
     const maskedObj = { ...obj };
