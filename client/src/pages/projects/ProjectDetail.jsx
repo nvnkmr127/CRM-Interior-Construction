@@ -146,25 +146,29 @@ const FinancialOverviewPanel = React.memo(function FinancialOverviewPanel({ proj
          
          let computedCollected = 0;
          let computedRemaining = 0;
+         let computedBilled = 0;
 
          raw.forEach((p, index) => {
             const entries = p.payment_entries ? [...p.payment_entries] : [];
-            if (index === 0 && entries.length === 0 && Number(project?.booking_amount || 0) > 0) {
-               entries.push({ amount: Number(project.booking_amount) });
-            }
             if (p.status === 'paid' && entries.length === 0) {
                entries.push({ amount: Number(p.amount || p.paid_amount || 0) });
             }
             const pCollected = entries.reduce((s, e) => s + Number(e.amount || 0), 0);
+            const pAmount = Number(p.amount || p.paid_amount || 0);
             computedCollected += pCollected;
-            computedRemaining += (Number(p.amount || p.paid_amount || 0) - pCollected);
+
+            const isInvoiced = p.status === 'invoice_raised' || p.status === 'partially_paid' || p.status === 'overdue' || p.status === 'paid' || Boolean(p.invoice_reference);
+            if (isInvoiced) {
+               computedBilled += pAmount;
+               computedRemaining += Math.max(0, pAmount - pCollected);
+            }
          });
 
          setStats(prev => ({
            ...prev,
            collected: computedCollected,
            outstanding: computedRemaining,
-           billed: computedCollected + computedRemaining
+           billed: Math.max(computedBilled, computedCollected)
          }));
       }).catch(err => console.log('Error fetching milestones for overview', err));
     });

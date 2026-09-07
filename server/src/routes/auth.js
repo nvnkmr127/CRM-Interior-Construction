@@ -277,11 +277,17 @@ router.get('/me', async (req, res, next) => {
 
     let actions = [];
     let enabledModules = [];
+    let dataScopes = {};
+    let fieldPermissions = {};
+    let pagePermissions = {};
     let roleName = row.role_name || (row.role_id ? 'Team Member' : 'Designer');
     if (row.role_permissions) {
       const p = typeof row.role_permissions === 'string' ? JSON.parse(row.role_permissions) : row.role_permissions;
       actions = Array.isArray(p) ? p : (p.actions || []);
       enabledModules = Array.isArray(p) ? [] : (p.modules || []);
+      dataScopes = Array.isArray(p) ? {} : (p.scopes || {});
+      fieldPermissions = Array.isArray(p) ? {} : (p.fields || {});
+      pagePermissions = Array.isArray(p) ? {} : (p.pages || {});
     }
 
     if (actions.length === 0 || enabledModules.length === 0) {
@@ -289,6 +295,9 @@ router.get('/me', async (req, res, next) => {
       if (roleConfig) {
         if (actions.length === 0) actions = roleConfig.permissions;
         if (enabledModules.length === 0) enabledModules = roleConfig.enabled_modules;
+        if (Object.keys(dataScopes).length === 0) dataScopes = roleConfig.data_scopes || {};
+        if (Object.keys(fieldPermissions).length === 0) fieldPermissions = roleConfig.field_permissions || {};
+        if (Object.keys(pagePermissions).length === 0) pagePermissions = roleConfig.page_permissions || {};
       }
     }
 
@@ -326,7 +335,10 @@ router.get('/me', async (req, res, next) => {
         id: row.role_id || 'superadmin',
         name: roleName,
         permissions: actions,
-        enabled_modules: enabledModules
+        enabled_modules: enabledModules,
+        data_scopes: dataScopes,
+        field_permissions: fieldPermissions,
+        page_permissions: pagePermissions
       },
       tenant: {
         id: row.tenant_id,
@@ -455,10 +467,16 @@ router.patch('/me', authenticate, async (req, res, next) => {
     const updatedRow = fullQuery.rows[0];
     let actions = [];
     let enabledModules = [];
+    let dataScopes = {};
+    let fieldPermissions = {};
+    let pagePermissions = {};
     if (updatedRow.role_permissions) {
       const p = typeof updatedRow.role_permissions === 'string' ? JSON.parse(updatedRow.role_permissions) : updatedRow.role_permissions;
       actions = Array.isArray(p) ? p : (p.actions || []);
       enabledModules = Array.isArray(p) ? [] : (p.modules || []);
+      dataScopes = Array.isArray(p) ? {} : (p.scopes || {});
+      fieldPermissions = Array.isArray(p) ? {} : (p.fields || {});
+      pagePermissions = Array.isArray(p) ? {} : (p.pages || {});
     }
 
     const finalProfile = updatedRow.profile_data || {};
@@ -475,7 +493,10 @@ router.patch('/me', authenticate, async (req, res, next) => {
         id: updatedRow.role_id,
         name: updatedRow.role_name,
         permissions: actions,
-        enabled_modules: enabledModules
+        enabled_modules: enabledModules,
+        data_scopes: dataScopes,
+        field_permissions: fieldPermissions,
+        page_permissions: pagePermissions
       } : null
     };
 

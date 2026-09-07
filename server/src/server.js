@@ -18,24 +18,33 @@ validateEnvironmentSecrets();
 const pool = require('./config/db');
 const fs = require('fs');
 const path = require('path');
-const readMig = (f) => fs.readFileSync(path.join(__dirname, '../migrations', f), 'utf8');
-const sql = readMig('006_financial_approval_attachments.sql') + ';' + 
-            readMig('007_extend_approvals_bulk.sql') + ';' + 
-            readMig('008_approval_assignment.sql') + ';' + 
-            readMig('009_sla_tracking.sql') + ';' + 
-            readMig('010_approval_priority.sql') + ';' + 
-            readMig('027_task_attachments.sql') + ';' +
-            readMig('028_resource_allocations.sql') + ';' +
-            readMig('030_webhook_logs_enhancements.sql');
-pool.query(sql).then(() => console.log('Migrations OK')).catch(error => console.log(error));
 
-app.listen(PORT, '0.0.0.0', () => {
+try {
+  const readMig = (f) => fs.readFileSync(path.join(__dirname, '../migrations', f), 'utf8');
+  const sql = readMig('006_financial_approval_attachments.sql') + ';' + 
+              readMig('007_extend_approvals_bulk.sql') + ';' + 
+              readMig('008_approval_assignment.sql') + ';' + 
+              readMig('009_sla_tracking.sql') + ';' + 
+              readMig('010_approval_priority.sql') + ';' + 
+              readMig('027_task_attachments.sql') + ';' +
+              readMig('028_resource_allocations.sql') + ';' +
+              readMig('030_webhook_logs_enhancements.sql');
+  pool.query(sql).then(() => console.log('Migrations OK')).catch(error => console.log('Migration query warning:', error.message));
+} catch (migErr) {
+  console.warn('Migration file load warning:', migErr.message);
+}
+
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT} (IPv4)`);
-  startQueuePolling();
-  startPdfWorker();
-  startSlaTracking();
-  startEmailQueue();
-  startCronJobs();
+  try { startQueuePolling(); } catch (e) { console.warn('startQueuePolling warning:', e.message); }
+  try { startPdfWorker(); } catch (e) { console.warn('startPdfWorker warning:', e.message); }
+  try { startSlaTracking(); } catch (e) { console.warn('startSlaTracking warning:', e.message); }
+  try { startEmailQueue(); } catch (e) { console.warn('startEmailQueue warning:', e.message); }
+  try { startCronJobs(); } catch (e) { console.warn('startCronJobs warning:', e.message); }
 });
 
-// touch for nodemon restart 14
+server.on('error', (err) => {
+  console.error('[SERVER ERROR]', err);
+});
+
+// touch for nodemon restart 16

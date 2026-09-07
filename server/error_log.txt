@@ -730,4 +730,55 @@
     at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
     at async getLeadStats (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:758:18)
-    at async exports.getLeadStatsHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:1412:19)\n\n
+    at async exports.getLeadStatsHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:1412:19)\n\n2026-09-07T07:47:57.808Z\nerror: column "collected_by_name" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:508:9\n\n2026-09-07T07:51:04.895Z\nerror: column "collected_by_name" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:508:9\n\n2026-09-07T07:51:31.243Z\nerror: column "collected_by_name" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:508:9\n\n2026-09-07T08:06:00.943Z\nerror: column "collected_by_name" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:509:9\n\n2026-09-07T08:51:30.208Z\nerror: column "updated_at" of relation "payment_milestones" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:513:9\n\n2026-09-07T09:32:40.019Z\nerror: invalid input syntax for type uuid: "INV-1788773550926"
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async deleteInvoice (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\invoiceService.js:430:20)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\invoices.js:185:20\n\n2026-09-07T09:53:44.187Z\nerror: new row for relation "invoices" violates check constraint "invoices_gst_type_check"
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async createInvoice (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\invoiceService.js:196:20)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\invoices.js:111:21\n\n2026-09-07T10:02:04.126Z\nerror: new row for relation "invoices" violates check constraint "invoices_gst_type_check"
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async createInvoice (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\invoiceService.js:200:20)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\invoices.js:120:21\n\n2026-09-07T10:04:15.133Z\nerror: new row for relation "invoices" violates check constraint "invoices_gst_type_check"
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async createInvoice (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\invoiceService.js:200:20)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\invoices.js:120:21\n\n2026-09-07T10:09:33.955Z\nerror: new row for relation "invoices" violates check constraint "invoices_gst_type_check"
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async createInvoice (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\invoiceService.js:200:20)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\invoices.js:120:21\n\n2026-09-07T10:15:25.721Z\nerror: duplicate key value violates unique constraint "invoices_payment_milestone_id_key"
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async createInvoice (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\invoiceService.js:201:20)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\invoices.js:120:21\n\n2026-09-07T10:15:39.684Z\nerror: duplicate key value violates unique constraint "invoices_payment_milestone_id_key"
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async createInvoice (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\invoiceService.js:201:20)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\invoices.js:120:21\n\n2026-09-07T10:15:49.000Z\nerror: duplicate key value violates unique constraint "invoices_payment_milestone_id_key"
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async createInvoice (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\invoiceService.js:201:20)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\invoices.js:120:21\n\n2026-09-07T10:15:50.297Z\nerror: duplicate key value violates unique constraint "invoices_payment_milestone_id_key"
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async createInvoice (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\invoiceService.js:201:20)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\invoices.js:120:21\n\n

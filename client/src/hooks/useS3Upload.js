@@ -7,6 +7,15 @@ import { getUploadUrl, registerDocument, getContractUploadUrl } from '../api/pro
 //   const { upload, uploading, progress, error } = useS3Upload()
 //   const result = await upload({ projectId, file, docType })
 
+const fileToDataUrl = (file) => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = () => resolve(URL.createObjectURL(file));
+    reader.readAsDataURL(file);
+  });
+};
+
 export function useS3Upload() {
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress]   = useState(0)
@@ -29,7 +38,7 @@ export function useS3Upload() {
       if (uploadUrl && uploadUrl.includes('mock-s3.local')) {
         await new Promise(resolve => setTimeout(resolve, 500));
         setProgress(100);
-        finalStorageKey = URL.createObjectURL(file);
+        finalStorageKey = await fileToDataUrl(file);
       } else if (uploadUrl) {
         await axios.put(uploadUrl, file, {
           headers: { 'Content-Type': file.type },
@@ -74,7 +83,7 @@ export function useS3Upload() {
       if (uploadUrl && uploadUrl.includes('mock-s3.local')) {
         await new Promise(resolve => setTimeout(resolve, 500));
         setProgress(100);
-        finalStorageKey = URL.createObjectURL(file);
+        finalStorageKey = await fileToDataUrl(file);
       } else {
         await axios.put(uploadUrl, file, {
           headers: { 'Content-Type': file.type },
@@ -102,7 +111,7 @@ export function useS3Upload() {
       if (uploadUrl && uploadUrl.includes('mock-s3.local')) {
         await new Promise(resolve => setTimeout(resolve, 500));
         setProgress(100);
-        finalStorageKey = URL.createObjectURL(file);
+        finalStorageKey = await fileToDataUrl(file);
       } else {
         await axios.put(uploadUrl, file, {
           headers: { 'Content-Type': file.type },

@@ -3365,27 +3365,29 @@ export const setupMockInterceptor = (api) => {
                if (!mockDatabase.receipts) mockDatabase.receipts = [];
                
                // Backfill receipts for already paid milestones if missing
-               if (projectId && mockDatabase.paymentMilestones) {
+               if (mockDatabase.paymentMilestones) {
                    const paidMilestones = mockDatabase.paymentMilestones.filter(m => 
-                       (m.project_id === projectId || m.projectId === projectId) && 
-                       (m.status === 'paid' || m.status === 'partially_paid')
+                       (!projectId || m.project_id === projectId || m.projectId === projectId) && 
+                       (m.status === 'paid' || m.status === 'partially_paid' || Number(m.paid_amount || m.collectedAmount || 0) > 0)
                    );
                    
                    paidMilestones.forEach(pm => {
-                       const amountPaid = pm.paid_amount || (pm.payment_entries ? pm.payment_entries.reduce((sum, e) => sum + Number(e.amount), 0) : 0);
+                       const pId = pm.project_id || pm.projectId;
+                       const amountPaid = pm.paid_amount || pm.collectedAmount || (pm.payment_entries ? pm.payment_entries.reduce((sum, e) => sum + Number(e.amount), 0) : 0) || Number(pm.amount || 0);
                        
                        if (amountPaid > 0) {
-                           const exists = mockDatabase.receipts.find(r => r.milestoneName === pm.name && r.projectId === projectId);
+                           const exists = mockDatabase.receipts.find(r => r.milestoneName === (pm.name || pm.milestone) && r.projectId === pId);
                            if (!exists) {
+                               const projObj = (mockDatabase.projects || []).find(p => p.id === pId);
                                const newReceipt = {
-                                   id: 'REC-AUTO-' + Date.now() + Math.floor(Math.random()*1000),
-                                   projectId,
+                                   id: 'REC-' + (pm.id || Date.now()).substring(0, 12),
+                                   projectId: pId,
                                    receiptDate: pm.paid_at || (pm.payment_entries && pm.payment_entries[0] ? pm.payment_entries[0].paidAt : new Date().toISOString()),
-                                   milestoneName: pm.name || pm.milestone || 'Milestone',
-                                   customerName: 'Customer', // Would pull from project in real app
+                                   milestoneName: pm.name || pm.milestone || 'Booking Advance',
+                                   customerName: projObj?.client_name || 'Client',
                                    amount: amountPaid,
-                                   paymentMode: (pm.payment_entries && pm.payment_entries[0]) ? pm.payment_entries[0].mode : 'System Generated',
-                                   reference: pm.invoice_reference || 'N/A',
+                                   paymentMode: (pm.payment_entries && pm.payment_entries[0]) ? pm.payment_entries[0].mode : 'Bank Transfer',
+                                   reference: pm.invoice_reference || 'REF-' + Date.now().toString().slice(-6),
                                    status: 'ISSUED'
                                };
                                mockDatabase.receipts.push(newReceipt);

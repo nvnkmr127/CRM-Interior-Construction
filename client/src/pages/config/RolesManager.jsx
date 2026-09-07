@@ -865,9 +865,9 @@ export default function RolesManager() {
                               type="checkbox"
                               checked={isChecked}
                               onChange={() => handleToggleModuleVisibility(mod.id)}
-                              style={{ width: '15px', height: '15px', accentColor: 'var(--color-accent, #4f46e5)' }}
+                              style={{ width: '15px', height: '15px', flexShrink: 0, accentColor: 'var(--color-accent, #4f46e5)' }}
                             />
-                            {mod.label}
+                            <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{mod.label}</span>
                           </label>
                         );
                       })}

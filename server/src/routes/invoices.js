@@ -19,7 +19,16 @@ const router = express.Router();
 router.use(authenticate);
 
 const createInvoiceSchema = z.object({
-  milestoneId: z.string().uuid(),
+  milestoneId: z.string().optional().nullable(),
+  projectId: z.string().optional().nullable(),
+  type: z.string().optional().nullable(),
+  amount: z.number().optional().nullable(),
+  cgstAmount: z.number().optional().nullable(),
+  sgstAmount: z.number().optional().nullable(),
+  igstAmount: z.number().optional().nullable(),
+  exactTotal: z.number().optional().nullable(),
+  grandTotal: z.number().optional().nullable(),
+  roundOffAmount: z.number().optional().nullable(),
   invoiceDate: z.string().optional().nullable(),
   dueDate: z.string().optional().nullable(),
   companyName: z.string().optional().nullable(),
@@ -28,11 +37,13 @@ const createInvoiceSchema = z.object({
   billingName: z.string().optional().nullable(),
   billingAddress: z.string().optional().nullable(),
   billingGstin: z.string().optional().nullable(),
-  gstType: z.enum(['cgst_sgst', 'igst']).optional().nullable(),
+  customerGst: z.string().optional().nullable(),
+  gstType: z.string().optional().nullable(),
   gstRate: z.number().optional().nullable(),
   paymentTerms: z.string().optional().nullable(),
   hsnCode: z.string().optional().nullable(),
-  taxTreatment: z.enum(['itemized', 'works_contract', 'composite_supply']).optional().nullable()
+  hsnSac: z.string().optional().nullable(),
+  taxTreatment: z.string().optional().nullable()
 });
 
 // GET /api/invoices/milestone/:milestoneId
@@ -49,7 +60,7 @@ router.get('/milestone/:milestoneId', authorize('projects:read'), async (req, re
 });
 
 // GET /api/invoices/milestone/:milestoneId/download
-router.get('/milestone/:milestoneId/download', authorize('invoices:print'), async (req, res, next) => {
+router.get('/milestone/:milestoneId/download', authorize(['invoices:print', 'invoices:view', 'payments:view', 'payments:read', 'projects:read']), async (req, res, next) => {
   try {
     const invoice = await getInvoiceByMilestone(req.tenantId, req.params.milestoneId);
     if (!invoice) {
@@ -102,18 +113,20 @@ router.get('/milestone/:milestoneId/draft', authorize('projects:read'), async (r
 // POST /api/invoices
 router.post('/', authorize('invoices:create'), validate(createInvoiceSchema), async (req, res, next) => {
   try {
-    const data  = req.body;
-    
+    const data = req.body;
+    const tenantId = req.tenantId || (req.user && req.user.tenantId);
+    const userId = req.user?.id || req.user?.userId;
+
     const invoice = await createInvoice({
-      tenantId: req.tenantId,
-      userId: req.user.userId,
+      tenantId,
+      userId,
       milestoneId: data.milestoneId,
+      projectId: data.projectId,
       data
     });
     
     return success(res, invoice, {}, 201);
   } catch (error) {
-    
     if (error.message === 'INVOICE_ALREADY_EXISTS') {
       return fail(res, 'CONFLICT', 'An invoice has already been generated for this milestone.', 409);
     }
@@ -164,7 +177,7 @@ router.get('/:id/download', authorize('invoices:print'), async (req, res, next) 
 });
 
 // GET /api/invoices
-router.get('/', authorize('invoices:read'), async (req, res, next) => {
+router.get('/', authorize(['invoices:read', 'invoices:view', 'payments:view', 'payments:read', 'projects:view', 'projects:read']), async (req, res, next) => {
   try {
     const { projectId } = req.query;
     let invoices;

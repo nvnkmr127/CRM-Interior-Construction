@@ -33,11 +33,48 @@ async function updateProject({ tenantId, userId, projectId, data }) {
     await verifyProjectClosureReady(projectId, tenantId);
   }
 
-  const { contacts, measurements, vendors, consultants, site_team, ...projectData } = data;
+  const { contacts, measurements, vendors, consultants, site_team, changeReason, change_reason, template_id, enforce_dependencies, enforceDependencies, ...projectData } = data;
+
+  // Map legacy plural role keys to singular DB columns
+  const roleFieldMap = [
+    ['designer_ids', 'designer_id'],
+    ['lead_designer_ids', 'lead_designer_id'],
+    ['junior_designer_ids', 'junior_designer_id'],
+    ['site_engineer_ids', 'site_engineer_id'],
+    ['qc_engineer_ids', 'qc_engineer_id'],
+    ['site_supervisor_ids', 'site_supervisor_id'],
+    ['crm_executive_ids', 'crm_executive_id'],
+    ['procurement_officer_ids', 'procurement_officer_id']
+  ];
+
+  for (const [pluralKey, singularKey] of roleFieldMap) {
+    if (projectData[pluralKey] !== undefined) {
+      if (projectData[singularKey] === undefined) {
+        const val = projectData[pluralKey];
+        projectData[singularKey] = Array.isArray(val) ? (val[0] || null) : (val || null);
+      }
+      delete projectData[pluralKey];
+    }
+  }
+
   const client = await pool.connect();
   let updatedProject;
 
-  const toIso = (d) => d ? new Date(d).toISOString().split('T')[0] : null;
+  const toIso = (d) => {
+    if (!d) return null;
+    try {
+      const parsed = new Date(d);
+      return isNaN(parsed.getTime()) ? null : parsed.toISOString().split('T')[0];
+    } catch {
+      return null;
+    }
+  };
+
+  const parseNum = (val, fallback = 0) => {
+    if (val === undefined || val === null || val === '') return fallback;
+    const n = Number(val);
+    return isNaN(n) ? fallback : n;
+  };
 
   try {
     await client.query('BEGIN');
@@ -72,7 +109,7 @@ async function updateProject({ tenantId, userId, projectId, data }) {
         [projectId, tenantId]
       );
       const nextRev = (revRows[0]?.max_rev || 0) + 1;
-      const reason = data.changeReason || 'Schedule adjustment';
+      const reason = data.changeReason || data.change_reason || 'Schedule adjustment';
 
       await client.query(`
         INSERT INTO project_schedule_revisions (
@@ -82,7 +119,7 @@ async function updateProject({ tenantId, userId, projectId, data }) {
       `, [
         tenantId,
         projectId,
-        userId,
+        userId || null,
         currentProject.start_date,
         currentProject.target_date,
         data.start_date || currentProject.start_date,
@@ -101,7 +138,13 @@ async function updateProject({ tenantId, userId, projectId, data }) {
       await client.query('DELETE FROM project_contacts WHERE tenant_id = $1 AND project_id = $2', [tenantId, projectId]);
       if (Array.isArray(contacts) && contacts.length > 0) {
         for (const contact of contacts) {
-          if (!contact.name) continue;
+          if (!contact || !contact.name) continue;
+          let approvalLevel = null;
+          if (contact.approval_authority_level !== undefined && contact.approval_authority_level !== null && contact.approval_authority_level !== '') {
+            const parsed = Number(contact.approval_authority_level);
+            approvalLevel = isNaN(parsed) ? null : parsed;
+          }
+
           await client.query(`
             INSERT INTO project_contacts (
               tenant_id, project_id, name, phone, email, role, decision_authority, relationship_notes,
@@ -117,7 +160,7 @@ async function updateProject({ tenantId, userId, projectId, data }) {
             contact.decision_authority || 'Influencer',
             contact.relationship_notes || null,
             contact.contact_preference || null,
-            contact.approval_authority_level || null
+            approvalLevel
           ]);
         }
       }
@@ -128,10 +171,11 @@ async function updateProject({ tenantId, userId, projectId, data }) {
       await client.query('DELETE FROM project_measurements WHERE tenant_id = $1 AND project_id = $2', [tenantId, projectId]);
       if (Array.isArray(measurements) && measurements.length > 0) {
         for (const m of measurements) {
-          if (!m.room_name) continue;
-          const length = m.length !== undefined && m.length !== null ? Number(m.length) : 0;
-          const width = m.width !== undefined && m.width !== null ? Number(m.width) : 0;
-          const area = m.area !== undefined && m.area !== null ? Number(m.area) : (length * width);
+          if (!m || !m.room_name) continue;
+          const length = parseNum(m.length, 0);
+          const width = parseNum(m.width, 0);
+          const height = parseNum(m.height, 0);
+          const area = (m.area !== undefined && m.area !== null && m.area !== '') ? parseNum(m.area, length * width) : (length * width);
           await client.query(`
             INSERT INTO project_measurements (
               tenant_id, project_id, room_name, length, width, height, area, unit, notes
@@ -142,7 +186,7 @@ async function updateProject({ tenantId, userId, projectId, data }) {
             m.room_name,
             length,
             width,
-            m.height !== undefined && m.height !== null ? Number(m.height) : 0,
+            height,
             area,
             m.unit || 'feet',
             m.notes || null
@@ -157,7 +201,10 @@ async function updateProject({ tenantId, userId, projectId, data }) {
       await client.query('DELETE FROM project_vendors WHERE tenant_id = $1 AND project_id = $2', [tenantId, projectId]);
       if (Array.isArray(vendors) && vendors.length > 0) {
         for (const v of vendors) {
-          if (!v.vendor_name) continue;
+          if (!v || !v.vendor_name) continue;
+          const agreedRate = (v.agreed_rate !== undefined && v.agreed_rate !== null && v.agreed_rate !== '') ? Number(v.agreed_rate) : null;
+          const finalRate = (agreedRate !== null && !isNaN(agreedRate)) ? agreedRate : null;
+
           const vendorInsertRes = await client.query(`
             INSERT INTO project_vendors (
               tenant_id, project_id, vendor_name, scope_of_work, agreed_rate, payment_terms, status
@@ -168,11 +215,13 @@ async function updateProject({ tenantId, userId, projectId, data }) {
             projectId,
             v.vendor_name,
             v.scope_of_work || null,
-            v.agreed_rate !== undefined && v.agreed_rate !== null ? Number(v.agreed_rate) : null,
+            finalRate,
             v.payment_terms || null,
             v.status || 'pending'
           ]);
-          vendorNameToIdMap[v.vendor_name] = vendorInsertRes.rows[0].id;
+          if (vendorInsertRes.rows.length > 0) {
+            vendorNameToIdMap[v.vendor_name] = vendorInsertRes.rows[0].id;
+          }
         }
       }
     } else if (site_team !== undefined) {
@@ -190,7 +239,7 @@ async function updateProject({ tenantId, userId, projectId, data }) {
       await client.query('DELETE FROM project_consultants WHERE tenant_id = $1 AND project_id = $2', [tenantId, projectId]);
       if (Array.isArray(consultants) && consultants.length > 0) {
         for (const c of consultants) {
-          if (!c.name || !c.role) continue;
+          if (!c || !c.name || !c.role) continue;
           await client.query(`
             INSERT INTO project_consultants (
               tenant_id, project_id, name, role, firm, email, phone
@@ -213,10 +262,10 @@ async function updateProject({ tenantId, userId, projectId, data }) {
       await client.query('DELETE FROM project_site_team WHERE tenant_id = $1 AND project_id = $2', [tenantId, projectId]);
       if (Array.isArray(site_team) && site_team.length > 0) {
         for (const member of site_team) {
-          if (!member.name || !member.role) continue;
+          if (!member || !member.name || !member.role) continue;
 
           let finalVendorId = null;
-          if (member.vendor_id) {
+          if (member.vendor_id && member.vendor_id !== '') {
             finalVendorId = member.vendor_id;
           } else if (member.vendor_name && vendorNameToIdMap[member.vendor_name]) {
             finalVendorId = vendorNameToIdMap[member.vendor_name];
@@ -246,7 +295,7 @@ async function updateProject({ tenantId, userId, projectId, data }) {
       anniversaryDate.setFullYear(completedAt.getFullYear() + 1);
 
       const nextFollowupDate = new Date();
-      nextFollowupDate.setMonth(completedAt.getMonth() + 6); // 6-month follow-up schedule
+      nextFollowupDate.setMonth(completedAt.getMonth() + 6);
 
       const rand = Math.floor(1000 + Math.random() * 9000);
       const cleanName = currentProject.client_name ? currentProject.client_name.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6).toUpperCase() : 'CUST';
@@ -283,13 +332,15 @@ async function updateProject({ tenantId, userId, projectId, data }) {
   // Fetch updated project with fresh contacts list for response
   const finalProject = await projectRepository.findProjectById(tenantId, projectId);
 
-  // 3. Compute changes for audit logging (ignoring contacts in standard table diff)
+  // 3. Compute changes for audit logging
   const oldValues = {};
   const newValues = {};
-  for (const key of Object.keys(projectData)) {
-    if (currentProject[key] !== updatedProject[key]) {
-      oldValues[key] = currentProject[key];
-      newValues[key] = updatedProject[key];
+  if (updatedProject) {
+    for (const key of Object.keys(projectData)) {
+      if (currentProject[key] !== updatedProject[key]) {
+        oldValues[key] = currentProject[key];
+        newValues[key] = updatedProject[key];
+      }
     }
   }
 
@@ -335,7 +386,7 @@ async function updateProject({ tenantId, userId, projectId, data }) {
   }
 
   // 4. Trigger automation if status explicitly changed
-  if (data.status && data.status !== currentProject.status) {
+  if (data.status && data.status !== currentProject.status && updatedProject) {
     await enqueueAutomation({
       tenantId,
       eventType: 'field.changed',

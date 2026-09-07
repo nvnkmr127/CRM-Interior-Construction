@@ -13,9 +13,10 @@ const pool = require('../db/pool');
  */
 const logActivity = async (req, entity, entity_id, action, old_value = null, new_value = null, reason = null) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenantId || (req.user && req.user.tenantId);
     const userId = req.user?.id || req.user?.userId;
-    if (!tenantId || !userId) return;
+    const isUuid = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+    if (!tenantId || !userId || !isUuid(userId)) return;
 
     // Try to get IP
     let ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '';

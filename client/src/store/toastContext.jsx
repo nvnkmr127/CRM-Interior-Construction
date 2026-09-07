@@ -10,7 +10,10 @@ export const useToastStore = create((set, get) => ({
   show: (type, message, duration) => {
     const id = Date.now() + Math.random();
     const d = duration ?? (type === 'error' ? 6000 : type === 'warning' ? 5000 : type === 'info' ? 4000 : 3000);
-    get().addToast({ id, type, message });
+    const safeMessage = typeof message === 'object' && message !== null
+      ? (message.message || message.error || JSON.stringify(message))
+      : String(message || '');
+    get().addToast({ id, type, message: safeMessage });
     setTimeout(() => get().removeToast(id), d);
   }
 }));

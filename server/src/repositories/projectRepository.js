@@ -393,8 +393,31 @@ class ProjectRepository {
     const values = [];
     let idx = 1;
 
-    for (const [key, value] of Object.entries(updates)) {
-      if (['id', 'tenant_id', 'created_at', 'deleted_at'].includes(key)) continue;
+    const nonColumnKeys = new Set([
+      'id', 'tenant_id', 'created_at', 'deleted_at',
+      'contacts', 'measurements', 'vendors', 'consultants', 'site_team',
+      'changeReason', 'change_reason', 'template_id', 'enforce_dependencies', 'enforceDependencies',
+      'phases', 'payment_milestones', 'booking', 'pm_name', 'designer_name',
+      'lead_designer_name', 'junior_designer_name', 'site_engineer_name', 'qc_engineer_name',
+      'site_supervisor_name', 'crm_executive_name', 'procurement_officer_name',
+      'task_count', 'progress_percentage', 'total_tasks', 'completed_tasks',
+      'designer_ids', 'lead_designer_ids', 'junior_designer_ids', 'site_engineer_ids',
+      'qc_engineer_ids', 'site_supervisor_ids', 'crm_executive_ids', 'procurement_officer_ids'
+    ]);
+
+    for (let [key, value] of Object.entries(updates)) {
+      if (nonColumnKeys.has(key)) continue;
+
+      if (value === '') {
+        value = null;
+      }
+
+      if (['custom_fields', 'stage_revision_limits', 'stage_revision_counts'].includes(key)) {
+        if (typeof value === 'object' && value !== null) {
+          value = JSON.stringify(value);
+        }
+      }
+
       fields.push(`${key} = $${idx}`);
       values.push(value);
       idx++;
@@ -431,13 +454,22 @@ class ProjectRepository {
 
     const paymentsQuery = `
       SELECT 
+        COALESCE(SUM(amount) FILTER (WHERE status IN ('invoice_raised', 'partially_paid', 'paid') OR invoice_reference IS NOT NULL), 0) as invoiced_payment,
         COALESCE(SUM(amount), 0) as total_payment,
         COALESCE(SUM(paid_amount), 0) as collected_payment
       FROM payment_milestones
       WHERE tenant_id = $1 AND project_id = $2
     `;
     const { rows: paymentRows } = await pool.query(paymentsQuery, [tenantId, projectId]);
-    const payStats = paymentRows[0] || { total_payment: 0, collected_payment: 0 };
+    const payStats = paymentRows[0] || { invoiced_payment: 0, total_payment: 0, collected_payment: 0 };
+
+    const invoicesQuery = `
+      SELECT COALESCE(SUM(total_amount), 0) as total_invoiced
+      FROM invoices
+      WHERE tenant_id = $1 AND project_id = $2 AND status != 'cancelled'
+    `;
+    const { rows: invoiceRows } = await pool.query(invoicesQuery, [tenantId, projectId]);
+    const totalInvoiced = Number(invoiceRows[0]?.total_invoiced || 0);
 
     // Credit Notes Total
     const creditsQuery = `
@@ -535,8 +567,10 @@ class ProjectRepository {
 
     const totalPayment = Number(payStats.total_payment);
     const collectedPayment = Number(payStats.collected_payment);
+    const invoicedPayment = Number(payStats.invoiced_payment);
 
-    const netBilled = Math.max(0, totalPayment - totalCredits);
+    const grossBilled = Math.max(totalInvoiced, invoicedPayment, collectedPayment);
+    const netBilled = Math.max(0, grossBilled - totalCredits);
     const netCollections = Math.max(0, collectedPayment - totalRefunds);
     const outstandingBalance = Math.max(0, netBilled - netCollections);
 

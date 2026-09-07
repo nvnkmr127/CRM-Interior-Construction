@@ -42,13 +42,14 @@ async function enforceProjectAccess(req, res, next, id) {
     if (rows.length === 0) {
       // The user failed the general dataScope check. 
       // Are they explicitly assigned via project_members?
+      const userId = req.user.id || req.user.userId;
       const pmCheck = await pool.query(
         'SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2 AND tenant_id = $3',
-        [id, req.user.userId, req.tenantId]
+        [id, userId, req.tenantId]
       );
       const taskCheck = await pool.query(
         'SELECT 1 FROM tasks WHERE project_id = $1 AND assignee_id = $2 AND tenant_id = $3 AND deleted_at IS NULL LIMIT 1',
-        [id, req.user.userId, req.tenantId]
+        [id, userId, req.tenantId]
       );
       if (pmCheck.rows.length === 0 && taskCheck.rows.length === 0) {
         return res.status(403).json({ success: false, error: 'Access denied. You are not assigned to this project.' });

@@ -282,10 +282,17 @@ async function loginUser({ email, password, tenantId, ip, userAgent, trustedDevi
     let roleName = user.role_name || (user.role && typeof user.role === 'object' ? user.role.name : user.role) || (user.role_id ? 'Team Member' : 'Designer');
     let rolePermissions = [];
     let enabledModules = [];
+    let dataScopes = {};
+    let fieldPermissions = {};
+    let pagePermissions = {};
+
     if (user.role_id) {
       const p = typeof user.role_permissions === 'string' ? JSON.parse(user.role_permissions) : (user.role_permissions || []);
       rolePermissions = Array.isArray(p) ? p : (p.actions || []);
       enabledModules = Array.isArray(p) ? [] : (p.modules || []);
+      dataScopes = Array.isArray(p) ? {} : (p.scopes || {});
+      fieldPermissions = Array.isArray(p) ? {} : (p.fields || {});
+      pagePermissions = Array.isArray(p) ? {} : (p.pages || {});
     }
 
     if (rolePermissions.length === 0 || enabledModules.length === 0) {
@@ -293,6 +300,9 @@ async function loginUser({ email, password, tenantId, ip, userAgent, trustedDevi
       if (roleConfig) {
         if (rolePermissions.length === 0) rolePermissions = roleConfig.permissions;
         if (enabledModules.length === 0) enabledModules = roleConfig.enabled_modules;
+        if (Object.keys(dataScopes).length === 0) dataScopes = roleConfig.data_scopes || {};
+        if (Object.keys(fieldPermissions).length === 0) fieldPermissions = roleConfig.field_permissions || {};
+        if (Object.keys(pagePermissions).length === 0) pagePermissions = roleConfig.page_permissions || {};
       }
     }
 
@@ -300,7 +310,10 @@ async function loginUser({ email, password, tenantId, ip, userAgent, trustedDevi
       id: user.role_id || 'designer',
       name: roleName,
       permissions: rolePermissions,
-      enabled_modules: enabledModules
+      enabled_modules: enabledModules,
+      data_scopes: dataScopes,
+      field_permissions: fieldPermissions,
+      page_permissions: pagePermissions
     };
 
     // 6. Concurrent Login Limits

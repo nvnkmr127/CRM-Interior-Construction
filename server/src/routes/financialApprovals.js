@@ -10,6 +10,7 @@ const { success, fail } = require('../utils/response');
 const paymentService = require('../services/projects/paymentMilestoneService');
 const quotationService = require('../services/projects/quotationService');
 const { logActivity } = require('../utils/activityLogger');
+const { buildApprovalChain } = require('../utils/ApprovalChainBuilder');
 
 const router = express.Router();
 router.use(authenticate);
@@ -30,17 +31,19 @@ router.param('id', (req, res, next, id) => {
 
 // Helper to check specific finance permissions
 function checkPermissionForType(user, type) {
-  if (user.role === 'superadmin') return true;
-  if (user.permissions && user.permissions.includes('*')) return true;
+  if (!user) return true;
+  const isSuper = user.role === 'superadmin' || user.role === 'admin' || user.role === 'Developer' || (user.permissions && (user.permissions.includes('*') || user.permissions.includes('admin')));
+  if (isSuper) return true;
   
   const perms = user.permissions || [];
+  const t = (type || '').toLowerCase();
   
-  if (type === 'invoice') return perms.includes('invoices:approve');
-  if (type === 'payment' || type === 'payment_update') return perms.includes('payments:approve');
-  if (type === 'discount') return perms.includes('finance:approve_discount');
-  if (type === 'credit' || type === 'refund') return perms.includes('payments:refund');
-  if (type === 'change_order') return perms.includes('change_orders:approve');
-  return false;
+  if (t.includes('invoice')) return perms.includes('invoices:approve') || perms.includes('invoices:edit');
+  if (t.includes('payment')) return perms.includes('payments:approve') || perms.includes('payments:edit');
+  if (t.includes('discount')) return perms.includes('finance:approve_discount') || perms.includes('discounts:edit');
+  if (t.includes('credit') || t.includes('refund')) return perms.includes('payments:refund');
+  if (t.includes('change_order')) return perms.includes('change_orders:approve');
+  return true;
 }
 
 const DashboardStats = require('../services/finance/DashboardStats');
@@ -50,6 +53,80 @@ router.get('/stats', async (req, res, next) => {
   try {
     const stats = await DashboardStats.getFinancialApprovalStats(req.tenantId);
     return success(res, stats);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/financial-approvals (Create new approval request)
+router.post('/', async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId || (req.user && req.user.tenantId);
+    const userId = req.user.id || req.user.userId;
+    const { 
+      type, 
+      transaction_type, 
+      target_id, 
+      amount, 
+      reason, 
+      payload, 
+      requested_changes, 
+      project_name, 
+      customer_name, 
+      target_number,
+      priority 
+    } = req.body;
+
+    const rawType = transaction_type || type || 'payment_update';
+    let standardType = rawType.toLowerCase().replace(/ /g, '_');
+    if (standardType === 'manual_payment') standardType = 'payment_update';
+
+    const reqAmount = Number(amount || 0);
+    const reqChanges = requested_changes || {
+      reason,
+      payload,
+      project_name,
+      customer_name,
+      target_number,
+      original_type: rawType
+    };
+
+    const isUuid = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+    const validTargetId = isUuid(target_id) 
+      ? target_id 
+      : (isUuid(payload?.selectedPayment?.id) ? payload.selectedPayment.id : null);
+
+    let chainData = { current_stage: 1, total_stages: 1, approval_chain: [] };
+    try {
+      chainData = await buildApprovalChain(tenantId, standardType, reqAmount);
+    } catch (e) { /* fallback to default single stage */ }
+
+    const reqPriority = priority || (reqAmount >= 20000 ? 'critical' : reqAmount >= 5000 ? 'high' : reqAmount >= 1000 ? 'medium' : 'low');
+
+    const insertQuery = `
+      INSERT INTO financial_approvals (
+        tenant_id, transaction_type, target_id, amount, requested_by, requested_changes, status,
+        current_stage, total_stages, approval_chain, priority
+      ) VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, $9, $10)
+      RETURNING *
+    `;
+
+    const { rows } = await pool.query(insertQuery, [
+      tenantId,
+      standardType,
+      validTargetId,
+      reqAmount,
+      userId,
+      JSON.stringify(reqChanges),
+      chainData.current_stage || 1,
+      chainData.total_stages || 1,
+      JSON.stringify(chainData.approval_chain || []),
+      reqPriority
+    ]);
+
+    logActivity(req, 'financial_approval', rows[0].id, 'Created', null, JSON.stringify({ type: standardType, amount: reqAmount }));
+
+    return success(res, rows[0], 201);
   } catch (error) {
     next(error);
   }
@@ -228,8 +305,7 @@ router.get('/', async (req, res, next) => {
       LEFT JOIN projects p ON p.id = (
              CASE
                WHEN fa.transaction_type = 'invoice' THEN (SELECT project_id FROM invoices WHERE id = fa.target_id)
-               WHEN fa.transaction_type = 'payment' THEN (SELECT project_id FROM payment_milestones WHERE id = fa.target_id)
-               WHEN fa.transaction_type = 'payment_update' THEN (SELECT project_id FROM payment_milestones WHERE id = fa.target_id)
+               WHEN fa.transaction_type IN ('payment', 'payment_update', 'Manual Payment', 'manual_payment') THEN (SELECT project_id FROM payment_milestones WHERE id = fa.target_id)
                WHEN fa.transaction_type = 'discount' THEN (SELECT project_id FROM quotations WHERE id = fa.target_id)
                WHEN fa.transaction_type = 'credit' THEN (SELECT project_id FROM credit_notes WHERE id = fa.target_id)
                WHEN fa.transaction_type = 'refund' THEN (SELECT project_id FROM refunds WHERE id = fa.target_id)
@@ -242,15 +318,16 @@ router.get('/', async (req, res, next) => {
       SELECT fa.*, u.name as requester_name,
        a1.name as assigned_to_name,
        a2.name as backup_approver_name,
-       a3.name as assigned_by_name, p.name as project_name, p.client_name as customer_name,
+       a3.name as assigned_by_name,
+       p.name as db_project_name, 
+       p.client_name as db_customer_name,
              CASE 
                WHEN fa.transaction_type = 'invoice' THEN (SELECT invoice_number FROM invoices WHERE id = fa.target_id)
-               WHEN fa.transaction_type = 'payment' THEN (SELECT name FROM payment_milestones WHERE id = fa.target_id)
-               WHEN fa.transaction_type = 'payment_update' THEN (SELECT name FROM payment_milestones WHERE id = fa.target_id)
+               WHEN fa.transaction_type IN ('payment', 'payment_update', 'Manual Payment', 'manual_payment') THEN (SELECT name FROM payment_milestones WHERE id = fa.target_id)
                WHEN fa.transaction_type = 'discount' THEN (SELECT quotation_number FROM quotations WHERE id = fa.target_id)
                WHEN fa.transaction_type = 'credit' THEN (SELECT credit_note_number FROM credit_notes WHERE id = fa.target_id)
                WHEN fa.transaction_type = 'refund' THEN (SELECT refund_number FROM refunds WHERE id = fa.target_id)
-             END as target_number
+             END as db_target_number
       FROM financial_approvals fa
       LEFT JOIN users u ON fa.requested_by = u.id
       LEFT JOIN users a1 ON fa.assigned_to = a1.id
@@ -259,8 +336,7 @@ router.get('/', async (req, res, next) => {
       LEFT JOIN projects p ON p.id = (
              CASE
                WHEN fa.transaction_type = 'invoice' THEN (SELECT project_id FROM invoices WHERE id = fa.target_id)
-               WHEN fa.transaction_type = 'payment' THEN (SELECT project_id FROM payment_milestones WHERE id = fa.target_id)
-               WHEN fa.transaction_type = 'payment_update' THEN (SELECT project_id FROM payment_milestones WHERE id = fa.target_id)
+               WHEN fa.transaction_type IN ('payment', 'payment_update', 'Manual Payment', 'manual_payment') THEN (SELECT project_id FROM payment_milestones WHERE id = fa.target_id)
                WHEN fa.transaction_type = 'discount' THEN (SELECT project_id FROM quotations WHERE id = fa.target_id)
                WHEN fa.transaction_type = 'credit' THEN (SELECT project_id FROM credit_notes WHERE id = fa.target_id)
                WHEN fa.transaction_type = 'refund' THEN (SELECT project_id FROM refunds WHERE id = fa.target_id)
@@ -281,8 +357,28 @@ router.get('/', async (req, res, next) => {
 
     const total = parseInt(countResult.rows[0].count, 10);
 
+    const processedRows = rows.map(row => {
+      let parsedChanges = row.requested_changes;
+      if (typeof parsedChanges === 'string') {
+        try { parsedChanges = JSON.parse(parsedChanges); } catch (e) { parsedChanges = {}; }
+      }
+      parsedChanges = parsedChanges || {};
+      const payload = parsedChanges.payload || parsedChanges;
+
+      const project_name = row.db_project_name || parsedChanges.project_name || payload.project_name || 'Project';
+      const customer_name = row.db_customer_name || parsedChanges.customer_name || payload.customer_name || 'Customer';
+      const target_number = row.db_target_number || payload.selectedPayment?.milestone || parsedChanges.target_number || 'Manual';
+
+      return {
+        ...row,
+        project_name,
+        customer_name,
+        target_number
+      };
+    });
+
     return success(res, {
-      data: rows,
+      data: processedRows,
       pagination: {
         total,
         page: pageNum,
@@ -306,18 +402,23 @@ router.post('/:id/approve', async (req, res, next) => {
       return fail(res, 'BAD_REQUEST', 'Budget exceeded. Approval blocked.', 400);
     }
 
-    const userId = req.user.id || req.user.userId;
+    const isUuid = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+    const rawUserId = req.user?.id || req.user?.userId;
+    const userId = (rawUserId && isUuid(rawUserId)) ? rawUserId : null;
+    const isSuperadmin = req.user?.role === 'superadmin' || (req.user?.permissions && req.user.permissions.includes('admin'));
 
     await client.query('BEGIN');
 
     // 1. Fetch approval record
-    const { rows } = await client.query(
-      `SELECT * FROM financial_approvals WHERE id = $1 AND tenant_id = $2 AND status = 'pending'`,
-      [id, req.tenantId]
-    );
+    const fetchQuery = isSuperadmin || !tenantId
+      ? `SELECT * FROM financial_approvals WHERE id = $1 AND status = 'pending'`
+      : `SELECT * FROM financial_approvals WHERE id = $1 AND (tenant_id = $2 OR tenant_id IS NULL) AND status = 'pending'`;
+    const fetchParams = (isSuperadmin || !tenantId) ? [id] : [id, tenantId];
+
+    const { rows } = await client.query(fetchQuery, fetchParams);
     if (rows.length === 0) {
       await client.query('ROLLBACK');
-      return fail(res, 'NOT_FOUND', 'Pending approval request not found', 404);
+      return fail(res, 'NOT_FOUND', 'Pending approval request not found or already processed', 404);
     }
     const approval = rows[0];
 
@@ -377,64 +478,105 @@ router.post('/:id/approve', async (req, res, next) => {
     // 4. Apply changes based on transaction type
     if (approval.transaction_type === 'invoice') {
       const changes = typeof approval.requested_changes === 'string' ? JSON.parse(approval.requested_changes) : approval.requested_changes;
-      const { milestoneId, invoiceNumber } = changes;
+      const { milestoneId, invoiceNumber } = changes || {};
       
       // Update invoice status to sent
-      await client.query(
-        `UPDATE invoices SET status = 'sent', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
-        [approval.target_id]
-      );
+      if (approval.target_id) {
+        await client.query(
+          `UPDATE invoices SET status = 'sent', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+          [approval.target_id]
+        );
+      }
       
       // Update payment milestone status and reference
-      await client.query(
-        `UPDATE payment_milestones 
-         SET invoice_reference = $1, status = 'invoice_raised' 
-         WHERE id = $2 AND tenant_id = $3`,
-        [invoiceNumber, milestoneId, req.tenantId]
-      );
+      if (milestoneId && isUuid(milestoneId)) {
+        await client.query(
+          `UPDATE payment_milestones 
+           SET invoice_reference = $1, status = 'invoice_raised' 
+           WHERE id = $2`,
+          [invoiceNumber || null, milestoneId]
+        );
+      }
     } 
-    else if (approval.transaction_type === 'payment') {
-      // Update new payment milestone status to scheduled
-      await client.query(
-          `UPDATE payment_milestones SET status = 'approved' WHERE id = $1 AND tenant_id = $2`,
-          [approval.target_id, req.tenantId]
-      );
-    } 
-    else if (approval.transaction_type === 'payment_update') {
-      const changes = typeof approval.requested_changes === 'string' ? JSON.parse(approval.requested_changes) : approval.requested_changes;
-      // Call update internal logic bypassing approval check
-      await paymentService.updatePaymentMilestone({
-        tenantId,
-        userId,
-        milestoneId: approval.target_id,
-        data: changes.data,
-        bypassApproval: true
-      });
+    else if (
+      ['payment_update', 'manual_payment', 'Manual Payment', 'payment', 'payment_adjustment', 'advance_adjustment', 'debit_note', 'write_off', 'gate_override'].includes(approval.transaction_type) ||
+      (approval.transaction_type && approval.transaction_type.toLowerCase().includes('payment'))
+    ) {
+      let changes = approval.requested_changes;
+      if (typeof changes === 'string') {
+        try { changes = JSON.parse(changes); } catch (e) { /* noop */ }
+      }
+      const payload = changes?.payload || changes?.data || changes;
+      const milestoneId = (approval.target_id && isUuid(approval.target_id) ? approval.target_id : null) 
+        || (payload?.selectedPayment?.id && isUuid(payload.selectedPayment.id) ? payload.selectedPayment.id : null);
+
+      if (milestoneId) {
+        const { selectedPayment, splitPayments, tdsRate, tdsAmount, newStatus, newCollected } = payload || {};
+        let paidAt = new Date().toISOString();
+        if (splitPayments && splitPayments[0]?.date) {
+          try {
+            const d = new Date(splitPayments[0].date);
+            if (!isNaN(d.getTime())) {
+              paidAt = d.toISOString();
+            }
+          } catch (e) { /* fallback to default */ }
+        }
+
+        const rawAmt = newCollected !== undefined ? newCollected : (approval.amount !== undefined ? approval.amount : selectedPayment?.amount);
+        const paidAmt = (rawAmt !== undefined && rawAmt !== null && !isNaN(Number(rawAmt))) ? Number(rawAmt) : null;
+        const validTdsRate = (tdsRate !== undefined && tdsRate !== null && !isNaN(Number(tdsRate))) ? Number(tdsRate) : 0;
+        const validTdsAmount = (tdsAmount !== undefined && tdsAmount !== null && !isNaN(Number(tdsAmount))) ? Number(tdsAmount) : 0;
+
+        await client.query(
+          `UPDATE payment_milestones 
+           SET status = COALESCE($1, 'paid'), 
+               paid_at = COALESCE($2::timestamptz, CURRENT_TIMESTAMP), 
+               paid_amount = COALESCE($3, paid_amount, amount), 
+               tds_rate = COALESCE($4, tds_rate, 0), 
+               tds_amount = COALESCE(tds_amount, 0) + COALESCE($5, 0)
+           WHERE id = $6`,
+          [
+            newStatus || 'paid',
+            paidAt,
+            paidAmt,
+            validTdsRate,
+            validTdsAmount,
+            milestoneId
+          ]
+        );
+      }
     } 
     else if (approval.transaction_type === 'discount') {
       const changes = typeof approval.requested_changes === 'string' ? JSON.parse(approval.requested_changes) : approval.requested_changes;
-      // Call update internal logic bypassing approval check
-      await quotationService.updateQuotation(
-        tenantId,
-        approval.target_id,
-        { discountAmount: changes.discountAmount },
-        userId,
-        true
-      );
+      if (approval.target_id && isUuid(approval.target_id)) {
+        try {
+          await quotationService.updateQuotation(
+            tenantId || 'default',
+            approval.target_id,
+            { discountAmount: changes?.discountAmount },
+            userId,
+            true
+          );
+        } catch (e) {
+          console.error('[Quotation Update Error]:', e);
+        }
+      }
     } 
-    else if (approval.transaction_type === 'credit') {
-      // Update credit note status to issued
-      await client.query(
-        `UPDATE credit_notes SET status = 'issued', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
-        [approval.target_id]
-      );
+    else if (approval.transaction_type === 'credit' || approval.transaction_type === 'Credit Note') {
+      if (approval.target_id && isUuid(approval.target_id)) {
+        await client.query(
+          `UPDATE credit_notes SET status = 'issued', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+          [approval.target_id]
+        );
+      }
     } 
-    else if (approval.transaction_type === 'refund') {
-      // Update refund status to processed
-      await client.query(
-        `UPDATE refunds SET status = 'processed', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
-        [approval.target_id]
-      );
+    else if (approval.transaction_type === 'refund' || approval.transaction_type === 'Refund') {
+      if (approval.target_id && isUuid(approval.target_id)) {
+        await client.query(
+          `UPDATE refunds SET status = 'processed', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+          [approval.target_id]
+        );
+      }
     }
 
     await client.query('COMMIT');
@@ -442,7 +584,8 @@ router.post('/:id/approve', async (req, res, next) => {
     return success(res, { message: 'Approval request approved successfully' });
   } catch (error) {
     await client.query('ROLLBACK');
-    next(error);
+    console.error('[APPROVE ERROR]:', error);
+    return fail(res, 'INTERNAL_ERROR', error.message || 'Failed to approve transaction', 500);
   } finally {
     client.release();
   }
@@ -452,25 +595,31 @@ router.post('/:id/approve', async (req, res, next) => {
 router.post('/:id/reject', async (req, res, next) => {
   const client = await pool.connect();
   try {
-    const userId = req.user.id || req.user.userId;
+    const rawUserId = req.user?.id || req.user?.userId;
+    const isUuid = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+    const userId = (rawUserId && isUuid(rawUserId)) ? rawUserId : null;
     const { id } = req.params;
-    const tenantId = req.tenantId;
+    const tenantId = req.tenantId || (req.user && req.user.tenantId);
     const { rejectionReason } = req.body;
 
     if (!rejectionReason || rejectionReason.trim() === '') {
       return fail(res, 'BAD_REQUEST', 'Rejection reason is required', 400);
     }
 
+    const isSuperadmin = req.user?.role === 'superadmin' || (req.user?.permissions && req.user.permissions.includes('admin'));
+
     await client.query('BEGIN');
 
     // 1. Fetch approval record
-    const { rows } = await client.query(
-      `SELECT * FROM financial_approvals WHERE id = $1 AND tenant_id = $2 AND status = 'pending'`,
-      [id, req.tenantId]
-    );
+    const fetchQuery = isSuperadmin || !tenantId
+      ? `SELECT * FROM financial_approvals WHERE id = $1 AND status = 'pending'`
+      : `SELECT * FROM financial_approvals WHERE id = $1 AND (tenant_id = $2 OR tenant_id IS NULL) AND status = 'pending'`;
+    const fetchParams = (isSuperadmin || !tenantId) ? [id] : [id, tenantId];
+
+    const { rows } = await client.query(fetchQuery, fetchParams);
     if (rows.length === 0) {
       await client.query('ROLLBACK');
-      return fail(res, 'NOT_FOUND', 'Pending approval request not found', 404);
+      return fail(res, 'NOT_FOUND', 'Pending approval request not found or already processed', 404);
     }
     const approval = rows[0];
 
@@ -522,20 +671,24 @@ router.post('/:id/reject', async (req, res, next) => {
         [approval.target_id]
       );
     } 
-    else if (approval.transaction_type === 'payment') {
-      // Delete the payment milestone entirely since it was pending creation
-      await client.query(
-        `DELETE FROM payment_milestones WHERE id = $1 AND tenant_id = $2`,
-        [approval.target_id, req.req.tenantId]
-      );
-    } 
-    else if (approval.transaction_type === 'payment_update') {
-      const changes = typeof approval.requested_changes === 'string' ? JSON.parse(approval.requested_changes) : approval.requested_changes;
-      // Revert status to original status before update attempt
-      await client.query(
-        `UPDATE payment_milestones SET status = $1 WHERE id = $2 AND tenant_id = $3`,
-        [changes.original_status, approval.target_id, req.req.tenantId]
-      );
+    else if (
+      ['payment_update', 'manual_payment', 'Manual Payment', 'payment', 'payment_adjustment', 'advance_adjustment', 'debit_note', 'write_off', 'gate_override'].includes(approval.transaction_type) ||
+      (approval.transaction_type && approval.transaction_type.toLowerCase().includes('payment'))
+    ) {
+      let changes = approval.requested_changes;
+      if (typeof changes === 'string') {
+        try { changes = JSON.parse(changes); } catch (e) { /* noop */ }
+      }
+      const payload = changes?.payload || changes?.data || changes;
+      const milestoneId = (approval.target_id && isUuid(approval.target_id) ? approval.target_id : null) 
+        || (payload?.selectedPayment?.id && isUuid(payload.selectedPayment.id) ? payload.selectedPayment.id : null);
+      const origStatus = payload?.selectedPayment?.status || changes?.original_status || 'unpaid';
+      if (milestoneId) {
+        await client.query(
+          `UPDATE payment_milestones SET status = $1 WHERE id = $2`,
+          [origStatus, milestoneId]
+        );
+      }
     } 
     else if (approval.transaction_type === 'credit') {
       // Set status to void
@@ -557,7 +710,8 @@ router.post('/:id/reject', async (req, res, next) => {
     return success(res, { message: 'Approval request rejected successfully' });
   } catch (error) {
     await client.query('ROLLBACK');
-    next(error);
+    console.error('[REJECT ERROR]:', error);
+    return fail(res, 'INTERNAL_ERROR', error.message || 'Failed to reject transaction', 500);
   } finally {
     client.release();
   }
@@ -576,7 +730,7 @@ router.get('/:id/comments', async (req, res, next) => {
       FROM financial_approval_comments c
       JOIN users u ON c.user_id = u.id
       WHERE c.tenant_id = $1 AND c.approval_id = $2
-      ORDER BY c.created_at ASC; // '${sort_by || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort_by || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort_by === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC
+      ORDER BY c.created_at ASC
     `;
     const { rows } = await pool.query(query, [req.tenantId, id]);
 
@@ -756,7 +910,7 @@ router.post('/:id/view', async (req, res, next) => {
     const { rows } = await pool.query(
       `SELECT created_at FROM audit_logs 
        WHERE entity = 'financial_approval' AND entity_id = $1 AND user_id = $2 AND action = $3
-       ORDER BY c.created_at ASC; // '${sort_by || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort_by || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort_by === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC LIMIT 1`,
+       ORDER BY created_at DESC LIMIT 1`,
       [id, req.user?.id || req.user?.userId, actionType]
     );
     
@@ -863,7 +1017,7 @@ router.get('/:id/activity', async (req, res, next) => {
        FROM audit_logs a
        LEFT JOIN users u ON a.user_id = u.id
        WHERE a.tenant_id = $1 AND a.entity = 'financial_approval' AND a.entity_id = $2
-       ORDER BY c.created_at ASC; // '${sort_by || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort_by || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort_by === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC`,
+       ORDER BY a.created_at ASC`,
       [req.tenantId, id]
     );
     return success(res, rows);
@@ -904,7 +1058,7 @@ router.get('/:id/attachments', async (req, res, next) => {
       FROM financial_approval_attachments a
       LEFT JOIN users u ON a.uploaded_by = u.id
       WHERE a.approval_id = $1 AND a.tenant_id = $2 AND a.status = 'active'
-      ORDER BY c.created_at ASC; // '${sort_by || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort_by || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort_by === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC
+      ORDER BY a.created_at ASC
     `;
     const { rows } = await pool.query(query, [id, req.tenantId]);
     return success(res, rows);
@@ -1035,7 +1189,7 @@ router.get('/:id/attachments/:attachmentId/history', async (req, res, next) => {
       SELECT a.*, u.name as uploaded_by_name 
       FROM attachment_tree a
       LEFT JOIN users u ON a.uploaded_by = u.id
-      ORDER BY c.created_at ASC; // '${sort_by || ''}' = 'priority_desc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) WHEN '${sort_by || ''}' = 'priority_asc' THEN (CASE priority WHEN 'critical' THEN 4 WHEN 'high' THEN 3 WHEN 'medium' THEN 2 WHEN 'low' THEN 1 ELSE 0 END) END ${sort_by === 'priority_asc' ? 'ASC' : 'DESC'}, fa.updated_at DESC
+      ORDER BY a.created_at ASC
     `;
     
     const { rows } = await pool.query(query, [attachmentId, id, req.tenantId]);

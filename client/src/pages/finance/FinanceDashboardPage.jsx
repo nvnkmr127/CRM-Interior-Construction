@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Badge, Input, Select } from '../../components/ui';
 import styles from './FinanceDashboardPage.module.css';
 import { useDebounce } from '../../hooks';
@@ -18,9 +18,21 @@ const CHART_COLORS = ['#3b82f6', '#22c55e', '#eab308', '#ef4444', '#8b5cf6', '#f
 
 export default function FinanceDashboardPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  const currentTabFromUrl = searchParams.get('tab') || 'overview';
   const [loading, setLoading] = useState(true);
-  const [activeSubTab, setActiveSubTab] = useState('overview');
+  const [activeSubTab, setActiveSubTab] = useState(currentTabFromUrl);
   const subTabsRef = useRef(null);
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam) {
+      setActiveSubTab(tabParam);
+    } else {
+      setActiveSubTab('overview');
+    }
+  }, [searchParams]);
 
   const [projects, setProjects] = useState([]);
   const [invoices, setInvoices] = useState([]);
@@ -55,18 +67,60 @@ export default function FinanceDashboardPage() {
       ]);
 
       const allProjs = projRes.data?.data || projRes.data || [];
-      const allInvs = invRes.data?.data || invRes.data || [];
-      const allRecs = recRes.data?.data || recRes.data || [];
+      let allInvs = invRes.data?.data || invRes.data || [];
+      let allRecs = recRes.data?.data || recRes.data || [];
       let allMiles = mileRes.data?.data || mileRes.data || [];
 
-      // If mock interceptor failed to provide all milestones, try extracting from projects
-      if (allMiles.length === 0) {
-          allProjs.forEach(p => {
-              if (p.payments) {
-                  allMiles = [...allMiles, ...p.payments.map(m => ({...m, project_id: p.id}))];
-              }
+      // Extract milestones directly from projects if milestone API returned empty
+      allProjs.forEach(p => {
+        if (p.payments && Array.isArray(p.payments)) {
+          p.payments.forEach(m => {
+            if (!allMiles.some(existing => existing.id === m.id)) {
+              allMiles.push({ ...m, project_id: m.project_id || p.id });
+            }
           });
-      }
+        }
+      });
+
+      // Synthesize missing Invoices & Receipts for all paid milestones (e.g. Booking Advance)
+      allMiles.forEach(m => {
+        const pId = m.project_id || m.projectId;
+        const proj = allProjs.find(p => p.id === pId);
+        const amountPaid = Number(m.paid_amount || m.collectedAmount || (m.status === 'paid' ? m.amount : 0));
+
+        if (amountPaid > 0) {
+          // Ensure Invoice exists
+          if (!allInvs.some(i => (i.milestoneId || i.payment_milestone_id) === m.id || (i.milestoneName === m.name && (i.projectId || i.project_id) === pId))) {
+            allInvs.push({
+              id: 'INV-' + (m.id || Date.now()).toString().slice(-8),
+              projectId: pId,
+              invoiceDate: m.paid_at || new Date().toISOString(),
+              milestoneId: m.id,
+              milestoneName: m.name || m.milestone || 'Booking Advance',
+              customerName: proj?.client_name || proj?.customerName || 'Client',
+              amount: amountPaid,
+              total_amount: amountPaid,
+              status: 'PAID',
+              type: 'TAX_INVOICE'
+            });
+          }
+
+          // Ensure Receipt exists
+          if (!allRecs.some(r => ((r.milestoneName === (m.name || m.milestone)) || (r.milestoneId || r.payment_milestone_id) === m.id) && (r.projectId || r.project_id) === pId)) {
+            allRecs.push({
+              id: 'REC-' + (m.id || Date.now()).toString().slice(-8),
+              projectId: pId,
+              receiptDate: m.paid_at || new Date().toISOString(),
+              milestoneName: m.name || m.milestone || 'Booking Advance',
+              customerName: proj?.client_name || proj?.customerName || 'Client',
+              amount: amountPaid,
+              paymentMode: m.payment_entries?.[0]?.mode || 'Bank Transfer',
+              reference: m.invoice_reference || 'REF-' + (m.id || Date.now()).toString().slice(-6),
+              status: 'ISSUED'
+            });
+          }
+        }
+      });
 
       setProjects(allProjs);
       setInvoices(allInvs);
@@ -83,11 +137,36 @@ export default function FinanceDashboardPage() {
       allProjs.forEach(p => {
         if (p.status !== 'cancelled' && p.status !== 'archived') {
           activeCount++;
-          pipeline += Number(p.stats?.netContractValue || p.contract_value || 0);
-          billed += Number(p.stats?.totalPayment || 0);
-          collected += Number(p.stats?.collectedPayment || 0);
-          outstanding += Number(p.stats?.outstandingBalance || 0);
-          area += Number(p.area || 0);
+          const projPipeline = Number(p.stats?.netContractValue || p.contract_value || 0);
+          
+          // Calculate collected payment directly from project stats or payment entries/milestones
+          let projCollected = Number(p.stats?.netCollections ?? p.stats?.collectedPayment ?? 0);
+          if (projCollected === 0 && p.payments && Array.isArray(p.payments)) {
+            projCollected = p.payments.reduce((sum, m) => sum + Number(m.paid_amount || m.collectedAmount || (m.status === 'paid' ? m.amount : 0)), 0);
+          }
+          if (projCollected === 0 && allRecs.length > 0) {
+            projCollected = allRecs.filter(r => (r.projectId || r.project_id) === p.id).reduce((sum, r) => sum + Number(r.amount || 0), 0);
+          }
+
+          let projInvoiced = allInvs.filter(i => (i.projectId || i.project_id) === p.id && i.status !== 'cancelled').reduce((sum, i) => sum + Number(i.total_amount || i.grandTotal || i.amount || 0), 0);
+          let projMilestoneBilled = 0;
+          if (p.payments && Array.isArray(p.payments)) {
+            projMilestoneBilled = p.payments.filter(m => m.status === 'invoice_raised' || m.status === 'partially_paid' || m.status === 'paid' || Boolean(m.invoice_reference)).reduce((sum, m) => sum + Number(m.amount || 0), 0);
+          }
+
+          let projBilled = Math.max(projInvoiced, projMilestoneBilled, projCollected);
+          if (projBilled === 0 && p.stats?.netBilled !== undefined) {
+            projBilled = Number(p.stats.netBilled);
+          }
+
+          const projOutstanding = Math.max(0, projBilled - projCollected);
+          const projArea = Number(p.area || p.sqft || p.totalArea || 0);
+
+          pipeline += projPipeline;
+          billed += projBilled;
+          collected += projCollected;
+          outstanding += projOutstanding;
+          area += projArea;
         }
       });
 
@@ -209,17 +288,17 @@ export default function FinanceDashboardPage() {
         <h3 className={styles.cardTitle}>Global Invoices</h3>
       </div>
       {renderFilters('invoices')}
-      <div className="table-responsive">
-        <table className="table">
+      <div className={styles.tableWrap}>
+        <table className={styles.customTable}>
           <thead>
             <tr>
-              <th>Invoice ID</th>
-              <th>Project</th>
-              <th>Date</th>
-              <th>Milestone</th>
-              <th>Customer</th>
-              <th>Amount</th>
-              <th>Status</th>
+              <th className={styles.th}>Invoice ID</th>
+              <th className={styles.th}>Project</th>
+              <th className={styles.th}>Date</th>
+              <th className={styles.th}>Milestone</th>
+              <th className={styles.th}>Customer</th>
+              <th className={styles.th}>Amount</th>
+              <th className={styles.th}>Status</th>
             </tr>
           </thead>
           <tbody>
@@ -229,14 +308,14 @@ export default function FinanceDashboardPage() {
               filteredInvoices.map(inv => {
                 const proj = projects.find(p => p.id === inv.projectId);
                 return (
-                  <tr key={inv.id}>
-                    <td className="fw-medium">{inv.id}</td>
-                    <td>{proj?.name || 'Unknown Project'}</td>
-                    <td>{new Date(inv.invoiceDate || inv.date).toLocaleDateString('en-GB')}</td>
-                    <td>{inv.milestoneName || 'N/A'}</td>
-                    <td>{inv.customerName || proj?.client_name || 'N/A'}</td>
-                    <td className="fw-medium">₹{Number(inv.amount || 0).toLocaleString('en-IN')}</td>
-                    <td>
+                  <tr key={inv.id} className={styles.tr}>
+                    <td className={`${styles.td} fw-medium`}>{inv.id}</td>
+                    <td className={styles.td}>{proj?.name || 'Unknown Project'}</td>
+                    <td className={styles.td}>{new Date(inv.invoiceDate || inv.date).toLocaleDateString('en-GB')}</td>
+                    <td className={styles.td}>{inv.milestoneName || 'N/A'}</td>
+                    <td className={styles.td}>{inv.customerName || proj?.client_name || 'N/A'}</td>
+                    <td className={`${styles.td} fw-medium`}>₹{Number(inv.amount || 0).toLocaleString('en-IN')}</td>
+                    <td className={styles.td}>
                       <Badge variant={inv.status === 'PAID' ? 'success' : inv.status === 'SENT' ? 'info' : 'warning'}>
                         {inv.status}
                       </Badge>
@@ -257,17 +336,17 @@ export default function FinanceDashboardPage() {
         <h3 className={styles.cardTitle}>Global Receipts</h3>
       </div>
       {renderFilters('receipts')}
-      <div className="table-responsive">
-        <table className="table">
+      <div className={styles.tableWrap}>
+        <table className={styles.customTable}>
           <thead>
             <tr>
-              <th>Receipt ID</th>
-              <th>Project</th>
-              <th>Date</th>
-              <th>Milestone</th>
-              <th>Payment Mode</th>
-              <th>Reference</th>
-              <th>Amount</th>
+              <th className={styles.th}>Receipt ID</th>
+              <th className={styles.th}>Project</th>
+              <th className={styles.th}>Date</th>
+              <th className={styles.th}>Milestone</th>
+              <th className={styles.th}>Payment Mode</th>
+              <th className={styles.th}>Reference</th>
+              <th className={styles.th}>Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -277,14 +356,14 @@ export default function FinanceDashboardPage() {
               filteredReceipts.map(rec => {
                 const proj = projects.find(p => p.id === rec.projectId);
                 return (
-                  <tr key={rec.id}>
-                    <td className="fw-medium">{rec.id}</td>
-                    <td>{proj?.name || 'Unknown Project'}</td>
-                    <td>{new Date(rec.receiptDate || rec.date).toLocaleDateString('en-GB')}</td>
-                    <td>{rec.milestoneName || 'N/A'}</td>
-                    <td>{rec.paymentMode || 'Bank Transfer'}</td>
-                    <td>{rec.reference || 'N/A'}</td>
-                    <td className="text-success fw-medium">₹{Number(rec.amount || 0).toLocaleString('en-IN')}</td>
+                  <tr key={rec.id} className={styles.tr}>
+                    <td className={`${styles.td} fw-medium`}>{rec.id}</td>
+                    <td className={styles.td}>{proj?.name || 'Unknown Project'}</td>
+                    <td className={styles.td}>{new Date(rec.receiptDate || rec.date).toLocaleDateString('en-GB')}</td>
+                    <td className={styles.td}>{rec.milestoneName || 'N/A'}</td>
+                    <td className={styles.td}>{rec.paymentMode || 'Bank Transfer'}</td>
+                    <td className={styles.td}>{rec.reference || 'N/A'}</td>
+                    <td className={`${styles.td} text-success fw-medium`}>₹{Number(rec.amount || 0).toLocaleString('en-IN')}</td>
                   </tr>
                 );
               })
@@ -301,17 +380,17 @@ export default function FinanceDashboardPage() {
         <h3 className={styles.cardTitle}>Master Ledger</h3>
       </div>
       {renderFilters('ledger')}
-      <div className="table-responsive">
-        <table className="table">
+      <div className={styles.tableWrap}>
+        <table className={styles.customTable}>
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Project</th>
-              <th>Type</th>
-              <th>Reference</th>
-              <th>Milestone</th>
-              <th className="text-end">Debit (₹)</th>
-              <th className="text-end">Credit (₹)</th>
+              <th className={styles.th}>Date</th>
+              <th className={styles.th}>Project</th>
+              <th className={styles.th}>Type</th>
+              <th className={styles.th}>Reference</th>
+              <th className={styles.th}>Milestone</th>
+              <th className={`${styles.th} text-end`}>Debit (₹)</th>
+              <th className={`${styles.th} text-end`}>Credit (₹)</th>
             </tr>
           </thead>
           <tbody>
@@ -321,16 +400,16 @@ export default function FinanceDashboardPage() {
               filteredLedger.map((entry, idx) => {
                 const proj = projects.find(p => p.id === entry.projectId);
                 return (
-                  <tr key={idx}>
-                    <td>{new Date(entry.date).toLocaleDateString('en-GB')}</td>
-                    <td>{proj?.name || 'Unknown Project'}</td>
-                    <td>
+                  <tr key={idx} className={styles.tr}>
+                    <td className={styles.td}>{new Date(entry.date).toLocaleDateString('en-GB')}</td>
+                    <td className={styles.td}>{proj?.name || 'Unknown Project'}</td>
+                    <td className={styles.td}>
                       <Badge variant={entry.type === 'Receipt' ? 'success' : 'primary'}>{entry.type}</Badge>
                     </td>
-                    <td className="fw-medium">{entry.ref}</td>
-                    <td>{entry.milestone || 'N/A'}</td>
-                    <td className="text-end text-danger">{entry.type === 'Invoice' ? Number(entry.amount).toLocaleString('en-IN') : '-'}</td>
-                    <td className="text-end text-success">{entry.type === 'Receipt' ? Number(entry.amount).toLocaleString('en-IN') : '-'}</td>
+                    <td className={`${styles.td} fw-medium`}>{entry.ref}</td>
+                    <td className={styles.td}>{entry.milestone || 'N/A'}</td>
+                    <td className={`${styles.td} text-end text-danger`}>{entry.type === 'Invoice' ? Number(entry.amount).toLocaleString('en-IN') : '-'}</td>
+                    <td className={`${styles.td} text-end text-success`}>{entry.type === 'Receipt' ? Number(entry.amount).toLocaleString('en-IN') : '-'}</td>
                   </tr>
                 );
               })
@@ -350,16 +429,16 @@ export default function FinanceDashboardPage() {
         <div className={styles.cardHeader}>
           <h3 className={styles.cardTitle}>Global Collections Pipeline</h3>
         </div>
-        <div className="table-responsive">
-          <table className="table">
+        <div className={styles.tableWrap}>
+          <table className={styles.customTable}>
             <thead>
               <tr>
-                <th>Project</th>
-                <th>Milestone</th>
-                <th>Due Date</th>
-                <th>Amount Due</th>
-                <th>Amount Paid</th>
-                <th>Status</th>
+                <th className={styles.th}>Project</th>
+                <th className={styles.th}>Milestone</th>
+                <th className={styles.th}>Due Date</th>
+                <th className={styles.th}>Amount Due</th>
+                <th className={styles.th}>Amount Paid</th>
+                <th className={styles.th}>Status</th>
               </tr>
             </thead>
             <tbody>
@@ -369,13 +448,13 @@ export default function FinanceDashboardPage() {
                 sortedMilestones.map(m => {
                   const proj = projects.find(p => p.id === (m.project_id || m.projectId));
                   return (
-                    <tr key={m.id}>
-                      <td>{proj?.name || 'Unknown Project'}</td>
-                      <td className="fw-medium">{m.name || m.milestone}</td>
-                      <td>{m.due_date || m.dueDate ? new Date(m.due_date || m.dueDate).toLocaleDateString('en-GB') : 'N/A'}</td>
-                      <td className="fw-medium">₹{Number(m.amount || 0).toLocaleString('en-IN')}</td>
-                      <td className="text-success">₹{Number(m.paid_amount || m.collectedAmount || 0).toLocaleString('en-IN')}</td>
-                      <td>
+                    <tr key={m.id} className={styles.tr}>
+                      <td className={styles.td}>{proj?.name || 'Unknown Project'}</td>
+                      <td className={`${styles.td} fw-medium`}>{m.name || m.milestone}</td>
+                      <td className={styles.td}>{m.due_date || m.dueDate ? new Date(m.due_date || m.dueDate).toLocaleDateString('en-GB') : 'N/A'}</td>
+                      <td className={`${styles.td} fw-medium`}>₹{Number(m.amount || 0).toLocaleString('en-IN')}</td>
+                      <td className={`${styles.td} text-success`}>₹{Number(m.paid_amount || m.collectedAmount || 0).toLocaleString('en-IN')}</td>
+                      <td className={styles.td}>
                         <Badge variant={m.status === 'paid' ? 'success' : m.status === 'overdue' ? 'danger' : m.status === 'scheduled' ? 'info' : 'warning'}>
                           {m.status?.toUpperCase() || 'UNKNOWN'}
                         </Badge>
@@ -467,36 +546,47 @@ export default function FinanceDashboardPage() {
 
     return (
       <div className={styles.overviewContainer}>
-        <div className={styles.financialPanel}>
-          <div className={styles.financialPanelHeader}>Global Financial Overview</div>
-          <div className={styles.financialGrid}>
-            <div className={styles.financialCard}>
-              <span className={styles.financialLabel}>Active Pipeline (Net)</span>
-              <span className={styles.financialValue}>
+        {/* Global Financial Overview Cards Panel */}
+        <div className={styles.financialPanel} style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          <div className={styles.financialPanelHeader} style={{ padding: '16px 20px', fontSize: '16px', fontWeight: 600, borderBottom: '1px solid #e2e8f0', background: '#f8fafc', color: '#0f172a' }}>
+            Global Financial Overview
+          </div>
+          <div className={styles.financialGrid} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1px', backgroundColor: '#e2e8f0' }}>
+            <div className={styles.financialCard} style={{ padding: '20px 24px', backgroundColor: '#ffffff' }}>
+              <span className={styles.financialLabel} style={{ fontSize: '12px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+                Active Pipeline (Net)
+              </span>
+              <span className={styles.financialValue} style={{ fontSize: '22px', fontWeight: 700, color: '#0f172a' }}>
                 {formatValue(globalStats.activePipeline)}
               </span>
             </div>
-            <div className={styles.financialCard}>
-              <span className={styles.financialLabel}>Billed (Net)</span>
-              <span className={styles.financialValue}>
+            <div className={styles.financialCard} style={{ padding: '20px 24px', backgroundColor: '#ffffff' }}>
+              <span className={styles.financialLabel} style={{ fontSize: '12px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+                Billed (Net)
+              </span>
+              <span className={styles.financialValue} style={{ fontSize: '22px', fontWeight: 700, color: '#0f172a' }}>
                 {formatValue(globalStats.totalBilled)}
               </span>
             </div>
-            <div className={styles.financialCard}>
-              <span className={styles.financialLabel}>Collected (Net)</span>
-              <span className={styles.financialValue} style={{ color: 'var(--color-success, #22c55e)' }}>
+            <div className={styles.financialCard} style={{ padding: '20px 24px', backgroundColor: '#ffffff' }}>
+              <span className={styles.financialLabel} style={{ fontSize: '12px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+                Collected (Net)
+              </span>
+              <span className={styles.financialValue} style={{ fontSize: '22px', fontWeight: 700, color: '#16a34a' }}>
                 {formatValue(globalStats.totalCollected)}
               </span>
             </div>
-            <div className={styles.financialCard}>
-              <span className={styles.financialLabel}>Outstanding Balance</span>
-              <span className={styles.financialValue} style={{ color: 'var(--color-accent, #3b82f6)' }}>
+            <div className={styles.financialCard} style={{ padding: '20px 24px', backgroundColor: '#ffffff' }}>
+              <span className={styles.financialLabel} style={{ fontSize: '12px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+                Outstanding Balance
+              </span>
+              <span className={styles.financialValue} style={{ fontSize: '22px', fontWeight: 700, color: '#d97706' }}>
                 {formatValue(globalStats.totalOutstanding)}
               </span>
             </div>
           </div>
         </div>
-        
+
         {/* Charts Row */}
         <div className={styles.chartsRow}>
             <div className={styles.chartCard}>
@@ -565,47 +655,51 @@ export default function FinanceDashboardPage() {
 
   return (
     <div className={styles.page}>
-      {/* Header Section as a standard card */}
-      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid var(--color-border)' }}>
-          <div style={{ fontWeight: 600, fontSize: 'var(--text-lg)', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '16px' }}>
-            Finance Master Center
+      {/* Top Header Summary Strip */}
+      <div style={{ width: '100%', flexShrink: 0, background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+          <div style={{ fontWeight: 700, fontSize: '18px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span>💰</span> Finance Master Center
           </div>
+          <Badge variant="primary" size="sm">
+            {globalStats.totalProjects} Active Project(s)
+          </Badge>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1px', backgroundColor: 'var(--color-border)' }}>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1px', backgroundColor: '#e2e8f0' }}>
           
-          <div style={{ padding: '14px 20px', backgroundColor: 'var(--color-surface)' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ padding: '16px 24px', backgroundColor: '#ffffff' }}>
+            <div style={{ fontSize: '12px', color: '#64748b', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
               Active Pipeline Value
             </div>
-            <div style={{ fontSize: 'var(--text-lg)', fontWeight: 600, color: '#0284c7' }}>
+            <div style={{ fontSize: '20px', fontWeight: 700, color: '#0284c7' }}>
               ₹{globalStats.activePipeline.toLocaleString('en-IN')}/-
             </div>
           </div>
           
-          <div style={{ padding: '14px 20px', backgroundColor: 'var(--color-surface)' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ padding: '16px 24px', backgroundColor: '#ffffff' }}>
+            <div style={{ fontSize: '12px', color: '#64748b', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
               Global Avg. Rate
             </div>
-            <div style={{ fontSize: 'var(--text-lg)', fontWeight: 500, color: 'var(--color-text)' }}>
+            <div style={{ fontSize: '20px', fontWeight: 600, color: '#1e293b' }}>
               ₹{avgRate}/sqft
             </div>
           </div>
 
-          <div style={{ padding: '14px 20px', backgroundColor: 'var(--color-surface)' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ padding: '16px 24px', backgroundColor: '#ffffff' }}>
+            <div style={{ fontSize: '12px', color: '#64748b', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
               Total Area
             </div>
-            <div style={{ fontSize: 'var(--text-lg)', fontWeight: 500, color: 'var(--color-text)' }}>
+            <div style={{ fontSize: '20px', fontWeight: 600, color: '#1e293b' }}>
               {globalStats.totalArea.toLocaleString('en-IN')} sqft
             </div>
           </div>
 
-          <div style={{ padding: '14px 20px', backgroundColor: 'var(--color-surface)' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ padding: '16px 24px', backgroundColor: '#ffffff' }}>
+            <div style={{ fontSize: '12px', color: '#64748b', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
               Total Outstanding Balance
             </div>
-            <div style={{ fontSize: 'var(--text-lg)', fontWeight: 600, color: '#eab308' }}>
+            <div style={{ fontSize: '20px', fontWeight: 700, color: '#d97706' }}>
               ₹{globalStats.totalOutstanding > 0 ? globalStats.totalOutstanding.toLocaleString('en-IN') : 0}
             </div>
           </div>
@@ -613,33 +707,62 @@ export default function FinanceDashboardPage() {
         </div>
       </div>
 
-      {/* Sub-Tabs */}
-      <div className={styles.subTabsContainer} ref={subTabsRef}>
-        {['overview', 'collections', 'invoices', 'receipts', 'ledger', 'receivables', 'approvals'].map(tab => (
-          <button
-            key={tab}
-            className={`${styles.subTab} ${activeSubTab === tab ? styles.subTabActive : ''}`}
-            onClick={() => {
-              // reset filters on tab change
-              setSearchQuery('');
-              setStatusFilter('ALL');
-
-              if (tab === 'approvals') {
-                navigate('/financial-approvals');
-              } else {
-                setActiveSubTab(tab);
-              }
-            }}
-          >
-            {tab === 'overview' ? 'Overview' :
-             tab === 'collections' ? 'Collections' :
-             tab === 'receivables' ? 'AR Aging' :
-             tab === 'invoices' ? 'Global Invoices' :
-             tab === 'receipts' ? 'Global Receipts' :
-             tab === 'ledger' ? 'Master Ledger' :
-             'Financial Approvals'}
-          </button>
-        ))}
+      {/* Sub-Tabs Navigation Bar - PERMANENT & GUARANTEED DISPLAY */}
+      <div 
+        className={styles.subTabsContainer} 
+        ref={subTabsRef} 
+        style={{ 
+          width: '100%',
+          flexShrink: 0,
+          display: 'flex', 
+          gap: '6px', 
+          borderBottom: '2px solid #e2e8f0', 
+          padding: '6px 8px 0 8px', 
+          overflowX: 'auto',
+          background: '#ffffff',
+          borderRadius: '8px 8px 0 0',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+        }}
+      >
+        {[
+          { id: 'overview', label: 'Overview', icon: '📊' },
+          { id: 'collections', label: 'Collections', icon: '📈' },
+          { id: 'receivables', label: 'AR Aging', icon: '⏳' },
+          { id: 'invoices', label: 'Global Invoices', icon: '🧾' },
+          { id: 'receipts', label: 'Global Receipts', icon: '💵' },
+          { id: 'ledger', label: 'Master Ledger', icon: '📓' }
+        ].map(tab => {
+          const isActive = activeSubTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              className={`${styles.subTab} ${isActive ? styles.subTabActive : ''}`}
+              style={{
+                padding: '10px 18px',
+                fontSize: '14px',
+                fontWeight: isActive ? 700 : 500,
+                color: isActive ? '#2563eb' : '#475569',
+                borderBottom: isActive ? '3px solid #2563eb' : '3px solid transparent',
+                background: isActive ? '#eff6ff' : 'transparent',
+                borderRadius: '6px 6px 0 0',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.15s ease'
+              }}
+              onClick={() => {
+                setSearchQuery('');
+                setStatusFilter('ALL');
+                setActiveSubTab(tab.id);
+                setSearchParams({ tab: tab.id });
+              }}
+            >
+              <span>{tab.icon}</span>
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       <div className={styles.tabContent}>
@@ -647,12 +770,12 @@ export default function FinanceDashboardPage() {
           <div className="p-4 text-center">Loading finance data...</div>
         ) : (
           <>
-            {activeSubTab === 'overview' && renderOverview()}
-            {activeSubTab === 'collections' && renderCollections()}
-            {activeSubTab === 'receivables' && renderReceivables()}
-            {activeSubTab === 'invoices' && renderInvoices()}
-            {activeSubTab === 'receipts' && renderReceipts()}
-            {activeSubTab === 'ledger' && renderLedger()}
+            {activeSubTab === 'collections' ? renderCollections() :
+             activeSubTab === 'receivables' ? renderReceivables() :
+             activeSubTab === 'invoices' ? renderInvoices() :
+             activeSubTab === 'receipts' ? renderReceipts() :
+             activeSubTab === 'ledger' ? renderLedger() :
+             renderOverview()}
           </>
         )}
       </div>

@@ -253,7 +253,7 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
     invoiceDate: new Date().toISOString().split('T')[0], 
     amount: 0,
     gstType: 'CGST_SGST', // CGST_SGST or IGST
-    gstRate: 18,
+    gstRate: 0,
     hsnSac: '9954',
     customerGst: ''
   });
@@ -374,7 +374,9 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
       });
     });
 
-    const outstanding = payments.reduce((acc, p) => acc + (p.remainingAmount || 0), 0);
+    const outstanding = payments
+      .filter(p => p.status === 'invoice_raised' || p.status === 'partially_paid' || p.status === 'overdue' || Boolean(p.invoiceReference))
+      .reduce((acc, p) => acc + Math.max(0, p.remainingAmount || 0), 0);
     const overdue = payments.filter(p => p.status === 'overdue').reduce((acc, p) => acc + (p.remainingAmount || 0), 0);
     const totalRefunds = refunds.reduce((acc, r) => acc + (Number(r.amount) || 0), 0);
     const totalCreditNotes = creditNotes.reduce((acc, c) => acc + (Number(c.subtotal || c.amount || c.total_amount) || 0), 0);
@@ -1027,7 +1029,7 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
     toast.success('Manual Adjustment submitted for approval.');
   };
 
-  const handleGenerateInvoice = () => {
+  const handleGenerateInvoice = async () => {
     if (!invoiceForm.amount || !invoiceForm.type) {
       toast.error('Amount and Type are required');
       return;
@@ -1053,48 +1055,70 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
     const grandTotal = Math.round(exactTotal);
     const roundOffAmount = grandTotal - exactTotal;
 
-    const newInvoice = {
-      id: 'INV-' + Date.now(),
-      type: invoiceForm.type,
-      milestoneId: invoiceForm.milestoneId,
-      amount: baseAmount,
-      cgstAmount,
-      sgstAmount,
-      igstAmount,
-      exactTotal,
-      grandTotal,
-      roundOffAmount,
-      gstRate: invoiceForm.gstRate,
-      gstType: invoiceForm.gstType,
-      hsnSac: invoiceForm.hsnSac,
-      customerGst: invoiceForm.customerGst,
-      date: invoiceForm.invoiceDate,
-      status: 'ISSUED',
-      version: 1,
-      customerName: project?.customer_name || 'Customer',
-      projectName: project?.name || 'Project'
-    };
-    setInvoices(prev => [newInvoice, ...prev]);
-    appendAuditLog('Generate Invoice', 'Invoice', 0, newInvoice.grandTotal, `Generated ${newInvoice.type}`);
-    toast.success(`${invoiceForm.type.replace('_', ' ')} generated successfully!`);
-    
-    // Auto Advance Adjustment Logic
-    if (invoiceForm.type === 'TAX_INVOICE' && advanceData.remainingAdvance > 0) {
-      const adjustmentAmount = Math.min(grandTotal, advanceData.remainingAdvance);
-      const newAdjustment = {
-        id: 'ADJ-' + Date.now(),
-        invoiceId: newInvoice.id,
-        amount: adjustmentAmount,
-        reason: 'Auto-adjusted against Advance on Invoice Generation',
-        date: new Date().toISOString(),
-        status: 'APPROVED',
-        type: 'AUTO'
+    try {
+      const payload = {
+        projectId,
+        milestoneId: (invoiceForm.milestoneId && invoiceForm.milestoneId.trim() !== '') ? invoiceForm.milestoneId : null,
+        type: invoiceForm.type,
+        amount: baseAmount,
+        cgstAmount,
+        sgstAmount,
+        igstAmount,
+        exactTotal,
+        grandTotal,
+        roundOffAmount,
+        gstRate: Number(invoiceForm.gstRate || 0),
+        gstType: invoiceForm.gstType,
+        hsnSac: invoiceForm.hsnSac,
+        customerGst: invoiceForm.customerGst,
+        invoiceDate: invoiceForm.invoiceDate
       };
-      setAdvanceAdjustments(prev => [newAdjustment, ...prev]);
-      toast.info(`₹${adjustmentAmount.toLocaleString('en-IN')} automatically adjusted from Advance Balance.`);
-    }
 
-    setInvoiceModalOpen(false);
+      const res = await createInvoice(payload);
+      const createdInv = res.data?.data || res.data || {};
+
+      const newInvoice = {
+        id: createdInv.invoice_number || createdInv.id || ('INV-' + Date.now()),
+        dbId: createdInv.id,
+        type: createdInv.type || invoiceForm.type,
+        milestoneId: createdInv.milestone_id || invoiceForm.milestoneId,
+        milestoneName: payments.find(p => p.id === (createdInv.milestone_id || invoiceForm.milestoneId))?.milestone || 'General',
+        amount: Number(createdInv.total_amount || createdInv.amount || grandTotal),
+        grandTotal: Number(createdInv.total_amount || grandTotal),
+        date: createdInv.invoice_date || createdInv.date || invoiceForm.invoiceDate,
+        status: createdInv.status || 'ISSUED',
+        version: createdInv.version || 1,
+        customerName: project?.customer_name || 'Customer',
+        projectName: project?.name || 'Project'
+      };
+
+      setInvoices(prev => [newInvoice, ...prev]);
+      appendAuditLog('Generate Invoice', 'Invoice', 0, newInvoice.grandTotal, `Generated ${newInvoice.type}`);
+      toast.success(`${invoiceForm.type.replace('_', ' ')} generated successfully!`);
+      
+      // Auto Advance Adjustment Logic
+      if (invoiceForm.type === 'TAX_INVOICE' && advanceData.remainingAdvance > 0) {
+        const adjustmentAmount = Math.min(grandTotal, advanceData.remainingAdvance);
+        const newAdjustment = {
+          id: 'ADJ-' + Date.now(),
+          invoiceId: newInvoice.id,
+          amount: adjustmentAmount,
+          reason: 'Auto-adjusted against Advance on Invoice Generation',
+          date: new Date().toISOString(),
+          status: 'APPROVED',
+          type: 'AUTO'
+        };
+        setAdvanceAdjustments(prev => [newAdjustment, ...prev]);
+        toast.info(`₹${adjustmentAmount.toLocaleString('en-IN')} automatically adjusted from Advance Balance.`);
+      }
+
+      setInvoiceModalOpen(false);
+    } catch (err) {
+      console.error('Failed to generate invoice:', err);
+      const errMsg = err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Failed to generate invoice';
+      toast.error(typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg));
+      return;
+    }
   };
 
   const handlePrintPDF = (inv) => {
@@ -1297,7 +1321,19 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
     ]).then(([cnRes, rfRes, invRes, recRes]) => {
       setCreditNotes(cnRes.data?.data || cnRes.data || []);
       setRefunds(rfRes.data?.data || rfRes.data || []);
-      setInvoices(invRes.data?.data || invRes.data || []);
+      const rawInvoices = invRes.data?.data || invRes.data || [];
+      const normalizedInvoices = rawInvoices.map(inv => ({
+        ...inv,
+        id: inv.invoice_number || inv.id,
+        dbId: inv.id,
+        amount: Number(inv.total_amount || inv.amount || 0),
+        grandTotal: Number(inv.total_amount || inv.grandTotal || inv.amount || 0),
+        date: inv.invoice_date || inv.date,
+        version: inv.version || 1,
+        customerName: project?.customer_name || 'Customer',
+        projectName: project?.name || 'Project'
+      }));
+      setInvoices(normalizedInvoices);
       setReceipts(recRes.data?.data || recRes.data || []);
     }).catch(err => {
       console.error('Failed to load credit notes or refunds:', err);
@@ -1313,7 +1349,9 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
   const avgRate = totalArea > 0 ? Math.round(totalBudget / totalArea) : 0;
   
   const totalPaid = payments.reduce((sum, p) => sum + (p.collectedAmount || 0), 0);
-  const outstandingBalance = payments.reduce((sum, p) => sum + (p.remainingAmount || 0), 0);
+  const outstandingBalance = payments
+    .filter(p => p.status === 'invoice_raised' || p.status === 'partially_paid' || p.status === 'overdue' || Boolean(p.invoiceReference))
+    .reduce((sum, p) => sum + Math.max(0, p.remainingAmount || 0), 0);
   
   const today = new Date().toISOString().split('T')[0];
   const processedPayments = payments.map(p => {
@@ -1804,7 +1842,10 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
       const remaining = Number(p.remainingAmount) || 0;
       if (remaining <= 0) return;
       
-      outstanding += remaining;
+      const isInvoiced = p.status === 'invoice_raised' || p.status === 'partially_paid' || p.status === 'overdue' || Boolean(p.invoiceReference);
+      if (isInvoiced) {
+        outstanding += remaining;
+      }
       
       if (!p.dueDate) {
         futureDue += remaining; // Treat no due date as future
@@ -1950,23 +1991,21 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
                     <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: isPaid ? '#22c55e' : (isPending ? '#eab308' : '#e2e8f0'), display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1 }}>
                       {isPaid && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
                     </div>
-                    
                     {/* Content */}
                     <div style={{ flex: 1, paddingBottom: '16px', borderBottom: idx !== payments.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                          <div style={{ fontWeight: 600, color: '#334155' }}>{p.milestone}</div>
                          <div style={{ fontWeight: 700, color: '#0f172a' }}>₹{Number(p.amount).toLocaleString('en-IN')}</div>
                       </div>
-                      
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-                         <div style={{ fontSize: '13px', color: '#64748b' }}>
-                           {p.dueDate ? `Due: ${new Date(p.dueDate).toLocaleDateString('en-IN')}` : 'TBD'}
-                         </div>
-                         {isPaid ? (
-                           <Badge variant="success" size="sm">Paid</Badge>
-                         ) : (
-                           isPending && <Button size="sm" onClick={async () => toast.info('Redirecting to Cashfree secure checkout...')}>Pay Online Now</Button>
-                         )}
+                        <div style={{ fontSize: '13px', color: '#64748b' }}>
+                          {p.dueDate ? `Due: ${new Date(p.dueDate).toLocaleDateString('en-IN')}` : 'TBD'}
+                        </div>
+                        {isPaid ? (
+                          <Badge variant="success" size="sm">Paid</Badge>
+                        ) : (
+                          isPending && <Button size="sm" onClick={async () => toast.info('Redirecting to Cashfree secure checkout...')}>Pay Online Now</Button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -2061,13 +2100,12 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
               ₹{outstandingBalance > 0 ? outstandingBalance.toLocaleString('en-IN') : 0}
             </div>
           </div>
-
         </div>
       </div>
 
       {/* Sub-Tabs */}
       <div className={styles.subTabsContainer} ref={subTabsRef}>
-        {['dashboard', 'collections', 'breakdown', 'logs', 'audit_logs', 'milestones', 'gates', 'links', 'invoices', 'receipts', 'ledger', 'receivables', 'reminders', 'approvals'].map(tab => (
+        {['dashboard', 'collections', 'breakdown', 'logs', 'audit_logs', 'milestones', 'gates', 'links', 'invoices', 'receipts', 'ledger', 'receivables', 'reminders', 'credits', 'approvals'].map(tab => (
           <button
             key={tab}
             className={`${styles.subTab} ${activeSubTab === tab ? styles.subTabActive : ''}`}
@@ -2086,6 +2124,7 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
              tab === 'ledger' ? 'Ledger' : 
              tab === 'receivables' ? 'Receivables' : 
              tab === 'reminders' ? 'Reminders' : 
+             tab === 'credits' ? 'Refunds & Credit Notes' : 
              tab === 'approvals' ? 'Approvals' : ''}
           </button>
         ))}
@@ -2192,19 +2231,18 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
                          <td style={{ padding: '12px 0', color: '#475569' }}>{r.label}</td>
                          <td style={{ padding: '12px 0', textAlign: 'right', fontWeight: 600, color: i > 1 && r.val > 0 ? '#ef4444' : '#1e293b' }}>₹{r.val.toLocaleString('en-IN')}</td>
                        </tr>
-                     ))}
-                   </tbody>
-                 </table>
-               </div>
-            </div>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+             </div>
 
           </div>
         )}
-
         {activeSubTab === 'collections' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 600 }}>Collection Dashboard</h3>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Collection Management</h3>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <select 
                   className={styles.input} 
@@ -3285,7 +3323,7 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
                          <td style={{ padding: '12px' }}>{new Date(log.sentAt).toLocaleString('en-IN')}</td>
                          <td style={{ padding: '12px', fontWeight: 500 }}>{log.milestoneName}</td>
                          <td style={{ padding: '12px' }}><Badge size="sm">{log.ruleKey.replace(/_/g, ' ')}</Badge></td>
-                         <td style={{ padding: '12px' }}>{log.channels.join(', ')}</td>
+                      <td style={{ padding: '12px' }}>{log.channels.join(', ')}</td>
                          <td style={{ padding: '12px', textAlign: 'right' }}>
                            <Button variant="ghost" size="sm" onClick={async () => handleManualResend(log)}>Resend</Button>
                          </td>
@@ -3298,135 +3336,254 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
           </div>
         )}
 
-        {false && activeSubTab === 'credits' && (
-          <div className={styles.creditsList}>
-            <div className={styles.creditsSection}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h4 style={{ margin: 0 }}>Advances & Adjustments</h4>
-                {hasPermission('Create') && <Button variant="outline" size="sm" onClick={async () => setManualAdjustmentModalOpen(true)}>Manual Override</Button>}
+        {activeSubTab === 'credits' && (
+          <div className={styles.creditsList} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            
+            {/* Top KPI Metrics Header */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+              <div className={styles.creditCard} style={{ background: 'var(--color-surface)', padding: '20px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', borderTop: '3px solid #f59e0b', transition: 'transform 0.2s ease', boxShadow: 'var(--shadow-sm)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Refunds</span>
+                  <span style={{ fontSize: '1.2rem' }}>💸</span>
+                </div>
+                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: '#f59e0b', marginTop: '8px' }}>
+                  ₹{refunds.reduce((acc, r) => acc + (Number(r.amount) || 0), 0).toLocaleString('en-IN')}
+                </div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '4px' }}>{refunds.length} Refund(s) Processed</div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' }}>
-                <div style={{ background: 'var(--color-surface-hover)', padding: '16px', borderRadius: '8px' }}>
-                  <div style={{fontSize: '12px', color:'var(--color-text-muted)'}}>Advance Balance</div>
-                  <div style={{fontSize: '18px', fontWeight: 700}}>₹{advanceData.totalAdvance.toLocaleString('en-IN')}</div>
+
+              <div className={styles.creditCard} style={{ background: 'var(--color-surface)', padding: '20px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', borderTop: '3px solid #3b82f6', transition: 'transform 0.2s ease', boxShadow: 'var(--shadow-sm)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Credit Notes Issued</span>
+                  <span style={{ fontSize: '1.2rem' }}>📜</span>
                 </div>
-                <div style={{ background: 'var(--color-surface-hover)', padding: '16px', borderRadius: '8px' }}>
-                  <div style={{fontSize: '12px', color:'var(--color-text-muted)'}}>Adjusted Amount</div>
-                  <div style={{fontSize: '18px', fontWeight: 700, color: 'var(--color-success)'}}>₹{advanceData.totalAdjusted.toLocaleString('en-IN')}</div>
+                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: '#3b82f6', marginTop: '8px' }}>
+                  ₹{creditNotes.reduce((acc, cn) => acc + (Number(cn.total_amount) || 0), 0).toLocaleString('en-IN')}
                 </div>
-                <div style={{ background: 'var(--color-surface-hover)', padding: '16px', borderRadius: '8px' }}>
-                  <div style={{fontSize: '12px', color:'var(--color-text-muted)'}}>Remaining Advance</div>
-                  <div style={{fontSize: '18px', fontWeight: 700, color: '#0284c7'}}>₹{advanceData.remainingAdvance.toLocaleString('en-IN')}</div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '4px' }}>{creditNotes.length} Credit Note(s) Total</div>
+              </div>
+
+              <div className={styles.creditCard} style={{ background: 'var(--color-surface)', padding: '20px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', borderTop: '3px solid var(--color-success)', transition: 'transform 0.2s ease', boxShadow: 'var(--shadow-sm)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Advance Balance</span>
+                  <span style={{ fontSize: '1.2rem' }}>💰</span>
                 </div>
+                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-success)', marginTop: '8px' }}>
+                  ₹{advanceData.remainingAdvance.toLocaleString('en-IN')}
+                </div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '4px' }}>₹{advanceData.totalAdjusted.toLocaleString('en-IN')} Adjusted</div>
+              </div>
+
+              <div className={styles.creditCard} style={{ background: 'var(--color-surface)', padding: '20px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', borderTop: '3px solid #8b5cf6', transition: 'transform 0.2s ease', boxShadow: 'var(--shadow-sm)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Debit Notes</span>
+                  <span style={{ fontSize: '1.2rem' }}>📄</span>
+                </div>
+                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: '#8b5cf6', marginTop: '8px' }}>
+                  ₹{debitNotes.reduce((acc, dn) => acc + (Number(dn.amount) || 0), 0).toLocaleString('en-IN')}
+                </div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '4px' }}>{debitNotes.length} Debit Note(s) Issued</div>
+              </div>
+            </div>
+
+            {/* Quick Action Toolbar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-surface)', padding: '16px 20px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h3 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 700 }}>Financial Adjustments & Credit Notes</h3>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                {hasPermission('Refund') && (
+                  <Button variant="primary" size="sm" onClick={async () => setRefundModalOpen(true)} style={{ backgroundColor: '#f59e0b', borderColor: '#d97706' }}>
+                    + Record Refund
+                  </Button>
+                )}
+                {hasPermission('Create') && (
+                  <Button variant="primary" size="sm" onClick={async () => setCreditNoteModalOpen(true)}>
+                    + Issue Credit Note
+                  </Button>
+                )}
+                {hasPermission('Create') && (
+                  <Button variant="outline" size="sm" onClick={async () => setDebitNoteModalOpen(true)}>
+                    + Issue Debit Note
+                  </Button>
+                )}
+                {hasPermission('Create') && (
+                  <Button variant="ghost" size="sm" onClick={async () => setManualAdjustmentModalOpen(true)}>
+                    Manual Override
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Customer Refunds Section */}
+            <div className={styles.creditsSection} style={{ background: 'var(--color-surface)', padding: '24px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: 'var(--text-md)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>💸</span> Customer Refunds
+                  </h4>
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Cash & bank returns processed for client</span>
+                </div>
+                {hasPermission('Refund') && <Button variant="outline" size="sm" onClick={async () => setRefundModalOpen(true)}>Record Refund</Button>}
+              </div>
+              
+              {refunds.length === 0 ? (
+                <div className={styles.emptyState} style={{ padding: '32px', textAlign: 'center', background: 'var(--color-surface-hover)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-muted)' }}>
+                  No customer refunds recorded for this project yet.
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+                  {refunds.map(ref => (
+                    <div key={ref.id} className={styles.creditCard} style={{ background: 'var(--color-surface-hover)', padding: '16px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', borderLeft: '4px solid #f59e0b' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ fontWeight: 700, fontSize: 'var(--text-sm)' }}>{ref.refund_number || `REF-${ref.id.slice(0, 6)}`}</span>
+                        <span style={{ fontWeight: 800, fontSize: 'var(--text-md)', color: '#f59e0b' }}>₹{Number(ref.amount).toLocaleString('en-IN')}</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span>Date: <strong>{new Date(ref.refund_date || ref.createdAt).toLocaleDateString('en-IN')}</strong></span>
+                          <span>Method: <strong>{ref.payment_method || 'Bank Transfer'}</strong></span>
+                        </div>
+                        <div>Reason: <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>{ref.reason}</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                          <Badge variant={ref.status === 'processed' ? 'success' : 'warning'} size="sm">
+                            {(ref.status || 'PENDING_APPROVAL').toUpperCase().replace('_', ' ')}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Credit Notes Section */}
+            <div className={styles.creditsSection} style={{ background: 'var(--color-surface)', padding: '24px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: 'var(--text-md)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>📜</span> Credit Notes
+                  </h4>
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Bill reductions & scope cancellations credited to client</span>
+                </div>
+                {hasPermission('Create') && <Button variant="outline" size="sm" onClick={async () => setCreditNoteModalOpen(true)}>Issue Credit Note</Button>}
+              </div>
+
+              {creditNotes.length === 0 ? (
+                <div className={styles.emptyState} style={{ padding: '32px', textAlign: 'center', background: 'var(--color-surface-hover)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-muted)' }}>
+                  No credit notes issued for this project yet.
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+                  {creditNotes.map(cn => (
+                    <div key={cn.id} className={styles.creditCard} style={{ background: 'var(--color-surface-hover)', padding: '16px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', borderLeft: '4px solid #3b82f6' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ fontWeight: 700, fontSize: 'var(--text-sm)' }}>{cn.credit_note_number || `CN-${cn.id.slice(0, 6)}`}</span>
+                        <span style={{ fontWeight: 800, fontSize: 'var(--text-md)', color: '#3b82f6' }}>₹{Number(cn.total_amount || cn.subtotal).toLocaleString('en-IN')}</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
+                        <div>Date: <strong>{new Date(cn.credit_note_date || cn.createdAt).toLocaleDateString('en-IN')}</strong></div>
+                        <div>Reason: <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>{cn.reason}</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                          <Badge variant={cn.status === 'issued' ? 'success' : 'neutral'} size="sm">
+                            {(cn.status || 'ISSUED').toUpperCase().replace('_', ' ')}
+                          </Badge>
+                          {cn.status === 'issued' && (
+                            <Button size="sm" variant="ghost" onClick={async () => handlePrintPDF({...cn, type: 'CREDIT_NOTE'})}>
+                              Download PDF
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Debit Notes Section */}
+            <div className={styles.creditsSection} style={{ background: 'var(--color-surface)', padding: '24px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: 'var(--text-md)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>📄</span> Debit Notes
+                  </h4>
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Additional invoice charges & site cost additions</span>
+                </div>
+                {hasPermission('Create') && <Button variant="outline" size="sm" onClick={async () => setDebitNoteModalOpen(true)}>Issue Debit Note</Button>}
+              </div>
+
+              {debitNotes.length === 0 ? (
+                <div className={styles.emptyState} style={{ padding: '32px', textAlign: 'center', background: 'var(--color-surface-hover)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-muted)' }}>
+                  No debit notes issued yet.
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+                  {debitNotes.map(dn => (
+                    <div key={dn.id} className={styles.creditCard} style={{ background: 'var(--color-surface-hover)', padding: '16px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', borderLeft: '4px solid var(--color-danger)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ fontWeight: 700, fontSize: 'var(--text-sm)' }}>{dn.debit_note_number}</span>
+                        <span style={{ fontWeight: 800, fontSize: 'var(--text-md)', color: 'var(--color-danger)' }}>₹{Number(dn.amount).toLocaleString('en-IN')}</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
+                        <span>Date: <strong>{new Date(dn.debit_note_date).toLocaleDateString('en-IN')}</strong></span>
+                        <span>Reason: <strong style={{ color: 'var(--color-text)' }}>{dn.reason}</strong></span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                          <Badge variant={dn.status === 'APPROVED' ? 'success' : 'warning'} size="sm">{dn.status.replace('_', ' ')}</Badge>
+                          {dn.status === 'APPROVED' && (
+                            <Button size="sm" variant="outline" onClick={async () => handlePrintPDF({...dn, type: 'DEBIT_NOTE'})}>Download PDF</Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Advances & Adjustments Log */}
+            <div className={styles.creditsSection} style={{ background: 'var(--color-surface)', padding: '24px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: 'var(--text-md)', fontWeight: 700 }}>Advance Payments & Adjustments</h4>
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Client advances automatically allocated across invoices</span>
+                </div>
+                {hasPermission('Create') && <Button variant="outline" size="sm" onClick={async () => setManualAdjustmentModalOpen(true)}>Manual Override</Button>}
               </div>
 
               {advanceAdjustments.length > 0 && (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', marginTop: '16px' }}>
-                  <thead>
-                    <tr style={{ background: 'var(--color-surface-hover)', textAlign: 'left' }}>
-                      <th style={{ padding: '8px', borderBottom: '1px solid var(--color-border)' }}>Date</th>
-                      <th style={{ padding: '8px', borderBottom: '1px solid var(--color-border)' }}>Invoice Ref</th>
-                      <th style={{ padding: '8px', borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>Amount (₹)</th>
-                      <th style={{ padding: '8px', borderBottom: '1px solid var(--color-border)', textAlign: 'center' }}>Type / Status</th>
-                      <th style={{ padding: '8px', borderBottom: '1px solid var(--color-border)' }}>Reason</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {advanceAdjustments.map(adj => (
-                      <tr key={adj.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                        <td style={{ padding: '8px' }}>{new Date(adj.date).toLocaleDateString('en-IN')}</td>
-                        <td style={{ padding: '8px', fontWeight: 600 }}>{adj.invoiceId}</td>
-                        <td style={{ padding: '8px', textAlign: 'right', color: 'var(--color-success)' }}>{adj.amount.toLocaleString('en-IN')}</td>
-                        <td style={{ padding: '8px', textAlign: 'center' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                             <Badge size="sm" variant={adj.type === 'AUTO' ? 'primary' : 'neutral'}>{adj.type}</Badge>
-                             <Badge size="sm" variant={adj.status === 'APPROVED' ? 'success' : 'warning'}>{adj.status.replace('_', ' ')}</Badge>
-                             {adj.status === 'PENDING_APPROVAL' && (
-                               <Button size="sm" variant="primary" onClick={async () => handleApproveAdjustment(adj.id)}>Approve</Button>
-                             )}
-                          </div>
-                        </td>
-                        <td style={{ padding: '8px', fontSize: '12px', color: 'var(--color-text-muted)' }}>{adj.reason}</td>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--text-sm)', marginTop: '16px' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--color-surface-hover)', textAlign: 'left' }}>
+                        <th style={{ padding: '12px', borderBottom: '1px solid var(--color-border)' }}>Date</th>
+                        <th style={{ padding: '12px', borderBottom: '1px solid var(--color-border)' }}>Invoice Ref</th>
+                        <th style={{ padding: '12px', borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>Amount (₹)</th>
+                        <th style={{ padding: '12px', borderBottom: '1px solid var(--color-border)', textAlign: 'center' }}>Type / Status</th>
+                        <th style={{ padding: '12px', borderBottom: '1px solid var(--color-border)' }}>Reason</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {advanceAdjustments.map(adj => (
+                        <tr key={adj.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                          <td style={{ padding: '12px' }}>{new Date(adj.date).toLocaleDateString('en-IN')}</td>
+                          <td style={{ padding: '12px', fontWeight: 600 }}>{adj.invoiceId}</td>
+                          <td style={{ padding: '12px', textAlign: 'right', color: 'var(--color-success)', fontWeight: 700 }}>₹{adj.amount.toLocaleString('en-IN')}</td>
+                          <td style={{ padding: '12px', textAlign: 'center' }}>
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: '6px' }}>
+                              <Badge size="sm" variant={adj.type === 'AUTO' ? 'primary' : 'neutral'}>{adj.type}</Badge>
+                              <Badge size="sm" variant={adj.status === 'APPROVED' ? 'success' : 'warning'}>{adj.status.replace('_', ' ')}</Badge>
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{adj.reason}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
 
-            <div className={styles.creditsSection} style={{ marginTop: '32px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h4 style={{ margin: 0 }}>Refunds</h4>
-                {hasPermission('Refund') && <Button variant="outline" size="sm" onClick={async () => setRefundModalOpen(true)}>Record Refund</Button>}
-              </div>
-              {refunds.length === 0 ? <div className={styles.emptyState}>No refunds processed.</div> : (
-                refunds.map(ref => (
-                  <div key={ref.id} className={styles.creditCard}>
-                    <div className={styles.cCardHeader}>
-                      <span>{ref.refund_number}</span>
-                      <span className={styles.cCardAmount}>₹{Number(ref.amount).toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className={styles.cCardBody}>
-                      <span>Date: {new Date(ref.refund_date).toLocaleDateString('en-IN')}</span>
-                      <span>Method: {ref.payment_method}</span>
-                      <span>Reason: {ref.reason}</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className={styles.creditsSection} style={{ marginTop: '32px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h4 style={{ margin: 0 }}>Credit Notes</h4>
-                {hasPermission('Create') && <Button variant="outline" size="sm" onClick={async () => setCreditNoteModalOpen(true)}>Issue Credit Note</Button>}
-              </div>
-              {creditNotes.length === 0 ? <div className={styles.emptyState}>No credit notes issued.</div> : (
-                creditNotes.map(cn => (
-                  <div key={cn.id} className={styles.creditCard}>
-                    <div className={styles.cCardHeader}>
-                      <span>{cn.credit_note_number}</span>
-                      <span className={styles.cCardAmount}>₹{Number(cn.total_amount).toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className={styles.cCardBody}>
-                      <span>Date: {new Date(cn.credit_note_date).toLocaleDateString('en-IN')}</span>
-                      <span>Reason: {cn.reason}</span>
-                      <span>Status: <Badge variant="neutral" size="sm">{cn.status.toUpperCase()}</Badge></span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className={styles.creditsSection} style={{ marginTop: '32px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h4 style={{ margin: 0 }}>Debit Notes</h4>
-                {hasPermission('Create') && <Button variant="outline" size="sm" onClick={async () => setDebitNoteModalOpen(true)}>Issue Debit Note</Button>}
-              </div>
-              {debitNotes.length === 0 ? <div className={styles.emptyState}>No debit notes issued.</div> : (
-                debitNotes.map(dn => (
-                  <div key={dn.id} className={styles.creditCard} style={{ borderLeft: '4px solid var(--color-danger)' }}>
-                    <div className={styles.cCardHeader}>
-                      <span>{dn.debit_note_number}</span>
-                      <span className={styles.cCardAmount} style={{ color: 'var(--color-danger)' }}>₹{Number(dn.amount).toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className={styles.cCardBody}>
-                      <span>Date: {new Date(dn.debit_note_date).toLocaleDateString('en-IN')}</span>
-                      <span>Ref Invoice: {dn.invoice_id}</span>
-                      <span>Reason: {dn.reason}</span>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-                         <span>Status: <Badge variant={dn.status === 'APPROVED' ? 'success' : 'warning'} size="sm">{dn.status.replace('_', ' ')}</Badge></span>
-                         <div style={{ display: 'flex', gap: '8px' }}>
-                           {dn.status === 'APPROVED' && (
-                             <Button size="sm" variant="outline" onClick={async () => handlePrintPDF({...dn, type: 'DEBIT_NOTE'})}>Download PDF</Button>
-                           )}
-                         </div>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
           </div>
         )}
 
@@ -3735,20 +3892,11 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
               onChange={val => setInvoiceForm(prev => ({ ...prev, milestoneId: val }))}
               options={[
                 { value: '', label: 'General / Advance' },
-                ...payments.map(p => ({ value: p.milestone, label: p.milestone }))
+                ...payments.map(p => ({ value: p.id, label: p.milestone }))
               ]}
             />
-            <Input label="Base Amount (INR) Before Tax" type="number" value={invoiceForm.amount} onChange={e => setInvoiceForm(prev => ({ ...prev, amount: e.target.value }))} required />
+            <Input label="Amount (INR)" type="number" value={invoiceForm.amount} onChange={e => setInvoiceForm(prev => ({ ...prev, amount: e.target.value }))} required />
             
-            {invoiceForm.type === 'TAX_INVOICE' && (
-               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                 <Select label="GST Type" value={invoiceForm.gstType} onChange={val => setInvoiceForm(prev => ({ ...prev, gstType: val }))} options={[{value:'CGST_SGST', label:'Intra-state (CGST+SGST)'}, {value:'IGST', label:'Inter-state (IGST)'}]} />
-                 <Input label="GST Rate (%)" type="number" value={invoiceForm.gstRate} onChange={e => setInvoiceForm(prev => ({ ...prev, gstRate: e.target.value }))} />
-                 <Input label="HSN/SAC" value={invoiceForm.hsnSac} onChange={e => setInvoiceForm(prev => ({ ...prev, hsnSac: e.target.value }))} />
-                 <Input label="Customer GSTIN (Optional)" value={invoiceForm.customerGst} onChange={e => setInvoiceForm(prev => ({ ...prev, customerGst: e.target.value }))} />
-               </div>
-            )}
-
             <Input label="Date" type="date" value={invoiceForm.invoiceDate} onChange={e => setInvoiceForm(prev => ({ ...prev, invoiceDate: e.target.value }))} required />
             
             <div style={{display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)', marginTop: 'var(--space-2)'}}>

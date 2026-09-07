@@ -44,43 +44,46 @@
 
 /* Table Cards */
 .tableCard {
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border);
+  background: var(--color-surface, #ffffff);
+  border-radius: var(--radius-lg, 12px);
+  border: 1px solid var(--color-border, #e5e1d8);
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.05));
+  transition: all var(--transition-fast, 0.2s ease);
 }
 
 .cardHeader {
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-4, 16px) var(--space-5, 20px);
+  border-bottom: 1px solid var(--color-border, #e5e1d8);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(249, 250, 251, 0.5);
+  background: var(--color-surface-2, #f8fafc);
 }
 
 .cardTitle {
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--color-text);
+  font-size: var(--text-lg, 16px);
+  font-weight: 700;
+  color: var(--color-text, #1c1c1e);
+  letter-spacing: -0.01em;
 }
 
 .emptyText {
   text-align: center;
-  color: var(--color-text-muted);
-  padding: 32px;
+  color: var(--color-text-muted, #9ca3af);
+  padding: 48px 24px;
+  font-size: var(--text-sm, 13px);
 }
 
 /* Filters */
 .filtersRow {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface);
+  gap: var(--space-4, 16px);
+  padding: var(--space-4, 16px) var(--space-5, 20px);
+  border-bottom: 1px solid var(--color-border, #e5e1d8);
+  background: var(--color-surface, #ffffff);
 }
 
 /* Overview Section */
@@ -231,4 +234,47 @@
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Custom CRM Table Styling */
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.customTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.th {
+  background: var(--color-surface-2, #f8fafc);
+  padding: 12px 16px;
+  font-weight: 600;
+  color: var(--color-text-secondary, #64748b);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--color-border, #e5e1d8);
+}
+
+.tr {
+  border-bottom: 1px solid var(--color-border, #e5e1d8);
+  transition: background 0.15s ease;
+}
+
+.tr:last-child {
+  border-bottom: none;
+}
+
+.tr:hover {
+  background: var(--color-surface-hover, rgba(0, 0, 0, 0.02));
+}
+
+.td {
+  padding: 14px 16px;
+  font-size: 13px;
+  color: var(--color-text, #1c1c1e);
+  vertical-align: middle;
 }

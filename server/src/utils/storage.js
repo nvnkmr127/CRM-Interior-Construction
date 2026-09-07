@@ -123,7 +123,11 @@ class LocalStorageProvider extends StorageProvider {
   }
 
   async getUploadUrl(key, _mimeType) {
-    if (!process.env.AWS_ACCESS_KEY_ID) {
+    const hasRealAwsKeys = process.env.AWS_ACCESS_KEY_ID && 
+      process.env.AWS_ACCESS_KEY_ID !== 'your_aws_access_key_id' && 
+      !process.env.AWS_ACCESS_KEY_ID.includes('your_aws');
+
+    if (!hasRealAwsKeys) {
        // Fallback to mock URL so the frontend can simulate it without crashing.
        return { 
          uploadUrl: `https://mock-s3.local/${key}?upload=true`, 
@@ -192,8 +196,14 @@ class LocalStorageProvider extends StorageProvider {
 }
 
 // Select provider based on env
-const provider = env.storageProvider === 'local' 
-  ? new LocalStorageProvider() 
-  : new S3StorageProvider();
+const isS3Configured = (env.storageProvider === 's3') || (
+  Boolean(env.awsKey && env.awsSecret && env.s3Bucket) &&
+  env.awsKey !== 'your_aws_access_key_id' &&
+  !env.awsKey.includes('your_aws')
+);
+
+const provider = isS3Configured
+  ? new S3StorageProvider()
+  : new LocalStorageProvider();
 
 module.exports = provider;

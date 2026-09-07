@@ -666,7 +666,7 @@ router.patch('/:id', authorize('projects:update'), validate(updateProjectSchema)
 
     const updatedProject = await updateProject({
       tenantId: req.tenantId,
-      userId: req.user.userId,
+      userId: req.user.id || req.user.userId,
       projectId: req.params.id,
       data
     });
@@ -688,8 +688,9 @@ router.patch('/:id', authorize('projects:update'), validate(updateProjectSchema)
     if (error.message === 'NOT_FOUND' || error.status === 404) {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }
+    console.error('[Projects Router Update Error Stack]', error);
     logger.error('[Projects Router] Update error:', error);
-    return fail(res, 'INTERNAL_ERROR', 'Failed to update project.', 500);
+    return fail(res, 'INTERNAL_ERROR', error.message || 'Failed to update project.', 500);
   }
 });
 
