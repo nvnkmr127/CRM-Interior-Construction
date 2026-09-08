@@ -162,6 +162,10 @@ export default function RolesManager() {
   const [dependencyErrors, setDependencyErrors] = useState([])
   const [isDependencyRefOpen, setIsDependencyRefOpen] = useState(false)
 
+  const [modVisibilitySearch, setModVisibilitySearch] = useState('')
+  const [modVisibilityCategory, setModVisibilityCategory] = useState('ALL')
+  const [collapsedGroups, setCollapsedGroups] = useState({})
+
   const searchInputRef = useRef(null)
   const dynamicPageSchema = useMemo(() => getDynamicPagePermissionsSchema(), [])
 
@@ -235,11 +239,22 @@ export default function RolesManager() {
 
       const schemaData = schemaRes.data?.data || schemaRes.data;
       const dynamicMods = getDynamicPermissionModules();
+      const dynamicModsMap = new Map(dynamicMods.map(m => [m.id, m]));
+      const abstractParentIds = new Set(['analytics', 'leads', 'team-management']);
+
       if (schemaData && schemaData.modules && schemaData.modules.length > 0) {
-        const existingIds = new Set(schemaData.modules.map(m => m.id));
-        const combined = [...schemaData.modules];
-        dynamicMods.forEach(dm => {
-          if (!existingIds.has(dm.id)) combined.push(dm);
+        const combined = [];
+        dynamicMods.forEach(dm => combined.push(dm));
+
+        schemaData.modules.forEach(mod => {
+          if (!combined.some(m => m.id === mod.id) && !abstractParentIds.has(mod.id)) {
+            const dyn = dynamicModsMap.get(mod.id);
+            combined.push({
+              ...mod,
+              label: dyn?.label || mod.label,
+              group: dyn?.group || 'WORKSPACE'
+            });
+          }
         });
         setSchemaModules(combined);
         setSchemaActions(schemaData.actions || PERMISSION_ACTIONS);
@@ -474,6 +489,36 @@ export default function RolesManager() {
     if (formData.permissions.includes('*')) return;
     setFormData(prev => ({ ...prev, enabled_modules: [] }));
   }
+
+  const handleToggleGroupVisibility = (groupMods, shouldEnable) => {
+    if (formData.permissions.includes('*')) return;
+    setFormData(prev => {
+      const current = new Set(prev.enabled_modules || []);
+      groupMods.forEach(m => {
+        if (shouldEnable) {
+          current.add(m.id);
+        } else {
+          current.delete(m.id);
+        }
+      });
+      return { ...prev, enabled_modules: Array.from(current) };
+    });
+  };
+
+  const handleToggleGroupCollapse = (groupName) => {
+    setCollapsedGroups(prev => ({
+      ...prev,
+      [groupName]: !prev[groupName]
+    }));
+  };
+
+  const handleExpandAllGroups = () => setCollapsedGroups({});
+
+  const handleCollapseAllGroups = (groupsMap) => {
+    const collapsed = {};
+    Object.keys(groupsMap).forEach(g => { collapsed[g] = true; });
+    setCollapsedGroups(collapsed);
+  };
 
   const handleDataScopeChange = (moduleId, value) => {
     setFormData(prev => {
@@ -818,59 +863,230 @@ export default function RolesManager() {
 
                 {/* Card: Module Visibility */}
                 <div style={{ background: 'var(--color-surface)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', borderTop: '3px solid var(--color-info)', boxShadow: 'var(--shadow-sm)', transition: 'transform var(--transition-fast), box-shadow var(--transition-fast)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <h3 style={{ fontSize: '16px', fontWeight: 600, margin: 0, color: 'var(--color-text)' }}>Module Visibility</h3>
-                      <span style={{ fontSize: '12px', padding: '2px 8px', borderRadius: '12px', background: 'var(--color-surface-2)', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
-                        {formData.enabled_modules?.length || 0} / {schemaModules.length} Enabled
-                      </span>
+                  {/* Card Header & Controls */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontSize: '18px' }}>👁️</span>
+                      <div>
+                        <h3 style={{ fontSize: '16px', fontWeight: 600, margin: 0, color: 'var(--color-text)' }}>Module & Tab Visibility</h3>
+                        <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                          Control which sidebar tabs & modules are visible for this role
+                        </span>
+                      </div>
                     </div>
+
                     {!formData.permissions.includes('*') && (
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '12px', background: 'var(--color-surface-2)', color: 'var(--color-accent)', fontWeight: 600, border: '1px solid var(--color-border)' }}>
+                          {formData.enabled_modules?.length || 0} / {schemaModules.length} Enabled ({Math.round(((formData.enabled_modules?.length || 0) / (schemaModules.length || 1)) * 100)}%)
+                        </span>
                         <Button variant="ghost" size="sm" onClick={handleSelectAllModulesVisibility}>Select All</Button>
-                        <Button variant="ghost" size="sm" onClick={handleClearAllModulesVisibility}>Clear</Button>
+                        <Button variant="ghost" size="sm" onClick={handleClearAllModulesVisibility}>Clear All</Button>
                       </div>
                     )}
                   </div>
-                  <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '16px' }}>
-                    Enable or disable entire modules for this role. Disabled modules will be hidden from navigation.
-                  </p>
+
                   {formData.permissions.includes('*') ? (
-                    <div style={{ padding: '12px 16px', background: 'var(--color-accent-light, #eef2ff)', color: 'var(--color-accent, #4f46e5)', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 500 }}>
-                      ✓ Superadmins implicitly have all modules enabled.
+                    <div style={{ padding: '14px 18px', background: 'var(--color-accent-light, #eef2ff)', color: 'var(--color-accent, #4f46e5)', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 500, border: '1px solid var(--color-border)' }}>
+                      ✓ Superadmins implicitly have all tabs and modules enabled across the application.
                     </div>
                   ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px' }}>
-                      {schemaModules.map(mod => {
-                        const isChecked = (formData.enabled_modules || []).includes(mod.id);
-                        return (
-                          <label 
-                            key={mod.id} 
-                            style={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              gap: '10px', 
-                              padding: '10px 12px', 
-                              borderRadius: 'var(--radius-md)', 
-                              border: isChecked ? '1px solid var(--color-accent, #4f46e5)' : '1px solid var(--color-border)', 
-                              background: isChecked ? 'var(--color-surface-2, #f8fafc)' : 'var(--color-surface)', 
-                              cursor: 'pointer', 
-                              fontSize: '13px', 
-                              fontWeight: isChecked ? 600 : 400, 
-                              color: 'var(--color-text)',
-                              transition: 'all 0.15s ease' 
-                            }}
-                          >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {/* Search Bar & Category Filter Pills */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--color-bg)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                          <div style={{ position: 'relative', flex: 1 }}>
+                            <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-secondary)', fontSize: '13px' }}>🔍</span>
                             <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => handleToggleModuleVisibility(mod.id)}
-                              style={{ width: '15px', height: '15px', flexShrink: 0, accentColor: 'var(--color-accent, #4f46e5)' }}
+                              type="text"
+                              className="input-field"
+                              placeholder="Search tabs or modules (e.g., leads, coordination, finance)..."
+                              value={modVisibilitySearch}
+                              onChange={(e) => setModVisibilitySearch(e.target.value)}
+                              style={{ width: '100%', paddingLeft: '32px', paddingRight: modVisibilitySearch ? '32px' : '10px', fontSize: '13px' }}
                             />
-                            <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{mod.label}</span>
-                          </label>
-                        );
-                      })}
+                            {modVisibilitySearch && (
+                              <button
+                                type="button"
+                                onClick={() => setModVisibilitySearch('')}
+                                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', fontSize: '14px' }}
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+                          {/* Expand/Collapse All Buttons */}
+                          {(() => {
+                            const allGroups = Array.from(new Set(schemaModules.map(m => m.group || 'WORKSPACE')));
+                            const groupsMapObj = {};
+                            schemaModules.forEach(m => {
+                              const g = m.group || 'WORKSPACE';
+                              if (!groupsMapObj[g]) groupsMapObj[g] = [];
+                              groupsMapObj[g].push(m);
+                            });
+                            return (
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                <Button variant="ghost" size="sm" onClick={handleExpandAllGroups} style={{ fontSize: '11px' }}>Expand All</Button>
+                                <Button variant="ghost" size="sm" onClick={() => handleCollapseAllGroups(groupsMapObj)} style={{ fontSize: '11px' }}>Collapse All</Button>
+                              </div>
+                            );
+                          })()}
+                        </div>
+
+                        {/* Category Filter Pills */}
+                        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px', scrollbarWidth: 'none' }}>
+                          {['ALL', ...Array.from(new Set(schemaModules.map(m => m.group || 'WORKSPACE')))].map(cat => {
+                            const isActive = modVisibilityCategory === cat;
+                            return (
+                              <button
+                                key={cat}
+                                type="button"
+                                onClick={() => setModVisibilityCategory(cat)}
+                                style={{
+                                  padding: '4px 10px',
+                                  borderRadius: '14px',
+                                  fontSize: '11px',
+                                  fontWeight: isActive ? 600 : 400,
+                                  border: isActive ? '1px solid var(--color-accent, #4f46e5)' : '1px solid var(--color-border)',
+                                  background: isActive ? 'var(--color-accent, #4f46e5)' : 'var(--color-surface)',
+                                  color: isActive ? '#ffffff' : 'var(--color-text-secondary)',
+                                  cursor: 'pointer',
+                                  whiteSpace: 'nowrap',
+                                  transition: 'all 0.15s ease'
+                                }}
+                              >
+                                {cat}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Group Accordions */}
+                      {(() => {
+                        let filteredMods = schemaModules;
+
+                        if (modVisibilityCategory !== 'ALL') {
+                          filteredMods = filteredMods.filter(m => (m.group || 'WORKSPACE') === modVisibilityCategory);
+                        }
+
+                        if (modVisibilitySearch.trim()) {
+                          const q = modVisibilitySearch.toLowerCase();
+                          filteredMods = filteredMods.filter(m => m.label.toLowerCase().includes(q) || m.id.toLowerCase().includes(q) || (m.group && m.group.toLowerCase().includes(q)));
+                        }
+
+                        if (filteredMods.length === 0) {
+                          return (
+                            <div style={{ padding: '24px', textAlign: 'center', background: 'var(--color-bg)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--color-border)' }}>
+                              <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: '0 0 8px 0' }}>No matching tabs found for &quot;{modVisibilitySearch}&quot;.</p>
+                              <Button variant="ghost" size="sm" onClick={() => { setModVisibilitySearch(''); setModVisibilityCategory('ALL'); }}>Reset Filters</Button>
+                            </div>
+                          );
+                        }
+
+                        const groups = {};
+                        filteredMods.forEach(mod => {
+                          const gName = mod.group || 'WORKSPACE';
+                          if (!groups[gName]) groups[gName] = [];
+                          groups[gName].push(mod);
+                        });
+
+                        return Object.entries(groups).map(([gName, mods]) => {
+                          const isCollapsed = !!collapsedGroups[gName];
+                          const enabledInGroup = mods.filter(m => (formData.enabled_modules || []).includes(m.id)).length;
+                          const isAllInGroupChecked = enabledInGroup === mods.length;
+
+                          return (
+                            <div 
+                              key={gName} 
+                              style={{ 
+                                background: 'var(--color-bg)', 
+                                borderRadius: 'var(--radius-md)', 
+                                border: '1px solid var(--color-border)',
+                                overflow: 'hidden',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              {/* Accordion Group Header */}
+                              <div 
+                                style={{ 
+                                  display: 'flex', 
+                                  justify: 'space-between', 
+                                  alignItems: 'center', 
+                                  padding: '12px 14px', 
+                                  background: 'var(--color-surface-2, #f8fafc)',
+                                  borderBottom: isCollapsed ? 'none' : '1px solid var(--color-border)',
+                                  cursor: 'pointer',
+                                  userSelect: 'none'
+                                }}
+                                onClick={() => handleToggleGroupCollapse(gName)}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <span style={{ fontSize: '11px', transition: 'transform 0.2s ease', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', color: 'var(--color-text-secondary)' }}>
+                                    ▼
+                                  </span>
+                                  <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.5px', color: 'var(--color-text)', textTransform: 'uppercase' }}>
+                                    {gName}
+                                  </span>
+                                  <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', background: enabledInGroup > 0 ? 'var(--color-surface)' : 'var(--color-bg)', color: enabledInGroup > 0 ? 'var(--color-accent)' : 'var(--color-text-secondary)', fontWeight: 600, border: '1px solid var(--color-border)' }}>
+                                    {enabledInGroup} / {mods.length}
+                                  </span>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    style={{ fontSize: '11px', padding: '2px 6px' }}
+                                    onClick={() => handleToggleGroupVisibility(mods, !isAllInGroupChecked)}
+                                  >
+                                    {isAllInGroupChecked ? 'Clear Section' : 'Select Section'}
+                                  </Button>
+                                </div>
+                              </div>
+
+                              {/* Accordion Content Grid */}
+                              {!isCollapsed && (
+                                <div style={{ padding: '12px 14px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px' }}>
+                                  {mods.map(mod => {
+                                    const isChecked = (formData.enabled_modules || []).includes(mod.id);
+                                    return (
+                                      <label 
+                                        key={mod.id} 
+                                        style={{ 
+                                          display: 'flex', 
+                                          alignItems: 'center', 
+                                          gap: '8px', 
+                                          padding: '8px 10px', 
+                                          borderRadius: 'var(--radius-sm)', 
+                                          border: isChecked ? '1px solid var(--color-accent, #4f46e5)' : '1px solid var(--color-border)', 
+                                          background: isChecked ? 'var(--color-surface-2, #f8fafc)' : 'var(--color-surface)', 
+                                          cursor: 'pointer', 
+                                          fontSize: '12px', 
+                                          fontWeight: isChecked ? 600 : 400, 
+                                          color: 'var(--color-text)',
+                                          transition: 'transform 0.15s ease, border-color 0.15s ease, background 0.15s ease',
+                                          boxShadow: isChecked ? 'var(--shadow-sm)' : 'none'
+                                        }}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={isChecked}
+                                          onChange={() => handleToggleModuleVisibility(mod.id)}
+                                          style={{ width: '14px', height: '14px', flexShrink: 0, accentColor: 'var(--color-accent, #4f46e5)' }}
+                                        />
+                                        <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={mod.label}>
+                                          {mod.label}
+                                        </span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        });
+                      })()}
                     </div>
                   )}
                 </div>

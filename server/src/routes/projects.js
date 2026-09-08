@@ -101,14 +101,84 @@ router.use('/:id/tasks', tasksRoutes);
 router.get('/:id/activities', authorize('projects:read'), async (req, res, next) => {
   try {
     const { pool } = require('../config/db');
-    const { rows } = await pool.query(
-      `SELECT a.*, u.name as user_name 
-       FROM activities a
-       LEFT JOIN users u ON a.user_id = u.id
-       WHERE a.project_id = $1 AND a.tenant_id = $2 
-       ORDER BY a.created_at DESC`,
+    const { type, page = 1, limit = 50 } = req.query;
+    
+    // First, find the lead_id associated with this project (if converted from a lead)
+    const projRes = await pool.query(
+      `SELECT lead_id FROM projects WHERE id = $1 AND tenant_id = $2`,
       [req.params.id, req.tenantId]
     );
+    const leadId = projRes.rows[0]?.lead_id || null;
+
+    // Build unified query combining direct project activities, lead activities (if any), and audit logs
+    const { rows } = await pool.query(
+      `SELECT * FROM (
+        SELECT 
+          a.id,
+          a.project_id,
+          a.lead_id,
+          a.tenant_id,
+          a.type,
+          a.title,
+          a.notes,
+          a.outcome,
+          a.metadata,
+          a.ai_summary,
+          a.user_id,
+          u.name as user_name,
+          a.scheduled_at,
+          a.created_at
+        FROM activities a
+        LEFT JOIN users u ON a.user_id = u.id
+        WHERE (a.project_id = $1 ${leadId ? 'OR a.lead_id = $3' : ''}) AND a.tenant_id = $2
+
+        UNION ALL
+
+        SELECT 
+          al.id,
+          $1 as project_id,
+          NULL as lead_id,
+          al.tenant_id,
+          'system' as type,
+          (CASE 
+            WHEN al.action LIKE 'project.%' THEN REPLACE(INITCAP(REPLACE(al.action, '.', ' ')), '_', ' ')
+            ELSE REPLACE(INITCAP(REPLACE(al.action, '.', ' ')), '_', ' ')
+          END) as title,
+          COALESCE(
+            NULLIF(al.reason, ''),
+            (CASE 
+              WHEN al.new_value IS NOT NULL AND jsonb_typeof(al.new_value::jsonb) = 'object' THEN
+                (CASE 
+                  WHEN al.new_value::jsonb ? 'message' THEN al.new_value::jsonb->>'message'
+                  WHEN al.new_value::jsonb ? 'crm_executive_id' THEN 'CRM Executive role / assignment updated'
+                  WHEN al.new_value::jsonb ? 'pm_id' THEN 'Project Manager assigned'
+                  WHEN al.new_value::jsonb ? 'designer_id' THEN 'Lead Designer assigned'
+                  WHEN al.new_value::jsonb ? 'status' THEN 'Project status updated to ' || (al.new_value::jsonb->>'status')
+                  ELSE REPLACE(al.action, '.', ' ') || ' updated'
+                END)
+              ELSE REPLACE(al.action, '.', ' ') || ' recorded'
+            END)
+          ) as notes,
+          NULL as outcome,
+          al.new_value::jsonb as metadata,
+          NULL as ai_summary,
+          al.user_id,
+          COALESCE(u.name, 'System Admin') as user_name,
+          NULL as scheduled_at,
+          al.created_at
+        FROM audit_logs al
+        LEFT JOIN users u ON al.user_id = u.id
+        WHERE (al.entity_id = $1 OR (al.new_value IS NOT NULL AND al.new_value::text LIKE '%' || $1 || '%'))
+          AND al.tenant_id = $2
+          AND al.action NOT LIKE 'api.%'
+      ) combined_activities
+      ${type && type !== 'all' ? `WHERE type = $${leadId ? 4 : 3}` : ''}
+      ORDER BY created_at DESC`,
+      type && type !== 'all' 
+        ? (leadId ? [req.params.id, req.tenantId, leadId, type] : [req.params.id, req.tenantId, type])
+        : (leadId ? [req.params.id, req.tenantId, leadId] : [req.params.id, req.tenantId])
+    );
+
     return success(res, rows);
   } catch (error) {
     next(error);
@@ -162,9 +232,12 @@ router.patch('/:id/activities/:aid', authorize('projects:write'), async (req, re
     const { title, notes, outcome, metadata, scheduledAt } = req.body;
     const { pool } = require('../config/db');
     
+    const projRes = await pool.query('SELECT lead_id FROM projects WHERE id = $1 AND tenant_id = $2', [req.params.id, req.tenantId]);
+    const leadId = projRes.rows[0]?.lead_id;
+
     const actRes = await pool.query(
-      'SELECT * FROM activities WHERE id = $1 AND project_id = $2 AND tenant_id = $3',
-      [req.params.aid, req.params.id, req.tenantId]
+      `SELECT * FROM activities WHERE id = $1 AND tenant_id = $2 AND (project_id = $3 ${leadId ? 'OR lead_id = $4' : ''})`,
+      leadId ? [req.params.aid, req.tenantId, req.params.id, leadId] : [req.params.aid, req.tenantId, req.params.id]
     );
     
     if (actRes.rows.length === 0) {
@@ -179,9 +252,11 @@ router.patch('/:id/activities/:aid', authorize('projects:write'), async (req, re
            metadata = COALESCE($4, metadata),
            scheduled_at = COALESCE($5, scheduled_at),
            created_at = created_at
-       WHERE id = $6 AND project_id = $7 AND tenant_id = $8
+       WHERE id = $6 AND tenant_id = $7 AND (project_id = $8 ${leadId ? 'OR lead_id = $9' : ''})
        RETURNING *`,
-      [title, notes, outcome, metadata || null, scheduledAt || null, req.params.aid, req.params.id, req.tenantId]
+      leadId
+        ? [title, notes, outcome, metadata || null, scheduledAt || null, req.params.aid, req.tenantId, req.params.id, leadId]
+        : [title, notes, outcome, metadata || null, scheduledAt || null, req.params.aid, req.tenantId, req.params.id]
     );
     
     const updatedRow = rows[0];
@@ -202,9 +277,12 @@ router.patch('/:id/activities/:aid', authorize('projects:write'), async (req, re
 router.delete('/:id/activities/:aid', authorize('projects:write'), async (req, res, next) => {
   try {
     const { pool } = require('../config/db');
+    const projRes = await pool.query('SELECT lead_id FROM projects WHERE id = $1 AND tenant_id = $2', [req.params.id, req.tenantId]);
+    const leadId = projRes.rows[0]?.lead_id;
+
     const actRes = await pool.query(
-      'SELECT * FROM activities WHERE id = $1 AND project_id = $2 AND tenant_id = $3',
-      [req.params.aid, req.params.id, req.tenantId]
+      `SELECT * FROM activities WHERE id = $1 AND tenant_id = $2 AND (project_id = $3 ${leadId ? 'OR lead_id = $4' : ''})`,
+      leadId ? [req.params.aid, req.tenantId, req.params.id, leadId] : [req.params.aid, req.tenantId, req.params.id]
     );
     
     if (actRes.rows.length === 0) {
@@ -212,8 +290,8 @@ router.delete('/:id/activities/:aid', authorize('projects:write'), async (req, r
     }
     
     await pool.query(
-      'DELETE FROM activities WHERE id = $1 AND project_id = $2 AND tenant_id = $3',
-      [req.params.aid, req.params.id, req.tenantId]
+      `DELETE FROM activities WHERE id = $1 AND tenant_id = $2 AND (project_id = $3 ${leadId ? 'OR lead_id = $4' : ''})`,
+      leadId ? [req.params.aid, req.tenantId, req.params.id, leadId] : [req.params.aid, req.tenantId, req.params.id]
     );
     
     return success(res, { message: 'Activity deleted successfully' });
@@ -792,6 +870,19 @@ router.get('/:id/retention', authorize('projects:read'), async (req, res, next) 
   }
 });
 
+// POST /api/projects/:id/retention/generate
+router.post('/:id/retention/generate', authorize('projects:manage'), async (req, res, next) => {
+  try {
+    const { startDate } = req.body;
+    const { generateRetentionSchedules } = require('../services/postSale/retentionService');
+    const data = await generateRetentionSchedules(req.tenantId, req.params.id, startDate || new Date().toISOString());
+    return success(res, data, { message: 'Customer retention schedules generated successfully.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+
 
 
 // PATCH /api/projects/:id/retention/:scheduleId
@@ -879,8 +970,10 @@ router.get('/:id/payment-milestones', authorize('projects:read'), async (req, re
 // GET /api/projects/:id/handover/checklists
 router.get('/:id/handover/checklists', authorize('projects:read'), async (req, res, next) => {
   try {
-    const checklist = await getChecklistByProjectId(req.params.id, req.tenantId);
-    if (!checklist) return fail(res, 'NOT_FOUND', 'Checklist not found', 404);
+    let checklist = await getChecklistByProjectId(req.params.id, req.tenantId);
+    if (!checklist) {
+      checklist = await createChecklist({ tenantId: req.tenantId, projectId: req.params.id });
+    }
     return success(res, checklist);
   } catch (error) {
     next(error);

@@ -262,6 +262,10 @@ app.use('/api/login-history', require('./routes/loginHistory'));
 app.use('/api/projects/:projectId/punch-lists', punchListsRoutes);
 app.use('/api/projects/:projectId/closure-checklist', projectClosuresRoutes);
 app.use('/api/projects/:projectId/payment-escalations', paymentEscalationsRoutes);
+app.use('/api/projects/:projectId/warranties', require('./routes/warranties'));
+app.use('/api/projects/:projectId/amcs', require('./routes/amcs'));
+app.use('/api/projects/:projectId/warranty-claims', require('./routes/warrantyClaims'));
+app.use('/api/projects/:projectId/retrospective', require('./routes/projectRetrospectives'));
 app.use('/api/receipts', receiptsRoutes);
 
 // Safe fallback for local file downloads

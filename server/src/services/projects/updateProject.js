@@ -344,6 +344,12 @@ async function updateProject({ tenantId, userId, projectId, data }) {
     }
   }
 
+  if (contacts !== undefined) newValues['contacts'] = 'contacts';
+  if (measurements !== undefined) newValues['measurements'] = 'measurements';
+  if (vendors !== undefined) newValues['vendors'] = 'vendors';
+  if (consultants !== undefined) newValues['consultants'] = 'consultants';
+  if (site_team !== undefined) newValues['site_team'] = 'site_team';
+
   if (Object.keys(newValues).length > 0) {
     await logAction({
       tenantId,
@@ -374,11 +380,41 @@ async function updateProject({ tenantId, userId, projectId, data }) {
     }
 
     try {
-      const updatedKeys = Object.keys(newValues);
+      const fieldLabels = {
+        crm_executive_id: 'CRM Executive',
+        pm_id: 'Project Manager',
+        designer_id: 'Lead Designer',
+        sales_rep_id: 'Sales Representative',
+        site_engineer_id: 'Site Engineer',
+        procurement_manager_id: 'Procurement Manager',
+        status: 'Project Status'
+      };
+
+      const changeSummaries = [];
+      for (const [key, val] of Object.entries(newValues)) {
+        if (key === 'status' && oldValues.status) {
+          changeSummaries.push(`Status changed from '${oldValues.status}' to '${val}'`);
+        } else if (['crm_executive_id', 'pm_id', 'designer_id', 'sales_rep_id', 'site_engineer_id', 'procurement_manager_id'].includes(key)) {
+          const label = fieldLabels[key] || key.replace(/_/g, ' ');
+          if (val) {
+            const uRes = await pool.query('SELECT name, role FROM users WHERE id = $1', [val]);
+            const uName = uRes.rows[0]?.name ? `${uRes.rows[0].name}${uRes.rows[0].role ? ` (${uRes.rows[0].role.replace(/_/g, ' ')})` : ''}` : val;
+            changeSummaries.push(`${label} assigned to ${uName}`);
+          } else {
+            changeSummaries.push(`${label} unassigned`);
+          }
+        } else {
+          const label = fieldLabels[key] || key.replace(/_/g, ' ');
+          changeSummaries.push(`Updated ${label}`);
+        }
+      }
+
+      const notesSummary = changeSummaries.length > 0 ? changeSummaries.join(' | ') : 'Project updated';
+
       await pool.query(
         `INSERT INTO activities (project_id, tenant_id, type, title, notes, user_id, created_at)
          VALUES ($1, $2, 'system', 'Project Updated', $3, $4, NOW())`,
-        [projectId, tenantId, `Updated fields: ${updatedKeys.join(', ')}`, userId]
+        [projectId, tenantId, notesSummary, userId || null]
       );
     } catch (error) {
       logger.error('Failed to insert project activity:', error);

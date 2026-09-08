@@ -226,6 +226,22 @@ async function updateTask({ tenantId, userId, taskId, data }) {
     await autoLinkFactoryToInstallationTasks(tenantId, updatedTask.project_id);
   }
 
+  if (updatedTask.project_id) {
+    try {
+      let changeNote = `Task "${updatedTask.title || currentTask.title}" updated`;
+      if (data.status && data.status !== currentTask.status) {
+        changeNote = `Task "${updatedTask.title || currentTask.title}" status changed to '${data.status}'`;
+      }
+      await pool.query(
+        `INSERT INTO activities (project_id, tenant_id, type, title, notes, user_id, created_at)
+         VALUES ($1, $2, 'system', 'Task Updated', $3, $4, NOW())`,
+        [updatedTask.project_id, tenantId, changeNote, userId || null]
+      );
+    } catch (err) {
+      logger.error('Failed to log project task update activity:', err);
+    }
+  }
+
   return updatedTask;
 }
 

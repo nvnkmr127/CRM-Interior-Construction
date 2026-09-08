@@ -6,6 +6,8 @@ export const createSnag = (projectId, data) =>
   api.post(`/projects/${projectId}/snags`, data).then(r=>r.data.data);
 export const updateSnag = (snagId, data) =>
   api.patch(`/snags/${snagId}`, data).then(r=>r.data.data);
+export const deleteSnag = (snagId) =>
+  api.delete(`/snags/${snagId}`).then(r=>r.data.data);
 
 // Portal
 export const getPortalSnags = () => api.get('/portal/snags').then(r=>r.data.data);

@@ -166,10 +166,9 @@ export default function ActivityLogsTab({ projectId, onTaskAdded }) {
         queryParams.type = filter;
       }
       const res = await getProjectActivities(projectId, queryParams);
-      if (res.success) {
-        setActivities(prev => append ? [...prev, ...res.data] : res.data);
-        setMeta({ total: res.total, page: res.page, limit: res.limit });
-      }
+      const items = Array.isArray(res.data) ? res.data : (Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res) ? res : []));
+      setActivities(prev => append ? [...prev, ...items] : items);
+      setMeta({ total: res.total || items.length, page, limit: 20 });
     } catch (error) {
       console.error('Failed to load timeline events', error);
     } finally {
@@ -256,7 +255,7 @@ export default function ActivityLogsTab({ projectId, onTaskAdded }) {
 
   const hasMore = meta.total > meta.page * meta.limit;
 
-  const systemActivityKeywords = ['automation', 'score_tier_change', 'sla_breach', 'duplicate', 'task_completed'];
+  const systemActivityKeywords = ['system', 'automation', 'score_tier_change', 'sla_breach', 'duplicate', 'task_completed', 'project updated', 'task created', 'task updated', 'document uploaded'];
 
   const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
 
@@ -572,8 +571,8 @@ export default function ActivityLogsTab({ projectId, onTaskAdded }) {
           <div className="text-sm text-gray-400 py-4 italic">No activities recorded yet.</div>
         ) : (
           <>
-            {activities.map((activity) => {
-              const isSystem = !activity.user_name || systemActivityKeywords.some(kw => activity.type?.includes(kw) || activity.title?.toLowerCase().includes(kw));
+            {activities.map((activity, idx) => {
+              const isSystem = activity.type === 'system' || !activity.user_name || systemActivityKeywords.some(kw => activity.type?.includes(kw) || activity.title?.toLowerCase().includes(kw));
               const Icon = isSystem ? Icons.system : (Icons[activity.type] || Icons.note);
               const typeLabel = activity.title || activity.type?.replace('_', ' ') || 'Activity';
               let timeAgo = '';
@@ -585,7 +584,7 @@ export default function ActivityLogsTab({ projectId, onTaskAdded }) {
               } catch(e) {}
 
               return (
-                <div key={activity.id} className="relative group">
+                <div key={`${activity.id || 'activity'}-${idx}`} className="relative group">
                   <div className={`absolute -left-[27px] sm:-left-[35px] top-1.5 flex h-7 w-7 items-center justify-center rounded-full border-2 shadow-sm ${getTypeStyle(activity.type, isSystem)}`}>
                     <Icon />
                   </div>
@@ -594,10 +593,11 @@ export default function ActivityLogsTab({ projectId, onTaskAdded }) {
                     <div className="flex justify-between items-start mb-2">
                       <div className="text-sm">
                         <span className="font-bold capitalize text-gray-800">{typeLabel}</span>
-                        {isSystem ? (
+                        {activity.user_name && (
+                          <span className="text-gray-600 font-medium"> by {activity.user_name}</span>
+                        )}
+                        {isSystem && (
                           <span className="ml-2 bg-gray-800 text-yellow-400 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">System Log</span>
-                        ) : (
-                          <span className="text-gray-500"> by {activity.user_name}</span>
                         )}
                         <span className="text-gray-400 text-xs ml-1 font-medium cursor-help" title={exactDate}>· {timeAgo}</span>
                       </div>
@@ -695,7 +695,7 @@ export default function ActivityLogsTab({ projectId, onTaskAdded }) {
                                   const dueDate = new Date();
                                   dueDate.setDate(dueDate.getDate() + (task.due_in_days || 0));
                                   await api.post('/tasks', {
-                                    lead_id: projectId,
+                                    project_id: projectId,
                                     title: task.title,
                                     due_date: dueDate.toISOString().split('T')[0],
                                     priority: 'medium',

@@ -3,11 +3,29 @@ import { useState, useEffect, useMemo } from 'react'
 import styles from './SnagsDashboard.module.css'
 import { Badge, Button, Avatar, Modal } from '../../components/ui'
 import { useToast } from '../../store/toastContext'
-import { getSnags, updateSnag, createSnag } from '../../api/snags'
+import { getSnags, updateSnag, createSnag, deleteSnag } from '../../api/snags'
 import { getVendorCoordination, getExternalInspections, createExternalInspection, updateExternalInspection } from '../../api/projects'
 import { getSnagsAnalytics } from '../../api/analytics'
+import { useConfirm } from '../../store/confirmContext'
+import api from '../../api/axios'
 
-const FILTERS = ['All', 'Open', 'Assigned', 'In Progress', 'Resolved', 'Verified']
+function formatTimeAgo(dateStr) {
+  if (!dateStr) return 'Recently';
+  const created = new Date(dateStr).getTime();
+  if (isNaN(created)) return 'Recently';
+  const diffMs = Date.now() - created;
+  if (diffMs < 0) return 'Today';
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return '1 day ago';
+  return `${diffDays} days ago`;
+}
+
+const FILTERS = ['All', 'Open', 'Assigned', 'In Progress', 'Resolved', 'Verified'];
 
 export default function SnagsDashboard({ projectId, projectStatus }) {
   const [activeTab, setActiveTab] = useState('internal') // 'internal' | 'external'
@@ -23,22 +41,28 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
   const [reworkCost, setReworkCost] = useState('0')
   
   const [vendors, setVendors] = useState([])
+  const [teamUsers, setTeamUsers] = useState([])
   const [analytics, setAnalytics] = useState(null)
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [newSnag, setNewSnag] = useState({ title: '', desc: '', category: 'General', rootCauseCategory: '', vendorId: '' })
+  
+  const [assignTarget, setAssignTarget] = useState(null)
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState('')
+  const [selectedVendorId, setSelectedVendorId] = useState('')
   
   const [externalInspections, setExternalInspections] = useState([])
   const [isExternalModalOpen, setIsExternalModalOpen] = useState(false)
   const [newExternal, setNewExternal] = useState({ inspectorName: '', organization: '', inspectionDate: '', findings: '', severity: 'medium' })
   
   const toast = useToast()
+  const { confirm } = useConfirm()
 
   useEffect(() => {
     if (!projectId) return
     setLoading(true)
-    getSnags({ projectId })
+    getSnags(projectId)
       .then(res => {
-        const _r = res.data?.data || res.data; const raw = Array.isArray(_r) ? _r : [];
+        const raw = Array.isArray(res) ? res : (Array.isArray(res?.data?.data) ? res.data.data : (Array.isArray(res?.data) ? res.data : []));
         setSnags(raw.map(s => ({
           id: s.id,
           title: s.title,
@@ -46,8 +70,8 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
           category: s.category || 'General',
           status: s.status || 'open',
           raisedBy: {
-            type: s.raised_by_type || 'staff',
-            name: s.raised_by_name || '—',
+            type: s.raised_by_client ? 'client' : (s.raised_by_type || 'staff'),
+            name: s.raised_by_name || (s.raised_by_client ? 'Client' : 'Team Member'),
             date: s.created_at || s.raisedAt,
           },
           assignee: s.assignee_name ? { name: s.assignee_name } : null,
@@ -72,6 +96,13 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
     getExternalInspections(projectId)
       .then(res => setExternalInspections(res || []))
       .catch(() => setExternalInspections([]))
+
+    api.get('/users?limit=100')
+      .then(res => {
+        const list = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []))
+        setTeamUsers(list)
+      })
+      .catch(() => setTeamUsers([]))
   }, [projectId])
 
   const filteredSnags = useMemo(() => {
@@ -158,6 +189,7 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
         vendor_id: resolveTarget.vendor_id
       } : s))
       toast.success('Snag resolved and rework logged.')
+      getSnagsAnalytics(projectId).then(res => setAnalytics(res)).catch(() => {})
     } catch {
       toast.error('Failed to resolve snag')
     }
@@ -199,11 +231,68 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
         photos: []
       }, ...prev])
 
-      toast.success('Snag reported successfully')
       setIsReportModalOpen(false)
       setNewSnag({ title: '', desc: '', category: 'General', rootCauseCategory: '', vendorId: '' })
+      toast.success('Snag reported successfully')
     } catch {
       toast.error('Failed to report snag')
+    }
+  }
+
+  const handleDeleteSnag = async (snagId) => {
+    if (projectStatus === 'completed') {
+      toast.warning('Cannot delete snags on a completed project.')
+      return
+    }
+    const isConfirmed = await confirm({
+      title: 'Delete Snag',
+      message: 'Are you sure you want to delete this snag? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'danger'
+    })
+    if (isConfirmed) {
+      try {
+        await deleteSnag(snagId)
+        setSnags(prev => prev.filter(s => s.id !== snagId))
+        toast.success('Snag deleted successfully')
+      } catch {
+        toast.error('Failed to delete snag')
+      }
+    }
+  }
+
+  const submitAssignSnag = async () => {
+    if (projectStatus === 'completed') {
+      toast.warning('Cannot assign snags on a completed project.')
+      return
+    }
+    if (!selectedAssigneeId && !selectedVendorId) {
+      toast.error('Please select a team member or vendor.')
+      return
+    }
+    try {
+      const assignedUser = teamUsers.find(u => String(u.id) === String(selectedAssigneeId))
+      await updateSnag(assignTarget.id, {
+        status: 'assigned',
+        assigneeId: selectedAssigneeId || null,
+        vendorId: selectedVendorId || null
+      })
+
+      setSnags(prev => prev.map(s => s.id === assignTarget.id ? {
+        ...s,
+        status: 'assigned',
+        assignee: assignedUser ? { name: assignedUser.name || assignedUser.full_name } : s.assignee,
+        vendor_id: selectedVendorId || s.vendor_id
+      } : s))
+
+      toast.success(`Snag assigned successfully${assignedUser ? ` to ${assignedUser.name || assignedUser.full_name}` : ''}.`)
+      getSnagsAnalytics(projectId).then(res => setAnalytics(res)).catch(() => {})
+      setAssignTarget(null)
+      setSelectedAssigneeId('')
+      setSelectedVendorId('')
+    } catch {
+      toast.error('Failed to assign snag')
     }
   }
 
@@ -238,6 +327,28 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
     }
   }
 
+  const getCardStatusClass = (status) => {
+    switch (status) {
+      case 'open': return styles.cardOpen;
+      case 'assigned': return styles.cardAssigned;
+      case 'in_progress': return styles.cardInProgress;
+      case 'resolved': return styles.cardResolved;
+      case 'client_verified': return styles.cardVerified;
+      default: return '';
+    }
+  }
+
+  const getStatusBadgeVariant = (status) => {
+    switch (status) {
+      case 'open': return 'danger';
+      case 'assigned': return 'warning';
+      case 'in_progress': return 'accent';
+      case 'resolved': return 'success';
+      case 'client_verified': return 'success';
+      default: return 'neutral';
+    }
+  }
+
   return (
     <div className={styles.page}>
       <div className={styles.headerRow}>
@@ -251,9 +362,9 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
           </div>
         </div>
         <div className={styles.headerActions}>
-          <div style={{display:'flex', gap:8}}>
-            <Button variant={activeTab === 'internal' ? 'primary' : 'outline'} size="sm" onClick={() => setActiveTab('internal')}>Internal QC Snags</Button>
-            <Button variant={activeTab === 'external' ? 'primary' : 'outline'} size="sm" onClick={() => setActiveTab('external')}>Third-Party Inspections</Button>
+          <div className={styles.tabGroup}>
+            <Button variant={activeTab === 'internal' ? 'primary' : 'ghost'} size="sm" onClick={() => setActiveTab('internal')}>Internal QC Snags</Button>
+            <Button variant={activeTab === 'external' ? 'primary' : 'ghost'} size="sm" onClick={() => setActiveTab('external')}>Third-Party Inspections</Button>
           </div>
           {projectStatus !== 'completed' && (
             activeTab === 'internal' ? (
@@ -310,7 +421,7 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
           </div>
 
           {loading ? (
-            <div style={{color:'var(--color-text-muted)'}}>Loading snags...</div>
+            <div className={styles.noData}>Loading snags...</div>
           ) : filteredSnags.length === 0 ? (
             <div className={styles.emptyState}>
               <div className={styles.emptyIcon}>✓</div>
@@ -319,15 +430,15 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
           ) : (
             <div className={styles.grid}>
               {filteredSnags.map(snag => (
-                <div key={snag.id} className={styles.card}>
+                <div key={snag.id} className={`${styles.card} ${getCardStatusClass(snag.status)}`}>
                   <div className={styles.cardHeader}>
                     <Badge variant="neutral">{snag.category}</Badge>
-                    <Badge variant={snag.status === 'resolved' ? 'success' : snag.status === 'open' ? 'danger' : 'warning'} style={{textTransform:'capitalize'}}>
+                    <Badge variant={getStatusBadgeVariant(snag.status)} size="sm" className={styles.statusBadge}>
                       {snag.status.replace('_', ' ')}
                     </Badge>
                   </div>
 
-                  <div>
+                  <div className={styles.cardBody}>
                     <div className={styles.cardTitle}>{snag.title}</div>
                     <div className={styles.cardDesc}>{snag.desc}</div>
                   </div>
@@ -345,7 +456,7 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
                       <div className={styles.metaLabel}>Raised By</div>
                       <div className={styles.metaValueContainer}>
                         {snag.raisedBy.type === 'client' ? <span className={styles.clientBadge}>◉ Client</span> : <Avatar name={snag.raisedBy.name} size="xs" />}
-                        <span>· {snag.raisedBy.name} · {Math.ceil((Date.now() - new Date(snag.raisedBy.date)) / 86400000)} days ago</span>
+                        <span>· {snag.raisedBy.name} · {formatTimeAgo(snag.raisedBy.date)}</span>
                       </div>
                     </div>
                     <div className={styles.metaRow}>
@@ -361,14 +472,37 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
                   </div>
 
                   <div className={styles.cardFooter}>
-                    <div>{getSLAIndicator(snag)}</div>
+                    <div className={styles.footerMeta}>
+                      {snag.status === 'resolved' && <Badge variant="neutral" size="sm">Awaiting Client Verification</Badge>}
+                      {snag.status === 'client_verified' && <Badge variant="success" size="sm">✓ Completed</Badge>}
+                    </div>
                     
-                    <div>
-                      {snag.status === 'open' && <Button variant="secondary" size="sm" onClick={() => handleStatusChange(snag.id, 'assigned')} disabled={projectStatus === 'completed'}>Assign</Button>}
-                      {snag.status === 'assigned' && <Button variant="primary" size="sm" onClick={() => handleStatusChange(snag.id, 'in_progress')} disabled={projectStatus === 'completed'}>Start Work</Button>}
-                      {snag.status === 'in_progress' && <Button variant="primary" size="sm" onClick={() => { setResolveTarget(snag); if (snag.rootCauseCategory) setReworkRootCauseCategory(snag.rootCauseCategory); }} disabled={projectStatus === 'completed'}>Resolve</Button>}
-                      {snag.status === 'resolved' && <Badge variant="neutral">Awaiting Client Verification</Badge>}
-                      {snag.status === 'client_verified' && <Badge variant="success">✓ Completed</Badge>}
+                    <div className={styles.cardActions}>
+                      {snag.status === 'open' && (
+                        <Button variant="secondary" size="sm" onClick={() => { setAssignTarget(snag); setSelectedAssigneeId(snag.assignee?.id || ''); setSelectedVendorId(snag.vendor_id || ''); }} disabled={projectStatus === 'completed'}>Assign</Button>
+                      )}
+                      {snag.status === 'assigned' && (
+                        <>
+                          <Button variant="primary" size="sm" onClick={() => handleStatusChange(snag.id, 'in_progress')} disabled={projectStatus === 'completed'}>Start Work</Button>
+                          <Button variant="secondary" size="sm" onClick={() => { setAssignTarget(snag); setSelectedAssigneeId(snag.assignee?.id || ''); setSelectedVendorId(snag.vendor_id || ''); }} disabled={projectStatus === 'completed'}>Re-assign</Button>
+                          <Button variant="outline" size="sm" onClick={() => handleStatusChange(snag.id, 'open')} disabled={projectStatus === 'completed'}>Revert to Open</Button>
+                        </>
+                      )}
+                      {snag.status === 'in_progress' && (
+                        <>
+                          <Button variant="primary" size="sm" onClick={() => { setResolveTarget(snag); if (snag.rootCauseCategory) setReworkRootCauseCategory(snag.rootCauseCategory); }} disabled={projectStatus === 'completed'}>Resolve</Button>
+                          <Button variant="outline" size="sm" onClick={() => handleStatusChange(snag.id, 'assigned')} disabled={projectStatus === 'completed'}>Revert to Assigned</Button>
+                        </>
+                      )}
+                      {snag.status === 'resolved' && (
+                        <Button variant="outline" size="sm" onClick={() => handleStatusChange(snag.id, 'in_progress')} disabled={projectStatus === 'completed'}>Re-open Work</Button>
+                      )}
+                      {snag.status === 'client_verified' && (
+                        <Button variant="outline" size="sm" onClick={() => handleStatusChange(snag.id, 'in_progress')} disabled={projectStatus === 'completed'}>Re-open</Button>
+                      )}
+                      <Button variant="danger" size="sm" onClick={() => handleDeleteSnag(snag.id)} disabled={projectStatus === 'completed'}>
+                        Delete
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -553,27 +687,26 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
        {activeTab === 'external' && (
         <>
           <div className={styles.grid}>
-            {externalInspections.length === 0 && <div style={{color:'var(--color-text-muted)'}}>No external inspections logged.</div>}
+            {externalInspections.length === 0 && <div className={styles.noData}>No external inspections logged.</div>}
             {externalInspections.map(ext => (
               <div key={ext.id} className={styles.card}>
                 <div className={styles.cardHeader}>
-                  <Badge variant={ext.severity === 'critical' || ext.severity === 'high' ? 'danger' : 'warning'} style={{textTransform:'capitalize'}}>
+                  <Badge variant={ext.severity === 'critical' || ext.severity === 'high' ? 'danger' : 'warning'} size="sm" className={styles.statusBadge}>
                     {ext.severity} Severity
                   </Badge>
-                  <Badge variant={ext.status === 'resolved' || ext.status === 'closed' ? 'success' : 'neutral'} style={{textTransform:'capitalize'}}>
+                  <Badge variant={ext.status === 'resolved' || ext.status === 'closed' ? 'success' : 'neutral'} size="sm" className={styles.statusBadge}>
                     {ext.status.replace('_', ' ')}
                   </Badge>
                 </div>
 
-                <div>
+                <div className={styles.cardBody}>
                   <div className={styles.cardTitle}>{ext.inspector_name} {ext.organization && `(${ext.organization})`}</div>
-                  <div style={{fontSize:'var(--text-xs)', color:'var(--color-text-muted)', marginBottom:12}}>Date: {new Date(ext.inspection_date).toLocaleDateString()}</div>
-                  <div className={styles.cardDesc} style={{whiteSpace:'pre-wrap'}}>{ext.findings || 'No findings provided.'}</div>
+                  <div className={styles.extMetaDate}>Date: {new Date(ext.inspection_date).toLocaleDateString()}</div>
+                  <div className={styles.cardDesc}>{ext.findings || 'No findings provided.'}</div>
                 </div>
 
                 <div className={styles.cardFooter}>
-                  <div></div>
-                  <div style={{display:'flex', gap:8}}>
+                  <div className={styles.cardActions}>
                     {ext.status === 'open' && <Button variant="secondary" size="sm" onClick={() => updateExtStatus(ext.id, 'in_progress')} disabled={projectStatus === 'completed'}>Start Fixes</Button>}
                     {ext.status === 'in_progress' && <Button variant="primary" size="sm" onClick={() => updateExtStatus(ext.id, 'resolved')} disabled={projectStatus === 'completed'}>Resolve</Button>}
                     {ext.status === 'resolved' && <Button variant="outline" size="sm" onClick={() => updateExtStatus(ext.id, 'closed')} disabled={projectStatus === 'completed'}>Close</Button>}
@@ -659,6 +792,51 @@ export default function SnagsDashboard({ projectId, projectStatus }) {
           </Modal>
         </>
       )}
+      
+      {/* Assign Modal - available across snag tabs */}
+      <Modal
+        isOpen={!!assignTarget}
+        onClose={() => setAssignTarget(null)}
+        title={`Assign Snag: ${assignTarget?.title || ''}`}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setAssignTarget(null)}>Cancel</Button>
+            <Button variant="primary" onClick={submitAssignSnag} disabled={projectStatus === 'completed'}>Save Assignment</Button>
+          </>
+        }
+      >
+        <div className={styles.formGroup} style={{ gap: 16 }}>
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Assign Team Member / Staff *</label>
+            <select 
+              className={styles.select}
+              value={selectedAssigneeId}
+              onChange={e => setSelectedAssigneeId(e.target.value)}
+              disabled={projectStatus === 'completed'}
+            >
+              <option value="">Select Team Member</option>
+              {teamUsers.map(u => (
+                <option key={u.id} value={u.id}>{u.name || u.full_name || u.email} ({u.role_name || u.role || 'Staff'})</option>
+              ))}
+            </select>
+          </div>
+
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Assign Vendor / Contractor (Optional)</label>
+            <select 
+              className={styles.select}
+              value={selectedVendorId}
+              onChange={e => setSelectedVendorId(e.target.value)}
+              disabled={projectStatus === 'completed'}
+            >
+              <option value="">Select Vendor</option>
+              {vendors.map(v => (
+                <option key={v.id} value={v.id}>{v.vendor_name || v.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

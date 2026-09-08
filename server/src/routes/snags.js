@@ -7,10 +7,11 @@ const router = express.Router({ mergeParams: true });
 
 router.use(authenticate);
 
-// GET /api/snags
+// GET /api/snags or /api/projects/:id/snags
 router.get('/', async (req, res, next) => {
   try {
-    const { projectId, status, assigneeId, category, page, limit } = req.query;
+    const projectId = req.params.id || req.params.projectId || req.query.projectId;
+    const { status, assigneeId, category, page, limit } = req.query;
     const snags = await getSnags({
       tenantId: req.user.tenantId,
       projectId,
@@ -26,10 +27,11 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// POST /api/snags
+// POST /api/snags or /api/projects/:id/snags
 router.post('/', async (req, res, next) => {
   try {
-    const { projectId, title, description, photoKeys, category, rootCauseCategory, vendorId } = req.body;
+    const projectId = req.params.id || req.params.projectId || req.body.projectId;
+    const { title, description, photoKeys, category, rootCauseCategory, vendorId } = req.body;
     
     if (!projectId || !title) {
       return fail(res, 'BAD_REQUEST', 'Project ID and Title are required', 400);
@@ -73,34 +75,42 @@ router.patch('/:id', async (req, res, next) => {
     const tenantId = req.user.tenantId;
     const userId = req.user.userId;
 
-    let updatedSnag;
-
-    if (assigneeId) {
-      updatedSnag = await assignSnag({ tenantId, snagId, assigneeId, userId });
-    }
-
-    if (status || rootCauseCategory || vendorId || resolutionNote || reworkRequired !== undefined) {
-      updatedSnag = await updateSnagStatus({ 
-        tenantId, 
-        snagId, 
-        status, 
-        resolutionNote, 
-        userId,
-        reworkRequired,
-        reworkRootCauseCategory,
-        reworkEstimatedHours,
-        reworkActualHours,
-        reworkCost,
-        rootCauseCategory,
-        vendorId
-      });
-    }
+    let updatedSnag = await updateSnagStatus({ 
+      tenantId, 
+      snagId, 
+      status, 
+      assigneeId,
+      resolutionNote, 
+      userId,
+      reworkRequired,
+      reworkRootCauseCategory,
+      reworkEstimatedHours,
+      reworkActualHours,
+      reworkCost,
+      rootCauseCategory,
+      vendorId
+    });
 
     if (!updatedSnag) {
       return fail(res, 'BAD_REQUEST', 'No update fields provided', 400);
     }
 
     return success(res, updatedSnag);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/snags/:id
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const snagId = req.params.id;
+    const deleted = await require('../services/postSale/snagService').deleteSnag({
+      tenantId: req.user.tenantId,
+      snagId,
+      userId: req.user.userId
+    });
+    return success(res, deleted);
   } catch (error) {
     next(error);
   }

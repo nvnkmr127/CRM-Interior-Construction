@@ -5474,6 +5474,8 @@ export const setupMockInterceptor = (api) => {
               
               mockDatabase.retrospectives[projectId] = {
                 ...mockDatabase.retrospectives[projectId],
+                id: mockDatabase.retrospectives[projectId]?.id || `mock-retro-${projectId}`,
+                project_id: projectId,
                 what_went_well,
                 what_went_wrong,
                 design_feedback,
@@ -6141,11 +6143,33 @@ export const setupMockInterceptor = (api) => {
                 count: statusCounts[s]
               }));
               
+              const retrospectivesMap = mockDatabase.retrospectives || {};
+              const allRetrospectives = Object.values(retrospectivesMap)
+                .filter(retro => {
+                  if (!retro) return false;
+                  const w1 = (retro.what_went_well || '').toString().trim();
+                  const w2 = (retro.what_went_wrong || '').toString().trim();
+                  const d1 = (retro.design_feedback || '').toString().trim();
+                  const p1 = (retro.process_changes || '').toString().trim();
+                  return Boolean(w1 || w2 || d1 || p1);
+                })
+                .map(retro => {
+                  const project = projects.find(p => p.id === retro.project_id) || {};
+                  return {
+                    ...retro,
+                    project_name: project.name || 'Unknown Project',
+                    client_name: project.client_name || project.client || '—',
+                    pm_name: project.pm_name || 'Unassigned',
+                    status: project.status || 'completed'
+                  };
+                });
+
               responseData.data = {
                 statusDistribution,
                 revenueTimeline: [],
                 topProjects: projects.map(p => ({ id: p.id, name: p.name, value: p.value || 0, status: p.status })).sort((a,b)=>b.value-a.value).slice(0, 5),
-                delayedProjects: []
+                delayedProjects: [],
+                allRetrospectives
               };
             }
           }

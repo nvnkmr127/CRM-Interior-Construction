@@ -781,4 +781,16 @@
     at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
     at async createInvoice (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\invoiceService.js:201:20)
-    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\invoices.js:120:21\n\n
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\invoices.js:120:21\n\n2026-09-08T07:59:45.423Z\nReferenceError: assigneeId is not defined
+    at updateSnagStatus (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\postSale\snagService.js:158:3)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\snags.js:78:23\n\n2026-09-08T07:59:47.463Z\nReferenceError: assigneeId is not defined
+    at updateSnagStatus (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\postSale\snagService.js:158:3)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\snags.js:78:23\n\n2026-09-08T07:59:55.970Z\nReferenceError: assigneeId is not defined
+    at updateSnagStatus (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\postSale\snagService.js:158:3)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\snags.js:78:23\n\n2026-09-08T08:02:10.177Z\nReferenceError: assigneeId is not defined
+    at updateSnagStatus (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\postSale\snagService.js:158:3)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\snags.js:78:23\n\n

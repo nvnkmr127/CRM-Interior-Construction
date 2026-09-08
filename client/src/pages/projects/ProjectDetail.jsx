@@ -252,7 +252,7 @@ const FinancialOverviewPanel = React.memo(function FinancialOverviewPanel({ proj
 const TeamAndRolesTab = React.lazy(() => import('../../components/projects/TeamAndRolesTab'));
 const ClientProfileTab = React.lazy(() => import('../../components/projects/ClientProfileTab'));
 const SiteDetailsTab = React.lazy(() => import('../../components/projects/SiteDetailsTab'));
-const SettingsTab = React.lazy(() => import('../../components/projects/SettingsTab'));
+
 
 function formatDate(dateStr) {
   if (!dateStr) return '—';
@@ -361,13 +361,30 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
       <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden', padding: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
           <div>
-            <h3 style={{ margin: '0 0 4px 0', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>Stage Revision Limits & Counts</h3>
-            <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Permitted revision rounds and active consumption per design stage.</p>
+            <h3 style={{ margin: '0 0 4px 0', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>Project Revision Controls & Stage Limits</h3>
+            <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Global project revision caps and active consumption per design stage.</p>
           </div>
           <Button variant="outline" size="sm" onClick={() => onEdit('revisions')}>
             ✏️ Edit
           </Button>
         </div>
+
+        {/* Global Revision Metrics */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px', borderBottom: '1px solid var(--color-border)', paddingBottom: '16px' }}>
+          <div style={{ background: 'var(--color-accent-bg, #eff6ff)', border: '1px solid var(--color-accent, #3b82f6)', borderRadius: 'var(--radius-md)', padding: '10px 14px' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-accent)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Allowed Design Revisions</div>
+            <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--color-text)', marginTop: '2px' }}>
+              {project.allowed_design_revisions !== undefined && project.allowed_design_revisions !== null ? project.allowed_design_revisions : 3}
+            </div>
+          </div>
+          <div style={{ background: 'var(--color-surface-hover, #f8fafc)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '10px 14px' }}>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Design Revisions</div>
+            <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--color-text)', marginTop: '2px' }}>
+              {project.current_design_revisions !== undefined && project.current_design_revisions !== null ? project.current_design_revisions : 0}
+            </div>
+          </div>
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
           {[
             'Requirement Gathering',
@@ -555,8 +572,13 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
 
       {/* Client Household & Lifestyle Profile */}
       <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
-        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
-          Client Household & Lifestyle Profile
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid var(--color-border)' }}>
+          <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+            Client Household & Lifestyle Profile
+          </div>
+          <Button variant="outline" size="sm" onClick={() => onEdit('client')}>
+            ✏️ Edit
+          </Button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 0 }}>
           <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
@@ -613,8 +635,13 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
 
       {/* Stakeholders & Contacts */}
       <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
-        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
-          Project Stakeholders & Contacts
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid var(--color-border)' }}>
+          <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+            Project Stakeholders & Contacts
+          </div>
+          <Button variant="outline" size="sm" onClick={() => onEdit('contacts')}>
+            ✏️ Edit
+          </Button>
         </div>
         {project.contacts && project.contacts.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -796,13 +823,18 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
       </div>
 
 
-      {/* Notes */}
-      {project.notes && (
-        <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', padding: '16px 20px' }}>
-          <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', marginBottom: 8 }}>Notes</div>
-          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>{project.notes}</div>
+      {/* Project Notes */}
+      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', padding: '16px 20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>Project Notes & Special Instructions</div>
+          <Button variant="outline" size="sm" onClick={() => onEdit('details')}>
+            ✏️ Edit
+          </Button>
         </div>
-      )}
+        <div style={{ fontSize: 'var(--text-sm)', color: project.notes ? 'var(--color-text-secondary)' : 'var(--color-text-muted)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+          {project.notes || 'No specific notes or special instructions recorded for this project.'}
+        </div>
+      </div>
 
       {project && (
         <HandoverModal
@@ -827,7 +859,7 @@ export default function ProjectDetail() {
   const { canAccessPage, getAllowedPages } = usePagePermissions('projects');
   const allowedTabs = getAllowedPages().map(t => t.id);
   const currentTabParam = searchParams.get('tab');
-  const activeTab = currentTabParam || (allowedTabs.length > 0 ? allowedTabs[0] : 'Overview');
+  const activeTab = (currentTabParam && allowedTabs.includes(currentTabParam)) ? currentTabParam : 'Overview';
   
   const setActiveTab = (tab) => {
     setSearchParams({ tab });
@@ -894,16 +926,22 @@ export default function ProjectDetail() {
     'Financial Overview', 'Budget', 'Quotations & Budget', 'Budget Variance', 'Commercial Approval', 'Payments', 'Change Orders', 'Purchase Requests', 'Purchase Orders', 'Vendors', 'Vendor Payments',
     
     // Execution & Monitoring
-    'Phases', 'Gantt Chart', 'Work Activities', 'Room Progress', 'Tasks', 'Factory Production', 'Material Deliveries', 'Daily Site Reports', 'Weekly Reports', 'Site Visits', 'Meeting Notes', 'Delay Notifications', 'MEP Checklist',
+    'Work Activities', 'Room Progress', 'Tasks', 'Factory Production', 'Material Deliveries', 'Daily Site Reports', 'Weekly Reports', 'Site Visits', 'Meeting Notes', 'Delay Notifications', 'MEP Checklist', 'Drawing Register', 'Documents',
     
-    // Quality & Handover
-    'Execution QC', 'Snags', 'Punch List', 'Handovers', 'Handover Readiness', 'Handover', 'Drawing Register', 'Documents',
+    // Quality & Pre-Handover Gating
+    'Snags', 'Punch List', 'Handovers', 'Handover Readiness', 
+    
+    // Property Handover
+    'Handover', 
+    
+    // Project Closure & Retrospective
+    'Project Closure', 'Retrospective',
     
     // Post-Handover & Maintenance
     'Warranties', 'AMCs', 'Service Tickets', 'Customer Retention',
     
-    // Closing & Auditing
-    'Project Closure', 'Retrospective', 'Activity Logs', 'Settings'
+    // Administration & Logs
+    'Activity Logs'
   ];
   const tabs = allTabs.filter(tab => canAccessPage(tab));
 
@@ -938,7 +976,6 @@ export default function ProjectDetail() {
       case 'Team & Roles': return <TeamAndRolesTab project={project} onRefresh={reloadProject} />;
       case 'Client Profile': return <ClientProfileTab project={project} onRefresh={reloadProject} />;
       case 'Site Details': return <SiteDetailsTab project={project} onRefresh={reloadProject} />;
-      case 'Settings': return <SettingsTab project={project} onRefresh={reloadProject} />;
       case 'Activity Logs': return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
@@ -973,8 +1010,6 @@ export default function ProjectDetail() {
       case 'Substitutions': return <MaterialSubstitutionsTab projectId={projectId} />;
       case 'Factory Production': return <FactoryProductionTab projectId={projectId} />;
       case 'Coordination': return <CoordinationTab projectId={projectId} projectStatus={project?.status} onProjectUpdated={reloadProject} />;
-      case 'Phases': return <PhaseTimeline projectId={projectId} />;
-      case 'Gantt Chart': return <GanttChart projectId={projectId} project={project} />;
       case 'Work Activities': return <WorkActivitiesTab projectId={projectId} project={project} />;
       case 'Room Progress': return <RoomProgressTab projectId={projectId} />;
       case 'Tasks': return <ProjectTasksTab projectId={projectId} project={project} />;
@@ -984,7 +1019,6 @@ export default function ProjectDetail() {
       case 'Drawing Register': return <DrawingRegisterTab projectId={projectId} />;
       case 'MEP Checklist': return <MepChecklistTab projectId={projectId} />;
       case 'Payments': return <PaymentsTab projectId={projectId} project={project} onProjectUpdated={reloadProject} />;
-      case 'Execution QC': return <ExecutionQCTab projectId={projectId} project={project} />;
       case 'Snags': return <SnagsDashboard projectId={projectId} projectStatus={project?.status} />;
       case 'Handover': return <HandoverChecklist projectId={projectId} />;
       case 'Punch List': return <PunchListTab projectId={projectId} projectStatus={project?.status} />;
@@ -992,7 +1026,7 @@ export default function ProjectDetail() {
       case 'AMCs': return <AmcsTab projectId={projectId} />;
       case 'Handover Readiness': return <HandoverReadinessTab projectId={projectId} />;
       case 'Service Tickets': return <ServiceTicketsTab projectId={projectId} />;
-      case 'Customer Retention': return <CustomerRetentionTab projectId={projectId} />;
+      case 'Customer Retention': return <CustomerRetentionTab projectId={projectId} onNavigateTab={setActiveTab} />;
       case 'Project Closure': return <ProjectClosureTab projectId={projectId} projectStatus={project.status} onProjectUpdated={reloadProject} />;
       case 'Retrospective': return <ProjectRetrospectiveTab projectId={projectId} projectStatus={project.status} />;
       default: return <div>{activeTab} Content (Coming Soon)</div>;
@@ -1356,21 +1390,40 @@ export default function ProjectDetail() {
         {/* Quick Nav Tabs from Form Sections */}
         <div className={styles.headerNav} ref={navRef}>
           {[
+            // 1. Initiation & Setup
             { id: 'Overview', icon: '📝', label: 'Overview' },
             { id: 'Client Profile', icon: '👤', label: 'Client Profile' },
             { id: 'Site Details', icon: '📍', label: 'Site Details' },
+            { id: 'Team & Roles', icon: '👥', label: 'Team & Roles' },
+
+            // 2. Financials
             { id: 'Financial Overview', icon: '💰', label: 'Financial Overview' },
             { id: 'Payments', icon: '💸', label: 'Payments' },
-            { id: 'Team & Roles', icon: '👥', label: 'Team & Roles' },
+
+            // 3. Execution & Monitoring
             { id: 'Tasks', icon: '✅', label: 'Tasks' },
             { id: 'Documents', icon: '📁', label: 'Documents' },
-            { id: 'Handover Readiness', icon: '🚦', label: 'Handover Readiness' },
-            { id: 'Execution QC', icon: '🔍', label: 'Execution QC' },
+
+            // 4. Quality Control, Snags & Readiness (Pre-Handover)
             { id: 'Snags', icon: '⚠️', label: 'Snags' },
             { id: 'Punch List', icon: '📋', label: 'Punch List' },
+            { id: 'Handover Readiness', icon: '🚦', label: 'Handover Readiness' },
+
+            // 5. Property Handover
+            { id: 'Handover', icon: '📦', label: 'Handover Checklist' },
+
+            // 6. Project Closure
             { id: 'Project Closure', icon: '🔑', label: 'Project Closure' },
-            { id: 'Activity Logs', icon: '📋', label: 'Activity Logs' },
-            { id: 'Settings', icon: '⚙️', label: 'Settings' }
+            { id: 'Retrospective', icon: '💡', label: 'Retrospective' },
+
+            // 7. Post-Handover & Support
+            { id: 'Warranties', icon: '🛡️', label: 'Warranties' },
+            { id: 'AMCs', icon: '🛠️', label: 'AMCs' },
+            { id: 'Service Tickets', icon: '🎫', label: 'Service Tickets' },
+            { id: 'Customer Retention', icon: '🔄', label: 'Customer Retention' },
+
+            // 8. Logs
+            { id: 'Activity Logs', icon: '📋', label: 'Activity Logs' }
           ].filter(tab => canAccessPage(tab.id)).map(tab => {
             const isActive = activeTab === tab.id;
             return (

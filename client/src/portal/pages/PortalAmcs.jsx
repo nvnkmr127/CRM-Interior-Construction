@@ -57,9 +57,9 @@ export default function PortalAmcs() {
               <span className={styles.metricLabel}>Scheduled Visits</span>
               <span className={styles.metricValue} style={{ color: 'var(--color-accent)' }}>{metrics.scheduled}</span>
             </div>
-            <div className={styles.metricCard} style={{ borderLeft: '4px solid var(--color-info, #0ea5e9)' }}>
+            <div className={styles.metricCard} style={{ borderLeft: '4px solid var(--color-info)' }}>
               <span className={styles.metricLabel}>Completed Services</span>
-              <span className={styles.metricValue} style={{ color: 'var(--color-info, #0ea5e9)' }}>{metrics.completed}</span>
+              <span className={styles.metricValue} style={{ color: 'var(--color-info)' }}>{metrics.completed}</span>
             </div>
           </div>
 

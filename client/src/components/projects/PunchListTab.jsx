@@ -259,57 +259,113 @@ export default function PunchListTab({ projectId, projectStatus }) {
     }
   };
 
+  // Helper to structure formatted description sections if available
+  const renderFormattedDescription = (text) => {
+    if (!text) return null;
+    const lines = text.split('\n').filter(Boolean);
+    
+    return (
+      <div className={styles.descContainer}>
+        {lines.map((line, idx) => {
+          const colonIdx = line.indexOf(':');
+          if (colonIdx > 0 && colonIdx < 30) {
+            const key = line.substring(0, colonIdx).trim();
+            const val = line.substring(colonIdx + 1).trim();
+            
+            const isHeader = key.toLowerCase().startsWith('item');
+            const isResult = key.toLowerCase().includes('result');
+            
+            if (isHeader) {
+              return (
+                <div key={idx} className={styles.descHeaderLine}>
+                  <strong>{key}:</strong> {val}
+                </div>
+              );
+            }
+            if (isResult) {
+              return (
+                <div key={idx} className={styles.descResultLine}>
+                  <span className={styles.descTag}>Result</span>
+                  <span>{val}</span>
+                </div>
+              );
+            }
+            return (
+              <div key={idx} className={styles.descMetaLine}>
+                <span className={styles.descLabel}>{key}:</span>
+                <span className={styles.descValue}>{val}</span>
+              </div>
+            );
+          }
+          return <div key={idx} className={styles.descPlainLine}>{line}</div>;
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className={styles.container}>
-      {/* Sidebar - list of walkthrough events */}
-      <div className={styles.sidebar}>
-        <div className={styles.sidebarHeader}>
-          <h3>Walkthrough Events</h3>
+      {/* Top Section - Horizontal list of walkthrough events */}
+      <div className={styles.topSection}>
+        <div className={styles.topHeader}>
+          <div>
+            <h3 className={styles.topTitle}>Pre-Handover Walkthrough Events</h3>
+            <p className={styles.topSubtitle}>Select a walkthrough event to view, record, or verify punch list defect items</p>
+          </div>
           {projectStatus !== 'completed' && (
-            <Button size="sm" onClick={async () => setShowCreateModal(true)}>+ New Walkthrough</Button>
+            <Button variant="primary" size="sm" onClick={async () => setShowCreateModal(true)}>+ New Walkthrough</Button>
           )}
         </div>
         
         {punchLists.length === 0 ? (
-          <div className={styles.emptySidebar}>
-            <div style={{ fontSize: '24px', marginBottom: '8px' }}>📋</div>
-            No walkthroughs recorded yet. Start by creating a pre-handover walkthrough event.
+          <div className={styles.emptyTopBar}>
+            <div className={styles.emptyIcon}>📋</div>
+            <div>
+              <strong>No walkthroughs recorded yet</strong>
+              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                Start by clicking "+ New Walkthrough" to log your pre-handover inspection.
+              </div>
+            </div>
           </div>
         ) : (
-          <div className={styles.listContainer}>
+          <div className={styles.eventsGrid}>
             {punchLists.map(l => (
               <div 
                 key={l.id} 
-                className={`${styles.sidebarItem} ${selectedList?.id === l.id ? styles.activeItem : ''}`}
+                className={`${styles.eventCard} ${selectedList?.id === l.id ? styles.activeEventCard : ''}`}
                 onClick={async () => {
                   setLoading(true);
                   loadSingleList(l.id);
                 }}
               >
-                <div className={styles.itemTitle}>{l.title}</div>
-                <div className={styles.itemMeta}>
-                  <span>📅 {l.walkthrough_date ? new Date(l.walkthrough_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'No date'}</span>
-                  <span style={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', color: l.status === 'fully_verified' ? 'var(--color-success)' : 'var(--color-primary)' }}>
+                <div className={styles.cardHeaderRow}>
+                  <div className={styles.cardTitleText}>{l.title}</div>
+                  {projectStatus !== 'completed' && (
+                    <button 
+                      className={styles.deleteListBtn} 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteList(l.id);
+                      }}
+                      title="Delete walkthrough"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                
+                <div className={styles.eventMeta}>
+                  <span>📅 {l.walkthrough_date ? new Date(l.walkthrough_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'No date'}</span>
+                  <span className={l.status === 'fully_verified' ? styles.statusVerified : styles.statusProgress}>
                     ● {l.status?.replace('_', ' ')}
                   </span>
                 </div>
-                <div className={styles.itemCounts}>
-                  <span>Total: {l.total_items}</span>
-                  <span style={{ color: 'var(--color-info)' }}>Resolved: {l.resolved_items}</span>
-                  <span style={{ color: 'var(--color-success)' }}>Verified: {l.verified_items}</span>
+
+                <div className={styles.eventCounts}>
+                  <div className={styles.countBadge}>Total: <strong>{l.total_items}</strong></div>
+                  <div className={`${styles.countBadge} ${styles.countResolved}`}>Resolved: <strong>{l.resolved_items}</strong></div>
+                  <div className={`${styles.countBadge} ${styles.countVerified}`}>Verified: <strong>{l.verified_items}</strong></div>
                 </div>
-                {projectStatus !== 'completed' && (
-                  <button 
-                    className={styles.deleteListBtn} 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteList(l.id);
-                    }}
-                    title="Delete walkthrough"
-                  >
-                    ✕
-                  </button>
-                )}
               </div>
             ))}
           </div>
@@ -329,9 +385,9 @@ export default function PunchListTab({ projectId, projectStatus }) {
           <div className={styles.emptyState}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>📋</div>
             <h2>Pre-Handover Punch Lists</h2>
-            <p>Select a walkthrough event from the sidebar or record a new pre-handover walkthrough to track defects and item sign-offs.</p>
+            <p>Select a walkthrough event from the cards above or record a new pre-handover walkthrough to track defects and item sign-offs.</p>
             {projectStatus !== 'completed' && (
-              <Button onClick={async () => setShowCreateModal(true)}>Record First Walkthrough</Button>
+              <Button variant="primary" onClick={async () => setShowCreateModal(true)}>Record First Walkthrough</Button>
             )}
           </div>
         ) : (
@@ -340,16 +396,42 @@ export default function PunchListTab({ projectId, projectStatus }) {
               <div>
                 <h2>{selectedList.title}</h2>
                 <div className={styles.detailMeta}>
-                  <span>📅 <strong>Date:</strong> {selectedList.walkthrough_date ? new Date(selectedList.walkthrough_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : 'N/A'}</span>
+                  <span>📅 <strong>Walkthrough Date:</strong> {selectedList.walkthrough_date ? new Date(selectedList.walkthrough_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : 'N/A'}</span>
                   <span>👤 <strong>Recorded By:</strong> {selectedList.creator_name || '—'}</span>
-                  <span>🔍 <strong>Status:</strong> {getStatusBadge(selectedList.status)}</span>
+                  <span>🔍 <strong>Overall Status:</strong> {getStatusBadge(selectedList.status)}</span>
                 </div>
               </div>
               {projectStatus !== 'completed' && (
                 <div className={styles.headerActions}>
-                  <Button variant="outline" onClick={async () => setShowItemModal(true)}>+ Add Walkthrough Item</Button>
+                  <Button variant="primary" size="sm" onClick={async () => setShowItemModal(true)}>+ Add Walkthrough Item</Button>
                 </div>
               )}
+            </div>
+
+            {/* Quick Metrics Summary Bar */}
+            <div className={styles.summaryBar}>
+              <div className={styles.summaryItem}>
+                <span className={styles.summaryLabel}>Total Defects Logged</span>
+                <span className={styles.summaryValue}>{selectedList.items?.length || selectedList.total_items || 0}</span>
+              </div>
+              <div className={styles.summaryItem}>
+                <span className={styles.summaryLabel}>Resolved by QC</span>
+                <span className={`${styles.summaryValue} ${styles.colorInfo}`}>
+                  {(selectedList.items || []).filter(i => i.status === 'resolved').length}
+                </span>
+              </div>
+              <div className={styles.summaryItem}>
+                <span className={styles.summaryLabel}>Client Verified</span>
+                <span className={`${styles.summaryValue} ${styles.colorSuccess}`}>
+                  {(selectedList.items || []).filter(i => i.status === 'verified' || i.status === 'client_verified').length}
+                </span>
+              </div>
+              <div className={styles.summaryItem}>
+                <span className={styles.summaryLabel}>Pending QC Action</span>
+                <span className={`${styles.summaryValue} ${styles.colorWarning}`}>
+                  {(selectedList.items || []).filter(i => i.status === 'open').length}
+                </span>
+              </div>
             </div>
 
             {(!selectedList.items || selectedList.items.length === 0) ? (
@@ -357,7 +439,7 @@ export default function PunchListTab({ projectId, projectStatus }) {
                 <div style={{ fontSize: '32px', marginBottom: '8px' }}>✨</div>
                 <p>No punch list items added to this walkthrough yet.</p>
                 {projectStatus !== 'completed' && (
-                  <Button size="sm" onClick={async () => setShowItemModal(true)}>Add Walkthrough Item</Button>
+                  <Button size="sm" variant="primary" onClick={async () => setShowItemModal(true)}>Add Walkthrough Item</Button>
                 )}
               </div>
             ) : (
@@ -365,42 +447,53 @@ export default function PunchListTab({ projectId, projectStatus }) {
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th>Room / Area</th>
-                      <th>Trade</th>
-                      <th>Description</th>
-                      <th>Assignee</th>
-                      <th>Status</th>
-                      <th>QC Review & Rework Tracking</th>
-                      <th>Action</th>
+                      <th style={{ width: '12%' }}>Room / Area</th>
+                      <th style={{ width: '12%' }}>Trade</th>
+                      <th style={{ width: '34%' }}>Description & Verification Notes</th>
+                      <th style={{ width: '16%' }}>Assignee</th>
+                      <th style={{ width: '10%' }}>Status</th>
+                      <th style={{ width: '12%' }}>QC Review & Verification</th>
+                      <th style={{ width: '4%' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {(selectedList.items || []).map(item => (
                       <tr key={item.id} className={item.status === 'verified' ? styles.rowVerified : ''}>
-                        <td className={styles.tdRoom}><strong>{item.room_name}</strong></td>
+                        <td className={styles.tdRoom}>
+                          <div className={styles.roomPill}>
+                            📍 {item.room_name}
+                          </div>
+                        </td>
                         <td className={styles.tdTrade}>
                           <span className={`${styles.tradeTag} ${styles['trade_' + item.trade]}`}>
                             {TRADES.find(t => t.value === item.trade)?.label || item.trade}
                           </span>
                         </td>
-                        <td className={styles.tdDesc}>{item.item_description}</td>
+                        <td className={styles.tdDesc}>
+                          {renderFormattedDescription(item.item_description)}
+                        </td>
                         <td className={styles.tdAssignee}>
-                          <select 
-                            value={item.assignee_id || ''}
-                            disabled={item.status === 'verified' || projectStatus === 'completed'}
-                            className={styles.selectAssignee}
-                            onChange={(e) => handleUpdateItemAssignee(item.id, e.target.value)}
-                          >
-                            <option value="">-- Unassigned --</option>
-                            {teamUsers.map(u => (
-                              <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
-                            ))}
-                          </select>
+                          <div className={styles.assigneeWrapper}>
+                            <select 
+                              value={item.assignee_id || ''}
+                              disabled={item.status === 'verified' || projectStatus === 'completed'}
+                              className={styles.selectAssignee}
+                              onChange={(e) => handleUpdateItemAssignee(item.id, e.target.value)}
+                            >
+                              <option value="">-- Unassigned --</option>
+                              {teamUsers.map(u => {
+                                const displayName = u.name || u.full_name || u.email;
+                                return (
+                                  <option key={u.id} value={u.id}>{displayName}</option>
+                                );
+                              })}
+                            </select>
+                          </div>
                         </td>
                         <td className={styles.tdStatus}>{getStatusBadge(item.status)}</td>
                         <td className={styles.tdQc}>
                           {projectStatus !== 'completed' && item.status === 'open' && (
-                            <Button size="xs" variant="primary" onClick={async () => openResolveModal(item.id)}>
+                            <Button size="xs" variant="primary" style={{ width: '100%' }} onClick={async () => openResolveModal(item.id)}>
                               Close as QC Passed
                             </Button>
                           )}
@@ -411,11 +504,11 @@ export default function PunchListTab({ projectId, projectStatus }) {
                           {item.status === 'resolved' && (
                             <div className={styles.qcPassedBlock}>
                               <div className={styles.qcReviewer}>✔ QC Review Done</div>
-                              <div className={styles.qcNotes}>Note: "{item.qc_notes}"</div>
+                              {item.qc_notes && <div className={styles.qcNotes}>Note: "{item.qc_notes}"</div>}
                               {projectStatus !== 'completed' && (
-                                <Button size="xs" variant="success" style={{ marginTop: 6 }} onClick={async () => handleVerifyItem(item.id)}>
-                                  Mark Verified (Client Sign-Off)
-                                </Button>
+                                <button className={styles.verifyBtn} onClick={async () => handleVerifyItem(item.id)}>
+                                  ✓ Mark Verified (Client Sign-Off)
+                                </button>
                               )}
                             </div>
                           )}
@@ -429,14 +522,16 @@ export default function PunchListTab({ projectId, projectStatus }) {
                             </div>
                           )}
                         </td>
-                        <td>
+                        <td className={styles.tdAction}>
                           {projectStatus !== 'completed' && (
                             <button 
                               className={styles.deleteItemBtn}
                               onClick={async () => handleDeleteItem(item.id)}
                               title="Delete Item"
                             >
-                              🗑
+                              <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
                             </button>
                           )}
                         </td>
@@ -529,7 +624,7 @@ export default function PunchListTab({ projectId, projectStatus }) {
                 >
                   <option value="">-- Unassigned --</option>
                   {teamUsers.map(u => (
-                    <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                    <option key={u.id} value={u.id}>{u.name || u.full_name || u.email}</option>
                   ))}
                 </select>
               </div>

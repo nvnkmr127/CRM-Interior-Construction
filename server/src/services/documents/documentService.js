@@ -29,7 +29,19 @@ async function registerDocument({
   ];
 
   const { rows } = await pool.query(query, values);
-  return rows[0];
+  const doc = rows[0];
+  if (projectId) {
+    try {
+      await pool.query(
+        `INSERT INTO activities (project_id, tenant_id, type, title, notes, user_id, created_at)
+         VALUES ($1, $2, 'system', 'Document Uploaded', $3, $4, NOW())`,
+        [projectId, tenantId, `Document uploaded: "${name}"`, uploadedBy || null]
+      );
+    } catch (err) {
+      console.error('Failed to log document activity:', err);
+    }
+  }
+  return doc;
 }
 
 async function getDocumentUrl(storageKey) {

@@ -40,6 +40,7 @@ function getEmptyData() {
     statusData: [],
     topProjects: [],
     delayedProjects: [],
+    retrospectives: [],
   }
 }
 
@@ -151,8 +152,9 @@ export default function ProjectAnalyticsPage() {
           value: p.value / 100000,
           status: p.status,
         }))
+        const retrospectives = raw.allRetrospectives || []
 
-        if (statusData.length === 0 && revenueData.length === 0) {
+        if (statusData.length === 0 && revenueData.length === 0 && retrospectives.length === 0) {
           setData(getEmptyData())
         } else {
           const totalProjects = statusData.reduce((s, d) => s + d.count, 0)
@@ -167,6 +169,7 @@ export default function ProjectAnalyticsPage() {
             statusData,
             topProjects,
             delayedProjects,
+            retrospectives,
           })
         }
       })
@@ -192,29 +195,8 @@ export default function ProjectAnalyticsPage() {
       {/* ── Global Filters ────────────────────────────────────────────── */}
       <GlobalFilterBar />
 
-      {loading ? (
-        <>
-          {/* ── Original Project Health ───────────────────────────────────── */}
-          <div className={styles.headerRow}>
-            <div>
-              <h1 className={styles.title}>Project Analytics</h1>
-              <div className={styles.desc}>Monitor project health, delivery, and revenue.</div>
-            </div>
-          </div>
-          <div className={styles.kpiStrip}>
-            {[1, 2, 3, 4].map(i => <div key={i} className={`${styles.skeleton} ${styles.skeletonKpi}`} />)}
-          </div>
-          <div className={styles.chartsRow}>
-            <div className={`${styles.skeleton} ${styles.skeletonChart}`} style={{ flex: '0 0 60%' }} />
-            <div className={`${styles.skeleton} ${styles.skeletonChart}`} style={{ flex: '0 0 38%' }} />
-          </div>
-          <div className={`${styles.skeleton} ${styles.skeletonChart}`} style={{ height: 240, marginBottom: 'var(--space-6)' }} />
-          <div className={`${styles.skeleton} ${styles.skeletonChart}`} style={{ height: 200 }} />
-        </>
-      ) : (
-        <>
-          {/* ── Header ───────────────────────────────────────────────────── */}
-          <div className={styles.headerRow}>
+      {/* ── Header ───────────────────────────────────────────────────── */}
+      <div className={styles.headerRow}>
             <div>
               <h1 className={styles.title}>Project Analytics</h1>
               <div className={styles.desc}>Monitor project health, delivery, and revenue performance.</div>
@@ -503,8 +485,97 @@ export default function ProjectAnalyticsPage() {
         )}
       </div>
 
-        </>
-      )}
+      {/* ── Global Retrospectives & Lessons Learned Dashboard ─────────────────── */}
+      <div className={styles.tableCard} style={{ marginTop: 'var(--space-6)' }}>
+        <div className={styles.tableHeaderRow}>
+          <div>
+            <div className={styles.tableTitle}>
+              <span className={styles.tableTitleDot} style={{ background: '#8B5CF6' }} />
+              💡 Global Retrospectives & Lessons Learned
+            </div>
+            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', marginTop: 2 }}>
+              Central repository of project learnings, process recommendations, and past challenges.
+            </div>
+          </div>
+          <span className={styles.tableCount}>
+            {(data.retrospectives || []).length} Recorded Retrospective{(data.retrospectives || []).length !== 1 ? 's' : ''}
+          </span>
+        </div>
+
+        {(!data.retrospectives || data.retrospectives.length === 0) ? (
+          <div className={styles.noDelays} style={{ padding: 'var(--space-8)' }}>
+            <span style={{ fontSize: 28 }}>💡</span>
+            <span>No project retrospectives recorded yet. Complete project retrospectives under project details to populate global insights!</span>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
+            {data.retrospectives.map((retro, index) => (
+              <div 
+                key={retro.id || index} 
+                style={{ 
+                  background: 'var(--color-surface-2)', 
+                  borderRadius: 'var(--radius-md)', 
+                  border: '1px solid var(--color-border)',
+                  padding: 'var(--space-4)'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)', borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-2)' }}>
+                  <div>
+                    <strong style={{ fontSize: 'var(--text-base)', color: 'var(--color-text)' }}>{retro.project_name}</strong>
+                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', marginLeft: 8 }}>
+                      • PM: {retro.pm_name}
+                    </span>
+                  </div>
+                  <button
+                    className={styles.escalateBtn}
+                    onClick={() => navigate(`/projects/${retro.project_id}?tab=Retrospective`)}
+                  >
+                    View Project Retro →
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 'var(--space-3)' }}>
+                  {retro.what_went_well && (
+                    <div style={{ background: 'rgba(5, 150, 105, 0.08)', padding: 'var(--space-3)', borderRadius: 'var(--radius-sm)', borderLeft: '3px solid #059669' }}>
+                      <strong style={{ color: '#059669', fontSize: 'var(--text-xs)', display: 'block', marginBottom: 4 }}>
+                        ✓ WHAT WENT WELL
+                      </strong>
+                      <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>{retro.what_went_well}</p>
+                    </div>
+                  )}
+
+                  {retro.what_went_wrong && (
+                    <div style={{ background: 'rgba(225, 29, 72, 0.08)', padding: 'var(--space-3)', borderRadius: 'var(--radius-sm)', borderLeft: '3px solid #E11D48' }}>
+                      <strong style={{ color: '#E11D48', fontSize: 'var(--text-xs)', display: 'block', marginBottom: 4 }}>
+                        ⚠ WHAT WENT WRONG / BOTTLENECKS
+                      </strong>
+                      <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>{retro.what_went_wrong}</p>
+                    </div>
+                  )}
+
+                  {retro.design_feedback && (
+                    <div style={{ background: 'rgba(37, 99, 235, 0.08)', padding: 'var(--space-3)', borderRadius: 'var(--radius-sm)', borderLeft: '3px solid #2563EB' }}>
+                      <strong style={{ color: '#2563EB', fontSize: 'var(--text-xs)', display: 'block', marginBottom: 4 }}>
+                        ✏ DESIGN & DRAWING FEEDBACK
+                      </strong>
+                      <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>{retro.design_feedback}</p>
+                    </div>
+                  )}
+
+                  {retro.process_changes && (
+                    <div style={{ background: 'rgba(217, 119, 6, 0.08)', padding: 'var(--space-3)', borderRadius: 'var(--radius-sm)', borderLeft: '3px solid #D97706' }}>
+                      <strong style={{ color: '#D97706', fontSize: 'var(--text-xs)', display: 'block', marginBottom: 4 }}>
+                        ⚙ RECOMMENDED PROCESS CHANGES
+                      </strong>
+                      <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>{retro.process_changes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 

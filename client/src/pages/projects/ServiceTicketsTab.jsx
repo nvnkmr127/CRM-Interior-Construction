@@ -68,9 +68,9 @@ export default function ServiceTicketsTab({ projectId }) {
         getCsatMetrics(projectId),
         usersApi.getAll()
       ]);
-      setTickets(ticketsList || []);
+      setTickets(Array.isArray(ticketsList) ? ticketsList : (ticketsList?.data?.data || ticketsList?.data || []));
       setCsatMetrics(metrics || null);
-      setUsers(usersList || []);
+      setUsers(Array.isArray(usersList) ? usersList : (usersList?.data?.data || usersList?.data || []));
     } catch (err) {
       console.error('[ServiceTicketsTab] Load error:', err);
       toast.error('Failed to load support tickets data.');
@@ -159,10 +159,16 @@ export default function ServiceTicketsTab({ projectId }) {
       return;
     }
 
+    const parsedDate = new Date(visitDate);
+    if (isNaN(parsedDate.getTime())) {
+      toast.warning('Please enter a valid visit date and time.');
+      return;
+    }
+
     try {
       setSubmittingVisit(true);
       await scheduleServiceVisit(projectId, ticketId, {
-        scheduledDate: new Date(visitDate).toISOString(),
+        scheduledDate: parsedDate.toISOString(),
         engineerId: visitEngineerId || null,
         visitSummary: visitSummary || null
       });
@@ -187,9 +193,9 @@ export default function ServiceTicketsTab({ projectId }) {
     try {
       setSubmittingPart(true);
       await addServiceTicketPart(projectId, ticketId, {
-        partName,
-        quantity: parseInt(partQuantity, 10),
-        cost: partCost ? parseFloat(partCost) : null
+        partName: partName.trim(),
+        quantity: Math.max(1, parseInt(partQuantity, 10) || 1),
+        cost: partCost ? (parseFloat(partCost) || null) : null
       });
       toast.success('Part added successfully.');
       setPartName('');
@@ -284,7 +290,9 @@ export default function ServiceTicketsTab({ projectId }) {
         <div className={styles.metricCard}>
           <div className={styles.metricLabel}>Average Resolution SLA</div>
           <div className={styles.metricValue}>
-            {csatMetrics?.average_resolution_hours ? `${Math.round(csatMetrics.average_resolution_hours)} hrs` : 'N/A'}
+            {csatMetrics?.average_resolution_hours !== undefined && csatMetrics?.average_resolution_hours !== null
+              ? `${Math.round(csatMetrics.average_resolution_hours)} hrs`
+              : 'N/A'}
           </div>
         </div>
       </div>
@@ -302,13 +310,27 @@ export default function ServiceTicketsTab({ projectId }) {
                 <div key={ticket.id} className={styles.ticketCard}>
                   <div
                     className={styles.ticketCardHeader}
-                    onClick={async () => setExpandedTicketId(isExpanded ? null : ticket.id)}
+                    onClick={() => {
+                      setExpandedTicketId(isExpanded ? null : ticket.id);
+                      if (!isExpanded) {
+                        setClassificationEligibility(ticket.warranty_eligibility || 'checking');
+                        setChargeableEstimate(ticket.chargeable_estimate || '');
+                        setVisitDate('');
+                        setVisitSummary('');
+                        setVisitEngineerId(ticket.assigned_engineer_id || '');
+                        setResolutionDetails('');
+                        setVisitOutcome('');
+                        setPartName('');
+                        setPartQuantity(1);
+                        setPartCost('');
+                      }
+                    }}
                   >
                     <div className={styles.ticketPrimary}>
                       <span className={styles.ticketTitle}>
                         {ticket.title}
                         {ticket.is_repeat_complaint && (
-                          <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: '#ef4444', color: 'white', fontWeight: 700, marginLeft: '8px' }}>
+                          <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: 'var(--radius-sm)', background: 'var(--color-danger)', color: '#ffffff', fontWeight: 700, marginLeft: '8px' }}>
                             REPEAT COMPLAINT
                           </span>
                         )}
@@ -327,13 +349,13 @@ export default function ServiceTicketsTab({ projectId }) {
                         {(ticket.first_response_due_date || ticket.resolution_due_date || ticket.due_date) && (
                           <div style={{ marginTop: '4px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                             {(ticket.first_response_due_date) && (
-                              <span style={{ fontSize: '10px', color: (new Date() > new Date(ticket.first_response_due_date) && !ticket.first_responded_at && ticket.status === 'open') ? '#ef4444' : 'var(--color-text-secondary)' }}>
+                              <span style={{ fontSize: '10px', color: (new Date() > new Date(ticket.first_response_due_date) && !ticket.first_responded_at && ticket.status === 'open') ? 'var(--color-danger)' : 'var(--color-text-secondary)' }}>
                                 1st Response Due: {new Date(ticket.first_response_due_date).toLocaleString()}
                                 {(new Date() > new Date(ticket.first_response_due_date) && !ticket.first_responded_at && ticket.status === 'open') && ' (Breached!)'}
                               </span>
                             )}
                             {(ticket.resolution_due_date || ticket.due_date) && (
-                              <span style={{ fontSize: '10px', color: (new Date() > new Date(ticket.resolution_due_date || ticket.due_date) && ticket.status !== 'resolved' && ticket.status !== 'closed') ? '#ef4444' : 'var(--color-text-secondary)' }}>
+                              <span style={{ fontSize: '10px', color: (new Date() > new Date(ticket.resolution_due_date || ticket.due_date) && ticket.status !== 'resolved' && ticket.status !== 'closed') ? 'var(--color-danger)' : 'var(--color-text-secondary)' }}>
                                 Resolution Due: {new Date(ticket.resolution_due_date || ticket.due_date).toLocaleString()}
                                 {(new Date() > new Date(ticket.resolution_due_date || ticket.due_date) && ticket.status !== 'resolved' && ticket.status !== 'closed') && ' (Breached!)'}
                               </span>
@@ -355,10 +377,10 @@ export default function ServiceTicketsTab({ projectId }) {
 
                       {/* Resolution Log (if resolved) */}
                       {ticket.status === 'resolved' && (
-                        <div className={styles.detailRow} style={{ background: '#ecfdf5', padding: '12px', borderRadius: '8px', border: '1px solid #10b981' }}>
-                          <span className={styles.detailLabel} style={{ color: '#047857' }}>Resolution details</span>
+                        <div className={styles.detailRow} style={{ background: 'rgba(34, 197, 94, 0.08)', padding: '12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-success)' }}>
+                          <span className={styles.detailLabel} style={{ color: 'var(--color-success)' }}>Resolution details</span>
                           <span className={styles.detailText}><strong>{ticket.resolution_details}</strong></span>
-                          {ticket.resolved_at && <span style={{ fontSize: '10px', color: '#047857' }}>Resolved at: {new Date(ticket.resolved_at).toLocaleString()}</span>}
+                          {ticket.resolved_at && <span style={{ fontSize: '10px', color: 'var(--color-success)' }}>Resolved at: {new Date(ticket.resolved_at).toLocaleString()}</span>}
                         </div>
                       )}
 
@@ -409,8 +431,8 @@ export default function ServiceTicketsTab({ projectId }) {
                           </Button>
 
                           {ticket.warranty_eligibility === 'chargeable' && ticket.chargeable_estimate_status === 'pending_approval' && (
-                            <div style={{ marginTop: '8px', padding: '12px', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontSize: '12px', color: '#92400e' }}>
+                            <div style={{ marginTop: '8px', padding: '12px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid var(--color-warning)', borderRadius: 'var(--radius-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '12px', color: 'var(--color-warning)' }}>
                                 Client Approval Pending for <strong>₹{ticket.chargeable_estimate}</strong>
                               </span>
                               <div style={{ display: 'flex', gap: '8px' }}>
@@ -420,7 +442,7 @@ export default function ServiceTicketsTab({ projectId }) {
                             </div>
                           )}
                           {ticket.warranty_eligibility === 'chargeable' && ticket.chargeable_estimate_status === 'approved' && (
-                            <div style={{ marginTop: '8px', padding: '8px', background: '#ecfdf5', border: '1px solid #10b981', borderRadius: '6px', fontSize: '12px', color: '#047857' }}>
+                            <div style={{ marginTop: '8px', padding: '8px', background: 'rgba(34, 197, 94, 0.1)', border: '1px solid var(--color-success)', borderRadius: 'var(--radius-md)', fontSize: '12px', color: 'var(--color-success)' }}>
                               Estimate of ₹{ticket.chargeable_estimate} was <strong>Approved</strong>.
                             </div>
                           )}
@@ -435,13 +457,13 @@ export default function ServiceTicketsTab({ projectId }) {
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {ticket.parts_used.map(part => (
-                              <div key={part.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px', border: '1px solid var(--color-border)', borderRadius: '4px', fontSize: '12px' }}>
+                              <div key={part.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: '12px' }}>
                                 <div>
                                   <strong>{part.part_name}</strong> (x{part.quantity})
                                   {part.cost != null && <span style={{ marginLeft: '8px', color: 'var(--color-text-secondary)' }}>Cost: ₹{part.cost}</span>}
                                 </div>
                                 {ticket.status !== 'resolved' && ticket.status !== 'closed' && (
-                                  <span style={{ color: '#ef4444', cursor: 'pointer', fontWeight: 600 }} onClick={async () => handleRemovePart(ticket.id, part.id)}>Remove</span>
+                                  <span style={{ color: 'var(--color-danger)', cursor: 'pointer', fontWeight: 600 }} onClick={async () => handleRemovePart(ticket.id, part.id)}>Remove</span>
                                 )}
                               </div>
                             ))}
@@ -479,7 +501,7 @@ export default function ServiceTicketsTab({ projectId }) {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', borderTop: '1px solid var(--color-border)', paddingTop: '16px' }}>
                           
                           {ticket.warranty_eligibility === 'chargeable' && ticket.chargeable_estimate_status === 'pending_approval' ? (
-                            <div style={{ padding: '16px', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '8px', color: '#b45309' }}>
+                            <div style={{ padding: '16px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid var(--color-warning)', borderRadius: 'var(--radius-md)', color: 'var(--color-warning)' }}>
                                 <strong>Estimate Pending Approval:</strong> Client must approve the estimate of ₹{ticket.chargeable_estimate} before service actions can begin.
                             </div>
                           ) : (

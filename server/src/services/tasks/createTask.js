@@ -135,6 +135,15 @@ async function createTask({ tenantId, userId, data }) {
   if (task.project_id) {
     const { autoLinkFactoryToInstallationTasks } = require('./autoLinkService');
     await autoLinkFactoryToInstallationTasks(tenantId, task.project_id);
+    try {
+      await pool.query(
+        `INSERT INTO activities (project_id, tenant_id, type, title, notes, user_id, created_at)
+         VALUES ($1, $2, 'system', 'Task Created', $3, $4, NOW())`,
+        [task.project_id, tenantId, `New task created: "${task.title}"`, userId || null]
+      );
+    } catch (err) {
+      logger.error('Failed to log project task creation activity:', err);
+    }
   }
 
   // 6. Return constructed row

@@ -20,6 +20,7 @@ export const getHandoverReadinessDashboard = () => api.get(`/projects/handover/r
 
 // Customer Retention Schedules
 export const getRetentionSchedules = (projectId) => api.get(`/projects/${projectId}/retention`).then(r => r.data.data || r.data);
+export const generateRetentionSchedules = (projectId, startDate) => api.post(`/projects/${projectId}/retention/generate`, { startDate }).then(r => r.data.data || r.data);
 export const updateRetentionSchedule = (projectId, scheduleId, data) => api.patch(`/projects/${projectId}/retention/${scheduleId}`, data).then(r => r.data.data || r.data);
 export const getRetentionDashboard = () => api.get('/projects/retention/dashboard').then(r => r.data.data || r.data);
 

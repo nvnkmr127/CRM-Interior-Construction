@@ -490,6 +490,25 @@ router.get('/projects', authorize('projects:read'), async (req, res, next) => {
     `;
     const topRes = await pool.query(topProjectsQuery, values);
 
+    // 5. Retrospectives across all projects
+    const retroQuery = `
+      SELECT pr.id, pr.project_id, pr.what_went_well, pr.what_went_wrong, 
+             pr.design_feedback, pr.process_changes, pr.updated_at,
+             p.name as project_name, p.client_name, u.name as pm_name, p.status
+      FROM project_retrospectives pr
+      JOIN projects p ON p.id = pr.project_id AND p.tenant_id = $1 AND p.deleted_at IS NULL
+      LEFT JOIN users u ON u.id = p.pm_id AND u.tenant_id = $1
+      WHERE pr.tenant_id = $1
+        AND (
+          (pr.what_went_well IS NOT NULL AND pr.what_went_well != '') OR
+          (pr.what_went_wrong IS NOT NULL AND pr.what_went_wrong != '') OR
+          (pr.design_feedback IS NOT NULL AND pr.design_feedback != '') OR
+          (pr.process_changes IS NOT NULL AND pr.process_changes != '')
+        )
+      ORDER BY pr.updated_at DESC
+    `;
+    const retroRes = await pool.query(retroQuery, [tenantId]);
+
     res.json({
       success: true,
       data: {
@@ -507,6 +526,19 @@ router.get('/projects', authorize('projects:read'), async (req, res, next) => {
           ...r,
           value: parseFloat(r.value) || 0,
         })),
+        allRetrospectives: retroRes.rows.map(r => ({
+          id: r.id,
+          project_id: r.project_id,
+          what_went_well: r.what_went_well || '',
+          what_went_wrong: r.what_went_wrong || '',
+          design_feedback: r.design_feedback || '',
+          process_changes: r.process_changes || '',
+          project_name: r.project_name || 'Unknown Project',
+          client_name: r.client_name || '—',
+          pm_name: r.pm_name || 'Unassigned',
+          status: r.status || 'completed',
+          updated_at: r.updated_at
+        }))
       }
     });
   } catch (error) {
@@ -978,11 +1010,47 @@ router.get('/change-order-analytics', analyticsController.getChangeOrderAnalytic
 // Risk Analytics (Project)
 router.get('/risk-analytics', analyticsController.getRiskAnalytics);
 
-// Executive Dashboard
-router.get('/executive-analytics', analyticsController.getExecutiveAnalytics);
+// Snag Analytics
+router.get('/snags', async (req, res, next) => {
+  try {
+    const tenantId = req.tenantId;
+    const { projectId } = req.query;
 
-// AI Forecast Analytics
-router.get('/ai-forecast-analytics', analyticsController.getAIForecastAnalytics);
+    let whereClause = `WHERE (s.tenant_id = $1 OR s.tenant_id IS NULL)`;
+    const params = [tenantId];
+
+    if (projectId) {
+      params.push(projectId);
+      whereClause += ` AND s.project_id = $2`;
+    }
+
+    const [rootCauseRes, vendorRes] = await Promise.all([
+      pool.query(`
+        SELECT s.root_cause_category as label, COUNT(*)::int as count
+        FROM snags s
+        ${whereClause} AND s.root_cause_category IS NOT NULL AND s.root_cause_category != ''
+        GROUP BY s.root_cause_category
+        ORDER BY count DESC
+      `, params),
+      pool.query(`
+        SELECT COALESCE(pv.vendor_name, 'Assigned Vendor') as label, COUNT(*)::int as count
+        FROM snags s
+        LEFT JOIN project_vendors pv ON s.vendor_id = pv.id
+        ${whereClause} AND s.vendor_id IS NOT NULL
+        GROUP BY COALESCE(pv.vendor_name, 'Assigned Vendor')
+        ORDER BY count DESC
+      `, params)
+    ]);
+
+    return success(res, {
+      byRootCause: rootCauseRes.rows,
+      byVendor: vendorRes.rows
+    });
+  } catch (error) {
+    logger.error('Error fetching snag analytics:', error);
+    next(error);
+  }
+});
 
 module.exports = router;
 

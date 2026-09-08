@@ -2,10 +2,16 @@ const pool = require('../../config/db');
 
 async function getTemplates(tenantId) {
   try {
-    const templatesRes = await pool.query(
-      'SELECT * FROM qc_stage_templates WHERE tenant_id = $1 AND is_active = true ORDER BY sort_order',
+    let templatesRes = await pool.query(
+      'SELECT * FROM qc_stage_templates WHERE (tenant_id = $1 OR tenant_id IS NULL) AND is_active = true ORDER BY sort_order',
       [tenantId]
     );
+    
+    if (templatesRes.rows.length === 0) {
+      templatesRes = await pool.query(
+        'SELECT * FROM qc_stage_templates WHERE is_active = true ORDER BY sort_order'
+      );
+    }
     
     if (templatesRes.rows.length === 0) return [];
     
@@ -68,7 +74,10 @@ async function initializeQcStage(tenantId, projectId, phaseId, templateId) {
     await client.query('BEGIN');
     
     // Get template
-    const templateRes = await client.query('SELECT * FROM qc_stage_templates WHERE id = $1 AND tenant_id = $2', [templateId, tenantId]);
+    let templateRes = await client.query('SELECT * FROM qc_stage_templates WHERE id = $1 AND (tenant_id = $2 OR tenant_id IS NULL)', [templateId, tenantId]);
+    if (templateRes.rows.length === 0) {
+      templateRes = await client.query('SELECT * FROM qc_stage_templates WHERE id = $1', [templateId]);
+    }
     if (templateRes.rows.length === 0) throw new Error('Template not found');
     const template = templateRes.rows[0];
     

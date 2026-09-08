@@ -56,7 +56,7 @@ export default function AmcsTab({ projectId }) {
     setLoading(true);
     getAmcs(projectId)
       .then(res => {
-        const list = res.data?.data || res.data || [];
+        const list = Array.isArray(res) ? res : (res?.data?.data || res?.data || []);
         setAmcs(list);
         if (list.length > 0 && !expandedAmcId) {
           setExpandedAmcId(list[0].id);
@@ -116,6 +116,11 @@ export default function AmcsTab({ projectId }) {
 
   const handleCreateContract = async (e) => {
     e.preventDefault();
+    if (contractForm.startDate && contractForm.endDate && new Date(contractForm.startDate) > new Date(contractForm.endDate)) {
+      toast.warning('Contract Start Date cannot be after End Date.');
+      return;
+    }
+
     try {
       await createAmc(projectId, {
         contractNumber: contractForm.contractNumber,
@@ -124,7 +129,7 @@ export default function AmcsTab({ projectId }) {
         endDate: contractForm.endDate,
         coveredScope: contractForm.coveredScope || null,
         visitFrequency: contractForm.visitFrequency,
-        coveredProducts: contractForm.coveredProducts.split(',').map(s => s.trim()).filter(Boolean),
+        coveredProducts: (contractForm.coveredProducts || '').split(',').map(s => s.trim()).filter(Boolean),
         exclusions: contractForm.exclusions || null,
         paymentSchedule: contractForm.paymentSchedule || null,
         autoRenewalAlertDays: parseInt(contractForm.autoRenewalAlertDays) || 90,
@@ -248,9 +253,9 @@ export default function AmcsTab({ projectId }) {
           <span className={styles.metricLabel}>Scheduled Visits</span>
           <span className={styles.metricValue} style={{ color: 'var(--color-accent)' }}>{metrics.scheduledVisits}</span>
         </div>
-        <div className={styles.metricCard} style={{ borderLeft: '4px solid var(--color-info, #0ea5e9)' }}>
+        <div className={styles.metricCard} style={{ borderLeft: '4px solid var(--color-info)' }}>
           <span className={styles.metricLabel}>Completed Visits</span>
-          <span className={styles.metricValue} style={{ color: 'var(--color-info, #0ea5e9)' }}>{metrics.completedVisits}</span>
+          <span className={styles.metricValue} style={{ color: 'var(--color-info)' }}>{metrics.completedVisits}</span>
         </div>
       </div>
 
@@ -278,13 +283,13 @@ export default function AmcsTab({ projectId }) {
                     <span style={{ fontSize: 16 }}>{isExpanded ? '▼' : '▶'}</span>
                     <span className={styles.contractNumber}>#{a.contract_number}</span>
                     <span className={styles.contractValue}>
-                      ₹{parseFloat(a.contract_value).toLocaleString('en-IN')}
+                      ₹{(parseFloat(a.contract_value) || 0).toLocaleString('en-IN')}
                     </span>
                     <span className={`${styles.badge} ${badgeClass}`}>{amcStatus}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                     <span className={styles.amcDates}>
-                      📅 {new Date(a.start_date).toLocaleDateString('en-IN')} → {new Date(a.end_date).toLocaleDateString('en-IN')} 
+                      📅 {a.start_date ? new Date(a.start_date).toLocaleDateString('en-IN') : 'N/A'} → {a.end_date ? new Date(a.end_date).toLocaleDateString('en-IN') : 'N/A'} 
                       {a.renewal_date && ` (Renewal: ${new Date(a.renewal_date).toLocaleDateString('en-IN')})`}
                     </span>
                     <Button variant="outline" size="sm" style={{ color: 'var(--color-danger)' }} onClick={(e) => handleDeleteContract(a.id, e)}>
@@ -319,7 +324,7 @@ export default function AmcsTab({ projectId }) {
                     <div className={styles.visitsSection}>
                       <div className={styles.visitsHeader}>
                         <span className={styles.sectionTitle}>Maintenance Visit Schedule</span>
-                        <Button size="sm" onClick={async () => handleOpenAddVisit(a.id)}>+ Add Visit</Button>
+                        <Button size="sm" onClick={() => handleOpenAddVisit(a.id)}>+ Add Visit</Button>
                       </div>
 
                       {a.visits && a.visits.length > 0 ? (
@@ -335,10 +340,10 @@ export default function AmcsTab({ projectId }) {
                             else if (v.status === 'cancelled') vBadge = styles.badgeCancelled;
 
                             return (
-                              <div key={v.id || i} className={styles.visitCard}>
+                              <div key={v.id || `visit-${i}`} className={styles.visitCard}>
                                 <div className={styles.visitHeader}>
                                   <span className={styles.visitDate}>
-                                    Scheduled: {new Date(v.scheduled_date).toLocaleDateString('en-IN')}
+                                    Scheduled: {v.scheduled_date ? new Date(v.scheduled_date).toLocaleDateString('en-IN') : 'N/A'}
                                   </span>
                                   <span className={`${styles.badge} ${vBadge}`}>{v.status}</span>
                                 </div>

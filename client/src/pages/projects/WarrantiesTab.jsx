@@ -463,187 +463,7 @@ export default function WarrantiesTab({ projectId }) {
         </div>
       </div>
 
-      {/* Project Installation Warranty Section */}
-      <div className={styles.installationWarrantyCard}>
-        <div className={styles.cardHeader}>
-          <h3>Installation & Workmanship Warranty</h3>
-          {!editingInstallation ? (
-            <Button variant="secondary" size="small" onClick={async () => setEditingInstallation(true)}>Edit Terms</Button>
-          ) : (
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <Button variant="secondary" size="small" onClick={async () => {
-                setEditingInstallation(false);
-                if (project) {
-                  setInstallationForm({
-                    start_date: project.installation_warranty_start_date ? new Date(project.installation_warranty_start_date).toISOString().split('T')[0] : '',
-                    end_date: project.installation_warranty_end_date ? new Date(project.installation_warranty_end_date).toISOString().split('T')[0] : '',
-                    scope: project.installation_warranty_scope || '',
-                    status: project.installation_warranty_status || 'active'
-                  });
-                }
-              }}>Cancel</Button>
-              <Button variant="primary" size="small" onClick={handleInstallationSubmit}>Save</Button>
-            </div>
-          )}
-        </div>
-        
-        {editingInstallation ? (
-          <div className={styles.installationForm}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-              <FormField label="Start Date">
-                <Input type="date" value={installationForm.start_date} onChange={e => setInstallationForm(prev => ({ ...prev, start_date: e.target.value }))} />
-              </FormField>
-              <FormField label="End Date">
-                <Input type="date" value={installationForm.end_date} onChange={e => setInstallationForm(prev => ({ ...prev, end_date: e.target.value }))} />
-              </FormField>
-              <FormField label="Status">
-                <select value={installationForm.status} onChange={e => setInstallationForm(prev => ({ ...prev, status: e.target.value }))} className={styles.select}>
-                  <option value="active">Active</option>
-                  <option value="expired">Expired</option>
-                  <option value="voided">Voided</option>
-                </select>
-              </FormField>
-            </div>
-            <FormField label="Warranty Scope & Exclusions">
-              <Textarea 
-                value={installationForm.scope} 
-                onChange={e => setInstallationForm(prev => ({ ...prev, scope: e.target.value }))}
-                placeholder="E.g., 1 year workmanship warranty. Excludes physical damage..."
-                rows={3}
-              />
-            </FormField>
-          </div>
-        ) : (
-          <div className={styles.installationDetails}>
-            <div className={styles.detailGrid}>
-              <div className={styles.detailItem}>
-                <span className={styles.detailLabel}>Start Date:</span>
-                <span className={styles.detailValue}>{project?.installation_warranty_start_date ? new Date(project.installation_warranty_start_date).toLocaleDateString() : 'Not Set'}</span>
-              </div>
-              <div className={styles.detailItem}>
-                <span className={styles.detailLabel}>End Date:</span>
-                <span className={styles.detailValue}>{project?.installation_warranty_end_date ? new Date(project.installation_warranty_end_date).toLocaleDateString() : 'Not Set'}</span>
-              </div>
-              <div className={styles.detailItem}>
-                <span className={styles.detailLabel}>Status:</span>
-                <span className={styles.detailValue} style={{ textTransform: 'capitalize', color: project?.installation_warranty_status === 'active' ? 'var(--color-success)' : 'inherit' }}>
-                  {project?.installation_warranty_status || 'Not Set'}
-                </span>
-              </div>
-            </div>
-            {project?.installation_warranty_scope && (
-              <div className={styles.detailItem} style={{ marginTop: '1rem' }}>
-                <span className={styles.detailLabel}>Scope & Exclusions:</span>
-                <p className={styles.scopeText}>{project.installation_warranty_scope}</p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Warranty Exclusions & Terms Section */}
-      <div className={styles.installationWarrantyCard} style={{ marginTop: '1rem', borderLeft: '4px solid var(--color-warning)' }}>
-        <div className={styles.cardHeader}>
-          <div>
-            <h3 style={{ margin: 0, fontWeight: 700 }}>Warranty Exclusions & Terms</h3>
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>Define what is NOT covered to prevent disputes.</p>
-          </div>
-          {!editingExclusions ? (
-            <Button variant="secondary" size="small" onClick={async () => setEditingExclusions(true)}>Edit Exclusions</Button>
-          ) : (
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <Button variant="secondary" size="small" onClick={async () => {
-                setEditingExclusions(false);
-                if (project) {
-                  setExclusionsForm({
-                    exclusions: Array.isArray(project.warranty_exclusions) ? project.warranty_exclusions : (project.warranty_exclusions ? JSON.parse(project.warranty_exclusions) : []),
-                    acknowledged: !!project.warranty_terms_acknowledged,
-                    acknowledgedBy: project.warranty_terms_acknowledged_by || ''
-                  });
-                }
-              }}>Cancel</Button>
-              <Button variant="primary" size="small" onClick={handleExclusionsSubmit}>Save</Button>
-            </div>
-          )}
-        </div>
-        
-        {editingExclusions ? (
-          <div className={styles.installationForm}>
-            <div style={{ marginBottom: 16 }}>
-              <strong style={{ display: 'block', fontSize: 13, marginBottom: 8 }}>Standard Exclusions:</strong>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                {STANDARD_EXCLUSIONS.map(exc => (
-                  <button
-                    key={exc}
-                    type="button"
-                    onClick={async () => toggleExclusion(exc)}
-                    className={`${styles.pill} ${exclusionsForm.exclusions.includes(exc) ? styles.pillActive : ''}`}
-                    style={{ border: '1px solid var(--color-border)', background: exclusionsForm.exclusions.includes(exc) ? 'var(--color-primary-light)' : 'transparent', color: exclusionsForm.exclusions.includes(exc) ? 'var(--color-primary-dark)' : 'inherit' }}
-                  >
-                    {exclusionsForm.exclusions.includes(exc) ? '✓ ' : ''}{exc}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ background: 'var(--color-surface-2)', padding: 16, borderRadius: 'var(--radius-md)', marginTop: 16 }}>
-              <strong style={{ display: 'block', fontSize: 14, marginBottom: 12 }}>Client Acknowledgement</strong>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                <input
-                  type="checkbox"
-                  id="ackTerms"
-                  checked={exclusionsForm.acknowledged}
-                  onChange={(e) => setExclusionsForm(prev => ({ ...prev, acknowledged: e.target.checked }))}
-                  style={{ width: 18, height: 18, cursor: 'pointer' }}
-                />
-                <label htmlFor="ackTerms" style={{ fontSize: 14, cursor: 'pointer' }}>
-                  Client has acknowledged and accepted these exclusions.
-                </label>
-              </div>
-              {exclusionsForm.acknowledged && (
-                <FormField label="Acknowledged By (Client Name)">
-                  <Input 
-                    value={exclusionsForm.acknowledgedBy}
-                    onChange={e => setExclusionsForm(prev => ({ ...prev, acknowledgedBy: e.target.value }))}
-                    placeholder="e.g. John Doe"
-                  />
-                </FormField>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className={styles.installationDetails}>
-            {(!project?.warranty_exclusions || project.warranty_exclusions.length === 0) ? (
-              <span className={styles.detailValue} style={{ color: 'var(--color-text-muted)' }}>No exclusions defined.</span>
-            ) : (
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: 16 }}>
-                {(Array.isArray(project.warranty_exclusions) ? project.warranty_exclusions : JSON.parse(project.warranty_exclusions)).map(exc => (
-                  <span key={exc} className={styles.badge} style={{ background: 'var(--color-surface-2)', color: 'var(--color-text)' }}>{exc}</span>
-                ))}
-              </div>
-            )}
-
-            <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 12, display: 'flex', gap: 16, alignItems: 'center' }}>
-              {project?.warranty_terms_acknowledged ? (
-                <>
-                  <span style={{ color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
-                    <span style={{ fontSize: 18 }}>✅</span> Terms Acknowledged
-                  </span>
-                  <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-                    By <strong>{project.warranty_terms_acknowledged_by || 'Client'}</strong> on {new Date(project.warranty_terms_acknowledged_at).toLocaleDateString()}
-                  </span>
-                </>
-              ) : (
-                <span style={{ color: 'var(--color-warning)', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500 }}>
-                  <span style={{ fontSize: 18 }}>⚠️</span> Pending Acknowledgement
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ActionBar with filters & search */}
+      {/* TOP ACTION & SEARCH BAR CONTROL */}
       <div className={styles.actionBar}>
         <div className={styles.filters}>
           {['All', 'Active', 'Expired', 'Voided'].map(f => (
@@ -660,125 +480,135 @@ export default function WarrantiesTab({ projectId }) {
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <input
             type="text"
-            placeholder="Search category, brand, vendor..."
+            placeholder="Search product, brand, vendor..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="input"
-            style={{ width: 250, padding: '6px 12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+            style={{ width: 260, padding: '7px 14px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 'var(--text-sm)' }}
           />
           <Button onClick={handleOpenAdd}>+ Register Warranty</Button>
+          <Button variant="outline" onClick={async () => handleOpenLogClaim()}>+ Log Claim</Button>
         </div>
       </div>
 
-      {/* Table grid of records */}
-      {filteredWarranties.length > 0 ? (
-        <div className={styles.tableContainer}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Product & Category</th>
-                <th>Brand / Manufacturer</th>
-                <th>Vendor Pass-Through</th>
-                <th>Coverage Period</th>
-                <th>Status</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredWarranties.map(w => {
-                const isVoided = w.eligibility_status === 'voided';
-                const isExpired = w.eligibility_status === 'expired';
-                
-                let badgeClass = styles.badgeActive;
-                if (isVoided) badgeClass = styles.badgeVoided;
-                else if (isExpired) badgeClass = styles.badgeExpired;
+      {/* SECTION 1: REGISTERED PRODUCT WARRANTIES TABLE */}
+      <div className={styles.sectionCard}>
+        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h3 style={{ margin: 0, fontWeight: 700, color: 'var(--color-text)', fontSize: 'var(--text-lg)' }}>Registered Product Warranties</h3>
+            <p style={{ margin: '2px 0 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>Track individual appliance, fixture, and material brand/vendor warranties.</p>
+          </div>
+        </div>
 
-                return (
-                  <tr key={w.id}>
-                    <td>
-                      <div className={styles.productCell}>
-                        <span className={styles.productName}>{w.product_name}</span>
-                        <span className={styles.serialNumber}>{w.serial_number || 'No Serial'}</span>
-                        <span style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--accent)', fontWeight: 'bold' }}>
-                          {w.product_category || 'general'}
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className={styles.productCell}>
-                        <span style={{ fontWeight: 600 }}>{w.brand || '—'}</span>
-                        <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
-                          Brand Term: {w.brand_warranty_months}m
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      {w.vendor_name ? (
+        {/* Table grid of records */}
+        {filteredWarranties.length > 0 ? (
+          <div className={styles.tableContainer}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Product & Category</th>
+                  <th>Brand / Manufacturer</th>
+                  <th>Vendor Pass-Through</th>
+                  <th>Coverage Period</th>
+                  <th>Status</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredWarranties.map(w => {
+                  const isVoided = w.eligibility_status === 'voided';
+                  const isExpired = w.eligibility_status === 'expired';
+                  
+                  let badgeClass = styles.badgeActive;
+                  if (isVoided) badgeClass = styles.badgeVoided;
+                  else if (isExpired) badgeClass = styles.badgeExpired;
+
+                  return (
+                    <tr key={w.id}>
+                      <td>
                         <div className={styles.productCell}>
-                          <span style={{ fontWeight: 600 }}>{w.vendor_name}</span>
-                          <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
-                            Term: {w.vendor_warranty_months}m | Contact: {w.vendor_contact || '—'}
+                          <span className={styles.productName}>{w.product_name}</span>
+                          <span className={styles.serialNumber}>{w.serial_number || 'No Serial'}</span>
+                          <span style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--accent)', fontWeight: 'bold' }}>
+                            {w.product_category || 'general'}
                           </span>
                         </div>
-                      ) : (
-                        <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>No vendor details</span>
-                      )}
-                    </td>
-                    <td>
-                      <div className={styles.dateCell}>
-                        <span>Start: {new Date(w.start_date).toLocaleDateString('en-IN')}</span>
-                        <span className={styles.dateValue}>End: {new Date(w.end_date).toLocaleDateString('en-IN')}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`${styles.badge} ${badgeClass}`}>
-                        {w.eligibility_status}
-                      </span>
-                    </td>
-                    <td>
-                      <div className={styles.actionCell}>
-                        {w.warranty_document && (
-                          <a
-                            href={getDownloadUrl(w.warranty_document)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn btn-sm btn-outline"
-                            style={{ display: 'inline-flex', padding: '4px 8px', fontSize: 12, borderRadius: 4, textDecoration: 'none', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-surface)' }}
-                          >
-                            📄 Doc
-                          </a>
+                      </td>
+                      <td>
+                        <div className={styles.productCell}>
+                          <span style={{ fontWeight: 600 }}>{w.brand || '—'}</span>
+                          <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
+                            Brand Term: {w.brand_warranty_months}m
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        {w.vendor_name ? (
+                          <div className={styles.productCell}>
+                            <span style={{ fontWeight: 600 }}>{w.vendor_name}</span>
+                            <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
+                              Term: {w.vendor_warranty_months}m | Contact: {w.vendor_contact || '—'}
+                            </span>
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>No vendor details</span>
                         )}
-                        <Button variant="outline" size="sm" onClick={async () => handleOpenLogClaim(w.id)}>Raise Claim</Button>
-                        <Button variant="outline" size="sm" onClick={async () => handleOpenEdit(w)}>Edit</Button>
-                        {w.eligibility_status === 'active' && (
-                          <Button variant="outline" size="sm" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)' }} onClick={async () => handleVoidWarranty(w)}>Void</Button>
-                        )}
-                        <Button variant="outline" size="sm" style={{ color: 'var(--color-danger)' }} onClick={async () => handleDeleteWarranty(w.id)}>Delete</Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className={styles.emptyState}>
-          <div className={styles.emptyIcon}>🛡️</div>
-          <h3>No warranty records found</h3>
-          <p>Register product-wise brand and vendor warranties to track pass-through claims coverage.</p>
-          <Button onClick={handleOpenAdd} style={{ marginTop: 12 }}>Register First Warranty</Button>
-        </div>
-      )}
-
-      {/* CLAIMS WORKFLOW SECTION */}
-      <div style={{ marginTop: 40, borderTop: '1px solid var(--color-border)', paddingTop: 40 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div>
-            <h3 style={{ margin: 0, fontWeight: 700, color: 'var(--color-text)' }}>Warranty Claims workflow</h3>
-            <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>Review client-raised claims, assign technicians, check eligibility against brand/vendor details, and log resolutions.</p>
+                      </td>
+                      <td>
+                        <div className={styles.dateCell}>
+                          <span>Start: {new Date(w.start_date).toLocaleDateString('en-IN')}</span>
+                          <span className={styles.dateValue}>End: {new Date(w.end_date).toLocaleDateString('en-IN')}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`${styles.badge} ${badgeClass}`}>
+                          {w.eligibility_status}
+                        </span>
+                      </td>
+                      <td>
+                        <div className={styles.actionCell}>
+                          {w.warranty_document && (
+                            <a
+                              href={getDownloadUrl(w.warranty_document)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn btn-sm btn-outline"
+                              style={{ display: 'inline-flex', padding: '4px 8px', fontSize: 12, borderRadius: 4, textDecoration: 'none', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-surface)' }}
+                            >
+                              📄 Doc
+                            </a>
+                          )}
+                          <Button variant="outline" size="sm" onClick={async () => handleOpenLogClaim(w.id)}>Raise Claim</Button>
+                          <Button variant="outline" size="sm" onClick={async () => handleOpenEdit(w)}>Edit</Button>
+                          {w.eligibility_status === 'active' && (
+                            <Button variant="outline" size="sm" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)' }} onClick={async () => handleVoidWarranty(w)}>Void</Button>
+                          )}
+                          <Button variant="outline" size="sm" style={{ color: 'var(--color-danger)' }} onClick={async () => handleDeleteWarranty(w.id)}>Delete</Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-          <Button variant="outline" onClick={async () => handleOpenLogClaim()}>+ Log Manual Claim</Button>
+        ) : (
+          <div className={styles.emptyState}>
+            <div className={styles.emptyIcon}>🛡️</div>
+            <h3>No warranty records found</h3>
+            <p>Register product-wise brand and vendor warranties to track pass-through claims coverage.</p>
+            <Button onClick={handleOpenAdd} style={{ marginTop: 12 }}>Register First Warranty</Button>
+          </div>
+        )}
+      </div>
+
+      {/* SECTION 2: CLAIMS WORKFLOW */}
+      <div className={styles.sectionCard}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div>
+            <h3 style={{ margin: 0, fontWeight: 700, color: 'var(--color-text)', fontSize: 'var(--text-lg)' }}>Warranty Claims Workflow</h3>
+            <p style={{ margin: '4px 0 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>Review client-raised claims, assign technicians, check eligibility against brand/vendor details, and log resolutions.</p>
+          </div>
         </div>
 
         {claimsLoading && claims.length === 0 ? (
@@ -793,7 +623,7 @@ export default function WarrantiesTab({ projectId }) {
                   <th>Claim Date</th>
                   <th>Nature of Defect</th>
                   <th>Eligibility Decision</th>
-                  <th>Technician & status</th>
+                  <th>Technician & Status</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
@@ -860,10 +690,195 @@ export default function WarrantiesTab({ projectId }) {
             </table>
           </div>
         ) : (
-          <div style={{ padding: 32, border: '1px dashed var(--color-border)', borderRadius: 'var(--radius-lg)', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+          <div style={{ padding: 24, border: '1px dashed var(--color-border)', borderRadius: 'var(--radius-lg)', textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: 13 }}>
             No claims logged for this project yet. Clients can submit claims directly from the portal, or you can record them manually.
           </div>
         )}
+      </div>
+
+      {/* SECTION 4: TERMS & EXCLUSIONS SIDE-BY-SIDE GRID */}
+      <div className={styles.twoColumnGrid}>
+        {/* Project Installation Warranty Card */}
+        <div className={styles.installationWarrantyCard}>
+          <div className={styles.cardHeader}>
+            <div>
+              <h3>Installation & Workmanship Warranty</h3>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>General contractor labor & installation coverage terms.</p>
+            </div>
+            {!editingInstallation ? (
+              <Button variant="secondary" size="small" onClick={async () => setEditingInstallation(true)}>Edit Terms</Button>
+            ) : (
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <Button variant="secondary" size="small" onClick={async () => {
+                  setEditingInstallation(false);
+                  if (project) {
+                    setInstallationForm({
+                      start_date: project.installation_warranty_start_date ? new Date(project.installation_warranty_start_date).toISOString().split('T')[0] : '',
+                      end_date: project.installation_warranty_end_date ? new Date(project.installation_warranty_end_date).toISOString().split('T')[0] : '',
+                      scope: project.installation_warranty_scope || '',
+                      status: project.installation_warranty_status || 'active'
+                    });
+                  }
+                }}>Cancel</Button>
+                <Button variant="primary" size="small" onClick={handleInstallationSubmit}>Save</Button>
+              </div>
+            )}
+          </div>
+          
+          {editingInstallation ? (
+            <div className={styles.installationForm}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <FormField label="Start Date">
+                  <Input type="date" value={installationForm.start_date} onChange={e => setInstallationForm(prev => ({ ...prev, start_date: e.target.value }))} />
+                </FormField>
+                <FormField label="End Date">
+                  <Input type="date" value={installationForm.end_date} onChange={e => setInstallationForm(prev => ({ ...prev, end_date: e.target.value }))} />
+                </FormField>
+              </div>
+              <FormField label="Status">
+                <select value={installationForm.status} onChange={e => setInstallationForm(prev => ({ ...prev, status: e.target.value }))} className={styles.select}>
+                  <option value="active">Active</option>
+                  <option value="expired">Expired</option>
+                  <option value="voided">Voided</option>
+                </select>
+              </FormField>
+              <FormField label="Warranty Scope Details">
+                <Textarea 
+                  value={installationForm.scope} 
+                  onChange={e => setInstallationForm(prev => ({ ...prev, scope: e.target.value }))}
+                  placeholder="E.g., 1 year workmanship warranty. Covers labor and site installation defects..."
+                  rows={3}
+                />
+              </FormField>
+            </div>
+          ) : (
+            <div className={styles.installationDetails}>
+              <div className={styles.detailGrid}>
+                <div className={styles.detailItem}>
+                  <span className={styles.detailLabel}>Start Date</span>
+                  <span className={styles.detailValue}>{project?.installation_warranty_start_date ? new Date(project.installation_warranty_start_date).toLocaleDateString() : 'Not Set'}</span>
+                </div>
+                <div className={styles.detailItem}>
+                  <span className={styles.detailLabel}>End Date</span>
+                  <span className={styles.detailValue}>{project?.installation_warranty_end_date ? new Date(project.installation_warranty_end_date).toLocaleDateString() : 'Not Set'}</span>
+                </div>
+                <div className={styles.detailItem}>
+                  <span className={styles.detailLabel}>Status</span>
+                  <span className={styles.detailValue} style={{ textTransform: 'capitalize', color: project?.installation_warranty_status === 'active' ? 'var(--color-success)' : 'inherit', fontWeight: 600 }}>
+                    {project?.installation_warranty_status || 'Not Set'}
+                  </span>
+                </div>
+              </div>
+              {project?.installation_warranty_scope && (
+                <div className={styles.detailItem} style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--color-border)' }}>
+                  <span className={styles.detailLabel}>Scope Notes:</span>
+                  <p className={styles.scopeText}>{project.installation_warranty_scope}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Warranty Exclusions & Terms Section */}
+        <div className={styles.installationWarrantyCard} style={{ borderLeft: '4px solid var(--color-warning)' }}>
+          <div className={styles.cardHeader}>
+            <div>
+              <h3>Warranty Exclusions & Policy</h3>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>Explicit exclusions to prevent coverage disputes.</p>
+            </div>
+            {!editingExclusions ? (
+              <Button variant="secondary" size="small" onClick={async () => setEditingExclusions(true)}>Edit Exclusions</Button>
+            ) : (
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <Button variant="secondary" size="small" onClick={async () => {
+                  setEditingExclusions(false);
+                  if (project) {
+                    setExclusionsForm({
+                      exclusions: Array.isArray(project.warranty_exclusions) ? project.warranty_exclusions : (project.warranty_exclusions ? JSON.parse(project.warranty_exclusions) : []),
+                      acknowledged: !!project.warranty_terms_acknowledged,
+                      acknowledgedBy: project.warranty_terms_acknowledged_by || ''
+                    });
+                  }
+                }}>Cancel</Button>
+                <Button variant="primary" size="small" onClick={handleExclusionsSubmit}>Save</Button>
+              </div>
+            )}
+          </div>
+          
+          {editingExclusions ? (
+            <div className={styles.installationForm}>
+              <div>
+                <strong style={{ display: 'block', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--color-text-secondary)', marginBottom: 8 }}>Standard Exclusions:</strong>
+                <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
+                  {STANDARD_EXCLUSIONS.map(exc => (
+                    <button
+                      key={exc}
+                      type="button"
+                      onClick={async () => toggleExclusion(exc)}
+                      className={`${styles.pill} ${exclusionsForm.exclusions.includes(exc) ? styles.pillActive : ''}`}
+                      style={{ padding: '4px 10px', fontSize: 12, border: '1px solid var(--color-border)', background: exclusionsForm.exclusions.includes(exc) ? 'var(--color-primary-light)' : 'transparent', color: exclusionsForm.exclusions.includes(exc) ? 'var(--color-primary-dark)' : 'inherit' }}
+                    >
+                      {exclusionsForm.exclusions.includes(exc) ? '✓ ' : ''}{exc}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ background: 'var(--color-surface-2)', padding: 12, borderRadius: 'var(--radius-md)', marginTop: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: exclusionsForm.acknowledged ? 10 : 0 }}>
+                  <input
+                    type="checkbox"
+                    id="ackTerms"
+                    checked={exclusionsForm.acknowledged}
+                    onChange={(e) => setExclusionsForm(prev => ({ ...prev, acknowledged: e.target.checked }))}
+                    style={{ width: 16, height: 16, cursor: 'pointer' }}
+                  />
+                  <label htmlFor="ackTerms" style={{ fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>
+                    Client has acknowledged & signed exclusions
+                  </label>
+                </div>
+                {exclusionsForm.acknowledged && (
+                  <FormField label="Acknowledged By">
+                    <Input 
+                      value={exclusionsForm.acknowledgedBy}
+                      onChange={e => setExclusionsForm(prev => ({ ...prev, acknowledgedBy: e.target.value }))}
+                      placeholder="e.g. Client Name"
+                    />
+                  </FormField>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className={styles.installationDetails}>
+              {(!project?.warranty_exclusions || project.warranty_exclusions.length === 0) ? (
+                <span className={styles.detailValue} style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>No standard exclusions defined.</span>
+              ) : (
+                <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap', marginBottom: 12 }}>
+                  {(Array.isArray(project.warranty_exclusions) ? project.warranty_exclusions : JSON.parse(project.warranty_exclusions)).map(exc => (
+                    <span key={exc} className={styles.badge} style={{ background: 'var(--color-surface-2)', color: 'var(--color-text)', border: '1px solid var(--color-border)', fontSize: 11 }}>{exc}</span>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 10, display: 'flex', gap: 12, alignItems: 'center' }}>
+                {project?.warranty_terms_acknowledged ? (
+                  <>
+                    <span style={{ color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600, fontSize: 13 }}>
+                      ✅ Acknowledged
+                    </span>
+                    <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                      By <strong>{project.warranty_terms_acknowledged_by || 'Client'}</strong>
+                    </span>
+                  </>
+                ) : (
+                  <span style={{ color: 'var(--color-warning)', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600, fontSize: 13 }}>
+                    ⚠️ Pending Acknowledgement
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Register / Edit Modal (Warranty) */}

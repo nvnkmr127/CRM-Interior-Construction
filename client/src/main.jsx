@@ -16,6 +16,18 @@ console.warn = function (...args) {
   originalConsoleWarn.apply(console, args);
 };
 
+// Silence third-party browser extension / performance observer errors
+window.addEventListener('error', (event) => {
+  if (
+    event.message?.includes("reading 'startTime'") ||
+    event.message?.includes('reportAllChanges') ||
+    (event.filename && (event.filename.startsWith('VM') || event.filename.includes('anonymous')))
+  ) {
+    event.stopImmediatePropagation();
+    event.preventDefault();
+  }
+});
+
 import { PreferencesProvider } from './store/PreferencesContext.jsx';
 
 try {

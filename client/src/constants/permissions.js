@@ -26,36 +26,73 @@ export const PERMISSION_MODULES = [
   { id: 'users', label: 'Users Management' },
 ];
 
+const MODULE_DEFAULT_GROUPS = {
+  dashboards: 'WORKSPACE',
+  leads: 'WORKSPACE',
+  projects: 'WORKSPACE',
+  tasks: 'WORKSPACE',
+  clients: 'WORKSPACE',
+  quotations: 'WORKSPACE',
+  boq: 'PROJECT WORKFLOWS',
+  vendors: 'VENDORS',
+  purchase_orders: 'VENDORS',
+  inventory: 'VENDORS',
+  warehouse: 'VENDORS',
+  factory: 'VENDORS',
+  analytics: 'ANALYTICS',
+  reports: 'REPORTS',
+  settings: 'TEAM & SECURITY',
+  invoices: 'FINANCE',
+  payments: 'FINANCE',
+  discounts: 'FINANCE',
+  finance: 'FINANCE',
+  material_requests: 'PROJECT WORKFLOWS',
+  change_orders: 'PROJECT WORKFLOWS',
+  design_reviews: 'PROJECT WORKFLOWS',
+  users: 'TEAM MANAGEMENT'
+};
+
 export const getDynamicPermissionModules = () => {
   const modulesMap = new Map();
-  PERMISSION_MODULES.forEach(m => modulesMap.set(m.id, m));
 
+  // 1. Process NAV_ITEMS first to preserve exact main sidebar order, grouping, and sub-tabs
   if (NAV_ITEMS && Array.isArray(NAV_ITEMS)) {
     NAV_ITEMS.forEach(group => {
+      const groupName = group.group || 'WORKSPACE';
       if (group.items && Array.isArray(group.items)) {
         group.items.forEach(item => {
-          const itemMods = Array.isArray(item.module) ? item.module : (item.module ? [item.module] : []);
-          itemMods.forEach(modId => {
-            if (!modulesMap.has(modId)) {
-              const formattedLabel = modId.charAt(0).toUpperCase() + modId.slice(1).replace(/_/g, ' ');
-              modulesMap.set(modId, { id: modId, label: formattedLabel });
-            }
-          });
-          if (item.subItems && Array.isArray(item.subItems)) {
+          if (item.subItems && Array.isArray(item.subItems) && item.subItems.length > 0) {
             item.subItems.forEach(sub => {
-              const subMods = Array.isArray(sub.module) ? sub.module : (sub.module ? [sub.module] : itemMods);
-              subMods.forEach(modId => {
-                if (!modulesMap.has(modId)) {
-                  const formattedLabel = modId.charAt(0).toUpperCase() + modId.slice(1).replace(/_/g, ' ');
-                  modulesMap.set(modId, { id: modId, label: formattedLabel });
-                }
-              });
+              if (sub.id) {
+                modulesMap.set(sub.id, {
+                  id: sub.id,
+                  label: sub.label || sub.id,
+                  group: groupName,
+                  module: sub.module || item.module
+                });
+              }
+            });
+          } else if (item.id) {
+            modulesMap.set(item.id, {
+              id: item.id,
+              label: item.label || item.id,
+              group: groupName,
+              module: item.module
             });
           }
         });
       }
     });
   }
+
+  // 2. Map any remaining core permission modules into their exact main sidebar group
+  const abstractParentIds = new Set(['analytics', 'leads', 'team-management']);
+  PERMISSION_MODULES.forEach(m => {
+    if (!modulesMap.has(m.id) && !abstractParentIds.has(m.id)) {
+      const defaultGrp = MODULE_DEFAULT_GROUPS[m.id] || 'WORKSPACE';
+      modulesMap.set(m.id, { ...m, group: defaultGrp });
+    }
+  });
 
   return Array.from(modulesMap.values());
 };

@@ -10,35 +10,35 @@ export default function ExecutionQCTab({ projectId, project }) {
   const [selectedPhase, setSelectedPhase] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [selectedStageId, setSelectedStageId] = useState(null);
-  
-  // Exclude non-execution phases for the dropdown
-  const executionPhases = project?.phases?.filter(p => p.name.toLowerCase().includes('execution')) || [];
+  const [phases, setPhases] = useState([]);
+
+  const availablePhases = phases.length > 0 ? phases : (project?.phases || []);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [tplRes, stgRes] = await Promise.all([
+      const [tplRes, stgRes, phRes] = await Promise.all([
         api.get('/qc/templates'),
-        api.get(`/projects/${projectId}/qc`)
+        api.get(`/projects/${projectId}/qc`),
+        api.get(`/projects/${projectId}/phases`).catch(() => null)
       ]);
       const fetchedTemplates = Array.isArray(tplRes.data?.data) ? tplRes.data.data : (Array.isArray(tplRes.data) ? tplRes.data : []);
       const fetchedStages = Array.isArray(stgRes.data?.data) ? stgRes.data.data : (Array.isArray(stgRes.data) ? stgRes.data : []);
-      
+      const fetchedPhases = Array.isArray(phRes?.data?.data) ? phRes.data.data : (Array.isArray(phRes?.data) ? phRes.data : (project?.phases || []));
+
       setTemplates(fetchedTemplates);
       setStages(fetchedStages);
+      setPhases(fetchedPhases);
       
       if (fetchedStages.length > 0) {
         setSelectedStageId(prev => {
-          // Keep current selection if it still exists, otherwise default to first
           const exists = fetchedStages.some(s => s.id === prev);
           return exists ? prev : fetchedStages[0].id;
         });
       }
       
-      if (executionPhases.length > 0) {
-        setSelectedPhase(executionPhases[0].id);
-      } else if (project?.phases?.length > 0) {
-        setSelectedPhase(project.phases[project.phases.length - 1].id);
+      if (fetchedPhases.length > 0) {
+        setSelectedPhase(prev => prev || fetchedPhases[0].id);
       }
     } catch (err) {
       console.error('Failed to load QC data', err);
@@ -123,8 +123,8 @@ export default function ExecutionQCTab({ projectId, project }) {
                 className={styles.select}
               >
                 <option value="">Select Phase</option>
-                {project?.phases?.map(p => (
-                  <option key={p.id} value={p.id}>{p.name} ({p.status})</option>
+                {availablePhases.map(p => (
+                  <option key={p.id} value={p.id}>{p.name} {p.status ? `(${p.status})` : ''}</option>
                 ))}
               </select>
 
@@ -148,7 +148,7 @@ export default function ExecutionQCTab({ projectId, project }) {
 
         <div className={styles.checklistList}>
           {stages.map(stage => {
-            const phase = project?.phases?.find(p => p.id === stage.phase_id);
+            const phase = availablePhases.find(p => p.id === stage.phase_id);
             const totalItems = stage.items?.length || 0;
             const passedItems = stage.items?.filter(i => i.is_passed === true).length || 0;
             const isActive = selectedStageId === stage.id || (!selectedStageId && stages[0]?.id === stage.id);

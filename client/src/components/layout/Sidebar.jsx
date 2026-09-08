@@ -195,7 +195,7 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
             if (item.permission) {
               const [mod] = item.permission.split(':');
               const modules = user?.role?.enabled_modules || [];
-              const hasPerm = perms.includes(item.permission) || perms.includes(`${mod}:*`) || perms.includes(`${mod}:view`) || modules.includes(mod);
+              const hasPerm = perms.includes(item.permission) || perms.includes(`${mod}:*`) || perms.includes(`${mod}:view`) || modules.includes(mod) || (item.id && modules.includes(item.id));
               if (!hasPerm) return false;
             }
 
@@ -204,7 +204,7 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
               const itemMods = Array.isArray(item.module) ? item.module : [item.module];
 
               const hasModuleInPerms = itemMods.some(m => perms.some(p => p.startsWith(`${m}:`)));
-              const hasModuleInList = itemMods.some(m => modules.includes(m));
+              const hasModuleInList = itemMods.some(m => modules.includes(m)) || (item.id && modules.includes(item.id));
 
               const hasMappedModule = modules.some(m => {
                 const tabs = MODULE_TAB_MAPPING[m] || [];

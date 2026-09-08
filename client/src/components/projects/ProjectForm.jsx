@@ -19,6 +19,8 @@ const PROJECT_TYPES = [
 export default function ProjectForm({ project, onSave, onClose, isOpen, editSection = 'all' }) {
   const showAll = editSection === 'all';
   const showProjectDetails = showAll || editSection === 'details';
+  const showClient = showAll || editSection === 'client' || editSection === 'details';
+  const showContacts = showAll || editSection === 'contacts' || editSection === 'details';
   const showTeam = showAll || editSection === 'team';
   const showRevisions = showAll || editSection === 'revisions';
 
@@ -731,7 +733,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
           )}
 
         {/* Client Household Profile Section */}
-        {showAll && (
+        {showClient && (
           <div className={styles.fullWidth} style={{ marginTop: 8 }}>
             <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Client Household Profile & Preferences</div>
           
@@ -1124,7 +1126,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
           )}
 
         {/* Project Stakeholders */}
-        {showTeam && (
+        {(showTeam || showContacts) && (
           <div className={styles.fullWidth} style={{ marginTop: 8 }}>
             <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Project Stakeholders & Contacts</div>
           
