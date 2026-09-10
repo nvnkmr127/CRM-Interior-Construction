@@ -55,7 +55,7 @@ const MODULE_DEFAULT_GROUPS = {
 export const getDynamicPermissionModules = () => {
   const modulesMap = new Map();
 
-  // 1. Process NAV_ITEMS first to preserve exact main sidebar order, grouping, and sub-tabs
+  // 1. Process NAV_ITEMS dynamically - extract every active tab & sub-tab present in the main sidebar
   if (NAV_ITEMS && Array.isArray(NAV_ITEMS)) {
     NAV_ITEMS.forEach(group => {
       const groupName = group.group || 'WORKSPACE';
@@ -64,9 +64,10 @@ export const getDynamicPermissionModules = () => {
           if (item.subItems && Array.isArray(item.subItems) && item.subItems.length > 0) {
             item.subItems.forEach(sub => {
               if (sub.id) {
+                const parentPrefix = item.label && !sub.label.toLowerCase().includes(item.label.toLowerCase()) ? `${item.label} ` : '';
                 modulesMap.set(sub.id, {
                   id: sub.id,
-                  label: sub.label || sub.id,
+                  label: `${parentPrefix}${sub.label || sub.id}`,
                   group: groupName,
                   module: sub.module || item.module
                 });
@@ -85,12 +86,21 @@ export const getDynamicPermissionModules = () => {
     });
   }
 
-  // 2. Map any remaining core permission modules into their exact main sidebar group
+  // 2. Include core permission modules only if they correspond to active sidebar modules/tabs
   const abstractParentIds = new Set(['analytics', 'leads', 'team-management']);
   PERMISSION_MODULES.forEach(m => {
     if (!modulesMap.has(m.id) && !abstractParentIds.has(m.id)) {
-      const defaultGrp = MODULE_DEFAULT_GROUPS[m.id] || 'WORKSPACE';
-      modulesMap.set(m.id, { ...m, group: defaultGrp });
+      const isMappedToActiveTab = NAV_ITEMS.some(g => 
+        (g.items || []).some(it => 
+          it.id === m.id || 
+          (Array.isArray(it.module) ? it.module.includes(m.id) : it.module === m.id) ||
+          (it.subItems || []).some(sub => sub.id === m.id || (Array.isArray(sub.module) ? sub.module.includes(m.id) : sub.module === m.id))
+        )
+      );
+      if (isMappedToActiveTab) {
+        const defaultGrp = MODULE_DEFAULT_GROUPS[m.id] || 'WORKSPACE';
+        modulesMap.set(m.id, { ...m, group: defaultGrp });
+      }
     }
   });
 
@@ -194,13 +204,19 @@ export const DATA_SCOPES = [
 export const PLAN_DEFAULTS = {
   starter: [
     'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
-    'projects', 'tasks', 'reports', 'team-management', 'team-members', 'roles-permissions', 'organization'
+    'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
+    'analytics-delay', 'analytics-boq', 'analytics-resources', 'analytics-resource-workload',
+    'coordination', 'handover-dashboard', 'retention-dashboard',
+    'resource-capacity', 'absences', 'inventory', 'factory-production', 'vendor-performance', 'vendor-capacity',
+    'finance-overview', 'financial-approvals', 'analytics-profitability', 'analytics-collection-forecast',
+    'team-management', 'team-members', 'roles-permissions', 'organization'
   ],
   growth: [
     'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
     'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
     'analytics-delay', 'coordination', 'handover-dashboard', 'retention-dashboard', 'resource-capacity',
-    'absences', 'vendor-performance', 'vendor-capacity', 'team-management', 'team-members',
+    'absences', 'inventory', 'factory-production', 'vendor-performance', 'vendor-capacity',
+    'finance-overview', 'financial-approvals', 'team-management', 'team-members',
     'roles-permissions', 'organization'
   ],
   enterprise: [
@@ -209,7 +225,7 @@ export const PLAN_DEFAULTS = {
     'analytics-delay', 'analytics-boq', 'analytics-resources', 'analytics-resource-workload',
     'lead-stages', 'custom-fields', 'lead-forms', 'templates', 'trade-activities', 'qc-checklists',
     'conversion-checklist', 'automations', 'coordination', 'handover-dashboard', 'retention-dashboard',
-    'resource-capacity', 'absences', 'vendor-performance', 'vendor-capacity', 'vendor-lead-times',
+    'resource-capacity', 'absences', 'inventory', 'factory-production', 'vendor-performance', 'vendor-capacity', 'vendor-lead-times',
     'finance-overview', 'financial-approvals', 'analytics-profitability', 'analytics-collection-forecast',
     'financial-thresholds', 'team-management', 'team-members', 'roles-permissions', 'organization',
     'login-history', 'audit-trail', 'superadmin', 'api-keys', 'api-integration', 'webhooks',

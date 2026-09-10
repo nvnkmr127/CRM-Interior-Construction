@@ -1,4 +1,5 @@
 /* eslint-disable react-hooks/immutability, no-unused-vars, no-empty, no-undef */
+// RolesManager component
 import React, { useState, useEffect, Fragment, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import layoutStyles from './ConfigLayout.module.css'
@@ -22,102 +23,10 @@ const BUILT_IN_TEMPLATES = [
   { id: 'tmpl-5', name: 'Quality Inspector', category: 'built-in', description: 'Access to punch lists, snags, and QC forms.', permissions: ['qc:view', 'qc:create', 'qc:edit', 'snags:view', 'snags:create', 'snags:edit'], enabled_modules: ['qc', 'snags'], data_scopes: { qc: 'department', snags: 'department' }, page_permissions: {}, field_permissions: {}, security_policies: {} }
 ];
 
-const TimeSelect = ({ value, onChange }) => {
-  const { confirm } = useConfirm();
-
-  let hour = '12';
-  let min = '00';
-  let ampm = 'AM';
-  
-  if (value) {
-    const [hStr, mStr] = value.split(':');
-    let h = parseInt(hStr, 10) || 0;
-    min = mStr || '00';
-    if (h >= 12) {
-      ampm = 'PM';
-      if (h > 12) h -= 12;
-    } else {
-      ampm = 'AM';
-      if (h === 0) h = 12;
-    }
-    hour = h.toString().padStart(2, '0');
-  }
-
-  const handleUpdate = (newHour, newMin, newAmpm) => {
-    let h = parseInt(newHour, 10);
-    if (isNaN(h)) h = 12;
-    if (newAmpm === 'PM' && h !== 12) h += 12;
-    if (newAmpm === 'AM' && h === 12) h = 0;
-    
-    let m = parseInt(newMin, 10);
-    if (isNaN(m)) m = 0;
-    if (m > 59) m = 59;
-    if (m < 0) m = 0;
-    
-    onChange(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
-  };
-
-  const handleHourChange = (e) => {
-    let val = e.target.value.replace(/\D/g, '');
-    if (val.length > 2) val = val.slice(-2);
-    let num = parseInt(val, 10);
-    if (num > 12) val = '12';
-    onChange(`${val || '12'}:${min}`);
-  };
-
-  const handleHourBlur = (e) => {
-    let num = parseInt(e.target.value, 10);
-    if (isNaN(num) || num < 1) num = 12;
-    handleUpdate(num.toString(), min, ampm);
-  };
-
-  const handleMinChange = (e) => {
-    let val = e.target.value.replace(/\D/g, '');
-    if (val.length > 2) val = val.slice(-2);
-    let num = parseInt(val, 10);
-    if (num > 59) val = '59';
-    onChange(`${hour}:${val || '00'}`);
-  };
-
-  const handleMinBlur = (e) => {
-    let num = parseInt(e.target.value, 10);
-    if (isNaN(num) || num < 0) num = 0;
-    handleUpdate(hour, num.toString(), ampm);
-  };
-
-  return (
-    <div className="input-field" style={{ display: 'flex', gap: '2px', alignItems: 'center', padding: '4px 8px', width: 'fit-content' }}>
-      <input 
-        type="text"
-        style={{ width: '32px', padding: '4px', textAlign: 'center', border: 'none', background: 'transparent', outline: 'none', color: 'inherit', fontSize: 'inherit' }}
-        value={hour} 
-        onChange={handleHourChange}
-        onBlur={handleHourBlur}
-        placeholder="HH"
-      />
-      <span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>:</span>
-      <input 
-        type="text"
-        style={{ width: '32px', padding: '4px', textAlign: 'center', border: 'none', background: 'transparent', outline: 'none', color: 'inherit', fontSize: 'inherit' }}
-        value={min} 
-        onChange={handleMinChange}
-        onBlur={handleMinBlur}
-        placeholder="MM"
-      />
-      <select 
-        style={{ padding: '4px', marginLeft: '4px', border: 'none', background: 'transparent', outline: 'none', color: 'var(--color-text-secondary)', fontSize: 'inherit', cursor: 'pointer', appearance: 'none', fontWeight: 500 }}
-        value={ampm} 
-        onChange={e => handleUpdate(hour, min, e.target.value)}
-      >
-        <option value="AM">AM</option>
-        <option value="PM">PM</option>
-      </select>
-    </div>
-  );
-};
 
 
-export default function RolesManager() {
+
+function RolesManager() {
   const { confirm } = useConfirm();
   const { user } = useAuth();
 
@@ -168,6 +77,31 @@ export default function RolesManager() {
 
   const searchInputRef = useRef(null)
   const dynamicPageSchema = useMemo(() => getDynamicPagePermissionsSchema(), [])
+
+  const moduleSelectOptions = useMemo(() => {
+    const options = [{ value: '', label: 'Select a module to configure permissions...' }];
+
+    const groups = {};
+    schemaModules.forEach(mod => {
+      const gName = mod.group || 'WORKSPACE';
+      if (!groups[gName]) groups[gName] = [];
+      groups[gName].push(mod);
+    });
+
+    Object.entries(groups).forEach(([gName, mods]) => {
+      mods.forEach(mod => {
+        const isEnabled = (formData.enabled_modules || []).includes(mod.id);
+        options.push({
+          value: mod.id,
+          label: `${gName} › ${mod.label}${isEnabled ? '  ✓' : ''}`,
+          group: gName,
+          rawLabel: mod.label
+        });
+      });
+    });
+
+    return options;
+  }, [schemaModules, formData.enabled_modules]);
 
   const toast = useToast()
 
@@ -239,29 +173,9 @@ export default function RolesManager() {
 
       const schemaData = schemaRes.data?.data || schemaRes.data;
       const dynamicMods = getDynamicPermissionModules();
-      const dynamicModsMap = new Map(dynamicMods.map(m => [m.id, m]));
-      const abstractParentIds = new Set(['analytics', 'leads', 'team-management']);
 
-      if (schemaData && schemaData.modules && schemaData.modules.length > 0) {
-        const combined = [];
-        dynamicMods.forEach(dm => combined.push(dm));
-
-        schemaData.modules.forEach(mod => {
-          if (!combined.some(m => m.id === mod.id) && !abstractParentIds.has(mod.id)) {
-            const dyn = dynamicModsMap.get(mod.id);
-            combined.push({
-              ...mod,
-              label: dyn?.label || mod.label,
-              group: dyn?.group || 'WORKSPACE'
-            });
-          }
-        });
-        setSchemaModules(combined);
-        setSchemaActions(schemaData.actions || PERMISSION_ACTIONS);
-      } else {
-        setSchemaModules(dynamicMods);
-        setSchemaActions(PERMISSION_ACTIONS);
-      }
+      setSchemaModules(dynamicMods);
+      setSchemaActions(schemaData?.actions || PERMISSION_ACTIONS);
 
       setUsers(usersRes.data?.data || usersRes.data || []);
       setBranches(branchesRes.data?.data || branchesRes.data || []);
@@ -345,18 +259,18 @@ export default function RolesManager() {
   }
 
   const handleRoleNameChange = (val) => {
-    const defaults = ROLE_DEFAULTS[val];
-    if (defaults) {
+    if (!editingRole && ROLE_DEFAULTS[val]) {
+      const defaults = ROLE_DEFAULTS[val];
       setFormData(prev => ({
         ...prev,
         name: val,
         description: defaults.description || prev.description,
-        permissions: defaults.permissions || [],
-        enabled_modules: defaults.enabled_modules || [],
-        data_scopes: defaults.data_scopes || {},
-        field_permissions: defaults.field_permissions || {},
-        page_permissions: defaults.page_permissions || {},
-        security_policies: defaults.security_policies || {}
+        permissions: [...(defaults.permissions || [])],
+        enabled_modules: [...(defaults.enabled_modules || [])],
+        data_scopes: { ...(defaults.data_scopes || {}) },
+        field_permissions: { ...(defaults.field_permissions || {}) },
+        page_permissions: { ...(defaults.page_permissions || {}) },
+        security_policies: { ...(defaults.security_policies || {}) }
       }));
     } else {
       setFormData(prev => ({ ...prev, name: val }));
@@ -365,14 +279,14 @@ export default function RolesManager() {
 
   const handleTogglePermission = (permId) => {
     if (formData.permissions.includes('*')) {
-      if (permId !== '*') return; // If superadmin, can't toggle specific perms easily
+      if (permId !== '*') return;
     }
     setFormData(prev => {
       const perms = new Set(prev.permissions)
+      const [mod, action] = permId.split(':');
+
       if (perms.has(permId)) {
         perms.delete(permId)
-        // Auto-remove dependent permissions (if I remove 'view', also remove 'edit' and 'delete')
-        const [mod, action] = permId.split(':');
         for (const [key, deps] of Object.entries(ACTION_DEPENDENCIES)) {
           if (deps.includes(action)) {
             perms.delete(`${mod}:${key}`);
@@ -380,15 +294,15 @@ export default function RolesManager() {
         }
       } else {
         perms.add(permId)
-        // Auto-add required dependencies
-        const [mod, action] = permId.split(':');
         if (ACTION_DEPENDENCIES[action]) {
           ACTION_DEPENDENCIES[action].forEach(dep => {
             perms.add(`${mod}:${dep}`);
           });
         }
       }
-      return { ...prev, permissions: Array.from(perms) }
+
+      const updatedPerms = Array.from(perms);
+      return { ...prev, permissions: updatedPerms };
     })
   }
 
@@ -405,7 +319,9 @@ export default function RolesManager() {
           });
         }
       });
-      return { ...prev, permissions: Array.from(perms) };
+      const em = new Set(prev.enabled_modules || []);
+      em.add(moduleId);
+      return { ...prev, permissions: Array.from(perms), enabled_modules: Array.from(em) };
     });
   }
 
@@ -422,7 +338,9 @@ export default function RolesManager() {
           }
         }
       });
-      return { ...prev, permissions: Array.from(perms) };
+      const em = new Set(prev.enabled_modules || []);
+      em.delete(moduleId);
+      return { ...prev, permissions: Array.from(perms), enabled_modules: Array.from(em) };
     });
   }
 
@@ -471,18 +389,31 @@ export default function RolesManager() {
     if (formData.permissions.includes('*')) return;
     setFormData(prev => {
       const em = new Set(prev.enabled_modules || []);
+      const perms = new Set(prev.permissions || []);
       if (em.has(moduleId)) {
         em.delete(moduleId);
+        perms.delete(`${moduleId}:view`);
+        perms.delete(moduleId);
       } else {
         em.add(moduleId);
+        perms.add(`${moduleId}:view`);
+        perms.add(moduleId);
       }
-      return { ...prev, enabled_modules: Array.from(em) };
+      return { ...prev, enabled_modules: Array.from(em), permissions: Array.from(perms) };
     });
   }
 
   const handleSelectAllModulesVisibility = () => {
     if (formData.permissions.includes('*')) return;
-    setFormData(prev => ({ ...prev, enabled_modules: schemaModules.map(m => m.id) }));
+    setFormData(prev => {
+      const em = schemaModules.map(m => m.id);
+      const perms = new Set(prev.permissions || []);
+      schemaModules.forEach(m => {
+        perms.add(`${m.id}:view`);
+        perms.add(m.id);
+      });
+      return { ...prev, enabled_modules: em, permissions: Array.from(perms) };
+    });
   }
 
   const handleClearAllModulesVisibility = () => {
@@ -494,14 +425,19 @@ export default function RolesManager() {
     if (formData.permissions.includes('*')) return;
     setFormData(prev => {
       const current = new Set(prev.enabled_modules || []);
+      const perms = new Set(prev.permissions || []);
       groupMods.forEach(m => {
         if (shouldEnable) {
           current.add(m.id);
+          perms.add(`${m.id}:view`);
+          perms.add(m.id);
         } else {
           current.delete(m.id);
+          perms.delete(`${m.id}:view`);
+          perms.delete(m.id);
         }
       });
-      return { ...prev, enabled_modules: Array.from(current) };
+      return { ...prev, enabled_modules: Array.from(current), permissions: Array.from(perms) };
     });
   };
 
@@ -1078,6 +1014,26 @@ export default function RolesManager() {
                                         <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={mod.label}>
                                           {mod.label}
                                         </span>
+                                        <button
+                                          type="button"
+                                          title={`Configure permissions for ${mod.label}`}
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setSearchQuery(mod.id);
+                                          }}
+                                          style={{
+                                            background: searchQuery === mod.id ? 'var(--color-accent, #4f46e5)' : 'transparent',
+                                            color: searchQuery === mod.id ? '#ffffff' : 'var(--color-text-secondary)',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            padding: '2px 5px',
+                                            fontSize: '11px',
+                                            cursor: 'pointer'
+                                          }}
+                                        >
+                                          ⚙️
+                                        </button>
                                       </label>
                                     );
                                   })}
@@ -1091,108 +1047,6 @@ export default function RolesManager() {
                   )}
                 </div>
 
-                {/* Card: Security Policies */}
-                <div style={{ background: 'var(--color-surface)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-                  <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '20px', color: 'var(--color-text)' }}>Security Policies</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                    
-                    {/* Allowed Login Times */}
-                    <div>
-                      <label className={styles.label}>Allowed Login Times</label>
-                      <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>Restrict when this role can log in (e.g. 09:00 AM to 06:00 PM).</p>
-                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <TimeSelect
-                          value={formData.security_policies.allowed_login_times?.start || ''}
-                          onChange={val => setFormData(prev => ({ ...prev, security_policies: { ...prev.security_policies, allowed_login_times: { ...(prev.security_policies.allowed_login_times || {}), start: val } } }))}
-                        />
-                        <span style={{ color: 'var(--color-text-secondary)' }}>to</span>
-                        <TimeSelect
-                          value={formData.security_policies.allowed_login_times?.end || ''}
-                          onChange={val => setFormData(prev => ({ ...prev, security_policies: { ...prev.security_policies, allowed_login_times: { ...(prev.security_policies.allowed_login_times || {}), end: val } } }))}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Allowed Days */}
-                    <div>
-                      <label className={styles.label}>Allowed Days</label>
-                      <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>Restrict which days this role can log in.</p>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, idx) => {
-                          const isChecked = formData.security_policies.allowed_days ? formData.security_policies.allowed_days.includes(idx) : false;
-                          return (
-                            <label key={day} className={styles.checkboxContainer}>
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={(e) => {
-                                  const checked = e.target.checked;
-                                  setFormData(prev => {
-                                    const currentDays = prev.security_policies.allowed_days || [];
-                                    let newDays = checked ? [...currentDays, idx] : currentDays.filter(d => d !== idx);
-                                    return { ...prev, security_policies: { ...prev.security_policies, allowed_days: newDays } };
-                                  });
-                                }}
-                              />
-                              {day}
-                            </label>
-                          )
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Allowed IPs */}
-                    <div>
-                      <label className={styles.label}>Allowed IP Addresses</label>
-                      <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>Comma separated list of IPs or CIDR blocks.</p>
-                      <input
-                        type="text"
-                        className="input-field"
-                        placeholder="192.168.1.1, 10.0.0.0/24"
-                        value={formData.security_policies.allowed_ips ? formData.security_policies.allowed_ips.join(', ') : ''}
-                        onChange={e => {
-                          const ips = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                          setFormData(prev => ({ ...prev, security_policies: { ...prev.security_policies, allowed_ips: ips } }))
-                        }}
-                        style={{ width: '100%' }}
-                      />
-                    </div>
-
-                    {/* Trusted Browsers */}
-                    <div>
-                      <label className={styles.label}>Trusted Browsers</label>
-                      <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>Comma separated list (e.g. Chrome, Firefox).</p>
-                      <input
-                        type="text"
-                        className="input-field"
-                        placeholder="Chrome, Safari"
-                        value={formData.security_policies.trusted_browsers ? formData.security_policies.trusted_browsers.join(', ') : ''}
-                        onChange={e => {
-                          const browsers = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                          setFormData(prev => ({ ...prev, security_policies: { ...prev.security_policies, trusted_browsers: browsers } }))
-                        }}
-                        style={{ width: '100%' }}
-                      />
-                    </div>
-
-                    {/* Allowed Devices */}
-                    <div>
-                      <label className={styles.label}>Allowed Devices</label>
-                      <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>Comma separated list (e.g. Desktop, Mobile).</p>
-                      <input
-                        type="text"
-                        className="input-field"
-                        placeholder="Desktop, Mobile"
-                        value={formData.security_policies.allowed_devices ? formData.security_policies.allowed_devices.join(', ') : ''}
-                        onChange={e => {
-                          const devices = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                          setFormData(prev => ({ ...prev, security_policies: { ...prev.security_policies, allowed_devices: devices } }))
-                        }}
-                        style={{ width: '100%' }}
-                      />
-                    </div>
-                  </div>
-                </div>
               </div>
 
               {/* Right Column */}
@@ -1222,10 +1076,9 @@ export default function RolesManager() {
                           <div style={{ flex: 1 }}>
                             <Select 
                               label="Select Module to Configure"
-                              options={[
-                                { value: '', label: 'Select a module...' },
-                                ...schemaModules.map(m => ({ value: m.label, label: m.label }))
-                              ]}
+                              placeholder="Search or select a module..."
+                              searchable={true}
+                              options={moduleSelectOptions}
                               value={searchQuery}
                               onChange={v => setSearchQuery(v)}
                             />
@@ -1233,13 +1086,13 @@ export default function RolesManager() {
                         </div>
 
                         {(() => {
-                          const selectedModuleRaw = schemaModules.find(m => m.label === searchQuery);
+                          const selectedModuleRaw = schemaModules.find(m => m.id === searchQuery || m.label === searchQuery);
                           const module = selectedModuleRaw ? { ...selectedModuleRaw, actions: schemaActions } : null;
 
                           if (!module) {
                             return (
                               <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-secondary)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--color-border)' }}>
-                                Please select a module from the dropdown above to instantly display and configure its required permissions.
+                                Please select a module or tab from the dropdown above to instantly display and configure its required permissions.
                               </div>
                             );
                           }
@@ -1251,7 +1104,12 @@ export default function RolesManager() {
                           return (
                             <div style={{ padding: '24px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--color-border)', flexWrap: 'wrap', gap: '12px' }}>
-                                <h3 style={{ margin: 0, color: 'var(--color-text)' }}>{module.label} Permissions</h3>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <h3 style={{ margin: 0, color: 'var(--color-text)' }}>{module.label} Permissions</h3>
+                                  <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px', background: 'var(--color-surface-2)', color: 'var(--color-accent)', fontWeight: 600, border: '1px solid var(--color-border)' }}>
+                                    {module.group || 'WORKSPACE'}
+                                  </span>
+                                </div>
                                 <div style={{ display: 'flex', gap: '8px' }}>
                                   <Button variant="ghost" size="sm" onClick={async () => handleSelectAllModule(module.id, module.actions)}>Select All</Button>
                                   <Button variant="ghost" size="sm" onClick={async () => handleClearAllModule(module.id, module.actions)}>Clear</Button>
@@ -1733,5 +1591,7 @@ export default function RolesManager() {
 
       </div>
     </div>
-  )
+  );
 }
+
+export default RolesManager;

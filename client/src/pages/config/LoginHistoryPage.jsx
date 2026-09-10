@@ -37,8 +37,11 @@ export default function LoginHistoryPage() {
       });
 
       const res = await api.get('/login-history', { params });
-      setLogs(res.data?.data || []);
-      setPagination(prev => ({ ...prev, total: res.data?.meta?.total || 0 }));
+      const rawData = res.data?.data;
+      const historyList = Array.isArray(rawData) ? rawData : (Array.isArray(rawData?.data) ? rawData.data : []);
+      const totalCount = res.data?.meta?.total ?? res.data?.data?.meta?.total ?? 0;
+      setLogs(historyList);
+      setPagination(prev => ({ ...prev, total: totalCount }));
     } catch (err) {
       toast.error('Failed to load login history.');
     } finally {

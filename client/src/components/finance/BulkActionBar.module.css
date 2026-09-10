@@ -1,59 +1,76 @@
 .bar {
   position: fixed;
-  bottom: 24px;
+  bottom: 28px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--surface-color, #ffffff);
-  border: 1px solid var(--border-color, #e5e7eb);
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-  padding: 12px 24px;
-  border-radius: 999px;
+  background: var(--color-surface, rgba(255, 255, 255, 0.95));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
+  box-shadow: 0 16px 32px -4px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.05);
+  padding: 10px 20px;
+  border-radius: var(--radius-full, 999px);
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 20px;
   z-index: 1000;
-  animation: slideUp 0.3s ease-out;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:global(.dark) .bar {
+  background: var(--color-surface-2, rgba(30, 31, 38, 0.95));
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 16px 32px -4px rgba(0, 0, 0, 0.4);
 }
 
 @keyframes slideUp {
-  from { bottom: -100px; opacity: 0; }
-  to { bottom: 24px; opacity: 1; }
+  from { transform: translate(-50%, 40px); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
 }
 
 .left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .countBadge {
-  background: #3b82f6;
-  color: white;
+  background: var(--color-primary, #3b82f6);
+  color: #ffffff;
   padding: 4px 12px;
-  border-radius: 999px;
-  font-weight: 600;
-  font-size: 0.875rem;
+  border-radius: var(--radius-full, 999px);
+  font-weight: 700;
+  font-size: 0.85rem;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
 }
 
 .clearBtn {
   background: transparent;
   border: none;
-  color: var(--text-secondary, #6b7280);
+  color: var(--color-text-secondary, #6b7280);
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: var(--radius-md, 6px);
+  transition: all 0.2s ease;
 }
 
 .clearBtn:hover {
-  text-decoration: underline;
-  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--color-text, #111827);
+}
+
+:global(.dark) .clearBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .actions {
   display: flex;
   align-items: center;
-  gap: 8px;
-  border-left: 1px solid var(--border-color, #e5e7eb);
-  padding-left: 24px;
+  gap: 10px;
+  border-left: 1px solid var(--color-border, #e5e7eb);
+  padding-left: 16px;
 }
 
 .actionBtn {

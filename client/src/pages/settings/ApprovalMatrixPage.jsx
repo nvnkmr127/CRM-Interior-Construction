@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
 import styles from './ApprovalMatrixPage.module.css';
@@ -8,7 +9,7 @@ import { useConfirm } from '../../store/confirmContext';
 const TRANSACTION_TYPES = [
   { value: 'invoice', label: 'Invoice Generation' },
   { value: 'payment', label: 'Payment Milestone' },
-  { value: 'payment_update', label: 'Payment Update' },
+  { value: 'payment_update', label: 'Payment Record' },
   { value: 'discount', label: 'Discount Application' },
   { value: 'credit', label: 'Credit Note' },
   { value: 'refund', label: 'Refund' },
@@ -25,7 +26,33 @@ const AVAILABLE_ROLES = [
   'projects:manager'
 ];
 
+const ROLE_LABELS = {
+  'superadmin': 'Super Admin',
+  'admin': 'Admin',
+  'finance:executive': 'Finance Executive',
+  'finance:manager': 'Finance Manager',
+  'finance:head': 'Finance Head',
+  'director': 'Director',
+  'projects:manager': 'Projects Manager'
+};
+
+const getRoleLabel = (role) => ROLE_LABELS[role] || (role ? role.replace('finance:', 'Finance ').replace('projects:', 'Projects ').replace(/\b\w/g, l => l.toUpperCase()) : '');
+
+const parseRoles = (roles) => {
+  if (Array.isArray(roles)) return roles;
+  if (typeof roles === 'string') {
+    try {
+      const parsed = JSON.parse(roles);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {
+      // fallback
+    }
+  }
+  return [];
+};
+
 export default function ApprovalMatrixPage() {
+  const navigate = useNavigate();
   const { confirm } = useConfirm();
 
   const toast = useToast();
@@ -50,10 +77,21 @@ export default function ApprovalMatrixPage() {
   const fetchRules = async () => {
     try {
       const res = await api.get('/approval-matrix');
-      setRules(res.data.data || []);
+      const payload = res.data?.data;
+      const meta = res.data?.meta;
+      let rulesList = [];
+      if (Array.isArray(payload)) {
+        rulesList = payload;
+      } else if (Array.isArray(meta)) {
+        rulesList = meta;
+      } else if (Array.isArray(res.data)) {
+        rulesList = res.data;
+      }
+      setRules(rulesList);
     } catch (err) {
       console.error(err);
       toast.error('Failed to load approval matrix rules');
+      setRules([]);
     } finally {
       setLoading(false);
     }
@@ -76,7 +114,7 @@ export default function ApprovalMatrixPage() {
         effective_date: rule.effective_date ? rule.effective_date.substring(0, 10) : '',
         expiry_date: rule.expiry_date ? rule.expiry_date.substring(0, 10) : '',
         validation_rules: rule.validation_rules ? JSON.stringify(rule.validation_rules, null, 2) : '',
-        required_roles: rule.required_roles || []
+        required_roles: parseRoles(rule.required_roles)
       });
       setEditingRule(rule);
     } else {
@@ -164,9 +202,19 @@ export default function ApprovalMatrixPage() {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <div>
-          <h1 className={styles.title}>Approval Matrix</h1>
-          <p className={styles.subtitle}>Configure dynamic multi-level approval chains for transactions</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button 
+            onClick={() => navigate('/financial-approvals')} 
+            className={styles.backButton}
+            title="Back to Financial Approvals"
+            aria-label="Back to Financial Approvals"
+          >
+            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          </button>
+          <div>
+            <h1 className={styles.title}>Approval Matrix</h1>
+            <p className={styles.subtitle}>Configure dynamic multi-level approval chains for transactions</p>
+          </div>
         </div>
         <button className={styles.addButton} onClick={async () => handleOpenModal()}>
           + Create New Rule
@@ -176,7 +224,7 @@ export default function ApprovalMatrixPage() {
       <div className={styles.card}>
         {loading ? (
           <p>Loading rules...</p>
-        ) : rules.length === 0 ? (
+        ) : !Array.isArray(rules) || rules.length === 0 ? (
           <p>No approval matrix rules found.</p>
         ) : (
           <table className={styles.table}>
@@ -202,10 +250,10 @@ export default function ApprovalMatrixPage() {
                   <td>{rule.department || '-'}</td>
                   <td>{rule.priority || '-'}</td>
                   <td>
-                    {rule.required_roles.map((role, i) => (
+                    {parseRoles(rule.required_roles).map((role, i, arr) => (
                       <React.Fragment key={i}>
-                        <span className={styles.chainBadge}>{role}</span>
-                        {i < rule.required_roles.length - 1 && <span className={styles.chainArrow}>→</span>}
+                        <span className={styles.chainBadge}>{getRoleLabel(role)}</span>
+                        {i < arr.length - 1 && <span className={styles.chainArrow}>→</span>}
                       </React.Fragment>
                     ))}
                   </td>
@@ -230,7 +278,7 @@ export default function ApprovalMatrixPage() {
             
             <form onSubmit={handleSubmit}>
               <div className={styles.formGroup}>
-                <label>Transaction Type</label>
+                <label className={styles.label}>Transaction Type</label>
                 <select 
                   className={styles.select}
                   value={formData.transaction_type}
@@ -245,7 +293,7 @@ export default function ApprovalMatrixPage() {
 
               <div style={{ display: 'flex', gap: '16px' }}>
                 <div className={styles.formGroup} style={{ flex: 1 }}>
-                  <label>Min Amount (₹)</label>
+                  <label className={styles.label}>Min Amount (₹)</label>
                   <input 
                     type="number" 
                     className={styles.input}
@@ -256,7 +304,7 @@ export default function ApprovalMatrixPage() {
                   />
                 </div>
                 <div className={styles.formGroup} style={{ flex: 1 }}>
-                  <label>Max Amount (₹)</label>
+                  <label className={styles.label}>Max Amount (₹)</label>
                   <input 
                     type="number" 
                     className={styles.input}
@@ -269,7 +317,7 @@ export default function ApprovalMatrixPage() {
 
               <div style={{ display: 'flex', gap: '16px' }}>
                 <div className={styles.formGroup} style={{ flex: 1 }}>
-                  <label>Department (Optional)</label>
+                  <label className={styles.label}>Department (Optional)</label>
                   <input 
                     type="text" 
                     className={styles.input}
@@ -279,7 +327,7 @@ export default function ApprovalMatrixPage() {
                   />
                 </div>
                 <div className={styles.formGroup} style={{ flex: 1 }}>
-                  <label>Priority (Optional)</label>
+                  <label className={styles.label}>Priority (Optional)</label>
                   <select 
                     className={styles.select}
                     value={formData.priority}
@@ -295,7 +343,7 @@ export default function ApprovalMatrixPage() {
 
               <div style={{ display: 'flex', gap: '16px' }}>
                 <div className={styles.formGroup} style={{ flex: 1 }}>
-                  <label>Effective Date (Optional)</label>
+                  <label className={styles.label}>Effective Date (Optional)</label>
                   <input 
                     type="date" 
                     className={styles.input}
@@ -304,7 +352,7 @@ export default function ApprovalMatrixPage() {
                   />
                 </div>
                 <div className={styles.formGroup} style={{ flex: 1 }}>
-                  <label>Expiry Date (Optional)</label>
+                  <label className={styles.label}>Expiry Date (Optional)</label>
                   <input 
                     type="date" 
                     className={styles.input}
@@ -315,22 +363,11 @@ export default function ApprovalMatrixPage() {
               </div>
 
               <div className={styles.formGroup}>
-                <label>Validation Rules (Optional JSON)</label>
-                <textarea 
-                  className={styles.input}
-                  style={{ minHeight: '80px', fontFamily: 'monospace' }}
-                  value={formData.validation_rules}
-                  onChange={(e) => setFormData({...formData, validation_rules: e.target.value})}
-                  placeholder='{"require_po": true}'
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label>Approval Chain (Top to Bottom)</label>
+                <label className={styles.label}>Approval Chain (Top to Bottom)</label>
                 <div className={styles.rolesContainer}>
                   {formData.required_roles.map((role, index) => (
                     <div key={index} className={styles.roleRow}>
-                      <span style={{ fontWeight: 500, color: '#6b7280', width: '20px' }}>{index + 1}.</span>
+                      <span className={styles.roleNum}>{index + 1}.</span>
                       <select 
                         className={styles.select}
                         value={role}
@@ -338,7 +375,7 @@ export default function ApprovalMatrixPage() {
                         required
                       >
                         {AVAILABLE_ROLES.map(r => (
-                          <option key={r} value={r}>{r}</option>
+                          <option key={r} value={r}>{getRoleLabel(r)}</option>
                         ))}
                       </select>
                       {formData.required_roles.length > 1 && (

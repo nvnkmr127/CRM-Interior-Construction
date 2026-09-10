@@ -3,6 +3,20 @@ const pool = require('../../db/pool');
 class DashboardStats {
   static async getFinancialApprovalStats(tenantId) {
     const query = `
+      WITH dedup AS (
+        SELECT DISTINCT ON (
+          tenant_id,
+          transaction_type,
+          COALESCE(target_id::text, requested_changes->>'target_number', requested_changes->'payload'->'selectedPayment'->>'milestone', id::text)
+        ) id, amount, status, created_at, updated_at, approved_at
+        FROM financial_approvals
+        WHERE tenant_id = $1
+        ORDER BY 
+          tenant_id,
+          transaction_type,
+          COALESCE(target_id::text, requested_changes->>'target_number', requested_changes->'payload'->'selectedPayment'->>'milestone', id::text),
+          updated_at DESC, created_at DESC
+      )
       SELECT 
         COUNT(*) FILTER (WHERE status = 'pending') as "pendingApprovals",
         COALESCE(SUM(amount) FILTER (WHERE status = 'pending'), 0) as "pendingAmount",
@@ -14,8 +28,7 @@ class DashboardStats {
         COALESCE(SUM(amount) FILTER (WHERE status = 'rejected'), 0) as "totalRejectedAmount",
         AVG(EXTRACT(EPOCH FROM (approved_at - created_at)) / 3600) FILTER (WHERE status = 'approved') as "averageApprovalTime",
         COUNT(*) FILTER (WHERE status = 'pending' AND created_at < NOW() - INTERVAL '48 hours') as "overdueApprovals"
-      FROM financial_approvals
-      WHERE tenant_id = $1
+      FROM dedup
     `;
     
     const { rows } = await pool.query(query, [tenantId]);

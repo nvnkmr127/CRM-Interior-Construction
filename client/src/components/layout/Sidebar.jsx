@@ -132,9 +132,9 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
     user?.role === 'admin' || 
     user?.role?.name?.toLowerCase() === 'superadmin' || 
     user?.role?.name?.toLowerCase() === 'super admin' || 
-    user?.role?.name?.toLowerCase() === 'admin' ||
+    (typeof user?.role === 'string' && user?.role?.toLowerCase() === 'admin') ||
     user?.role?.name?.toLowerCase() === 'owner' ||
-    (user?.role?.permissions && (user.role.permissions.includes('*') || user.role.permissions.includes('*:*')));
+    (Array.isArray(user?.role?.permissions) && (user.role.permissions.includes('*') || user.role.permissions.includes('*:*')));
 
   const hasFinancePermission = isAdmin || (Array.isArray(user?.role?.permissions) && (
     user.role.permissions.includes('finance:invoices') ||
@@ -163,14 +163,63 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
       {/* Nav groups */}
       <nav className={styles.nav}>
         {NAV_ITEMS.map(group => {
-          if (group.adminOnly && !isAdmin && !isWorkspaceAdmin) return null
-          if (group.financeOnly && !hasFinancePermission) return null
+          if (group.adminOnly && !isAdmin && !isWorkspaceAdmin) {
+            const hasAnyGroupItemGranted = group.items.some(item => {
+              const modules = user?.role?.enabled_modules || [];
+              const perms = Array.isArray(user?.role?.permissions) ? user.role.permissions : [];
+              return modules.includes(item.id) || perms.includes(item.id) || perms.includes(`${item.id}:view`);
+            });
+            if (!hasAnyGroupItemGranted) return null;
+          }
+          if (group.financeOnly && !hasFinancePermission) return null;
 
           const filterItem = (item) => {
-            // 1. Developer / Admin Bypass: Developers in the demo root workspace see all tabs immediately
+            // 1. Developer / Admin Bypass: Superadmin / Developer sees all tabs immediately
             if (isAdmin) return true;
 
-            // 2. Client Subscription Plan filtering: In client workspaces (like "interior hub"), strictly enforce the workspace's plan
+            // 2. Workspace administrator has access to all tabs in this workspace
+            if (isWorkspaceAdmin) return true;
+
+            const perms = Array.isArray(user?.role?.permissions) ? user.role.permissions : [];
+            const modules = user?.role?.enabled_modules || [];
+
+            // 3. Admin-only tabs are allowed if explicitly granted in role permissions/modules
+            if (item.adminOnly) {
+              const isExplicitlyGranted = modules.includes(item.id) || perms.includes(item.id) || perms.includes(`${item.id}:view`);
+              if (!isExplicitlyGranted) return false;
+            }
+
+            const hasWildcard = perms.includes('*') || perms.includes('*:*');
+            if (hasWildcard) return true;
+
+            // 4. Module & Action Permission check
+            let isPermitted = false;
+            const itemMods = Array.isArray(item.module) ? item.module : (item.module ? [item.module] : []);
+
+            if (item.id) {
+              const hasExplicitTabInModules = modules.includes(item.id);
+              const hasExplicitTabInPerms = perms.includes(item.id) || perms.includes(`${item.id}:view`) || perms.some(p => p.startsWith(`${item.id}:`));
+              
+              if (hasExplicitTabInModules || hasExplicitTabInPerms) {
+                isPermitted = true;
+              } else {
+                return false;
+              }
+            } else if (item.permission) {
+              if (perms.includes(item.permission)) {
+                isPermitted = true;
+              }
+            } else if (itemMods.length > 0) {
+              if (itemMods.some(m => modules.includes(m) || perms.includes(`${m}:view`))) {
+                isPermitted = true;
+              }
+            } else {
+              isPermitted = true;
+            }
+
+            if (!isPermitted) return false;
+
+            // 5. Subscription Plan filtering fallback for non-admin client accounts
             const tenantPlan = (user?.tenant?.plan || 'starter').toLowerCase();
             const planTabs = (dynamicPlanTabs && Array.isArray(dynamicPlanTabs) && dynamicPlanTabs.length > 0)
               ? dynamicPlanTabs
@@ -179,47 +228,25 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
                 : (PLAN_DEFAULTS[tenantPlan] || PLAN_DEFAULTS.starter));
 
             if (planTabs && Array.isArray(planTabs)) {
-              if (item.id && !planTabs.includes(item.id)) return false;
+              if (item.id && !planTabs.includes(item.id)) {
+                const isExplicitRoleTab = modules.includes(item.id) || perms.includes(item.id) || perms.some(p => p.startsWith(`${item.id}:`));
+                if (!isExplicitRoleTab) {
+                  if (item.subItems && Array.isArray(item.subItems)) {
+                    const hasSubInPlan = item.subItems.some(sub => planTabs.includes(sub.id));
+                    if (!hasSubInPlan) return false;
+                  } else {
+                    return false;
+                  }
+                }
+              }
             }
 
-            // 3. Workspace administrator has access to all enabled tabs in this workspace
-            if (isWorkspaceAdmin) return true;
-
-            // 4. For non-admin members, check adminOnly, permissions, and enabled modules
-            if (item.adminOnly) return false;
-
-            const perms = Array.isArray(user?.role?.permissions) ? user.role.permissions : [];
-            const hasWildcard = perms.includes('*') || perms.includes('*:*');
-            if (hasWildcard) return true;
-
-            if (item.permission) {
-              const [mod] = item.permission.split(':');
-              const modules = user?.role?.enabled_modules || [];
-              const hasPerm = perms.includes(item.permission) || perms.includes(`${mod}:*`) || perms.includes(`${mod}:view`) || modules.includes(mod) || (item.id && modules.includes(item.id));
-              if (!hasPerm) return false;
-            }
-
-            if (item.module) {
-              const modules = user?.role?.enabled_modules || [];
-              const itemMods = Array.isArray(item.module) ? item.module : [item.module];
-
-              const hasModuleInPerms = itemMods.some(m => perms.some(p => p.startsWith(`${m}:`)));
-              const hasModuleInList = itemMods.some(m => modules.includes(m)) || (item.id && modules.includes(item.id));
-
-              const hasMappedModule = modules.some(m => {
-                const tabs = MODULE_TAB_MAPPING[m] || [];
-                return tabs.includes(item.id);
-              });
-
-              if (!hasModuleInList && !hasModuleInPerms && !hasMappedModule) return false;
-            }
-
-            // 5. Granular Page / Tab Permissions check: If role has specific page_permissions set for the module
+            // 6. Granular Page / Tab Permissions check
             const pagePerms = user?.role?.page_permissions || {};
-            const itemMods = Array.isArray(item.module) ? item.module : (item.module ? [item.module] : []);
             for (const mod of itemMods) {
               if (pagePerms[mod] && Array.isArray(pagePerms[mod]) && pagePerms[mod].length > 0) {
-                if (!pagePerms[mod].includes(item.id)) return false;
+                const allowed = pagePerms[mod].includes(item.id) || pagePerms[mod].includes(item.label);
+                if (!allowed) return false;
               }
             }
 
@@ -228,6 +255,7 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
 
           const visibleItems = group.items.map(item => {
             if (item.subItems) {
+              if (!filterItem(item)) return null;
               const parentModule = item.module;
               const filteredSubItems = item.subItems.map(sub => ({
                 ...sub,
@@ -237,6 +265,7 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
             }
             return item;
           }).filter(item => {
+            if (!item) return false;
             if (item.subItems) {
               return item.subItems.length > 0;
             }

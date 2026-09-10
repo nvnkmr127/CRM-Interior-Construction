@@ -9,6 +9,7 @@ const pool = require('../config/db');
 const validate = require('../middleware/validate');
 const taskRepository = require('../repositories/taskRepository');
 const { stripUnauthorizedEdits, filterAllowedFields } = require('../utils/fieldMasker');
+const { clearCachePrefix } = require('../utils/cache');
 const { createTask } = require('../services/tasks/createTask');
 const { updateTask } = require('../services/tasks/updateTask');
 const { bulkCreateTasks } = require('../services/tasks/bulkCreateTask');
@@ -145,6 +146,7 @@ router.post('/', authorize(['projects:manage', 'projects:write', 'tasks:create',
     data.projectId = req.params.projectId;
 
     let task = await createTask({ tenantId: req.tenantId, userId: req.user.userId, data });
+    await clearCachePrefix(`cache:${req.tenantId}:`).catch(() => {});
     task = filterAllowedFields(task, req.user, 'tasks');
     return success(res, task, {}, 201);
   } catch (error) {
@@ -308,6 +310,7 @@ router.patch('/:tid', authorize(['projects:manage', 'projects:write', 'projects:
       taskId: req.params.tid,
       data: mappedData
     });
+    await clearCachePrefix(`cache:${req.tenantId}:`).catch(() => {});
     task = filterAllowedFields(task, req.user, 'tasks');
     return success(res, task);
   } catch (error) {
@@ -326,6 +329,7 @@ router.delete('/:tid', authorize(['projects:manage', 'projects:write', 'projects
     } else {
       await taskRepository.softDeleteTask(req.tenantId, req.params.tid);
     }
+    await clearCachePrefix(`cache:${req.tenantId}:`).catch(() => {});
     return res.status(204).send();
   } catch (error) {
     logger.error('[Tasks Router] Delete notice:', error);

@@ -13,7 +13,7 @@ const pool = require('../db/pool');
  */
 const logActivity = async (req, entity, entity_id, action, old_value = null, new_value = null, reason = null) => {
   try {
-    const tenantId = req.tenantId || (req.user && req.user.tenantId);
+    const tenantId = req.tenantId || (req.user && (req.user.tenantId || req.user.tenant_id));
     const userId = req.user?.id || req.user?.userId;
     const isUuid = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
     if (!tenantId || !userId || !isUuid(userId)) return;
@@ -23,38 +23,19 @@ const logActivity = async (req, entity, entity_id, action, old_value = null, new
     if (ip.includes(',')) ip = ip.split(',')[0].trim();
     if (ip.length > 45) ip = ip.substring(0, 45);
 
-    // Get Browser / User-Agent
-    let browser = req.headers['user-agent'] || 'Unknown';
-    if (browser.length > 255) browser = browser.substring(0, 255);
-
-    // Parse simple device from User-Agent
-    let device = 'Desktop';
-    if (/Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(browser)) {
-      device = 'Mobile';
-    } else if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(browser)) {
-      device = 'Tablet';
-    }
-
-    // Try to get location (if provided via cloudflare header or custom header)
-    let location = req.headers['cf-ipcountry'] || req.headers['x-vercel-ip-country'] || req.headers['x-client-geo-location'] || 'Unknown';
-    
     const query = `
-      INSERT INTO audit_logs (tenant_id, user_id, action, entity, entity_id, old_value, new_value, ip_address, browser, device, location, reason)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      INSERT INTO audit_logs (tenant_id, user_id, action, entity, entity_id, old_value, new_value, ip_address)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     `;
     await pool.query(query, [
       tenantId,
       userId,
       action,
       entity,
-      entity_id,
-      old_value,
-      new_value,
-      ip,
-      browser,
-      device,
-      location,
-      reason
+      isUuid(entity_id) ? entity_id : null,
+      typeof old_value === 'object' ? JSON.stringify(old_value) : old_value,
+      typeof new_value === 'object' ? JSON.stringify(new_value) : new_value,
+      ip
     ]);
   } catch (error) {
     logger.error('Failed to log activity:', error);

@@ -376,7 +376,9 @@ export default function RoleEditor({
                       <div className={styles.categoryContent}>
                         {modules.map(module => {
                           const isModuleEnabled = (formData.enabled_modules || []).includes(module.id);
-                          const modActions = schemaActions.find(sa => sa.id === module.id)?.actions || [];
+                          const modActions = (Array.isArray(schemaActions) && schemaActions.length > 0 && schemaActions[0].id && !schemaActions[0].actions)
+                            ? schemaActions
+                            : ((schemaActions.find(sa => sa.id === module.id)?.actions) || schemaActions || []);
 
                           return (
                             <div key={module.id} className={styles.matrixRow}>

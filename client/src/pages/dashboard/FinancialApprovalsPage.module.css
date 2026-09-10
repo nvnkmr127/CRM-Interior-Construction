@@ -121,29 +121,29 @@
 }
 
 .selectedCard {
-  border-color: var(--color-primary, #4f46e5) !important;
-  box-shadow: 0 0 0 4px rgba(var(--color-primary-rgb, 79, 70, 229), 0.1) !important;
+  border-color: var(--color-accent) !important;
+  box-shadow: 0 0 0 4px var(--color-accent-light) !important;
 }
 
 .cardHeader {
   padding: var(--space-5) var(--space-6);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: var(--space-3);
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--color-surface);
 }
 
 :global(.dark) .cardHeader {
-  border-bottom-color: rgba(255, 255, 255, 0.05);
-  background: rgba(0, 0, 0, 0.1);
+  border-bottom-color: var(--color-border);
+  background: var(--color-surface-2);
 }
 
 .typeTag {
-  background-color: rgba(var(--color-primary-rgb, 79, 70, 229), 0.1);
-  color: var(--color-primary, #4f46e5);
-  font-size: 0.7rem;
+  background-color: var(--color-accent-light);
+  color: var(--color-accent-dark);
+  font-size: var(--text-xs);
   font-weight: 700;
   padding: 4px 10px;
   border-radius: var(--radius-full);
@@ -152,7 +152,7 @@
 }
 
 .statusTag {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   padding: 4px 12px;
   border-radius: var(--radius-full);
@@ -163,13 +163,13 @@
   gap: 4px;
 }
 
-.statusPending { background: #fef3c7; color: #b45309; }
-.statusApproved { background: #dcfce7; color: #166534; }
-.statusRejected { background: #fee2e2; color: #991b1b; }
+.statusPending { background: var(--color-warning-bg); color: var(--color-warning); }
+.statusApproved { background: var(--color-success-bg); color: var(--color-success); }
+.statusRejected { background: var(--color-danger-bg); color: var(--color-danger); }
 
-:global(.dark) .statusPending { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
-:global(.dark) .statusApproved { background: rgba(16, 185, 129, 0.15); color: #34d399; }
-:global(.dark) .statusRejected { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+:global(.dark) .statusPending { background: var(--color-warning-bg); color: var(--color-warning); }
+:global(.dark) .statusApproved { background: var(--color-success-bg); color: var(--color-success); }
+:global(.dark) .statusRejected { background: var(--color-danger-bg); color: var(--color-danger); }
 
 .statusBadge {
   font-size: 0.7rem;
@@ -229,6 +229,18 @@
   text-overflow: ellipsis;
 }
 
+.detailLink {
+  color: var(--color-accent);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s ease, text-decoration 0.2s ease;
+}
+
+.detailLink:hover {
+  color: var(--color-accent-dark, var(--color-accent));
+  text-decoration: underline;
+}
+
 .cardActions {
   padding: var(--space-4) var(--space-6);
   border-top: 1px solid rgba(0, 0, 0, 0.04);
@@ -258,23 +270,25 @@
 }
 
 .approveBtn {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: #fff;
+  background: var(--color-success);
+  color: var(--color-text-inverse);
 }
 
 .approveBtn:hover:not(:disabled) {
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  box-shadow: var(--shadow-md);
   transform: translateY(-1px);
+  filter: brightness(1.05);
 }
 
 .rejectBtn {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  color: #fff;
+  background: var(--color-danger);
+  color: var(--color-text-inverse);
 }
 
 .rejectBtn:hover:not(:disabled) {
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  box-shadow: var(--shadow-md);
   transform: translateY(-1px);
+  filter: brightness(1.05);
 }
 
 .approveBtn:disabled, .rejectBtn:disabled {
@@ -286,25 +300,36 @@
 
 /* Secondary Button Styles */
 .secondaryBtn {
-  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--color-surface);
   color: var(--color-text);
   border: 1px solid var(--color-border);
-  padding: 8px 12px;
+  padding: 8px 14px;
   border-radius: var(--radius-md);
-  font-size: 0.85rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: var(--transition-fast);
+  box-shadow: var(--shadow-sm);
 }
 
-.secondaryBtn:hover {
+.secondaryBtn:hover:not(:disabled) {
   background: var(--color-surface-2);
-  border-color: var(--color-border-strong);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.secondaryBtn:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .primaryBtn {
-  background: var(--color-primary, #4f46e5);
-  color: #fff;
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
   border: none;
   padding: 8px 12px;
   border-radius: var(--radius-md);
@@ -319,7 +344,8 @@
 }
 
 .primaryBtn:hover {
-  filter: brightness(1.1);
+  background: var(--color-accent-dark);
+  color: var(--color-text-inverse);
   transform: translateY(-1px);
 }
 
@@ -476,8 +502,8 @@
 
 .textarea:focus {
   outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15);
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 3px var(--color-accent-light);
 }
 
 .modalActions {
@@ -502,20 +528,21 @@
 }
 
 .confirmRejectBtn {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  color: #fff;
+  background: var(--color-danger);
+  color: var(--color-text-inverse);
   border: none;
   padding: 10px 20px;
   border-radius: var(--radius-lg);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+  box-shadow: var(--shadow-sm);
 }
 
 .confirmRejectBtn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
+  filter: brightness(1.05);
+  box-shadow: var(--shadow-md);
 }
 
 .loading {
@@ -529,11 +556,8 @@
 .filterContainer {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: nowrap;
-  white-space: nowrap;
-  overflow-x: auto;
-  padding-bottom: 4px; /* for scrollbar if needed */
+  gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
 .selectFilter {
@@ -550,8 +574,8 @@
 }
 
 .selectFilter:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.15);
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 3px var(--color-accent-light);
 }
 
 .activeFilters {
@@ -561,9 +585,9 @@
   align-items: center;
   margin-bottom: var(--space-4);
   padding: var(--space-4);
-  background: rgba(var(--color-primary-rgb, 79, 70, 229), 0.03);
+  background: var(--color-accent-light);
   border-radius: var(--radius-xl);
-  border: 1px solid rgba(var(--color-primary-rgb, 79, 70, 229), 0.1);
+  border: 1px solid var(--color-border);
 }
 
 .activeFiltersLabel {
@@ -595,7 +619,7 @@
 }
 
 .chipRemoveBtn {
-  background: rgba(0,0,0,0.05);
+  background: var(--color-surface-2);
   border: none;
   color: var(--color-text-muted);
   cursor: pointer;
@@ -610,13 +634,13 @@
 
 .chipRemoveBtn:hover {
   background: var(--color-danger);
-  color: white;
+  color: var(--color-text-inverse);
 }
 
 .clearAllBtn {
   background: none;
   border: none;
-  color: var(--color-primary, #4f46e5);
+  color: var(--color-accent);
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
@@ -627,5 +651,5 @@
 }
 
 .clearAllBtn:hover {
-  background: rgba(var(--color-primary-rgb, 79, 70, 229), 0.1);
+  background: var(--color-accent-light);
 }

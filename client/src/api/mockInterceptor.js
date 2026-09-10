@@ -881,7 +881,7 @@ export const setupMockInterceptor = (api) => {
                 periodEnd = new Date(1786536584000);
               }
 
-              let leadsScope = (mockDatabase.leads || []).filter(l => !l.deleted_at);
+              let leadsScope = (mockDatabase.leads || []).filter(l => !l.deleted_at && !['converted', 'won'].includes((l.status || '').toLowerCase()));
               if (currentRole.id === 'sales_rep') {
                 leadsScope = leadsScope.filter(l => l.assignee_id === currentUserId);
               }
@@ -939,8 +939,8 @@ export const setupMockInterceptor = (api) => {
                const overdueProjectsCount = activeProjects.filter(p => p.target_date && new Date(p.target_date) < new Date(1786536584000)).length;
 
               // Tasks due
-              const todayStr = new Date(1786536584000).toISOString().split('T')[0];
-              const activeTasks = (mockDatabase.tasks || []).filter(t => t.status !== 'done');
+              const todayStr = new Date().toISOString().split('T')[0];
+              const activeTasks = (mockDatabase.tasks || []).filter(t => t.status && !['done', 'completed', 'cancelled', 'deleted', 'archived'].includes(String(t.status).toLowerCase()));
               const dueTodayTasks = activeTasks.filter(t => t.due_date === todayStr).length;
               const overdueTasks = activeTasks.filter(t => t.due_date && t.due_date < todayStr).length;
 
@@ -5844,7 +5844,7 @@ export const setupMockInterceptor = (api) => {
                 periodEnd = new Date(1786536584000);
               }
 
-              let leadsScope = (mockDatabase.leads || []).filter(l => !l.deleted_at);
+              let leadsScope = (mockDatabase.leads || []).filter(l => !l.deleted_at && !['converted', 'won'].includes((l.status || '').toLowerCase()));
               if (currentRole.id === 'sales_rep') {
                 leadsScope = leadsScope.filter(l => l.assignee_id === currentUserId);
               }
@@ -5901,8 +5901,8 @@ export const setupMockInterceptor = (api) => {
               const overdueProjectsCount = activeProjects.filter(p => p.target_date && new Date(p.target_date) < new Date(1786536584000)).length;
 
               // Tasks due
-              const todayStr = new Date(1786536584000).toISOString().split('T')[0];
-              const activeTasks = (mockDatabase.tasks || []).filter(t => t.status !== 'done');
+              const todayStr = new Date().toISOString().split('T')[0];
+              const activeTasks = (mockDatabase.tasks || []).filter(t => t.status && !['done', 'completed', 'cancelled', 'deleted', 'archived'].includes(String(t.status).toLowerCase()));
               const dueTodayTasks = activeTasks.filter(t => t.due_date === todayStr).length;
               const overdueTasks = activeTasks.filter(t => t.due_date && t.due_date < todayStr).length;
 

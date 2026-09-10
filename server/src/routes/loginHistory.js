@@ -1,16 +1,16 @@
 const express = require('express');
 const pool = require('../db/pool');
 const authenticate = require('../middleware/authenticate');
-const { success, fail } = require('../utils/response');
+const { success, fail, paginate } = require('../utils/response');
 
 const router = express.Router();
 
 router.use(authenticate);
 
 function checkAdminAccess(req, res, next) {
-  if (req.user.role === 'superadmin') return next();
-  if (req.user.permissions && req.user.permissions.includes('audit:read')) return next();
-  return fail(res, 'FORBIDDEN', 'Access requires superadmin or audit:read permissions', 403);
+  if (req.user.role === 'superadmin' || req.user.role === 'admin' || req.user.isAdmin) return next();
+  if (req.user.permissions && (req.user.permissions.includes('audit:read') || req.user.permissions.includes('login_history:read'))) return next();
+  return fail(res, 'FORBIDDEN', 'Access requires admin, superadmin, or audit:read permissions', 403);
 }
 
 // GET /api/login-history
@@ -54,7 +54,7 @@ router.get('/', checkAdminAccess, async (req, res, next) => {
       SELECT lh.*, u.name as user_name, u.email as user_email, s.id as active_session_id
       FROM login_history lh
       LEFT JOIN users u ON lh.user_id = u.id
-      LEFT JOIN sessions s ON lh.session_id = s.id
+      LEFT JOIN sessions s ON lh.session_id::text = s.id::text
       ${whereClause}
       ORDER BY lh.login_time DESC
       LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
@@ -66,15 +66,7 @@ router.get('/', checkAdminAccess, async (req, res, next) => {
     const dataParams = [...queryParams, Number(limit), offset];
     const dataResult = await pool.query(dataQuery, dataParams);
     
-    return success(res, {
-      data: dataResult.rows,
-      meta: {
-        total,
-        page: Number(page),
-        limit: Number(limit),
-        totalPages: Math.ceil(total / Number(limit))
-      }
-    });
+    return paginate(res, dataResult.rows, total, Number(page), Number(limit));
   } catch (error) {
     next(error);
   }
@@ -159,7 +151,7 @@ router.delete('/sessions/:sessionId', checkAdminAccess, async (req, res, next) =
     const sessionId = req.params.sessionId;
 
     const checkResult = await pool.query(
-      `SELECT id, user_id FROM sessions WHERE id = $1 AND tenant_id = $2`,
+      `SELECT id, user_id FROM sessions WHERE id::text = $1::text AND tenant_id = $2`,
       [sessionId, tenantId]
     );
 
@@ -172,13 +164,13 @@ router.delete('/sessions/:sessionId', checkAdminAccess, async (req, res, next) =
       UPDATE login_history 
       SET logout_time = NOW(), 
           duration_seconds = EXTRACT(EPOCH FROM (NOW() - login_time))
-      WHERE session_id = $1
+      WHERE session_id::text = $1::text
     `, [sessionId]).catch(error => console.warn('Failed to update login history on revoke', error));
 
     // Then delete session
-    await pool.query(`DELETE FROM sessions WHERE id = $1`, [sessionId]);
+    await pool.query(`DELETE FROM sessions WHERE id::text = $1::text`, [sessionId]);
 
-    const { clearCache } = require('../../utils/cache');
+    const { clearCache } = require('../utils/cache');
     await clearCache(`session:${sessionId}`).catch(error => console.warn('Failed to clear session cache', error));
 
     return success(res, { message: 'Session forcefully revoked successfully' });

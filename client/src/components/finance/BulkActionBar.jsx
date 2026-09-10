@@ -36,33 +36,32 @@ export default function BulkActionBar({ selectedIds, clearSelection, refreshData
   };
 
   return (
-    <div className={styles.actionBarContainer}>
-      <div className={styles.actionBar}>
-        <div className={styles.selectionCount}>
-          <span className={styles.countBadge}>{selectedIds.size}</span>
+    <div className={styles.bar}>
+      <div className={styles.left}>
+        <span className={styles.countBadge}>{selectedIds.size}</span>
+        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>
           Transaction{selectedIds.size === 1 ? '' : 's'} Selected
-        </div>
-        <div className={styles.actionButtons}>
-          <button 
-            disabled={loading}
-            onClick={async () => handleBulkAction('approve')} 
-            className={`${styles.btn} ${styles.btnApprove}`}>
-            ✅ Approve All
-          </button>
-          <button 
-            disabled={loading}
-            onClick={async () => handleBulkAction('reject')} 
-            className={`${styles.btn} ${styles.btnReject}`}>
-            ❌ Reject All
-          </button>
-          <div className={styles.divider}></div>
-          <button 
-            disabled={loading}
-            onClick={clearSelection} 
-            className={`${styles.btn} ${styles.btnCancel}`}>
-            Cancel
-          </button>
-        </div>
+        </span>
+      </div>
+      <div className={styles.actions}>
+        <button 
+          disabled={loading}
+          onClick={async () => handleBulkAction('approve')} 
+          className={`${styles.actionBtn} ${styles.approve}`}>
+          ✅ Approve All
+        </button>
+        <button 
+          disabled={loading}
+          onClick={async () => handleBulkAction('reject')} 
+          className={`${styles.actionBtn} ${styles.reject}`}>
+          ❌ Reject All
+        </button>
+        <button 
+          disabled={loading}
+          onClick={clearSelection} 
+          className={styles.clearBtn}>
+          Cancel
+        </button>
       </div>
     </div>
   );

@@ -13,6 +13,7 @@ const { logAction } = require('../services/auditLog');
 const { queueEmail } = require('../services/emailService');
 const { ROLE_DEFAULTS, getRoleConfig } = require('../constants/roleDefaults');
 const { PLAN_DEFAULTS, getModulesForTabs } = require('../constants/permissions');
+const aiEmployeeService = require('../services/aiEmployeeService');
 
 const router = express.Router();
 

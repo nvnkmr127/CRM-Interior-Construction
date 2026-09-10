@@ -67,9 +67,9 @@ export default function ProjectProfitabilityReportPage() {
   };
 
   // Helper to determine cost/margin values based on selected costType
-  const getProjectCostVal = (p) => costType === 'actual' ? p.actualCost : p.committedCost;
-  const getProjectMarginVal = (p) => costType === 'actual' ? p.actualMargin : p.committedMargin;
-  const getProjectMarginPctVal = (p) => costType === 'actual' ? p.actualMarginPercent : p.committedMarginPercent;
+  const getProjectCostVal = (p) => (costType === 'actual' ? p.actualCost : p.committedCost) ?? 0;
+  const getProjectMarginVal = (p) => (costType === 'actual' ? p.actualMargin : p.committedMargin) ?? 0;
+  const getProjectMarginPctVal = (p) => (costType === 'actual' ? p.actualMarginPercent : p.committedMarginPercent) ?? 0;
 
   // Filter projects by search
   const filteredProjects = projects.filter(p => {
@@ -101,13 +101,13 @@ export default function ProjectProfitabilityReportPage() {
 
   // Format segment values for charts
   const chartData = activeSegments.map(s => {
-    const cost = costType === 'actual' ? s.actualCost : s.committedCost;
-    const margin = costType === 'actual' ? s.actualMargin : s.committedMargin;
-    const marginPct = costType === 'actual' ? s.actualMarginPercent : s.committedMarginPercent;
+    const cost = (costType === 'actual' ? s.actualCost : s.committedCost) ?? 0;
+    const margin = (costType === 'actual' ? s.actualMargin : s.committedMargin) ?? 0;
+    const marginPct = (costType === 'actual' ? s.actualMarginPercent : s.committedMarginPercent) ?? 0;
     return {
       name: s.name,
       projectCount: s.projectCount,
-      revenue: s.revenue,
+      revenue: s.revenue ?? 0,
       cost,
       margin,
       marginPct
@@ -126,103 +126,146 @@ export default function ProjectProfitabilityReportPage() {
     <div className={styles.page}>
       <GlobalFilterBar />
       {/* Header */}
-
       <div className={styles.headerRow}>
         <div>
-          <h1 className={styles.title}>Project Profitability Analysis</h1>
+          <div className={styles.titleGroup}>
+            <h1 className={styles.title}>Project Profitability Analysis</h1>
+            <span className={styles.headerBadge}>Live Analytics</span>
+          </div>
           <div className={styles.desc}>
             Monitor contract revenue, material/labor/vendor costs, gross profit margins, and return percentages across the portfolio.
           </div>
         </div>
-        <button className={styles.refreshBtn} onClick={fetchReport}>
-          🔄 Refresh Data
-        </button>
+        <div className={styles.headerActions}>
+          <button className={styles.refreshBtn} onClick={fetchReport}>
+            🔄 Refresh Data
+          </button>
+        </div>
       </div>
 
-      {/* costType Selection Toggle */}
-      <div className={styles.toggleRow}>
-        <div className={styles.costTypeSelector}>
-          <span className={styles.selectorLabel}>Cost Type Basis:</span>
-          <div className={styles.selectorButtonGroup}>
-            <button 
-              className={`${styles.selectorBtn} ${costType === 'actual' ? styles.selectorActive : ''}`}
-              onClick={() => setCostType('actual')}
-            >
-              Actual Cost Incurred
-            </button>
-            <button 
-              className={`${styles.selectorBtn} ${costType === 'committed' ? styles.selectorActive : ''}`}
-              onClick={() => setCostType('committed')}
-            >
-              Committed Cost (Planned POs)
-            </button>
+      {/* Top Configuration & Control Toolbar */}
+      <div className={styles.controlToolbar}>
+        <div className={styles.toolbarLeft}>
+          <div className={styles.costTypeSelector}>
+            <span className={styles.selectorLabel}>Cost Basis:</span>
+            <div className={styles.selectorButtonGroup}>
+              <button 
+                className={`${styles.selectorBtn} ${costType === 'actual' ? styles.selectorActive : ''}`}
+                onClick={() => setCostType('actual')}
+              >
+                Actual Incurred Cost
+              </button>
+              <button 
+                className={`${styles.selectorBtn} ${costType === 'committed' ? styles.selectorActive : ''}`}
+                onClick={() => setCostType('committed')}
+              >
+                Committed Cost (Planned POs)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.toolbarRight}>
+          <div className={styles.searchBox}>
+            <span className={styles.searchIcon}>🔍</span>
+            <input 
+              type="text" 
+              placeholder="Search project, client, type, or designer..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={styles.searchInput}
+            />
+          </div>
+
+          <div className={styles.quickStatPills}>
+            <span className={styles.statPill}>
+              Total: <strong>{projects.length}</strong>
+            </span>
+            <span className={styles.statPill}>
+              Filtered: <strong>{filteredProjects.length}</strong>
+            </span>
           </div>
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* High-Level Executive KPI Summary Cards */}
       <div className={styles.kpiStrip}>
         <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Portfolio Revenue</span>
+          <div className={styles.kpiTop}>
+            <span className={styles.kpiLabel}>Portfolio Revenue</span>
+            <span className={styles.kpiIcon}>💰</span>
+          </div>
           <span className={styles.kpiValue}>{formatCurrency(portfolioRevenue)}</span>
           <span className={styles.kpiSub}>Total contract values</span>
         </div>
         <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Total Cost ({costType})</span>
+          <div className={styles.kpiTop}>
+            <span className={styles.kpiLabel}>Total Cost ({costType})</span>
+            <span className={styles.kpiIcon}>📉</span>
+          </div>
           <span className={styles.kpiValue} style={{ color: 'var(--color-text-secondary)' }}>
             {formatCurrency(portfolioCost)}
           </span>
           <span className={styles.kpiSub}>Material, labor & vendor</span>
         </div>
         <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Gross Profit Margin</span>
+          <div className={styles.kpiTop}>
+            <span className={styles.kpiLabel}>Gross Profit Margin</span>
+            <span className={styles.kpiIcon}>💵</span>
+          </div>
           <span className={`${styles.kpiValue} ${portfolioMargin >= 0 ? styles.textSuccess : styles.textDanger}`}>
             {formatCurrency(portfolioMargin)}
           </span>
           <span className={styles.kpiSub}>Net margin pool</span>
         </div>
         <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Portfolio Margin %</span>
+          <div className={styles.kpiTop}>
+            <span className={styles.kpiLabel}>Portfolio Margin %</span>
+            <span className={styles.kpiIcon}>🎯</span>
+          </div>
           <span className={`${styles.kpiValue} ${getMarginClass(portfolioMarginPct)}`}>
             {portfolioMarginPct.toFixed(1)}%
           </span>
-          <span className={styles.kpiSub}>Target profit benchmark: 30%+</span>
+          <span className={styles.kpiSub}>Benchmark: 30%+ gross profit</span>
         </div>
       </div>
 
-      {/* Segment Breakdown Charts */}
+      {/* Segment Breakdown Analytics Charts */}
       <div className={styles.chartCard}>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>Segment Breakdown & Trends</h2>
+        </div>
         <div className={styles.chartHeader}>
           <div className={styles.segmentTabs}>
             <button 
               className={`${styles.segmentTabBtn} ${segmentTab === 'type' ? styles.segmentTabActive : ''}`}
               onClick={() => setSegmentTab('type')}
             >
-              By Project Type
+              🏢 By Project Type
             </button>
             <button 
               className={`${styles.segmentTabBtn} ${segmentTab === 'designer' ? styles.segmentTabActive : ''}`}
               onClick={() => setSegmentTab('designer')}
             >
-              By Designer Performance
+              🎨 By Designer Performance
             </button>
             <button 
               className={`${styles.segmentTabBtn} ${segmentTab === 'size' ? styles.segmentTabActive : ''}`}
               onClick={() => setSegmentTab('size')}
             >
-              By Project Size Tiers
+              📏 By Size Tiers
             </button>
             <button 
               className={`${styles.segmentTabBtn} ${segmentTab === 'city' ? styles.segmentTabActive : ''}`}
               onClick={() => setSegmentTab('city')}
             >
-              By City
+              📍 By City
             </button>
             <button 
               className={`${styles.segmentTabBtn} ${segmentTab === 'trend' ? styles.segmentTabActive : ''}`}
               onClick={() => setSegmentTab('trend')}
             >
-              Margin Trend
+              📈 Margin Trend
             </button>
           </div>
         </div>
@@ -265,7 +308,7 @@ export default function ProjectProfitabilityReportPage() {
                       )}
                     </div>
                     <span className={styles.periodLabel}>{s.name}</span>
-                    <span className={styles.projectCountLabel}>({s.projectCount} projects)</span>
+                    <span className={styles.projectCountLabel}>({s.projectCount} {s.projectCount === 1 ? 'project' : 'projects'})</span>
                   </div>
                 );
               })}
@@ -274,11 +317,11 @@ export default function ProjectProfitabilityReportPage() {
             {/* Legend */}
             <div className={styles.legend}>
               <div className={styles.legendItem}>
-                <span className={styles.legendColor} style={{ background: '#3b82f6' }}></span>
-                <span>Project Costs</span>
+                <span className={styles.legendColor} style={{ background: 'var(--color-accent, #3b82f6)' }}></span>
+                <span>Project Costs ({costType})</span>
               </div>
               <div className={styles.legendItem}>
-                <span className={styles.legendColor} style={{ background: '#10b981' }}></span>
+                <span className={styles.legendColor} style={{ background: 'var(--color-success, #10b981)' }}></span>
                 <span>Gross Profit Margin</span>
               </div>
             </div>
@@ -286,21 +329,12 @@ export default function ProjectProfitabilityReportPage() {
         )}
       </div>
 
-      {/* Controls */}
-      <div className={styles.controlsRow}>
-        <div className={styles.searchBox}>
-          <span className={styles.searchIcon}>🔍</span>
-          <input 
-            type="text" 
-            placeholder="Search by project, client, type, or designer..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className={styles.searchInput}
-          />
-        </div>
+      {/* Project Financial Ledger Section */}
+      <div className={styles.ledgerSectionHeader}>
+        <h2 className={styles.sectionTitle}>Project Financial Ledger</h2>
+        <span className={styles.ledgerCountBadge}>{filteredProjects.length} Projects Listed</span>
       </div>
 
-      {/* Table Ledger */}
       {filteredProjects.length === 0 ? (
         <EmptyState 
           title="No projects found" 
@@ -320,7 +354,7 @@ export default function ProjectProfitabilityReportPage() {
                   <th className={styles.th}>Gross Margin</th>
                   <th className={styles.th}>Margin %</th>
                   <th className={styles.th}>Profit Status</th>
-                  <th className={styles.th}></th>
+                  <th className={styles.th}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -332,10 +366,19 @@ export default function ProjectProfitabilityReportPage() {
                   return (
                     <tr key={row.projectId} className={styles.tr}>
                       <td className={styles.td}>
-                        <span className={styles.projectName}>{row.projectName}</span>
+                        <button 
+                          className={styles.projectNameLink}
+                          onClick={() => navigate(`/projects/${row.projectId}`)}
+                        >
+                          {row.projectName}
+                        </button>
                       </td>
-                      <td className={styles.td}>{row.projectType}</td>
-                      <td className={styles.td}>{row.designerName}</td>
+                      <td className={styles.td}>
+                        <span className={styles.typeBadge}>{row.projectType || 'Standard'}</span>
+                      </td>
+                      <td className={styles.td}>
+                        <span className={styles.designerName}>{row.designerName || 'Unassigned'}</span>
+                      </td>
                       <td className={styles.td}>{formatCurrency(row.revenue)}</td>
                       <td className={styles.td}>{formatCurrency(cost)}</td>
                       <td className={`${styles.td} ${margin >= 0 ? styles.positiveCell : styles.negativeCell}`}>
@@ -358,7 +401,7 @@ export default function ProjectProfitabilityReportPage() {
                           className={styles.viewDetailBtn}
                           onClick={() => navigate(`/projects/${row.projectId}?tab=Budget`)}
                         >
-                          Budget details →
+                          Budget Details →
                         </button>
                       </td>
                     </tr>
@@ -369,7 +412,6 @@ export default function ProjectProfitabilityReportPage() {
           </div>
         </div>
       )}
-
 
     </div>
   );

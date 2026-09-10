@@ -78,6 +78,8 @@ const DataTable = React.memo(function DataTable({
   
   const resizingRef = useRef(null)
 
+  const safeData = useMemo(() => Array.isArray(data) ? data : [], [data])
+
   const activeColumns = useMemo(() => {
     return visibleColumns 
       ? columns.filter(c => visibleColumns.includes(c.key) || visibleColumns.includes(c.label))
@@ -86,11 +88,11 @@ const DataTable = React.memo(function DataTable({
 
   const handleSelectAll = useCallback((e) => {
     if (e.target.checked) {
-      onSelectChange(new Set(data.map(row => row.id || row._id || row.user_id)))
+      onSelectChange(new Set(safeData.map(row => row.id || row._id || row.user_id)))
     } else {
       onSelectChange(new Set())
     }
-  }, [data, onSelectChange])
+  }, [safeData, onSelectChange])
 
   const handleSelectRow = useCallback((e, id) => {
     e.stopPropagation()
@@ -146,7 +148,7 @@ const DataTable = React.memo(function DataTable({
                 <th className={`${styles.th} ${styles.checkbox}`}>
                   <input 
                     type="checkbox" 
-                    checked={data.length > 0 && selectedIds.size === data.length}
+                    checked={safeData.length > 0 && selectedIds.size === safeData.length}
                     onChange={handleSelectAll}
                   />
                 </th>
@@ -188,7 +190,7 @@ const DataTable = React.memo(function DataTable({
                   ))}
                 </tr>
               ))
-            ) : data.length === 0 ? (
+            ) : safeData.length === 0 ? (
               <tr>
                 <td colSpan={activeColumns.length + (selectable ? 1 : 0) + (expandable ? 1 : 0)}>
                   <div style={{ padding: '40px 0', width: '100%', display: 'flex', justifyContent: 'center' }}>
@@ -201,7 +203,7 @@ const DataTable = React.memo(function DataTable({
                 </td>
               </tr>
             ) : (
-              data.map((row, index) => {
+              safeData.map((row, index) => {
                 const rowId = row.id || row._id || row.user_id || `row-${index}`
                 return (
                   <DataTableRow 

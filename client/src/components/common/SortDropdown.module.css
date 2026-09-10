@@ -7,29 +7,30 @@
 .trigger {
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: white;
-  border: 1px solid #e2e8f0;
+  gap: var(--space-2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 13px;
-  transition: all 0.2s;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  font-size: var(--text-sm);
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-xs);
+  color: var(--color-text);
 }
 
 .trigger:hover {
-  border-color: #cbd5e1;
-  background: #f8fafc;
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-2);
 }
 
 .label {
-  color: #64748b;
+  color: var(--color-text-secondary);
   font-weight: 500;
 }
 
 .value {
-  color: #0f172a;
+  color: var(--color-text);
   font-weight: 600;
 }
 
@@ -38,41 +39,42 @@
   top: 100%;
   right: 0;
   margin-top: 4px;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
-  min-width: 180px;
-  z-index: 50;
-  padding: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  min-width: 190px;
+  z-index: 1000;
+  padding: var(--space-1);
 }
 
 .option {
-  padding: 8px 12px;
-  font-size: 13px;
-  color: #334155;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text);
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  transition: background var(--transition-fast);
 }
 
 .option:hover {
-  background: #f1f5f9;
+  background: var(--color-surface-2);
 }
 
 .active {
-  background: #eff6ff;
-  color: #1d4ed8;
-  font-weight: 500;
+  background: var(--color-accent-light);
+  color: var(--color-accent-dark);
+  font-weight: 600;
 }
 
 .active:hover {
-  background: #eff6ff;
+  background: var(--color-accent-light);
 }
 
 .check {
-  color: #2563eb;
+  color: var(--color-accent);
   font-weight: bold;
 }

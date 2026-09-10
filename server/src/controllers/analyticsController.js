@@ -623,16 +623,16 @@ exports.getCollectionForecast = async (req, res, next) => {
   try {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
 
-    // Fetch all active projects
+    // Fetch all active projects (excluding archived/cancelled)
     const projectsQuery = `
       SELECT id, name, client_name 
       FROM projects 
-      WHERE tenant_id = $1 AND status = 'active'
+      WHERE tenant_id = $1 AND (status IS NULL OR status NOT IN ('archived', 'cancelled'))
       ORDER BY name ASC
     `;
     const projectsRes = await pool.query(projectsQuery, [tenantId]);
 
-    // Fetch all payment milestones for active projects
+    // Fetch all payment milestones for projects
     const query = `
       SELECT 
         pm.id,
@@ -652,7 +652,7 @@ exports.getCollectionForecast = async (req, res, next) => {
         END as "inflowSegment"
       FROM payment_milestones pm
       JOIN projects p ON pm.project_id = p.id
-      WHERE p.tenant_id = $1 AND p.status = 'active'
+      WHERE p.tenant_id = $1 AND (p.status IS NULL OR p.status NOT IN ('archived', 'cancelled'))
       ORDER BY pm.due_date ASC
     `;
 

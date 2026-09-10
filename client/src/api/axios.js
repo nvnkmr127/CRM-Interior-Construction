@@ -12,10 +12,18 @@ setupMockInterceptor(api);
 // REQUEST interceptor: ensure Bearer token is attached if available in localStorage
 api.interceptors.request.use(
   (config) => {
-    if (!config.headers['Authorization']) {
+    const hasAuth = config.headers?.get 
+      ? config.headers.get('Authorization') || config.headers.get('authorization')
+      : (config.headers['Authorization'] || config.headers['authorization']);
+      
+    if (!hasAuth) {
       const storedToken = localStorage.getItem('accessToken');
       if (storedToken) {
-        config.headers['Authorization'] = `Bearer ${storedToken}`;
+        if (config.headers?.set) {
+          config.headers.set('Authorization', `Bearer ${storedToken}`);
+        } else {
+          config.headers['Authorization'] = `Bearer ${storedToken}`;
+        }
       }
     }
     return config;

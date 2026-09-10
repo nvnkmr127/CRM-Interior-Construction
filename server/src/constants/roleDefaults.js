@@ -51,7 +51,7 @@ const ROLE_DEFAULTS = {
       'boq:view', 'boq:create', 'boq:edit',
       'inventory:view'
     ],
-    enabled_modules: ['dashboards', 'projects', 'tasks', 'quotations', 'boq', 'inventory']
+    enabled_modules: ['dashboards', 'projects', 'tasks', 'quotations', 'boq', 'inventory', 'warehouse', 'factory', 'analytics']
   },
   'Lead Designer': {
     name: 'Lead Designer',
@@ -65,7 +65,7 @@ const ROLE_DEFAULTS = {
       'boq:view', 'boq:create', 'boq:edit', 'boq:approve',
       'inventory:view'
     ],
-    enabled_modules: ['dashboards', 'projects', 'tasks', 'clients', 'quotations', 'boq', 'inventory']
+    enabled_modules: ['dashboards', 'projects', 'tasks', 'clients', 'quotations', 'boq', 'inventory', 'warehouse', 'factory', 'analytics']
   },
   'Junior Designer': {
     name: 'Junior Designer',

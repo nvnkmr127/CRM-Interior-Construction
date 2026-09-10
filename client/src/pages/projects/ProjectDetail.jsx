@@ -1398,6 +1398,7 @@ export default function ProjectDetail() {
 
             // 2. Financials
             { id: 'Financial Overview', icon: '💰', label: 'Financial Overview' },
+            { id: 'Budget', icon: '📊', label: 'Budget' },
             { id: 'Payments', icon: '💸', label: 'Payments' },
 
             // 3. Execution & Monitoring

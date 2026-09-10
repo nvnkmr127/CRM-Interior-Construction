@@ -266,6 +266,8 @@ export default function LeadsPage() {
       f.deletedOnly = true;
     } else if (statusFilter === 'parked') {
       f.status = 'parked';
+    } else if (statusFilter === 'converted') {
+      f.status = 'converted';
     } else if (statusFilter === 'active') {
       f.status = 'active';
     }
@@ -451,6 +453,22 @@ export default function LeadsPage() {
                 Parked Leads
               </button>
               <button
+                onClick={() => { setStatusFilter('converted'); setPage(1); }}
+                style={{
+                  padding: '8px 16px',
+                  border: 'none',
+                  borderBottom: statusFilter === 'converted' ? '2px solid var(--color-success)' : '2px solid transparent',
+                  background: 'transparent',
+                  color: statusFilter === 'converted' ? 'var(--color-success)' : 'var(--color-text-secondary)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Converted Leads
+              </button>
+              <button
                 onClick={() => { setStatusFilter('deleted'); setPage(1); }}
                 style={{
                   padding: '8px 16px',
@@ -471,7 +489,7 @@ export default function LeadsPage() {
         </>
       )}
 
-      {!selectedLeadId && view !== 'dashboard' && <LeadStatsBar stats={stats} loading={loading} />}
+      {!selectedLeadId && view !== 'dashboard' && <LeadStatsBar stats={{ ...stats, total: total !== undefined ? total : stats.total }} loading={loading} />}
 
       {!selectedLeadId && view !== 'dashboard' && (
         <LeadFilterRow

@@ -1352,23 +1352,35 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
   const outstandingBalance = payments
     .filter(p => p.status === 'invoice_raised' || p.status === 'partially_paid' || p.status === 'overdue' || Boolean(p.invoiceReference))
     .reduce((sum, p) => sum + Math.max(0, p.remainingAmount || 0), 0);
-  
+
   const today = new Date().toISOString().split('T')[0];
   const processedPayments = payments.map(p => {
     let daysOverdue = 0;
     
+    // Check if there is an active pending finance approval for this milestone
+    const isPendingApproval = Array.isArray(financeApprovals) && financeApprovals.some(a => 
+      a.status === 'pending' && (
+        (a.target_id && String(a.target_id) === String(p.id)) ||
+        (a.payload?.selectedPayment?.id && String(a.payload.selectedPayment.id) === String(p.id)) ||
+        (a.target_number && (a.target_number === p.milestone || a.target_number.toLowerCase() === (p.milestone || '').toLowerCase())) ||
+        (a.payload?.selectedPayment?.milestone && (a.payload.selectedPayment.milestone === p.milestone || a.payload.selectedPayment.milestone.toLowerCase() === (p.milestone || '').toLowerCase()))
+      )
+    );
+
+    const effectiveStatus = (isPendingApproval || p.status === 'pending_approval') ? 'pending_approval' : p.status;
+
     // Check if dependencies are met
     const dependencyMet = !p.dependency || payments.some(pm => 
       pm.status === 'paid' && (pm.milestone.toLowerCase().includes(p.dependency.toLowerCase()) || pm.id === p.dependency)
     );
 
-    if (p.status !== 'paid' && p.status !== 'cancelled' && p.dueDate && p.dueDate < today) {
+    if (effectiveStatus !== 'paid' && effectiveStatus !== 'cancelled' && effectiveStatus !== 'pending_approval' && p.dueDate && p.dueDate < today) {
       const diffTime = Math.abs(new Date(today) - new Date(p.dueDate));
       daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       const activeEscalation = escalations.find(e => e.payment_milestone_id === p.id && e.status === 'active');
-      return { ...p, displayStatus: 'overdue', isOverdue: true, daysOverdue, activeEscalation, dependencyMet };
+      return { ...p, status: effectiveStatus, displayStatus: 'overdue', isOverdue: true, daysOverdue, activeEscalation, dependencyMet };
     }
-    return { ...p, displayStatus: p.status, isOverdue: false, daysOverdue: 0, dependencyMet };
+    return { ...p, status: effectiveStatus, displayStatus: effectiveStatus, isOverdue: false, daysOverdue: 0, dependencyMet };
   });
 
   const handleMarkPaidClick = (p) => {
@@ -1391,7 +1403,7 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
       id: Date.now(), amount: 0, mode: 'Bank Transfer', date: new Date().toISOString().split('T')[0], reference: ''
     }]);
   };
-  
+
   const handleSplitChange = (id, field, value) => {
     setSplitPayments(prev => prev.map(sp => sp.id === id ? { ...sp, [field]: value } : sp));
   };
@@ -3003,10 +3015,10 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
                   {p.status === 'pending_approval' && (
                     <span style={{fontSize: '13px', color: '#0ea5e9', fontWeight: 500}}>Waiting for Finance Approval</span>
                   )}
-                  {p.status !== 'paid' && p.dependencyMet && hasPermission('Create') && (
+                  {p.status !== 'paid' && p.status !== 'pending_approval' && p.dependencyMet && hasPermission('Create') && (
                     <Button variant="outline" size="sm" onClick={async () => handleGenerateLinkClick(p)}>Generate Link</Button>
                   )}
-                  {p.status !== 'paid' && p.dependencyMet && hasPermission('Create') && hasPermission('Refund') && (
+                  {p.status !== 'paid' && p.status !== 'pending_approval' && p.dependencyMet && hasPermission('Create') && hasPermission('Refund') && (
                     <Button variant="ghost" size="sm" style={{ color: 'var(--color-text-muted)' }} onClick={async () => handleRequestWriteOff(p)}>Write-off</Button>
                   )}
                   {p.isOverdue && p.daysOverdue >= 15 && (

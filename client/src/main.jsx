@@ -28,6 +28,17 @@ window.addEventListener('error', (event) => {
   }
 });
 
+window.addEventListener('unhandledrejection', (event) => {
+  if (
+    event.reason?.message?.includes("reading 'startTime'") ||
+    event.reason?.message?.includes('reportAllChanges') ||
+    event.reason?.stack?.includes('reportAllChanges')
+  ) {
+    event.stopImmediatePropagation();
+    event.preventDefault();
+  }
+});
+
 import { PreferencesProvider } from './store/PreferencesContext.jsx';
 
 try {

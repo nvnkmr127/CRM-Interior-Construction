@@ -290,11 +290,11 @@ router.get('/me', async (req, res, next) => {
       pagePermissions = Array.isArray(p) ? {} : (p.pages || {});
     }
 
-    if (actions.length === 0 || enabledModules.length === 0) {
+    if (!row.role_permissions) {
       const roleConfig = getRoleConfig(roleName) || ROLE_DEFAULTS['Designer'];
       if (roleConfig) {
-        if (actions.length === 0) actions = roleConfig.permissions;
-        if (enabledModules.length === 0) enabledModules = roleConfig.enabled_modules;
+        if (actions.length === 0) actions = roleConfig.permissions || [];
+        if (enabledModules.length === 0) enabledModules = roleConfig.enabled_modules || [];
         if (Object.keys(dataScopes).length === 0) dataScopes = roleConfig.data_scopes || {};
         if (Object.keys(fieldPermissions).length === 0) fieldPermissions = roleConfig.field_permissions || {};
         if (Object.keys(pagePermissions).length === 0) pagePermissions = roleConfig.page_permissions || {};

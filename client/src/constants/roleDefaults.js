@@ -132,7 +132,7 @@ export const ROLE_DEFAULTS = {
       'boq:view', 'boq:create', 'boq:edit',
       'inventory:view'
     ],
-    enabled_modules: ['projects', 'tasks', 'quotations', 'boq', 'inventory'],
+    enabled_modules: ['projects', 'tasks', 'quotations', 'boq', 'inventory', 'warehouse', 'factory', 'analytics'],
     data_scopes: {
       projects: 'assigned', tasks: 'assigned', quotations: 'assigned', boq: 'assigned', inventory: 'all'
     },
@@ -141,13 +141,7 @@ export const ROLE_DEFAULTS = {
       tasks: { budget: 'read_only', priority: 'editable' },
       quotations: { discount: 'read_only', margin: 'hidden', profit: 'hidden' }
     },
-    page_permissions: {
-      projects: [
-        'Overview', 'Team & Roles', 'Site Details', 'Design Brief', 'Design Assets', 
-        'Design Reviews', 'Material Palettes', 'Quotations & Budget', 'Coordination', 
-        'Room Progress', 'Tasks', 'Documents', 'Drawing Register'
-      ]
-    },
+    page_permissions: {},
     security_policies: {
       allowed_days: [1, 2, 3, 4, 5, 6],
       allowed_login_times: { start: '08:30', end: '20:00' }
@@ -163,7 +157,7 @@ export const ROLE_DEFAULTS = {
       'boq:view', 'boq:create', 'boq:edit', 'boq:approve',
       'inventory:view'
     ],
-    enabled_modules: ['projects', 'tasks', 'clients', 'quotations', 'boq', 'inventory'],
+    enabled_modules: ['projects', 'tasks', 'clients', 'quotations', 'boq', 'inventory', 'warehouse', 'factory', 'analytics'],
     data_scopes: {
       projects: 'department', tasks: 'department', clients: 'department', quotations: 'department', boq: 'department', inventory: 'all'
     },
@@ -172,14 +166,7 @@ export const ROLE_DEFAULTS = {
       tasks: { budget: 'editable', priority: 'editable' },
       quotations: { discount: 'editable', margin: 'read_only', profit: 'read_only' }
     },
-    page_permissions: {
-      projects: [
-        'Overview', 'Team & Roles', 'Client Profile', 'Site Details', 'Design Brief', 
-        'Design Assets', 'Design Reviews', 'Material Palettes', 'Quotations & Budget', 
-        'Coordination', 'Room Progress', 'Tasks', 'Documents', 'Drawing Register', 
-        'Activity Logs'
-      ]
-    },
+    page_permissions: {},
     security_policies: {
       allowed_days: [1, 2, 3, 4, 5, 6],
       allowed_login_times: { start: '08:00', end: '21:00' }

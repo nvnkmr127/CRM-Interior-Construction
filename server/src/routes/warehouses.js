@@ -8,13 +8,13 @@ const warehouseController = require('../controllers/warehouseController');
 router.use(authenticate);
 
 // Warehouse management routes
-router.get('/', authorize('warehouse:inventory_view'), warehouseController.listWarehouses);
-router.post('/', authorize('warehouse:create'), warehouseController.createWarehouse);
+router.get('/', authorize(['warehouse:view', 'warehouse:inventory_view', 'warehouse:read']), warehouseController.listWarehouses);
+router.post('/', authorize(['warehouse:create', 'warehouse:edit']), warehouseController.createWarehouse);
 
 // Inventory list & transaction routes
-router.get('/:warehouseId/inventory', authorize('warehouse:inventory_view'), warehouseController.getInventory);
-router.get('/:warehouseId/quarantined', authorize('warehouse:inventory_view'), warehouseController.getQuarantined);
-router.get('/:warehouseId/transactions', authorize('warehouse:audit'), warehouseController.getTransactions);
+router.get('/:warehouseId/inventory', authorize(['warehouse:view', 'warehouse:inventory_view', 'warehouse:read']), warehouseController.getInventory);
+router.get('/:warehouseId/quarantined', authorize(['warehouse:view', 'warehouse:inventory_view', 'warehouse:read']), warehouseController.getQuarantined);
+router.get('/:warehouseId/transactions', authorize(['warehouse:view', 'warehouse:audit', 'warehouse:read']), warehouseController.getTransactions);
 
 // Material transaction endpoints
 router.post('/:warehouseId/receive', authorize('warehouse:receive_material'), warehouseController.receiveMaterial);

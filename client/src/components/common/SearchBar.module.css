@@ -2,23 +2,23 @@
   display: flex;
   align-items: center;
   position: relative;
-  background-color: #fff;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  padding: 0 12px;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  min-width: 300px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0 var(--space-3);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  min-width: 260px;
 }
 
 .searchContainer:focus-within {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 1px #3b82f6;
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 3px var(--color-accent-light);
 }
 
 .searchIcon {
   font-size: 14px;
-  color: #94a3b8;
-  margin-right: 8px;
+  color: var(--color-text-muted);
+  margin-right: var(--space-2);
 }
 
 .searchInput {
@@ -26,47 +26,28 @@
   border: none;
   outline: none;
   padding: 8px 0;
-  font-size: 14px;
-  color: #334155;
+  font-size: var(--text-sm);
+  color: var(--color-text);
   background: transparent;
 }
 
 .searchInput::placeholder {
-  color: #94a3b8;
+  color: var(--color-text-muted);
 }
 
 .clearBtn {
   background: none;
   border: none;
-  color: #94a3b8;
+  color: var(--color-text-muted);
   font-size: 16px;
   cursor: pointer;
   padding: 0 4px;
-  margin-right: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: color var(--transition-fast);
 }
 
 .clearBtn:hover {
-  color: #475569;
-}
-
-.shortcutBadge {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 11px;
-  color: #94a3b8;
-  pointer-events: none;
-  user-select: none;
-}
-
-.shortcutBadge kbd {
-  background-color: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  padding: 2px 4px;
-  font-family: inherit;
-  font-weight: 500;
+  color: var(--color-text);
 }

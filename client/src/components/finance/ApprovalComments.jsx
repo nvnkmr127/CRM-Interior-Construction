@@ -38,9 +38,11 @@ export default function ApprovalComments({ approvalId, currentUserRole, onUnread
   const fetchComments = async () => {
     try {
       const res = await api.get(`/financial-approvals/${approvalId}/comments`);
-      setComments(res.data.data || []);
+      const data = res.data?.data;
+      setComments(Array.isArray(data) ? data : (Array.isArray(res.data) ? res.data : []));
     } catch (e) {
       console.error(e);
+      setComments([]);
     }
   };
 
@@ -216,12 +218,31 @@ export default function ApprovalComments({ approvalId, currentUserRole, onUnread
                    if (typeof atts === 'string') try { atts = JSON.parse(atts); } catch(e){ atts = []; }
                    if (atts.length === 0) return null;
                    return (
-                     <div className={styles.attachmentsList}>
-                       {atts.map((att, i) => (
-                         <a key={i} href={att.data} download={att.name} className={styles.attachmentBadge}>
-                           📎 {att.name}
-                         </a>
-                       ))}
+                     <div className={styles.attachmentsList} style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                       {atts.map((att, i) => {
+                         const isImg = att.type?.startsWith('image/') || att.data?.startsWith('data:image/');
+                         if (isImg) {
+                           return (
+                             <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                               <img 
+                                 src={att.data} 
+                                 alt={att.name} 
+                                 style={{ maxWidth: '220px', maxHeight: '180px', borderRadius: '6px', border: '1px solid var(--border-color)', objectFit: 'cover', cursor: 'pointer' }}
+                                 onClick={async () => window.open(att.data, '_blank')}
+                                 title="Click to view full screenshot"
+                               />
+                               <a href={att.data} download={att.name} className={styles.attachmentBadge} style={{ fontSize: '11px' }}>
+                                 🖼️ {att.name}
+                               </a>
+                             </div>
+                           );
+                         }
+                         return (
+                           <a key={i} href={att.data} download={att.name} className={styles.attachmentBadge}>
+                             📎 {att.name}
+                           </a>
+                         );
+                       })}
                      </div>
                    );
                 })()}
@@ -307,12 +328,28 @@ export default function ApprovalComments({ approvalId, currentUserRole, onUnread
               <input type="checkbox" checked={isInternal} onChange={(e) => setIsInternal(e.target.checked)} />
               Internal Note
             </label>
-            <label className={styles.actionButton} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-              📎 Attach
-              <input type="file" style={{ display: 'none' }} onChange={handleFileUpload} />
+            <label className={styles.actionButton} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              🖼️ Attach Image / Screenshot
+              <input type="file" accept="image/*,.pdf,.jpg,.jpeg,.png,.webp" style={{ display: 'none' }} onChange={handleFileUpload} />
             </label>
           </div>
-          <button className={styles.submitBtn} disabled={!content.trim() && attachments.length === 0} onClick={handleSubmit}>Send</button>
+          <button 
+            className={styles.submitBtn} 
+            disabled={!content.trim() && attachments.length === 0} 
+            onClick={handleSubmit}
+            style={{
+              backgroundColor: 'var(--color-primary, #3b82f6)',
+              color: '#ffffff',
+              fontWeight: 700,
+              padding: '8px 18px',
+              borderRadius: 'var(--radius-md, 6px)',
+              cursor: (!content.trim() && attachments.length === 0) ? 'not-allowed' : 'pointer',
+              opacity: (!content.trim() && attachments.length === 0) ? 0.6 : 1,
+              transition: 'all 0.2s ease'
+            }}
+          >
+            Send Note
+          </button>
         </div>
         
         {attachments.length > 0 && (

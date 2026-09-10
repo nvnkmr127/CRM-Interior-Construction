@@ -16,7 +16,7 @@ router.get('/', async (req, res) => {
        ORDER BY transaction_type ASC, min_amount ASC`,
       [tenantId]
     );
-    success(res, 'Rules fetched successfully', result.rows);
+    success(res, result.rows);
   } catch (error) {
     logger.error(error);
     fail(res, 'SERVER_ERROR', 'Failed to fetch rules', 500);
@@ -66,7 +66,7 @@ router.post('/', async (req, res) => {
       ]
     );
 
-    success(res, 'Rule created successfully', result.rows[0], 201);
+    success(res, result.rows[0], {}, 201);
   } catch (error) {
     logger.error(error);
     fail(res, 'SERVER_ERROR', 'Failed to create rule', 500);
@@ -131,7 +131,7 @@ router.put('/:id', async (req, res) => {
       return fail(res, 'NOT_FOUND', 'Rule not found', 404);
     }
 
-    success(res, 'Rule updated successfully', result.rows[0]);
+    success(res, result.rows[0]);
   } catch (error) {
     logger.error(error);
     fail(res, 'SERVER_ERROR', 'Failed to update rule', 500);
@@ -152,7 +152,7 @@ router.delete('/:id', async (req, res) => {
       return fail(res, 'NOT_FOUND', 'Rule not found', 404);
     }
 
-    success(res, 'Rule deleted successfully');
+    success(res, { id });
   } catch (error) {
     logger.error(error);
     fail(res, 'SERVER_ERROR', 'Failed to delete rule', 500);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import styles from './SearchBar.module.css';
 
 export default function SearchBar({ value, onChange, placeholder = "Search..." }) {
@@ -20,18 +20,6 @@ export default function SearchBar({ value, onChange, placeholder = "Search..." }
       clearTimeout(handler);
     };
   }, [localValue, onChange]);
-
-  // Ctrl + K shortcut
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        inputRef.current?.focus();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   const handleClear = () => {
     setLocalValue('');
@@ -55,9 +43,6 @@ export default function SearchBar({ value, onChange, placeholder = "Search..." }
           ✕
         </button>
       )}
-      <div className={styles.shortcutBadge}>
-        <kbd>Ctrl</kbd> + <kbd>K</kbd>
-      </div>
     </div>
   );
 }

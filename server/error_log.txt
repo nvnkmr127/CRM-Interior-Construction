@@ -793,4 +793,126 @@
     at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\snags.js:78:23\n\n2026-09-08T08:02:10.177Z\nReferenceError: assigneeId is not defined
     at updateSnagStatus (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\postSale\snagService.js:158:3)
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\snags.js:78:23\n\n
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\snags.js:78:23\n\n2026-09-09T05:11:28.504Z\nerror: operator does not exist: character varying = uuid
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\loginHistory.js:67:24\n\n2026-09-09T05:11:48.409Z\nerror: operator does not exist: character varying = uuid
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\loginHistory.js:67:24\n\n2026-09-10T05:50:16.196Z\nTypeError: Cannot destructure property 'type' of 'req.body' as it is undefined.
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:906:13
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15
+    at param (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:600:14)
+    at paramCallback (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:646:21)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:29:3\n\n2026-09-10T05:50:17.436Z\nerror: column u.first_name does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:1015:22\n\n2026-09-10T05:50:23.823Z\nerror: column u.first_name does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:735:22\n\n2026-09-10T05:50:55.340Z\nTypeError: Cannot destructure property 'type' of 'req.body' as it is undefined.
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:906:13
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15
+    at param (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:600:14)
+    at paramCallback (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:646:21)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:29:3\n\n2026-09-10T05:56:00.960Z\nTypeError: Cannot destructure property 'type' of 'req.body' as it is undefined.
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:906:13
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15
+    at param (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:600:14)
+    at paramCallback (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:646:21)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:29:3\n\n2026-09-10T05:56:01.185Z\nerror: column u.first_name does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:1015:22\n\n2026-09-10T05:56:05.184Z\nerror: column u.first_name does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:735:22\n\n2026-09-10T05:56:23.972Z\nTypeError: Cannot destructure property 'type' of 'req.body' as it is undefined.
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:906:13
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15
+    at param (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:600:14)
+    at paramCallback (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:646:21)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:29:3\n\n2026-09-10T05:56:24.168Z\nerror: column u.first_name does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:1015:22\n\n2026-09-10T06:03:26.271Z\nerror: column u.first_name does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:735:22\n\n2026-09-10T06:03:34.029Z\nerror: column u.first_name does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:735:22\n\n2026-09-10T06:04:54.679Z\nTypeError: Cannot destructure property 'type' of 'req.body' as it is undefined.
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:923:13
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15
+    at param (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:600:14)
+    at paramCallback (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:646:21)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:29:3\n\n2026-09-10T06:07:11.938Z\nTypeError: Cannot destructure property 'type' of 'req.body' as it is undefined.
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:923:13
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15
+    at param (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:600:14)
+    at paramCallback (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:646:21)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:29:3\n\n2026-09-10T06:08:29.728Z\nTypeError: Cannot destructure property 'type' of 'req.body' as it is undefined.
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:923:13
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15
+    at param (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:600:14)
+    at paramCallback (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:646:21)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:29:3\n\n2026-09-10T10:46:59.228Z\nerror: column "target_number" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:103:29\n\n2026-09-10T11:15:54.172Z\nMulterError: Unexpected field
+    at wrappedFileFilter (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\multer\index.js:40:19)
+    at Multipart.<anonymous> (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\multer\lib\make-middleware.js:109:7)
+    at Multipart.emit (node:events:508:28)
+    at HeaderParser.cb (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\busboy\lib\types\multipart.js:358:14)
+    at HeaderParser.push (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\busboy\lib\types\multipart.js:162:20)
+    at SBMH.ssCb [as _cb] (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\busboy\lib\types\multipart.js:394:37)
+    at feed (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\streamsearch\lib\sbmh.js:248:10)
+    at SBMH.push (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\streamsearch\lib\sbmh.js:104:16)
+    at Multipart._write (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\busboy\lib\types\multipart.js:567:19)
+    at writeOrBuffer (node:internal/streams/writable:570:12)\n\n2026-09-10T12:46:36.596Z\nerror: COALESCE types date and text cannot be matched
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exports.getCollectionForecast (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\analyticsController.js:661:22)\n\n2026-09-10T12:46:51.275Z\nerror: COALESCE types date and text cannot be matched
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exports.getCollectionForecast (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\analyticsController.js:661:22)\n\n2026-09-10T12:46:58.240Z\nerror: COALESCE types date and text cannot be matched
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exports.getCollectionForecast (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\analyticsController.js:661:22)\n\n2026-09-10T12:47:19.272Z\nerror: COALESCE types date and text cannot be matched
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async exports.getCollectionForecast (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\analyticsController.js:661:22)\n\n

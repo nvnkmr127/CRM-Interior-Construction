@@ -182,9 +182,12 @@ export default function BudgetTab({ projectId }) {
     <div className={styles.container}>
       <div className={styles.dashboardHeader}>
         <div>
-          <h2 className={styles.dashboardTitle}>Project Budget Dashboard</h2>
+          <div className={styles.titleGroup}>
+            <h2 className={styles.dashboardTitle}>Project Budget & Expense Management</h2>
+            <span className={styles.liveBadge}>Real-Time Tracking</span>
+          </div>
           <p style={{ margin: '4px 0 0 0', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
-            Track and monitor budgeted, committed, and actual project expenditures.
+            Track allocated budget targets, committed purchase orders, actual incurred site costs, and variance.
           </p>
         </div>
       </div>
@@ -192,22 +195,38 @@ export default function BudgetTab({ projectId }) {
       {/* SUMMARY KPI CARDS */}
       <div className={styles.summaryGrid}>
         <div className={styles.statCard}>
-          <span className={styles.statLabel}>Total Budgeted</span>
+          <div className={styles.statCardHeader}>
+            <span className={styles.statLabel}>Total Budgeted</span>
+            <span className={styles.statIcon}>💰</span>
+          </div>
           <span className={styles.statValue}>{formatCurrency(totals.budgeted)}</span>
+          <span className={styles.statSub}>Target cost ceiling</span>
         </div>
         <div className={styles.statCard}>
-          <span className={styles.statLabel}>Total Committed</span>
-          <span className={styles.statValue}>{formatCurrency(totals.committed)}</span>
+          <div className={styles.statCardHeader}>
+            <span className={styles.statLabel}>Total Committed</span>
+            <span className={styles.statIcon}>📉</span>
+          </div>
+          <span className={styles.statValue} style={{ color: 'var(--color-accent, #6366f1)' }}>{formatCurrency(totals.committed)}</span>
+          <span className={styles.statSub}>Planned POs & Contracts</span>
         </div>
         <div className={styles.statCard}>
-          <span className={styles.statLabel}>Total Actual Cost</span>
-          <span className={styles.statValue}>{formatCurrency(totals.actual)}</span>
+          <div className={styles.statCardHeader}>
+            <span className={styles.statLabel}>Total Actual Cost</span>
+            <span className={styles.statIcon}>💵</span>
+          </div>
+          <span className={styles.statValue} style={{ color: 'var(--color-success, #10b981)' }}>{formatCurrency(totals.actual)}</span>
+          <span className={styles.statSub}>Paid invoices & site labor</span>
         </div>
         <div className={styles.statCard}>
-          <span className={styles.statLabel}>Net Budget Variance</span>
+          <div className={styles.statCardHeader}>
+            <span className={styles.statLabel}>Net Budget Variance</span>
+            <span className={styles.statIcon}>⚖️</span>
+          </div>
           <span className={`${styles.statValue} ${totals.variance >= 0 ? styles.statVariancePositive : styles.statVarianceNegative}`}>
             {formatCurrency(totals.variance)}
           </span>
+          <span className={styles.statSub}>{totals.variance >= 0 ? 'Under budget limit' : 'Over budget limit'}</span>
         </div>
       </div>
 
@@ -216,22 +235,30 @@ export default function BudgetTab({ projectId }) {
         {/* LEFT COLUMN: Visual Category Progress Bars */}
         <div className={styles.cardSection}>
           <div className={styles.cardHeader}>
-            <span>Category Budget Utilization</span>
+            <span>📊 Category Budget Utilization</span>
+            <span className={styles.cardHeaderSub}>{summary.categories.length} Categories</span>
           </div>
           <div className={styles.cardBody}>
             <div className={styles.categoryList}>
               {summary.categories.map((c) => {
                 const { committedWidth, actualWidth, isOver } = getProgressWidths(c.budgeted, c.committed, c.actual);
+                const usagePct = c.budgeted > 0 
+                  ? Math.round(((c.committed + c.actual) / c.budgeted) * 100) 
+                  : c.committed + c.actual > 0 ? 100 : 0;
+
                 return (
                   <div key={c.category} className={styles.categoryItem}>
                     <div className={styles.categoryMeta}>
-                      <span className={styles.categoryName}>{c.category}</span>
+                      <span className={styles.categoryName}>
+                        <span className={styles.categoryIconTag}>
+                          {c.category === 'material' ? '🧱' : c.category === 'labour' ? '👷' : c.category === 'vendor' ? '🤝' : c.category === 'civil' ? '🏗️' : c.category === 'electrical' ? '⚡' : c.category === 'plumbing' ? '🚰' : '📂'}
+                        </span>
+                        {c.category}
+                      </span>
                       <span className={styles.categoryStats}>
                         Usage:{' '}
-                        <strong>
-                          {c.budgeted > 0 
-                            ? `${Math.round(((c.committed + c.actual) / c.budgeted) * 100)}%` 
-                            : c.committed + c.actual > 0 ? '100%+' : '0%'}
+                        <strong className={usagePct > 100 ? styles.textOver : styles.textNormal}>
+                          {usagePct}%
                         </strong>
                       </span>
                     </div>
@@ -281,7 +308,7 @@ export default function BudgetTab({ projectId }) {
           {/* Allocation Setup */}
           <div className={styles.cardSection}>
             <div className={styles.cardHeader}>
-              <span>Set Budget Allocation</span>
+              <span>⚙️ Set Budget Allocation</span>
             </div>
             <div className={styles.cardBody}>
               <form onSubmit={handleUpdateAllocation} className={styles.formGrid}>
@@ -318,7 +345,7 @@ export default function BudgetTab({ projectId }) {
                   disabled={submittingAlloc}
                   className={styles.btnSubmit}
                 >
-                  {submittingAlloc ? 'Updating...' : 'Set Budget'}
+                  {submittingAlloc ? 'Updating...' : 'Set Budget Target'}
                 </Button>
               </form>
             </div>
@@ -327,7 +354,7 @@ export default function BudgetTab({ projectId }) {
           {/* Expense Logger */}
           <div className={styles.cardSection}>
             <div className={styles.cardHeader}>
-              <span>Log Budget Transaction</span>
+              <span>📝 Log Budget Transaction</span>
             </div>
             <div className={styles.cardBody}>
               <form onSubmit={handleAddExpense} className={styles.formGrid}>
@@ -365,7 +392,7 @@ export default function BudgetTab({ projectId }) {
                     <input
                       type="number"
                       className={styles.inputField}
-                      placeholder="Amount"
+                      placeholder="Amount in ₹"
                       value={expAmount}
                       onChange={(e) => setExpAmount(e.target.value)}
                     />
@@ -407,11 +434,12 @@ export default function BudgetTab({ projectId }) {
       {/* COST TRANSACTION LOG HISTORY */}
       <div className={styles.cardSection}>
         <div className={styles.cardHeader}>
-          <span>Transaction Cost Log History</span>
+          <span>📋 Transaction Cost Log History</span>
+          <span className={styles.cardHeaderSub}>{expenses.length} Logged Items</span>
         </div>
         <div className={styles.cardBody} style={{ padding: 0 }}>
           {expenses.length === 0 ? (
-            <div className={styles.emptyState}>No cost transactions logged for this project yet.</div>
+            <div className={styles.emptyState}>No cost transactions logged for this project yet. Use the form above to record expenses.</div>
           ) : (
             <div className={styles.tableContainer}>
               <table className={styles.table}>
@@ -428,7 +456,7 @@ export default function BudgetTab({ projectId }) {
                 <tbody>
                   {expenses.map((exp) => (
                     <tr key={exp.id}>
-                      <td>{new Date(exp.incurred_date).toLocaleDateString('en-IN')}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>{new Date(exp.incurred_date).toLocaleDateString('en-IN')}</td>
                       <td>
                         <span className={styles.badgeCategory}>{exp.category}</span>
                       </td>
@@ -437,14 +465,14 @@ export default function BudgetTab({ projectId }) {
                           {exp.type === 'committed' ? 'Committed' : 'Actual'}
                         </span>
                       </td>
-                      <td>{exp.description}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(exp.amount)}</td>
+                      <td style={{ fontWeight: 500 }}>{exp.description}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 700 }}>{formatCurrency(exp.amount)}</td>
                       <td style={{ textAlign: 'center' }}>
                         <button 
                           className={styles.actionBtnDelete}
                           onClick={async () => handleDeleteExpense(exp.id)}
                         >
-                          Delete
+                          🗑️ Delete
                         </button>
                       </td>
                     </tr>

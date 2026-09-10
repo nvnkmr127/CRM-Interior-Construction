@@ -12,40 +12,44 @@ export default function FinancialApprovalDashboard() {
     fetchStats();
   }, []);
 
+  const defaultStats = {
+    pendingApprovals: 0,
+    pendingAmount: 0,
+    approvedToday: 0,
+    approvedYesterday: 0,
+    rejectedToday: 0,
+    rejectedYesterday: 0,
+    totalApprovedAmount: 0,
+    totalRejectedAmount: 0,
+    averageApprovalTime: 0,
+    overdueApprovals: 0
+  };
+
   const fetchStats = async () => {
     try {
       setLoading(true);
+      setError(null);
       const res = await api.get('/financial-approvals/stats');
       const fetchedStats = res.data?.data;
       if (!fetchedStats || Object.keys(fetchedStats).length === 0) {
-        setStats({
-          pendingApprovals: 12,
-          pendingAmount: 1250000,
-          approvedToday: 5,
-          approvedYesterday: 3,
-          rejectedToday: 1,
-          rejectedYesterday: 0,
-          totalApprovedAmount: 8500000,
-          totalRejectedAmount: 150000,
-          averageApprovalTime: 12.5,
-          overdueApprovals: 2
-        });
+        setStats(defaultStats);
       } else {
-        setStats(fetchedStats);
+        setStats({
+          pendingApprovals: fetchedStats.pendingApprovals !== undefined ? fetchedStats.pendingApprovals : 0,
+          pendingAmount: fetchedStats.pendingAmount !== undefined ? fetchedStats.pendingAmount : 0,
+          approvedToday: fetchedStats.approvedToday !== undefined ? fetchedStats.approvedToday : 0,
+          approvedYesterday: fetchedStats.approvedYesterday !== undefined ? fetchedStats.approvedYesterday : 0,
+          rejectedToday: fetchedStats.rejectedToday !== undefined ? fetchedStats.rejectedToday : 0,
+          rejectedYesterday: fetchedStats.rejectedYesterday !== undefined ? fetchedStats.rejectedYesterday : 0,
+          totalApprovedAmount: fetchedStats.totalApprovedAmount !== undefined ? fetchedStats.totalApprovedAmount : 0,
+          totalRejectedAmount: fetchedStats.totalRejectedAmount !== undefined ? fetchedStats.totalRejectedAmount : 0,
+          averageApprovalTime: fetchedStats.averageApprovalTime !== undefined ? fetchedStats.averageApprovalTime : 0,
+          overdueApprovals: fetchedStats.overdueApprovals !== undefined ? fetchedStats.overdueApprovals : 0
+        });
       }
     } catch (err) {
-      setStats({
-        pendingApprovals: 12,
-        pendingAmount: 1250000,
-        approvedToday: 5,
-        approvedYesterday: 3,
-        rejectedToday: 1,
-        rejectedYesterday: 0,
-        totalApprovedAmount: 8500000,
-        totalRejectedAmount: 150000,
-        averageApprovalTime: 12.5,
-        overdueApprovals: 2
-      });
+      console.error('Failed to fetch approval stats:', err);
+      setStats(defaultStats);
     } finally {
       setLoading(false);
     }

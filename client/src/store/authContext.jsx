@@ -203,7 +203,7 @@ export function AuthProvider({ children }) {
           try {
             setUser(JSON.parse(e.newValue));
           } catch (err) {}
-        } else {
+        } else if (!localStorage.getItem('isAuthenticated')) {
           setUser(null);
         }
       }
@@ -227,44 +227,42 @@ export function AuthProvider({ children }) {
           setUser(res.data.data.user);
         }
       }).catch(err => {
-        if (err.response?.status === 401) {
-          localStorage.removeItem('isAuthenticated');
-          setUser(null);
-        }
+        // Do not force log out on background config sync failures; let axios interceptor manage unrecoverable auth errors
       });
     };
 
     const handleRoleUpdated = (e) => {
       const updatedRole = e.detail;
-      if (updatedRole) {
-        setUser(prev => {
-          if (!prev) return prev;
-          const userRoleId = prev.role?.id;
-          const userRoleName = prev.role?.name?.toLowerCase();
-          const targetRoleId = updatedRole.id;
-          const targetRoleName = updatedRole.name?.toLowerCase();
+      if (!updatedRole || (!updatedRole.permissions && !updatedRole.enabled_modules && !updatedRole.id && !updatedRole.name)) return;
 
-          if (userRoleId === targetRoleId || userRoleName === targetRoleName) {
-            const rawPerms = updatedRole.permissions;
-            const newPerms = Array.isArray(rawPerms) ? rawPerms : (rawPerms?.actions || []);
-            const newMods = Array.isArray(updatedRole.enabled_modules) ? updatedRole.enabled_modules : (rawPerms?.modules || []);
-            return {
-              ...prev,
-              role: {
-                ...prev.role,
-                name: updatedRole.name || prev.role.name,
-                permissions: newPerms,
-                enabled_modules: newMods,
-                data_scopes: updatedRole.data_scopes || prev.role.data_scopes,
-                field_permissions: updatedRole.field_permissions || prev.role.field_permissions,
-                page_permissions: updatedRole.page_permissions || prev.role.page_permissions
-              }
-            };
-          }
-          return prev;
-        });
-      }
-      handleConfigUpdate();
+      setUser(prev => {
+        if (!prev || !prev.role) return prev;
+        const userRoleId = String(prev.role?.id || '').toLowerCase();
+        const userRoleName = String(prev.role?.name || '').toLowerCase();
+        const targetRoleId = String(updatedRole.id || '').toLowerCase();
+        const targetRoleName = String(updatedRole.name || '').toLowerCase();
+
+        const isMatch = (targetRoleId && userRoleId === targetRoleId) || (targetRoleName && userRoleName === targetRoleName);
+        
+        if (isMatch) {
+          const rawPerms = updatedRole.permissions;
+          const newPerms = Array.isArray(rawPerms) ? rawPerms : (rawPerms?.actions || []);
+          const newMods = Array.isArray(updatedRole.enabled_modules) ? updatedRole.enabled_modules : (rawPerms?.modules || []);
+          return {
+            ...prev,
+            role: {
+              ...prev.role,
+              name: updatedRole.name || prev.role.name,
+              permissions: newPerms,
+              enabled_modules: newMods,
+              data_scopes: updatedRole.data_scopes || prev.role.data_scopes,
+              field_permissions: updatedRole.field_permissions || prev.role.field_permissions,
+              page_permissions: updatedRole.page_permissions || prev.role.page_permissions
+            }
+          };
+        }
+        return prev;
+      });
     };
 
     let channel = null;

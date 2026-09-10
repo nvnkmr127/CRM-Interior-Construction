@@ -172,14 +172,37 @@ export default function UsersManager() {
       loadMetadataAndUsers();
     };
 
+    let channel = null;
+    try {
+      channel = new BroadcastChannel('crm_admin_sync');
+      channel.onmessage = (msg) => {
+        if (msg.data?.type === 'role_updated' || msg.data?.type === 'user_updated') {
+          loadMetadataAndUsers();
+        }
+      };
+    } catch (e) {}
+
+    const handleStorageChange = (e) => {
+      if (e.key === 'last_role_update') {
+        loadMetadataAndUsers();
+      }
+    };
+
     window.addEventListener('app:tenant-updated', handleTenantChange);
     window.addEventListener('app:auth-change', handleTenantChange);
     window.addEventListener('app:sidebar-config-updated', handleTenantChange);
+    window.addEventListener('app:role-updated', handleTenantChange);
+    window.addEventListener('storage', handleStorageChange);
 
     return () => {
       window.removeEventListener('app:tenant-updated', handleTenantChange);
       window.removeEventListener('app:auth-change', handleTenantChange);
       window.removeEventListener('app:sidebar-config-updated', handleTenantChange);
+      window.removeEventListener('app:role-updated', handleTenantChange);
+      window.removeEventListener('storage', handleStorageChange);
+      if (channel) {
+        try { channel.close(); } catch (e) {}
+      }
     };
   }, [])
 
@@ -224,39 +247,10 @@ export default function UsersManager() {
         role: roleChangeTarget.newRole
       } : u))
 
-      // Sync current user session immediately if updating the logged-in user
-      if (currentUser && (updatedUser.id === currentUser.id || updatedUser.email === currentUser.email)) {
-        const mockDatabase = JSON.parse(localStorage.getItem('mockDatabase_v4') || '{}');
-        const rolesList = mockDatabase.roles || [];
-        const r = rolesList.find(role => role.id === roleChangeTarget.newRole || role.name === newRoleName);
-        
-        const roleKey = Object.keys(ROLE_DEFAULTS).find(
-          key => key.toLowerCase() === (newRoleName || '').toLowerCase() || 
-                 key.toLowerCase() === (roleChangeTarget.newRole || '').toLowerCase()
-        );
-        const defaults = roleKey ? ROLE_DEFAULTS[roleKey] : null;
-        
-        let permissions = defaults?.permissions || [];
-        let enabled_modules = defaults?.enabled_modules || ['projects', 'tasks', 'leads', 'dashboards'];
-        
-        if (r) {
-          permissions = r.permissions || [];
-          enabled_modules = r.enabled_modules || [];
-        }
-        
-        const updatedSessionUser = {
-          ...currentUser,
-          role: {
-            id: roleChangeTarget.newRole,
-            name: newRoleName,
-            permissions,
-            enabled_modules
-          }
-        };
-        localStorage.setItem('mockSession', JSON.stringify(updatedSessionUser));
-        window.dispatchEvent(new StorageEvent('storage', { key: 'mockSession', newValue: JSON.stringify(updatedSessionUser) }));
-      }
-
+      // Broadcast role update so navigation and active user sessions update safely
+      window.dispatchEvent(new CustomEvent('app:role-updated', { detail: updatedUser }));
+      window.dispatchEvent(new CustomEvent('app:auth-change'));
+      
       toast.success(`${roleChangeTarget.user.name}'s role updated`)
     } catch (err) {
       toast.error('Failed to update role')

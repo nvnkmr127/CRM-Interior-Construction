@@ -27,8 +27,6 @@ import AssignmentModal from '../../components/finance/AssignmentModal';
 import { useConfirm } from '../../store/confirmContext';
 
 function SLATracker({ approval }) {
-  const { confirm } = useConfirm();
-
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -42,53 +40,37 @@ function SLATracker({ approval }) {
   const targetDate = new Date(approval.target_resolution_date || new Date(new Date(approval.created_at).getTime() + 72 * 60 * 60 * 1000));
   const diffMs = targetDate.getTime() - now.getTime();
   const diffHours = diffMs / (1000 * 60 * 60);
-  
   const isOverdue = diffHours < 0;
   
   let color = 'var(--color-success)'; 
-  let bgColor = 'rgba(16, 185, 129, 0.1)';
+  let bgColor = 'var(--color-success-bg)';
   let level = 0;
   
   const hoursElapsed = (now.getTime() - new Date(approval.created_at).getTime()) / (1000 * 60 * 60);
-  if (hoursElapsed >= 72) { color = 'var(--color-danger)'; bgColor = 'rgba(239, 68, 68, 0.1)'; level = 3; } 
-  else if (hoursElapsed >= 48) { color = '#ea580c'; bgColor = 'rgba(234, 88, 12, 0.1)'; level = 2; } 
-  else if (hoursElapsed >= 24) { color = '#d97706'; bgColor = 'rgba(217, 119, 6, 0.1)'; level = 1; } 
+  if (hoursElapsed >= 72) { color = 'var(--color-danger)'; bgColor = 'var(--color-danger-bg)'; level = 3; } 
+  else if (hoursElapsed >= 48) { color = 'var(--color-danger)'; bgColor = 'var(--color-danger-bg)'; level = 2; } 
+  else if (hoursElapsed >= 24) { color = 'var(--color-warning)'; bgColor = 'var(--color-warning-bg)'; level = 1; } 
 
   const absHours = Math.floor(Math.abs(diffHours));
   const absMins = Math.floor((Math.abs(diffMs) % (1000 * 60 * 60)) / (1000 * 60));
   const timeString = `${absHours}h ${absMins}m`;
 
   return (
-    <div style={{ margin: 'var(--space-3) 0', padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)', border: `1px solid ${color}40`, backgroundColor: bgColor }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
-        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>SLA Tracking</span>
-        {level > 0 && (
-          <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '4px 8px', borderRadius: 'var(--radius-full)', backgroundColor: color, color: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-            Escalation L${level}
-          </span>
-        )}
-      </div>
-      
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)', fontSize: '0.8rem' }}>
-        <div>
-          <div style={{ color: 'var(--color-text-muted)', fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em', marginBottom: '2px' }}>Created Time</div>
-          <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{new Date(approval.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</div>
-        </div>
-        <div>
-          <div style={{ color: 'var(--color-text-muted)', fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em', marginBottom: '2px' }}>Target Resolution</div>
-          <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{targetDate.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</div>
-        </div>
-      </div>
-      
-      <div style={{ marginTop: 'var(--space-3)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: 700, color }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-        {isOverdue ? (
-          <span>Overdue by {timeString}</span>
-        ) : (
-          <span>{timeString} remaining</span>
-        )}
-      </div>
-    </div>
+    <span style={{ 
+      display: 'inline-flex', 
+      alignItems: 'center', 
+      gap: '4px', 
+      padding: '4px 8px', 
+      borderRadius: 'var(--radius-full)', 
+      backgroundColor: bgColor, 
+      color: color, 
+      fontSize: 'var(--text-xs)', 
+      fontWeight: 700 
+    }}>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+      {isOverdue ? `Overdue: ${timeString}` : `SLA: ${timeString}`}
+      {level > 0 && <span style={{ marginLeft: '2px', opacity: 0.85 }}>(L{level})</span>}
+    </span>
   );
 }
 
@@ -99,11 +81,11 @@ function PriorityBadge({ approval, onUpdate }) {
   const [isOpen, setIsOpen] = useState(false);
   const { priority } = approval;
   
-  let color = '#6b7280';
-  let bg = 'rgba(107, 114, 128, 0.1)';
-  if (priority === 'medium') { color = '#3b82f6'; bg = 'rgba(59, 130, 246, 0.1)'; }
-  else if (priority === 'high') { color = '#f97316'; bg = 'rgba(249, 115, 22, 0.1)'; }
-  else if (priority === 'critical') { color = '#dc2626'; bg = 'rgba(220, 38, 38, 0.1)'; }
+  let color = 'var(--color-text-muted)';
+  let bg = 'var(--color-surface-2)';
+  if (priority === 'medium') { color = 'var(--color-info)'; bg = 'var(--color-info-bg)'; }
+  else if (priority === 'high') { color = 'var(--color-warning)'; bg = 'var(--color-warning-bg)'; }
+  else if (priority === 'critical') { color = 'var(--color-danger)'; bg = 'var(--color-danger-bg)'; }
 
   const handleUpdate = (newP) => {
     setIsOpen(false);
@@ -310,6 +292,25 @@ export default function FinancialApprovalsPage() {
     }
   };
 
+  const handleUnassign = async (app) => {
+    if (!await confirm('Are you sure you want to remove the assigned team member from this approval?')) return;
+    setSubmitting(true);
+    try {
+      await api.post(`/financial-approvals/${app.id}/assign`, {
+        assigned_to: null,
+        backup_approver: null,
+        assignment_notes: null
+      });
+      toast.success('Assignment removed successfully.');
+      fetchPendingApprovals();
+      fetchHistoryApprovals();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to remove assignment.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleReopen = async (app) => {
     if (!await confirm('Are you sure you want to reopen this rejected transaction?')) return;
     setSubmitting(true);
@@ -419,30 +420,6 @@ export default function FinancialApprovalsPage() {
           <p className={styles.subtitle}>Review pending transactions exceeding configured policy thresholds.</p>
         </div>
         <div className={styles.filterContainer}>
-          {(user?.role === 'superadmin' || user?.role?.name?.toLowerCase() === 'superadmin' || user?.role?.name?.toLowerCase() === 'super admin' || (user?.role?.permissions && user.role.permissions.includes('*'))) && (
-            <Link to="/settings/approval-matrix" className={styles.primaryBtn}>
-              Manage Matrix
-            </Link>
-          )}
-          <SortDropdown 
-              options={[
-                
-              { value: 'newest', label: 'Newest First' },
-              { value: 'oldest', label: 'Oldest First' },
-              { value: 'amount_desc', label: 'Highest Amount' },
-              { value: 'amount_asc', label: 'Lowest Amount' },
-              { value: 'project_name', label: 'Project Name' },
-              { value: 'customer_name', label: 'Customer Name' },
-              { value: 'priority', label: 'Priority' },
-              { value: 'approval_date', label: 'Approval Date' },
-              { value: 'requested_date', label: 'Requested Date' }
-            ,
-                { value: 'priority_desc', label: 'Priority (High to Low)' },
-                { value: 'priority_asc', label: 'Priority (Low to High)' }
-              ]}
-            value={sortOption}
-            onChange={setSortOption}
-          />
           <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search approvals..." />
           <select 
             value={filterType} 
@@ -458,6 +435,23 @@ export default function FinancialApprovalsPage() {
             <option value="refund">Refund</option>
             <option value="change_order">Change Order</option>
           </select>
+          <SortDropdown 
+            options={[
+              { value: 'newest', label: 'Newest First' },
+              { value: 'oldest', label: 'Oldest First' },
+              { value: 'amount_desc', label: 'Highest Amount' },
+              { value: 'amount_asc', label: 'Lowest Amount' },
+              { value: 'project_name', label: 'Project Name' },
+              { value: 'customer_name', label: 'Customer Name' },
+              { value: 'priority', label: 'Priority' },
+              { value: 'approval_date', label: 'Approval Date' },
+              { value: 'requested_date', label: 'Requested Date' },
+              { value: 'priority_desc', label: 'Priority (High to Low)' },
+              { value: 'priority_asc', label: 'Priority (Low to High)' }
+            ]}
+            value={sortOption}
+            onChange={setSortOption}
+          />
           <button 
             className={styles.secondaryBtn} 
             onClick={async () => setIsAdvancedFiltersOpen(true)}
@@ -465,6 +459,11 @@ export default function FinancialApprovalsPage() {
           >
             <span>⚡</span> Filters
           </button>
+          {(user?.role === 'superadmin' || user?.role?.name?.toLowerCase() === 'superadmin' || user?.role?.name?.toLowerCase() === 'super admin' || (user?.role?.permissions && user.role.permissions.includes('*'))) && (
+            <Link to="/settings/approval-matrix" className={styles.primaryBtn}>
+              Manage Matrix
+            </Link>
+          )}
         </div>
       </div>
 
@@ -509,9 +508,9 @@ export default function FinancialApprovalsPage() {
           <>
             {selectedIds.size > 0 && (
               <BulkActionBar 
-                selectedIds={Array.from(selectedIds)} 
-                onSuccess={refreshAllData} 
-                onClear={() => setSelectedIds(new Set())}
+                selectedIds={selectedIds} 
+                refreshData={refreshAllData} 
+                clearSelection={() => setSelectedIds(new Set())}
               />
             )}
             <div className={styles.grid}>
@@ -534,111 +533,104 @@ export default function FinancialApprovalsPage() {
                   
                   <div className={styles.cardBody}>
                     {app.assigned_to_name && (
-                      <div style={{ background: 'var(--bg-secondary)', padding: '8px', borderRadius: '4px', marginBottom: '12px', fontSize: '0.8rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                          <span><strong>Assigned to:</strong> {app.assigned_to_name} {app.backup_approver_name && <span>(Backup: {app.backup_approver_name})</span>}</span>
-                          {app.assigned_by_name && <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>Assigned by {app.assigned_by_name} on {app.assigned_date ? new Date(app.assigned_date).toLocaleDateString() : ''}</span>}
+                      <div style={{ background: 'var(--color-surface-2)', padding: 'var(--space-3)', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-3)', fontSize: 'var(--text-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', flexWrap: 'wrap', gap: '4px' }}>
+                            <span><strong>Assigned to:</strong> {app.assigned_to_name} {app.backup_approver_name && <span>(Backup: {app.backup_approver_name})</span>}</span>
+                            {app.assigned_by_name && <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-xs)' }}>Assigned by {app.assigned_by_name} on {app.assigned_date ? new Date(app.assigned_date).toLocaleDateString() : ''}</span>}
+                          </div>
+                          {app.assignment_notes && <div style={{ fontStyle: 'italic', color: 'var(--color-text-secondary)' }}>"{app.assignment_notes}"</div>}
                         </div>
-                        {app.assignment_notes && <div style={{ fontStyle: 'italic', color: 'var(--text-secondary)' }}>"{app.assignment_notes}"</div>}
+                        {(user?.role === 'superadmin' || user?.role?.name?.toLowerCase() === 'superadmin' || user?.role?.name?.toLowerCase() === 'super admin' || user?.role?.permissions?.includes('admin')) && (
+                          <button
+                            type="button"
+                            onClick={() => handleUnassign(app)}
+                            title="Remove Assignment"
+                            disabled={submitting}
+                            style={{
+                              background: 'rgba(239, 68, 68, 0.1)',
+                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                              color: '#dc2626',
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              lineHeight: 1.2,
+                              fontWeight: 600,
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            Unassign ×
+                          </button>
+                        )}
                       </div>
                     )}
                     <div className={styles.amountText}>
                       <HighlightText text={formatCurrency(app.amount)} highlight={searchQuery} />
                     </div>
                     
-                    {/* Multi-Level Progress UI */}
-                    <div className={styles.stageProgressContainer} style={{ margin: '16px 0', padding: '12px', background: 'var(--surface-sunken)', borderRadius: '8px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <strong>Stage Progress:</strong>
-                        <span style={{ color: 'var(--primary-color)', fontWeight: 'bold' }}>Stage {app.current_stage || 1} of {app.total_stages || 1}</span>
-                      </div>
-                      <div style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <span><strong>Completed Stages:</strong> {(app.current_stage || 1) - 1}</span>
-                        <span><strong>Remaining Stages:</strong> {(app.total_stages || 1) - (app.current_stage || 1)}</span>
-                        <span>
-                          <strong>Current Approver:</strong>{' '}
+                    {/* Compact Stage Progress & SLA Summary Bar */}
+                    <div style={{
+                      margin: 'var(--space-3) 0',
+                      padding: 'var(--space-3)',
+                      background: 'var(--color-bg)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-md)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justify: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: 'var(--space-2)'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                        <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+                          Stage {app.current_stage || 1} of {app.total_stages || 1}
+                        </span>
+                        <span style={{ fontSize: 'var(--text-xs)', background: 'var(--color-surface)', padding: '2px 8px', borderRadius: 'var(--radius-full)', border: '1px solid var(--color-border)', fontWeight: 600, color: 'var(--color-accent)' }}>
                           {(() => {
                             let chain = app.approval_chain;
                             if (typeof chain === 'string') try { chain = JSON.parse(chain); } catch(e) { chain = []; }
                             const current = (chain || []).find(c => c.stage === (app.current_stage || 1));
-                            return current ? current.role : 'Authorized Finance Role';
+                            const r = current ? current.role : 'Authorized Finance Role';
+                            return r.replace('finance:', 'Finance ').replace(/\b\w/g, l => l.toUpperCase());
                           })()}
                         </span>
-                        <span><strong>Waiting Since:</strong> {new Date(app.updated_at || app.created_at).toLocaleString()}</span>
-                        <span><strong>Estimated Completion:</strong> {new Date(new Date(app.updated_at || app.created_at).getTime() + 24 * 60 * 60 * 1000).toLocaleString()} (SLA 24h)</span>
                       </div>
-                      <div style={{ marginTop: '12px' }}>
-                          <strong>Approval Timeline:</strong>
-                          <div style={{ marginTop: '4px' }}>
-                            {(() => {
-                              let chain = app.approval_chain;
-                              if (typeof chain === 'string') try { chain = JSON.parse(chain); } catch(e) { chain = []; }
-                              
-                              const timelineStages = [
-                                { title: 'Created', status: 'completed', date: app.created_at, name: app.requester_name || 'System', role: 'Requester' },
-                                { title: 'Submitted', status: 'completed', date: app.created_at, name: app.requester_name || 'System', role: 'Requester' },
-                                { title: 'Under Review', status: app.status === 'pending' ? 'current' : 'completed', date: app.created_at }
-                              ];
-
-                              if (chain && chain.length > 0) {
-                                chain.forEach((c, i) => {
-                                  let tStatus = c.status === 'approved' ? 'completed' : c.status === 'rejected' ? 'rejected' : 'pending';
-                                  if (tStatus === 'pending' && c.stage === (app.current_stage || 1)) {
-                                     tStatus = 'current';
-                                  }
-                                  const roleName = c.role.replace('finance:', 'Finance ').replace(/\b\w/g, l => l.toUpperCase());
-                                  let duration = null;
-                                  if (c.approved_at && i === 0) {
-                                    const diff = new Date(c.approved_at) - new Date(app.created_at);
-                                    duration = Math.round(diff / 60000) + ' min';
-                                  } else if (c.approved_at && i > 0 && chain[i-1].approved_at) {
-                                    const diff = new Date(c.approved_at) - new Date(chain[i-1].approved_at);
-                                    duration = Math.round(diff / 60000) + ' min';
-                                  }
-
-                                  timelineStages.push({
-                                    title: tStatus === 'completed' ? `${roleName} Approved` : `${roleName} Approval`,
-                                    role: roleName,
-                                    status: tStatus,
-                                    date: c.approved_at,
-                                    name: c.approved_by || (tStatus === 'current' ? 'Pending Approver' : null),
-                                    comments: tStatus === 'rejected' ? app.rejection_reason : null,
-                                    duration: duration
-                                  });
-                                });
-                              } else {
-                                timelineStages.push({
-                                  title: 'Single-Stage Approval',
-                                  status: app.status === 'pending' ? 'current' : (app.status === 'approved' ? 'completed' : 'rejected'),
-                                  date: app.updated_at
-                                });
-                              }
-
-                              timelineStages.push({
-                                title: 'Completed',
-                                status: app.status === 'approved' ? 'completed' : (app.status === 'rejected' ? 'rejected' : 'pending'),
-                                date: app.status !== 'pending' ? app.updated_at : null
-                              });
-
-                              return <ApprovalTimeline stages={timelineStages} />;
-                            })()}
-                          </div>
-                        </div>
+                      <SLATracker approval={app} />
                     </div>
 
                     <div className={styles.detailsList}>
-                      <SLATracker approval={app} />
                       <div className={styles.detailRow}>
                         <span className={styles.detailLabel}>Project</span>
                         <span className={styles.detailValue}>
-                          <HighlightText text={app.project_name || 'N/A'} highlight={searchQuery} />
+                          {(() => {
+                            const pId = app.project_id || app.requested_changes?.project_id || app.requested_changes?.payload?.projectId;
+                            if (pId) {
+                              return (
+                                <Link to={`/projects/${pId}`} className={styles.detailLink} title="View Project Details">
+                                  <HighlightText text={app.project_name || 'N/A'} highlight={searchQuery} />
+                                </Link>
+                              );
+                            }
+                            return <HighlightText text={app.project_name || 'N/A'} highlight={searchQuery} />;
+                          })()}
                         </span>
                       </div>
                       {app.customer_name && (
                         <div className={styles.detailRow}>
-                          <span className={styles.detailLabel}>Customer</span>
+                          <span className={styles.detailLabel}>Lead</span>
                           <span className={styles.detailValue}>
-                            <HighlightText text={app.customer_name} highlight={searchQuery} />
+                            {(() => {
+                              const lId = app.lead_id || app.requested_changes?.lead_id || app.requested_changes?.payload?.leadId;
+                              const leadPath = lId 
+                                ? `/leads?id=${lId}` 
+                                : `/leads?search=${encodeURIComponent(app.customer_name)}`;
+                              return (
+                                <Link to={leadPath} className={styles.detailLink} title="View Lead Details">
+                                  <HighlightText text={app.customer_name} highlight={searchQuery} />
+                                </Link>
+                              );
+                            })()}
                           </span>
                         </div>
                       )}
@@ -656,15 +648,73 @@ export default function FinancialApprovalsPage() {
                           <HighlightText text={app.requester_name || 'System'} highlight={searchQuery} />
                         </span>
                       </div>
-                      <div className={styles.detailRow}>
-                        <span className={styles.detailLabel}>Limit Exceeded</span>
-                        <span className={styles.detailValue}>{formatCurrency(app.threshold_limit)}</span>
-                      </div>
+                      {!!(app.threshold_limit && Number(app.threshold_limit) > 0 && app.has_matrix_rule) && (
+                        <div className={styles.detailRow}>
+                          <span className={styles.detailLabel}>Limit Exceeded</span>
+                          <span className={styles.detailValue}>{formatCurrency(app.threshold_limit)}</span>
+                        </div>
+                      )}
                       <div className={styles.detailRow}>
                         <span className={styles.detailLabel}>Requested On</span>
                         <span className={styles.detailValue}>{new Date(app.created_at).toLocaleDateString()}</span>
                       </div>
                     </div>
+
+                    {app.requested_changes && (() => {
+                      let changes = app.requested_changes;
+                      if (typeof changes === 'string') {
+                        try { changes = JSON.parse(changes); } catch(e) { return null; }
+                      }
+                      const payload = changes.payload || changes.data || changes;
+                      if (!payload) return null;
+
+                      const milestoneName = payload.selectedPayment?.milestone || payload.splits?.[0]?.milestoneName || app.target_number;
+                      const statusVal = payload.data?.status || payload.status || changes.type || 'Update';
+                      const paidAmt = payload.data?.paid_amount || payload.paid_amount || app.amount;
+                      const paidAtDate = payload.data?.paid_at || payload.paid_at;
+
+                      return (
+                        <div style={{
+                          marginTop: 'var(--space-3)',
+                          padding: 'var(--space-3) var(--space-4)',
+                          background: 'var(--color-surface-2, rgba(0,0,0,0.02))',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: 'var(--radius-lg, 8px)',
+                          fontSize: 'var(--text-xs)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px'
+                        }}>
+                          <div style={{ fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.7rem' }}>
+                            Transaction Summary
+                          </div>
+                          {milestoneName && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Milestone:</span>
+                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{milestoneName}</span>
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Target Action:</span>
+                            <span style={{ fontWeight: 700, textTransform: 'capitalize', color: statusVal === 'paid' ? 'var(--color-success)' : 'var(--color-accent)' }}>
+                              {statusVal}
+                            </span>
+                          </div>
+                          {paidAmt && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Payment Amount:</span>
+                              <span style={{ fontWeight: 800, color: 'var(--color-text)' }}>{formatCurrency(paidAmt)}</span>
+                            </div>
+                          )}
+                          {paidAtDate && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Payment Date:</span>
+                              <span style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>{new Date(paidAtDate).toLocaleDateString()}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {hasPermission(app) && (
@@ -695,14 +745,14 @@ export default function FinancialApprovalsPage() {
                         <button
                           onClick={async () => {
                             setAttachmentApprovalId(app.id);
-                            api.post(`/financial-approvals/${app.id}/view`);
+                            api.post(`/financial-approvals/${app.id}/view`).catch(() => {});
                           }}
                           className={styles.secondaryBtn}
                         >
                           📎 Files
                         </button>
                         <button
-                          onClick={async () => { setActivityApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }}
+                          onClick={async () => { setActivityApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`).catch(() => {}); }}
                           className={styles.secondaryBtn}
                         >
                           📋 Logs
@@ -722,7 +772,7 @@ export default function FinancialApprovalsPage() {
                   {!hasPermission(app) && (
                     <div className={styles.cardActions} style={{ justifyContent: 'flex-start' }}>
                         <button
-                          onClick={async () => { setCommentsApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }}
+                          onClick={async () => { setCommentsApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`).catch(() => {}); }}
                           className={styles.secondaryBtn}
                         >
                           💬 Notes <UnreadBadge approvalId={app.id} refreshCounter={commentsRefreshSeq} />
@@ -730,14 +780,14 @@ export default function FinancialApprovalsPage() {
                         <button
                           onClick={async () => {
                             setAttachmentApprovalId(app.id);
-                            api.post(`/financial-approvals/${app.id}/view`);
+                            api.post(`/financial-approvals/${app.id}/view`).catch(() => {});
                           }}
                           className={styles.secondaryBtn}
                         >
                           📎 Files
                         </button>
                         <button
-                          onClick={async () => { setActivityApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }}
+                          onClick={async () => { setActivityApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`).catch(() => {}); }}
                           className={styles.secondaryBtn}
                         >
                           📋 Logs
@@ -792,10 +842,31 @@ export default function FinancialApprovalsPage() {
                       <HighlightText text={formatCurrency(app.amount)} highlight={searchQuery} />
                     </td>
                     <td className={styles.td}>
-                      <HighlightText text={app.project_name || 'N/A'} highlight={searchQuery} />
+                      {(() => {
+                        const pId = app.project_id || app.requested_changes?.project_id || app.requested_changes?.payload?.projectId;
+                        if (pId) {
+                          return (
+                            <Link to={`/projects/${pId}`} className={styles.detailLink} title="View Project Details">
+                              <HighlightText text={app.project_name || 'N/A'} highlight={searchQuery} />
+                            </Link>
+                          );
+                        }
+                        return <HighlightText text={app.project_name || 'N/A'} highlight={searchQuery} />;
+                      })()}
                     </td>
                     <td className={styles.td}>
-                      <HighlightText text={app.customer_name || '-'} highlight={searchQuery} />
+                      {(() => {
+                        if (!app.customer_name || app.customer_name === '-') return '-';
+                        const lId = app.lead_id || app.requested_changes?.lead_id || app.requested_changes?.payload?.leadId;
+                        const leadPath = lId 
+                          ? `/leads?id=${lId}` 
+                          : `/leads?search=${encodeURIComponent(app.customer_name)}`;
+                        return (
+                          <Link to={leadPath} className={styles.detailLink} title="View Lead Details">
+                            <HighlightText text={app.customer_name} highlight={searchQuery} />
+                          </Link>
+                        );
+                      })()}
                     </td>
                     <td className={styles.td}>
                       <HighlightText text={app.requester_name || 'System'} highlight={searchQuery} />
@@ -828,19 +899,34 @@ export default function FinancialApprovalsPage() {
                         )}
                       </td>
                     <td className={styles.td}>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                       <button onClick={async () => { setCommentsApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }} className={styles.secondaryBtn} style={{ position: 'relative', padding: '6px' }}>
-                         💬 <UnreadBadge approvalId={app.id} refreshCounter={commentsRefreshSeq} />
-                       </button>
-                       <button onClick={async () => {
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        <button 
+                          onClick={async () => { setCommentsApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`).catch(() => {}); }} 
+                          className={styles.secondaryBtn} 
+                          title="View Notes & Comments"
+                          style={{ position: 'relative', padding: '6px 10px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          💬 Notes <UnreadBadge approvalId={app.id} refreshCounter={commentsRefreshSeq} />
+                        </button>
+                        <button 
+                          onClick={async () => {
                             setAttachmentApprovalId(app.id);
-                            api.post(`/financial-approvals/${app.id}/view`);
-                          }} className={styles.secondaryBtn} style={{ padding: '6px' }}>
-                         📎
-                       </button>
-                       <button onClick={async () => { setActivityApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`); }} className={styles.secondaryBtn} style={{ padding: '6px' }}>
-                         📋
-                       </button>
+                            api.post(`/financial-approvals/${app.id}/view`).catch(() => {});
+                          }} 
+                          className={styles.secondaryBtn} 
+                          title="View Uploaded Files & Receipts"
+                          style={{ padding: '6px 10px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          📎 Files
+                        </button>
+                        <button 
+                          onClick={async () => { setActivityApprovalId(app.id); api.post(`/financial-approvals/${app.id}/view`).catch(() => {}); }} 
+                          className={styles.secondaryBtn} 
+                          title="View Audit Logs"
+                          style={{ padding: '6px 10px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          📋 Logs
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -901,9 +987,9 @@ export default function FinancialApprovalsPage() {
       {commentsApprovalId && (
         <div className={styles.modalOverlay}>
           <div className={styles.modal} style={{ maxWidth: '600px', width: '100%', padding: '0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', borderBottom: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-4)', borderBottom: '1px solid var(--color-border)' }}>
               <h3 style={{ margin: 0 }}>Discussion & Notes</h3>
-              <button onClick={async () => setCommentsApprovalId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+              <button onClick={async () => setCommentsApprovalId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: 'var(--color-text)' }}>✕</button>
             </div>
             <ApprovalComments 
               approvalId={commentsApprovalId} 
@@ -917,16 +1003,16 @@ export default function FinancialApprovalsPage() {
       {activityApprovalId && (
         <div className={styles.modalOverlay}>
           <div className={styles.modal} style={{ maxWidth: '700px', width: '100%', padding: '0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', borderBottom: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-4)', borderBottom: '1px solid var(--color-border)' }}>
               <h3 style={{ margin: 0 }}>Activity & Audit Log</h3>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button 
                   onClick={async () => { api.post(`/financial-approvals/${activityApprovalId}/export`, { format: 'csv' }); toast.info('Exporting activity log...'); }} 
-                  className={styles.primaryBtn} 
-                  style={{ background: 'var(--surface-sunken)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}>
+                  className={styles.secondaryBtn} 
+                >
                   ⬇️ Export CSV
                 </button>
-                <button onClick={async () => setActivityApprovalId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+                <button onClick={async () => setActivityApprovalId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: 'var(--color-text)' }}>✕</button>
               </div>
             </div>
             <ActivityLogTimeline approvalId={activityApprovalId} />
@@ -937,9 +1023,9 @@ export default function FinancialApprovalsPage() {
       {attachmentApprovalId && (
           <div className={styles.modalOverlay}>
             <div className={styles.modal} style={{ maxWidth: '800px', width: '100%', padding: '0' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', borderBottom: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-4)', borderBottom: '1px solid var(--color-border)' }}>
                 <h3 style={{ margin: 0 }}>Attachments & Documents</h3>
-                <button onClick={async () => setAttachmentApprovalId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+                <button onClick={async () => setAttachmentApprovalId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: 'var(--color-text)' }}>✕</button>
               </div>
               <div style={{ padding: '24px' }}>
                 <AttachmentManager 

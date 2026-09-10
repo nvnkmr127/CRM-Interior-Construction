@@ -108,6 +108,13 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed,
           >
             <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           </button>
+        ) : location.pathname === '/settings/approval-matrix' ? (
+          <button className={styles.collapseBtn} onClick={() => navigate('/financial-approvals')}
+            aria-label='Back to Financial Approvals'
+            data-tooltip='Back to Financial Approvals'
+          >
+            <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          </button>
         ) : location.pathname === '/team/roles' && (new URLSearchParams(location.search).has('action') || new URLSearchParams(location.search).has('edit')) ? (
           <button className={`${styles.collapseBtn} ${styles.desktopOnly}`} onClick={() => navigate('/team/roles')}
             aria-label='Back to Roles'

@@ -44,7 +44,7 @@ export default function SortDropdown({ options, value, onChange }) {
               }}
             >
               {opt.label}
-              {opt.value === value && <span className={styles.check}>?</span>}
+              {opt.value === value && <span className={styles.check}>✓</span>}
             </div>
           ))}
         </div>

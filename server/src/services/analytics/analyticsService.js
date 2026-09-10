@@ -2,16 +2,26 @@ const db = require('../../config/db');
 const readPool = db.readPool || db;
 const dataScope = require('../../middleware/dataScope');
 
-exports.getGlobalStats = async (tenantId, userId, user) => {
-  const isGlobal = user.role === 'superadmin' || user.role === 'admin' || (typeof user.role === 'object' && (user.role?.name?.toLowerCase() === 'superadmin' || user.role?.name?.toLowerCase() === 'super admin' || user.role?.name?.toLowerCase() === 'admin'));
+exports.getGlobalStats = async (tenantId, userId, user = {}, options = {}) => {
+  const rName = (typeof user?.role === 'string' ? user?.role : user?.role?.name || '').toLowerCase();
+  const perms = Array.isArray(user?.permissions) ? user.permissions : (Array.isArray(user?.role?.permissions) ? user.role.permissions : []);
   
-  let leadsFilter = isGlobal ? '1=1' : dataScope.buildScopeFilter(user, 'leads', 'assignee_id');
-  let leadsFilterL = isGlobal ? '1=1' : dataScope.buildScopeFilter(user, 'leads', 'assignee_id', 'l');
-  let projectsFilter = isGlobal ? '1=1' : dataScope.buildScopeFilter(user, 'projects', 'pm_id');
-  let tasksFilter = isGlobal ? '1=1' : dataScope.buildScopeFilter(user, 'tasks', 'assignee_id');
+  const isGlobal = rName === 'superadmin' || rName === 'super admin' || rName === 'admin' || rName === 'owner' || rName === 'director' || rName.includes('admin') || rName.includes('sales') || rName.includes('manager') || perms.includes('*') || perms.includes('*:*') || perms.includes('dashboards:view_sales_dashboard');
+  
+  let leadsFilter = isGlobal ? '1=1' : `(assignee_id = '${userId}' OR created_by = '${userId}' OR assignee_id IS NULL)`;
+  let leadsFilterL = isGlobal ? '1=1' : `(l.assignee_id = '${userId}' OR l.created_by = '${userId}' OR l.assignee_id IS NULL)`;
+  let projectsFilter = isGlobal ? '1=1' : `(pm_id = '${userId}' OR sales_rep_id = '${userId}' OR designer_id = '${userId}' OR created_by = '${userId}' OR pm_id IS NULL)`;
+  let tasksFilter = isGlobal ? '1=1' : `(assignee_id = '${userId}' OR created_by = '${userId}' OR assignee_id IS NULL)`;
   
   const params = [tenantId];
   
+  let dateClause = '';
+  if (options.startDate && options.endDate && options.period !== 'All') {
+    dateClause = `AND COALESCE(l.updated_at, l.created_at) >= '${options.startDate}'::timestamp AND COALESCE(l.updated_at, l.created_at) <= '${options.endDate} 23:59:59'::timestamp`;
+  } else if (options.period && options.period !== 'All') {
+    dateClause = `AND COALESCE(l.updated_at, l.created_at) >= date_trunc('month', CURRENT_TIMESTAMP)`;
+  }
+
   const [
     activeLeadsRes,
     wonThisMonthRes,
@@ -27,41 +37,41 @@ exports.getGlobalStats = async (tenantId, userId, user) => {
     projectsSparkRes,
     tasksSparkRes
   ] = await Promise.all([
-    readPool.query(`SELECT COUNT(*) FROM leads WHERE tenant_id=$1 AND (${leadsFilter}) AND deleted_at IS NULL AND (status IS NULL OR status != 'parked')`, params),
+    readPool.query(`SELECT COUNT(*) FROM leads WHERE tenant_id=$1 AND (${leadsFilter}) AND deleted_at IS NULL AND (status IS NULL OR LOWER(status) NOT IN ('parked', 'lost', 'junk', 'archived', 'deleted', 'converted', 'won'))`, params).catch(() => ({ rows: [{ count: 0 }] })),
     readPool.query(`
-      SELECT COUNT(*) as count, COALESCE(SUM(l.budget_max), 0) as won_value
+      SELECT COUNT(*) as count, COALESCE(SUM(COALESCE(l.budget_max, l.budget, l.revenue_potential, 0)), 0) as won_value
       FROM leads l
       LEFT JOIN lead_stages ls ON ls.id = l.stage_id
       WHERE l.tenant_id=$1 AND (${leadsFilterL}) AND (ls.is_won=true OR l.status='converted' OR l.status='won')
-      AND l.updated_at >= date_trunc('month', NOW())
-    `, params),
+      ${dateClause}
+    `, params).catch(() => ({ rows: [{ count: 0, won_value: 0 }] })),
     readPool.query(`
-      SELECT COUNT(*) as count, COALESCE(SUM(l.budget_max), 0) as won_value
+      SELECT COUNT(*) as count, COALESCE(SUM(COALESCE(l.budget_max, l.budget, l.revenue_potential, 0)), 0) as won_value
       FROM leads l
       LEFT JOIN lead_stages ls ON ls.id = l.stage_id
       WHERE l.tenant_id=$1 AND (${leadsFilterL}) AND (ls.is_won=true OR l.status='converted' OR l.status='won')
-      AND l.updated_at >= date_trunc('month', NOW() - INTERVAL '1 month')
-      AND l.updated_at < date_trunc('month', NOW())
-    `, params),
+      AND COALESCE(l.updated_at, l.created_at) >= date_trunc('month', CURRENT_TIMESTAMP - INTERVAL '1 month')
+      AND COALESCE(l.updated_at, l.created_at) < date_trunc('month', CURRENT_TIMESTAMP)
+    `, params).catch(() => ({ rows: [{ count: 0, won_value: 0 }] })),
     readPool.query(`
       SELECT
-        COUNT(*) FILTER (WHERE status IS NULL OR LOWER(status) NOT IN ('completed', 'cancelled', 'on_hold', 'deleted')) as active,
-        COUNT(*) FILTER (WHERE (status IS NULL OR LOWER(status) NOT IN ('completed', 'cancelled', 'on_hold', 'deleted')) AND target_date < NOW()) as overdue
+        COUNT(*) FILTER (WHERE (status IS NULL OR LOWER(status) NOT IN ('completed', 'closed', 'handed_over', 'handover', 'cancelled', 'on_hold', 'deleted', 'archived'))) as active,
+        COUNT(*) FILTER (WHERE (status IS NULL OR LOWER(status) NOT IN ('completed', 'closed', 'handed_over', 'handover', 'cancelled', 'on_hold', 'deleted', 'archived')) AND target_date < NOW()) as overdue
       FROM projects WHERE tenant_id=$1 AND (${projectsFilter}) AND deleted_at IS NULL
-    `, params),
+    `, params).catch(() => ({ rows: [{ active: 0, overdue: 0 }] })),
     readPool.query(`
       SELECT
-        COUNT(*) FILTER (WHERE due_date::date = CURRENT_DATE) as due_today,
-        COUNT(*) FILTER (WHERE due_date::date < CURRENT_DATE AND status!='done') as overdue
+        COUNT(*) FILTER (WHERE (due_date IS NOT NULL AND due_date != '' AND due_date ~ '^\\d{4}-\\d{2}-\\d{2}') AND (due_date::text)::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date) as due_today,
+        COUNT(*) FILTER (WHERE (due_date IS NOT NULL AND due_date != '' AND due_date ~ '^\\d{4}-\\d{2}-\\d{2}') AND (due_date::text)::date < (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date AND (status IS NULL OR LOWER(status) NOT IN ('done', 'completed', 'cancelled', 'deleted', 'archived'))) as overdue
       FROM tasks
-      WHERE tenant_id=$1 AND (${tasksFilter}) AND deleted_at IS NULL AND status!='done'
-    `, params),
+      WHERE tenant_id=$1 AND (${tasksFilter}) AND deleted_at IS NULL AND (status IS NULL OR LOWER(status) NOT IN ('done', 'completed', 'cancelled', 'deleted', 'archived'))
+    `, params).catch(() => ({ rows: [{ due_today: 0, overdue: 0 }] })),
     readPool.query(`
       SELECT COUNT(*) FROM leads
       WHERE tenant_id=$1 AND (${leadsFilter}) AND deleted_at IS NULL
       AND created_at >= NOW() - INTERVAL '14 days'
       AND created_at < NOW() - INTERVAL '7 days'
-    `, params),
+    `, params).catch(() => ({ rows: [{ count: 0 }] })),
     readPool.query(`SELECT 0 as target_revenue, 0 as target_leads`),
     readPool.query(`
       SELECT 
@@ -72,7 +82,7 @@ exports.getGlobalStats = async (tenantId, userId, user) => {
       WHERE p.tenant_id = $1 AND pm.status = 'paid' AND pm.paid_at IS NOT NULL AND pm.paid_at != '' AND pm.paid_at::timestamp >= NOW() - INTERVAL '12 weeks'
       GROUP BY date_trunc('week', pm.paid_at::timestamp)
       ORDER BY date_trunc('week', pm.paid_at::timestamp) ASC
-    `, [tenantId]),
+    `, [tenantId]).catch(() => ({ rows: [] })),
     readPool.query(`
       SELECT sv.id, sv.lead_id, sv.scheduled_at, l.name as lead_name, u.name as assignee_name
       FROM site_visits sv
@@ -80,9 +90,10 @@ exports.getGlobalStats = async (tenantId, userId, user) => {
       LEFT JOIN users u ON sv.assignee_id = u.id
       WHERE sv.tenant_id = $1 
         AND sv.status = 'scheduled' 
-        AND (sv.scheduled_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date
+        AND sv.scheduled_at IS NOT NULL AND sv.scheduled_at != ''
+        AND ((sv.scheduled_at::text)::timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date
       ORDER BY sv.scheduled_at ASC
-    `, params),
+    `, params).catch(() => ({ rows: [] })),
     readPool.query(`
       SELECT date_trunc('week', created_at) as week_date, COUNT(*)::int as count
       FROM leads
@@ -90,7 +101,7 @@ exports.getGlobalStats = async (tenantId, userId, user) => {
         AND created_at >= NOW() - INTERVAL '12 weeks'
       GROUP BY date_trunc('week', created_at)
       ORDER BY week_date ASC
-    `, params),
+    `, params).catch(() => ({ rows: [] })),
     readPool.query(`
       SELECT date_trunc('week', pm.paid_at::timestamp) as week_date, COALESCE(SUM(pm.paid_amount), 0)::float as amt
       FROM payment_milestones pm
@@ -98,7 +109,7 @@ exports.getGlobalStats = async (tenantId, userId, user) => {
       WHERE p.tenant_id = $1 AND pm.status = 'paid' AND pm.paid_at IS NOT NULL AND pm.paid_at != '' AND pm.paid_at::timestamp >= NOW() - INTERVAL '12 weeks'
       GROUP BY date_trunc('week', pm.paid_at::timestamp)
       ORDER BY week_date ASC
-    `, [tenantId]),
+    `, [tenantId]).catch(() => ({ rows: [] })),
     readPool.query(`
       SELECT date_trunc('week', created_at) as week_date, COUNT(*)::int as count
       FROM projects
@@ -106,7 +117,7 @@ exports.getGlobalStats = async (tenantId, userId, user) => {
         AND created_at >= NOW() - INTERVAL '12 weeks'
       GROUP BY date_trunc('week', created_at)
       ORDER BY week_date ASC
-    `, params),
+    `, params).catch(() => ({ rows: [] })),
     readPool.query(`
       SELECT date_trunc('week', created_at) as week_date, COUNT(*)::int as count
       FROM tasks
@@ -114,7 +125,7 @@ exports.getGlobalStats = async (tenantId, userId, user) => {
         AND created_at >= NOW() - INTERVAL '12 weeks'
       GROUP BY date_trunc('week', created_at)
       ORDER BY week_date ASC
-    `, params)
+    `, params).catch(() => ({ rows: [] }))
   ]);
 
   const activeCount = parseInt(activeLeadsRes.rows[0]?.count, 10) || 0;
@@ -126,7 +137,33 @@ exports.getGlobalStats = async (tenantId, userId, user) => {
     leadsTrend = 100;
   }
 
-  const currentWon = parseFloat(wonThisMonthRes.rows[0]?.won_value) || 0;
+  let pmDateClause = '';
+  if (options.startDate && options.endDate && options.period !== 'All') {
+    pmDateClause = `AND (COALESCE(NULLIF(pm.paid_at, ''), NULLIF(pm.updated_at::text, ''), pm.created_at::text)::timestamp >= '${options.startDate}'::timestamp AND COALESCE(NULLIF(pm.paid_at, ''), NULLIF(pm.updated_at::text, ''), pm.created_at::text)::timestamp <= '${options.endDate} 23:59:59'::timestamp)`;
+  } else if (options.period && options.period !== 'All') {
+    pmDateClause = `AND (COALESCE(NULLIF(pm.paid_at, ''), NULLIF(pm.updated_at::text, ''), pm.created_at::text)::timestamp >= date_trunc('month', CURRENT_TIMESTAMP))`;
+  }
+
+  let currentWon = parseFloat(wonThisMonthRes.rows[0]?.won_value) || 0;
+
+  const paidMilestonesRes = await readPool.query(
+    `SELECT COALESCE(SUM(COALESCE(pm.paid_amount, pm.amount, 0)), 0)::float as total_paid
+     FROM payment_milestones pm
+     JOIN projects p ON pm.project_id = p.id
+     WHERE p.tenant_id = $1 AND (${projectsFilter}) AND (LOWER(pm.status) IN ('paid', 'completed', 'received') OR COALESCE(pm.paid_amount, 0) > 0) ${pmDateClause}`,
+    params
+  ).catch(() => ({ rows: [{ total_paid: 0 }] }));
+
+  const totalPaidMilestones = parseFloat(paidMilestonesRes.rows[0]?.total_paid) || 0;
+  currentWon = Math.max(currentWon, totalPaidMilestones);
+
+  if (currentWon === 0) {
+    const projValRes = await readPool.query(
+      `SELECT COALESCE(SUM(COALESCE(contract_value, value, 0)), 0)::float as total_val FROM projects WHERE tenant_id = $1 AND (${projectsFilter}) AND deleted_at IS NULL AND (status IS NULL OR LOWER(status) NOT IN ('cancelled', 'deleted'))`,
+      params
+    ).catch(() => ({ rows: [{ total_val: 0 }] }));
+    currentWon = parseFloat(projValRes.rows[0]?.total_val) || 0;
+  }
   const prevWon = parseFloat(prevMonthWonRes.rows[0]?.won_value) || 0;
   let wonTrend = null;
   if (prevWon > 0) {

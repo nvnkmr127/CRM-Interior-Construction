@@ -33,16 +33,27 @@ export default function ProtectedRoute({ children, requiredPermission, requiredM
   const planTabs = user?.sidebarConfig?.planTabs || PLAN_DEFAULTS[tenantPlan] || PLAN_DEFAULTS.starter;
   const allowedModules = new Set(getModulesForTabs(planTabs).map(m => m.id));
 
-  if (requiredTab && planTabs && Array.isArray(planTabs) && !planTabs.includes(requiredTab)) {
+  const roleEnabledMods = user?.role?.enabled_modules || [];
+  const rolePerms = Array.isArray(user?.role?.permissions) 
+    ? user.role.permissions 
+    : (Array.isArray(user?.permissions) ? user.permissions : []);
+
+  const isTabExplicitlyRoleGranted = requiredTab && (
+    roleEnabledMods.includes(requiredTab) || 
+    rolePerms.includes(requiredTab) || 
+    rolePerms.includes(`${requiredTab}:view`)
+  );
+
+  if (requiredTab && planTabs && Array.isArray(planTabs) && !planTabs.includes(requiredTab) && !isTabExplicitlyRoleGranted) {
     return <Navigate to='/forbidden' replace />
   }
 
-  if (requiredModule && !allowedModules.has(requiredModule)) {
+  if (requiredModule && !allowedModules.has(requiredModule) && !isTabExplicitlyRoleGranted) {
     return <Navigate to='/forbidden' replace />
   }
 
   // 2. Workspace Admin Check (Access to all enabled items within this workspace plan)
-  const roleName = (typeof user?.role === 'string' ? user.role : user?.role?.name || user?.role_name || '').toLowerCase().replace(/[\s_-]+/g, '');
+  const roleName = (typeof user?.role === 'string' ? user.role : user?.role?.name || user?.role_name || '').toLowerCase().trim();
   const perms = Array.isArray(user?.role?.permissions) 
     ? user.role.permissions 
     : (Array.isArray(user?.permissions) ? user.permissions : []);
@@ -51,13 +62,27 @@ export default function ProtectedRoute({ children, requiredPermission, requiredM
     roleName === 'superadmin' || 
     roleName === 'admin' || 
     roleName === 'owner' ||
-    roleName.includes('admin') ||
+    roleName === 'super admin' ||
     perms.includes('*') ||
     perms.includes('*:*') ||
     perms.includes('all');
 
   if (isWorkspaceAdmin) {
     return children;
+  }
+
+  const enabledModules = user?.role?.enabled_modules || [];
+
+  // If a specific tab is required and explicitly granted in role enabled_modules or permissions, allow access
+  if (requiredTab) {
+    const isTabGranted = enabledModules.includes(requiredTab) || 
+      perms.includes(requiredTab) || 
+      perms.includes(`${requiredTab}:view`) || 
+      perms.some(p => p.startsWith(`${requiredTab}:`));
+    
+    if (isTabGranted) {
+      return children;
+    }
   }
 
   // 3. Member-level Permission & Module Checks
@@ -70,7 +95,6 @@ export default function ProtectedRoute({ children, requiredPermission, requiredM
   }
 
   if (requiredModule) {
-    const enabledModules = user?.role?.enabled_modules || [];
     const hasModulePerm = perms.some(p => p.startsWith(`${requiredModule}:`) || p === '*' || p === `${requiredModule}`);
     const isModuleAllowed = enabledModules.length === 0 
       ? (hasModulePerm || ['dashboards', 'tasks'].includes(requiredModule)) 

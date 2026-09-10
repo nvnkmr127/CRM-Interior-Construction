@@ -307,11 +307,27 @@ export default function SalesExecutiveDashboard() {
       // Stats
       if (statsR.status === 'fulfilled') {
         const s = statsR.value.data?.data || {};
+        const activeLeadsVal = (s.activeLeads?.count !== undefined) ? s.activeLeads.count : (leadsR.status === 'fulfilled' && Array.isArray(leadsR.value.data?.data) ? leadsR.value.data.data.filter(l => !['parked', 'lost', 'junk', 'archived', 'deleted', 'converted', 'won'].includes((l.status || '').toLowerCase())).length : 0);
+        const activeProjectsVal = (s.activeProjects?.count !== undefined) 
+          ? s.activeProjects.count 
+          : (projectsR.status === 'fulfilled' && Array.isArray(projectsR.value.data?.data) 
+              ? projectsR.value.data.data.filter(p => !['completed', 'closed', 'handed_over', 'handover', 'cancelled', 'on_hold', 'deleted', 'archived'].includes((p.status || '').toLowerCase())).length 
+              : 0);
+
+        const rawWon = Number(s.wonThisMonth?.value || 0);
+        const fallbackWon = (projectsR.status === 'fulfilled' && Array.isArray(projectsR.value.data?.data))
+          ? projectsR.value.data.data.reduce((sum, p) => sum + Number(p.contract_value || p.value || p.stats?.netBilled || p.stats?.netCollections || 0), 0)
+          : 0;
+        const wonVal = rawWon > 0 ? rawWon : fallbackWon;
+
         setStats({
-          activeLeads:    { val: s.activeLeads?.count  ?? 0, trend: s.activeLeads?.trend ?? null },
-          wonMonth:       { val: formatRevenue(s.wonThisMonth?.value), trend: s.wonThisMonth?.trend ?? null },
-          activeProjects: { val: s.activeProjects?.count ?? 0, overdue: s.activeProjects?.overdueCount ?? 0 },
-          tasksDueToday:  { val: s.tasksDueToday?.count  ?? 0, overdue: s.tasksDueToday?.overdueCount  ?? 0 },
+          activeLeads:    { val: activeLeadsVal, trend: s.activeLeads?.trend ?? null },
+          wonMonth:       { val: formatRevenue(wonVal), trend: s.wonThisMonth?.trend ?? null },
+          activeProjects: { val: activeProjectsVal, overdue: s.activeProjects?.overdueCount ?? 0 },
+          tasksDueToday:  { 
+            val: (s.tasksDueToday?.count !== undefined ? s.tasksDueToday.count : 0) + (s.tasksDueToday?.overdueCount !== undefined ? s.tasksDueToday.overdueCount : 0), 
+            overdue: s.tasksDueToday?.overdueCount !== undefined ? s.tasksDueToday.overdueCount : 0 
+          },
           targets:        { 
             targetRevenue: s.salesTargets?.targetRevenue ?? 0, 
             targetLeads: s.salesTargets?.targetLeads ?? 0,

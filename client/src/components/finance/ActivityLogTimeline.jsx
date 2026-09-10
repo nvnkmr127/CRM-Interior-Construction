@@ -13,9 +13,11 @@ export default function ActivityLogTimeline({ approvalId }) {
   const fetchLogs = async () => {
     try {
       const res = await api.get(`/financial-approvals/${approvalId}/activity`);
-      setLogs(res.data.data || []);
+      const data = res.data?.data;
+      setLogs(Array.isArray(data) ? data : (Array.isArray(res.data) ? res.data : []));
     } catch (e) {
       console.error(e);
+      setLogs([]);
     } finally {
       setLoading(false);
     }
@@ -39,17 +41,65 @@ export default function ActivityLogTimeline({ approvalId }) {
     }
   };
 
-  const renderDiff = (oldVal, newVal) => {
-    if (!oldVal && !newVal) return null;
-    let o = oldVal;
-    let n = newVal;
-    try { o = JSON.parse(oldVal); } catch(e){}
-    try { n = JSON.parse(newVal); } catch(e){}
+  const formatValue = (val) => {
+    if (val === null || val === undefined) return null;
+    let data = val;
+    if (typeof val === 'string') {
+      try { data = JSON.parse(val); } catch(e) { return <span>{val}</span>; }
+    }
+    if (typeof data !== 'object' || data === null) {
+      return <span>{String(data)}</span>;
+    }
+
+    // Clean formatting for audit objects
+    const formatKey = (key) => key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+    const renderObjectFields = (obj) => {
+      if (typeof obj !== 'object' || obj === null) return String(obj);
+      return Object.entries(obj).map(([k, v]) => {
+        // Skip technical internal IDs from raw display
+        if (['id', 'tenant_id', 'requested_by', 'target_id'].includes(k)) return null;
+
+        let displayVal = v;
+        if (k === 'amount' || k === 'paid_amount') {
+          displayVal = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(v);
+        } else if (typeof v === 'object' && v !== null) {
+          displayVal = JSON.stringify(v);
+        }
+
+        return (
+          <div key={k} style={{ display: 'flex', gap: '8px', padding: '3px 0', borderBottom: '1px dashed var(--color-border-light, rgba(0,0,0,0.05))' }}>
+            <span style={{ fontWeight: 600, color: 'var(--color-text-secondary)', minWidth: '110px' }}>{formatKey(k)}:</span>
+            <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>{String(displayVal)}</span>
+          </div>
+        );
+      });
+    };
 
     return (
-      <div style={{ marginTop: '8px', fontSize: '12px', background: 'var(--surface-sunken)', padding: '8px', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
-        {o && <div><strong>Previous:</strong> <pre style={{ margin: 0 }}>{JSON.stringify(o, null, 2)}</pre></div>}
-        {n && <div style={{ marginTop: '4px' }}><strong>New:</strong> <pre style={{ margin: 0 }}>{JSON.stringify(n, null, 2)}</pre></div>}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '4px' }}>
+        {renderObjectFields(data)}
+      </div>
+    );
+  };
+
+  const renderDiff = (oldVal, newVal) => {
+    if (!oldVal && !newVal) return null;
+
+    return (
+      <div style={{ marginTop: '8px', fontSize: '12px', background: 'var(--color-surface-2, rgba(0,0,0,0.02))', padding: '10px 12px', borderRadius: 'var(--radius-md, 6px)', border: '1px solid var(--color-border)' }}>
+        {oldVal && (
+          <div style={{ marginBottom: '8px' }}>
+            <span style={{ fontWeight: 700, color: 'var(--color-danger, #ef4444)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Previous Details</span>
+            {formatValue(oldVal)}
+          </div>
+        )}
+        {newVal && (
+          <div>
+            <span style={{ fontWeight: 700, color: 'var(--color-success, #10b981)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Request Details</span>
+            {formatValue(newVal)}
+          </div>
+        )}
       </div>
     );
   };

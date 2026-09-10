@@ -164,15 +164,8 @@ router.post('/', authorize('users:manage'), async (req, res) => {
     return fail(res, 'VALIDATION_ERROR', depError, 400);
   }
   
-  // Derive active modules from validPermissions and explicit enabled_modules
-  const autoModules = new Set(Array.isArray(enabled_modules) ? enabled_modules : []);
-  if (Array.isArray(validPermissions)) {
-    validPermissions.forEach(perm => {
-      const [mod] = perm.split(':');
-      if (mod && mod !== '*') autoModules.add(mod);
-    });
-  }
-  const resolvedModules = Array.from(autoModules);
+  // Use explicit enabled_modules provided by user
+  const resolvedModules = Array.isArray(enabled_modules) ? enabled_modules : [];
 
   const change_summary = req.body.change_summary || 'Initial creation';
 
@@ -516,14 +509,7 @@ router.patch('/:id', authorize('users:manage'), async (req, res) => {
       let newModules = enabled_modules !== undefined ? enabled_modules : existingModules;
       let newPages = page_permissions !== undefined ? page_permissions : existingPages;
 
-      const autoModules = new Set(Array.isArray(newModules) ? newModules : []);
-      if (Array.isArray(validPermissions)) {
-        validPermissions.forEach(perm => {
-          const [mod] = perm.split(':');
-          if (mod && mod !== '*') autoModules.add(mod);
-        });
-      }
-      newModules = Array.from(autoModules);
+      newModules = Array.isArray(newModules) ? newModules : [];
 
       permsStr = JSON.stringify({ actions: validPermissions, scopes: newScopes, fields: newFields, modules: newModules, pages: newPages });
 

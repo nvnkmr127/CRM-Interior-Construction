@@ -164,7 +164,7 @@ export default function ProjectsPage() {
 
   const isActiveStatus = (status) => {
     const s = status?.toLowerCase();
-    return !s || s === 'active' || !['on_hold', 'completed', 'overdue', 'cancelled', 'deleted'].includes(s);
+    return !s || s === 'active' || !['on_hold', 'completed', 'closed', 'handed_over', 'handover', 'cancelled', 'deleted'].includes(s);
   };
 
   const pmOptions = ['all', ...Array.from(new Set(projects.map(p => p.pm_name || p.pmName).filter(Boolean)))];
@@ -189,7 +189,7 @@ export default function ProjectsPage() {
     all: preFiltered.length,
     active: preFiltered.filter(p => isActiveStatus(p.status) && !(p.deleted_at || p.deletedAt)).length,
     on_hold: preFiltered.filter(p => p.status?.toLowerCase() === 'on_hold' && !(p.deleted_at || p.deletedAt)).length,
-    completed: preFiltered.filter(p => p.status?.toLowerCase() === 'completed' && !(p.deleted_at || p.deletedAt)).length,
+    completed: preFiltered.filter(p => ['completed', 'closed', 'handed_over', 'handover'].includes(p.status?.toLowerCase()) && !(p.deleted_at || p.deletedAt)).length,
     overdue: preFiltered.filter(p => p.overdue && !(p.deleted_at || p.deletedAt)).length,
     deleted: preFiltered.filter(p => (p.deleted_at || p.deletedAt)).length,
   };
@@ -208,6 +208,10 @@ export default function ProjectsPage() {
       }
       if (statusFilter === 'active') {
         return isActiveStatus(p.status) && !(p.deleted_at || p.deletedAt);
+      }
+      if (statusFilter === 'completed') {
+        const s = p.status?.toLowerCase();
+        return ['completed', 'closed', 'handed_over', 'handover'].includes(s) && !(p.deleted_at || p.deletedAt);
       }
       return p.status?.toLowerCase() === statusFilter && !(p.deleted_at || p.deletedAt);
     })

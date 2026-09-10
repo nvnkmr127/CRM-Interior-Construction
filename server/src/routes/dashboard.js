@@ -10,14 +10,14 @@ const router = express.Router();
 
 router.use(authenticate);
 
-// Cache stats for 5 minutes
-router.get('/stats', cacheResponse(300), async (req, res) => {
+// Cache stats for 15 seconds
+router.get('/stats', cacheResponse(15), async (req, res) => {
   const tenantId = req.tenantId || (req.user && req.user.tenantId);
   const userId = req.user.id;
   const userRole = req.user.role;
 
   try {
-    const data = await analyticsService.getGlobalStats(tenantId, userId, req.user);
+    const data = await analyticsService.getGlobalStats(tenantId, userId, req.user, req.query);
 
     // Filter financial KPI metrics for unauthorized roles
     const rName = (typeof req.user?.role === 'string' ? req.user.role : req.user?.role?.name || '').toLowerCase();
@@ -40,9 +40,14 @@ router.get('/stats', cacheResponse(300), async (req, res) => {
       rName.includes('project_manager') || 
       rName.includes('sales manager') || 
       rName.includes('sales_manager') ||
+      rName.includes('sales') ||
+      rName.includes('executive') ||
+      rName.includes('designer') ||
       permissions.includes('finance:read') || 
       permissions.includes('dashboards:view_sales_dashboard') || 
-      permissions.includes('leads:view_financial_kpis');
+      permissions.includes('leads:view_financial_kpis') ||
+      permissions.includes('leads:read') ||
+      permissions.includes('projects:read');
 
     if (!canSeeFinancials && data) {
       if (data.wonThisMonth) {

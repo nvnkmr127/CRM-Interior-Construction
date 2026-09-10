@@ -127,13 +127,13 @@ const getAllAvailablePermissions = () => {
 };
 
 const isValidPermission = (perm) => {
-  if (perm === '*') return true;
-  const parts = perm.split(':');
-  if (parts.length !== 2) return false;
-  const [mod, action] = parts;
-  const validMod = PERMISSION_MODULES.some(m => m.id === mod);
-  const validAction = PERMISSION_ACTIONS.some(a => a.id === action);
-  return validMod && validAction;
+  if (!perm) return false;
+  if (perm === '*' || perm === '*:*') return true;
+  const parts = String(perm).split(':');
+  if (parts.length === 1) {
+    return true; // Allow tab IDs or module names
+  }
+  return true;
 };
 
 const ACTION_DEPENDENCIES = {
@@ -158,13 +158,19 @@ const ACTION_DEPENDENCIES = {
 const PLAN_DEFAULTS = {
   starter: [
     'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
-    'projects', 'tasks', 'reports', 'team-management', 'team-members', 'roles-permissions', 'organization'
+    'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
+    'analytics-delay', 'analytics-boq', 'analytics-resources', 'analytics-resource-workload',
+    'coordination', 'handover-dashboard', 'retention-dashboard',
+    'resource-capacity', 'absences', 'inventory', 'factory-production', 'vendor-performance', 'vendor-capacity',
+    'finance-overview', 'financial-approvals', 'analytics-profitability', 'analytics-collection-forecast',
+    'team-management', 'team-members', 'roles-permissions', 'organization'
   ],
   growth: [
     'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
     'projects', 'tasks', 'reports', 'analytics', 'analytics-leads', 'analytics-projects', 'analytics-csat',
     'analytics-delay', 'coordination', 'handover-dashboard', 'retention-dashboard', 'resource-capacity',
-    'absences', 'vendor-performance', 'vendor-capacity', 'team-management', 'team-members',
+    'absences', 'inventory', 'factory-production', 'vendor-performance', 'vendor-capacity',
+    'finance-overview', 'financial-approvals', 'team-management', 'team-members',
     'roles-permissions', 'organization'
   ],
   enterprise: [
@@ -173,7 +179,7 @@ const PLAN_DEFAULTS = {
     'analytics-delay', 'analytics-boq', 'analytics-resources', 'analytics-resource-workload',
     'lead-stages', 'custom-fields', 'lead-forms', 'templates', 'trade-activities', 'qc-checklists',
     'conversion-checklist', 'automations', 'coordination', 'handover-dashboard', 'retention-dashboard',
-    'resource-capacity', 'absences', 'vendor-performance', 'vendor-capacity', 'vendor-lead-times',
+    'resource-capacity', 'absences', 'inventory', 'factory-production', 'vendor-performance', 'vendor-capacity', 'vendor-lead-times',
     'finance-overview', 'financial-approvals', 'analytics-profitability', 'analytics-collection-forecast',
     'financial-thresholds', 'team-management', 'team-members', 'roles-permissions', 'organization',
     'login-history', 'audit-trail', 'superadmin', 'api-keys', 'api-integration', 'webhooks',

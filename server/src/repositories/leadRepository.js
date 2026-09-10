@@ -232,9 +232,11 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
   }
 
   if (status === 'active') {
-    query += ` AND (l.status IS NULL OR l.status != 'parked')`;
+    query += ` AND (l.status IS NULL OR LOWER(l.status) NOT IN ('parked', 'converted', 'won'))`;
   } else if (status === 'parked') {
-    query += ` AND l.status = 'parked'`;
+    query += ` AND LOWER(l.status) = 'parked'`;
+  } else if (status === 'converted') {
+    query += ` AND LOWER(l.status) IN ('converted', 'won')`;
   } else if (status) {
     query += ` AND l.status = $${paramIndex++}`;
     values.push(status);
@@ -732,9 +734,11 @@ async function getLeadStats(tenantId, options = {}) {
   }
 
   if (status === 'active') {
-    query += ` AND (l.status IS NULL OR l.status != 'parked')`;
+    query += ` AND (l.status IS NULL OR LOWER(l.status) NOT IN ('parked', 'converted', 'won'))`;
   } else if (status === 'parked') {
-    query += ` AND l.status = 'parked'`;
+    query += ` AND LOWER(l.status) = 'parked'`;
+  } else if (status === 'converted') {
+    query += ` AND LOWER(l.status) IN ('converted', 'won')`;
   } else if (status) {
     query += ` AND l.status = $${paramIndex++}`;
     values.push(status);
