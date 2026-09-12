@@ -915,4 +915,22 @@
     at async exports.getCollectionForecast (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\analyticsController.js:661:22)\n\n2026-09-10T12:47:19.272Z\nerror: COALESCE types date and text cannot be matched
     at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-    at async exports.getCollectionForecast (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\analyticsController.js:661:22)\n\n
+    at async exports.getCollectionForecast (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\analyticsController.js:661:22)\n\n2026-09-12T07:16:25.540Z\nerror: column "proof_document" of relation "payment_milestones" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async updatePaymentMilestone (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\paymentMilestoneService.js:173:18)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\paymentMilestones.js:105:23\n\n2026-09-12T07:24:05.315Z\nerror: invalid input syntax for type date: ""
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async updatePaymentMilestone (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\paymentMilestoneService.js:182:18)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\paymentMilestones.js:105:23\n\n2026-09-12T07:24:53.646Z\nerror: invalid input syntax for type date: ""
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async updatePaymentMilestone (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\paymentMilestoneService.js:182:18)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\paymentMilestones.js:105:23\n\n
+2026-09-12T09:28:23.808Z
+[WITHDRAW ERROR]: error: new row for relation "financial_approvals" violates check constraint "financial_approvals_status_check"
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:818:5
+

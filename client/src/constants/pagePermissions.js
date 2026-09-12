@@ -161,7 +161,7 @@ export const PAGE_PERMISSIONS_SCHEMA = {
     { id: 'conversion-checklist', label: 'Conversion Checklist' },
     { id: 'automations', label: 'Automations' },
     { id: 'vendor-lead-times', label: 'Vendor Lead Times' },
-    { id: 'financial-thresholds', label: 'Financial Thresholds' },
+    { id: 'financial-thresholds', label: 'Financial Settings' },
     { id: 'team-management', label: 'Team Management Tab' },
     { id: 'team-members', label: 'Team Members' },
     { id: 'roles-permissions', label: 'Roles & Permissions' },
@@ -182,7 +182,7 @@ export const PAGE_PERMISSIONS_SCHEMA = {
     { id: 'financial-approvals', label: 'Financial Approvals' },
     { id: 'analytics-profitability', label: 'Project Profitability' },
     { id: 'analytics-collection-forecast', label: 'Payment Forecast' },
-    { id: 'financial-thresholds', label: 'Financial Thresholds' }
+    { id: 'financial-thresholds', label: 'Financial Settings' }
   ],
   invoices: [
     { id: 'invoices-list', label: 'Invoices List' },

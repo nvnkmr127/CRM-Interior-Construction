@@ -28,7 +28,8 @@ try {
               readMig('010_approval_priority.sql') + ';' + 
               readMig('027_task_attachments.sql') + ';' +
               readMig('028_resource_allocations.sql') + ';' +
-              readMig('030_webhook_logs_enhancements.sql');
+              readMig('030_webhook_logs_enhancements.sql') + ';' +
+              readMig('031_financial_approval_withdrawn.sql');
   pool.query(sql).then(() => console.log('Migrations OK')).catch(error => console.log('Migration query warning:', error.message));
 } catch (migErr) {
   console.warn('Migration file load warning:', migErr.message);

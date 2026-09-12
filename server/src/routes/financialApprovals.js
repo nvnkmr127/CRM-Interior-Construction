@@ -1,4 +1,6 @@
 /* eslint-disable no-undef, no-unused-vars */
+const fs = require('fs');
+const path = require('path');
 const { getConstructionFinancialSummary } = require('../utils/constructionValidator');
 const { analyzeFinancialRisk } = require('../utils/riskAnalyzer');
 const { getProjectBudgetValidation } = require('../utils/budgetValidator');
@@ -768,6 +770,120 @@ router.post('/:id/reject', async (req, res, next) => {
   }
 });
 
+// POST /api/financial-approvals/:id/withdraw
+router.post('/:id/withdraw', async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    const rawUserId = req.user?.id || req.user?.userId;
+    const userId = rawUserId ? String(rawUserId) : null;
+    const { id } = req.params;
+    const tenantId = req.tenantId || (req.user && req.user.tenantId);
+
+    const isSuperadmin = req.user?.role === 'superadmin' || (req.user?.permissions && (req.user.permissions.includes('admin') || req.user.permissions.includes('*')));
+
+    await client.query('BEGIN');
+
+    // 1. Fetch approval record by ID
+    const { rows } = await client.query(
+      `SELECT * FROM financial_approvals WHERE id::text = $1::text`,
+      [id]
+    );
+
+    if (rows.length === 0) {
+      await client.query('ROLLBACK');
+      return fail(res, 'NOT_FOUND', 'Approval request not found', 404);
+    }
+    const approval = rows[0];
+
+    // Check if pending
+    if ((approval.status || '').toLowerCase() !== 'pending') {
+      await client.query('ROLLBACK');
+      return fail(res, 'BAD_REQUEST', `Approval request is already ${approval.status}`, 400);
+    }
+
+    // Check tenant if restricted
+    if (!isSuperadmin && tenantId && approval.tenant_id && String(approval.tenant_id) !== String(tenantId)) {
+      await client.query('ROLLBACK');
+      return fail(res, 'FORBIDDEN', 'Access denied for this organization', 403);
+    }
+
+    // Check ownership
+    const reqUserStr = approval.requested_by ? String(approval.requested_by) : null;
+    if (reqUserStr && userId && reqUserStr !== userId && !isSuperadmin) {
+      await client.query('ROLLBACK');
+      return fail(res, 'FORBIDDEN', 'You can only recall your own pending approval requests', 403);
+    }
+
+    const { reason } = req.body || {};
+    const recallReasonText = (reason && String(reason).trim()) ? String(reason).trim() : 'Recalled by user';
+
+    let changesObj = approval.requested_changes;
+    if (typeof changesObj === 'string') {
+      try { changesObj = JSON.parse(changesObj); } catch (e) { changesObj = {}; }
+    }
+    changesObj = changesObj || {};
+    changesObj.recall_reason = recallReasonText;
+
+    // 2. Mark withdrawn with recall reason
+    await client.query(
+      `UPDATE financial_approvals 
+       SET status = 'withdrawn', 
+           rejection_reason = $2, 
+           requested_changes = $3, 
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id::text = $1::text`,
+      [id, recallReasonText, JSON.stringify(changesObj)]
+    );
+
+    // 3. Revert payment milestone status if payment type
+    if (
+      ['payment_update', 'manual_payment', 'Manual Payment', 'payment', 'payment_adjustment', 'advance_adjustment', 'debit_note', 'write_off', 'gate_override'].includes(approval.transaction_type) ||
+      (approval.transaction_type && approval.transaction_type.toLowerCase().includes('payment'))
+    ) {
+      let changes = approval.requested_changes;
+      if (typeof changes === 'string') {
+        try { changes = JSON.parse(changes); } catch (e) { /* noop */ }
+      }
+      const payload = changes?.payload || changes?.data || changes;
+      const milestoneId = approval.target_id || payload?.selectedPayment?.id || payload?.milestoneId;
+      const origStatus = payload?.selectedPayment?.status || changes?.original_status || 'unpaid';
+
+      if (milestoneId) {
+        try {
+          await client.query(
+            `UPDATE payment_milestones SET status = COALESCE($1, 'unpaid') WHERE id::text = $2::text`,
+            [origStatus, String(milestoneId)]
+          );
+        } catch (mErr) {
+          console.warn('[WITHDRAW MILESTONE UPDATE WARNING]:', mErr.message);
+        }
+      }
+    }
+
+    await client.query('COMMIT');
+    try {
+      logActivity(req, 'financial_approval', id, 'Withdrawn', JSON.stringify({ status: 'pending' }), JSON.stringify({ status: 'withdrawn', reason: recallReasonText }));
+    } catch (lErr) {
+      console.warn('[WITHDRAW LOG WARNING]:', lErr.message);
+    }
+
+    return success(res, { message: 'Approval request recalled successfully' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('[WITHDRAW ERROR]:', error);
+    try {
+      fs.appendFileSync(
+        path.join(__dirname, '../../error_log.txt'),
+        `\n${new Date().toISOString()}\n[WITHDRAW ERROR]: ${error.stack || error.message || error}\n\n`
+      );
+    } catch (e) { /* noop */ }
+    return fail(res, 'INTERNAL_ERROR', error.message || 'Failed to recall transaction request', 500, { details: error.message, stack: error.stack });
+  } finally {
+    client.release();
+  }
+});
+
+
 // GET /api/financial-approvals/:id/comments
 router.get('/:id/comments', async (req, res, next) => {
   try {
@@ -1130,7 +1246,6 @@ router.post('/:id/export', async (req, res, next) => {
 
 
 const multer = require('multer');
-const path = require('path');
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, 'uploads/attachments/');

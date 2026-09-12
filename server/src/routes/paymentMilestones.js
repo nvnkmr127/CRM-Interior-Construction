@@ -82,6 +82,11 @@ router.post('/', authorize('payments:create'), validate(createSchema), async (re
 });
 
 const updateSchema = z.object({
+  title: z.string().optional(),
+  name: z.string().optional(),
+  amount: z.number().optional(),
+  due_date: z.string().optional().nullable(),
+  proof_document: z.any().optional().nullable(),
   status: z.string().optional(),
   invoice_reference: z.string().optional().nullable(),
   paid_at: z.string().optional().nullable(),

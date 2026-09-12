@@ -69,7 +69,7 @@ export default function ConfigPage() {
     '/config/webhooks': 'Webhooks',
     '/config/email-templates': 'Email Templates',
     '/config/logs': 'Logs',
-    '/config/financial-settings': 'Financial Thresholds',
+    '/config/financial-settings': 'Financial Settings',
     '/config/vendor-lead-times': 'Vendor Delivery Times'
   };
 

@@ -539,9 +539,11 @@ export default function CollectionForecastReportPage() {
               onChange={(e) => { setProjectFilter(e.target.value); setCurrentPage(1); }}
               className={styles.filterSelect}
             >
-              <option value="all">All Projects ({projects.length})</option>
-              {projects.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
+              <option value="all">All Projects ({Array.from(new Map(projects.map(p => [p.id, p])).values()).length})</option>
+              {Array.from(new Map(projects.map(p => [p.id, p])).values()).map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.name}{p.clientName ? ` (${p.clientName})` : ''}
+                </option>
               ))}
             </select>
           </div>

@@ -623,16 +623,18 @@ exports.getCollectionForecast = async (req, res, next) => {
   try {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
 
-    // Fetch all active projects (excluding archived/cancelled)
+    // Fetch all active projects (excluding deleted/archived/cancelled)
     const projectsQuery = `
       SELECT id, name, client_name 
       FROM projects 
-      WHERE tenant_id = $1 AND (status IS NULL OR status NOT IN ('archived', 'cancelled'))
+      WHERE tenant_id = $1 
+        AND deleted_at IS NULL 
+        AND (status IS NULL OR LOWER(status) NOT IN ('archived', 'cancelled', 'deleted'))
       ORDER BY name ASC
     `;
     const projectsRes = await pool.query(projectsQuery, [tenantId]);
 
-    // Fetch all payment milestones for projects
+    // Fetch all payment milestones for active non-deleted projects
     const query = `
       SELECT 
         pm.id,
@@ -652,7 +654,9 @@ exports.getCollectionForecast = async (req, res, next) => {
         END as "inflowSegment"
       FROM payment_milestones pm
       JOIN projects p ON pm.project_id = p.id
-      WHERE p.tenant_id = $1 AND (p.status IS NULL OR p.status NOT IN ('archived', 'cancelled'))
+      WHERE p.tenant_id = $1 
+        AND p.deleted_at IS NULL 
+        AND (p.status IS NULL OR LOWER(p.status) NOT IN ('archived', 'cancelled', 'deleted'))
       ORDER BY pm.due_date ASC
     `;
 

@@ -107,7 +107,7 @@ export default function SuperAdminSettings() {
     { id: 'financial-approvals', label: 'Financial Approvals', group: 'FINANCE' },
     { id: 'analytics-profitability', label: 'Project Profitability', group: 'FINANCE', isSubItem: true },
     { id: 'analytics-collection-forecast', label: 'Collection Forecast', group: 'FINANCE', isSubItem: true },
-    { id: 'financial-thresholds', label: 'Financial Thresholds', group: 'FINANCE' },
+    { id: 'financial-thresholds', label: 'Financial Settings', group: 'FINANCE' },
     
     { id: 'team-management', label: 'Team Management (Main Group)', group: 'TEAM & SECURITY' },
     { id: 'team-members', label: 'Team Members', group: 'TEAM & SECURITY', isSubItem: true },

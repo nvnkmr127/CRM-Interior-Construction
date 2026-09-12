@@ -36,6 +36,14 @@ export default function DocumentPreviewModal({ isOpen, onClose, documents = [] }
     setRotation(0);
   }, [activeIndex]);
 
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
   if (!isOpen) return null;
 
   const handleZoomIn = () => setZoom(z => Math.min(z + 0.25, 4));
@@ -53,18 +61,10 @@ export default function DocumentPreviewModal({ isOpen, onClose, documents = [] }
     }
   };
 
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
-
   const activeDoc = documents[activeIndex];
 
   const renderIcon = (type) => {
-    const t = type.toLowerCase();
+    const t = (type || '').toLowerCase();
     if (t.includes('pdf')) return '📄';
     if (t.includes('image') || t.includes('png') || t.includes('jpg')) return '🖼️';
     if (t.includes('excel') || t.includes('csv') || t.includes('sheet') || t.includes('xlsx')) return '📊';
@@ -73,15 +73,15 @@ export default function DocumentPreviewModal({ isOpen, onClose, documents = [] }
   };
 
   const getViewerUrl = (doc) => {
-    const t = doc.type.toLowerCase();
+    const t = (doc?.type || '').toLowerCase();
+    const url = doc?.url || doc?.data || '#';
     if (t.includes('pdf')) {
-      return `${doc.url}#toolbar=0&navpanes=0&scrollbar=0`;
+      return `${url}#toolbar=0&navpanes=0&scrollbar=0`;
     }
     if (t.includes('excel') || t.includes('sheet') || t.includes('xlsx') || t.includes('csv') || t.includes('word') || t.includes('doc')) {
-      // Microsoft Office Viewer needs a public URL
-      return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(doc.url)}`;
+      return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
     }
-    return doc.url;
+    return url;
   };
 
   const renderViewer = () => {
@@ -92,8 +92,9 @@ export default function DocumentPreviewModal({ isOpen, onClose, documents = [] }
       </div>
     );
 
-    const t = activeDoc.type.toLowerCase();
-    const isImage = t.includes('image') || t.includes('png') || t.includes('jpg');
+    const t = (activeDoc?.type || '').toLowerCase();
+    const docUrl = activeDoc?.url || activeDoc?.data || '';
+    const isImage = t.includes('image') || t.includes('png') || t.includes('jpg') || docUrl.startsWith('data:image/');
 
     if (isImage) {
       return (

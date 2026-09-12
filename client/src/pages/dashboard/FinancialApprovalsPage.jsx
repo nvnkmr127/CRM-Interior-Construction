@@ -140,6 +140,20 @@ export default function FinancialApprovalsPage() {
   const [advancedFilters, setAdvancedFilters] = useState({});
   const [isAdvancedFiltersOpen, setIsAdvancedFiltersOpen] = useState(false);
   const [sortOption, setSortOption] = useState('newest');
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewDocuments, setPreviewDocuments] = useState([]);
+
+  const handleOpenDocPreview = (docOrDocs) => {
+    if (!docOrDocs) return;
+    const docsArray = Array.isArray(docOrDocs) 
+      ? docOrDocs 
+      : [typeof docOrDocs === 'string' 
+          ? { name: 'Payment Transaction Proof', type: docOrDocs.includes('pdf') ? 'application/pdf' : 'image/png', url: docOrDocs }
+          : docOrDocs
+        ];
+    setPreviewDocuments(docsArray);
+    setPreviewModalOpen(true);
+  };
   
   const ITEMS_PER_PAGE = 10;
 
@@ -672,6 +686,20 @@ export default function FinancialApprovalsPage() {
                       const statusVal = payload.data?.status || payload.status || changes.type || 'Update';
                       const paidAmt = payload.data?.paid_amount || payload.paid_amount || app.amount;
                       const paidAtDate = payload.data?.paid_at || payload.paid_at;
+                      
+                      const isExplicitlyRemoved = 
+                        changes?.proofDocument === null || 
+                        changes?.proofDocumentRemoved || 
+                        payload?.proofDocument === null || 
+                        payload?.proofDocumentRemoved || 
+                        payload?.selectedPayment?.proofDocument === null ||
+                        payload?.selectedPayment?.proofDocumentRemoved ||
+                        (typeof window !== 'undefined' && (
+                          (app.target_id && localStorage.getItem(`crm_removed_proof_doc_${payload?.projectId || app.project_id}_${app.target_id}`) === 'true') ||
+                          (milestoneName && localStorage.getItem(`crm_removed_proof_doc_${payload?.projectId || app.project_id}_${milestoneName}`) === 'true')
+                        ));
+
+                      const proofDoc = isExplicitlyRemoved ? null : (payload.proofDocument || payload.selectedPayment?.proofDocument || (payload.newEntries && payload.newEntries.find(e => e.proofDocument)?.proofDocument) || null);
 
                       return (
                         <div style={{
@@ -710,6 +738,30 @@ export default function FinancialApprovalsPage() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Payment Date:</span>
                               <span style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>{new Date(paidAtDate).toLocaleDateString()}</span>
+                            </div>
+                          )}
+                          {proofDoc && (
+                            <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Transaction Proof:</span>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenDocPreview(proofDoc)}
+                                style={{
+                                  background: 'var(--color-primary-bg, #eff6ff)',
+                                  border: '1px solid var(--color-primary)',
+                                  color: 'var(--color-primary)',
+                                  padding: '4px 10px',
+                                  borderRadius: '6px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                📎 View Proof ({proofDoc.name || 'Document'})
+                              </button>
                             </div>
                           )}
                         </div>
@@ -1049,6 +1101,12 @@ export default function FinancialApprovalsPage() {
           selectedIds={selectedIds} 
           clearSelection={() => setSelectedIds(new Set())} 
           refreshData={refreshAllData} 
+        />
+
+        <DocumentPreviewModal
+          isOpen={previewModalOpen}
+          onClose={() => setPreviewModalOpen(false)}
+          documents={previewDocuments}
         />
       </div>
     );

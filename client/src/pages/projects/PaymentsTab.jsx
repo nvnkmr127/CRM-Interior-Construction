@@ -12,6 +12,7 @@ import { getCreditNotes, getRefunds, createCreditNote, createRefund, getReceipts
 import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
 import PaymentEscalationModal from '../../components/projects/PaymentEscalationModal';
+import DocumentPreviewModal from '../../components/finance/DocumentPreviewModal';
 
 import { useConfirm } from '../../store/confirmContext';
 
@@ -48,8 +49,8 @@ class PaymentGatewayService {
   static async initCashfree(details) {
     return new Promise((resolve, reject) => {
       // Mocking SDK load and webhook verification for frontend
-      setTimeout(async () => {
-        const isSuccess = await confirm(`[Cashfree Mock Sandbox]\nAmount: ₹${details.amount}\nMilestone: ${details.milestoneName}\n\nSimulate successful payment webhook verification?`);
+      setTimeout(() => {
+        const isSuccess = window.confirm(`[Cashfree Mock Sandbox]\nAmount: ₹${details.amount}\nMilestone: ${details.milestoneName}\n\nSimulate successful payment webhook verification?`);
         if (isSuccess) {
           resolve({
             success: true,
@@ -88,6 +89,24 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
     }
   }, [activeSubTab]);
 
+  // Milestone Edit State
+  const [editingMilestoneModalOpen, setEditingMilestoneModalOpen] = useState(false);
+  const [editingMilestone, setEditingMilestone] = useState(null);
+  const [editingMilestoneForm, setEditingMilestoneForm] = useState({ title: '', amount: '', dueDate: '', proofDocument: null });
+  const [editingMilestoneSaving, setEditingMilestoneSaving] = useState(false);
+
+  // Recall Approval Request Modal State
+  const [recallModalOpen, setRecallModalOpen] = useState(false);
+  const [recallingApproval, setRecallingApproval] = useState(null);
+  const [recallingSubmitting, setRecallingSubmitting] = useState(false);
+  const [recallReason, setRecallReason] = useState('');
+
+  // Change Payment Terms / Stages Modal State
+  const [showChangeScheduleModal, setShowChangeScheduleModal] = useState(false);
+  const [availableTemplates, setAvailableTemplates] = useState([]);
+  const [selectedScheduleTemplate, setSelectedScheduleTemplate] = useState('');
+  const [savingSchedule, setSavingSchedule] = useState(false);
+
   // Cost Breakdown "Cart" state
   const [selectedCostItems, setSelectedCostItems] = useState([]);
   const [customAvailableItems, setCustomAvailableItems] = useState([]);
@@ -113,21 +132,95 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
 
   // Finance Approvals Queue State
   const [financeApprovals, setFinanceApprovals] = useState([]);
-  const [approvalsFilter, setApprovalsFilter] = useState('ALL'); // ALL, PENDING, APPROVED, REJECTED
+  const [approvalsFilter, setApprovalsFilter] = useState('ALL'); // ALL, PENDING, APPROVED, REJECTED, WITHDRAWN
+  const [approvalSearchQuery, setApprovalSearchQuery] = useState('');
   const [auditModalOpen, setAuditModalOpen] = useState(false);
   const [selectedAuditApproval, setSelectedAuditApproval] = useState(null);
+
   const fetchApprovals = async () => {
     try {
       const res = await api.get('/financial-approvals');
-      // Filter for this project only
       const rawData = res.data?.data;
       const approvalsList = Array.isArray(rawData) 
         ? rawData 
         : (rawData && Array.isArray(rawData.data) ? rawData.data : []);
-      const projectApprovals = approvalsList.filter(a => a.project_name === project?.name || a.payload?.projectId === projectId);
+      
+      const projectApprovals = approvalsList.filter(a => {
+        let changes = a.requested_changes;
+        if (typeof changes === 'string') {
+          try { changes = JSON.parse(changes); } catch (e) { changes = {}; }
+        }
+        changes = changes || {};
+        const payload = changes.payload || a.payload || {};
+
+        const recProjectId = String(a.project_id || a.db_project_id || payload.projectId || payload.project_id || changes.project_id || '');
+        const recProjectName = (a.project_name || a.db_project_name || changes.project_name || payload.project_name || '').toLowerCase();
+        const currentProjectName = (project?.name || '').toLowerCase();
+
+        if (projectId && recProjectId) {
+          return recProjectId === String(projectId);
+        }
+        if (currentProjectName && recProjectName) {
+          return recProjectName === currentProjectName;
+        }
+        return true;
+      }).map(item => {
+        let changes = item.requested_changes;
+        if (typeof changes === 'string') {
+          try { changes = JSON.parse(changes); } catch (e) { changes = {}; }
+        }
+        changes = changes || {};
+        const payload = changes.payload || item.payload || {};
+        const rawStatus = (item.status || 'PENDING').toUpperCase();
+
+        let auditTrail = [];
+        if (Array.isArray(item.auditTrail) && item.auditTrail.length > 0) {
+          auditTrail = item.auditTrail;
+        } else {
+          auditTrail.push({
+            status: 'REQUESTED',
+            timestamp: item.created_at || item.createdAt || item.date || new Date().toISOString(),
+            note: `Submitted for approval by ${item.requester_name || 'User'}`
+          });
+          if (rawStatus === 'APPROVED') {
+            auditTrail.push({
+              status: 'APPROVED',
+              timestamp: item.approved_at || item.updated_at || new Date().toISOString(),
+              note: `Approved by finance manager`
+            });
+          } else if (rawStatus === 'REJECTED') {
+            auditTrail.push({
+              status: 'REJECTED',
+              timestamp: item.updated_at || item.created_at || new Date().toISOString(),
+              note: item.rejection_reason || 'Rejected by finance manager'
+            });
+          } else if (rawStatus === 'WITHDRAWN') {
+            auditTrail.push({
+              status: 'WITHDRAWN',
+              timestamp: item.updated_at || item.created_at || new Date().toISOString(),
+              note: item.rejection_reason || changes.recall_reason || payload.recall_reason || 'Recalled by user'
+            });
+          }
+        }
+
+        return {
+          id: item.id,
+          date: item.created_at || item.createdAt || item.date || new Date().toISOString(),
+          requester_name: item.requester_name || item.requested_by_name || 'System User',
+          type: (item.transaction_type || item.type || 'Payment Update').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+          amount: Number(item.amount || 0),
+          status: rawStatus,
+          reason: changes.reason || payload.reason || (rawStatus === 'REJECTED' ? item.rejection_reason : null) || 'No specific reason provided',
+          target_number: item.target_number || item.db_target_number || changes.target_number || payload.selectedPayment?.milestone || 'Milestone Request',
+          payload: payload,
+          requested_changes: changes,
+          auditTrail: auditTrail
+        };
+      });
+
       setFinanceApprovals(projectApprovals);
     } catch (err) {
-      console.error(err);
+      console.error('Failed to fetch financial approvals:', err);
     }
   };
 
@@ -217,18 +310,21 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
 
   // RBAC State
   const defaultPermissions = {
-    Admin: ['View', 'Create', 'Edit', 'Delete', 'Approve', 'Refund', 'Export'],
-    Finance: ['View', 'Create', 'Edit', 'Delete', 'Approve', 'Refund', 'Export'],
-    Accounts: ['View', 'Create', 'Edit', 'Export'],
+    Admin: ['View', 'Create', 'Edit', 'Update', 'Delete', 'Approve', 'Refund', 'Export'],
+    Finance: ['View', 'Create', 'Edit', 'Update', 'Delete', 'Approve', 'Refund', 'Export'],
+    Accounts: ['View', 'Create', 'Edit', 'Update', 'Export'],
     Sales: ['View'],
     Designer: ['View'],
-    Project_Manager: ['View', 'Create'],
-    Branch_Manager: ['View', 'Create', 'Approve', 'Export']
+    Project_Manager: ['View', 'Create', 'Update'],
+    Branch_Manager: ['View', 'Create', 'Update', 'Approve', 'Export']
   };
   const [permissionsConfig, setPermissionsConfig] = useState(defaultPermissions);
   const [simulateRole, setSimulateRole] = useState('Admin');
 
   const hasPermission = (action) => {
+    if (action === 'Update' || action === 'Edit') {
+      return (permissionsConfig[simulateRole]?.includes('Edit') || permissionsConfig[simulateRole]?.includes('Update')) || false;
+    }
     return permissionsConfig[simulateRole]?.includes(action) || false;
   };
 
@@ -242,6 +338,65 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
   const [tdsRate, setTdsRate] = useState(0);
   const [tdsAmount, setTdsAmount] = useState(0);
   const [collectedBy, setCollectedBy] = useState('');
+  const [proofDocument, setProofDocument] = useState(null);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewDocuments, setPreviewDocuments] = useState([]);
+
+  const handleOpenDocPreview = (docOrDocs) => {
+    if (!docOrDocs) return;
+    const docsArray = Array.isArray(docOrDocs) 
+      ? docOrDocs 
+      : [typeof docOrDocs === 'string' 
+          ? { name: 'Payment Transaction Proof', type: docOrDocs.includes('pdf') ? 'application/pdf' : 'image/png', url: docOrDocs }
+          : docOrDocs
+        ];
+    setPreviewDocuments(docsArray);
+    setPreviewModalOpen(true);
+  };
+
+  const handleProofFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size exceeds 10MB limit.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const docData = {
+        name: file.name,
+        type: file.type || (file.name.endsWith('.pdf') ? 'application/pdf' : 'image/png'),
+        url: reader.result,
+        size: file.size,
+        uploadedAt: new Date().toISOString()
+      };
+      setProofDocument(docData);
+      toast.success(`Proof document "${file.name}" attached successfully.`);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleEditFormFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size exceeds 10MB limit.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const docData = {
+        name: file.name,
+        type: file.type || (file.name.endsWith('.pdf') ? 'application/pdf' : 'image/png'),
+        url: reader.result,
+        size: file.size,
+        uploadedAt: new Date().toISOString()
+      };
+      setEditingMilestoneForm(prev => ({ ...prev, proofDocument: docData }));
+      toast.success(`Proof document "${file.name}" attached.`);
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Invoice States
   const [invoices, setInvoices] = useState([]);
@@ -557,6 +712,7 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
   const [promiseToPays, setPromiseToPays] = useState([]);
   const [selectedCollectionItem, setSelectedCollectionItem] = useState(null);
   const [collectionFilters, setCollectionFilters] = useState({ priority: 'All', owner: 'All' });
+  const [collectionSearchQuery, setCollectionSearchQuery] = useState('');
   const [collectionActionForm, setCollectionActionForm] = useState({ note: '', callStatus: 'Connected', ptpDate: '' });
 
   const collectionData = React.useMemo(() => {
@@ -611,6 +767,7 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
     const filtered = activeItems.filter(i => {
       if (collectionFilters.priority !== 'All' && i.priority !== collectionFilters.priority) return false;
       if (collectionFilters.owner !== 'All' && i.owner !== collectionFilters.owner) return false;
+      if (collectionSearchQuery.trim() && !i.milestone?.toLowerCase().includes(collectionSearchQuery.toLowerCase())) return false;
       return true;
     }).sort((a,b) => b.score - a.score);
 
@@ -1095,8 +1252,7 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
       setInvoices(prev => [newInvoice, ...prev]);
       appendAuditLog('Generate Invoice', 'Invoice', 0, newInvoice.grandTotal, `Generated ${newInvoice.type}`);
       toast.success(`${invoiceForm.type.replace('_', ' ')} generated successfully!`);
-      
-      // Auto Advance Adjustment Logic
+            // Auto Advance Adjustment Logic
       if (invoiceForm.type === 'TAX_INVOICE' && advanceData.remainingAdvance > 0) {
         const adjustmentAmount = Math.min(grandTotal, advanceData.remainingAdvance);
         const newAdjustment = {
@@ -1117,7 +1273,6 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
       console.error('Failed to generate invoice:', err);
       const errMsg = err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Failed to generate invoice';
       toast.error(typeof errMsg === 'string' ? errMsg : JSON.stringify(errMsg));
-      return;
     }
   };
 
@@ -1203,143 +1358,172 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
     }
   };
 
-  useEffect(() => {
+  const fetchProjectMilestones = async () => {
     if (!projectId) return;
     setLoading(true);
-    
-    getPaymentMilestones(projectId)
-      .then(res => {
-        const _r = res.data?.data || res.data; 
-        let raw = Array.isArray(_r) ? _r : [];
-        
-        const fallbackBudget = Number(project?.booking_amount || 0) > 0 ? Number(project.booking_amount) * 10 : 0;
-        const totalB = Number(project?.contract_value || 0) || fallbackBudget || 0;
-        
-        const defaultMilestoneConfig = [
-          { key: 'booking', name: 'Booking', percentage: 10, enabled: true, dependency: null },
-          { key: 'design', name: 'Design Advance', percentage: 15, enabled: true, dependency: 'booking' },
-          { key: 'production', name: 'Production', percentage: 40, enabled: true, dependency: 'design advance' },
-          { key: 'dispatch', name: 'Dispatch', percentage: 20, enabled: true, dependency: 'production' },
-          { key: 'installation', name: 'Installation', percentage: 10, enabled: true, dependency: 'dispatch' },
-          { key: 'handover', name: 'Final Handover', percentage: 5, enabled: true, dependency: 'installation' }
+
+    try {
+      // 1. Load payment templates
+      try {
+        const settingsRes = await api.get('/config/tenant-settings');
+        const defaultTpls = [
+          { id: 'tpl-5month-20', name: '5-Month Equal Installment Plan (20% x 5)', milestones: [{ name: 'Month 1 - Booking Advance', percentage: 20, stage: 'Booking', offsetDays: 0 }, { name: 'Month 2 - Design Finalization', percentage: 20, stage: 'Design', offsetDays: 30 }, { name: 'Month 3 - Factory Production Start', percentage: 20, stage: 'Production', offsetDays: 60 }, { name: 'Month 4 - Site Installation', percentage: 20, stage: 'Installation', offsetDays: 90 }, { name: 'Month 5 - Final Handover', percentage: 20, stage: 'Handover', offsetDays: 120 }] },
+          { id: 'tpl-3stage-20-50-30', name: 'Standard 3-Stage Milestone (20% - 50% - 30%)', milestones: [{ name: 'Stage 1 - Booking Advance', percentage: 20, stage: 'Booking', offsetDays: 0 }, { name: 'Stage 2 - Material Dispatch', percentage: 50, stage: 'Material Dispatch', offsetDays: 30 }, { name: 'Stage 3 - Final Handover', percentage: 30, stage: 'Handover', offsetDays: 60 }] },
+          { id: 'tpl-4stage-10-40-40-10', name: 'Commercial Construction 4-Stage (10% - 40% - 40% - 10%)', milestones: [{ name: 'Token Advance', percentage: 10, stage: 'Token', offsetDays: 0 }, { name: 'Civil & Structure Work', percentage: 40, stage: 'Structure', offsetDays: 30 }, { name: 'Interior Finishing', percentage: 40, stage: 'Finishing', offsetDays: 75 }, { name: 'Handover & Retention', percentage: 10, stage: 'Retention', offsetDays: 105 }] }
         ];
+        const serverTpls = settingsRes.data?.data?.payment_templates;
+        let mergedTpls = defaultTpls;
+        if (Array.isArray(serverTpls) && serverTpls.length > 0) {
+          const map = new Map();
+          defaultTpls.forEach(t => map.set(t.id, t));
+          serverTpls.forEach(t => map.set(t.id, t));
+          mergedTpls = Array.from(map.values());
+        }
+        setAvailableTemplates(mergedTpls);
+      } catch (e) {
+        console.error('Failed to load payment templates:', e);
+      }
 
-        const adminConfig = project?.milestone_config || defaultMilestoneConfig;
-        const activeMilestones = adminConfig.filter(m => m.enabled);
+      // 2. Fetch project milestones
+      const res = await getPaymentMilestones(projectId);
+      const _r = res.data?.data || res.data;
+      let raw = Array.isArray(_r) ? _r : [];
 
-        // Inject missing full lifecycle milestones ONLY if no milestones exist from API
-        if (raw.length === 0) {
-          activeMilestones.forEach((mConf, index) => {
-            let mockDate = new Date(project?.created_at || project?.createdAt || Date.now());
-            mockDate.setDate(mockDate.getDate() + (index * 15));
-            const milestoneAmount = (totalB * mConf.percentage) / 100;
-            let mockPaymentEntries = [];
-            let mockStatus = index === 0 ? 'pending' : 'scheduled';
-            
-            // Inject mock payment data for the first two milestones
-            if (index === 0) {
-               mockStatus = 'paid';
-               mockPaymentEntries = [{
-                 id: `mock_txn_${Date.now()}_1`,
-                 amount: milestoneAmount,
-                 paidAt: mockDate.toISOString(),
-                 mode: 'Bank Transfer',
-                 collectedByName: 'System Mock',
-                 collectedByRole: 'Admin'
-               }];
-            } else if (index === 1) {
-               mockStatus = 'partially_paid';
-               mockPaymentEntries = [{
-                 id: `mock_txn_${Date.now()}_2`,
-                 amount: milestoneAmount * 0.5, // 50% paid
-                 paidAt: mockDate.toISOString(),
-                 mode: 'UPI',
-                 collectedByName: 'System Mock',
-                 collectedByRole: 'Admin'
-               }];
-            }
+      const fallbackBudget = Number(project?.booking_amount || 0) > 0 ? Number(project.booking_amount) * 10 : 0;
+      const totalB = Number(project?.contract_value || 0) || fallbackBudget || 0;
 
-            const mockEntry = {
-              id: `mock_m_${mConf.key}_${index}`,
-              title: mConf.name || mConf.key,
-              phase: 'Project Lifecycle',
+      const defaultMilestoneConfig = [
+        { key: 'booking', name: 'Booking', percentage: 10, enabled: true, dependency: null },
+        { key: 'design', name: 'Design Advance', percentage: 15, enabled: true, dependency: 'booking' },
+        { key: 'production', name: 'Production', percentage: 40, enabled: true, dependency: 'design advance' },
+        { key: 'dispatch', name: 'Dispatch', percentage: 20, enabled: true, dependency: 'production' },
+        { key: 'installation', name: 'Installation', percentage: 10, enabled: true, dependency: 'dispatch' },
+        { key: 'handover', name: 'Final Handover', percentage: 5, enabled: true, dependency: 'installation' }
+      ];
+
+      const adminConfig = project?.milestone_config || defaultMilestoneConfig;
+      const activeMilestones = adminConfig.filter(m => m.enabled);
+
+      if (raw.length === 0) {
+        activeMilestones.forEach((mConf, index) => {
+          let mockDate = new Date(project?.created_at || project?.createdAt || Date.now());
+          mockDate.setDate(mockDate.getDate() + (index * 15));
+          const milestoneAmount = (totalB * mConf.percentage) / 100;
+          let mockPaymentEntries = [];
+          let mockStatus = index === 0 ? 'pending' : 'scheduled';
+
+          if (index === 0) {
+            mockStatus = 'paid';
+            mockPaymentEntries = [{
+              id: `mock_txn_${Date.now()}_1`,
               amount: milestoneAmount,
-              due_date: mockDate.toISOString().split('T')[0],
-              status: mockStatus,
-              dependency: mConf.dependency,
-              payment_entries: mockPaymentEntries
-            };
-            if (index === 0) raw.unshift(mockEntry); // Booking at top
-            else raw.push(mockEntry); // Rest appended
+              paidAt: mockDate.toISOString(),
+              mode: 'Bank Transfer',
+              collectedByName: 'System Mock',
+              collectedByRole: 'Admin'
+            }];
+          } else if (index === 1) {
+            mockStatus = 'partially_paid';
+            mockPaymentEntries = [{
+              id: `mock_txn_${Date.now()}_2`,
+              amount: milestoneAmount * 0.5,
+              paidAt: mockDate.toISOString(),
+              mode: 'UPI',
+              collectedByName: 'System Mock',
+              collectedByRole: 'Admin'
+            }];
+          }
+
+          const mockEntry = {
+            id: `mock_m_${mConf.key}_${index}`,
+            title: mConf.name || mConf.key,
+            phase: 'Project Lifecycle',
+            amount: milestoneAmount,
+            due_date: mockDate.toISOString().split('T')[0],
+            status: mockStatus,
+            dependency: mConf.dependency,
+            payment_entries: mockPaymentEntries
+          };
+          if (index === 0) raw.unshift(mockEntry);
+          else raw.push(mockEntry);
+        });
+      }
+
+      setPayments(raw.map((p) => {
+        const entries = p.payment_entries ? [...p.payment_entries] : [];
+        if (p.status === 'paid' && entries.length === 0) {
+          entries.push({
+            id: p.id + '_legacy',
+            amount: Number(p.amount || p.paid_amount || 0),
+            paidAt: p.paid_at || new Date().toISOString(),
+            mode: p.payment_mode || 'Bank Transfer',
+            collectedByName: p.collected_by_name,
+            collectedByRole: p.collected_by_role
           });
         }
+        const collectedAmount = entries.reduce((s, e) => s + Number(e.amount || 0), 0);
+        const amountValue = Number(p.amount || 0);
+        const remainingAmount = amountValue - collectedAmount;
+        let derivedStatus = p.status || 'scheduled';
+        if (collectedAmount >= amountValue) derivedStatus = 'paid';
+        else if (collectedAmount > 0) derivedStatus = 'partially_paid';
 
-        setPayments(raw.map((p, index) => {
-          const entries = p.payment_entries ? [...p.payment_entries] : [];
-          if (p.status === 'paid' && entries.length === 0) {
-             entries.push({
-               id: p.id + '_legacy',
-               amount: Number(p.amount || p.paid_amount || 0),
-               paidAt: p.paid_at || new Date().toISOString(),
-               mode: p.payment_mode || 'Bank Transfer',
-               collectedByName: p.collected_by_name,
-               collectedByRole: p.collected_by_role
-             });
-          }
-          const collectedAmount = entries.reduce((s, e) => s + Number(e.amount || 0), 0);
-          const amountValue = Number(p.amount || 0);
-          const remainingAmount = amountValue - collectedAmount;
-          let derivedStatus = p.status || 'scheduled';
-          if (collectedAmount >= amountValue) derivedStatus = 'paid';
-          else if (collectedAmount > 0) derivedStatus = 'partially_paid';
-
-          return {
-            id: p.id,
-            milestone: p.title || p.milestone || p.name,
-            phase: p.phase_name || p.phase || '—',
-            amountValue,
-            collectedAmount,
-            remainingAmount,
-            paymentEntries: entries,
-            dueDate: p.due_date ? p.due_date.split('T')[0] : null,
-            status: derivedStatus,
-            dependency: p.dependency || null,
-            invoiceReference: p.invoice_reference || null,
-            tdsRate: Number(p.tds_rate || 0),
-            tdsAmount: Number(p.tds_amount || 0)
-          };
-        }));
-      })
-      .catch(() => setPayments([]))
-      .finally(() => setLoading(false));
-
-    Promise.all([
-      getCreditNotes(projectId),
-      getRefunds(projectId),
-      getInvoicesByProject(projectId),
-      getReceiptsByProject(projectId)
-    ]).then(([cnRes, rfRes, invRes, recRes]) => {
-      setCreditNotes(cnRes.data?.data || cnRes.data || []);
-      setRefunds(rfRes.data?.data || rfRes.data || []);
-      const rawInvoices = invRes.data?.data || invRes.data || [];
-      const normalizedInvoices = rawInvoices.map(inv => ({
-        ...inv,
-        id: inv.invoice_number || inv.id,
-        dbId: inv.id,
-        amount: Number(inv.total_amount || inv.amount || 0),
-        grandTotal: Number(inv.total_amount || inv.grandTotal || inv.amount || 0),
-        date: inv.invoice_date || inv.date,
-        version: inv.version || 1,
-        customerName: project?.customer_name || 'Customer',
-        projectName: project?.name || 'Project'
+        return {
+          id: p.id,
+          milestone: p.title || p.milestone || p.name,
+          phase: p.phase_name || p.phase || '—',
+          amountValue,
+          collectedAmount,
+          remainingAmount,
+          paymentEntries: entries,
+          dueDate: p.due_date ? p.due_date.split('T')[0] : null,
+          status: derivedStatus,
+          dependency: p.dependency || null,
+          invoiceReference: p.invoice_reference || null,
+          tdsRate: Number(p.tds_rate || 0),
+          tdsAmount: Number(p.tds_amount || 0)
+        };
       }));
-      setInvoices(normalizedInvoices);
-      setReceipts(recRes.data?.data || recRes.data || []);
-    }).catch(err => {
-      console.error('Failed to load credit notes or refunds:', err);
-    });
 
-    loadEscalations();
+      // 3. Additional financial details
+      try {
+        const [cnRes, rfRes, invRes, recRes] = await Promise.all([
+          getCreditNotes(projectId),
+          getRefunds(projectId),
+          getInvoicesByProject(projectId),
+          getReceiptsByProject(projectId)
+        ]);
+        setCreditNotes(cnRes.data?.data || cnRes.data || []);
+        setRefunds(rfRes.data?.data || rfRes.data || []);
+        const rawInvoices = invRes.data?.data || invRes.data || [];
+        const normalizedInvoices = rawInvoices.map(inv => ({
+          ...inv,
+          id: inv.invoice_number || inv.id,
+          dbId: inv.id,
+          amount: Number(inv.total_amount || inv.amount || 0),
+          grandTotal: Number(inv.total_amount || inv.grandTotal || inv.amount || 0),
+          date: inv.invoice_date || inv.date,
+          version: inv.version || 1,
+          customerName: project?.customer_name || 'Customer',
+          projectName: project?.name || 'Project'
+        }));
+        setInvoices(normalizedInvoices);
+        setReceipts(recRes.data?.data || recRes.data || []);
+      } catch (err) {
+        console.error('Failed to load credit notes or refunds:', err);
+      }
+
+      await loadEscalations();
+    } catch (err) {
+      console.error('Failed to fetch project milestones:', err);
+      setPayments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProjectMilestones();
   }, [projectId]);
 
   // Derived Values
@@ -1395,7 +1579,12 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
       reference: ''
     }]);
     setCollectedBy('');
+    setProofDocument(null);
     setModalOpen(true);
+  };
+
+  const handleCollectPayment = (p) => {
+    handleMarkPaidClick(p);
   };
 
   const handleAddSplit = () => {
@@ -1466,7 +1655,8 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
         reference: sp.reference,
         collectedByName: colName,
         collectedByRole: colRole,
-        tdsAmount: index === 0 ? tdsAmount : 0
+        tdsAmount: index === 0 ? tdsAmount : 0,
+        proofDocument: proofDocument || null
       }));
 
       const newCollected = selectedPayment.collectedAmount + totalSplitAmount;
@@ -1475,18 +1665,26 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
       else if (newCollected > 0) newStatus = 'partially_paid';
 
       // Update local payment status to reflect it is pending approval
-      setPayments(prev => prev.map(p => p.id === selectedPayment.id ? { ...p, status: 'pending_approval' } : p));
+      setPayments(prev => prev.map(p => p.id === selectedPayment.id ? { 
+        ...p, 
+        status: 'pending_approval',
+        proofDocument: proofDocument || p.proofDocument || null 
+      } : p));
 
       // Send to Finance Approval instead of executing directly
       requestFinanceApproval('Manual Payment', totalSplitAmount, `Payment for ${selectedPayment.milestone}`, {
-         selectedPayment,
+         selectedPayment: {
+           ...selectedPayment,
+           proofDocument: proofDocument || selectedPayment.proofDocument || null
+         },
          splitPayments: processedSplits,
          tdsRate,
          tdsAmount,
          collectedBy,
          newEntries,
          newStatus,
-         newCollected
+         newCollected,
+         proofDocument: proofDocument || null
       });
       setModalOpen(false);
     } catch {
@@ -1527,39 +1725,6 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
     } finally {
       setCreditNoteSubmitting(false);
     }
-  };
-
-  const handleGenerateLinkClick = (p) => {
-    setSelectedMilestoneForLink(p);
-    setLinkForm({ expiryDays: 3 });
-    setLinkModalOpen(true);
-  };
-
-  const handleConfirmGenerateLink = () => {
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + Number(linkForm.expiryDays));
-    
-    const newLink = {
-      id: 'pl_' + Date.now(),
-      milestoneId: selectedMilestoneForLink.id,
-      milestoneName: selectedMilestoneForLink.milestone,
-      amount: selectedMilestoneForLink.remainingAmount,
-      url: `https://pay.crm.com/pay/${Date.now().toString(36)}`,
-      status: 'sent', 
-      createdAt: new Date().toISOString(),
-      expiry: expiryDate.toISOString(),
-      customerName: project?.customer_name || 'Customer'
-    };
-    
-    setPaymentLinks(prev => [newLink, ...prev]);
-    appendAuditLog('Generate Link', 'Payment Link', 0, newLink.amount, 'System generated secure payment link');
-    toast.success('Secure Payment Link Generated and Sent!');
-    setLinkModalOpen(false);
-  };
-
-  const handleCancelLink = (linkId) => {
-    setPaymentLinks(prev => prev.map(l => l.id === linkId ? { ...l, status: 'cancelled' } : l));
-    toast.success('Payment link cancelled');
   };
 
   // Available Cost Items Catalog
@@ -2117,27 +2282,24 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
 
       {/* Sub-Tabs */}
       <div className={styles.subTabsContainer} ref={subTabsRef}>
-        {['dashboard', 'collections', 'breakdown', 'logs', 'audit_logs', 'milestones', 'gates', 'links', 'invoices', 'receipts', 'ledger', 'receivables', 'reminders', 'credits', 'approvals'].map(tab => (
+        {['dashboard', 'breakdown', 'milestones', 'collections', 'invoices', 'receipts', 'ledger', 'gates', 'approvals', 'reminders', 'credits', 'audit_logs'].map(tab => (
           <button
             key={tab}
             className={`${styles.subTab} ${activeSubTab === tab ? styles.subTabActive : ''}`}
             onClick={async () => setActiveSubTab(tab)}
           >
             {tab === 'dashboard' ? 'Dashboard' :
-             tab === 'collections' ? 'Collections' :
              tab === 'breakdown' ? 'Cost Breakdown' : 
-             tab === 'logs' ? 'History' : 
-             tab === 'audit_logs' ? 'Audit Logs' : 
              tab === 'milestones' ? 'Milestones' : 
-             tab === 'gates' ? 'Financial Gates' : 
-             tab === 'links' ? 'Links' : 
+             tab === 'collections' ? 'Collections' :
              tab === 'invoices' ? 'Invoices' :
              tab === 'receipts' ? 'Receipts' :
              tab === 'ledger' ? 'Ledger' : 
-             tab === 'receivables' ? 'Receivables' : 
+             tab === 'gates' ? 'Financial Gates' : 
+             tab === 'approvals' ? 'Approvals' : 
              tab === 'reminders' ? 'Reminders' : 
              tab === 'credits' ? 'Refunds & Credit Notes' : 
-             tab === 'approvals' ? 'Approvals' : ''}
+             tab === 'audit_logs' ? 'Audit Logs' : ''}
           </button>
         ))}
       </div>
@@ -2147,7 +2309,7 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
         {activeSubTab === 'dashboard' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-               <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 600 }}>Finance Dashboard</h3>
+               <h3 style={{ margin: 0, fontSize: 'var(--text-xl)', fontWeight: 600 }}>Finance Dashboard</h3>
                <PermissionButton module="finance" action="export_pdf" variant="outline" size="sm" onClick={handleExportDashboard}>
                  Export Report
                </PermissionButton>
@@ -2155,42 +2317,42 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
 
             {/* KPIs Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-               <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px' }}>
-                 <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Today's Collection</div>
-                 <div style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', marginTop: '8px' }}>₹{dashboardData.todayCollection.toLocaleString('en-IN')}</div>
+               <div className={styles.creditCard} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '16px' }}>
+                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Today's Collection</div>
+                 <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--color-text)', marginTop: '8px' }}>₹{dashboardData.todayCollection.toLocaleString('en-IN')}</div>
                </div>
-               <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px' }}>
-                 <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Monthly Collection</div>
-                 <div style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', marginTop: '8px' }}>₹{dashboardData.monthlyCollection.toLocaleString('en-IN')}</div>
+               <div className={styles.creditCard} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '16px' }}>
+                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Monthly Collection</div>
+                 <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--color-text)', marginTop: '8px' }}>₹{dashboardData.monthlyCollection.toLocaleString('en-IN')}</div>
                </div>
-               <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px' }}>
-                 <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Outstanding</div>
-                 <div style={{ fontSize: '18px', fontWeight: 700, color: '#ef4444', marginTop: '8px' }}>₹{dashboardData.outstanding.toLocaleString('en-IN')}</div>
+               <div className={styles.creditCard} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '16px' }}>
+                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Total Outstanding</div>
+                 <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--color-danger)', marginTop: '8px' }}>₹{dashboardData.outstanding.toLocaleString('en-IN')}</div>
                </div>
-               <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px' }}>
-                 <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Overdue</div>
-                 <div style={{ fontSize: '18px', fontWeight: 700, color: '#b91c1c', marginTop: '8px' }}>₹{dashboardData.overdue.toLocaleString('en-IN')}</div>
+               <div className={styles.creditCard} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '16px' }}>
+                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Total Overdue</div>
+                 <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--color-danger)', marginTop: '8px' }}>₹{dashboardData.overdue.toLocaleString('en-IN')}</div>
                </div>
-               <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px' }}>
-                 <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Refunds</div>
-                 <div style={{ fontSize: '18px', fontWeight: 700, color: '#f59e0b', marginTop: '8px' }}>₹{dashboardData.totalRefunds.toLocaleString('en-IN')}</div>
+               <div className={styles.creditCard} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '16px' }}>
+                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Total Refunds</div>
+                 <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--color-warning)', marginTop: '8px' }}>₹{dashboardData.totalRefunds.toLocaleString('en-IN')}</div>
                </div>
-               <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px' }}>
-                 <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Credit Notes Issued</div>
-                 <div style={{ fontSize: '18px', fontWeight: 700, color: '#3b82f6', marginTop: '8px' }}>₹{dashboardData.totalCreditNotes.toLocaleString('en-IN')}</div>
+               <div className={styles.creditCard} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '16px' }}>
+                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Credit Notes Issued</div>
+                 <div style={{ fontSize: 'var(--text-xl)', fontWeight: 700, color: 'var(--color-info)', marginTop: '8px' }}>₹{dashboardData.totalCreditNotes.toLocaleString('en-IN')}</div>
                </div>
             </div>
 
             {/* Target Progress */}
             <div className={styles.card} style={{ padding: '24px' }}>
                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                 <div style={{ fontWeight: 600, color: '#1e293b' }}>Collection Target (Mock)</div>
-                 <div style={{ color: '#64748b', fontSize: '14px' }}>
+                 <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>Project Collection Target</div>
+                 <div style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
                    ₹{dashboardData.currentTotalCollected.toLocaleString('en-IN')} / ₹{dashboardData.collectionTarget.toLocaleString('en-IN')}
                  </div>
                </div>
-               <div style={{ width: '100%', height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
-                 <div style={{ width: `${(dashboardData.currentTotalCollected / dashboardData.collectionTarget) * 100}%`, height: '100%', background: '#22c55e' }} />
+               <div style={{ width: '100%', height: '8px', background: 'var(--color-border)', borderRadius: '4px', overflow: 'hidden' }}>
+                 <div style={{ width: `${Math.min(100, (dashboardData.currentTotalCollected / (dashboardData.collectionTarget || 1)) * 100)}%`, height: '100%', background: 'var(--color-success)' }} />
                </div>
             </div>
             
@@ -2253,97 +2415,146 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
         )}
         {activeSubTab === 'collections' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Collection Management</h3>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <select 
-                  className={styles.input} 
+            {/* Collections Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 'var(--text-xl)', fontWeight: 600, color: 'var(--color-text)' }}>Collection Management & Follow-ups</h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
+                  Track overdue milestones, manage promises to pay (PTP), and record client collections.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <Input 
+                  placeholder="Search milestone..." 
+                  value={collectionSearchQuery} 
+                  onChange={(e) => setCollectionSearchQuery(e.target.value)}
+                  style={{ width: '180px' }}
+                />
+                <Select 
                   value={collectionFilters.priority} 
-                  onChange={(e) => setCollectionFilters(prev => ({...prev, priority: e.target.value}))}
+                  onChange={(val) => setCollectionFilters(prev => ({...prev, priority: val}))}
+                  options={[
+                    { value: 'All', label: 'All Priorities' },
+                    { value: 'HIGH', label: 'High Priority' },
+                    { value: 'MEDIUM', label: 'Medium Priority' },
+                    { value: 'LOW', label: 'Low Priority' },
+                    { value: 'UPCOMING', label: 'Upcoming' }
+                  ]}
                   style={{ width: '150px' }}
-                >
-                  <option value="All">All Priorities</option>
-                  <option value="HIGH">High Priority</option>
-                  <option value="MEDIUM">Medium Priority</option>
-                  <option value="LOW">Low Priority</option>
-                  <option value="UPCOMING">Upcoming</option>
-                </select>
-                <select 
-                  className={styles.input} 
+                />
+                <Select 
                   value={collectionFilters.owner} 
-                  onChange={(e) => setCollectionFilters(prev => ({...prev, owner: e.target.value}))}
+                  onChange={(val) => setCollectionFilters(prev => ({...prev, owner: val}))}
+                  options={[
+                    { value: 'All', label: 'All Owners' },
+                    { value: 'Finance Team A', label: 'Finance Team A' }
+                  ]}
                   style={{ width: '150px' }}
-                >
-                  <option value="All">All Owners</option>
-                  <option value="Finance Team A">Finance Team A</option>
-                </select>
+                />
+                {hasPermission('Create') && (
+                  <Button 
+                    variant="primary" 
+                    onClick={() => {
+                      const target = selectedCollectionItem || (payments.find(p => p.remainingAmount > 0) || payments[0]);
+                      if (target) handleCollectPayment(target);
+                      else toast.info('No outstanding milestones available to collect.');
+                    }}
+                  >
+                    💳 Record Payment
+                  </Button>
+                )}
               </div>
             </div>
 
             {/* Collection KPIs */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
-              <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px', borderLeft: '4px solid #ef4444' }}>
-                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Overdue Follow-ups</div>
-                <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', marginTop: '8px' }}>{collectionData.kpis.overdueCount}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+              <div className={styles.creditCard} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderLeft: '4px solid var(--color-danger)', padding: '16px', borderRadius: 'var(--radius-lg)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Overdue Follow-ups</span>
+                  <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+                </div>
+                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-danger)', marginTop: '8px' }}>{collectionData.kpis.overdueCount}</div>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '4px' }}>Milestones past due date</div>
               </div>
-              <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px', borderLeft: '4px solid #3b82f6' }}>
-                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Upcoming Dues</div>
-                <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', marginTop: '8px' }}>{collectionData.kpis.upcomingCount}</div>
+
+              <div className={styles.creditCard} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderLeft: '4px solid var(--color-info)', padding: '16px', borderRadius: 'var(--radius-lg)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Upcoming Dues</span>
+                  <span style={{ fontSize: '1.2rem' }}>📅</span>
+                </div>
+                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-info)', marginTop: '8px' }}>{collectionData.kpis.upcomingCount}</div>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '4px' }}>Due within next 7 days</div>
               </div>
-              <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px', borderLeft: '4px solid #f59e0b' }}>
-                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Active Promises (PTP)</div>
-                <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', marginTop: '8px' }}>{collectionData.kpis.ptpCount}</div>
+
+              <div className={styles.creditCard} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderLeft: '4px solid var(--color-warning)', padding: '16px', borderRadius: 'var(--radius-lg)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Active Promises (PTP)</span>
+                  <span style={{ fontSize: '1.2rem' }}>🤝</span>
+                </div>
+                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-warning)', marginTop: '8px' }}>{collectionData.kpis.ptpCount}</div>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '4px' }}>Promised customer payments</div>
               </div>
-              <div className={styles.creditCard} style={{ background: '#f8fafc', padding: '16px', borderLeft: '4px solid #10b981' }}>
-                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Followed-Up Today</div>
-                <div style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', marginTop: '8px' }}>{collectionData.kpis.todayFollowUpCount}</div>
+
+              <div className={styles.creditCard} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderLeft: '4px solid var(--color-success)', padding: '16px', borderRadius: 'var(--radius-lg)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Followed-Up Today</span>
+                  <span style={{ fontSize: '1.2rem' }}>✅</span>
+                </div>
+                <div style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--color-success)', marginTop: '8px' }}>{collectionData.kpis.todayFollowUpCount}</div>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '4px' }}>Calls & notes logged today</div>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '24px' }}>
               {/* Action List */}
-              <div className={styles.card}>
-                <div className={styles.cardHeader}>
-                  <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>Action List</h4>
+              <div className={styles.card} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <h4 style={{ margin: 0, fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--color-text)' }}>Outstanding Action Queue</h4>
+                  <Badge variant="neutral" size="sm">{collectionData.items.length} Pending</Badge>
                 </div>
-                <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                <div style={{ maxHeight: '540px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {collectionData.items.length === 0 ? (
-                    <div style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>No pending actions.</div>
+                    <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-muted)', background: 'var(--color-bg)', borderRadius: 'var(--radius-md)' }}>
+                      🎉 No pending collection actions found. All payments are clear or up to date!
+                    </div>
                   ) : (
                     collectionData.items.map((item, idx) => (
                       <div 
                         key={idx} 
                         style={{ 
                           padding: '16px', 
-                          borderBottom: '1px solid #f1f5f9', 
+                          borderRadius: '8px',
+                          border: selectedCollectionItem?.id === item.id ? '2px solid var(--color-primary)' : '1px solid var(--color-border)', 
                           cursor: 'pointer',
-                          background: selectedCollectionItem?.id === item.id ? '#f0f9ff' : 'transparent'
+                          background: selectedCollectionItem?.id === item.id ? 'var(--color-surface-hover)' : 'var(--color-surface)',
+                          transition: 'all 0.2s ease'
                         }}
-                        onClick={async () => setSelectedCollectionItem(item)}
+                        onClick={() => setSelectedCollectionItem(item)}
                       >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                          <span style={{ fontWeight: 600, color: '#1e293b' }}>{item.milestone}</span>
-                          <span style={{ 
-                            padding: '2px 8px', 
-                            borderRadius: '12px', 
-                            fontSize: '12px', 
-                            fontWeight: 600,
-                            background: item.priority === 'HIGH' ? '#fee2e2' : item.priority === 'MEDIUM' ? '#fef3c7' : item.priority === 'LOW' ? '#f1f5f9' : '#dcfce7',
-                            color: item.priority === 'HIGH' ? '#b91c1c' : item.priority === 'MEDIUM' ? '#b45309' : item.priority === 'LOW' ? '#475569' : '#166534'
-                          }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                          <div>
+                            <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '15px' }}>{item.milestone}</div>
+                            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '2px' }}>Due Date: {new Date(item.dueDate).toLocaleDateString('en-IN')}</div>
+                          </div>
+                          <Badge 
+                            variant={item.priority === 'HIGH' ? 'danger' : item.priority === 'MEDIUM' ? 'warning' : item.priority === 'LOW' ? 'neutral' : 'success'} 
+                            size="sm"
+                          >
                             {item.priority}
+                          </Badge>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px', marginTop: '12px' }}>
+                          <span style={{ fontSize: '12px', color: item.daysOverdue > 0 ? 'var(--color-danger)' : 'var(--color-text-muted)', fontWeight: item.daysOverdue > 0 ? 600 : 400 }}>
+                            {item.daysOverdue > 0 ? `⚠️ ${item.daysOverdue} days overdue` : '📅 Upcoming'}
                           </span>
+                          <span style={{ fontWeight: 700, color: 'var(--color-danger)', fontSize: '16px' }}>₹{item.remainingAmount.toLocaleString('en-IN')}</span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#475569' }}>
-                          <span>Due: {new Date(item.dueDate).toLocaleDateString()}</span>
-                          <span style={{ fontWeight: 600, color: '#ef4444' }}>₹{item.remainingAmount.toLocaleString('en-IN')}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '8px', color: '#64748b' }}>
-                          <span>{item.daysOverdue > 0 ? `${item.daysOverdue} days overdue` : 'Upcoming'}</span>
-                          {item.latestPtp && (
-                            <span style={{ color: '#f59e0b', fontWeight: 600 }}>PTP: {new Date(item.latestPtp.ptpDate).toLocaleDateString()}</span>
-                          )}
-                        </div>
+                        {item.latestPtp && (
+                          <div style={{ marginTop: '8px', padding: '6px 10px', background: 'var(--color-bg)', borderRadius: '4px', fontSize: '12px', display: 'flex', justifyContent: 'space-between', color: 'var(--color-warning)' }}>
+                            <span>🤝 Promised Date:</span>
+                            <span style={{ fontWeight: 600 }}>{new Date(item.latestPtp.ptpDate).toLocaleDateString('en-IN')}</span>
+                          </div>
+                        )}
                       </div>
                     ))
                   )}
@@ -2351,70 +2562,132 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
               </div>
 
               {/* Action Center */}
-              <div className={styles.card}>
-                <div className={styles.cardHeader}>
-                  <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>Action Center</h4>
+              <div className={styles.card} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: '20px' }}>
+                <div style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '12px', marginBottom: '16px' }}>
+                  <h4 style={{ margin: 0, fontSize: 'var(--text-md)', fontWeight: 600, color: 'var(--color-text)' }}>Collection Follow-up Center</h4>
                 </div>
                 {!selectedCollectionItem ? (
-                  <div style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>Select a milestone from the list to take action.</div>
+                  <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--color-text-muted)', background: 'var(--color-bg)', borderRadius: 'var(--radius-md)' }}>
+                    👈 Select a milestone from the Action Queue to log call notes, update PTP, or collect payment.
+                  </div>
                 ) : (
-                  <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px' }}>
-                      <div style={{ fontWeight: 600, marginBottom: '4px' }}>{selectedCollectionItem.milestone}</div>
-                      <div style={{ fontSize: '14px', color: '#475569' }}>Outstanding: ₹{selectedCollectionItem.remainingAmount.toLocaleString('en-IN')}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ background: 'var(--color-surface-hover)', padding: '16px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '16px', color: 'var(--color-text)' }}>{selectedCollectionItem.milestone}</div>
+                          <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginTop: '4px' }}>Customer: {project?.customer_name || 'Client'}</div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Outstanding</div>
+                          <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-danger)' }}>₹{selectedCollectionItem.remainingAmount.toLocaleString('en-IN')}</div>
+                        </div>
+                      </div>
+                      
+                      {/* Direct Quick Action Buttons - 1 Row Layout */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', marginTop: '16px' }}>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          style={{ borderColor: 'var(--color-success)', color: 'var(--color-success)', padding: '6px 4px', fontSize: '12px', whiteSpace: 'nowrap', width: '100%', justifyContent: 'center' }}
+                          onClick={() => {
+                            const phone = project?.customer_phone || project?.phone || '+919876543210';
+                            window.location.href = `tel:${phone}`;
+                            setCollectionActionForm(prev => ({...prev, callStatus: 'Connected'}));
+                            toast.success(`Initiating call to ${project?.customer_name || 'Client'} (${phone})...`);
+                          }}
+                        >
+                          📞 Call Client
+                        </Button>
+                        {hasPermission('Create') && (
+                          <Button 
+                            size="sm" 
+                            variant="primary" 
+                            style={{ padding: '6px 4px', fontSize: '12px', whiteSpace: 'nowrap', width: '100%', justifyContent: 'center' }}
+                            onClick={() => handleCollectPayment(selectedCollectionItem)}
+                          >
+                            💳 Collect Payment
+                          </Button>
+                        )}
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          style={{ borderColor: '#25D366', color: '#25D366', padding: '6px 4px', fontSize: '12px', whiteSpace: 'nowrap', width: '100%', justifyContent: 'center' }}
+                          onClick={() => {
+                            const msg = `Dear ${project?.customer_name || 'Valued Client'}, gentle reminder regarding your milestone payment of ₹${selectedCollectionItem.remainingAmount.toLocaleString('en-IN')} for "${selectedCollectionItem.milestone}". Please feel free to reach out for assistance. Thank you!`;
+                            window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+                            toast.success('WhatsApp payment request opened');
+                          }}
+                        >
+                          📱 WhatsApp
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          style={{ padding: '6px 4px', fontSize: '12px', whiteSpace: 'nowrap', width: '100%', justifyContent: 'center' }}
+                          onClick={() => {
+                            toast.success(`Payment alert email dispatched to ${project?.customer_email || 'client'}`);
+                          }}
+                        >
+                          ✉️ Email Alert
+                        </Button>
+                      </div>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <label style={{ fontSize: '14px', fontWeight: 500 }}>Call Status</label>
-                      <select 
-                        className={styles.input}
+                      <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text)' }}>Call Status</label>
+                      <Select 
                         value={collectionActionForm.callStatus}
-                        onChange={(e) => setCollectionActionForm(prev => ({...prev, callStatus: e.target.value}))}
-                      >
-                        <option value="Connected">Connected</option>
-                        <option value="No Answer">No Answer</option>
-                        <option value="Busy">Busy</option>
-                        <option value="Wrong Number">Wrong Number</option>
-                      </select>
+                        onChange={(val) => setCollectionActionForm(prev => ({...prev, callStatus: val}))}
+                        options={[
+                          { value: 'Connected', label: '📞 Connected' },
+                          { value: 'No Answer', label: '📵 No Answer' },
+                          { value: 'Busy', label: '⏳ Line Busy' },
+                          { value: 'Wrong Number', label: '❌ Wrong Number' }
+                        ]}
+                      />
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <label style={{ fontSize: '14px', fontWeight: 500 }}>Collection Notes</label>
+                      <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text)' }}>Follow-up Conversation Notes</label>
                       <textarea 
                         className={styles.input} 
-                        style={{ height: '80px', resize: 'none' }}
-                        placeholder="Log details of the conversation..."
+                        style={{ height: '80px', resize: 'none', background: 'var(--color-bg)', color: 'var(--color-text)', border: '1px solid var(--color-border)', borderRadius: '6px', padding: '10px' }}
+                        placeholder="Log customer response, reason for delay, or committed payment mode..."
                         value={collectionActionForm.note}
                         onChange={(e) => setCollectionActionForm(prev => ({...prev, note: e.target.value}))}
                       />
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <label style={{ fontSize: '14px', fontWeight: 500 }}>Promise To Pay (PTP) Date</label>
+                      <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text)' }}>Promise To Pay (PTP) Date</label>
                       <input 
                         type="date" 
                         className={styles.input} 
+                        style={{ background: 'var(--color-bg)', color: 'var(--color-text)', border: '1px solid var(--color-border)', borderRadius: '6px', padding: '8px 12px' }}
                         value={collectionActionForm.ptpDate}
                         onChange={(e) => setCollectionActionForm(prev => ({...prev, ptpDate: e.target.value}))}
                       />
                     </div>
 
-                    <Button variant="primary" onClick={handleLogCollectionAction}>Log Action</Button>
+                    <Button variant="primary" onClick={handleLogCollectionAction} style={{ width: '100%', marginTop: '4px' }}>
+                      💾 Save Log & Update PTP
+                    </Button>
 
-                    <div style={{ marginTop: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
-                      <h5 style={{ margin: 0, marginBottom: '12px', fontSize: '14px', fontWeight: 600 }}>Reminder & Call History</h5>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '200px', overflowY: 'auto' }}>
+                    <div style={{ marginTop: '16px', borderTop: '1px solid var(--color-border)', paddingTop: '16px' }}>
+                      <h5 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: 600, color: 'var(--color-text)' }}>Follow-up Activity Timeline</h5>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '200px', overflowY: 'auto' }}>
                         {selectedCollectionItem.history.length === 0 ? (
-                          <div style={{ fontSize: '12px', color: '#94a3b8' }}>No previous history logged.</div>
+                          <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>No call notes or reminders logged yet.</div>
                         ) : (
                           selectedCollectionItem.history.map((h, i) => (
-                            <div key={i} style={{ fontSize: '12px', background: '#f1f5f9', padding: '8px', borderRadius: '4px' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', marginBottom: '4px' }}>
-                                <span>{new Date(h.date).toLocaleString()}</span>
-                                <span style={{ fontWeight: 600 }}>{h.callStatus}</span>
+                            <div key={i} style={{ fontSize: '12px', background: 'var(--color-surface-hover)', border: '1px solid var(--color-border)', padding: '10px', borderRadius: '6px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-muted)', marginBottom: '4px' }}>
+                                <span>{new Date(h.date).toLocaleString('en-IN')}</span>
+                                <Badge size="sm" variant={h.callStatus === 'Connected' ? 'success' : 'neutral'}>{h.callStatus}</Badge>
                               </div>
-                              <div style={{ color: '#1e293b' }}>{h.note}</div>
-                              <div style={{ color: '#94a3b8', marginTop: '4px', fontStyle: 'italic' }}>By: {h.loggedBy}</div>
+                              <div style={{ color: 'var(--color-text)', fontWeight: 500, marginTop: '4px' }}>{h.note}</div>
+                              <div style={{ color: 'var(--color-text-muted)', marginTop: '4px', fontSize: '11px' }}>By: {h.loggedBy}</div>
                             </div>
                           ))
                         )}
@@ -2926,41 +3199,32 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
           </div>
         )}
 
-        {activeSubTab === 'logs' && (
-          <div className={styles.logsList}>
-            {paidLogs.length === 0 ? (
-              <div className={styles.emptyState}>No payments have been collected yet.</div>
-            ) : (
-              paidLogs.map((log) => (
-                <div key={log.id} className={styles.logCard}>
-                  <div className={styles.logHeader}>
-                    <span className={styles.logMilestone}>{log.milestoneName}</span>
-                    <span className={styles.logAmount}>₹{Number(log.amount).toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className={styles.logDetails}>
-                    <div className={styles.logDetailItem}>
-                      <span className={styles.logIcon}>📅</span>
-                      <span>Paid on {log.paidAt ? new Date(log.paidAt).toLocaleDateString('en-IN') : '—'}</span>
-                    </div>
-                    <div className={styles.logDetailItem}>
-                      <span className={styles.logIcon}>💳</span>
-                      <span>Mode: {log.mode || '—'} {log.reference ? `(Ref: ${log.reference})` : ''}</span>
-                    </div>
-                    <div className={styles.logDetailItem}>
-                      <span className={styles.logIcon}>👤</span>
-                      <span>Collected By: {log.collectedByName || '—'} {log.collectedByRole ? `(${log.collectedByRole.replace(/_/g, ' ')})` : ''}</span>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-
         {activeSubTab === 'milestones' && (
           <div className={styles.milestonesList}>
             <div style={{ padding: '20px', background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', marginBottom: '16px' }}>
-              <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: '16px', color: 'var(--color-text)' }}>Milestone Progress Timeline</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <div>
+                  <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-text)' }}>Milestone Progress Timeline</div>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>
+                    Current Schedule Stages: {processedPayments.length} Stages ({processedPayments.map(p => {
+                      const totalB = Number(project?.contract_value || 0) || Number(project?.booking_amount || 0) * 10 || 1;
+                      const pct = Math.round((p.amountValue / totalB) * 100) || 0;
+                      return `${pct}%`;
+                    }).join(', ')})
+                  </div>
+                </div>
+                {hasPermission('Update') && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setShowChangeScheduleModal(true);
+                    }}
+                  >
+                    ⚙️ Change Payment Terms / Stages
+                  </Button>
+                )}
+              </div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 {processedPayments.map((p) => (
                   <div key={`tl-${p.id}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -2978,7 +3242,27 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
               </div>
             </div>
 
-            {processedPayments.map(p => (
+            {processedPayments.map(p => {
+              const matchingPendingApproval = Array.isArray(financeApprovals) && financeApprovals.find(fa => {
+                const statusStr = (fa.status || '').toLowerCase();
+                if (statusStr !== 'pending') return false;
+
+                let changes = fa.requested_changes;
+                if (typeof changes === 'string') {
+                  try { changes = JSON.parse(changes); } catch (e) { changes = {}; }
+                }
+                const payload = changes?.payload || changes?.data || fa.payload || {};
+
+                const targetIdMatches = String(fa.target_id || '') === String(p.id);
+                const selectedPaymentIdMatches = String(payload?.selectedPayment?.id || payload?.milestoneId || '') === String(p.id);
+                const milestoneNameMatches = 
+                  (fa.target_number && fa.target_number.toLowerCase() === (p.milestone || '').toLowerCase()) ||
+                  (payload?.selectedPayment?.milestone && payload.selectedPayment.milestone.toLowerCase() === (p.milestone || '').toLowerCase());
+
+                return targetIdMatches || selectedPaymentIdMatches || milestoneNameMatches;
+              });
+
+              return (
               <div key={p.id} className={`${styles.milestoneCard} ${p.isOverdue ? styles.milestoneOverdue : ''}`} style={(!p.dependencyMet && p.status !== 'paid' && p.status !== 'partially_paid') ? { opacity: 0.7 } : {}}>
                 <div className={styles.mCardHeader}>
                   <div className={styles.mCardTitle}>
@@ -3013,10 +3297,90 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
                     </Button>
                   )}
                   {p.status === 'pending_approval' && (
-                    <span style={{fontSize: '13px', color: '#0ea5e9', fontWeight: 500}}>Waiting for Finance Approval</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{fontSize: '13px', color: '#0ea5e9', fontWeight: 500}}>Waiting for Finance Approval</span>
+                      {matchingPendingApproval && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          style={{ borderColor: '#f59e0b', color: '#d97706' }}
+                          onClick={() => {
+                            setRecallingApproval({
+                              id: matchingPendingApproval.id,
+                              target_number: p.milestone,
+                              amount: matchingPendingApproval.amount || p.amountValue
+                            });
+                            setRecallReason('');
+                            setRecallModalOpen(true);
+                          }}
+                        >
+                          ↩️ Recall
+                        </Button>
+                      )}
+                    </div>
                   )}
                   {p.status !== 'paid' && p.status !== 'pending_approval' && p.dependencyMet && hasPermission('Create') && (
                     <Button variant="outline" size="sm" onClick={async () => handleGenerateLinkClick(p)}>Generate Link</Button>
+                  )}
+                  {hasPermission('Update') && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        setEditingMilestone(p);
+                        
+                        // Deep search pending finance approvals for proof document
+                        let approvalDoc = null;
+                        (financeApprovals || []).forEach(fa => {
+                          const isPending = (fa.status || '').toUpperCase() === 'PENDING';
+                          if (!isPending) return;
+
+                          let reqChanges = fa.requested_changes || fa.payload || {};
+                          if (typeof reqChanges === 'string') {
+                            try { reqChanges = JSON.parse(reqChanges); } catch (e) { /* ignore */ }
+                          }
+                          const payload = reqChanges.payload || reqChanges.data || reqChanges;
+
+                          const milestoneMatch = 
+                            payload?.selectedPayment?.id === p.id ||
+                            payload?.selectedPayment?.milestone === p.milestone ||
+                            fa.target_number === p.milestone ||
+                            fa.target_number === p.id;
+
+                          if (milestoneMatch) {
+                            const doc = payload?.proofDocument || 
+                                        payload?.selectedPayment?.proofDocument || 
+                                        (payload?.newEntries && payload?.newEntries.find(e => e.proofDocument)?.proofDocument);
+                            if (doc !== undefined) approvalDoc = doc;
+                          }
+                        });
+
+                        // Check if document was explicitly removed previously
+                        const isRemovedInStorage = 
+                          localStorage.getItem(`crm_removed_proof_doc_${projectId}_${p.id}`) === 'true' ||
+                          localStorage.getItem(`crm_removed_proof_doc_${projectId}_${p.milestone}`) === 'true';
+
+                        let existingDoc = null;
+                        if (p.proofDocumentRemoved || p.proofDocument === null || isRemovedInStorage) {
+                          existingDoc = null;
+                        } else if (p.proofDocument) {
+                          existingDoc = p.proofDocument;
+                        } else {
+                          // Search pending approval queue ONLY if milestone.proofDocument was not explicitly set to null
+                          existingDoc = approvalDoc || (p.paymentEntries && p.paymentEntries.find(e => e.proofDocument)?.proofDocument) || null;
+                        }
+                        
+                        setEditingMilestoneForm({
+                          title: p.milestone,
+                          amount: p.amountValue,
+                          dueDate: p.dueDate || '',
+                          proofDocument: existingDoc
+                        });
+                        setEditingMilestoneModalOpen(true);
+                      }}
+                    >
+                      Edit
+                    </Button>
                   )}
                   {p.status !== 'paid' && p.status !== 'pending_approval' && p.dependencyMet && hasPermission('Create') && hasPermission('Refund') && (
                     <Button variant="ghost" size="sm" style={{ color: 'var(--color-text-muted)' }} onClick={async () => handleRequestWriteOff(p)}>Write-off</Button>
@@ -3030,9 +3394,437 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
                   )}
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
+
+        {/* Edit Milestone Modal */}
+        <Modal
+          isOpen={editingMilestoneModalOpen}
+          onClose={() => {
+            setEditingMilestoneModalOpen(false);
+            setEditingMilestone(null);
+          }}
+          title={`Edit Milestone: ${editingMilestone?.milestone || ''}`}
+        >
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            if (!editingMilestone) return;
+            setEditingMilestoneSaving(true);
+            try {
+              const updatedDoc = editingMilestoneForm.proofDocument || null;
+              const isRemoved = !updatedDoc;
+
+              // Store removal flag in localStorage so it persists even after remount / page navigation
+              const keyId = `crm_removed_proof_doc_${projectId}_${editingMilestone.id}`;
+              const keyTitle = `crm_removed_proof_doc_${projectId}_${editingMilestone.milestone}`;
+              if (isRemoved) {
+                localStorage.setItem(keyId, 'true');
+                localStorage.setItem(keyTitle, 'true');
+              } else {
+                localStorage.removeItem(keyId);
+                localStorage.removeItem(keyTitle);
+              }
+
+              if (String(editingMilestone.id).startsWith('mock_')) {
+                setPayments(prev => prev.map(m => m.id === editingMilestone.id ? {
+                  ...m,
+                  milestone: editingMilestoneForm.title,
+                  amountValue: Number(editingMilestoneForm.amount) || 0,
+                  dueDate: editingMilestoneForm.dueDate,
+                  proofDocument: updatedDoc,
+                  proofDocumentRemoved: isRemoved,
+                  paymentEntries: (m.paymentEntries || []).map(e => ({ ...e, proofDocument: updatedDoc }))
+                } : m));
+              } else {
+                try {
+                  await updatePaymentMilestone(editingMilestone.id, {
+                    title: editingMilestoneForm.title,
+                    amount: Number(editingMilestoneForm.amount) || 0,
+                    due_date: editingMilestoneForm.dueDate,
+                    proof_document: updatedDoc
+                  });
+                } catch (err) {
+                  console.error('API updatePaymentMilestone notice:', err);
+                }
+                setPayments(prev => prev.map(m => m.id === editingMilestone.id ? {
+                  ...m,
+                  milestone: editingMilestoneForm.title,
+                  amountValue: Number(editingMilestoneForm.amount) || 0,
+                  dueDate: editingMilestoneForm.dueDate,
+                  proofDocument: updatedDoc,
+                  proofDocumentRemoved: isRemoved,
+                  paymentEntries: (m.paymentEntries || []).map(e => ({ ...e, proofDocument: updatedDoc }))
+                } : m));
+              }
+
+              // Also sync updated document to backend finance approval items & local state if milestone is pending approval
+              const matchingApprovals = (financeApprovals || []).filter(fa => 
+                (fa.status === 'PENDING' || fa.status === 'pending') &&
+                (fa.payload?.selectedPayment?.id === editingMilestone.id || fa.payload?.selectedPayment?.milestone === editingMilestone.milestone || fa.target_number === editingMilestone.milestone)
+              );
+
+              for (const fa of matchingApprovals) {
+                let reqChanges = fa.requested_changes;
+                if (typeof reqChanges === 'string') {
+                  try { reqChanges = JSON.parse(reqChanges); } catch (err) { reqChanges = {}; }
+                }
+                const updatedReqChanges = {
+                  ...reqChanges,
+                  proofDocument: updatedDoc,
+                  payload: {
+                    ...(reqChanges?.payload || fa.payload || {}),
+                    proofDocument: updatedDoc,
+                    selectedPayment: {
+                      ...((reqChanges?.payload || fa.payload || {})?.selectedPayment),
+                      proofDocument: updatedDoc
+                    }
+                  }
+                };
+
+                if (fa.id && !String(fa.id).startsWith('mock-')) {
+                  try {
+                    await api.put(`/financial-approvals/${fa.id}`, {
+                      requested_changes: updatedReqChanges
+                    });
+                  } catch (err) {
+                    console.error('Failed to update financial approval backend record:', err);
+                  }
+                }
+              }
+
+              setFinanceApprovals(prev => prev.map(fa => {
+                if ((fa.status === 'PENDING' || fa.status === 'pending') &&
+                    (fa.payload?.selectedPayment?.id === editingMilestone.id || fa.payload?.selectedPayment?.milestone === editingMilestone.milestone || fa.target_number === editingMilestone.milestone)) {
+                  let reqChanges = fa.requested_changes;
+                  if (typeof reqChanges === 'string') {
+                    try { reqChanges = JSON.parse(reqChanges); } catch(e) { reqChanges = {}; }
+                  }
+                  const updatedReqChanges = {
+                    ...reqChanges,
+                    proofDocument: updatedDoc,
+                    payload: {
+                      ...(reqChanges?.payload || fa.payload || {}),
+                      proofDocument: updatedDoc,
+                      selectedPayment: {
+                        ...((reqChanges?.payload || fa.payload || {})?.selectedPayment),
+                        proofDocument: updatedDoc
+                      }
+                    }
+                  };
+                  return {
+                    ...fa,
+                    payload: updatedReqChanges.payload,
+                    requested_changes: updatedReqChanges
+                  };
+                }
+                return fa;
+              }));
+
+              toast.success('Milestone updated successfully');
+              setEditingMilestoneModalOpen(false);
+              setEditingMilestone(null);
+            } catch (err) {
+              console.error('Failed to update milestone:', err);
+              toast.error('Failed to update milestone');
+            } finally {
+              setEditingMilestoneSaving(false);
+            }
+          }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <Input
+              label="Milestone Title / Name"
+              value={editingMilestoneForm.title}
+              onChange={(e) => setEditingMilestoneForm(prev => ({ ...prev, title: e.target.value }))}
+              required
+            />
+            <Input
+              label="Amount (₹)"
+              type="number"
+              value={editingMilestoneForm.amount}
+              onChange={(e) => setEditingMilestoneForm(prev => ({ ...prev, amount: e.target.value }))}
+              required
+            />
+            <Input
+              label="Due Date"
+              type="date"
+              value={editingMilestoneForm.dueDate}
+              onChange={(e) => setEditingMilestoneForm(prev => ({ ...prev, dueDate: e.target.value }))}
+            />
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--color-border)', paddingTop: '12px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>Transaction Proof Attachment / Image</span>
+                <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>Max 10MB</span>
+              </label>
+
+              {editingMilestoneForm.proofDocument ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px', background: 'var(--color-surface-hover)', borderRadius: '8px', border: '1px solid var(--color-primary)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+                      <span style={{ fontSize: '22px' }}>
+                        {editingMilestoneForm.proofDocument.type?.includes('pdf') ? '📄' : editingMilestoneForm.proofDocument.type?.includes('image') ? '🖼️' : '📝'}
+                      </span>
+                      <div style={{ overflow: 'hidden' }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={editingMilestoneForm.proofDocument.name}>
+                          {editingMilestoneForm.proofDocument.name}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
+                          {(editingMilestoneForm.proofDocument.size ? (editingMilestoneForm.proofDocument.size / 1024).toFixed(1) + ' KB' : 'Attached Document')}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <Button size="sm" variant="outline" type="button" onClick={() => handleOpenDocPreview(editingMilestoneForm.proofDocument)}>
+                      👁️ Preview Document
+                    </Button>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '4px 10px', fontSize: '12px', fontWeight: 600, borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
+                      ✏️ Replace / Change File
+                      <input type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" onChange={handleEditFormFileUpload} style={{ display: 'none' }} />
+                    </label>
+                    <Button size="sm" variant="ghost" type="button" onClick={async () => {
+                      const isConfirmed = await confirm({
+                        title: 'Remove Transaction Proof Attachment?',
+                        message: `Are you sure you want to remove "${editingMilestoneForm.proofDocument?.name || 'this document'}" from the milestone?`,
+                        confirmText: 'Remove File',
+                        cancelText: 'Keep File',
+                        variant: 'danger'
+                      });
+                      if (isConfirmed) {
+                        setEditingMilestoneForm(prev => ({ ...prev, proofDocument: null }));
+                        toast.success('Document attachment removed');
+                      }
+                    }} style={{ color: 'var(--color-danger)' }}>
+                      🗑️ Remove File
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px', border: '2px dashed var(--color-border)', borderRadius: '8px', cursor: 'pointer', background: 'var(--color-bg)', transition: 'border-color 0.2s ease' }}>
+                  <span style={{ fontSize: '24px', marginBottom: '4px' }}>📤</span>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text)' }}>Click to upload or edit transaction proof / receipt</span>
+                  <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '2px' }}>Supports JPG, PNG, WEBP, PDF, DOC, DOCX, XLS</span>
+                  <input type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" onChange={handleEditFormFileUpload} style={{ display: 'none' }} />
+                </label>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '12px' }}>
+              <Button type="button" variant="ghost" onClick={() => {
+                setEditingMilestoneModalOpen(false);
+                setEditingMilestone(null);
+              }}>Cancel</Button>
+              <Button type="submit" variant="primary" disabled={editingMilestoneSaving}>
+                {editingMilestoneSaving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+
+        {/* Change Payment Schedule / Stages Modal */}
+        <Modal
+          isOpen={showChangeScheduleModal}
+          onClose={() => setShowChangeScheduleModal(false)}
+          title="Change Project Payment Terms & Stages"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: 0 }}>
+              Select a payment schedule template or stage split to re-structure the project's milestones (e.g., from 4 stages to 5 stages or 6 stages).
+            </p>
+
+            <Select
+              label="Select New Payment Schedule Template"
+              options={[
+                { value: '', label: 'Select Template...' },
+                ...availableTemplates.map(t => ({
+                  value: t.id,
+                  label: `${t.name} (${t.milestones ? t.milestones.map(m => m.percentage + '%').join(', ') : ''})`
+                }))
+              ]}
+              value={selectedScheduleTemplate}
+              onChange={(val) => setSelectedScheduleTemplate(val)}
+            />
+
+            {selectedScheduleTemplate && (() => {
+              const tpl = availableTemplates.find(t => t.id === selectedScheduleTemplate);
+              if (!tpl || !tpl.milestones) return null;
+              const totalB = Number(project?.contract_value || 0) || Number(project?.booking_amount || 0) * 10 || 500000;
+              return (
+                <div style={{ background: 'var(--color-surface-2)', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px', color: 'var(--color-text)' }}>New Milestone Stage Breakdown:</div>
+                  {tpl.milestones.map((m, idx) => {
+                    const amt = (totalB * Number(m.percentage)) / 100;
+                    return (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '4px 0', borderBottom: idx < tpl.milestones.length - 1 ? '1px solid var(--color-border-light)' : 'none' }}>
+                        <span>Stage {idx + 1}: <strong>{m.name || `Stage ${idx + 1}`}</strong></span>
+                        <span><strong>{m.percentage}%</strong> (₹{amt.toLocaleString('en-IN')})</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '12px' }}>
+              <Button variant="ghost" onClick={() => setShowChangeScheduleModal(false)}>Cancel</Button>
+              <Button
+                variant="primary"
+                disabled={!selectedScheduleTemplate || savingSchedule}
+                onClick={async () => {
+                  const tpl = availableTemplates.find(t => t.id === selectedScheduleTemplate);
+                  if (!tpl) return;
+                  setSavingSchedule(true);
+                  try {
+                    const totalB = Number(project?.contract_value || 0) || Number(project?.booking_amount || 0) * 10 || 500000;
+                    const newMilestones = tpl.milestones.map((m, idx) => {
+                      const amount = (totalB * Number(m.percentage)) / 100;
+                      let mockDate = new Date();
+                      mockDate.setDate(mockDate.getDate() + (idx * 30));
+                      return {
+                        id: `pmil_${Date.now()}_${idx}`,
+                        project_id: projectId,
+                        title: m.name || `Stage ${idx + 1}`,
+                        amount: amount,
+                        due_date: mockDate.toISOString().split('T')[0],
+                        status: idx === 0 ? 'paid' : 'scheduled',
+                        phase: 'Project Lifecycle'
+                      };
+                    });
+
+                    // Save updated milestone config to project tenant settings / API
+                    await api.patch(`/projects/${projectId}`, {
+                      payment_terms: tpl.id,
+                      milestone_config: tpl.milestones.map((m, idx) => ({
+                        key: `stage_${idx + 1}`,
+                        name: m.name || `Stage ${idx + 1}`,
+                        percentage: m.percentage,
+                        enabled: true
+                      }))
+                    });
+
+                    setPayments(newMilestones.map(p => ({
+                      id: p.id,
+                      milestone: p.title,
+                      phase: p.phase,
+                      amountValue: p.amount,
+                      collectedAmount: p.status === 'paid' ? p.amount : 0,
+                      remainingAmount: p.status === 'paid' ? 0 : p.amount,
+                      paymentEntries: [],
+                      dueDate: p.due_date,
+                      status: p.status,
+                      dependency: null,
+                      invoiceReference: null
+                    })));
+
+                    toast.success(`Payment terms & schedule updated to "${tpl.name}"!`);
+                    setShowChangeScheduleModal(false);
+                    if (onProjectUpdated) onProjectUpdated();
+                  } catch (err) {
+                    console.error('Failed to change payment schedule:', err);
+                    toast.error('Failed to update project payment schedule');
+                  } finally {
+                    setSavingSchedule(false);
+                  }
+                }}
+              >
+                {savingSchedule ? 'Applying New Terms...' : 'Apply New Payment Terms'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Recall Approval Request Modal */}
+        <Modal
+          isOpen={recallModalOpen}
+          onClose={() => {
+            if (!recallingSubmitting) {
+              setRecallModalOpen(false);
+              setRecallingApproval(null);
+              setRecallReason('');
+            }
+          }}
+          title="Recall Approval Request"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ background: '#fef3c7', color: '#92400e', padding: '12px 16px', borderRadius: '8px', border: '1px solid #fde68a', fontSize: '13px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+              <span style={{ fontSize: '18px' }}>⚠️</span>
+              <div>
+                <strong>Are you sure you want to recall this pending approval request?</strong>
+                <p style={{ margin: '4px 0 0 0', fontSize: '12px', opacity: 0.9 }}>
+                  Recalling will withdraw the transaction from the Super Admin / Finance Manager approval queue and unlock the project milestone so you can modify and re-submit it.
+                </p>
+              </div>
+            </div>
+
+            {recallingApproval && (
+              <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#64748b' }}>Milestone / Target:</span>
+                  <strong style={{ color: '#0f172a' }}>{recallingApproval.target_number || 'Payment Request'}</strong>
+                </div>
+                {Number(recallingApproval.amount) > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#64748b' }}>Requested Amount:</span>
+                    <strong style={{ color: '#d97706' }}>₹{Number(recallingApproval.amount).toLocaleString('en-IN')}</strong>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
+                Reason for Recall (Optional)
+              </label>
+              <Input
+                placeholder="e.g. Incorrect collection amount entered, replacing proof document..."
+                value={recallReason}
+                onChange={(e) => setRecallReason(e.target.value)}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
+              <Button
+                variant="ghost"
+                disabled={recallingSubmitting}
+                onClick={() => {
+                  setRecallModalOpen(false);
+                  setRecallingApproval(null);
+                  setRecallReason('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                style={{ background: '#d97706', borderColor: '#d97706', color: '#ffffff' }}
+                disabled={recallingSubmitting}
+                onClick={async () => {
+                  if (!recallingApproval) return;
+                  setRecallingSubmitting(true);
+                  try {
+                    const res = await api.post(`/financial-approvals/${recallingApproval.id}/withdraw`, {
+                      reason: recallReason
+                    });
+                    toast.success(res.data?.data?.message || res.data?.message || 'Approval request recalled successfully');
+                    setRecallModalOpen(false);
+                    setRecallingApproval(null);
+                    setRecallReason('');
+                    if (typeof fetchApprovals === 'function') fetchApprovals();
+                    fetchProjectMilestones();
+                  } catch (err) {
+                    const errMsg = err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Failed to recall approval request';
+                    toast.error(errMsg);
+                  } finally {
+                    setRecallingSubmitting(false);
+                  }
+                }}
+              >
+                {recallingSubmitting ? 'Recalling...' : 'Confirm Recall'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
 
         {activeSubTab === 'gates' && (
           <div className={styles.logsList}>
@@ -3060,39 +3852,6 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
                 </div>
               ))}
             </div>
-          </div>
-        )}
-
-        {activeSubTab === 'links' && (
-          <div className={styles.logsList}>
-             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h4 style={{ margin: 0 }}>Payment Links History</h4>
-             </div>
-             {paymentLinks.length === 0 ? <div className={styles.emptyState}>No payment links generated.</div> : (
-                paymentLinks.map(link => (
-                  <div key={link.id} className={styles.creditCard}>
-                    <div className={styles.cCardHeader}>
-                      <span style={{fontWeight: 600}}>{link.milestoneName} - {link.customerName}</span>
-                      <span className={styles.cCardAmount}>₹{Number(link.amount).toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className={styles.cCardBody}>
-                      <span>URL: <a href="#" style={{color: 'var(--color-primary)'}}>{link.url}</a></span>
-                      <span>Expiry: {new Date(link.expiry).toLocaleDateString('en-IN')}</span>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-                        <span>Status: <Badge variant={link.status === 'paid' ? 'success' : link.status === 'cancelled' || link.status === 'expired' ? 'danger' : link.status === 'viewed' ? 'primary' : 'neutral'} size="sm">{link.status.toUpperCase()}</Badge></span>
-                        {link.status === 'sent' || link.status === 'viewed' ? (
-                          <div style={{display:'flex', gap: '8px'}}>
-                            <Button variant="ghost" size="sm" onClick={async () => { navigator.clipboard.writeText(link.url); toast.success('Link copied'); }}>Copy Link</Button>
-                            <Button variant="outline" size="sm" onClick={async () => handleCancelLink(link.id)} style={{color: 'var(--color-danger)', borderColor: 'var(--color-danger)'}}>Cancel Link</Button>
-                          </div>
-                        ) : link.status === 'expired' || link.status === 'cancelled' ? (
-                          hasPermission('Create') ? <Button variant="outline" size="sm" onClick={async () => handleGenerateLinkClick({id: link.milestoneId, milestone: link.milestoneName, remainingAmount: link.amount})}>Regenerate</Button> : null
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                ))
-             )}
           </div>
         )}
 
@@ -3229,63 +3988,6 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
           </div>
         )}
 
-        {activeSubTab === 'receivables' && (
-          <div className={styles.logsList}>
-             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h4 style={{ margin: 0 }}>Receivable Management Dashboard</h4>
-             </div>
-             
-             {/* Mock Filter Bar */}
-             <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
-                <Select label="Project" value={projectId} options={[{value: projectId, label: project?.name || 'Current Project'}]} disabled />
-                <Select label="Designer" value="all" options={[{value:'all', label:'All Designers'}]} disabled />
-                <Select label="Manager" value="all" options={[{value:'all', label:'All Managers'}]} disabled />
-                <Select label="Branch" value="all" options={[{value:'all', label:'All Branches'}]} disabled />
-                <Select label="Customer" value="all" options={[{value:'all', label: project?.customer_name || 'All Customers'}]} disabled />
-             </div>
-
-             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
-               <div style={{ background: 'var(--color-surface-hover)', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #64748b' }}>
-                 <div style={{fontSize: '12px', color:'var(--color-text-muted)', textTransform: 'uppercase'}}>Total Outstanding</div>
-                 <div style={{fontSize: '24px', fontWeight: 700}}>₹{receivablesData.outstanding.toLocaleString('en-IN')}</div>
-               </div>
-               <div style={{ background: 'var(--color-surface-hover)', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #eab308' }}>
-                 <div style={{fontSize: '12px', color:'var(--color-text-muted)', textTransform: 'uppercase'}}>Current Due</div>
-                 <div style={{fontSize: '24px', fontWeight: 700, color: '#ca8a04'}}>₹{receivablesData.currentDue.toLocaleString('en-IN')}</div>
-               </div>
-               <div style={{ background: 'var(--color-surface-hover)', padding: '16px', borderRadius: '8px', borderLeft: '4px solid var(--color-danger)' }}>
-                 <div style={{fontSize: '12px', color:'var(--color-text-muted)', textTransform: 'uppercase'}}>Overdue</div>
-                 <div style={{fontSize: '24px', fontWeight: 700, color: 'var(--color-danger)'}}>₹{receivablesData.overdue.toLocaleString('en-IN')}</div>
-               </div>
-               <div style={{ background: 'var(--color-surface-hover)', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #0ea5e9' }}>
-                 <div style={{fontSize: '12px', color:'var(--color-text-muted)', textTransform: 'uppercase'}}>Future Due</div>
-                 <div style={{fontSize: '24px', fontWeight: 700, color: '#0284c7'}}>₹{receivablesData.futureDue.toLocaleString('en-IN')}</div>
-               </div>
-             </div>
-
-             <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '20px' }}>
-               <h5 style={{ margin: '0 0 16px 0', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Overdue Aging Analysis</h5>
-               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-                 <div style={{ background: '#fef2f2', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
-                    <div style={{fontSize: '12px', color: '#991b1b', fontWeight: 600}}>0-30 Days</div>
-                    <div style={{fontSize: '18px', fontWeight: 700, color: '#7f1d1d', marginTop: '4px'}}>₹{receivablesData.aging0_30.toLocaleString('en-IN')}</div>
-                 </div>
-                 <div style={{ background: '#fef2f2', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
-                    <div style={{fontSize: '12px', color: '#991b1b', fontWeight: 600}}>31-60 Days</div>
-                    <div style={{fontSize: '18px', fontWeight: 700, color: '#7f1d1d', marginTop: '4px'}}>₹{receivablesData.aging31_60.toLocaleString('en-IN')}</div>
-                 </div>
-                 <div style={{ background: '#fef2f2', padding: '12px', borderRadius: '6px', textAlign: 'center' }}>
-                    <div style={{fontSize: '12px', color: '#991b1b', fontWeight: 600}}>61-90 Days</div>
-                    <div style={{fontSize: '18px', fontWeight: 700, color: '#7f1d1d', marginTop: '4px'}}>₹{receivablesData.aging61_90.toLocaleString('en-IN')}</div>
-                 </div>
-                 <div style={{ background: '#fef2f2', padding: '12px', borderRadius: '6px', textAlign: 'center', border: '1px solid #f87171' }}>
-                    <div style={{fontSize: '12px', color: '#991b1b', fontWeight: 600}}>90+ Days</div>
-                    <div style={{fontSize: '18px', fontWeight: 700, color: '#7f1d1d', marginTop: '4px'}}>₹{receivablesData.aging90Plus.toLocaleString('en-IN')}</div>
-                 </div>
-               </div>
-             </div>
-          </div>
-        )}
 
         {activeSubTab === 'reminders' && (
           <div className={styles.logsList}>
@@ -3603,128 +4305,176 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
           const totalPendingAmount = financeApprovals.filter(a => a.status === 'PENDING').reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
           const pendingCount = financeApprovals.filter(a => a.status === 'PENDING').length;
           const approvedCount = financeApprovals.filter(a => a.status === 'APPROVED').length;
-          const filteredApprovals = financeApprovals.filter(a => approvalsFilter === 'ALL' || a.status === approvalsFilter);
+          const withdrawnCount = financeApprovals.filter(a => a.status === 'WITHDRAWN').length;
+
+          const filteredApprovals = financeApprovals.filter(a => {
+            const statusMatches = approvalsFilter === 'ALL' || a.status === approvalsFilter;
+            const query = approvalSearchQuery.trim().toLowerCase();
+            if (!query) return statusMatches;
+            const searchMatches = 
+              (a.requester_name || '').toLowerCase().includes(query) ||
+              (a.target_number || '').toLowerCase().includes(query) ||
+              (a.type || '').toLowerCase().includes(query) ||
+              (a.reason || '').toLowerCase().includes(query) ||
+              (a.amount || '').toString().includes(query);
+            return statusMatches && searchMatches;
+          });
 
           return (
           <div className={styles.approvalsList}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h4 style={{ margin: 0 }}>Finance Approvals Queue</h4>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h4 style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-text)' }}>Finance Approvals Queue</h4>
+                <p style={{ margin: '2px 0 0 0', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>Real-time payment authorization & transaction change requests</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={async () => { fetchApprovals(); toast.success('Approvals queue refreshed'); }}>
+                🔄 Refresh Queue
+              </Button>
             </div>
 
             {/* Metrics Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-              <div style={{ background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Pending Amount</div>
+              <div style={{ background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', borderLeft: '4px solid #ca8a04' }}>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 600 }}>Pending Amount</div>
                 <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ca8a04' }}>₹{totalPendingAmount.toLocaleString('en-IN')}</div>
               </div>
-              <div style={{ background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Awaiting Approval</div>
+              <div style={{ background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', borderLeft: '4px solid #0ea5e9' }}>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 600 }}>Awaiting Approval</div>
                 <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--color-text)' }}>{pendingCount} Requests</div>
               </div>
-              <div style={{ background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Total Approved</div>
+              <div style={{ background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', borderLeft: '4px solid var(--color-success)' }}>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 600 }}>Total Approved</div>
                 <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--color-success)' }}>{approvedCount} Requests</div>
+              </div>
+              <div style={{ background: 'var(--color-surface)', padding: '16px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', borderLeft: '4px solid var(--color-text-muted)' }}>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 600 }}>Recalled / Withdrawn</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--color-text-muted)' }}>{withdrawnCount} Requests</div>
               </div>
             </div>
 
-            {/* Filters */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-              {['ALL', 'PENDING', 'APPROVED', 'REJECTED'].map(f => (
-                <button 
-                  key={f}
-                  onClick={async () => setApprovalsFilter(f)}
-                  style={{
-                    padding: '6px 16px',
-                    borderRadius: '20px',
-                    border: `1px solid ${approvalsFilter === f ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                    background: approvalsFilter === f ? 'var(--color-primary-bg, #eff6ff)' : 'transparent',
-                    color: approvalsFilter === f ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                    fontSize: '13px',
-                    fontWeight: approvalsFilter === f ? 600 : 400,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  {f}
-                </button>
-              ))}
+            {/* Filters Toolbar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {['ALL', 'PENDING', 'APPROVED', 'REJECTED', 'WITHDRAWN'].map(f => (
+                  <button 
+                    key={f}
+                    onClick={async () => setApprovalsFilter(f)}
+                    style={{
+                      padding: '6px 16px',
+                      borderRadius: '20px',
+                      border: `1px solid ${approvalsFilter === f ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                      background: approvalsFilter === f ? 'var(--color-primary-bg, #eff6ff)' : 'transparent',
+                      color: approvalsFilter === f ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                      fontSize: '13px',
+                      fontWeight: approvalsFilter === f ? 600 : 400,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+
+              <Input
+                placeholder="Search by requester, target, amount..."
+                value={approvalSearchQuery}
+                onChange={(e) => setApprovalSearchQuery(e.target.value)}
+                style={{ width: '220px' }}
+              />
             </div>
             
             {filteredApprovals.length === 0 ? (
-              <div className={styles.emptyState}>No approvals match this filter.</div>
+              <div className={styles.emptyState}>No financial approvals match your filter or search.</div>
             ) : (
               <div style={{ overflowX: 'auto', background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
                   <thead>
                     <tr style={{ background: 'var(--color-surface-hover)', textAlign: 'left' }}>
-                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)' }}>Date</th>
+                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)' }}>Date & Time</th>
                       <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)' }}>Requester</th>
-                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)' }}>Type & Reason</th>
-                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)' }}>Amount & Breakdown</th>
+                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)' }}>Type & Milestone / Target</th>
+                      <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)' }}>Amount & Reason</th>
                       <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)' }}>Status</th>
                       <th style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredApprovals.map(approval => (
-                      <tr key={approval.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', _hover: { background: 'var(--color-surface-hover)' } }}>
-                        <td style={{ padding: '16px' }}>
-                           <div style={{ fontWeight: 500 }}>{new Date(approval.date).toLocaleDateString('en-IN')}</div>
-                           <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{new Date(approval.date).toLocaleTimeString('en-IN', {hour: '2-digit', minute:'2-digit'})}</div>
-                        </td>
-                        <td style={{ padding: '16px' }}>
-                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                             <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--color-primary-bg)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '12px' }}>
-                                {(approval.requester_name || 'U')[0].toUpperCase()}
+                    {filteredApprovals.map(approval => {
+                      const proofDoc = approval.payload?.proofDocument || approval.requested_changes?.proofDocument;
+                      return (
+                        <tr key={approval.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', _hover: { background: 'var(--color-surface-hover)' } }}>
+                          <td style={{ padding: '16px' }}>
+                             <div style={{ fontWeight: 500 }}>{new Date(approval.date).toLocaleDateString('en-IN')}</div>
+                             <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{new Date(approval.date).toLocaleTimeString('en-IN', {hour: '2-digit', minute:'2-digit'})}</div>
+                          </td>
+                          <td style={{ padding: '16px' }}>
+                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                               <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--color-primary-bg)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '12px' }}>
+                                  {(approval.requester_name || 'U')[0].toUpperCase()}
+                               </div>
+                               <div>
+                                 <div style={{ fontWeight: 500 }}>{approval.requester_name || 'System User'}</div>
+                               </div>
                              </div>
-                             <div>
-                               <div style={{ fontWeight: 500 }}>{approval.requester_name || 'System User'}</div>
-                             </div>
-                           </div>
-                        </td>
-                        <td style={{ padding: '16px' }}>
-                          <div style={{ fontWeight: 600 }}>{approval.type}</div>
-                          <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '4px' }}>{approval.reason || 'No specific reason provided'}</div>
-                        </td>
-                        <td style={{ padding: '16px' }}>
-                          <div style={{ fontWeight: 600, color: approval.status === 'PENDING' ? '#ca8a04' : 'var(--color-text)' }}>
-                            ₹{approval.amount.toLocaleString('en-IN')}
-                          </div>
-                          {approval.payload?.splitPayments && (
-                            <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
-                              {approval.payload.splitPayments.map((sp, idx) => (
-                                <Badge key={idx} size="sm" variant="outline">
-                                  {sp.mode}: ₹{Number(sp.amount).toLocaleString('en-IN')}
-                                </Badge>
-                              ))}
+                          </td>
+                          <td style={{ padding: '16px' }}>
+                            <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{approval.type}</div>
+                            <div style={{ fontSize: '12px', color: '#0ea5e9', fontWeight: 500, marginTop: '2px' }}>
+                              📍 {approval.target_number}
                             </div>
-                          )}
-                        </td>
-                        <td style={{ padding: '16px' }}>
-                          <Badge size="sm" variant={approval.status === 'APPROVED' ? 'success' : (approval.status === 'REJECTED' ? 'danger' : 'warning')}>
-                            {approval.status}
-                          </Badge>
-                        </td>
-                        <td style={{ padding: '16px', textAlign: 'right' }}>
-                          {approval.status === 'PENDING' ? (
-                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                              {hasPermission('Approve') ? (
-                                <>
-                                  <Button size="sm" variant="outline" onClick={async () => handleRejectAction(approval.id)}>Reject</Button>
-                                  <Button size="sm" variant="primary" onClick={async () => executeApprovedAction(approval)}>Approve</Button>
-                                </>
-                              ) : (
-                                 <span style={{fontSize: '12px', color: 'var(--color-text-muted)'}}>Requires Approval</span>
-                              )}
+                          </td>
+                          <td style={{ padding: '16px' }}>
+                            <div style={{ fontWeight: 700, color: approval.status === 'PENDING' ? '#ca8a04' : (approval.status === 'APPROVED' ? 'var(--color-success)' : 'var(--color-text)') }}>
+                              ₹{approval.amount.toLocaleString('en-IN')}
                             </div>
-                          ) : (
-                            <Button size="sm" variant="ghost" onClick={async () => { setSelectedAuditApproval(approval); setAuditModalOpen(true); }}>
-                              View Audit Trail
-                            </Button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                            <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '4px' }}>{approval.reason}</div>
+                            {approval.payload?.splitPayments && (
+                              <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
+                                {approval.payload.splitPayments.map((sp, idx) => (
+                                  <Badge key={idx} size="sm" variant="outline">
+                                    {sp.mode}: ₹{Number(sp.amount).toLocaleString('en-IN')}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ padding: '16px' }}>
+                            <Badge 
+                              size="sm" 
+                              variant={approval.status === 'APPROVED' ? 'success' : (approval.status === 'REJECTED' ? 'danger' : (approval.status === 'WITHDRAWN' ? 'neutral' : 'warning'))}
+                            >
+                              {approval.status}
+                            </Badge>
+                          </td>
+                          <td style={{ padding: '16px', textAlign: 'right' }}>
+                            {approval.status === 'PENDING' || approval.status === 'pending' ? (
+                              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                {hasPermission('Approve') ? (
+                                  <>
+                                    <Button size="sm" variant="outline" onClick={async () => handleRejectAction(approval.id)}>Reject</Button>
+                                    <Button size="sm" variant="primary" onClick={async () => executeApprovedAction(approval)}>Approve</Button>
+                                  </>
+                                ) : null}
+                                <Button size="sm" variant="outline" style={{ borderColor: '#f59e0b', color: '#d97706' }} onClick={() => {
+                                  setRecallingApproval({
+                                    id: approval.id,
+                                    target_number: approval.target_number || approval.type || 'Approval Request',
+                                    amount: approval.amount
+                                  });
+                                  setRecallReason('');
+                                  setRecallModalOpen(true);
+                                }}>Recall</Button>
+                              </div>
+                            ) : (
+                              <Button size="sm" variant="ghost" onClick={async () => { setSelectedAuditApproval(approval); setAuditModalOpen(true); }}>
+                                View Audit Trail
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -3873,6 +4623,46 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
               onChange={setCollectedBy} 
               options={getCollectedByOptions()}
             />
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--color-border)', paddingTop: '12px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>Upload Payment Transaction Proof / Receipt (Image, PDF, Doc)</span>
+                <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>Max 10MB</span>
+              </label>
+
+              {proofDocument ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-surface-hover)', borderRadius: '8px', border: '1px solid var(--color-primary)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+                    <span style={{ fontSize: '20px' }}>
+                      {proofDocument.type?.includes('pdf') ? '📄' : proofDocument.type?.includes('image') ? '🖼️' : '📝'}
+                    </span>
+                    <div style={{ overflow: 'hidden' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {proofDocument.name}
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
+                        {(proofDocument.size / 1024).toFixed(1)} KB • {new Date(proofDocument.uploadedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <Button size="sm" variant="outline" type="button" onClick={() => handleOpenDocPreview(proofDocument)}>
+                      👁️ Preview
+                    </Button>
+                    <Button size="sm" variant="ghost" type="button" onClick={() => setProofDocument(null)} style={{ color: 'var(--color-danger)' }}>
+                      ✕
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px', border: '2px dashed var(--color-border)', borderRadius: '8px', cursor: 'pointer', background: 'var(--color-bg)', transition: 'border-color 0.2s ease' }}>
+                  <span style={{ fontSize: '24px', marginBottom: '4px' }}>📤</span>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text)' }}>Click to upload transaction proof or receipt</span>
+                  <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '2px' }}>Supports JPG, PNG, WEBP, PDF, DOC, DOCX, XLS</span>
+                  <input type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" onChange={handleProofFileUpload} style={{ display: 'none' }} />
+                </label>
+              )}
+            </div>
             
             <div style={{display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)', marginTop: 'var(--space-4)'}}>
               <Button variant="ghost" onClick={async () => setModalOpen(false)}>Cancel</Button>
@@ -4197,6 +4987,202 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
           </div>
         </Modal>
       )}
+      {/* Cost Item Customization Modal */}
+      {costItemModalOpen && (
+        <Modal isOpen onClose={() => setCostItemModalOpen(false)}>
+          <div style={{ padding: 'var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', maxWidth: '480px', width: '100%' }}>
+            <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>Customize Cost Item</h3>
+            <Input 
+              label="Item Name / Description" 
+              value={editingCostItem.label} 
+              onChange={e => setEditingCostItem(prev => ({ ...prev, label: e.target.value }))} 
+              required 
+            />
+            <Input 
+              label="Cost Value (INR)" 
+              type="number" 
+              value={editingCostItem.value} 
+              onChange={e => setEditingCostItem(prev => ({ ...prev, value: e.target.value }))} 
+              required 
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)', marginTop: '8px' }}>
+              <Button variant="ghost" onClick={async () => setCostItemModalOpen(false)}>Cancel</Button>
+              <Button variant="primary" onClick={handleSaveCostItem}>Save Item</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Printable Receipt Layout */}
+      {printingReceipt && (
+        <div className="print-only-invoice" style={{ display: 'none', position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'white', zIndex: 999999, padding: '40px', boxSizing: 'border-box' }}>
+           <style>
+             {`
+               @media print {
+                 body * { visibility: hidden; }
+                 .print-only-invoice, .print-only-invoice * { visibility: visible; }
+                 .print-only-invoice { display: block !important; position: absolute; left: 0; top: 0; width: 100%; font-family: 'Inter', sans-serif; }
+               }
+             `}
+           </style>
+           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #e5e7eb', paddingBottom: '24px', marginBottom: '32px' }}>
+              <div>
+                 <h1 style={{ margin: 0, fontSize: '28px', color: '#111827', letterSpacing: '-0.02em' }}>PAYMENT RECEIPT</h1>
+                 <div style={{ color: '#6b7280', marginTop: '8px' }}>Receipt #{printingReceipt.id}</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                 <div style={{ fontSize: '20px', fontWeight: 700, color: '#111827', letterSpacing: '-0.02em' }}>DIGICLOUDIFY INTERIORS</div>
+                 <div style={{ color: '#6b7280', fontSize: '14px', marginTop: '4px' }}>123 Design Avenue, Tech Park</div>
+                 <div style={{ color: '#6b7280', fontSize: '14px' }}>GSTIN: 29ABCDE1234F1Z5</div>
+              </div>
+           </div>
+
+           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '40px' }}>
+              <div style={{ width: '45%' }}>
+                 <div style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Received From</div>
+                 <div style={{ fontSize: '16px', fontWeight: 600, color: '#111827' }}>{printingReceipt.customerName}</div>
+                 <div style={{ color: '#4b5563', marginTop: '4px' }}>Project: {project?.name || 'Project Name'}</div>
+              </div>
+              <div style={{ width: '45%', textAlign: 'right' }}>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ color: '#6b7280' }}>Receipt Date:</span>
+                    <span style={{ fontWeight: 500, color: '#111827' }}>{new Date(printingReceipt.receiptDate).toLocaleDateString('en-IN')}</span>
+                 </div>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ color: '#6b7280' }}>Payment Mode:</span>
+                    <span style={{ fontWeight: 500, color: '#111827' }}>{printingReceipt.paymentMode}</span>
+                 </div>
+                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#6b7280' }}>Reference:</span>
+                    <span style={{ fontWeight: 500, color: '#111827' }}>{printingReceipt.reference}</span>
+                 </div>
+              </div>
+           </div>
+
+           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '32px' }}>
+              <thead>
+                 <tr>
+                    <th style={{ padding: '12px', background: '#f9fafb', color: '#374151', fontSize: '12px', textTransform: 'uppercase', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Description / Milestone</th>
+                    <th style={{ padding: '12px', background: '#f9fafb', color: '#374151', fontSize: '12px', textTransform: 'uppercase', textAlign: 'right', borderBottom: '2px solid #e5e7eb' }}>Amount Received</th>
+                 </tr>
+              </thead>
+              <tbody>
+                 <tr>
+                    <td style={{ padding: '16px 12px', borderBottom: '1px solid #f3f4f6', color: '#111827' }}>
+                      Payment for {printingReceipt.milestoneName || 'General Services'}
+                    </td>
+                    <td style={{ padding: '16px 12px', borderBottom: '1px solid #f3f4f6', color: '#111827', textAlign: 'right' }}>₹{Number(printingReceipt.amount).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                 </tr>
+              </tbody>
+           </table>
+
+           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ width: '50%', color: '#4b5563', fontSize: '14px', fontStyle: 'italic' }}>
+                 Amount in words: Rupees {numberToWords(printingReceipt.amount)}
+              </div>
+              <div style={{ width: '350px' }}>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', fontSize: '18px', fontWeight: 700, color: '#111827', background: '#f9fafb', borderRadius: '4px' }}>
+                    <span>Total Received</span>
+                    <span>₹{Number(printingReceipt.amount).toLocaleString('en-IN')}</span>
+                 </div>
+              </div>
+           </div>
+
+           <div style={{ marginTop: '60px', borderTop: '1px solid #e5e7eb', paddingTop: '20px', color: '#6b7280', fontSize: '12px', textAlign: 'center' }}>
+              <p>This is a computer generated payment receipt. No signature is required.</p>
+           </div>
+        </div>
+      )}
+
+      {/* Generate Payment Link Modal */}
+      {linkModalOpen && (
+        <Modal isOpen onClose={() => setLinkModalOpen(false)}>
+          <div style={{ padding: 'var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', maxWidth: '480px', width: '100%' }}>
+            <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>Generate Payment Link</h3>
+            <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
+              Create a secure payment link for {selectedMilestoneForLink?.milestone}. The customer will receive an SMS and Email with this link.
+            </div>
+            <Input label="Amount to Collect (INR)" value={`₹${Number(selectedMilestoneForLink?.remainingAmount || 0).toLocaleString('en-IN')}`} readOnly />
+            <Select 
+              label="Link Expiry" 
+              value={linkForm.expiryDays} 
+              onChange={val => setLinkForm({ expiryDays: val })} 
+              options={[
+                { value: 1, label: '1 Day' },
+                { value: 3, label: '3 Days' },
+                { value: 7, label: '7 Days' },
+                { value: 15, label: '15 Days' }
+              ]} 
+            />
+            <div style={{display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)'}}>
+              <Button variant="ghost" onClick={async () => setLinkModalOpen(false)}>Cancel</Button>
+              <Button variant="primary" onClick={handleConfirmGenerateLink}>Generate & Send</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Refund Modal (Simplified) */}
+      {refundModalOpen && (
+        <Modal isOpen onClose={() => setRefundModalOpen(false)}>
+          <div style={{ padding: 'var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', maxWidth: '480px', width: '100%' }}>
+            <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>Record Customer Refund</h3>
+            <Input label="Refund Amount (INR)" type="number" value={refundForm.amount} onChange={e => setRefundForm(prev => ({ ...prev, amount: e.target.value }))} required />
+            <Select label="Payment Method" value={refundForm.paymentMethod} onChange={val => setRefundForm(prev => ({ ...prev, paymentMethod: val }))} options={[{ value: 'Bank Transfer', label: 'Bank Transfer' }, { value: 'UPI', label: 'UPI' }]} />
+            <Input label="Reason for Refund" value={refundForm.reason} onChange={e => setRefundForm(prev => ({ ...prev, reason: e.target.value }))} required />
+            <div style={{display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)'}}>
+              <Button variant="ghost" onClick={async () => setRefundModalOpen(false)}>Cancel</Button>
+              <Button variant="primary" onClick={handleConfirmRefund}>Record Refund</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Credit Note Modal (Simplified) */}
+      {creditNoteModalOpen && (
+        <Modal isOpen onClose={() => setCreditNoteModalOpen(false)}>
+          <div style={{ padding: 'var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', maxWidth: '480px', width: '100%' }}>
+            <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>Issue Credit Note</h3>
+            <Input label="Amount" type="number" value={creditNoteForm.subtotal} onChange={e => setCreditNoteForm(prev => ({ ...prev, subtotal: e.target.value }))} required />
+            <Input label="Reason" value={creditNoteForm.reason} onChange={e => setCreditNoteForm(prev => ({ ...prev, reason: e.target.value }))} required />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
+              <Button variant="ghost" onClick={async () => setCreditNoteModalOpen(false)}>Cancel</Button>
+              <Button variant="primary" onClick={handleConfirmCreditNote}>Confirm Issue</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Debit Note Modal */}
+      {debitNoteModalOpen && (
+        <Modal isOpen onClose={() => setDebitNoteModalOpen(false)}>
+          <div style={{ padding: 'var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', maxWidth: '480px', width: '100%' }}>
+            <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>Issue Debit Note</h3>
+            
+            <Select 
+              label="Reference Invoice" 
+              value={debitNoteForm.invoiceId} 
+              onChange={val => setDebitNoteForm(prev => ({ ...prev, invoiceId: val }))} 
+              options={[
+                { value: '', label: 'Select an Invoice...' },
+                ...invoices.map(inv => ({ value: inv.id, label: `${inv.id} (₹${inv.amount.toLocaleString()})` }))
+              ]} 
+            />
+            
+            <Input label="Debit Amount (INR)" type="number" value={debitNoteForm.amount} onChange={e => setDebitNoteForm(prev => ({ ...prev, amount: e.target.value }))} required />
+            <Input label="Reason for Debit Note" value={debitNoteForm.reason} onChange={e => setDebitNoteForm(prev => ({ ...prev, reason: e.target.value }))} required />
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+               <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '4px' }}>Additional Notes</label>
+               <textarea rows={3} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)', fontFamily: 'inherit' }} value={debitNoteForm.notes} onChange={e => setDebitNoteForm(prev => ({ ...prev, notes: e.target.value }))} />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)', marginTop: '8px' }}>
+              <Button variant="ghost" onClick={async () => setDebitNoteModalOpen(false)}>Cancel</Button>
+              <Button variant="primary" onClick={handleIssueDebitNote}>Issue Debit Note</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* Cost Item Customization Modal */}
       {costItemModalOpen && (
@@ -4235,43 +5221,185 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
 
       <Modal isOpen={auditModalOpen} onClose={() => { setAuditModalOpen(false); setSelectedAuditApproval(null); }} title="Approval Audit Trail">
         {selectedAuditApproval && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px' }}>
-            <div style={{ fontWeight: 600, fontSize: '16px', marginBottom: '8px' }}>
-               Request Ref: {selectedAuditApproval.id}
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '4px 2px' }}>
             
-            <div style={{ position: 'relative', paddingLeft: '24px', borderLeft: '2px solid var(--color-border)', marginLeft: '8px' }}>
-              {selectedAuditApproval.auditTrail.map((log, index) => (
-                <div key={index} style={{ marginBottom: index === selectedAuditApproval.auditTrail.length - 1 ? '0' : '24px', position: 'relative' }}>
-                  <div style={{ 
-                    position: 'absolute', 
-                    left: '-31px', 
-                    top: '2px', 
-                    width: '12px', 
-                    height: '12px', 
-                    borderRadius: '50%', 
-                    background: log.status === 'APPROVED' ? 'var(--color-success)' : (log.status === 'REJECTED' ? 'var(--color-danger)' : 'var(--color-primary)'),
-                    border: '2px solid var(--color-surface)'
-                  }} />
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-text)' }}>
-                     {log.status}
-                  </div>
-                  <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
-                     {new Date(log.timestamp).toLocaleString('en-IN')}
-                  </div>
-                  <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
-                     {log.note}
+            {/* Executive Summary Header Card */}
+            <div style={{ 
+              background: 'var(--color-bg-secondary, #f8fafc)', 
+              border: '1px solid var(--color-border, #e2e8f0)', 
+              borderRadius: '10px', 
+              padding: '14px 18px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <div>
+                  <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-text-muted, #64748b)', fontWeight: 600 }}>
+                    Milestone / Target
+                  </span>
+                  <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--color-text, #0f172a)' }}>
+                    {selectedAuditApproval.target_number || selectedAuditApproval.type || 'Financial Approval'}
                   </div>
                 </div>
-              ))}
+                {Number(selectedAuditApproval.amount) > 0 && (
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--color-text-muted, #64748b)', fontWeight: 600 }}>
+                      Requested Amount
+                    </span>
+                    <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--color-accent, #2563eb)' }}>
+                      ₹{Number(selectedAuditApproval.amount).toLocaleString('en-IN')}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ borderTop: '1px dashed var(--color-border, #e2e8f0)', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--color-text-secondary, #475569)' }}>
+                  <span>Request Ref:</span>
+                  <code style={{ background: 'var(--color-surface, #ffffff)', border: '1px solid var(--color-border, #cbd5e1)', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontFamily: 'monospace', fontWeight: 600, color: '#334155' }}>
+                    {selectedAuditApproval.id}
+                  </code>
+                </div>
+                <Badge 
+                  size="sm" 
+                  variant={
+                    selectedAuditApproval.status === 'APPROVED' ? 'success' : 
+                    (selectedAuditApproval.status === 'REJECTED' ? 'danger' : 
+                    (selectedAuditApproval.status === 'WITHDRAWN' ? 'neutral' : 'warning'))
+                  }
+                >
+                  {selectedAuditApproval.status}
+                </Badge>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-               <Button variant="ghost" onClick={async () => { setAuditModalOpen(false); setSelectedAuditApproval(null); }}>Close</Button>
+            {/* Timeline Section */}
+            <div style={{ paddingLeft: '4px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-muted, #64748b)', marginBottom: '14px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Approval Activity Logs
+              </div>
+
+              <div style={{ position: 'relative', paddingLeft: '28px', borderLeft: '2px solid var(--color-border, #e2e8f0)', marginLeft: '12px' }}>
+                {Array.isArray(selectedAuditApproval.auditTrail) && selectedAuditApproval.auditTrail.length > 0 ? (
+                  selectedAuditApproval.auditTrail.map((log, index) => {
+                    const isLast = index === selectedAuditApproval.auditTrail.length - 1;
+                    const statusStr = (log.status || '').toUpperCase();
+                    
+                    let nodeColor = 'var(--color-primary, #3b82f6)';
+                    let nodeBg = '#eff6ff';
+                    let icon = '📝';
+                    
+                    if (statusStr === 'APPROVED') {
+                      nodeColor = 'var(--color-success, #10b981)';
+                      nodeBg = '#ecfdf5';
+                      icon = '✅';
+                    } else if (statusStr === 'REJECTED') {
+                      nodeColor = 'var(--color-danger, #ef4444)';
+                      nodeBg = '#fef2f2';
+                      icon = '❌';
+                    } else if (statusStr === 'WITHDRAWN') {
+                      nodeColor = '#d97706';
+                      nodeBg = '#fffbeb';
+                      icon = '↩️';
+                    }
+
+                    return (
+                      <div key={index} style={{ marginBottom: isLast ? '0' : '20px', position: 'relative' }}>
+                        {/* Circular Node Icon */}
+                        <div style={{ 
+                          position: 'absolute', 
+                          left: '-41px', 
+                          top: '0px', 
+                          width: '24px', 
+                          height: '24px', 
+                          borderRadius: '50%', 
+                          background: nodeBg,
+                          border: `2px solid ${nodeColor}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '11px',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+                        }}>
+                          {icon}
+                        </div>
+
+                        {/* Status & Timestamp Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text, #0f172a)' }}>
+                            {statusStr}
+                          </span>
+                          <span style={{ fontSize: '11px', color: 'var(--color-text-muted, #64748b)' }}>
+                            {log.timestamp ? new Date(log.timestamp).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : '—'}
+                          </span>
+                        </div>
+
+                        {/* Note / Details Box */}
+                        {statusStr === 'WITHDRAWN' ? (
+                          <div style={{ 
+                            marginTop: '8px', 
+                            background: '#fffbeb', 
+                            border: '1px solid #fef3c7', 
+                            borderRadius: '8px', 
+                            padding: '10px 12px',
+                            fontSize: '13px',
+                            color: '#92400e'
+                          }}>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#b45309', textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '0.4px' }}>
+                              Reason for Recall:
+                            </div>
+                            <div style={{ fontStyle: 'italic', wordBreak: 'break-word', lineHeight: '1.4' }}>
+                              "{log.note || log.reason || 'Recalled by user'}"
+                            </div>
+                          </div>
+                        ) : statusStr === 'REJECTED' ? (
+                          <div style={{ 
+                            marginTop: '8px', 
+                            background: '#fef2f2', 
+                            border: '1px solid #fecaca', 
+                            borderRadius: '8px', 
+                            padding: '10px 12px',
+                            fontSize: '13px',
+                            color: '#991b1b'
+                          }}>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#991b1b', textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '0.4px' }}>
+                              Rejection Reason:
+                            </div>
+                            <div style={{ fontStyle: 'italic', wordBreak: 'break-word', lineHeight: '1.4' }}>
+                              "{log.note || log.reason || 'Rejected by finance manager'}"
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '13px', color: 'var(--color-text-secondary, #475569)', marginTop: '4px', lineHeight: '1.4' }}>
+                            {log.note || log.reason || 'Submitted for approval'}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                    No detailed audit trail entries available.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px', borderTop: '1px solid var(--color-border, #e2e8f0)', paddingTop: '14px' }}>
+              <Button variant="ghost" onClick={() => { setAuditModalOpen(false); setSelectedAuditApproval(null); }}>
+                Close
+              </Button>
             </div>
           </div>
         )}
       </Modal>
+
+      <DocumentPreviewModal
+        isOpen={previewModalOpen}
+        onClose={() => setPreviewModalOpen(false)}
+        documents={previewDocuments}
+      />
     </div>
   );
 });

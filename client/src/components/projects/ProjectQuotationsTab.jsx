@@ -1309,6 +1309,144 @@ export default function ProjectQuotationsTab({ projectId }) {
               </div>
             )}
 
+            {/* Payment Terms & Milestone Schedule Builder */}
+            {activeQuotation && (
+              <div style={{ marginTop: '20px', padding: '16px', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: 'var(--color-text)' }}>
+                      🗓️ Commercial Payment Terms & Milestone Schedule
+                    </h4>
+                    <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                      Define installment milestones (e.g. 5x20%) linked to this quotation total of ₹{Number(activeQuotation.total_amount || 0).toLocaleString('en-IN')}.
+                    </p>
+                  </div>
+                  {activeQuotation.status === 'draft' && (
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <select
+                        style={{ padding: '6px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', fontSize: '12px', backgroundColor: 'var(--color-surface-2)', color: 'var(--color-text)' }}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          let selectedTpl = null;
+                          if (val === '5month-20') {
+                            selectedTpl = [
+                              { name: 'Month 1 - Booking Advance', percentage: 20, stage: 'Booking', offsetDays: 0 },
+                              { name: 'Month 2 - Design Finalization', percentage: 20, stage: 'Design', offsetDays: 30 },
+                              { name: 'Month 3 - Factory Production Start', percentage: 20, stage: 'Production', offsetDays: 60 },
+                              { name: 'Month 4 - Site Installation', percentage: 20, stage: 'Installation', offsetDays: 90 },
+                              { name: 'Month 5 - Final Handover', percentage: 20, stage: 'Handover', offsetDays: 120 }
+                            ];
+                          } else if (val === '3stage-20-50-30') {
+                            selectedTpl = [
+                              { name: 'Stage 1 - Booking Advance', percentage: 20, stage: 'Booking', offsetDays: 0 },
+                              { name: 'Stage 2 - Material Dispatch', percentage: 50, stage: 'Material Dispatch', offsetDays: 30 },
+                              { name: 'Stage 3 - Final Handover', percentage: 30, stage: 'Handover', offsetDays: 60 }
+                            ];
+                          } else if (val === '4stage-10-40-40-10') {
+                            selectedTpl = [
+                              { name: 'Token Advance', percentage: 10, stage: 'Token', offsetDays: 0 },
+                              { name: 'Civil & Structure Work', percentage: 40, stage: 'Structure', offsetDays: 30 },
+                              { name: 'Interior Finishing', percentage: 40, stage: 'Finishing', offsetDays: 75 },
+                              { name: 'Handover & Retention', percentage: 10, stage: 'Retention', offsetDays: 105 }
+                            ];
+                          }
+                          if (selectedTpl) {
+                            const formattedText = selectedTpl.map(m => `${m.name} (${m.percentage}%): ₹${((activeQuotation.total_amount || 0) * (m.percentage / 100)).toLocaleString('en-IN')}`).join(' | ');
+                            updateQuotation(projectId, activeQuotation.id, {
+                              termsConditions: formattedText,
+                              paymentSchedule: selectedTpl
+                            }).then(res => {
+                              if (res.data?.success) {
+                                toast.success('Applied Payment Schedule Template!');
+                                setActiveQuotation(res.data.data);
+                              }
+                            });
+                          }
+                        }}
+                      >
+                        <option value="">⚡ Apply Template...</option>
+                        <option value="5month-20">5-Month Equal Installment (20% x 5)</option>
+                        <option value="3stage-20-50-30">Standard 3-Stage (20% - 50% - 30%)</option>
+                        <option value="4stage-10-40-40-10">4-Stage Commercial (10% - 40% - 40% - 10%)</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                {/* Milestone breakdown table */}
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', marginTop: '4px' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--color-surface-2)', borderBottom: '1px solid var(--color-border)', textAlign: 'left', color: 'var(--color-text-secondary)' }}>
+                        <th style={{ padding: '8px' }}>Milestone Installment</th>
+                        <th style={{ padding: '8px', textAlign: 'center' }}>Weight (%)</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>Calculated Amount (₹)</th>
+                        <th style={{ padding: '8px' }}>Due Offset / Stage</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        let schedule = activeQuotation.payment_schedule || activeQuotation.paymentSchedule;
+                        if (!schedule || !Array.isArray(schedule) || schedule.length === 0) {
+                          // Parse default 5x20% or standard fallback
+                          schedule = [
+                            { name: 'Month 1 - Booking Advance', percentage: 20, stage: 'Booking', offsetDays: 0 },
+                            { name: 'Month 2 - Design Finalization', percentage: 20, stage: 'Design', offsetDays: 30 },
+                            { name: 'Month 3 - Factory Production Start', percentage: 20, stage: 'Production', offsetDays: 60 },
+                            { name: 'Month 4 - Site Installation', percentage: 20, stage: 'Installation', offsetDays: 90 },
+                            { name: 'Month 5 - Final Handover', percentage: 20, stage: 'Handover', offsetDays: 120 }
+                          ];
+                        }
+                        const totalVal = Number(activeQuotation.total_amount || 0);
+                        const totalPct = schedule.reduce((sum, item) => sum + (Number(item.percentage) || 0), 0);
+
+                        return (
+                          <>
+                            {schedule.map((m, idx) => {
+                              const itemAmt = (totalVal * (Number(m.percentage) || 0)) / 100;
+                              return (
+                                <tr key={idx} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                  <td style={{ padding: '8px', fontWeight: 600, color: 'var(--color-text)' }}>
+                                    {m.name}
+                                  </td>
+                                  <td style={{ padding: '8px', textAlign: 'center', fontWeight: 700, color: 'var(--color-accent)' }}>
+                                    {m.percentage}%
+                                  </td>
+                                  <td style={{ padding: '8px', textAlign: 'right', fontWeight: 700, color: 'var(--color-text)' }}>
+                                    ₹{Math.round(itemAmt).toLocaleString('en-IN')}
+                                  </td>
+                                  <td style={{ padding: '8px', color: 'var(--color-text-secondary)' }}>
+                                    {m.offsetDays !== undefined ? `+${m.offsetDays} Days` : m.stage || 'On Progress'}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                            <tr style={{ background: 'var(--color-surface-2)', fontWeight: 800 }}>
+                              <td style={{ padding: '8px', color: 'var(--color-text)' }}>Total Contract Schedule</td>
+                              <td style={{ padding: '8px', textAlign: 'center', color: totalPct === 100 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                                {totalPct}%
+                              </td>
+                              <td style={{ padding: '8px', textAlign: 'right', color: 'var(--color-text)' }}>
+                                ₹{Math.round(totalVal).toLocaleString('en-IN')}
+                              </td>
+                              <td style={{ padding: '8px', color: 'var(--color-success)', fontSize: '11px' }}>
+                                {totalPct === 100 ? '✓ 100% Balanced' : '⚠️ Must sum to 100%'}
+                              </td>
+                            </tr>
+                          </>
+                        );
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', display: 'flex', gap: '16px', flexWrap: 'wrap', paddingTop: '4px', borderTop: '1px solid var(--color-border-light)' }}>
+                  <span>📌 <strong>Contract Terms:</strong> {activeQuotation.terms_conditions || '50% Advance, 40% WIP, 10% Handover'}</span>
+                  <span>🔒 <strong>Valid Until:</strong> {activeQuotation.valid_until ? new Date(activeQuotation.valid_until).toLocaleDateString('en-IN') : '30 Days'}</span>
+                </div>
+              </div>
+            )}
+
             {/* inline Add Item Button/Form */}
             {editMode && !showAddItem && (
               <Button 

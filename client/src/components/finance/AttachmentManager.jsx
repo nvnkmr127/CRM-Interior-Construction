@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
 import styles from './ApprovalComments.module.css'; // Reuse basic styles
+import DocumentPreviewModal from './DocumentPreviewModal';
 
 import { useConfirm } from '../../store/confirmContext';
 
@@ -11,11 +12,22 @@ export default function AttachmentManager({ approvalId, currentUserRole, current
   const [attachments, setAttachments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewDocuments, setPreviewDocuments] = useState([]);
   const toast = useToast();
 
   useEffect(() => {
     fetchAttachments();
   }, [approvalId]);
+
+  const handleOpenDocPreview = (doc) => {
+    setPreviewDocuments([{
+      name: doc.file_name || doc.name || 'Document',
+      type: doc.file_type || doc.mime_type || ((doc.file_name || '').endsWith('.pdf') ? 'application/pdf' : 'image/png'),
+      url: doc.file_url || doc.url
+    }]);
+    setPreviewModalOpen(true);
+  };
 
   const fetchAttachments = async () => {
     try {
@@ -113,7 +125,7 @@ export default function AttachmentManager({ approvalId, currentUserRole, current
 
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button 
-                  onClick={async () => window.open(doc.file_url, '_blank')}
+                  onClick={() => handleOpenDocPreview(doc)}
                   className={styles.secondaryBtn} 
                   style={{ flex: 1, padding: '4px', fontSize: '12px' }}
                 >
@@ -133,6 +145,12 @@ export default function AttachmentManager({ approvalId, currentUserRole, current
           ))}
         </div>
       )}
+
+      <DocumentPreviewModal 
+        isOpen={previewModalOpen}
+        onClose={() => setPreviewModalOpen(false)}
+        documents={previewDocuments}
+      />
     </div>
   );
 }

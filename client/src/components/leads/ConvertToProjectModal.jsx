@@ -122,6 +122,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
   // Dynamic checklist logic
   const [checklistConfig, setChecklistConfig] = useState([]);
   const [checklist, setChecklist] = useState({});
+  const [paymentTemplates, setPaymentTemplates] = useState([]);
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -192,13 +193,28 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
           const activeItems = config.filter(item => item.active);
           setChecklistConfig(activeItems);
 
+          const defaultTpls = [
+            { id: 'tpl-5month-20', name: '5-Month Equal Installment Plan (20% x 5)', milestones: [{ name: 'M1', percentage: 20 }, { name: 'M2', percentage: 20 }, { name: 'M3', percentage: 20 }, { name: 'M4', percentage: 20 }, { name: 'M5', percentage: 20 }] },
+            { id: 'tpl-3stage-20-50-30', name: 'Standard 3-Stage Milestone (20% - 50% - 30%)', milestones: [{ name: 'M1', percentage: 20 }, { name: 'M2', percentage: 50 }, { name: 'M3', percentage: 30 }] },
+            { id: 'tpl-4stage-10-40-40-10', name: 'Commercial Construction 4-Stage (10% - 40% - 40% - 10%)', milestones: [{ name: 'M1', percentage: 10 }, { name: 'M2', percentage: 40 }, { name: 'M3', percentage: 40 }, { name: 'M4', percentage: 10 }] }
+          ];
+          const serverTpls = res.data?.data?.payment_templates;
+          let mergedTpls = defaultTpls;
+          if (Array.isArray(serverTpls) && serverTpls.length > 0) {
+            const map = new Map();
+            defaultTpls.forEach(t => map.set(t.id, t));
+            serverTpls.forEach(t => map.set(t.id, t));
+            mergedTpls = Array.from(map.values());
+          }
+          setPaymentTemplates(mergedTpls);
+
           const initialChecklist = {};
           activeItems.forEach(item => {
             initialChecklist[item.key] = false;
           });
           setChecklist(initialChecklist);
         } catch (err) {
-          console.error('Failed to load checklist config', err);
+          console.error('Failed to load settings config', err);
           const fallback = [
             { key: 'site_address_confirmed', label: 'Site address confirmed', required: false, active: true },
             { key: 'site_visit_completed', label: 'Site visit completed', required: true, active: true },
@@ -208,6 +224,11 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
             { key: 'contract_signed', label: 'Contract signed', required: true, active: true }
           ];
           setChecklistConfig(fallback);
+          setPaymentTemplates([
+            { id: 'tpl-5month-20', name: '5-Month Equal Installment Plan (20% x 5)', milestones: [{ percentage: 20 }] },
+            { id: 'tpl-3stage-20-50-30', name: 'Standard 3-Stage Milestone (20% - 50% - 30%)', milestones: [{ percentage: 20 }] },
+            { id: 'tpl-4stage-10-40-40-10', name: 'Commercial Construction 4-Stage (10% - 40% - 40% - 10%)', milestones: [{ percentage: 10 }] }
+          ]);
           const initialChecklist = {};
           fallback.forEach(item => {
             initialChecklist[item.key] = false;
@@ -292,9 +313,18 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
     let advance = '';
     const contractVal = parseFloat(formData.contractValue) || 0;
     if (terms && contractVal > 0) {
-      const parts = terms.split('_').map(Number);
-      if (parts.length > 0 && !isNaN(parts[0])) {
-        advance = Math.round(contractVal * (parts[0] / 100));
+      const selectedTpl = paymentTemplates.find(t => t.id === terms);
+      let firstPercentage = 0;
+      if (selectedTpl && selectedTpl.milestones && selectedTpl.milestones.length > 0) {
+        firstPercentage = Number(selectedTpl.milestones[0].percentage) || 0;
+      } else {
+        const parts = terms.split('_').map(Number);
+        if (parts.length > 0 && !isNaN(parts[0])) {
+          firstPercentage = parts[0];
+        }
+      }
+      if (firstPercentage > 0) {
+        advance = Math.round(contractVal * (firstPercentage / 100));
       }
     }
     setFormData(prev => ({
@@ -308,9 +338,18 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
     let advance = formData.advanceAmount;
     const contractVal = parseFloat(val) || 0;
     if (formData.paymentTerms && contractVal > 0) {
-      const parts = formData.paymentTerms.split('_').map(Number);
-      if (parts.length > 0 && !isNaN(parts[0])) {
-        advance = Math.round(contractVal * (parts[0] / 100));
+      const selectedTpl = paymentTemplates.find(t => t.id === formData.paymentTerms);
+      let firstPercentage = 0;
+      if (selectedTpl && selectedTpl.milestones && selectedTpl.milestones.length > 0) {
+        firstPercentage = Number(selectedTpl.milestones[0].percentage) || 0;
+      } else {
+        const parts = formData.paymentTerms.split('_').map(Number);
+        if (parts.length > 0 && !isNaN(parts[0])) {
+          firstPercentage = parts[0];
+        }
+      }
+      if (firstPercentage > 0) {
+        advance = Math.round(contractVal * (firstPercentage / 100));
       }
     }
     setFormData(prev => ({
@@ -482,7 +521,21 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
             />
             <Select 
               label="Payment Terms" 
-              options={[{value:'',label:'Select Terms'}, {value:'10_40_40_10',label:'10% - 40% - 40% - 10%'}, {value:'30_30_30_10',label:'30% - 30% - 30% - 10%'}, {value:'50_50',label:'50% - 50%'}]}
+              options={[
+                { value: '', label: 'Select Terms' },
+                ...paymentTemplates.map(t => {
+                  const percLabel = Array.isArray(t.milestones) && t.milestones.length > 0
+                    ? t.milestones.map(m => (m.percentage !== undefined ? m.percentage : 0) + '%').join(', ')
+                    : t.name;
+                  return {
+                    value: t.id,
+                    label: percLabel
+                  };
+                }),
+                { value: '10_40_40_10', label: '10%, 40%, 40%, 10%' },
+                { value: '30_30_30_10', label: '30%, 30%, 30%, 10%' },
+                { value: '50_50', label: '50%, 50%' }
+              ]}
               value={formData.paymentTerms}
               onChange={handlePaymentTermsChange}
             />

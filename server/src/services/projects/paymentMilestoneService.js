@@ -57,10 +57,10 @@ async function createPaymentMilestone({ tenantId, userId, data, bypassApproval =
 }
 
 async function updatePaymentMilestone({ tenantId, userId, milestoneId, data, bypassApproval = false }) {
-  const { status, invoice_reference, paid_at, paid_amount, tds_rate, tds_amount, is_deferred, deferral_reference } = data;
+  const { title, name, amount, due_date, proof_document, status, invoice_reference, paid_at, paid_amount, tds_rate, tds_amount, is_deferred, deferral_reference } = data;
 
   // Retrieve current to check transition
-  const currentResult = await pool.query(`SELECT * FROM payment_milestones WHERE id = $1 AND tenant_id = $2`, [milestoneId, tenantId]);
+  const currentResult = await pool.query(`SELECT * FROM payment_milestones WHERE id = $1 AND (tenant_id = $2 OR tenant_id IS NULL)`, [milestoneId, tenantId]);
   if (currentResult.rowCount === 0) throw new Error('NOT_FOUND');
   const current = currentResult.rows[0];
 
@@ -78,7 +78,7 @@ async function updatePaymentMilestone({ tenantId, userId, milestoneId, data, byp
   if (requiresApproval) {
     // Keep it as pending_approval but do not apply the updates yet
     const updateRes = await pool.query(
-      `UPDATE payment_milestones SET status = 'pending_approval' WHERE id = $1 AND tenant_id = $2 RETURNING *`,
+      `UPDATE payment_milestones SET status = 'pending_approval' WHERE id = $1 AND (tenant_id = $2 OR tenant_id IS NULL) RETURNING *`,
       [milestoneId, tenantId]
     );
     const updated = updateRes.rows[0];
@@ -105,10 +105,35 @@ async function updatePaymentMilestone({ tenantId, userId, milestoneId, data, byp
     return updated;
   }
 
+  // Ensure proof_document column exists on table if updating proof_document
+  if (proof_document !== undefined) {
+    try {
+      await pool.query(`ALTER TABLE payment_milestones ADD COLUMN IF NOT EXISTS proof_document JSONB;`);
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
   let updateFields = [];
   let values = [];
   let paramIdx = 1;
 
+  if (title !== undefined || name !== undefined) {
+    updateFields.push(`name = $${paramIdx++}`);
+    values.push(title || name);
+  }
+  if (amount !== undefined && amount !== current.amount) {
+    updateFields.push(`amount = $${paramIdx++}`);
+    values.push(amount);
+  }
+  if (due_date !== undefined) {
+    updateFields.push(`due_date = $${paramIdx++}`);
+    values.push(due_date);
+  }
+  if (proof_document !== undefined) {
+    updateFields.push(`proof_document = $${paramIdx++}`);
+    values.push(proof_document ? (typeof proof_document === 'object' ? JSON.stringify(proof_document) : proof_document) : null);
+  }
   if (status) {
     updateFields.push(`status = $${paramIdx++}`);
     values.push(status);
@@ -150,7 +175,7 @@ async function updatePaymentMilestone({ tenantId, userId, milestoneId, data, byp
   const updateQuery = `
     UPDATE payment_milestones
     SET ${updateFields.join(', ')}
-    WHERE tenant_id = $${tenantIdx} AND id = $${idIdx}
+    WHERE (tenant_id = $${tenantIdx} OR tenant_id IS NULL) AND id = $${idIdx}
     RETURNING *
   `;
 

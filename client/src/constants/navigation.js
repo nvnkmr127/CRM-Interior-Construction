@@ -55,7 +55,7 @@ export const NAV_ITEMS = [
     { id: 'financial-approvals', to: '/financial-approvals', icon: '📝', label: 'Financial Approvals', module: ['finance', 'payments'] },
     { id: 'analytics-profitability', to: '/analytics/profitability', icon: '💎', label: 'Project Profitability', module: 'analytics', permission: 'analytics:view' },
     { id: 'analytics-collection-forecast', to: '/analytics/collection-forecast', icon: '📈', label: 'Payment Forecast', module: 'analytics', permission: 'analytics:view' },
-    { id: 'financial-thresholds', to: '/financial-settings', icon: '💰', label: 'Financial Thresholds', module: 'settings', adminOnly: true }
+    { id: 'financial-thresholds', to: '/financial-settings', icon: '💰', label: 'Financial Settings', module: 'settings', adminOnly: true }
   ]},
   { group: 'TEAM & SECURITY', adminOnly: true, items: [
     { id: 'team-management', label: 'Team Management', icon: '👥', module: 'settings', subItems: [
