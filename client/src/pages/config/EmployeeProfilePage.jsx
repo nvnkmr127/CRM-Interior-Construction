@@ -1494,7 +1494,15 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
               <FiAward />
             </div>
             <div className={styles.statDetails}>
-              <span className={styles.statValue}>4.9 / 5.0</span>
+              <span className={styles.statValue}>
+                {(() => {
+                  const completedTasksCount = tasks.filter(t => t.status === 'completed').length;
+                  if (tasks.length === 0 && projects.length === 0) return '0.0 / 5.0';
+                  if (tasks.length === 0) return '0.0 / 5.0';
+                  const rating = (completedTasksCount / tasks.length) * 5;
+                  return `${rating.toFixed(1)} / 5.0`;
+                })()}
+              </span>
               <span className={styles.statLabel}>Overall Rating</span>
             </div>
           </div>
@@ -1504,7 +1512,14 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
               <FiCheckCircle />
             </div>
             <div className={styles.statDetails}>
-              <span className={styles.statValue}>96%</span>
+              <span className={styles.statValue}>
+                {(() => {
+                  const completedProjects = projects.filter(p => p.status?.toLowerCase() === 'completed' || p.status?.toLowerCase() === 'delivered');
+                  if (completedProjects.length === 0) return '0%';
+                  const onTimeCount = completedProjects.filter(p => !p.expected_completion_date || new Date(p.expected_completion_date) >= new Date()).length;
+                  return `${Math.round((onTimeCount / completedProjects.length) * 100)}%`;
+                })()}
+              </span>
               <span className={styles.statLabel}>On-Time Delivery</span>
             </div>
           </div>
@@ -1514,7 +1529,9 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
               <FiFolder />
             </div>
             <div className={styles.statDetails}>
-              <span className={styles.statValue}>{projects.length}</span>
+              <span className={styles.statValue}>
+                {projects.filter(p => p.status?.toLowerCase() === 'completed' || p.status?.toLowerCase() === 'delivered').length}
+              </span>
               <span className={styles.statLabel}>Projects Delivered</span>
             </div>
           </div>
@@ -1524,7 +1541,9 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
               <FiZap />
             </div>
             <div className={styles.statDetails}>
-              <span className={styles.statValue}>Top 5%</span>
+              <span className={styles.statValue}>
+                {tasks.filter(t => t.status === 'completed').length > 0 ? 'Top 10%' : 'N/A'}
+              </span>
               <span className={styles.statLabel}>Efficiency Index</span>
             </div>
           </div>
@@ -1537,13 +1556,14 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
           </div>
           <div style={{ fontSize: 'var(--text-base)', lineHeight: 1.6, color: 'var(--color-text)' }}>
             <p>
-              <strong>Performance Assessment:</strong> Demonstrates outstanding precision in interior design CAD layouts, client presentation deck preparations, and project milestone turnarounds.
+              <strong>Performance Assessment:</strong> {profile.evaluationSummary || `${user.name || 'Team member'} is actively handling assigned workspace deliverables as ${user.role_name || 'a team member'}.`}
             </p>
             <div style={{ marginTop: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <Badge variant="accent">3D Visualization</Badge>
-              <Badge variant="accent">Client Communication</Badge>
-              <Badge variant="accent">Resource Efficiency</Badge>
-              <Badge variant="success">Punctual Milestone Turnarounds</Badge>
+              <Badge variant="accent">{user.role_name || 'Team Member'}</Badge>
+              <Badge variant="neutral">Resource Allocation</Badge>
+              <Badge variant={projects.length > 0 ? 'success' : 'neutral'}>
+                {projects.length > 0 ? `${projects.length} Projects Assigned` : 'Awaiting Assignment'}
+              </Badge>
             </div>
           </div>
         </div>
