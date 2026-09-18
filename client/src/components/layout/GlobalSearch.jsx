@@ -9,7 +9,7 @@ import styles from './GlobalSearch.module.css'
 
 export default function GlobalSearch({ isOpen, onClose }) {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState({ leads:[], projects:[], tasks:[], contacts:[] })
+  const [results, setResults] = useState({ leads:[], projects:[], tasks:[], contacts:[], users:[] })
   const [loading, setLoading] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
   
@@ -21,25 +21,21 @@ export default function GlobalSearch({ isOpen, onClose }) {
   useEffect(() => {
     if (isOpen) {
       setQuery('')
-      setResults({ leads:[], projects:[], tasks:[], contacts:[] })
+      setResults({ leads:[], projects:[], tasks:[], contacts:[], users:[] })
       setTimeout(() => inputRef.current?.focus(), 10)
     }
   }, [isOpen])
 
   useEffect(() => {
     if (!query || query.length < 2) {
-      setResults({ leads:[], projects:[], tasks:[], contacts:[] })
+      setResults({ leads:[], projects:[], tasks:[], contacts:[], users:[] })
       return
     }
 
-    const searchTypes = []
-    if (isModuleEnabled('leads')) searchTypes.push('leads')
-    if (isModuleEnabled('projects')) searchTypes.push('projects')
-    if (isModuleEnabled('tasks')) searchTypes.push('tasks')
-    if (isModuleEnabled('leads')) searchTypes.push('contacts')
+    const searchTypes = ['leads', 'projects', 'tasks', 'contacts', 'users']
     
     if (searchTypes.length === 0) {
-      setResults({ leads:[], projects:[], tasks:[], contacts:[] })
+      setResults({ leads:[], projects:[], tasks:[], contacts:[], users:[] })
       return
     }
 
@@ -54,7 +50,8 @@ export default function GlobalSearch({ isOpen, onClose }) {
             leads: data.leads || [],
             projects: data.projects || [],
             tasks: data.tasks || [],
-            contacts: data.contacts || []
+            contacts: data.contacts || [],
+            users: data.users || []
           })
           setSelectedIndex(0)
         })
@@ -69,6 +66,7 @@ export default function GlobalSearch({ isOpen, onClose }) {
   const flatResults = [
     ...results.leads.map(r => ({ ...r, _type: 'lead', _icon: '◎', _sub: r.stageName || r.stage_name, _url: `/leads?id=${r.id}` })),
     ...(results.contacts || []).map(r => ({ ...r, _type: 'contact', _icon: '👤', _sub: r.role, _url: `/leads?id=${r.lead_id}` })),
+    ...(results.users || []).map(r => ({ ...r, _type: 'team', _icon: '👤', _sub: `${r.role || 'Team Member'}${r.email ? ` • ${r.email}` : ''}`, _url: `/team/members/${r.id}` })),
     ...(results.activities || []).map(r => ({ ...r, _type: 'activity', _icon: '📝', _sub: r.lead_name, _url: `/leads?id=${r.lead_id}` })),
     ...results.projects.map(r => ({ ...r, _type: 'project', _icon: '◈', _sub: r.clientName || r.client_name, _url: `/projects/${r.id}` })),
     ...results.tasks.map(r => ({ ...r, _type: 'task', _icon: '◻', _sub: r.projectName || r.project_name, _url: `/tasks` }))
@@ -105,7 +103,7 @@ export default function GlobalSearch({ isOpen, onClose }) {
         <input
           ref={inputRef}
           className={styles.input}
-          placeholder="⌕  Search leads, projects, tasks..."
+          placeholder="⌕  Search leads, projects, tasks, team members..."
           value={query}
           onChange={e => setQuery(e.target.value)}
         />
@@ -122,25 +120,31 @@ export default function GlobalSearch({ isOpen, onClose }) {
               {results.leads.length > 0 && (
                 <div className={styles.section}>
                   <div className={styles.sectionLabel}>LEADS</div>
-                  {results.leads.map(r => renderResult(flatResults.find(f => f.id === r.id && f._type === 'lead')))}
+                  {results.leads.map(r => renderResult(flatResults.find(f => String(f.id) === String(r.id) && f._type === 'lead')))}
+                </div>
+              )}
+              {results.users && results.users.length > 0 && (
+                <div className={styles.section}>
+                  <div className={styles.sectionLabel}>TEAM MEMBERS</div>
+                  {results.users.map(r => renderResult(flatResults.find(f => String(f.id) === String(r.id) && f._type === 'team')))}
                 </div>
               )}
               {results.projects.length > 0 && (
                 <div className={styles.section}>
                   <div className={styles.sectionLabel}>PROJECTS</div>
-                  {results.projects.map(r => renderResult(flatResults.find(f => f.id === r.id && f._type === 'project')))}
+                  {results.projects.map(r => renderResult(flatResults.find(f => String(f.id) === String(r.id) && f._type === 'project')))}
                 </div>
               )}
               {results.tasks.length > 0 && (
                 <div className={styles.section}>
                   <div className={styles.sectionLabel}>TASKS</div>
-                  {results.tasks.map(r => renderResult(flatResults.find(f => f.id === r.id && f._type === 'task')))}
+                  {results.tasks.map(r => renderResult(flatResults.find(f => String(f.id) === String(r.id) && f._type === 'task')))}
                 </div>
               )}
               {results.contacts && results.contacts.length > 0 && (
                 <div className={styles.section}>
                   <div className={styles.sectionLabel}>CONTACTS</div>
-                  {results.contacts.map(r => renderResult(flatResults.find(f => f.id === r.id && f._type === 'contact')))}
+                  {results.contacts.map(r => renderResult(flatResults.find(f => String(f.id) === String(r.id) && f._type === 'contact')))}
                 </div>
               )}
             </>

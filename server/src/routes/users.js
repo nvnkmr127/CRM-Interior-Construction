@@ -288,7 +288,7 @@ router.get('/:id/projects', async (req, res, next) => {
   const userId = req.params.id;
   try {
     const { rows } = await pool.query(`
-      SELECT id, name, status, project_type, start_date, expected_completion_date 
+      SELECT id, name, status, project_type, start_date, target_date as expected_completion_date 
       FROM projects 
       WHERE tenant_id = $1 AND (pm_id = $2 OR designer_id = $2) AND deleted_at IS NULL
       ORDER BY created_at DESC

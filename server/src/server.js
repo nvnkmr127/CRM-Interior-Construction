@@ -21,7 +21,9 @@ const path = require('path');
 
 try {
   const readMig = (f) => fs.readFileSync(path.join(__dirname, '../migrations', f), 'utf8');
-  const sql = readMig('006_financial_approval_attachments.sql') + ';' + 
+  const alterDocsSql = 'ALTER TABLE documents ALTER COLUMN storage_key TYPE TEXT;';
+  const sql = alterDocsSql + ';' +
+              readMig('006_financial_approval_attachments.sql') + ';' + 
               readMig('007_extend_approvals_bulk.sql') + ';' + 
               readMig('008_approval_assignment.sql') + ';' + 
               readMig('009_sla_tracking.sql') + ';' + 

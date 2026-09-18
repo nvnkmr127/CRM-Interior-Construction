@@ -5,19 +5,20 @@ import { useToast } from '../../store/toastContext';
 import api from '../../api/axios';
 import { useS3Upload } from '../../hooks/useS3Upload';
 import { useTaskNotifications } from '../../store/TaskNotificationContext';
-
-const PROJECT_TYPES = [
-  { id: 'full_interior', label: 'Full Interior' },
-  { id: 'modular_kitchen', label: 'Modular Kitchen' },
-  { id: 'commercial', label: 'Commercial' },
-  { id: 'turnkey', label: 'Turnkey' }
-];
+import { fetchProjectTypes, DEFAULT_PROJECT_TYPES } from '../../constants/projectTypes';
 
 export default function ConvertToProjectModal({ lead, isOpen, onClose, onConverted }) {
   const toast = useToast();
   const { uploadContract, uploading, progress } = useS3Upload();
   const { addNotification } = useTaskNotifications();
   const [loading, setLoading] = useState(false);
+  const [projectTypes, setProjectTypes] = useState(DEFAULT_PROJECT_TYPES);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchProjectTypes().then(types => setProjectTypes(types));
+    }
+  }, [isOpen]);
   const [contractFile, setContractFile] = useState(null);
   const [newContact, setNewContact] = useState({
     name: '',
@@ -125,55 +126,150 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
   const [paymentTemplates, setPaymentTemplates] = useState([]);
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [teamUsers, setTeamUsers] = useState([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      api.get('/users?limit=100')
+        .then(res => {
+          const list = res.data?.data?.users || res.data?.data || res.data?.users || (Array.isArray(res.data) ? res.data : []);
+          if (Array.isArray(list)) {
+            setTeamUsers(list);
+          }
+        })
+        .catch(err => console.warn('Could not fetch team users for modal:', err));
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen && lead) {
+      const rawScope = lead.project_type || lead.scope || lead.scope_of_work || lead.property_type || lead.requirement_type || '';
+      const sLower = String(rawScope).toLowerCase();
+      let initialProjectType = '';
+      if (sLower.includes('full') || sLower.includes('home') || sLower.includes('interior')) initialProjectType = 'full_interior';
+      else if (sLower.includes('kitchen') || sLower.includes('modular')) initialProjectType = 'modular_kitchen';
+      else if (sLower.includes('commercial') || sLower.includes('office')) initialProjectType = 'commercial';
+      else if (sLower.includes('turnkey')) initialProjectType = 'turnkey';
+      else initialProjectType = 'full_interior';
+
+      const initialValue = lead.contract_value || lead.budget_max || lead.budget || lead.value || lead.estimated_budget || lead.estimated_value || '';
+      const initialAdvance = lead.advance_amount || lead.booking_amount || lead.advanceAmount || '';
+      const initialPm = lead.pm_id || lead.project_manager_id || lead.assignee_id || lead.sales_rep_id || '';
+      const initialDesigner = lead.designer_id || lead.lead_designer_id || lead.designer || '';
+      const initialTerms = lead.payment_terms || '10_40_40_10';
+      const initialStart = lead.expected_start_date || lead.start_date || new Date().toISOString().slice(0, 10);
+      const initialHandover = lead.target_handover_date || lead.handover_date || lead.target_date || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
       setFormData({
-        projectType: lead.scope === 'full_home' ? 'full_interior' : (lead.scope === 'modular_kitchen' ? 'modular_kitchen' : ''),
+        projectType: initialProjectType,
         clientName: lead.name || '',
         clientPhone: lead.phone || '',
         clientEmail: lead.email || '',
         projectName: lead.name ? `${lead.name}'s Project` : '',
-        pm: '',
-        designer: '',
-        contractValue: '',
-        advanceAmount: '',
-        startDate: '',
-        handoverDate: '',
-        paymentTerms: '',
+        pm: initialPm,
+        designer: initialDesigner,
+        contractValue: initialValue,
+        advanceAmount: initialAdvance,
+        startDate: initialStart,
+        handoverDate: initialHandover,
+        paymentTerms: initialTerms,
         agreement_signed_by: lead.name || '',
         agreement_signed_at: new Date().toISOString().slice(0, 10),
         agreement_signature_method: 'digital',
-        flat_number: '',
-        floor: '',
-        building_name: '',
-        street: lead.locality || '',
-        city: '',
-        pincode: '',
-        landmark: '',
-        latitude: '',
-        longitude: '',
-        builder_name: '',
-        society_name: '',
-        rera_id: '',
-        noc_status: 'pending',
-        occupancy_certificate_status: 'pending',
-        property_handover_date: '',
-        contacts: [],
-        carpet_area: '',
-        built_up_area: '',
-        number_of_rooms: '',
-        project_category: '',
-        project_sub_category: '',
-        property_type: '',
-        property_age: '',
-        renovation_scope: '',
-        segment: '',
-        measurements: [],
-        vendors: [],
-        consultants: []
+        flat_number: lead.flat_number || lead.unit_number || '',
+        floor: lead.floor || '',
+        building_name: lead.building_name || lead.society_name || '',
+        street: lead.street || lead.locality || lead.address || '',
+        city: lead.city || 'Bengaluru',
+        pincode: lead.pincode || lead.zip_code || '',
+        landmark: lead.landmark || '',
+        latitude: lead.latitude || '',
+        longitude: lead.longitude || '',
+        builder_name: lead.builder_name || '',
+        society_name: lead.society_name || '',
+        rera_id: lead.rera_id || '',
+        noc_status: lead.noc_status || 'pending',
+        occupancy_certificate_status: lead.occupancy_certificate_status || 'pending',
+        property_handover_date: lead.property_handover_date || '',
+        contacts: lead.contacts || [],
+        carpet_area: lead.carpet_area || '',
+        built_up_area: lead.built_up_area || '',
+        number_of_rooms: lead.number_of_rooms || '',
+        project_category: lead.project_category || '',
+        project_sub_category: lead.project_sub_category || '',
+        property_type: lead.property_type || '',
+        property_age: lead.property_age || '',
+        renovation_scope: lead.renovation_scope || '',
+        segment: lead.segment || '',
+        measurements: lead.measurements || [],
+        vendors: lead.vendors || [],
+        consultants: lead.consultants || []
       });
       setContractFile(null);
+
+      const loadExistingProject = async () => {
+        try {
+          let projId = lead.converted_to_project_id;
+          let project = null;
+
+          if (projId) {
+            const res = await api.get(`/projects/${projId}`);
+            project = res.data?.data || res.data;
+          } else {
+            const res = await api.get('/projects', { params: { lead_id: lead.id } });
+            const projectsList = res.data?.data?.projects || res.data?.data || res.data?.projects || (Array.isArray(res.data) ? res.data : []);
+            if (Array.isArray(projectsList)) {
+              project = projectsList.find(p => String(p.lead_id) === String(lead.id));
+            }
+          }
+
+          if (project) {
+            if (!lead.converted_to_project_id) {
+              lead.converted_to_project_id = project.id;
+            }
+            setFormData(prev => ({
+              ...prev,
+              projectName: project.name || prev.projectName,
+              projectType: project.project_type || prev.projectType,
+              clientName: project.client_name || prev.clientName,
+              clientPhone: project.client_phone || prev.clientPhone,
+              clientEmail: project.client_email || prev.clientEmail,
+              pm: project.pm_id || prev.pm,
+              designer: project.designer_id || prev.designer,
+              contractValue: project.contract_value ?? project.value ?? prev.contractValue,
+              advanceAmount: project.booking_amount ?? project.advance_amount ?? prev.advanceAmount,
+              startDate: project.start_date ? String(project.start_date).slice(0, 10) : prev.startDate,
+              handoverDate: project.target_date ? String(project.target_date).slice(0, 10) : prev.handoverDate,
+              paymentTerms: project.payment_terms || prev.paymentTerms,
+              flat_number: project.flat_number || prev.flat_number,
+              floor: project.floor || prev.floor,
+              building_name: project.building_name || prev.building_name,
+              street: project.street || prev.street,
+              city: project.city || prev.city,
+              pincode: project.pincode || prev.pincode,
+              landmark: project.landmark || prev.landmark,
+              builder_name: project.builder_name || prev.builder_name,
+              society_name: project.society_name || prev.society_name,
+              rera_id: project.rera_id || prev.rera_id,
+              carpet_area: project.carpet_area || prev.carpet_area,
+              built_up_area: project.built_up_area || prev.built_up_area,
+              number_of_rooms: project.number_of_rooms || prev.number_of_rooms
+            }));
+
+            setChecklist(prev => {
+              const updated = { ...prev };
+              Object.keys(updated).forEach(k => { updated[k] = true; });
+              return updated;
+            });
+          }
+        } catch (err) {
+          console.warn('Could not load existing project for converted lead:', err);
+        }
+      };
+
+      if (lead.status === 'converted' || lead.converted_to_project_id) {
+        loadExistingProject();
+      }
 
 
 
@@ -244,14 +340,17 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
   }, [isOpen, lead]);
 
   const fillMockData = () => {
+    const firstUserId = teamUsers[0]?.id || '';
+    const secondUserId = teamUsers[1]?.id || firstUserId;
+
     setFormData({
       projectType: formData.projectType || 'full_interior',
-      clientName: formData.clientName || lead?.name || 'Rahul Sharma',
-      clientPhone: formData.clientPhone || lead?.phone || '+91 9876543210',
-      clientEmail: formData.clientEmail || lead?.email || 'rahul.s@example.com',
-      projectName: formData.projectName || (lead?.name ? `${lead.name}'s Project` : 'Rahul - 3BHK Whitefield'),
-      pm: formData.pm || 'u1',
-      designer: formData.designer || 'u3',
+      clientName: formData.clientName || lead?.name || '',
+      clientPhone: formData.clientPhone || lead?.phone || '',
+      clientEmail: formData.clientEmail || lead?.email || '',
+      projectName: formData.projectName || (lead?.name ? `${lead.name}'s Project` : 'New Project'),
+      pm: formData.pm || firstUserId,
+      designer: formData.designer || secondUserId,
       contractValue: formData.contractValue || lead?.budget_max || '1500000',
       advanceAmount: formData.advanceAmount || '150000',
       startDate: formData.startDate || new Date().toISOString().slice(0, 10),
@@ -421,13 +520,37 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={loading}>
-            {loading ? 'Creating...' : 'Create Project'}
+          <Button 
+            variant="primary" 
+            onClick={handleSubmit} 
+            disabled={loading || lead.status === 'converted' || Boolean(lead.converted_to_project_id)}
+          >
+            {loading ? 'Creating...' : (lead.status === 'converted' || lead.converted_to_project_id ? 'Already Converted' : 'Create Project')}
           </Button>
         </>
       }
     >
       <div className="space-y-6 pb-2">
+        {(lead.status === 'converted' || lead.converted_to_project_id) && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-xl text-sm flex items-center justify-between">
+            <div>
+              <strong>Lead Already Converted!</strong> This lead has already been converted into a project.
+            </div>
+            {lead.converted_to_project_id && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  onClose();
+                  window.location.href = `/projects/${lead.converted_to_project_id}`;
+                }}
+              >
+                View Project
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Lead Summary Section */}
         <div className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl p-5 shadow-sm">
           <div className="flex justify-between items-center mb-4 border-b border-[var(--color-border)] pb-3">
@@ -448,11 +571,19 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
             </div>
             <div>
               <span className="text-[var(--color-text-secondary)] block text-xs font-medium uppercase tracking-wider mb-1">Scope</span>
-              <span className="font-semibold text-[var(--color-text)] capitalize">{(lead.scope || '').replace('_', ' ') || 'N/A'}</span>
+              <span className="font-semibold text-[var(--color-text)] capitalize">
+                {lead.scope || lead.project_type || lead.scope_of_work
+                  ? String(lead.scope || lead.project_type || lead.scope_of_work).replace('_', ' ')
+                  : (formData.projectType ? String(formData.projectType).replace('_', ' ') : 'Full Interior')}
+              </span>
             </div>
             <div>
               <span className="text-[var(--color-text-secondary)] block text-xs font-medium uppercase tracking-wider mb-1">Max Budget</span>
-              <span className="font-semibold text-[var(--color-text)]">TBD</span>
+              <span className="font-semibold text-[var(--color-text)]">
+                {lead.budget_max || lead.budget || lead.value || lead.estimated_budget || formData.contractValue
+                  ? `₹${Number(lead.budget_max || lead.budget || lead.value || lead.estimated_budget || formData.contractValue).toLocaleString('en-IN')}`
+                  : 'N/A'}
+              </span>
             </div>
             {lead.locality && (
               <div className="col-span-2">
@@ -501,13 +632,36 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
           <div className="grid grid-cols-2 gap-4">
             <Select 
               label="Project Type *" 
-              options={[{value:'',label:'Select Type'}, ...PROJECT_TYPES.map(t => ({value:t.id, label:t.label}))]}
+              options={(() => {
+                const opts = [{ value: '', label: 'Select Type' }, ...projectTypes.map(t => ({ value: t.id, label: t.label }))];
+                if (formData.projectType && !opts.some(o => o.value === formData.projectType)) {
+                  opts.push({ value: formData.projectType, label: String(formData.projectType).replace(/_/g, ' ') });
+                }
+                return opts;
+              })()}
               value={formData.projectType}
               onChange={v => setFormData({...formData, projectType: v})}
             />
             <Select 
               label="Project Manager *" 
-              options={[{value:'',label:'Select PM'}, {value:'u1',label:'Priya Sharma'}, {value:'u2',label:'Rahul Desai'}]}
+              options={(() => {
+                const opts = [{ value: '', label: 'Select PM' }];
+                teamUsers.forEach(u => {
+                  const uName = u.name || `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email;
+                  if (uName && !opts.some(o => o.value === u.id)) {
+                    opts.push({ value: u.id, label: uName });
+                  }
+                });
+
+                if (formData.pm && !opts.some(o => o.value === formData.pm)) {
+                  const match = teamUsers.find(u => String(u.id) === String(formData.pm));
+                  const label = match 
+                    ? (match.name || `${match.first_name || ''} ${match.last_name || ''}`.trim())
+                    : (formData.pm_name || `Project Manager (${formData.pm.slice(0, 8)}...)`);
+                  opts.push({ value: formData.pm, label });
+                }
+                return opts;
+              })()}
               value={formData.pm}
               onChange={v => setFormData({...formData, pm: v})}
             />
@@ -515,27 +669,47 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
           <div className="grid grid-cols-2 gap-4">
             <Select 
               label="Lead Designer" 
-              options={[{value:'',label:'Select Designer'}, {value:'u3',label:'Sneha Kapoor'}, {value:'u4',label:'Amit Patel'}]}
+              options={(() => {
+                const opts = [{ value: '', label: 'Select Designer' }];
+                teamUsers.forEach(u => {
+                  const uName = u.name || `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email;
+                  if (uName && !opts.some(o => o.value === u.id)) {
+                    opts.push({ value: u.id, label: uName });
+                  }
+                });
+
+                if (formData.designer && !opts.some(o => o.value === formData.designer)) {
+                  const match = teamUsers.find(u => String(u.id) === String(formData.designer));
+                  const label = match 
+                    ? (match.name || `${match.first_name || ''} ${match.last_name || ''}`.trim())
+                    : (formData.designer_name || `Lead Designer (${formData.designer.slice(0, 8)}...)`);
+                  opts.push({ value: formData.designer, label });
+                }
+                return opts;
+              })()}
               value={formData.designer}
               onChange={v => setFormData({...formData, designer: v})}
             />
             <Select 
               label="Payment Terms" 
-              options={[
-                { value: '', label: 'Select Terms' },
-                ...paymentTemplates.map(t => {
-                  const percLabel = Array.isArray(t.milestones) && t.milestones.length > 0
-                    ? t.milestones.map(m => (m.percentage !== undefined ? m.percentage : 0) + '%').join(', ')
-                    : t.name;
-                  return {
-                    value: t.id,
-                    label: percLabel
-                  };
-                }),
-                { value: '10_40_40_10', label: '10%, 40%, 40%, 10%' },
-                { value: '30_30_30_10', label: '30%, 30%, 30%, 10%' },
-                { value: '50_50', label: '50%, 50%' }
-              ]}
+              options={(() => {
+                const opts = [
+                  { value: '', label: 'Select Terms' },
+                  ...paymentTemplates.map(t => {
+                    const percLabel = Array.isArray(t.milestones) && t.milestones.length > 0
+                      ? t.milestones.map(m => (m.percentage !== undefined ? m.percentage : 0) + '%').join(', ')
+                      : t.name;
+                    return { value: t.id, label: percLabel };
+                  }),
+                  { value: '10_40_40_10', label: '10%, 40%, 40%, 10%' },
+                  { value: '30_30_30_10', label: '30%, 30%, 30%, 10%' },
+                  { value: '50_50', label: '50%, 50%' }
+                ];
+                if (formData.paymentTerms && !opts.some(o => o.value === formData.paymentTerms)) {
+                  opts.push({ value: formData.paymentTerms, label: String(formData.paymentTerms).replace(/_/g, '%, ') + '%' });
+                }
+                return opts;
+              })()}
               value={formData.paymentTerms}
               onChange={handlePaymentTermsChange}
             />
@@ -647,545 +821,6 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
                 value={formData.pincode} 
                 onChange={e => setFormData({...formData, pincode: e.target.value})} 
               />
-            </div>
-            <div className="grid grid-cols-3 gap-4 items-end">
-              <Input 
-                label="Latitude" 
-                placeholder="e.g. 17.4126"
-                value={formData.latitude} 
-                onChange={e => setFormData({...formData, latitude: e.target.value})} 
-              />
-              <Input 
-                label="Longitude" 
-                placeholder="e.g. 78.4354"
-                value={formData.longitude} 
-                onChange={e => setFormData({...formData, longitude: e.target.value})} 
-              />
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => {
-                  if (!navigator.geolocation) {
-                    toast.error('Geolocation is not supported by your browser');
-                    return;
-                  }
-                  navigator.geolocation.getCurrentPosition(
-                    position => {
-                      setFormData(prev => ({
-                        ...prev,
-                        latitude: position.coords.latitude.toFixed(6),
-                        longitude: position.coords.longitude.toFixed(6)
-                      }));
-                      toast.success('Coordinates retrieved successfully!');
-                    },
-                    error => {
-                      toast.error('Failed to get location: ' + error.message);
-                    }
-                  );
-                }} 
-                className="h-[38px] flex items-center justify-center gap-1.5 text-xs font-semibold"
-              >
-                📍 Get Location
-              </Button>
-            </div>
-          </div>
-
-          {/* Site, Builder & Society Details */}
-          <div className="border-t border-[var(--color-border)] pt-5 mt-6">
-            <h5 className="font-bold text-[var(--color-text)] text-xs mb-4 tracking-wider uppercase text-opacity-80">Site, Builder & NOC Details</h5>
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <Input 
-                label="Builder Name" 
-                placeholder="e.g. Prestige Group"
-                value={formData.builder_name} 
-                onChange={e => setFormData({...formData, builder_name: e.target.value})} 
-              />
-              <Input 
-                label="Society Name" 
-                placeholder="e.g. Prestige Lakeside Habitat"
-                value={formData.society_name} 
-                onChange={e => setFormData({...formData, society_name: e.target.value})} 
-              />
-              <Input 
-                label="RERA ID" 
-                placeholder="e.g. PRM/KA/RERA/..."
-                value={formData.rera_id} 
-                onChange={e => setFormData({...formData, rera_id: e.target.value})} 
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <Select 
-                label="Builder NOC Status" 
-                options={[
-                  { value: 'pending', label: 'Pending' },
-                  { value: 'approved', label: 'Approved' },
-                  { value: 'not_required', label: 'Not Required' }
-                ]}
-                value={formData.noc_status}
-                onChange={v => setFormData({...formData, noc_status: v})}
-              />
-              <Select 
-                label="Occupancy Certificate" 
-                options={[
-                  { value: 'pending', label: 'Pending' },
-                  { value: 'received', label: 'Received' },
-                  { value: 'not_required', label: 'Not Required' }
-                ]}
-                value={formData.occupancy_certificate_status}
-                onChange={v => setFormData({...formData, occupancy_certificate_status: v})}
-              />
-              <Input 
-                label="Property Handover Date" 
-                type="date"
-                value={formData.property_handover_date} 
-                onChange={e => setFormData({...formData, property_handover_date: e.target.value})} 
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <Input 
-                label="Carpet Area (sq ft)" 
-                type="number"
-                placeholder="e.g. 1200"
-                value={formData.carpet_area} 
-                onChange={e => setFormData({...formData, carpet_area: e.target.value})} 
-              />
-              <Input 
-                label="Built-up Area (sq ft)" 
-                type="number"
-                placeholder="e.g. 1500"
-                value={formData.built_up_area} 
-                onChange={e => setFormData({...formData, built_up_area: e.target.value})} 
-              />
-              <Input 
-                label="Number of Rooms" 
-                type="number"
-                placeholder="e.g. 4"
-                value={formData.number_of_rooms} 
-                onChange={e => setFormData({...formData, number_of_rooms: e.target.value})} 
-              />
-            </div>
-          </div>
-
-          {/* Project Classification & Nature */}
-          <div className="border-t border-[var(--color-border)] pt-5 mt-6">
-            <h5 className="font-bold text-[var(--color-text)] text-xs mb-4 tracking-wider uppercase text-opacity-80">Project Classification & Nature</h5>
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <Select 
-                label="Project Category" 
-                options={[
-                  { value: '', label: 'Select Category' },
-                  { value: 'residential', label: 'Residential' },
-                  { value: 'commercial', label: 'Commercial' },
-                  { value: 'other', label: 'Other' }
-                ]}
-                value={formData.project_category}
-                onChange={v => setFormData({...formData, project_category: v})}
-              />
-              <Select 
-                label="Project Sub-Category" 
-                options={[
-                  { value: '', label: 'Select Sub-Category' },
-                  { value: 'apartment', label: 'Apartment' },
-                  { value: 'villa', label: 'Villa' },
-                  { value: 'independent_house', label: 'Independent House' },
-                  { value: 'office', label: 'Office' },
-                  { value: 'retail', label: 'Retail' },
-                  { value: 'hospitality', label: 'Hospitality' },
-                  { value: 'other', label: 'Other' }
-                ]}
-                value={formData.project_sub_category}
-                onChange={v => setFormData({...formData, project_sub_category: v})}
-              />
-              <Select 
-                label="Ownership Type" 
-                options={[
-                  { value: '', label: 'Select Ownership' },
-                  { value: 'owned', label: 'Owned' },
-                  { value: 'rented', label: 'Rented' }
-                ]}
-                value={formData.property_type}
-                onChange={v => setFormData({...formData, property_type: v})}
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <Select 
-                label="Property Age" 
-                options={[
-                  { value: '', label: 'Select Property Age' },
-                  { value: 'new', label: 'New / Under Construction' },
-                  { value: '1-5_years', label: '1 - 5 Years' },
-                  { value: '5-10_years', label: '5 - 10 Years' },
-                  { value: '10+_years', label: '10+ Years' }
-                ]}
-                value={formData.property_age}
-                onChange={v => setFormData({...formData, property_age: v})}
-              />
-              <Select 
-                label="Renovation Scope" 
-                options={[
-                  { value: '', label: 'Select Renovation Scope' },
-                  { value: 'full', label: 'Full Renovation' },
-                  { value: 'partial', label: 'Partial Renovation' },
-                  { value: 'none', label: 'New Handover Fit-out (None)' }
-                ]}
-                value={formData.renovation_scope}
-                onChange={v => setFormData({...formData, renovation_scope: v})}
-              />
-              <Select 
-                label="Market Segment" 
-                options={[
-                  { value: '', label: 'Select Segment' },
-                  { value: 'budget', label: 'Budget' },
-                  { value: 'standard', label: 'Standard' },
-                  { value: 'premium', label: 'Premium' },
-                  { value: 'luxury', label: 'Luxury' }
-                ]}
-                value={formData.segment}
-                onChange={v => setFormData({...formData, segment: v})}
-              />
-            </div>
-          </div>
-
-          {/* Site Measurements & Room Dimensions */}
-          <div className="border-t border-[var(--color-border)] pt-5 mt-6">
-            <h5 className="font-bold text-[var(--color-text)] text-xs mb-4 tracking-wider uppercase text-opacity-80">Site Measurements & Room Dimensions</h5>
-            
-            {/* Render list of added room measurements */}
-            {formData.measurements && formData.measurements.length > 0 ? (
-              <div className="space-y-3 mb-4">
-                {formData.measurements.map((room, idx) => (
-                  <div key={idx} className="flex justify-between items-center bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl p-4 shadow-sm">
-                    <div>
-                      <span className="font-bold text-[var(--color-text)] text-sm">{room.room_name}</span>
-                      <div className="text-xs text-[var(--color-text-secondary)] mt-1.5">
-                        Dimensions: <span className="font-semibold text-[var(--color-text)]">{room.length} x {room.width} x {room.height} {room.unit}</span>
-                        {room.area && <> | Area: <span className="font-semibold text-[var(--color-text)]">{room.area} sq {room.unit}</span></>}
-                        {room.notes && ` | Notes: ${room.notes}`}
-                      </div>
-                    </div>
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      onClick={() => {
-                        const updated = formData.measurements.filter((_, i) => i !== idx);
-                        setFormData({ ...formData, measurements: updated });
-                      }}
-                      className="text-[var(--color-danger)] hover:text-red-700 py-1 h-auto text-xs font-semibold"
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-5 border border-dashed border-[var(--color-border)] rounded-xl text-center text-[var(--color-text-secondary)] text-sm mb-4">
-                No room measurements recorded yet.
-              </div>
-            )}
-
-            {/* Form to add a new room measurement */}
-            <div className="border border-[var(--color-border)] bg-[var(--color-surface)] rounded-xl p-5 space-y-4 shadow-sm">
-              <div className="text-xs font-bold text-[var(--color-text)] uppercase tracking-wider">Add Room Measurement</div>
-              <div className="grid grid-cols-4 gap-4">
-                <Input 
-                  label="Room Name" 
-                  placeholder="e.g. Master Bedroom"
-                  value={newRoomMeasurement.room_name}
-                  onChange={e => setNewRoomMeasurement({...newRoomMeasurement, room_name: e.target.value})}
-                />
-                <Input 
-                  label="Length" 
-                  type="number"
-                  placeholder="Length"
-                  value={newRoomMeasurement.length}
-                  onChange={e => setNewRoomMeasurement({...newRoomMeasurement, length: e.target.value})}
-                />
-                <Input 
-                  label="Width" 
-                  type="number"
-                  placeholder="Width"
-                  value={newRoomMeasurement.width}
-                  onChange={e => setNewRoomMeasurement({...newRoomMeasurement, width: e.target.value})}
-                />
-                <Input 
-                  label="Height" 
-                  type="number"
-                  placeholder="Height"
-                  value={newRoomMeasurement.height}
-                  onChange={e => setNewRoomMeasurement({...newRoomMeasurement, height: e.target.value})}
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-4 items-end">
-                <Input 
-                  label="Area (sq ft)" 
-                  type="number"
-                  placeholder="Calculated Area"
-                  value={newRoomMeasurement.area}
-                  onChange={e => setNewRoomMeasurement({...newRoomMeasurement, area: e.target.value})}
-                />
-                <Select 
-                  label="Measurement Unit" 
-                  options={[{value:'feet',label:'Feet'}, {value:'meters',label:'Meters'}]}
-                  value={newRoomMeasurement.unit}
-                  onChange={v => setNewRoomMeasurement({...newRoomMeasurement, unit: v})}
-                />
-                <div className="flex justify-end pt-2">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => {
-                      if (!newRoomMeasurement.room_name || newRoomMeasurement.room_name.trim() === '') {
-                        toast.error('Room name is required');
-                        return;
-                      }
-                      setFormData(prev => ({
-                        ...prev,
-                        measurements: [...(prev.measurements || []), { 
-                          ...newRoomMeasurement, 
-                          room_name: newRoomMeasurement.room_name.trim(),
-                          length: parseFloat(newRoomMeasurement.length) || 0,
-                          width: parseFloat(newRoomMeasurement.width) || 0,
-                          height: parseFloat(newRoomMeasurement.height) || 0,
-                          area: parseFloat(newRoomMeasurement.area) || (parseFloat(newRoomMeasurement.length) * parseFloat(newRoomMeasurement.width)) || 0
-                        }]
-                      }));
-                      setNewRoomMeasurement({
-                        room_name: '',
-                        length: '',
-                        width: '',
-                        height: '',
-                        area: '',
-                        unit: 'feet',
-                        notes: ''
-                      });
-                    }}
-                    className="h-[36px] py-1 text-xs font-semibold"
-                  >
-                    Add Room
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Project Vendors */}
-          <div className="border-t border-[var(--color-border)] pt-5 mt-6">
-            <h5 className="font-bold text-[var(--color-text)] text-xs mb-4 tracking-wider uppercase text-opacity-80">Pre-assigned Vendors & Work Allocations</h5>
-            
-            {/* Added vendors list */}
-            {formData.vendors && formData.vendors.length > 0 ? (
-              <div className="space-y-3 mb-4">
-                {formData.vendors.map((vendor, idx) => (
-                  <div key={idx} className="flex justify-between items-center bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl p-4 shadow-sm">
-                    <div>
-                      <span className="font-bold text-[var(--color-text)] text-sm">{vendor.vendor_name}</span>
-                      <span className="ml-2 px-2.5 py-0.5 text-xs rounded-full bg-[var(--color-primary-bg)] text-[var(--color-primary)] font-semibold uppercase tracking-wide">
-                        {vendor.scope_of_work}
-                      </span>
-                      <div className="text-xs text-[var(--color-text-secondary)] mt-1.5">
-                        Agreed Rate: <span className="font-semibold text-[var(--color-text)]">₹{Number(vendor.agreed_rate).toLocaleString()}</span> | Terms: {vendor.payment_terms}
-                      </div>
-                    </div>
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      onClick={() => {
-                        const updated = formData.vendors.filter((_, i) => i !== idx);
-                        setFormData({ ...formData, vendors: updated });
-                      }}
-                      className="text-[var(--color-danger)] hover:text-red-700 py-1 h-auto text-xs font-semibold"
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-5 border border-dashed border-[var(--color-border)] rounded-xl text-center text-[var(--color-text-secondary)] text-sm mb-4">
-                No vendors pre-allocated yet.
-              </div>
-            )}
-
-            {/* Add vendor fields */}
-            <div className="border border-[var(--color-border)] bg-[var(--color-surface)] rounded-xl p-5 space-y-4 shadow-sm">
-              <div className="text-xs font-bold text-[var(--color-text)] uppercase tracking-wider">Assign Vendor</div>
-              <div className="grid grid-cols-3 gap-4">
-                <Input 
-                  label="Vendor Name" 
-                  placeholder="e.g. Balaji Marbles"
-                  value={newVendor.vendor_name}
-                  onChange={e => setNewVendor({...newVendor, vendor_name: e.target.value})}
-                />
-                <Input 
-                  label="Scope of Work" 
-                  placeholder="e.g. Marble flooring"
-                  value={newVendor.scope_of_work}
-                  onChange={e => setNewVendor({...newVendor, scope_of_work: e.target.value})}
-                />
-                <Input 
-                  label="Agreed Contract Rate (₹)" 
-                  type="number"
-                  placeholder="e.g. 75000"
-                  value={newVendor.agreed_rate}
-                  onChange={e => setNewVendor({...newVendor, agreed_rate: e.target.value})}
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-4 items-end">
-                <Input 
-                  label="Payment Terms" 
-                  placeholder="e.g. 50-50"
-                  value={newVendor.payment_terms}
-                  onChange={e => setNewVendor({...newVendor, payment_terms: e.target.value})}
-                />
-                <Select 
-                  label="Work Order Status" 
-                  options={[{value:'pending',label:'Pending Approval'}, {value:'active',label:'Active / Work Started'}]}
-                  value={newVendor.status}
-                  onChange={v => setNewVendor({...newVendor, status: v})}
-                />
-                <div className="flex justify-end pt-2">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => {
-                      if (!newVendor.vendor_name || newVendor.vendor_name.trim() === '') {
-                        toast.error('Vendor name is required');
-                        return;
-                      }
-                      setFormData(prev => ({
-                        ...prev,
-                        vendors: [...(prev.vendors || []), { ...newVendor, vendor_name: newVendor.vendor_name.trim() }]
-                      }));
-                      setNewVendor({
-                        vendor_name: '',
-                        scope_of_work: '',
-                        agreed_rate: '',
-                        payment_terms: '',
-                        status: 'pending'
-                      });
-                    }}
-                    className="h-[36px] py-1 text-xs font-semibold"
-                  >
-                    Add Vendor
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Project Consultants */}
-          <div className="border-t border-[var(--color-border)] pt-5 mt-6">
-            <h5 className="font-bold text-[var(--color-text)] text-xs mb-4 tracking-wider uppercase text-opacity-80">External Consultants Assigned</h5>
-            
-            {/* Added consultants list */}
-            {formData.consultants && formData.consultants.length > 0 ? (
-              <div className="space-y-3 mb-4">
-                {formData.consultants.map((consultant, idx) => (
-                  <div key={idx} className="flex justify-between items-center bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl p-4 shadow-sm">
-                    <div>
-                      <span className="font-bold text-[var(--color-text)] text-sm">{consultant.name}</span>
-                      <span className="ml-2 px-2.5 py-0.5 text-xs rounded-full bg-[var(--color-primary-bg)] text-[var(--color-primary)] font-semibold uppercase tracking-wide">
-                        {consultant.role ? consultant.role.replace(/_/g, ' ') : ''}
-                      </span>
-                      {consultant.firm && (
-                        <span className="ml-2 text-xs text-[var(--color-text-secondary)] font-medium">
-                          Firm: {consultant.firm}
-                        </span>
-                      )}
-                      <div className="text-xs text-[var(--color-text-secondary)] mt-1.5">
-                        {consultant.phone && `📞 ${consultant.phone}`} {consultant.email && ` | ✉️ ${consultant.email}`}
-                      </div>
-                    </div>
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      onClick={() => {
-                        const updated = formData.consultants.filter((_, i) => i !== idx);
-                        setFormData({ ...formData, consultants: updated });
-                      }}
-                      className="text-[var(--color-danger)] hover:text-red-700 py-1 h-auto text-xs font-semibold"
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-5 border border-dashed border-[var(--color-border)] rounded-xl text-center text-[var(--color-text-secondary)] text-sm mb-4">
-                No external consultants assigned to this project yet.
-              </div>
-            )}
-
-            {/* Add consultant fields */}
-            <div className="border border-[var(--color-border)] bg-[var(--color-surface)] rounded-xl p-5 space-y-4 shadow-sm">
-              <div className="text-xs font-bold text-[var(--color-text)] uppercase tracking-wider">Assign Consultant</div>
-              <div className="grid grid-cols-3 gap-4">
-                <Input 
-                  label="Consultant Name" 
-                  placeholder="e.g. Dr. H. C. Verma"
-                  value={newConsultant.name}
-                  onChange={e => setNewConsultant({...newConsultant, name: e.target.value})}
-                />
-                <Input 
-                  label="Firm Name" 
-                  placeholder="e.g. Verma Structural Consultants"
-                  value={newConsultant.firm}
-                  onChange={e => setNewConsultant({...newConsultant, firm: e.target.value})}
-                />
-                <Select 
-                  label="Consultant Role" 
-                  options={[
-                    { value: 'structural_engineer', label: 'Structural Engineer' },
-                    { value: 'mep_consultant', label: 'MEP Consultant' },
-                    { value: 'lighting_designer', label: 'Lighting Designer' },
-                    { value: 'landscape_consultant', label: 'Landscape Consultant' },
-                    { value: 'other', label: 'Other Special Consultant' }
-                  ]}
-                  value={newConsultant.role}
-                  onChange={v => setNewConsultant({...newConsultant, role: v})}
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-4 items-end">
-                <Input 
-                  label="Phone Number" 
-                  placeholder="e.g. 9876543210"
-                  value={newConsultant.phone}
-                  onChange={e => setNewConsultant({...newConsultant, phone: e.target.value})}
-                />
-                <Input 
-                  label="Email Address" 
-                  type="email"
-                  placeholder="e.g. consultant@firm.com"
-                  value={newConsultant.email}
-                  onChange={e => setNewConsultant({...newConsultant, email: e.target.value})}
-                />
-                <div className="flex justify-end pt-2">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => {
-                      if (!newConsultant.name || newConsultant.name.trim() === '') {
-                        toast.error('Consultant name is required');
-                        return;
-                      }
-                      setFormData(prev => ({
-                        ...prev,
-                        consultants: [...(prev.consultants || []), { ...newConsultant, name: newConsultant.name.trim() }]
-                      }));
-                      setNewConsultant({
-                        name: '',
-                        role: 'structural_engineer',
-                        firm: '',
-                        email: '',
-                        phone: ''
-                      });
-                    }}
-                    className="h-[36px] py-1 text-xs font-semibold"
-                  >
-                    Add Consultant
-                  </Button>
-                </div>
-              </div>
             </div>
           </div>
 

@@ -7,14 +7,7 @@ import { createProject, updateProject } from '../../api/projects'
 import api from '../../api/axios'
 import { useS3Upload } from '../../hooks/useS3Upload'
 import { useFieldPermissions } from '../../hooks/useFieldPermissions'
-
-const PROJECT_TYPES = [
-  { id: 'full_interior', icon: '🏠', label: 'Full Interior' },
-  { id: 'modular_kitchen', icon: '🍳', label: 'Modular Kitchen' },
-  { id: 'commercial', icon: '🏢', label: 'Commercial' },
-  { id: 'turnkey', icon: '🔑', label: 'Turnkey' },
-  { id: 'renovation', icon: '🔨', label: 'Renovation' }
-]
+import { fetchProjectTypes, DEFAULT_PROJECT_TYPES } from '../../constants/projectTypes'
 
 export default function ProjectForm({ project, onSave, onClose, isOpen, editSection = 'all' }) {
   const showAll = editSection === 'all';
@@ -29,10 +22,12 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
   const { isHidden, isReadOnly } = useFieldPermissions('projects')
   const [contractFile, setContractFile] = useState(null)
   const [isProjectTypeEditable, setIsProjectTypeEditable] = useState(!project)
-  
+  const [projectTypes, setProjectTypes] = useState(DEFAULT_PROJECT_TYPES)
+
   useEffect(() => {
     if (isOpen) {
       setIsProjectTypeEditable(!project)
+      fetchProjectTypes().then(types => setProjectTypes(types))
     }
   }, [isOpen, project])
   
@@ -517,7 +512,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
         )}
       </div>
       <div className={styles.typeSelector} style={{ opacity: isProjectTypeEditable ? 1 : 0.6, pointerEvents: isProjectTypeEditable ? 'auto' : 'none' }}>
-        {PROJECT_TYPES.map(type => (
+        {projectTypes.map(type => (
           <div 
             key={type.id} 
             className={`${styles.typeCard} ${formData.projectType === type.id ? styles.selected : ''}`}

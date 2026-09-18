@@ -94,6 +94,8 @@ router.param('projectId', (req, res, next, id) => {
 });
 
 // Mount sub-routers
+router.use('/:projectId/phases', phasesRoutes);
+router.use('/:id/phases', phasesRoutes);
 router.use('/:projectId/tasks', tasksRoutes);
 router.use('/:id/tasks', tasksRoutes);
 
@@ -441,7 +443,7 @@ router.post('/', authorize('projects:create'), validate(createProjectSchema), as
     return success(res, safeProject, {}, 201);
   } catch (error) {
     logger.error('[Projects Router] Create error:', error);
-    return fail(res, 'INTERNAL_ERROR', 'An error occurred while creating the project.', 500);
+    next(error);
   }
 });
 
@@ -468,7 +470,7 @@ const dataScope = require('../middleware/dataScope');
  */
 router.get('/', authorize('projects:read'), dataScope('projects', 'pm_id', 'p'), async (req, res, next) => {
   try {
-    const { status, pmId, designerId, search, page, limit, includeDeleted } = req.query;
+    const { status, pmId, designerId, lead_id, leadId, search, page, limit, includeDeleted } = req.query;
     
     const parsedPage = parseInt(page, 10) || 1;
     const parsedLimit = parseInt(limit, 10) || 20;
@@ -477,6 +479,7 @@ router.get('/', authorize('projects:read'), dataScope('projects', 'pm_id', 'p'),
       status,
       pmId,
       designerId,
+      leadId: lead_id || leadId,
       search,
       page: parsedPage,
       limit: parsedLimit,
@@ -1071,15 +1074,12 @@ router.post('/:id/handover/appointments', authorize('projects:manage'), validate
 
 router.post('/:id/apply-template', authorize('projects:manage'), async (req, res, next) => {
   try {
-    const parsed = applySchema.safeParse(req.body);
-    if (!parsed.success) {
-      const error = new Error('Validation failed');
-      error.isValidation = true;
-      error.details = parsed.error.issues;
-      return next(error);
+    const templateId = req.body?.templateId || req.body?.template_id;
+    if (!templateId) {
+      return fail(res, 'BAD_REQUEST', 'templateId is required', 400);
     }
 
-    const result = await applyTemplate(req.params.id, parsed.data.templateId, req.tenantId);
+    const result = await applyTemplate(req.params.id, templateId, req.tenantId);
     return success(res, result);
   } catch (error) {
     if (error.message === 'TEMPLATE_NOT_FOUND') {

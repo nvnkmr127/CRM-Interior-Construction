@@ -116,7 +116,7 @@ router.get('/', authorize(['projects:read', 'tasks:read', 'tasks:view']), dataSc
     const isAll = limit === 'all' || allTasks === 'true';
     const parsedLimit = isAll ? 10000 : (parseInt(limit, 10) || 20);
 
-    const result = await taskRepository.findTasks(req.tenantId, {
+    let result = await taskRepository.findTasks(req.tenantId, {
       projectId: req.params.projectId,
       milestoneId,
       assigneeId,
@@ -128,6 +128,40 @@ router.get('/', authorize(['projects:read', 'tasks:read', 'tasks:view']), dataSc
       scopeFilter: req.scopeFilter,
       includeDeleted: includeDeleted === 'true'
     });
+
+    // Auto-hydrate tasks if project has milestones but zero tasks created yet
+    if (result.total === 0 && req.params.projectId) {
+      try {
+        const mRes = await pool.query(
+          'SELECT id, name FROM milestones WHERE project_id = $1 AND tenant_id = $2',
+          [req.params.projectId, req.tenantId]
+        );
+        if (mRes.rows.length > 0) {
+          for (const m of mRes.rows) {
+            await pool.query(
+              `INSERT INTO tasks (tenant_id, project_id, milestone_id, title, status, priority)
+               VALUES ($1, $2, $3, $4, 'todo', 'medium')`,
+              [req.tenantId, req.params.projectId, m.id, m.name || 'Untitled Task']
+            );
+          }
+          // Refetch tasks
+          result = await taskRepository.findTasks(req.tenantId, {
+            projectId: req.params.projectId,
+            milestoneId,
+            assigneeId,
+            status,
+            priority,
+            page: parsedPage,
+            limit: parsedLimit,
+            allTasks: allTasks === 'true',
+            scopeFilter: req.scopeFilter,
+            includeDeleted: includeDeleted === 'true'
+          });
+        }
+      } catch (syncErr) {
+        logger.warn('Could not auto-sync milestone tasks:', syncErr);
+      }
+    }
 
     const maskedData = result.data.map(task => filterAllowedFields(task, req.user, 'tasks'));
 

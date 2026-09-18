@@ -85,11 +85,14 @@ async function updateTemplate(tenantId, templateId, updates) {
  * Applies a project template to a specific project.
  * Uses a transactional boundary to safely spawn phases and milestones.
  */
-async function applyTemplate(projectId, templateId, tenantId) {
-  const client = await pool.connect();
+async function applyTemplate(projectId, templateId, tenantId, passedClient = null) {
+  const isExternalClient = !!passedClient;
+  const client = passedClient || (await pool.connect());
   
   try {
-    await client.query('BEGIN');
+    if (!isExternalClient) {
+      await client.query('BEGIN');
+    }
 
     // 1. Fetch template
     const templateRes = await client.query(`
@@ -101,11 +104,21 @@ async function applyTemplate(projectId, templateId, tenantId) {
       throw new Error('TEMPLATE_NOT_FOUND');
     }
 
+    // Check project existence
+    const projectRes = await client.query(`
+      SELECT id FROM projects WHERE id = $1 AND tenant_id = $2
+    `, [projectId, tenantId]);
+
+    if (projectRes.rows.length === 0) {
+      throw new Error('PROJECT_NOT_FOUND');
+    }
+
     const template = templateRes.rows[0];
-    const phases = template.phases || [];
-    
-    // Optionally: Validate project existence here if required before proceeding
-    // We assume the project exists and foreign key constraints on project_phases will catch ghosts.
+    let phases = template.phases || [];
+    if (typeof phases === 'string') {
+      try { phases = JSON.parse(phases); } catch (e) { phases = []; }
+    }
+    if (!Array.isArray(phases)) phases = [];
 
     let phasesCreated = 0;
     let milestonesCreated = 0;
@@ -132,9 +145,9 @@ async function applyTemplate(projectId, templateId, tenantId) {
       const phaseRes = await client.query(phaseQuery, [
         projectId, 
         tenantId, 
-        phase.name, 
+        phase.name || `Phase ${i + 1}`, 
         i + 1, // Start order numbering sequentially at 1
-        phase.duration_days || 0,
+        Number(phase.duration_days || phase.duration) || 0,
         status,
         isExecution
       ]);
@@ -147,27 +160,48 @@ async function applyTemplate(projectId, templateId, tenantId) {
         const milestoneQuery = `
           INSERT INTO milestones (phase_id, project_id, tenant_id, name, triggers_payment)
           VALUES ($1, $2, $3, $4, $5)
+          RETURNING id
         `;
-        await client.query(milestoneQuery, [
+        const mRes = await client.query(milestoneQuery, [
           phaseId, 
           projectId, 
           tenantId, 
-          milestone.name, 
-          milestone.triggers_payment || false
+          milestone.name || 'Untitled Milestone', 
+          Boolean(milestone.triggers_payment || milestone.triggersPayment)
         ]);
+        const milestoneId = mRes.rows[0]?.id;
         milestonesCreated++;
+
+        if (milestoneId) {
+          await client.query(`
+            INSERT INTO tasks (tenant_id, project_id, milestone_id, title, status, priority, duration_days)
+            VALUES ($1, $2, $3, $4, 'todo', 'medium', $5)
+          `, [
+            tenantId,
+            projectId,
+            milestoneId,
+            milestone.name || 'Untitled Task',
+            Number(phase.duration_days || phase.duration) || 1
+          ]);
+        }
       }
     }
 
-    await client.query('COMMIT');
+    if (!isExternalClient) {
+      await client.query('COMMIT');
+    }
     
     // 3. Return execution summary
     return { phasesCreated, milestonesCreated };
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (!isExternalClient) {
+      await client.query('ROLLBACK');
+    }
     throw error;
   } finally {
-    client.release();
+    if (!isExternalClient) {
+      client.release();
+    }
   }
 }
 

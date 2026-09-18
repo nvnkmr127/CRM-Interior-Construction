@@ -70,11 +70,13 @@ class ProjectRepository {
         $84, $85, $86, $87
       ) RETURNING *
     `;
+    const toUUID = (val) => (typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val) ? val : null);
+
     const values = [
-      tenantId, lead_id || null, client_name, client_phone || null, client_email || null,
-      name, project_type || null, pm_id || null, designer_id || null,
-      contract_value || null, booking_amount, status, start_date || null, target_date || null,
-      site_address || null, custom_fields, created_by || null,
+      toUUID(tenantId), toUUID(lead_id), client_name, client_phone || null, client_email || null,
+      name, project_type || null, toUUID(pm_id), toUUID(designer_id),
+      contract_value !== undefined && contract_value !== null && !isNaN(Number(contract_value)) ? Number(contract_value) : null, booking_amount, status, start_date || null, target_date || null,
+      site_address || null, custom_fields, toUUID(created_by),
       agreement_signed_by || null, agreement_signed_at || null, agreement_signature_method || null,
       payment_terms || null,
       flat_number || null,
@@ -84,17 +86,17 @@ class ProjectRepository {
       city || null,
       pincode || null,
       landmark || null,
-      latitude !== undefined && latitude !== null ? Number(latitude) : null,
-      longitude !== undefined && longitude !== null ? Number(longitude) : null,
+      latitude !== undefined && latitude !== null && !isNaN(Number(latitude)) ? Number(latitude) : null,
+      longitude !== undefined && longitude !== null && !isNaN(Number(longitude)) ? Number(longitude) : null,
       builder_name || null,
       society_name || null,
       rera_id || null,
       noc_status || 'pending',
       occupancy_certificate_status || 'pending',
       property_handover_date || null,
-      carpet_area !== undefined && carpet_area !== null ? Number(carpet_area) : null,
-      built_up_area !== undefined && built_up_area !== null ? Number(built_up_area) : null,
-      number_of_rooms !== undefined && number_of_rooms !== null ? Number(number_of_rooms) : null,
+      carpet_area !== undefined && carpet_area !== null && !isNaN(Number(carpet_area)) ? Number(carpet_area) : null,
+      built_up_area !== undefined && built_up_area !== null && !isNaN(Number(built_up_area)) ? Number(built_up_area) : null,
+      number_of_rooms !== undefined && number_of_rooms !== null && !isNaN(Number(number_of_rooms)) ? Number(number_of_rooms) : null,
       project_category || null,
       project_sub_category || null,
       property_type || null,
@@ -103,17 +105,17 @@ class ProjectRepository {
       segment || null,
       allowed_design_revisions,
       current_design_revisions,
-      pm_hours_allocated !== undefined && pm_hours_allocated !== null ? Number(pm_hours_allocated) : 10,
-      designer_hours_allocated !== undefined && designer_hours_allocated !== null ? Number(designer_hours_allocated) : 20,
+      pm_hours_allocated !== undefined && pm_hours_allocated !== null && !isNaN(Number(pm_hours_allocated)) ? Number(pm_hours_allocated) : 10,
+      designer_hours_allocated !== undefined && designer_hours_allocated !== null && !isNaN(Number(designer_hours_allocated)) ? Number(designer_hours_allocated) : 20,
       fire_noc_status,
       occupancy_permit_status,
-      retention_money_percentage !== undefined && retention_money_percentage !== null ? Number(retention_money_percentage) : 0.00,
+      retention_money_percentage !== undefined && retention_money_percentage !== null && !isNaN(Number(retention_money_percentage)) ? Number(retention_money_percentage) : 0.00,
       ld_clause_details,
       stakeholder_complexity,
       spouse_name || null,
       spouse_phone || null,
       spouse_email || null,
-      number_of_family_members !== undefined && number_of_family_members !== null ? Number(number_of_family_members) : null,
+      number_of_family_members !== undefined && number_of_family_members !== null && !isNaN(Number(number_of_family_members)) ? Number(number_of_family_members) : null,
       lifestyle_preferences || null,
       preferred_communication_channel || null,
       lift_availability || null,
@@ -130,13 +132,13 @@ class ProjectRepository {
       gate_pass_number || null,
       access_card_holder || null,
       access_time_restrictions || null,
-      lead_designer_id || null,
-      junior_designer_id || null,
-      site_engineer_id || null,
-      qc_engineer_id || null,
-      site_supervisor_id || null,
-      crm_executive_id || null,
-      procurement_officer_id || null,
+      toUUID(lead_designer_id),
+      toUUID(junior_designer_id),
+      toUUID(site_engineer_id),
+      toUUID(qc_engineer_id),
+      toUUID(site_supervisor_id),
+      toUUID(crm_executive_id),
+      toUUID(procurement_officer_id),
       stage_revision_limits || '{}',
       stage_revision_counts || '{}',
       installation_warranty_start_date || null,
@@ -302,7 +304,7 @@ class ProjectRepository {
     }
   }
 
-  async findProjects(tenantId, { status, pmId, designerId, search, page = 1, limit = 20, scopeFilter = '1=1', includeDeleted = false }) {
+  async findProjects(tenantId, { status, pmId, designerId, leadId, search, page = 1, limit = 20, scopeFilter = '1=1', includeDeleted = false }) {
     const offset = (page - 1) * limit;
     const values = [tenantId];
     let whereClause = `p.tenant_id = $1 AND (${scopeFilter})`;
@@ -311,6 +313,11 @@ class ProjectRepository {
     }
     let idx = 2;
 
+    if (leadId) {
+      whereClause += ` AND (p.lead_id::text = $${idx}::text)`;
+      values.push(String(leadId));
+      idx++;
+    }
     if (status === 'deleted') {
       whereClause += ` AND p.deleted_at IS NOT NULL`;
     } else if (status === 'overdue') {

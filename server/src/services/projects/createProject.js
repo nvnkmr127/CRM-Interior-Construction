@@ -1,6 +1,6 @@
 const logger = require('../../utils/logger');
 const projectRepository = require('../../repositories/projectRepository');
-const templateService = require('../templates/templateService');
+const { applyTemplate } = require('../config/templateService');
 const { logAction } = require('../auditLog');
 const { enqueueAutomation } = require('../../queues/automationQueue');
 const pool = require('../../config/db');
@@ -259,6 +259,7 @@ async function createProject({ tenantId, userId, data }) {
 
     // Create contract document record if key is present
     if (contract_file_key) {
+      const toUUID = (val) => (typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val) ? val : null);
       await client.query(
         `INSERT INTO documents (
           tenant_id, project_id, name, doc_type, version, storage_key, file_size_bytes, mime_type, uploaded_by, status
@@ -266,12 +267,12 @@ async function createProject({ tenantId, userId, data }) {
         [
           tenantId,
           project.id,
-          contract_file_name,
+          contract_file_name || 'Contract Document',
           'contract',
           contract_file_key,
           contract_file_size || null,
           contract_file_mime || null,
-          userId
+          toUUID(userId)
         ]
       );
     }
@@ -346,7 +347,7 @@ async function createProject({ tenantId, userId, data }) {
     // 2. Hydrate via template if requested
     if (templateId) {
       try {
-        await templateService.applyTemplate(project.id, templateId, tenantId, client);
+        await applyTemplate(project.id, templateId, tenantId, client);
       } catch (error) {
         logger.error(`Failed to apply template ${templateId} to project ${project.id}:`, error);
         throw error; // Let the transaction rollback

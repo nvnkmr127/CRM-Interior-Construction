@@ -383,14 +383,46 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
     try {
       const res = await getLead(leadId);
       if (res.success) {
-        setLead(res.data);
-        return res.data;
+        let leadData = res.data;
+        if ((leadData.status === 'converted' || leadData.stage_id === 'won' || leadData.stage_name === 'Won') && !leadData.converted_to_project_id) {
+          try {
+            const projRes = await api.get(`/projects?lead_id=${leadId}`);
+            const projectsList = projRes.data?.data || projRes.data || [];
+            if (Array.isArray(projectsList) && projectsList.length > 0) {
+              leadData = { ...leadData, converted_to_project_id: projectsList[0].id };
+            }
+          } catch (err) {
+            console.error('Failed to look up converted project by lead_id:', err);
+          }
+        }
+        setLead(leadData);
+        return leadData;
       }
     } catch (e) {
       console.error(e);
       toast.error('Failed to load lead details');
     } finally {
       if (showLoading) setLoading(false);
+    }
+  };
+
+  const handleViewProject = async () => {
+    let projId = lead?.converted_to_project_id;
+    if (!projId && lead?.id) {
+      try {
+        const projRes = await api.get(`/projects?lead_id=${lead.id}`);
+        const projectsList = projRes.data?.data || projRes.data || [];
+        if (Array.isArray(projectsList) && projectsList.length > 0) {
+          projId = projectsList[0].id;
+        }
+      } catch (err) {
+        console.error('Error fetching project by lead_id:', err);
+      }
+    }
+    if (projId) {
+      navigate(`/projects/${projId}`);
+    } else {
+      toast.error('Project details not found');
     }
   };
 
@@ -1147,8 +1179,8 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
                   {saveStatus === 'saved' && <span className="text-green-600 flex items-center gap-1"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg> Saved</span>}
                   {saveStatus === 'error' && <span className="text-red-600">Save failed</span>}
                 </div>
-                {lead.status === 'converted' && lead.converted_to_project_id ? (
-                  <Button variant="outline" size="sm" onClick={async () => navigate(`/projects/${lead.converted_to_project_id}`)}>View Project</Button>
+                {lead.status === 'converted' || lead.converted_to_project_id ? (
+                  <Button variant="outline" size="sm" onClick={handleViewProject}>View Project</Button>
                 ) : (
                   <Button variant="primary" size="sm" onClick={async () => setIsConvertModalOpen(true)}>Convert to Project</Button>
                 )}
@@ -2617,9 +2649,13 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               </Button>
               <Button variant="outline" size="md" onClick={handleDelete} className="text-gray-700 hover:bg-gray-50">Mark Lost</Button>
 
-              {/* Show Convert button if logic matches a won or late stage */}
-              {(lead.stage_id === 'won' || lead.stage_name === 'Won' || lead.stage_name === 'Booking' || lead.stage_id === 'booking') && (
-                <Button variant="primary" size="md" onClick={async () => setIsConvertModalOpen(true)}>Convert to Project</Button>
+              {/* Show View Project or Convert button if logic matches a won or late stage */}
+              {(lead.stage_id === 'won' || lead.stage_name === 'Won' || lead.stage_name === 'Booking' || lead.stage_id === 'booking' || lead.status === 'converted' || lead.converted_to_project_id) && (
+                lead.status === 'converted' || lead.converted_to_project_id ? (
+                  <Button variant="outline" size="md" onClick={handleViewProject}>View Project</Button>
+                ) : (
+                  <Button variant="primary" size="md" onClick={async () => setIsConvertModalOpen(true)}>Convert to Project</Button>
+                )
               )}
             </div>
           </div>
@@ -2632,7 +2668,8 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
               onClose={() => setIsConvertModalOpen(false)}
               onConverted={(projectId) => {
                  toast.success('Successfully converted!');
-                 onLeadUpdated?.(lead);
+                 const updatedLead = { ...lead, status: 'converted', converted_to_project_id: projectId };
+                 onLeadUpdated?.(updatedLead);
                  setIsConvertModalOpen(false);
                  onClose();
               }}

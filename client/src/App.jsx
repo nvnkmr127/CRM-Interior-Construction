@@ -66,6 +66,7 @@ const GlobalFactoryProductionPage = lazy(() => import('./pages/factory/GlobalFac
 const ApiIntegrationPage = lazy(() => import('./pages/developer/ApiIntegrationPage'))
 const WebhooksManager = lazy(() => import('./pages/config/WebhooksManager'))
 const UsersManager = lazy(() => import('./pages/config/UsersManager'))
+const EmployeeProfilePage = lazy(() => import('./pages/config/EmployeeProfilePage'))
 const RolesManager = lazy(() => import('./pages/config/RolesManager'))
 const SuperAdminSettings = lazy(() => import('./pages/config/SuperAdminSettings'))
 
@@ -136,14 +137,15 @@ export default function App() {
                     <Route path='/analytics/resource-workload' element={<ProtectedRoute requiredModule="analytics" requiredTab="analytics-resource-workload"><ResourceWorkloadDashboard /></ProtectedRoute>} />
                     <Route path='/analytics/csat' element={<ProtectedRoute requiredModule="analytics" requiredTab="analytics-csat"><CSATReportPage /></ProtectedRoute>} />
                     <Route path='/analytics/delay-analysis' element={<ProtectedRoute requiredModule="analytics" requiredTab="analytics-delay"><DelayAnalysisReportPage /></ProtectedRoute>} />
-                    <Route path='/settings/profile' element={<ProtectedRoute requiredModule="settings"><ProfilePage /></ProtectedRoute>} />
-                    <Route path='/settings/security' element={<ProtectedRoute requiredModule="settings"><MySecurityPage /></ProtectedRoute>} />
-                    <Route path='/settings/preferences' element={<ProtectedRoute requiredModule="settings"><PreferencesPage /></ProtectedRoute>} />
+                    <Route path='/settings/profile' element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+                    <Route path='/settings/security' element={<ProtectedRoute><MySecurityPage /></ProtectedRoute>} />
+                    <Route path='/settings/preferences' element={<ProtectedRoute><PreferencesPage /></ProtectedRoute>} />
                     <Route path='/settings/audit-trail' element={<ProtectedRoute requiredModule="settings" requiredTab="audit-trail"><AuditTrailPage /></ProtectedRoute>} />
                     <Route path='/settings/approval-matrix' element={<ProtectedRoute requiredModule="settings" requiredTab="financial-thresholds"><ApprovalMatrixPage /></ProtectedRoute>} />
                     <Route path='/settings/company' element={<ProtectedRoute requiredModule="settings" requiredTab="company-settings"><CompanySettingsPage /></ProtectedRoute>} />
                     <Route path='/settings/superadmin' element={<ProtectedRoute requiredModule="settings" requiredTab="superadmin"><SuperAdminSettings /></ProtectedRoute>} />
                     <Route path='/team/members' element={<ProtectedRoute requiredModule="settings" requiredTab="team-members"><UsersManager /></ProtectedRoute>} />
+                    <Route path='/team/members/:id' element={<ProtectedRoute requiredModule="settings" requiredTab="team-members"><EmployeeProfilePage /></ProtectedRoute>} />
                     <Route path='/team/roles' element={<ProtectedRoute requiredModule="settings" requiredTab="roles-permissions"><RolesManager /></ProtectedRoute>} />
                     
                     {/* Flattened Config Routes */}

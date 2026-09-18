@@ -1795,6 +1795,24 @@ export const setupMockInterceptor = (api) => {
                 const payload = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
                 const session = JSON.parse(localStorage.getItem('mockSession') || '{}');
                 
+                const leadIdMatch = url.match(/\/leads\/([a-zA-Z0-9-]+)\/convert-to-project$/);
+                const targetLeadId = leadIdMatch ? leadIdMatch[1] : null;
+                const existingLead = mockDatabase.leads?.find(l => String(l.id) === String(targetLeadId));
+                
+                if (existingLead && (existingLead.status === 'converted' || existingLead.converted_to_project_id)) {
+                  return Promise.reject({
+                    response: {
+                      status: 409,
+                      statusText: 'Conflict',
+                      data: {
+                        success: false,
+                        error: 'Lead has already been converted to a project',
+                        existingProjectId: existingLead.converted_to_project_id
+                      }
+                    }
+                  });
+                }
+                
                 // Dynamic checklist validation in mock
                 const checklistConfig = (mockDatabase.tenantSettings || {}).pre_conversion_checklist || [
                   { key: 'contract_signed', label: 'Contract signed', required: true, active: true },
@@ -1842,6 +1860,7 @@ export const setupMockInterceptor = (api) => {
                   client_name: payload.clientName || 'Client',
                   client_phone: payload.clientPhone || null,
                   client_email: payload.clientEmail || null,
+                  project_type: payload.projectType || 'full_interior',
                   status,
                   booking_amount: advanceAmount,
                   payment_terms: paymentTerms,
@@ -1850,29 +1869,31 @@ export const setupMockInterceptor = (api) => {
                   created_by: session?.id || session?.user?.id || null,
                   sales_rep_id: session?.id || session?.user?.id || null,
                   sales_rep_name: session?.name || session?.user?.name || null,
-                  value: payload.contractValue || 0,
+                  value: payload.contractValue ? Number(payload.contractValue) : 0,
+                  contract_value: payload.contractValue ? Number(payload.contractValue) : 0,
+                  start_date: payload.startDate || null,
                   target_date: payload.handoverDate || null,
                   pm_id: payload.pm || null,
+                  designer_id: payload.designer || null,
+                  lead_id: targetLeadId || null,
                   agreement_signed_by: payload.agreement_signed_by || null,
                   agreement_signed_at: payload.agreement_signed_at || null,
                   agreement_signature_method: payload.agreement_signature_method || null,
                   
-                  flat_number: payload.flat_number || 'Flat 405',
-                  floor: payload.floor || '4',
-                  building_name: payload.building_name || 'Silver Oak Apartments',
-                  street: payload.street || '12th Main Road, Sector 6',
+                  flat_number: payload.flat_number || '',
+                  floor: payload.floor || '',
+                  building_name: payload.building_name || '',
+                  street: payload.street || '',
                   city: payload.city || 'Bengaluru',
-                  pincode: payload.pincode || '560102',
-                  landmark: payload.landmark || 'Near HDFC Bank',
-                  latitude: payload.latitude ? Number(payload.latitude) : 12.934533,
-                  longitude: payload.longitude ? Number(payload.longitude) : 77.624102,
-                  builder_name: payload.builder_name || 'Prestige Group',
-                  society_name: payload.society_name || 'Prestige Lakeside Habitat',
+                  pincode: payload.pincode || '',
+                  landmark: payload.landmark || '',
+                  latitude: payload.latitude ? Number(payload.latitude) : null,
+                  longitude: payload.longitude ? Number(payload.longitude) : null,
+                  builder_name: payload.builder_name || '',
+                  society_name: payload.society_name || '',
                   renovation_scope: payload.projectType || 'full_interior',
-                  site_address: payload.siteAddress || `${payload.flat_number || 'Flat 405'}, ${payload.building_name || 'Silver Oak Apartments'}, ${payload.street || '12th Main Road, Sector 6'}, ${payload.city || 'Bengaluru'} - ${payload.pincode || '560102'}`
+                  site_address: payload.siteAddress || `${payload.flat_number || ''}, ${payload.building_name || ''}, ${payload.street || ''}`
                 };
-
-                newProj.contract_value = payload.contractValue || 0;
 
                 if (payload.contract_file_key) {
                   if (!mockDatabase.documents) mockDatabase.documents = [];
@@ -2038,6 +2059,7 @@ export const setupMockInterceptor = (api) => {
                   const leadToUpdate = mockDatabase.leads.find(l => String(l.id) === String(leadId));
                   if (leadToUpdate) {
                     leadToUpdate.status = 'converted';
+                    leadToUpdate.converted_to_project_id = newProj.id;
                     leadToUpdate.updated_at = new Date().toISOString();
                   }
                   

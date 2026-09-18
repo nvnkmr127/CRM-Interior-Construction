@@ -64,6 +64,7 @@ const VendorsTab = React.lazy(() => import('../../components/projects/VendorsTab
 import HandoverModal from '../../components/projects/HandoverModal';
 import DesignStageHeader from '../../components/projects/DesignStageHeader';
 import ActivityLogsTab from '../../components/projects/ActivityLogsTab';
+import LeadDrawer from '../../components/leads/LeadDrawer';
 
 // FinancialOverviewPanel syncs with PaymentsTab's dynamic payment processing
 const FinancialOverviewPanel = React.memo(function FinancialOverviewPanel({ project, projectId }) {
@@ -445,6 +446,16 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
             );
           })}
         </div>
+      </div>
+
+      {/* Project Phases & Schedule */}
+      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden', padding: '20px' }}>
+        <h3 style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span>⏱️</span> Project Phases & Schedule
+        </h3>
+        <React.Suspense fallback={<div style={{ padding: '20px', color: 'var(--color-text-muted)' }}>Loading Phases & Schedule…</div>}>
+          <PhaseTimeline projectId={project.id} />
+        </React.Suspense>
       </div>
 
       {/* Team */}
@@ -884,10 +895,38 @@ export default function ProjectDetail() {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [activeLeadDrawerId, setActiveLeadDrawerId] = useState(null);
   const [archiving, setArchiving] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const { confirm } = useConfirm();
+
+  const handleOpenLeadClick = async () => {
+    let targetLeadId = project?.lead_id;
+    if (!targetLeadId) {
+      const searchName = project?.client_name || project?.name;
+      if (searchName) {
+        try {
+          const res = await api.get(`/leads?search=${encodeURIComponent(searchName)}&limit=10`);
+          const list = res.data?.data || res.data || [];
+          if (Array.isArray(list) && list.length > 0) {
+            const match = list.find(l => l.name?.toLowerCase() === searchName.toLowerCase()) || list[0];
+            targetLeadId = match.id;
+          }
+        } catch (err) {
+          console.error('Failed to search lead by client name:', err);
+        }
+      }
+    }
+
+    if (targetLeadId) {
+      navigate(`/leads?leadId=${targetLeadId}`);
+    } else if (project?.client_name) {
+      navigate(`/leads?search=${encodeURIComponent(project.client_name)}`);
+    } else {
+      toast.error('Lead details not found for this project');
+    }
+  };
 
   const handleArchive = () => {
     setIsArchiveModalOpen(true);
@@ -917,7 +956,7 @@ export default function ProjectDetail() {
 
   const allTabs = [
     // Initiation & Setup
-    'Overview', 'Client Profile', 'Site Details', 'Team & Roles', 'Booking', 'Baseline Assessment',
+    'Overview', 'Phases & Schedule', 'Client Profile', 'Site Details', 'Team & Roles', 'Booking', 'Baseline Assessment',
     
     // Design & Planning
     'Design Brief', 'Design Assets', 'Material Palettes', 'Substitutions', 'Design Reviews', 'Coordination', 
@@ -973,6 +1012,7 @@ export default function ProjectDetail() {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'Overview': return project ? <OverviewTab project={project} onRefresh={reloadProject} onEdit={(section = 'all') => { setEditingSection(section); setIsEditing(true); }} /> : null;
+      case 'Phases & Schedule': return <PhaseTimeline projectId={projectId} />;
       case 'Team & Roles': return <TeamAndRolesTab project={project} onRefresh={reloadProject} />;
       case 'Client Profile': return <ClientProfileTab project={project} onRefresh={reloadProject} />;
       case 'Site Details': return <SiteDetailsTab project={project} onRefresh={reloadProject} />;
@@ -1184,7 +1224,24 @@ export default function ProjectDetail() {
               )}
             </div>
             <div className={styles.clientName} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {project.client_name || '—'}
+              <button
+                type="button"
+                onClick={handleOpenLeadClick}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  margin: 0,
+                  color: 'var(--color-accent, #2563eb)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  fontSize: 'inherit'
+                }}
+                title={`View Lead details for ${project.client_name || 'client'}`}
+              >
+                {project.client_name || 'View Lead'}
+              </button>
               {(project.type || project.project_type) && (
                 <span style={{ 
                   background: 'var(--color-surface-hover, #f1f5f9)', 
@@ -1392,6 +1449,7 @@ export default function ProjectDetail() {
           {[
             // 1. Initiation & Setup
             { id: 'Overview', icon: '📝', label: 'Overview' },
+            { id: 'Phases & Schedule', icon: '⏱️', label: 'Phases & Schedule' },
             { id: 'Client Profile', icon: '👤', label: 'Client Profile' },
             { id: 'Site Details', icon: '📍', label: 'Site Details' },
             { id: 'Team & Roles', icon: '👥', label: 'Team & Roles' },
@@ -1520,6 +1578,15 @@ export default function ProjectDetail() {
           isOpen={isDeleteModalOpen}
           onClose={() => setIsDeleteModalOpen(false)}
           onSuccess={() => navigate('/projects')}
+        />
+      )}
+
+      {activeLeadDrawerId && (
+        <LeadDrawer
+          leadId={activeLeadDrawerId}
+          isOpen={Boolean(activeLeadDrawerId)}
+          onClose={() => setActiveLeadDrawerId(null)}
+          onLeadUpdated={reloadProject}
         />
       )}
     </div>

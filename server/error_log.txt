@@ -934,3 +934,174 @@
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
     at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\financialApprovals.js:818:5
 
+2026-09-14T15:47:32.596Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:96:26\n\n2026-09-14T15:47:32.615Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:96:26\n\n2026-09-14T15:47:45.275Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:96:26\n\n2026-09-14T15:47:45.336Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:96:26\n\n2026-09-14T15:52:34.432Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:96:26\n\n2026-09-14T15:52:34.487Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:96:26\n\n2026-09-14T15:52:35.985Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:96:26\n\n2026-09-14T15:52:36.023Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:96:26\n\n2026-09-14T15:52:36.324Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:96:26\n\n2026-09-14T15:52:36.358Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:96:26\n\n2026-09-14T15:52:38.316Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:96:26\n\n2026-09-14T15:52:38.350Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:96:26\n\n2026-09-14T15:52:38.829Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:96:26\n\n2026-09-14T15:52:38.871Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:96:26\n\n2026-09-14T15:52:39.275Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:96:26\n\n2026-09-14T15:52:39.311Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:96:26\n\n2026-09-14T16:35:29.478Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:96:26\n\n2026-09-14T16:48:55.642Z\nError: Connection terminated due to connection timeout
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async findLeads (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:287:23)
+    at async getLeadsHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2738:20)\n\n2026-09-14T16:49:05.663Z\nError: Connection terminated due to connection timeout
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async findLeads (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:287:23)
+    at async getLeadsHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2738:20)\n\n2026-09-14T16:49:05.669Z\nError: Connection terminated due to connection timeout
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\config\leadStages.js:22:20\n\n2026-09-14T16:49:05.677Z\nError: Connection terminated due to connection timeout
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async getLeadStats (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:767:18)
+    at async exports.getLeadStatsHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:1415:19)\n\n2026-09-14T16:49:08.292Z\nError: Connection terminated due to connection timeout
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:266:20\n\n2026-09-14T16:53:11.459Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:266:20\n\n2026-09-14T16:54:03.299Z\nError: Connection terminated due to connection timeout
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:266:20\n\n2026-09-14T16:54:18.295Z\nError: Connection terminated due to connection timeout
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:266:20\n\n2026-09-14T16:54:46.495Z\nError: Connection terminated due to connection timeout
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:96:26\n\n2026-09-14T16:54:56.509Z\nError: Connection terminated due to connection timeout
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:96:26\n\n2026-09-14T16:57:03.082Z\nError: Connection terminated due to connection timeout
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\portal\auth.js:17:24\n\n2026-09-14T16:57:22.092Z\nError: Connection terminated due to connection timeout
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\portal\auth.js:17:24\n\n2026-09-14T16:57:52.273Z\nError: Connection terminated due to connection timeout
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\portal\auth.js:17:24\n\n2026-09-14T17:06:22.787Z\nError: Connection terminated due to connection timeout
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:266:20\n\n2026-09-15T13:40:32.359Z\nError: Connection terminated due to connection timeout
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:96:26\n\n2026-09-15T13:40:42.385Z\nError: Connection terminated due to connection timeout
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:96:26\n\n2026-09-15T13:41:00.533Z\nError: Connection terminated due to connection timeout
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:96:26\n\n2026-09-15T13:41:06.506Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:96:26\n\n2026-09-16T06:07:15.597Z\nTypeError: res.status is not a function
+    at fail (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\response.js:23:14)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:530:35\n\n2026-09-17T10:05:24.969Z\nerror: null value in column "name" of relation "project_phases" violates not-null constraint
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async applyTemplate (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\config\templateService.js:132:24)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\projects.js:1083:20\n\n2026-09-17T10:13:09.559Z\nerror: value too long for type character varying(1000)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async createProject (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\createProject.js:262:7)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\projects.js:431:21\n\n2026-09-17T10:13:39.838Z\nerror: value too long for type character varying(1000)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async createProject (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\createProject.js:262:7)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\projects.js:431:21\n\n2026-09-17T10:14:21.606Z\nerror: value too long for type character varying(1000)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async createProject (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\createProject.js:262:7)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\projects.js:431:21\n\n2026-09-17T10:19:06.183Z\nerror: value too long for type character varying(1000)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async createProject (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\createProject.js:263:7)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\projects.js:431:21\n\n2026-09-17T10:19:22.654Z\nerror: value too long for type character varying(1000)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async createProject (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\createProject.js:263:7)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\projects.js:431:21\n\n2026-09-17T10:26:37.729Z\nerror: null value in column "name" of relation "project_phases" violates not-null constraint
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg\lib\client.js:646:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async applyTemplate (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\config\templateService.js:141:24)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\projects.js:1088:20\n\n2026-09-17T11:47:18.783Z\nerror: column "phone" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Promise.all (index 4)
+    at async globalSearchHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\searchController.js:188:5)\n\n2026-09-17T11:47:21.037Z\nerror: column "phone" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Promise.all (index 4)
+    at async globalSearchHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\searchController.js:188:5)\n\n2026-09-17T11:47:24.015Z\nerror: column "phone" does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Promise.all (index 4)
+    at async globalSearchHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\searchController.js:188:5)\n\n2026-09-17T11:49:54.010Z\nerror: function lower(uuid) does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Promise.all (index 4)
+    at async globalSearchHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\searchController.js:189:5)\n\n2026-09-17T11:50:20.276Z\nerror: function lower(uuid) does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Promise.all (index 4)
+    at async globalSearchHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\searchController.js:189:5)\n\n2026-09-17T11:50:22.354Z\nerror: function lower(uuid) does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Promise.all (index 4)
+    at async globalSearchHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\searchController.js:189:5)\n\n2026-09-17T11:50:30.697Z\nerror: function lower(uuid) does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Promise.all (index 4)
+    at async globalSearchHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\searchController.js:189:5)\n\n2026-09-17T11:50:31.338Z\nerror: function lower(uuid) does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Promise.all (index 4)
+    at async globalSearchHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\searchController.js:189:5)\n\n

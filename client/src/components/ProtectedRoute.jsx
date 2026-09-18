@@ -97,8 +97,8 @@ export default function ProtectedRoute({ children, requiredPermission, requiredM
   if (requiredModule) {
     const hasModulePerm = perms.some(p => p.startsWith(`${requiredModule}:`) || p === '*' || p === `${requiredModule}`);
     const isModuleAllowed = enabledModules.length === 0 
-      ? (hasModulePerm || ['dashboards', 'tasks'].includes(requiredModule)) 
-      : (enabledModules.includes(requiredModule) || hasModulePerm || ['dashboards', 'tasks'].includes(requiredModule));
+      ? (hasModulePerm || ['dashboards', 'tasks', 'profile'].includes(requiredModule)) 
+      : (enabledModules.includes(requiredModule) || hasModulePerm || ['dashboards', 'tasks', 'profile'].includes(requiredModule));
 
     if (!isModuleAllowed) {
       return <Navigate to='/forbidden' replace />

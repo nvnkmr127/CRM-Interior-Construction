@@ -592,6 +592,19 @@
   vertical-align: middle;
 }
 
+.projectLink {
+  color: var(--color-accent);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: var(--transition-fast);
+}
+
+.projectLink:hover {
+  color: var(--color-accent-dark);
+  text-decoration: underline;
+}
+
 /* ── TIMELINE STYLING ── */
 .timelineContainer {
   display: flex;

@@ -349,7 +349,7 @@ CREATE TABLE IF NOT EXISTS documents (
   name VARCHAR(500) NOT NULL,
   doc_type VARCHAR(100),     -- 'drawing','boq','render','contract','photo','invoice'
   version BOOLEAN DEFAULT TRUE,
-  storage_key VARCHAR(1000) NOT NULL,  -- S3 object key
+  storage_key TEXT NOT NULL,  -- S3 object key or data URL
   file_size_bytes INTEGER,
   mime_type VARCHAR(100),
   uploaded_by UUID REFERENCES users(id),

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import layoutStyles from './ConfigLayout.module.css'
 import { Button, Badge, Modal, DataTable, Avatar, Input, Select, EmptyState, PermissionButton } from '../../components/ui'
 import AddTeamMemberForm from './AddTeamMemberForm'
@@ -23,6 +23,7 @@ import { getMockTeamCredentials, updateMockTeamCredentials, useAuth } from '../.
 
 import { ROLE_DEFAULTS } from '../../constants/roleDefaults'
 import { useConfirm } from '../../store/confirmContext';
+import { FiEye, FiEyeOff } from 'react-icons/fi';
 
 const DEFAULT_ROLE_OPTIONS = [
   { value: 'superadmin', label: 'Super Admin' },
@@ -36,8 +37,16 @@ export default function UsersManager() {
   const { user: currentUser } = useAuth();
 
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const urlUserId = searchParams.get('id') || searchParams.get('userId')
   const [users, setUsers] = useState([])
-  const [selectedUserId, setSelectedUserId] = useState(null)
+  const [selectedUserId, setSelectedUserId] = useState(urlUserId)
+
+  useEffect(() => {
+    if (urlUserId) {
+      setSelectedUserId(urlUserId)
+    }
+  }, [urlUserId])
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
   const [roleChangeTarget, setRoleChangeTarget] = useState(null)
   const [statusChangeTarget, setStatusChangeTarget] = useState(null)
@@ -58,6 +67,7 @@ export default function UsersManager() {
   
   const [isMockConfigOpen, setIsMockConfigOpen] = useState(false)
   const [mockConfigData, setMockConfigData] = useState({})
+  const [showPassword, setShowPassword] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
 
   const toast = useToast()
@@ -71,17 +81,12 @@ export default function UsersManager() {
   const allUsers = [...injectedUsers, ...users].filter((v, i, a) => a.findIndex(v2 => v2.id === v.id) === i)
 
   const roleOptions = roles.length > 0 
-    ? [
-        ...roles.map(r => ({ value: r.id, label: r.name })),
-        ...DEFAULT_ROLE_OPTIONS.filter(d => 
-          !roles.some(r => 
-            r.id.toLowerCase() === d.value.toLowerCase() || 
-            r.name.toLowerCase().replace(/\s+/g, '') === d.label.toLowerCase().replace(/\s+/g, '') ||
-            r.name.toLowerCase().replace(/\s+/g, '') === d.value.toLowerCase().replace(/\s+/g, '')
-          )
-        )
+    ? roles.map(r => ({ value: r.id, label: r.name }))
+    : [
+        { value: 'superadmin', label: 'Super Admin' },
+        { value: 'pm', label: 'Project Manager' },
+        { value: 'designer', label: 'Designer' }
       ]
-    : DEFAULT_ROLE_OPTIONS
 
   
   useEffect(() => {
@@ -349,7 +354,7 @@ export default function UsersManager() {
   const renderMockConfigModal = () => {
     if (!isMockConfigOpen) return null;
     return (
-      <Modal isOpen={isMockConfigOpen} title="Configure Dev Login" onClose={() => setIsMockConfigOpen(false)} size="md">
+      <Modal isOpen={isMockConfigOpen} title="Team Member Login Credentials" onClose={() => setIsMockConfigOpen(false)} size="md">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '8px 4px' }}>
           
           <div style={{ 
@@ -361,14 +366,14 @@ export default function UsersManager() {
             fontSize: '0.9rem',
             lineHeight: '1.5'
           }}>
-            <strong style={{ color: 'var(--color-accent)', display: 'block', marginBottom: '4px' }}>Mock Environment Override</strong>
-            Configure the credentials and role that will be automatically loaded when using the <strong>Team</strong> login button in dev mode.
+            <strong style={{ color: 'var(--color-accent)', display: 'block', marginBottom: '4px' }}>Team Access Configuration</strong>
+            Configure the login credentials and role assigned to <strong>{mockConfigData.name || 'this team member'}</strong>.
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <Input 
               label="Display Name"
-              placeholder="e.g. Rahul K. (PM)"
+              placeholder="e.g. Kalyan"
               value={mockConfigData.name || ''} 
               onChange={e => setMockConfigData({...mockConfigData, name: e.target.value})} 
             />
@@ -410,9 +415,28 @@ export default function UsersManager() {
             />
             <Input 
               label="Password"
-              type="text"
+              type={showPassword ? "text" : "password"}
+              placeholder="Enter new password (leave blank to keep current)"
               value={mockConfigData.password || ''} 
               onChange={e => setMockConfigData({...mockConfigData, password: e.target.value})} 
+              rightIcon={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    color: 'var(--color-text-secondary)'
+                  }}
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                </button>
+              }
             />
           </div>
 
@@ -453,7 +477,14 @@ export default function UsersManager() {
         <EmployeeProfilePage 
           key={`${selectedUserId}-${refreshKey}`}
           userId={selectedUserId} 
-          onBack={() => setSelectedUserId(null)}
+          onBack={() => {
+            setSelectedUserId(null)
+            setSearchParams(params => {
+              params.delete('id')
+              params.delete('userId')
+              return params
+            })
+          }}
           onConfigureMock={(userToMock) => {
             const saved = getMockTeamCredentials();
             const isSameUser = saved && (saved.email === userToMock.email || saved.id === userToMock.id);
@@ -464,7 +495,7 @@ export default function UsersManager() {
               id: userToMock.id,
               name: userToMock.name || '',
               email: userToMock.email || '',
-              password: isSameUser ? (saved.password || 'password') : 'password',
+              password: userToMock.password || (isSameUser ? saved.password : '') || '123456',
               role: matchedRole ? { id: matchedRole.id, name: matchedRole.name, permissions: matchedRole.permissions, enabled_modules: matchedRole.enabled_modules } : (userRoleId ? { id: userRoleId, name: userToMock.role_name || userRoleId } : null)
             });
             setIsMockConfigOpen(true);

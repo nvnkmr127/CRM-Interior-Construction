@@ -159,25 +159,26 @@ exports.globalSearchHandler = async function globalSearchHandler(req, res, next)
 
     if (searchTypes.includes('users')) {
       let query = `
-        SELECT id, name, email,
-          (SELECT name FROM roles WHERE id=role_id) as role
-        FROM users 
-        WHERE tenant_id = $1 AND deleted_at IS NULL
+        SELECT u.id, u.name, u.email, u.role_id,
+          COALESCE(r.name, 'Team Member') as role
+        FROM users u
+        LEFT JOIN roles r ON r.id = u.role_id
+        WHERE u.tenant_id = $1 AND u.deleted_at IS NULL
       `;
       const params = [tenantId];
       words.forEach(word => {
         const paramIdx = params.length + 1;
-        query += ` AND (name ILIKE $${paramIdx} OR email ILIKE $${paramIdx})`;
+        query += ` AND (u.name ILIKE $${paramIdx} OR u.email ILIKE $${paramIdx} OR r.name ILIKE $${paramIdx})`;
         params.push(`%${word}%`);
       });
-      query += ` ORDER BY name ASC LIMIT 10`;
+      query += ` ORDER BY u.name ASC LIMIT 10`;
 
       promises.push(
         pool.query(query, params).then(res => {
           responseData.users = res.rows.map(r => ({
             id: r.id,
             name: r.name,
-            role: r.role,
+            role: r.role || 'Team Member',
             email: r.email
           }));
         })
@@ -189,7 +190,8 @@ exports.globalSearchHandler = async function globalSearchHandler(req, res, next)
       leads: responseData.leads.length,
       projects: responseData.projects.length,
       tasks: responseData.tasks.length,
-      contacts: responseData.contacts.length
+      contacts: responseData.contacts.length,
+      users: responseData.users.length
     });
     return res.json(responseData);
 

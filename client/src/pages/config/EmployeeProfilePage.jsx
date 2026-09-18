@@ -144,12 +144,14 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
   useEffect(() => {
     fetchUserData()
     fetchMetadata()
+    if (id) {
+      fetchProjects()
+      fetchTasks()
+    }
   }, [id])
 
   useEffect(() => {
     if (!user) return
-    if (activeSection === 'projects' && projects.length === 0) fetchProjects()
-    if (activeSection === 'tasks' && tasks.length === 0) fetchTasks()
     if (activeSection === 'devices' && sessions.length === 0) fetchSessions()
     if (activeSection === 'login-history' && loginHistory.length === 0) fetchLoginHistory()
     if (activeSection === 'audit-logs' && auditLogs.length === 0) fetchAuditLogs()
@@ -338,11 +340,14 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
   }
 
   const roleOptions = useMemo(() => {
-    const list = [
-      ...roles.map(r => ({ value: r.id, label: r.name })),
-      ...DEFAULT_ROLE_OPTIONS.filter(d => !roles.some(r => r.id === d.value || r.name?.toLowerCase() === d.label?.toLowerCase()))
+    if (roles.length > 0) {
+      return roles.map(r => ({ value: r.id, label: r.name }))
+    }
+    return [
+      { value: 'superadmin', label: 'Super Admin' },
+      { value: 'pm', label: 'Project Manager' },
+      { value: 'designer', label: 'Designer' }
     ]
-    return list
   }, [roles])
 
   const departmentOptions = useMemo(() => {
@@ -611,7 +616,7 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
               <div className={styles.infoFieldRow}>
                 <span className={styles.infoFieldLabel}>System Role</span>
                 <span className={styles.infoFieldValue}>
-                  <Badge variant="info">{user.role_name || 'Designer'}</Badge>
+                  <Badge variant="info">{user.role_name || 'Team Member'}</Badge>
                 </span>
               </div>
               <div className={styles.infoFieldRow}>
@@ -884,7 +889,12 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
                 {filteredProjects.map(p => (
                   <tr key={p.id}>
                     <td>
-                      <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{p.name}</div>
+                      <div
+                        className={styles.projectLink}
+                        onClick={() => navigate(`/projects/${p.id}`)}
+                      >
+                        {p.name}
+                      </div>
                       <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>ID: {p.id.substring(0, 8)}...</div>
                     </td>
                     <td>
@@ -1697,7 +1707,7 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
   }
 
   const userInitial = user.name ? user.name.charAt(0).toUpperCase() : '?'
-  const userDept = departments.find(d => d.id === user.department_id)?.name || profile.department || 'Designer'
+  const userDept = departments.find(d => d.id === user.department_id)?.name || profile.department || null
 
   return (
     <div className={styles.container}>
@@ -1722,7 +1732,7 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
             <div className={styles.heroIdentityText}>
               <div className={styles.heroNameRow}>
                 <h1 className={styles.heroName}>{user.name || 'Unnamed Employee'}</h1>
-                <span className={styles.designationBadge}>{profile.designation || userDept}</span>
+                <span className={styles.designationBadge}>{profile.designation || user.role_name || 'Team Member'}</span>
                 <Badge variant={getStatusBadgeVariant(user.status)}>
                   {user.status?.toUpperCase() || 'ACTIVE'}
                 </Badge>
@@ -1742,14 +1752,17 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
                 <span className={styles.metaDivider}>•</span>
 
                 <span className={styles.metaItem}>
-                  <FiShield /> {user.role_name || 'Designer'}
+                  <FiShield /> {user.role_name || 'Team Member'}
                 </span>
 
-                <span className={styles.metaDivider}>•</span>
-
-                <span className={styles.metaItem}>
-                  <FiBriefcase /> {userDept}
-                </span>
+                {userDept && (
+                  <>
+                    <span className={styles.metaDivider}>•</span>
+                    <span className={styles.metaItem}>
+                      <FiBriefcase /> {userDept}
+                    </span>
+                  </>
+                )}
 
                 {profile.mobileNumber && (
                   <>
@@ -1784,7 +1797,7 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
                 onClick={() => onConfigureMock(user)}
                 icon={<FiSliders />}
               >
-                Configure Dev Login
+                Login Credentials
               </Button>
             )}
 

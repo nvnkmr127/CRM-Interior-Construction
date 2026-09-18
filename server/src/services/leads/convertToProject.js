@@ -19,6 +19,14 @@ async function convertToProject({ tenantId, userId, leadId, bodyData }) {
   }
   const lead = leadRes.rows[0];
 
+  // 1b. Duplicate conversion check
+  if (lead.status === 'converted' || lead.converted_to_project_id) {
+    const error = new Error('Lead has already been converted to a project');
+    error.code = 'CONFLICT';
+    error.existingProjectId = lead.converted_to_project_id;
+    throw error;
+  }
+
   // 2. Checklist validation
   // Get tenant config setting
   const tenantRes = await pool.query(
@@ -67,8 +75,8 @@ async function convertToProject({ tenantId, userId, leadId, bodyData }) {
     contract_value: bodyData.contractValue ? Number(bodyData.contractValue) : 0,
     booking_amount: advanceAmount,
     payment_terms: paymentTerms,
-    pm_id: (typeof bodyData.pm === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bodyData.pm)) ? bodyData.pm : null,
-    designer_id: (typeof bodyData.designer === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bodyData.designer)) ? bodyData.designer : null,
+    pm_id: bodyData.pm || null,
+    designer_id: bodyData.designer || null,
     start_date: bodyData.startDate || null,
     target_date: bodyData.handoverDate || null,
     agreement_signed_by: bodyData.agreement_signed_by || null,
@@ -184,34 +192,38 @@ async function convertToProject({ tenantId, userId, leadId, bodyData }) {
       const threshold = await getTenantThreshold(tenantId, 'finance_payment_threshold', 100000.00);
       const { current_stage, total_stages, approval_chain } = await buildApprovalChain(tenantId, 'payment_update', advanceAmount);
       
-      await pool.query(
-        `INSERT INTO financial_approvals (
-           tenant_id, transaction_type, target_id, amount, requested_by, requested_changes, status, threshold_limit,
-           current_stage, total_stages, approval_chain
-         ) VALUES ($1, 'payment_update', $2, $3, $4, $5, 'pending', $6, $7, $8, $9)`,
-        [
-          tenantId, 
-          firstMilestone.id, 
-          advanceAmount, 
-          userId, 
-          JSON.stringify({ 
-            type: 'update', 
-            original_status: 'scheduled', 
-            projectId: projectId,
-            isSplit: true,
-            splits: splits,
-            data: { 
-              status: 'paid', 
-              paid_amount: advanceAmount, 
-              paid_at: new Date().toISOString() 
-            } 
-          }), 
-          threshold, 
-          current_stage, 
-          total_stages, 
-          JSON.stringify(approval_chain)
-        ]
-      );
+      const effectiveUserId = sanitizedUserId || (await pool.query('SELECT id FROM users WHERE tenant_id = $1 LIMIT 1', [tenantId])).rows[0]?.id;
+
+      if (effectiveUserId) {
+        await pool.query(
+          `INSERT INTO financial_approvals (
+             tenant_id, transaction_type, target_id, amount, requested_by, requested_changes, status, threshold_limit,
+             current_stage, total_stages, approval_chain
+           ) VALUES ($1, 'payment_update', $2, $3, $4, $5, 'pending', $6, $7, $8, $9)`,
+          [
+            tenantId, 
+            firstMilestone.id, 
+            advanceAmount, 
+            effectiveUserId, 
+            JSON.stringify({ 
+              type: 'update', 
+              original_status: 'scheduled', 
+              projectId: projectId,
+              isSplit: true,
+              splits: splits,
+              data: { 
+                status: 'paid', 
+                paid_amount: advanceAmount, 
+                paid_at: new Date().toISOString() 
+              } 
+            }), 
+            threshold, 
+            current_stage, 
+            total_stages, 
+            JSON.stringify(approval_chain)
+          ]
+        );
+      }
     }
   }
 

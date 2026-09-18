@@ -141,7 +141,7 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed,
         <div className={styles.searchWrapper}>
           <input 
             type="text" 
-            placeholder="Search projects, leads..." 
+            placeholder="Search leads, projects, team members..." 
             className={styles.searchInput}
             onClick={onSearchClick}
             onFocus={onSearchClick}

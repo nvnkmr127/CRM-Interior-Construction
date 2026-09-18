@@ -67,8 +67,9 @@ export default function LeadsPage() {
       changed = true;
     }
     
-    if (currentParams.get('id')) {
-      setSelectedLeadId(currentParams.get('id'));
+    const targetLeadId = currentParams.get('leadId') || currentParams.get('id');
+    if (targetLeadId) {
+      setSelectedLeadId(targetLeadId);
       const rawTab = currentParams.get('tab');
       if (rawTab) {
         const t = rawTab.toLowerCase();
@@ -89,9 +90,10 @@ export default function LeadsPage() {
         }
         currentParams.delete('tab');
       } else {
-        setDrawerInitialTab('meeting-schedule');
+        setDrawerInitialTab('overview');
       }
       currentParams.delete('id');
+      currentParams.delete('leadId');
       changed = true;
     }
 
@@ -437,22 +439,6 @@ export default function LeadsPage() {
                 Active Leads
               </button>
               <button
-                onClick={() => { setStatusFilter('parked'); setPage(1); }}
-                style={{
-                  padding: '8px 16px',
-                  border: 'none',
-                  borderBottom: statusFilter === 'parked' ? '2px solid var(--color-warning)' : '2px solid transparent',
-                  background: 'transparent',
-                  color: statusFilter === 'parked' ? 'var(--color-warning)' : 'var(--color-text-secondary)',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  transition: 'all 0.2s'
-                }}
-              >
-                Parked Leads
-              </button>
-              <button
                 onClick={() => { setStatusFilter('converted'); setPage(1); }}
                 style={{
                   padding: '8px 16px',
@@ -467,6 +453,22 @@ export default function LeadsPage() {
                 }}
               >
                 Converted Leads
+              </button>
+              <button
+                onClick={() => { setStatusFilter('parked'); setPage(1); }}
+                style={{
+                  padding: '8px 16px',
+                  border: 'none',
+                  borderBottom: statusFilter === 'parked' ? '2px solid var(--color-warning)' : '2px solid transparent',
+                  background: 'transparent',
+                  color: statusFilter === 'parked' ? 'var(--color-warning)' : 'var(--color-text-secondary)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Parked Leads
               </button>
               <button
                 onClick={() => { setStatusFilter('deleted'); setPage(1); }}

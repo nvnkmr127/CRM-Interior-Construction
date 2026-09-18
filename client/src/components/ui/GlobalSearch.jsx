@@ -42,9 +42,9 @@ export default function GlobalSearch() {
       setLoading(true);
       try {
         setError(null);
-        const res = await api.get(`/search?q=${query}&types=leads,projects,tasks`);
+        const res = await api.get(`/search?q=${query}&types=leads,projects,tasks,users,contacts`);
         if (res.data.success) {
-          setResults(res.data.data);
+          setResults(res.data.data || res.data);
           setIsOpen(true);
         }
       } catch (e) {
@@ -83,7 +83,7 @@ export default function GlobalSearch() {
           id="global-search-input"
           type="text"
           className="block w-full pl-10 pr-12 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          placeholder="Search leads, projects... (Cmd+K)"
+          placeholder="Search leads, projects, team members... (Cmd+K)"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => { if (results) setIsOpen(true); }}
@@ -114,6 +114,25 @@ export default function GlobalSearch() {
                       {lead.phone && <span>{lead.phone}</span>}
                       {lead.email && <span>• {lead.email}</span>}
                     </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Team Members */}
+          {results.users && results.users.length > 0 && (
+            <div className="px-3 py-2 border-t border-gray-100">
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Team Members</h3>
+              <ul className="space-y-1">
+                {results.users.map(user => (
+                  <li 
+                    key={user.id} 
+                    className="cursor-pointer hover:bg-gray-100 p-2 rounded-md transition-colors"
+                    onClick={() => navigateTo(`/team/members/${user.id}`)}
+                  >
+                    <div className="font-medium text-gray-900">{user.name}</div>
+                    <div className="text-xs text-gray-500">{user.role || 'Team Member'} {user.email && `• ${user.email}`}</div>
                   </li>
                 ))}
               </ul>
@@ -162,7 +181,7 @@ export default function GlobalSearch() {
             <div className="px-4 py-8 text-center text-red-500">
               {error}
             </div>
-          ) : (!results.leads?.length && !results.projects?.length && !results.tasks?.length) && (
+          ) : (!results.leads?.length && !results.projects?.length && !results.tasks?.length && !results.users?.length) && (
             <div className="px-4 py-8 text-center text-gray-500">
               No results found for "{query}"
             </div>

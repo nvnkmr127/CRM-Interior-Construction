@@ -272,9 +272,24 @@ export default function SingleLeadActionModal({ isOpen, onClose, leadId, filtere
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', borderTop: '1px solid var(--color-border, #e5e7eb)', paddingTop: '14px' }}>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <Button variant="outline" type="button" onClick={() => setShowConvertForm(true)} disabled={loading} style={{ border: '1px solid var(--color-primary)', color: 'var(--color-primary)' }}>
-                ⭐ Convert
-              </Button>
+              {lead?.status === 'converted' || lead?.converted_to_project_id ? (
+                <Button 
+                  variant="outline" 
+                  type="button" 
+                  onClick={() => {
+                    if (lead.converted_to_project_id) {
+                      window.location.href = `/projects/${lead.converted_to_project_id}`;
+                    }
+                  }} 
+                  style={{ border: '1px solid var(--color-success)', color: 'var(--color-success)' }}
+                >
+                  📁 View Project
+                </Button>
+              ) : (
+                <Button variant="outline" type="button" onClick={() => setShowConvertForm(true)} disabled={loading} style={{ border: '1px solid var(--color-primary)', color: 'var(--color-primary)' }}>
+                  ⭐ Convert
+                </Button>
+              )}
               <Button variant="outline" type="button" onClick={handleMarkAsLost} disabled={loading} style={{ border: '1px solid var(--color-warning)', color: '#d97706' }}>
                 🪦 Lost
               </Button>
